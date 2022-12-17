@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.StrictMode
+import android.view.View
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -22,7 +23,6 @@ open class BaseActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setStrictModePolicy()
         makeAppFullScreen()
-        fixNavigationBarOverlap()
 
     }
 
@@ -66,6 +66,11 @@ open class BaseActivity : AppCompatActivity() {
              */
             WindowInsetsCompat.CONSUMED
         }
+    }
+
+    override fun setContentView(view: View?) {
+        super.setContentView(view)
+        fixNavigationBarOverlap()
     }
 
     private fun setStrictModePolicy() {

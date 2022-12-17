@@ -1,11 +1,10 @@
-package app.simple.felicity.theme
+package app.simple.felicity.theme.managers
 
 import app.simple.felicity.interfaces.ThemeChangedListener
 import app.simple.felicity.models.AccentColor
-import app.simple.felicity.models.Theme
+import app.simple.felicity.theme.themes.Theme
 
 object ThemeManager {
-
     private val listeners = mutableSetOf<ThemeChangedListener>()
 
     var theme = Theme()
