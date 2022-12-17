@@ -1,10 +1,10 @@
 package app.simple.felicity.activities
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import app.simple.felicity.R
+import app.simple.felicity.extensions.BaseActivity
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
