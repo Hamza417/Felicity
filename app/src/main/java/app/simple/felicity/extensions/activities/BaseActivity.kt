@@ -1,4 +1,4 @@
-package app.simple.felicity.extensions
+package app.simple.felicity.extensions.activities
 
 import android.content.Context
 import android.graphics.Color
