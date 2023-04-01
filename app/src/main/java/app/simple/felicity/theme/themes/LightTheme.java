@@ -8,30 +8,31 @@ import app.simple.felicity.theme.models.TextViewTheme;
 import app.simple.felicity.theme.models.ViewGroupTheme;
 
 public class LightTheme extends Theme {
-    static {
-        textViewTheme = new TextViewTheme(
+
+    public LightTheme() {
+        setSwitchTheme(new SwitchTheme(
+                Color.parseColor("#2E2E2E")  // Regular Switch Color
+        ));
+
+        setTextViewTheme(new TextViewTheme(
                 Color.parseColor("#121212"), // Header Text Color
                 Color.parseColor("#2B2B2B"), // Primary Text Color
                 Color.parseColor("#5A5A5A"), // Secondary Text Color
                 Color.parseColor("#7A7A7A"), // Tertiary Text Color
                 Color.parseColor("#9A9A9A")  // Quaternary Text Color
-        );
-        
-        viewGroupTheme = new ViewGroupTheme(
+        ));
+
+        setViewGroupTheme(new ViewGroupTheme(
                 Color.parseColor("#ffffff"), // Background Color
                 Color.parseColor("#F6F6F6"), // Highlight Color
                 Color.parseColor("#F1F1F1"), // Selected Color
                 Color.parseColor("#DDDDDD")  // Divider Color
-        );
-        
-        iconTheme = new IconTheme(
+        ));
+
+        setIconTheme(new IconTheme(
                 Color.parseColor("#2E2E2E"), // Regular Icon Color
                 Color.parseColor("#B1B1B1"), // Secondary Icon Color
                 Color.parseColor("#F6F6F6")  // Disabled Icon Color
-        );
-        
-        switchTheme = new SwitchTheme(
-                Color.parseColor("#2E2E2E")  // Regular Switch Color
-        );
+        ));
     }
 }

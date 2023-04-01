@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="DynamicCornerLayout">
+        <!-- At least one of them needs to be true else roundness will be applies to all corners
+                default is false for both of them -->
+        <attr name="roundTopCorners" format="boolean" />
+        <attr name="roundBottomCorners" format="boolean" />
+        <attr name="roundAllCorners" format="boolean" />
+    </declare-styleable>
+
+    <!-- Type Face Text View -->
+    <declare-styleable name="TypeFaceTextView">
+        <attr name="appFontStyle" format="string">
+            <flag name="light" value="0" />
+            <flag name="regular" value="1" />
+            <flag name="medium" value="2" />
+            <flag name="bold" value="3" />
+        </attr>
+
+        <attr name="textColorStyle" format="string">
+            <flag name="heading" value="0" />
+            <flag name="primary" value="1" />
+            <flag name="secondary" value="2" />
+            <flag name="tertiary" value="3" />
+            <flag name="quaternary" value="4" />
+            <flag name="accent" value="5" />
+            <flag name="white" value="6" />
+        </attr>
+
+        <attr name="drawableTintStyle" format="string">
+            <flag name="accent" value="0" />
+            <flag name="regular" value="1" />
+            <flag name="secondary" value="2" />
+            <flag name="warning" value="3" />
+        </attr>
+
+        <attr name="isDrawableHidden" format="boolean" />
+    </declare-styleable>
+
+    <declare-styleable name="ThemeIcon">
+        <attr name="tintType" format="string">
+            <flag name="regular" value="0" />
+            <flag name="secondary" value="1" />
+            <flag name="accent" value="2" />
+            <flag name="custom" value="3" />
+        </attr>
+    </declare-styleable>
+
+    <declare-styleable name="ThemeButton">
+        <attr name="buttonTintType" format="string">
+            <flag name="regular" value="0" />
+            <flag name="secondary" value="1" />
+            <flag name="accent" value="2" />
+            <flag name="white" value="3" />
+            <flag name="custom" value="-1" />
+        </attr>
+    </declare-styleable>
+
+</resources>

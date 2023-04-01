@@ -1,7 +1,7 @@
 package app.simple.felicity.theme.managers
 
 import app.simple.felicity.interfaces.ThemeChangedListener
-import app.simple.felicity.models.AccentColor
+import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.themes.Theme
 
 object ThemeManager {
@@ -14,7 +14,7 @@ object ThemeManager {
             listeners.forEach { listener -> listener.onThemeChanged(value, bool) }
         }
 
-    var accentColor = AccentColor()
+    var accentColor = Accent(0, 0)
         set(value) {
             field = value
             listeners.forEach { it.onAccentChanged(accentColor) }

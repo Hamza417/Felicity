@@ -6,40 +6,44 @@ import app.simple.felicity.theme.models.TextViewTheme;
 import app.simple.felicity.theme.models.ViewGroupTheme;
 
 public class Theme {
-    static TextViewTheme textViewTheme;
-    static ViewGroupTheme viewGroupTheme;
-    static IconTheme iconTheme;
-    static SwitchTheme switchTheme;
-    
-    public static TextViewTheme getTextViewTheme() {
+    private static TextViewTheme textViewTheme;
+    private static ViewGroupTheme viewGroupTheme;
+    private static IconTheme iconTheme;
+    private static SwitchTheme switchTheme;
+
+    public Theme() {
+
+    }
+
+    public TextViewTheme getTextViewTheme() {
         return textViewTheme;
     }
-    
-    public static void setTextViewTheme(TextViewTheme textViewTheme) {
+
+    public void setTextViewTheme(TextViewTheme textViewTheme) {
         Theme.textViewTheme = textViewTheme;
     }
-    
-    public static ViewGroupTheme getViewGroupTheme() {
+
+    public ViewGroupTheme getViewGroupTheme() {
         return viewGroupTheme;
     }
-    
-    public static void setViewGroupTheme(ViewGroupTheme viewGroupTheme) {
+
+    public void setViewGroupTheme(ViewGroupTheme viewGroupTheme) {
         Theme.viewGroupTheme = viewGroupTheme;
     }
-    
-    public static IconTheme getIconTheme() {
+
+    public IconTheme getIconTheme() {
         return iconTheme;
     }
-    
-    public static void setIconTheme(IconTheme iconTheme) {
+
+    public void setIconTheme(IconTheme iconTheme) {
         Theme.iconTheme = iconTheme;
     }
-    
-    public static SwitchTheme getSwitchTheme() {
+
+    public SwitchTheme getSwitchTheme() {
         return switchTheme;
     }
-    
-    public static void setSwitchTheme(SwitchTheme switchTheme) {
+
+    public void setSwitchTheme(SwitchTheme switchTheme) {
         Theme.switchTheme = switchTheme;
     }
 }
