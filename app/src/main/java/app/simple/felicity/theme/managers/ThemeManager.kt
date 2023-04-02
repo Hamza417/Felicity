@@ -14,10 +14,10 @@ object ThemeManager {
             listeners.forEach { listener -> listener.onThemeChanged(value, bool) }
         }
 
-    var accentColor = Accent(0, 0)
+    var accent = Accent(0, 0)
         set(value) {
             field = value
-            listeners.forEach { it.onAccentChanged(accentColor) }
+            listeners.forEach { it.onAccentChanged(accent) }
         }
 
     fun addListener(listener: ThemeChangedListener) {
