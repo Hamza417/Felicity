@@ -1,6 +1,6 @@
 package app.simple.felicity.ui.app
 
-import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.inure.extensions.fragments.ScopedFragment
 
 class Home : ScopedFragment() {
 

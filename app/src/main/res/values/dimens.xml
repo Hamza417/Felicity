@@ -16,4 +16,5 @@
     <dimen name="fast_scroller_padding_end">29dp</dimen>
     <dimen name="fast_scroller_dimen">64dp</dimen>
     <dimen name="app_views_elevation">30dp</dimen>
+    <dimen name="popup_padding">0dp</dimen>
 </resources>
