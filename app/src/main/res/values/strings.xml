@@ -1,5 +1,9 @@
 <resources>
-    <string name="app_name">Felicity</string>
     <string name="not_available">N/A</string>
     <string name="unknown">Unknown</string>
+    <string name="crash_report">Crash Report</string>
+    <string name="close">Close</string>
+    <string name="send">Send</string>
+    <string name="the_app_has_crashed">The app has crashed</string>
+    <string name="desc_not_available">Description not available</string>
 </resources>

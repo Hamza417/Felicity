@@ -17,4 +17,11 @@
     <dimen name="fast_scroller_dimen">64dp</dimen>
     <dimen name="app_views_elevation">30dp</dimen>
     <dimen name="popup_padding">0dp</dimen>
+    <dimen name="panel_item_padding">20dp</dimen>
+    <dimen name="header_padding">20dp</dimen>
+    <dimen name="preferences_title_text_size">14sp</dimen>
+    <dimen name="dialog_padding">15dp</dimen>
+    <dimen name="popup_text_size">16sp</dimen>
+    <dimen name="desc_text_size">12sp</dimen>
+    <dimen name="header_name_text_size">24sp</dimen>
 </resources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Felicity</string>
+    <string name="app_name_full" translatable="false">Felicity Music Player</string>
+    <string name="over_scroll_behavior" translatable="false">app.simple.inure.decorations.behaviors.OverScrollBehavior</string>
+    <string name="github" translatable="false">GitHub</string>
+    <string name="progress" translatable="false">%d%%</string>
+    <string name="markdown" translatable="false">.MD</string>
+    <string name="html" translatable="false">.HTML</string>
+    <string name="txt" translatable="false">.TXT</string>
+    <string name="xml" translatable="false">.XML</string>
+    <string name="json" translatable="false">.JSON</string>
+    <string name="csv" translatable="false">.CSV</string>
+</resources>
