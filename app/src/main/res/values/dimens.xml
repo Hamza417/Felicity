@@ -24,4 +24,5 @@
     <dimen name="popup_text_size">16sp</dimen>
     <dimen name="desc_text_size">12sp</dimen>
     <dimen name="header_name_text_size">24sp</dimen>
+    <dimen name="album_art_dimen">80dp</dimen>
 </resources>

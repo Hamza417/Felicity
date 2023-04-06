@@ -2,6 +2,7 @@ package app.simple.felicity.decorations.fastscroll;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.graphics.Color;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -37,7 +38,7 @@ public class PopupStyles {
                 AppearancePreferences.INSTANCE.getAppFont(),
                 TypeFace.TypefaceStyle.BOLD.getStyle(),
                 context));
-        popupView.setTextColor(Utils.getColorFromAttrRes(android.R.attr.textColorPrimaryInverse, context));
+        popupView.setTextColor(Color.WHITE);
         popupView.setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimensionPixelSize(R.dimen.fast_scroller_popup_text_size));
     };
     

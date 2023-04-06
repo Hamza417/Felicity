@@ -8,6 +8,6 @@ public class Felicity extends Accent {
     }
 
     public Felicity() {
-        super(0xFF00BCD4, 0xFF00BCD4);
+        super(0xFF2980b9, 0xFF5499c7);
     }
 }
