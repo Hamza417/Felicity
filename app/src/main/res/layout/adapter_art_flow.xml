@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <app.simple.felicity.decorations.views.SquareImageView
+        android:id="@+id/art"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_margin="@dimen/padding_10"
+        android:gravity="end"
+        android:textSize="@dimen/art_flow_title_text_size"
+        app:appFontStyle="bold"
+        app:textColorStyle="white" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/artist"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/title"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginHorizontal="@dimen/padding_10"
+        android:minWidth="20dp"
+        android:textSize="@dimen/art_flow_artist_text_size"
+        app:appFontStyle="regular"
+        app:textColorStyle="white" />
+
+</RelativeLayout>

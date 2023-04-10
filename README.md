@@ -1,6 +1,6 @@
 # Felicity
 
-*_Felcity_ is the third and final app of the three project I planned for my own learning, the first
+*_Felicity_ is the third and final app of the three project I planned for my own learning, the first
 two are [Positional](https://github.com/Hamza417/Positional)
 and [Inure App Manager](https://github.com/Hamza417/Inure).*
 

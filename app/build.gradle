@@ -8,6 +8,10 @@ android {
     namespace 'app.simple.felicity'
     compileSdk 33
 
+    buildFeatures {
+        viewBinding true
+    }
+
     defaultConfig {
         applicationId "app.simple.felicity"
         minSdk 26

@@ -3,11 +3,13 @@ package app.simple.felicity.decorations.views;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.view.Gravity;
-import android.view.animation.DecelerateInterpolator;
 
+import com.smarteist.autoimageslider.IndicatorView.animation.type.IndicatorAnimationType;
 import com.smarteist.autoimageslider.SliderAnimations;
 import com.smarteist.autoimageslider.SliderView;
 
+import androidx.interpolator.view.animation.LinearOutSlowInInterpolator;
+import app.simple.felicity.R;
 import app.simple.felicity.theme.managers.ThemeManager;
 
 public class FelicityImageSlider extends SliderView {
@@ -27,15 +29,22 @@ public class FelicityImageSlider extends SliderView {
     }
     
     private void init() {
-        setSliderAnimationDuration(500, new DecelerateInterpolator());
+        if (isInEditMode()) {
+            return;
+        }
+    
+        setSliderAnimationDuration(getResources().getInteger(R.integer.art_flow_anim_duration), new LinearOutSlowInInterpolator());
         setSliderTransformAnimation(SliderAnimations.SIMPLETRANSFORMATION);
         setScrollTimeInSec(3);
         setAutoCycleDirection(SliderView.AUTO_CYCLE_DIRECTION_BACK_AND_FORTH);
-        setIndicatorAnimationDuration(500);
+        setIndicatorAnimationDuration(getResources().getInteger(R.integer.art_flow_anim_duration));
         setIndicatorSelectedColor(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
-        setIndicatorUnselectedColor(ThemeManager.INSTANCE.getTheme().getTextViewTheme().getSecondaryTextColor());
+        setIndicatorUnselectedColor(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor());
         setIndicatorVisibility(true);
         setIndicatorGravity(Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM);
+        setIndicatorAnimation(IndicatorAnimationType.DROP);
+        setIndicatorAnimationDuration(getResources().getInteger(R.integer.art_flow_anim_duration));
+        setIndicatorRadius(2);
         setAutoCycle(true);
         startAutoCycle();
     }
