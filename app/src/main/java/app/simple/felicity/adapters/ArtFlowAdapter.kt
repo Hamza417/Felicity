@@ -28,7 +28,7 @@ class ArtFlowAdapter(private val data: ArrayList<Audio>) : SliderViewAdapter<Art
 
     override fun onBindViewHolder(viewHolder: ArtFlowViewHolder, position: Int) {
         viewHolder.title.text = data[position].title
-        viewHolder.artist.text = data[position].artists
+        viewHolder.artist.text = data[position].artist
         viewHolder.art.setImageURI(data[position].artUri.toUri())
     }
 }

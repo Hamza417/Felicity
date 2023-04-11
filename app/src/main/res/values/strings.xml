@@ -6,4 +6,8 @@
     <string name="send">Send</string>
     <string name="the_app_has_crashed">The app has crashed</string>
     <string name="desc_not_available">Description not available</string>
+    <string name="songs">Songs</string>
+    <string name="artists">Artists</string>
+    <string name="albums">Albums</string>
+    <string name="recently_added">Recently Added</string>
 </resources>

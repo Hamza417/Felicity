@@ -9,7 +9,6 @@ import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
 import app.simple.felicity.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.themes.Theme;
@@ -40,13 +39,18 @@ public class ThemeFrameLayout extends FrameLayout implements ThemeChangedListene
 
     private void init() {
         setBackgroundColor(Color.WHITE);
-        setBackground(false);
+    
+        if (!isInEditMode()) {
+            setBackground(false);
+        }
     }
 
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        ThemeManager.INSTANCE.addListener(this);
+        if (!isInEditMode()) {
+            ThemeManager.INSTANCE.addListener(this);
+        }
     }
 
     @Override

@@ -1,5 +1,6 @@
 package app.simple.felicity.ui.app
 
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -26,9 +27,11 @@ class Home : ScopedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         startPostponedEnterTransition()
+        binding?.recyclerView?.setBackgroundColor(Color.BLACK)
 
         homeViewModel?.getHomeData()?.observe(viewLifecycleOwner) {
             binding?.recyclerView?.adapter = HomeAdapter(it)
+            binding?.recyclerView?.scheduleLayoutAnimation()
         }
     }
 

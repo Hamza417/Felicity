@@ -1,44 +1,46 @@
-package app.simple.felicity.viewmodels.ui
+package app.simple.felicity.viewmodels.misc
 
 import android.annotation.SuppressLint
 import android.app.Application
 import android.database.Cursor
 import android.net.Uri
 import android.provider.MediaStore
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import app.simple.felicity.database.instances.AudioDatabase
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.models.Audio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class SongsViewModel(application: Application) : WrappedViewModel(application) {
+class DatabaseGeneratorViewModel(application: Application) : WrappedViewModel(application) {
 
     private var cursor: Cursor? = null
     private var globalList = arrayListOf<Audio>()
     private val selection = MediaStore.Audio.Media.IS_MUSIC + " != 0"
 
-    private val songs: MutableLiveData<ArrayList<Audio>> by lazy {
+    private val generated: MutableLiveData<ArrayList<Audio>> by lazy {
         MutableLiveData<ArrayList<Audio>>().also {
-            loadData()
+            generate()
         }
     }
 
-    fun getSongs(): LiveData<ArrayList<Audio>> {
-        return songs
+    fun getGeneratedData(): MutableLiveData<ArrayList<Audio>> {
+        return generated
     }
 
-    private fun loadData() {
+    private fun generate() {
         viewModelScope.launch(Dispatchers.IO) {
             globalList = loadSongs()
-            songs.postValue(globalList)
+            generated.postValue(globalList)
+            AudioDatabase.getInstance(context)?.close()
         }
     }
 
     @SuppressLint("Range", "InlinedApi")
     private fun loadSongs(): ArrayList<Audio> {
         val allAudioModel = ArrayList<Audio>()
+        val audioDao = AudioDatabase.getInstance(context)?.audioDao()!!
 
         cursor = context.contentResolver.query(
                 externalContentUri,
@@ -82,7 +84,9 @@ class SongsViewModel(application: Application) : WrappedViewModel(application) {
                 }*/
 
                 allAudioModel.add(audioModel)
+                audioDao.insert(audioModel)
             } while (cursor!!.moveToNext())
+
             cursor!!.close()
         }
 

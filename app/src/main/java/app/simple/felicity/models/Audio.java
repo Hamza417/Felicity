@@ -3,9 +3,15 @@ package app.simple.felicity.models;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import androidx.annotation.NonNull;
+import androidx.room.ColumnInfo;
+import androidx.room.Entity;
+import androidx.room.PrimaryKey;
+
+@Entity (tableName = "audio")
 public class Audio implements Parcelable {
     
-    public static final Creator <Audio> CREATOR = new Creator <Audio>() {
+    public static final Creator <Audio> CREATOR = new Creator <>() {
         @Override
         public Audio createFromParcel(Parcel in) {
             return new Audio(in);
@@ -16,25 +22,80 @@ public class Audio implements Parcelable {
             return new Audio[size];
         }
     };
+    
+    @ColumnInfo (name = "name")
     private String name;
+    
+    @ColumnInfo (name = "title")
     private String title;
+    
+    @ColumnInfo (name = "artist")
     private String artist;
+    
+    @ColumnInfo (name = "album")
     private String album;
+    
+    @ColumnInfo (name = "art_uri")
     private String artUri;
+    
+    @ColumnInfo (name = "file_uri")
     private String fileUri;
+    
+    @ColumnInfo (name = "path")
     private String path;
+    
+    @ColumnInfo (name = "mime_type")
     private String mimeType;
+    
+    @ColumnInfo (name = "track")
     private int track;
+    
+    @ColumnInfo (name = "year")
     private int year;
+    
+    @ColumnInfo (name = "size")
     private int size;
+    
+    @ColumnInfo (name = "bitrate")
     private int bitrate;
+    
+    @ColumnInfo (name = "duration")
     private long duration;
+    
+    @ColumnInfo (name = "id")
+    @PrimaryKey
     private long id;
+    
+    @ColumnInfo (name = "date_added")
     private long dateAdded;
+    
+    @ColumnInfo (name = "date_modified")
     private long dateModified;
+    
+    @ColumnInfo (name = "date_taken")
     private long dateTaken;
     
     public Audio() {
+    }
+    
+    public Audio(String name, String title, String artist, String album, String artUri, String fileUri, String path, String mimeType, int track, int year, int size, int bitrate, long duration, long id, long dateAdded, long dateModified, long dateTaken) {
+        this.name = name;
+        this.title = title;
+        this.artist = artist;
+        this.album = album;
+        this.artUri = artUri;
+        this.fileUri = fileUri;
+        this.path = path;
+        this.mimeType = mimeType;
+        this.track = track;
+        this.year = year;
+        this.size = size;
+        this.bitrate = bitrate;
+        this.duration = duration;
+        this.id = id;
+        this.dateAdded = dateAdded;
+        this.dateModified = dateModified;
+        this.dateTaken = dateTaken;
     }
     
     protected Audio(Parcel in) {
@@ -99,11 +160,11 @@ public class Audio implements Parcelable {
         this.title = title;
     }
     
-    public String getArtists() {
+    public String getArtist() {
         return artist;
     }
     
-    public void setArtists(String artist) {
+    public void setArtist(String artist) {
         this.artist = artist;
     }
     
@@ -219,6 +280,7 @@ public class Audio implements Parcelable {
         this.bitrate = bitrate;
     }
     
+    @NonNull
     @Override
     public String toString() {
         return "AudioModel{" +

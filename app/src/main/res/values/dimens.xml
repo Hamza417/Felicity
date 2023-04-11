@@ -25,9 +25,12 @@
     <dimen name="desc_text_size">12sp</dimen>
     <dimen name="header_name_text_size">24sp</dimen>
     <dimen name="album_art_dimen">80dp</dimen>
-    <dimen name="art_flow_title_text_size">24sp</dimen>
+    <dimen name="art_flow_title_text_size">32sp</dimen>
     <dimen name="art_flow_artist_text_size">18sp</dimen>
     <dimen name="padding_5">5dp</dimen>
     <dimen name="padding_10">10dp</dimen>
     <dimen name="padding_15">15dp</dimen>
+    <dimen name="text_size_18">18sp</dimen>
+    <dimen name="padding_25">25dp</dimen>
+    <dimen name="padding_20">20dp</dimen>
 </resources>

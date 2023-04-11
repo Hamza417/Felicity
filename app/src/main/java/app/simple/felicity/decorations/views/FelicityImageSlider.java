@@ -36,7 +36,7 @@ public class FelicityImageSlider extends SliderView {
         setSliderAnimationDuration(getResources().getInteger(R.integer.art_flow_anim_duration), new LinearOutSlowInInterpolator());
         setSliderTransformAnimation(SliderAnimations.SIMPLETRANSFORMATION);
         setScrollTimeInSec(3);
-        setAutoCycleDirection(SliderView.AUTO_CYCLE_DIRECTION_BACK_AND_FORTH);
+        setAutoCycleDirection(SliderView.AUTO_CYCLE_DIRECTION_RIGHT);
         setIndicatorAnimationDuration(getResources().getInteger(R.integer.art_flow_anim_duration));
         setIndicatorSelectedColor(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
         setIndicatorUnselectedColor(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor());

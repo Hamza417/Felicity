@@ -22,7 +22,7 @@ class SongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Adapter<S
     override fun onBindViewHolder(holder: Holder, position: Int) {
         holder.art.loadFromUri(audio[position].artUri.toUri())
         holder.title.text = audio[position].title
-        holder.artist.text = audio[position].artists
+        holder.artist.text = audio[position].artist
         holder.details.text = audio[position].album
     }
 
