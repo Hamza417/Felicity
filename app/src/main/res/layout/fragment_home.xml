@@ -6,5 +6,5 @@
     android:layout_height="match_parent"
     app:fastScrollEnabled="false"
     android:layoutAnimation="@anim/list_animation_controller"
-    app:isFadingEdgeRequired="true"
+    app:isFadingEdgeRequired="false"
     app:statusBarPaddingRequired="false" />

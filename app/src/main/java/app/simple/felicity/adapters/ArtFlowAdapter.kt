@@ -7,6 +7,7 @@ import androidx.core.net.toUri
 import app.simple.felicity.R
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.views.SquareImageView
+import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromUri
 import app.simple.felicity.models.Audio
 import com.smarteist.autoimageslider.SliderViewAdapter
 
@@ -29,6 +30,6 @@ class ArtFlowAdapter(private val data: ArrayList<Audio>) : SliderViewAdapter<Art
     override fun onBindViewHolder(viewHolder: ArtFlowViewHolder, position: Int) {
         viewHolder.title.text = data[position].title
         viewHolder.artist.text = data[position].artist
-        viewHolder.art.setImageURI(data[position].artUri.toUri())
+        viewHolder.art.loadFromUri(data[position].artUri.toUri())
     }
 }
