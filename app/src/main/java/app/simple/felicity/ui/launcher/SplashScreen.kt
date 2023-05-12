@@ -8,7 +8,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentSplashScreenBinding
-import app.simple.felicity.ui.app.Home
+import app.simple.felicity.ui.app.Songs
 import app.simple.felicity.viewmodels.misc.DatabaseGeneratorViewModel
 import app.simple.inure.extensions.fragments.ScopedFragment
 
@@ -31,7 +31,7 @@ class SplashScreen : ScopedFragment() {
         databaseGeneratorViewModels.getGeneratedData().observe(viewLifecycleOwner) {
             parentFragmentManager.beginTransaction()
                 .setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left, R.anim.enter_from_left, R.anim.exit_to_right)
-                .replace(R.id.app_container, Home.newInstance())
+                .replace(R.id.app_container, Songs.newInstance())
                 .addToBackStack("home")
                 .commitAllowingStateLoss()
         }

@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.StrictMode
 import android.view.View
+import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -27,6 +28,7 @@ open class BaseActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setStrictModePolicy()
+        enableNotchArea()
         makeAppFullScreen()
         initTheme()
     }
@@ -75,6 +77,12 @@ open class BaseActivity : AppCompatActivity() {
              * passed down to descendant views.
              */
             WindowInsetsCompat.CONSUMED
+        }
+    }
+
+    private fun enableNotchArea() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
     }
 

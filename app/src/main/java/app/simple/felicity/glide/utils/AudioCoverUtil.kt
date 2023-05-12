@@ -38,7 +38,9 @@ object AudioCoverUtil {
             .addListener(object : RequestListener<Bitmap> {
                 override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Bitmap>?, isFirstResource: Boolean): Boolean {
                     this@loadFromFileDescriptor.setImageResource(R.drawable.ic_felicity).also {
-                        (this@loadFromFileDescriptor.drawable as AnimatedVectorDrawable).start()
+                        if (this@loadFromFileDescriptor.drawable is AnimatedVectorDrawable) {
+                            (this@loadFromFileDescriptor.drawable as AnimatedVectorDrawable).start()
+                        }
                     }
                     return true
                 }

@@ -1,40 +1,66 @@
 package app.simple.felicity.adapters
 
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.BaseAdapter
 import android.widget.ImageView
 import androidx.core.net.toUri
-import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
-import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
-import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromUri
+import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromFileDescriptor
 import app.simple.felicity.models.Audio
 
-class SongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Adapter<SongsAdapter.Holder>() {
+class SongsAdapter(private val context: Context, private val audio: ArrayList<Audio>) : BaseAdapter() {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-        return Holder(LayoutInflater.from(parent.context).inflate(R.layout.adapter_songs, parent, false))
+    class Holder {
+        lateinit var art: ImageView
+        lateinit var title: TypeFaceTextView
+        lateinit var artist: TypeFaceTextView
+        lateinit var details: TypeFaceTextView
+        lateinit var container: DynamicRippleConstraintLayout
     }
 
-    override fun onBindViewHolder(holder: Holder, position: Int) {
-        holder.art.loadFromUri(audio[position].artUri.toUri())
-        holder.title.text = audio[position].title
-        holder.artist.text = audio[position].artist
-        holder.details.text = audio[position].album
-    }
-
-    override fun getItemCount(): Int {
+    override fun getCount(): Int {
         return audio.size
     }
 
-    class Holder(itemView: View) : VerticalListViewHolder(itemView) {
-        val art: ImageView = itemView.findViewById(R.id.album_art)
-        val title: TypeFaceTextView = itemView.findViewById(R.id.title)
-        val artist: TypeFaceTextView = itemView.findViewById(R.id.artist)
-        val details: TypeFaceTextView = itemView.findViewById(R.id.details)
-        val container: DynamicRippleConstraintLayout = itemView.findViewById(R.id.container)
+    override fun getItem(position: Int): Audio {
+        return audio[position]
+    }
+
+    override fun getItemId(position: Int): Long {
+        return position.toLong()
+    }
+
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+        val holder: Holder
+        val view: View
+
+        if (convertView == null) {
+            view = LayoutInflater.from(context).inflate(R.layout.adapter_songs, parent, false)
+            holder = Holder()
+            holder.art = view.findViewById(R.id.album_art)
+            holder.title = view.findViewById(R.id.title)
+            holder.artist = view.findViewById(R.id.artist)
+            holder.details = view.findViewById(R.id.details)
+            holder.container = view.findViewById(R.id.container)
+            view.tag = holder
+        } else {
+            view = convertView
+            holder = convertView.tag as Holder
+        }
+
+        val audio = getItem(position)
+
+        holder.title.text = audio.title
+        holder.artist.text = audio.artist
+        holder.details.text = audio.album
+
+        holder.art.loadFromFileDescriptor(audio.fileUri.toUri())
+
+        return view
     }
 }

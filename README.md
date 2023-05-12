@@ -17,3 +17,4 @@ development process.
 Initial Look of the app
 
 ![01](screenshots/01.png)
+![02](screenshots/02.png)

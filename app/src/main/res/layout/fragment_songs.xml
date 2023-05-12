@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.coverflow.containers.FeatureCoverFlow xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/recycler_view"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@android:color/black"
+    app:coverHeight="175dp"
+    app:coverWidth="175dp"
+    app:maxScaleFactor="1.5"
+    app:spacing="0.5"
     app:isFastScrollRequired="true"
     app:statusBarPaddingRequired="true" />

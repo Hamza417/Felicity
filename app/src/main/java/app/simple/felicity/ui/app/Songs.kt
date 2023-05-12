@@ -7,19 +7,19 @@ import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
 import app.simple.felicity.R
 import app.simple.felicity.adapters.SongsAdapter
-import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
+import app.simple.felicity.decorations.coverflow.containers.FeatureCoverFlow
 import app.simple.felicity.viewmodels.ui.SongsViewModel
 import app.simple.inure.extensions.fragments.ScopedFragment
 
 class Songs : ScopedFragment() {
 
-    private lateinit var recyclerView: CustomVerticalRecyclerView
+    private lateinit var coverFlow: FeatureCoverFlow
     private lateinit var songsViewModel: SongsViewModel
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_songs, container, false)
 
-        recyclerView = view.findViewById(R.id.recycler_view)
+        coverFlow = view.findViewById(R.id.recycler_view)
 
         songsViewModel = ViewModelProvider(requireActivity())[SongsViewModel::class.java]
 
@@ -31,7 +31,7 @@ class Songs : ScopedFragment() {
         startPostponedEnterTransition()
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) {
-            recyclerView.adapter = SongsAdapter(it)
+            coverFlow.adapter = SongsAdapter(requireContext(), it)
         }
     }
 

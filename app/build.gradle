@@ -53,12 +53,12 @@ dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
 
     // AndroidX
-    implementation 'androidx.core:core-ktx:1.10.0'
+    implementation 'androidx.core:core-ktx:1.10.1'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'androidx.fragment:fragment-ktx:1.5.6'
-    implementation 'androidx.activity:activity-ktx:1.7.0'
+    implementation 'androidx.fragment:fragment-ktx:1.5.7'
+    implementation 'androidx.activity:activity-ktx:1.7.1'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.6.1'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.1'
@@ -69,13 +69,13 @@ dependencies {
     implementation 'androidx.documentfile:documentfile:1.0.1'
     implementation 'androidx.media:media:1.6.0'
     implementation 'androidx.viewpager2:viewpager2:1.1.0-beta01'
-    implementation "androidx.security:security-crypto:1.1.0-alpha05"
+    implementation "androidx.security:security-crypto:1.1.0-alpha06"
 
     // Kotlin
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
 
     // Google
-    implementation 'com.google.android.material:material:1.8.0'
+    implementation 'com.google.android.material:material:1.9.0'
 
     // Third party
     implementation 'com.github.duanhong169:drawabletoolbox:1.0.7'
