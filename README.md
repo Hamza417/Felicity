@@ -14,7 +14,10 @@ development process.
 
 ## Screenshots
 
-Initial Look of the app
+### Initial Look of the app
 
+#### Home Screen
 ![01](screenshots/01.png)
+
+#### Felicity ArtFlow
 ![02](screenshots/02.png)
