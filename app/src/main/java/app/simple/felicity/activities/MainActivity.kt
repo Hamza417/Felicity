@@ -3,7 +3,7 @@ package app.simple.felicity.activities
 import android.os.Bundle
 import app.simple.felicity.R
 import app.simple.felicity.extensions.activities.BaseActivity
-import app.simple.felicity.ui.launcher.SplashScreen
+import app.simple.felicity.ui.app.ArtFlow
 import app.simple.felicity.utils.ConditionUtils.isNull
 
 class MainActivity : BaseActivity() {
@@ -13,7 +13,7 @@ class MainActivity : BaseActivity() {
 
         if (savedInstanceState.isNull()) {
             supportFragmentManager.beginTransaction()
-                .replace(R.id.app_container, SplashScreen.newInstance())
+                .replace(R.id.app_container, ArtFlow.newInstance())
                 .commit()
         }
     }

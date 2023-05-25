@@ -103,11 +103,11 @@
         <attr name="reflectionHeight" format="float" />
         <attr name="reflectionGap" format="dimension" />
         <attr name="reflectionOpacity" format="integer" />
-        <attr name="tunningWidgetSize" format="dimension" />
+        <attr name="tuningWidgetSize" format="dimension" />
         <attr name="alignAnimationTime" format="integer" />
         <attr name="verticalPaddingTop" format="dimension" />
         <attr name="verticalPaddingBottom" format="dimension" />
-        <attr name="reflectionBackroundColor" format="color" />
+        <attr name="reflectionBackgroundColor" format="color" />
     </declare-styleable>
 
     <declare-styleable name="EndlessLoopAdapterContainer">

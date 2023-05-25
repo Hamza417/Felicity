@@ -13,6 +13,7 @@ import com.bumptech.glide.GlideBuilder
 import com.bumptech.glide.Registry
 import com.bumptech.glide.annotation.GlideModule
 import com.bumptech.glide.load.DecodeFormat
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.resource.bitmap.BitmapTransitionOptions
 import com.bumptech.glide.module.AppGlideModule
 import com.bumptech.glide.request.RequestOptions
@@ -31,13 +32,7 @@ class AudioCoverModule : AppGlideModule() {
         val requestOptions = RequestOptions()
 
         requestOptions.format(DecodeFormat.PREFER_ARGB_8888)
-
-        //        if (DevelopmentPreferences.get(DevelopmentPreferences.imageCaching)) {
-        //            requestOptions.diskCacheStrategy(DiskCacheStrategy.NONE)
-        //        } else {
-        //            requestOptions.diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-        //        }
-
+        requestOptions.diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
         requestOptions.fallback(R.drawable.ic_felicity)
         requestOptions.error(R.drawable.ic_felicity)
 

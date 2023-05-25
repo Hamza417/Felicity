@@ -11,15 +11,15 @@ import app.simple.felicity.decorations.coverflow.containers.FeatureCoverFlow
 import app.simple.felicity.viewmodels.ui.SongsViewModel
 import app.simple.inure.extensions.fragments.ScopedFragment
 
-class Songs : ScopedFragment() {
+class ArtFlow : ScopedFragment() {
 
     private lateinit var coverFlow: FeatureCoverFlow
     private lateinit var songsViewModel: SongsViewModel
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        val view = inflater.inflate(R.layout.fragment_songs, container, false)
+        val view = inflater.inflate(R.layout.fragment_artflow, container, false)
 
-        coverFlow = view.findViewById(R.id.recycler_view)
+        coverFlow = view.findViewById(R.id.artflow)
 
         songsViewModel = ViewModelProvider(requireActivity())[SongsViewModel::class.java]
 
@@ -36,9 +36,9 @@ class Songs : ScopedFragment() {
     }
 
     companion object {
-        fun newInstance(): Songs {
+        fun newInstance(): ArtFlow {
             val args = Bundle()
-            val fragment = Songs()
+            val fragment = ArtFlow()
             fragment.arguments = args
             return fragment
         }
