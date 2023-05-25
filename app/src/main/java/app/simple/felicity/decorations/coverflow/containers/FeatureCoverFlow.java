@@ -596,20 +596,20 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
         while (firstChild != null && firstChild.getRight() < leftScreenEdge) {
             //if selected view is going off screen, remove selected state
             firstChild.setSelected(false);
-        
+    
             // remove view
             removeViewInLayout(firstChild);
-        
+    
             cachedFrames.put(firstItemPosition, (CoverFrame) firstChild);
-        
+    
             firstItemPosition++;
             if (firstItemPosition >= adapter.getCount()) {
                 firstItemPosition = 0;
             }
-        
+    
             // update left item position
             leftChildEdge = getChildAt(0).getLeft();
-        
+    
             // Continue to check the next child only if we have more than
             // one child left
             if (getChildCount() > 1) {
@@ -681,6 +681,7 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
         canvas.drawBitmap(rfCache, 0.0f, bitmap.getHeight() - 2 + reflectionGap, paint);
     
         canvas.restore();
+    
         return false;
     }
     
@@ -706,8 +707,8 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
     /**
      * Fill outRect with transformed child hit rectangle. Rectangle is not moved to its position on screen, neither getSroolX is accounted for
      *
-     * @param child
-     * @param outRect
+     * @param child   child view
+     * @param outRect output rectangle
      */
     protected void transformChildHitRectangle(View child, RectF outRect) {
         outRect.left = 0;
@@ -989,7 +990,7 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
                     final View child = getChildAt(childOrder[i]);
                     if (child.getVisibility() == VISIBLE || child.getAnimation() != null) {
                         getScrolledTransformedChildRectangle(child, frame);
-        
+    
                         if (frame.contains(xf, yf)) {
                             // offset the event to the view's coordinate system
                             final float xc = xf - frame.left;

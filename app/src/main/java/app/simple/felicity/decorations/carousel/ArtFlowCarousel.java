@@ -2,6 +2,7 @@ package app.simple.felicity.decorations.carousel;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Camera;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
@@ -24,7 +25,10 @@ import android.widget.FrameLayout;
 public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreDrawListener {
     
     //reflection
+    private final Camera camera = new Camera();
     private final Matrix reflectionMatrix = new Matrix();
+    private final Matrix matrix = new Matrix();
+    private final Matrix tempMatrix = new Matrix();
     private final Paint paint = new Paint();
     private final Paint reflectionPaint = new Paint();
     private final PorterDuffXfermode porterDuffXfermode = new PorterDuffXfermode(PorterDuff.Mode.DST_IN);
@@ -78,7 +82,19 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
      */
     private int reflectionOpacity = 0x70;
     
+    /**
+     * Radius of circle path which covers follow in coordinate space of matrix transformation. Used to scale offset
+     */
+    private float radiusInMatrixSpace = 350F;
+    
     private boolean invalidated = false;
+    /**
+     * Gap between reflection and original image in pixels
+     */
+    private int reflectionGap = 3;
+    
+    private int coverWidth = 350;
+    private int coverHeight = 240;
     
     public ArtFlowCarousel(Context context) {
         super(context);
@@ -189,14 +205,14 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     /**
      * Calculates relative position on screen in range -1 to 1, widgets out of screen can have values ove 1 or -1
      *
-     * @param pixexPos Absolute position in pixels including scroll offset
+     * @param pixelPos Absolute position in pixels including scroll offset
      * @return relative position
      */
-    private float getRelativePosition(int pixexPos) {
+    private float getRelativePosition(int pixelPos) {
         final int half = getWidth() / 2;
         final int centerPos = getScrollX() + half;
         
-        return (pixexPos - centerPos) / ((float) half);
+        return (pixelPos - centerPos) / ((float) half);
     }
     
     private float getWidgetSizeMultiplier() {
@@ -207,10 +223,10 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
         final int c = getChildCenter(child);
         final float crp = getClampedRelativePosition(getRelativePosition(c), adjustPositionThreshold * getWidgetSizeMultiplier());
     
-        return childWidth * adjustPositionMultiplier * spacing * crp * getSpacingMultiplierOnCirlce(c);
+        return childWidth * adjustPositionMultiplier * spacing * crp * getSpacingMultiplierOnCircle(c);
     }
     
-    private float getSpacingMultiplierOnCirlce(int childCenter) {
+    private float getSpacingMultiplierOnCircle(int childCenter) {
         float x = getRelativePosition(childCenter) / radius;
         return (float) Math.sin(Math.acos(x));
     }
@@ -266,22 +282,115 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
         return child;
     }
     
+    //    @Override
+    //    protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+    //        canvas.save();
+    //
+    //        //set matrix to child's transformation
+    //        setChildTransformation(child, matrix);
+    //
+    //        //Generate child bitmap
+    //        Bitmap bitmap = child.getDrawingCache();
+    //
+    //        //initialize canvas state. Child 0,0 coordinates will match canvas 0,0
+    //        canvas.translate(child.getLeft(), child.getTop());
+    //
+    //        //set child transformation on canvas
+    //        canvas.concat(matrix);
+    //
+    //        final Bitmap rfCache = ((ArtFlowCarousel.CoverFrame) child).reflectionCache;
+    //
+    ////        if (reflectionBackgroundColor != Color.TRANSPARENT) {
+    ////            final int top = bitmap.getHeight() + reflectionGap - 2;
+    ////            final float frame = 1.0f;
+    ////            reflectionPaint.setColor(reflectionBackgroundColor);
+    ////            canvas.drawRect(frame, top + frame, rfCache.getWidth() - frame, top + rfCache.getHeight() - frame, reflectionPaint);
+    ////        }
+    //
+    //        paint.reset();
+    //        paint.setAntiAlias(true);
+    //        paint.setFilterBitmap(true);
+    //
+    //        //Draw child bitmap with applied transforms
+    //        canvas.drawBitmap(bitmap, 0.0f, 0.0f, paint);
+    //
+    //        //Draw reflection
+    //        canvas.drawBitmap(rfCache, 0.0f, bitmap.getHeight() - 2 + reflectionGap, paint);
+    //
+    //        canvas.restore();
+    //
+    //        return false;
+    //    }
+    
+    private void setChildTransformation(View child, Matrix m) {
+        m.reset();
+        
+        addChildRotation(child, m);
+        addChildScale(child, m);
+        addChildCircularPathZOffset(child, m);
+        addChildAdjustPosition(child, m);
+        
+        //set coordinate system origin to center of child
+        m.preTranslate(-child.getWidth() / 2f, -child.getHeight() / 2f);
+        //move back
+        m.postTranslate(child.getWidth() / 2f, child.getHeight() / 2f);
+    }
+    
+    private void addChildRotation(View v, Matrix m) {
+        camera.save();
+        
+        final int c = getChildCenter(v);
+        camera.rotateY(getRotationAngle(c) - getAngleOnCircle(c));
+        
+        camera.getMatrix(tempMatrix);
+        m.postConcat(tempMatrix);
+        
+        camera.restore();
+    }
+    
+    private void addChildScale(View v, Matrix m) {
+        final float f = getScaleFactor(getChildCenter(v));
+        m.postScale(f, f);
+    }
+    
+    private void addChildCircularPathZOffset(View child, Matrix m) {
+        camera.save();
+        
+        final float v = getOffsetOnCircle(getChildCenter(child));
+        final float z = radiusInMatrixSpace * v;
+        
+        camera.translate(0.0f, 0.0f, z);
+        
+        camera.getMatrix(tempMatrix);
+        m.postConcat(tempMatrix);
+        
+        camera.restore();
+    }
+    
+    private void addChildAdjustPosition(View child, Matrix m) {
+        final int c = getChildCenter(child);
+        final float crp = getClampedRelativePosition(getRelativePosition(c), adjustPositionThreshold * getWidgetSizeMultiplier());
+        final float d = coverWidth * adjustPositionMultiplier * spacing * crp * getSpacingMultiplierOnCircle(c);
+        
+        m.postTranslate(d, 0f);
+    }
+    
     private Bitmap createReflectionBitmap(Bitmap original) {
         final int w = original.getWidth();
         final int h = original.getHeight();
         final int rh = (int) (h * reflectionHeight);
         final int gradientColor = Color.argb(reflectionOpacity, 0xff, 0xff, 0xff);
-    
+        
         final Bitmap reflection = Bitmap.createBitmap(original, 0, rh, w, rh, reflectionMatrix, false);
-    
+        
         final LinearGradient shader = new LinearGradient(0, 0, 0, reflection.getHeight(), gradientColor, 0x00ffffff, Shader.TileMode.CLAMP);
         paint.reset();
         paint.setShader(shader);
         paint.setXfermode(porterDuffXfermode);
-    
+        
         reflectionCanvas.setBitmap(reflection);
         reflectionCanvas.drawRect(0, 0, reflection.getWidth(), reflection.getHeight(), paint);
-    
+        
         return reflection;
     }
     
@@ -371,5 +480,4 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
             removeAllViewsInLayout();
         }
     }
-    
 }
