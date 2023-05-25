@@ -19,9 +19,9 @@ import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 
 /**
- * @author Martin Appl
+ * @author Hamza417
  */
-public class CoverFlowCarousel extends Carousel implements ViewTreeObserver.OnPreDrawListener {
+public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreDrawListener {
     
     //reflection
     private final Matrix reflectionMatrix = new Matrix();
@@ -80,15 +80,15 @@ public class CoverFlowCarousel extends Carousel implements ViewTreeObserver.OnPr
     
     private boolean invalidated = false;
     
-    public CoverFlowCarousel(Context context) {
+    public ArtFlowCarousel(Context context) {
         super(context);
     }
     
-    public CoverFlowCarousel(Context context, AttributeSet attrs) {
+    public ArtFlowCarousel(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
     
-    public CoverFlowCarousel(Context context, AttributeSet attrs, int defStyleAttr) {
+    public ArtFlowCarousel(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
     }
     
@@ -261,7 +261,7 @@ public class CoverFlowCarousel extends Carousel implements ViewTreeObserver.OnPr
         final int pwms = MeasureSpec.makeMeasureSpec(childWidth, MeasureSpec.EXACTLY);
         final int phms = MeasureSpec.makeMeasureSpec(childHeight, MeasureSpec.EXACTLY);
         measureChild(child, pwms, phms);
-        child.setDrawingCacheEnabled(isChildrenDrawnWithCacheEnabled());
+        // child.setDrawingCacheEnabled(isChildrenDrawnWithCacheEnabled());
     
         return child;
     }
@@ -322,7 +322,7 @@ public class CoverFlowCarousel extends Carousel implements ViewTreeObserver.OnPr
             }
             
             // register observer to catch cover redraws
-            cover.getViewTreeObserver().addOnPreDrawListener(CoverFlowCarousel.this);
+            cover.getViewTreeObserver().addOnPreDrawListener(ArtFlowCarousel.this);
             
             addView(cover, lp);
         }
