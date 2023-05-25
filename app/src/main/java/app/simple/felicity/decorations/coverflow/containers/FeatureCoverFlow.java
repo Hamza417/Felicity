@@ -911,7 +911,7 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
             return;
         }
         
-        if (getChildCount() == 0) { //release memory resources was probably called before, and onLayout didn't get called to fill container again
+        if (getChildCount() == 0) { // release memory resources was probably called before, and onLayout didn't get called to fill container again
             requestLayout();
         }
         
@@ -923,17 +923,16 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
                     clearChildrenCache();
                     return;
                 }
-        
+    
                 int x = alignScroller.getCurrX();
                 scrollTo(x, 0);
-        
+    
                 postInvalidate();
-                return;
             } else {
                 touchState = TOUCH_STATE_RESTING;
                 clearChildrenCache();
-                return;
             }
+            return;
         }
         
         super.computeScroll();

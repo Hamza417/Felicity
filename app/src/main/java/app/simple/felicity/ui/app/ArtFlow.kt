@@ -7,13 +7,13 @@ import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
 import app.simple.felicity.R
 import app.simple.felicity.adapters.SongsAdapter
-import app.simple.felicity.decorations.coverflow.containers.FeatureCoverFlow
+import app.simple.felicity.decorations.carousel.CoverFlowCarousel
 import app.simple.felicity.viewmodels.ui.SongsViewModel
 import app.simple.inure.extensions.fragments.ScopedFragment
 
 class ArtFlow : ScopedFragment() {
 
-    private lateinit var coverFlow: FeatureCoverFlow
+    private lateinit var coverFlow: CoverFlowCarousel
     private lateinit var songsViewModel: SongsViewModel
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
