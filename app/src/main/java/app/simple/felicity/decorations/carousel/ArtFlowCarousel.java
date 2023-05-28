@@ -16,6 +16,7 @@ import android.graphics.RectF;
 import android.graphics.Shader;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,6 +28,7 @@ import android.widget.FrameLayout;
  */
 public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreDrawListener {
     
+    private static final String TAG = "ArtFlowCarousel";
     //reflection
     private final Camera camera = new Camera();
     private final Matrix reflectionMatrix = new Matrix();
@@ -41,6 +43,8 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     private final Canvas reflectionCanvas = new Canvas();
     private final RectF touchRect = new RectF();
     private final Rect tempRect = new Rect();
+    
+    private OnScrollPositionListener onScrollPositionListener;
     /**
      * The adaptor position of the first visible item
      */
@@ -49,6 +53,11 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     private float targetLeft;
     private float targetTop;
     private int scrollToPositionOnNextInvalidate = -1;
+    
+    /**
+     * How long will alignment animation take
+     */
+    private int alignTime = 250;
     private int centerItemOffset;
     /**
      * Index of view in center of screen, which is most in foreground
@@ -147,7 +156,99 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     protected void dispatchDraw(Canvas canvas) {
         int bitmask = Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG;
         canvas.setDrawFilter(new PaintFlagsDrawFilter(bitmask, bitmask));
+    
+        invalidated = false; // last invalidate which marked redrawInProgress, caused this dispatchDraw. Clear flag to prevent creating loop
+    
+        reverseOrderIndex = -1;
+    
+        canvas.getClipBounds(tempRect);
+        tempRect.top = 0;
+        tempRect.bottom = getHeight();
+        canvas.clipRect(tempRect);
+    
         super.dispatchDraw(canvas);
+    
+        if (scrollToPositionOnNextInvalidate != -1 && adapter != null && adapter.getCount() > 0) {
+            final int lastCenterItemPosition = (firstItemPosition + lastCenterItemIndex) % adapter.getCount();
+            final int di = lastCenterItemPosition - scrollToPositionOnNextInvalidate;
+            scrollToPositionOnNextInvalidate = -1;
+            if (di != 0) {
+                final int dst = (int) (di * coverWidth * spacing) - centerItemOffset;
+                scrollBy(-dst, 0);
+                postInvalidate();
+                return;
+            }
+        }
+    
+        if (touchState == TOUCH_STATE_RESTING) {
+            if (adapter != null && adapter.getCount() > 0) {
+                final int lastCenterItemPosition = (firstItemPosition + lastCenterItemIndex) % adapter.getCount();
+                if (lastTouchState != TOUCH_STATE_RESTING || this.lastCenterItemPosition != lastCenterItemPosition) {
+                    lastTouchState = TOUCH_STATE_RESTING;
+                    this.lastCenterItemPosition = lastCenterItemPosition;
+                    if (onScrollPositionListener != null) {
+                        onScrollPositionListener.onScrolledToPosition(lastCenterItemPosition);
+                    }
+                }
+            }
+        }
+    
+        if (touchState == TOUCH_STATE_SCROLLING && lastTouchState != TOUCH_STATE_SCROLLING) {
+            lastTouchState = TOUCH_STATE_SCROLLING;
+            if (onScrollPositionListener != null) {
+                onScrollPositionListener.onScrolling();
+            }
+        }
+        if (touchState == TOUCH_STATE_FLING && lastTouchState != TOUCH_STATE_FLING) {
+            lastTouchState = TOUCH_STATE_FLING;
+            if (onScrollPositionListener != null) {
+                onScrollPositionListener.onScrolling();
+            }
+        }
+    
+        //make sure we never stay unaligned after last draw in resting state
+        if (touchState == TOUCH_STATE_RESTING && centerItemOffset != 0) {
+            scrollBy(centerItemOffset, 0);
+            postInvalidate();
+        }
+    
+        try {
+            View v = getChildAt(lastCenterItemIndex);
+            if (v != null) {
+                v.requestFocus(FOCUS_FORWARD);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    @Override
+    protected int getChildDrawingOrder(int childCount, int i) {
+        final int screenCenter = getWidth() / 2 + getScrollX();
+        final int myCenter = getChildCenter(i);
+        final int d = myCenter - screenCenter;
+        
+        final View v = getChildAt(i);
+        final int sz = (int) (spacing * v.getWidth() / 2f);
+        
+        if (reverseOrderIndex == -1 && (Math.abs(d) < sz || d >= 0)) {
+            reverseOrderIndex = i;
+            centerItemOffset = d;
+            Log.d(TAG, "centerItemOffset = " + centerItemOffset);
+            lastCenterItemIndex = i;
+            return childCount - 1;
+        }
+        
+        if (reverseOrderIndex == -1) {
+            return i;
+        } else {
+            if (i == childCount - 1) {
+                final int x = reverseOrderIndex;
+                reverseOrderIndex = -1;
+                return x;
+            }
+            return childCount - 1 - (i - reverseOrderIndex);
+        }
     }
     
     @Override
@@ -282,33 +383,34 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
         if (adapter.getCount() == 0) {
             return;
         }
-        
+    
         if (getChildCount() == 0) { // release memory resources was probably called before, and onLayout didn't get called to fill container again
             requestLayout();
         }
-        
-        if (touchState == TOUCH_STATE_ALIGN) {
-            if (scroller.computeScrollOffset()) {
-                if (scroller.getFinalX() == scroller.getCurrX()) {
-                    scroller.abortAnimation();
-                    touchState = TOUCH_STATE_RESTING;
-                    clearChildrenCache();
-                    return;
-                }
-                
-                int x = scroller.getCurrX();
-                scrollTo(x, 0);
-                
-                postInvalidate();
-            } else {
-                touchState = TOUCH_STATE_RESTING;
-                clearChildrenCache();
-            }
-            return;
-        }
-        
+    
+        //        if (touchState == TOUCH_STATE_ALIGN) {
+        //            if (scroller.computeScrollOffset()) {
+        //                if (scroller.getFinalX() == scroller.getCurrX()) {
+        //                    scroller.abortAnimation();
+        //                    touchState = TOUCH_STATE_RESTING;
+        //                    clearChildrenCache();
+        //                    return;
+        //                }
+        //
+        //                int x = scroller.getCurrX();
+        //                scrollTo(x, 0);
+        //
+        //                postInvalidate();
+        //            } else {
+        //                touchState = TOUCH_STATE_RESTING;
+        //                clearChildrenCache();
+        //            }
+        //            return;
+        //        }
+        //
+    
         super.computeScroll();
-        
+    
         for (int i = 0; i < getChildCount(); i++) {
             setTransformation(getChildAt(i));
         }
@@ -333,12 +435,28 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
         } else {
             frame.setCover(v);
         }
-        
+    
         //to enable drawing cache
         frame.setLayerType(LAYER_TYPE_HARDWARE, null);
         frame.setDrawingCacheEnabled(true);
-        
+    
         return frame;
+    }
+    
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                scroll((int) (-1 * coverWidth * spacing) - centerItemOffset);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                scroll((int) (coverWidth * spacing) - centerItemOffset);
+                return true;
+            default:
+                break;
+        }
+        return super.onKeyDown(keyCode, event);
     }
     
     private float getRotationAngle(int childCenter) {
@@ -355,6 +473,19 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
         }
         
         return (float) (Math.acos(x) / Math.PI * 180.0f - 90.0f);
+    }
+    
+    @Override
+    protected boolean checkScrollPosition() {
+        Log.d(TAG, "checkScrollPosition: " + getScrollX());
+        if (centerItemOffset != 0) {
+            Log.d(TAG, "checkScrollPosition: centerItemOffset = " + centerItemOffset);
+            scroller.startScroll(getScrollX(), 0, centerItemOffset, 0, alignTime);
+            touchState = TOUCH_STATE_ALIGN;
+            invalidate();
+            return true;
+        }
+        return false;
     }
     
     private float getScaleFactor(int childCenter) {
@@ -583,8 +714,23 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
             invalidate();
             return false;
         }
-        
+    
         return true;
+    }
+    
+    /**
+     * sets listener for center item position
+     *
+     * @param onScrollPositionListener listener
+     */
+    public void setOnScrollPositionListener(OnScrollPositionListener onScrollPositionListener) {
+        this.onScrollPositionListener = onScrollPositionListener;
+    }
+    
+    public interface OnScrollPositionListener {
+        public void onScrolledToPosition(int position);
+        
+        public void onScrolling();
     }
     
     private class CoverFrame extends FrameLayout {

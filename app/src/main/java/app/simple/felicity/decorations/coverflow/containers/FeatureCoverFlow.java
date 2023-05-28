@@ -524,19 +524,19 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
     
     private View getViewAtPosition(int position) {
         View v = cachedFrames.remove(position);
+    
         if (v == null) {
             v = adapter.getView(position, getCachedView(), this);
             Validate.notNull(v, "Your adapter has returned null from getView.");
             return v;
         }
-        
-        if (!containsView(v)) {
-            return v;
-        } else {
+    
+        if (containsView(v)) {
             v = adapter.getView(position, getCachedView(), this);
             Validate.notNull(v, "Your adapter has returned null from getView.");
-            return v;
         }
+    
+        return v;
     }
     
     /**
@@ -1111,7 +1111,7 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
      *
      * @param size number of cached covers
      */
-    public void trimChacheSize(int size) {
+    public void trimCacheSize(int size) {
         cachedFrames.trimToSize(size);
     }
     

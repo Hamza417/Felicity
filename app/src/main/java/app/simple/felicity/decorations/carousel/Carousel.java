@@ -5,6 +5,7 @@ import android.database.DataSetObserver;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
@@ -183,10 +184,13 @@ public class Carousel extends ViewGroup {
             scroller.setFinalX(leftEdge - centerItemLeft);
         }
     
+        Log.d("Carousel", "computeScroll: " + scroller.getCurrX() + " " + scroller.getFinalX() + " " + scroller.isFinished() + " " + scroller.computeScrollOffset() + " " + touchState);
+    
         if (scroller.computeScrollOffset()) {
             if (scroller.getFinalX() == scroller.getCurrX()) {
                 scroller.abortAnimation();
                 touchState = TOUCH_STATE_RESTING;
+                Log.d("Carousel", "computeScroll: clearChildrenCache");
                 if (!checkScrollPosition()) {
                     clearChildrenCache();
                 }
@@ -203,9 +207,11 @@ public class Carousel extends ViewGroup {
                 clearChildrenCache();
             }
         }
-        
+    
         refill();
         updateReverseOrderIndex();
+    
+        super.computeScroll();
     }
     
     @Override
@@ -731,7 +737,6 @@ public class Carousel extends ViewGroup {
                 
                 break;
             case MotionEvent.ACTION_MOVE:
-                
                 if (touchState == TOUCH_STATE_SCROLLING) {
                     // Scroll to follow the motion event
                     final int deltaX = (int) (lastMotionX - x);
@@ -753,7 +758,7 @@ public class Carousel extends ViewGroup {
                 }
                 break;
             case MotionEvent.ACTION_UP:
-                //if we had normal down click and we haven't moved enough to initiate drag, take action as a click on down coordinates
+                /* if we had normal down click and we haven't moved enough to initiate drag, take action as a click on down coordinates */
                 if (touchState == TOUCH_STATE_SCROLLING) {
     
                     velocityTracker.computeCurrentVelocity(1000, maximumVelocity);

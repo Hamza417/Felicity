@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.coverflow.containers.FeatureCoverFlow xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.carousel.ArtFlowCarousel xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/artflow"
@@ -13,9 +13,9 @@
     app:coverWidth="175dp"
     app:isFastScrollRequired="true"
     app:maxRotationAngle="60"
-    app:circlePathRadiusInMatrixSpace="600"
+    app:circlePathRadiusInMatrixSpace="900"
     app:shouldRepeat="false"
-    app:maxScaleFactor="1.8"
+    app:maxScaleFactor="1.6"
     app:rotationThreshold="0.3"
     app:spacing="0.5"
     app:statusBarPaddingRequired="true"
