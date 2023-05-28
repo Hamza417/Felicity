@@ -184,8 +184,6 @@ public class Carousel extends ViewGroup {
             scroller.setFinalX(leftEdge - centerItemLeft);
         }
     
-        Log.d("Carousel", "computeScroll: " + scroller.getCurrX() + " " + scroller.getFinalX() + " " + scroller.isFinished() + " " + scroller.computeScrollOffset() + " " + touchState);
-    
         if (scroller.computeScrollOffset()) {
             if (scroller.getFinalX() == scroller.getCurrX()) {
                 scroller.abortAnimation();

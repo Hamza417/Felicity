@@ -718,6 +718,12 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
         return true;
     }
     
+    public interface OnScrollPositionListener {
+        public void onScrolledToPosition(int position);
+        
+        public void onScrolling();
+    }
+    
     /**
      * sets listener for center item position
      *
@@ -725,12 +731,6 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
      */
     public void setOnScrollPositionListener(OnScrollPositionListener onScrollPositionListener) {
         this.onScrollPositionListener = onScrollPositionListener;
-    }
-    
-    public interface OnScrollPositionListener {
-        public void onScrolledToPosition(int position);
-        
-        public void onScrolling();
     }
     
     private class CoverFrame extends FrameLayout {
