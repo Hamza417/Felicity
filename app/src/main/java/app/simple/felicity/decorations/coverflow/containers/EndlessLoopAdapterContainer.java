@@ -14,6 +14,7 @@ import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewDebug.CapturedViewProperty;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.Adapter;
 import android.widget.AdapterView;
 import android.widget.Scroller;
@@ -43,7 +44,7 @@ public class EndlessLoopAdapterContainer extends AdapterView <Adapter> {
      */
     protected static final int LAYOUT_MODE_TO_BEFORE = 1;
     
-    protected static final int SCROLLING_DURATION = 500;
+    protected static final int SCROLLING_DURATION = 350;
     /**
      * User is not touching the list
      */
@@ -64,8 +65,8 @@ public class EndlessLoopAdapterContainer extends AdapterView <Adapter> {
     /**
      * A list of cached (re-usable) item views
      */
-    protected final LinkedList <WeakReference <View>> cachedItemViews = new LinkedList <WeakReference <View>>();
-    protected final Scroller scroller = new Scroller(getContext());
+    protected final LinkedList <WeakReference <View>> cachedItemViews = new LinkedList <>();
+    protected final Scroller scroller = new Scroller(getContext(), new DecelerateInterpolator(1.5F));
     private final Point down = new Point();
     /**
      * The adapter providing data for container

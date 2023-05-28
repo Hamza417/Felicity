@@ -2,6 +2,8 @@ package app.simple.felicity.decorations.carousel;
 
 import android.content.Context;
 import android.database.DataSetObserver;
+import android.graphics.Point;
+import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
@@ -10,10 +12,15 @@ import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.Adapter;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Scroller;
 
 import java.lang.ref.WeakReference;
 import java.util.LinkedList;
+
+import app.simple.felicity.decorations.coverflow.general.ToolBox;
+
+import static android.widget.AdapterView.INVALID_POSITION;
 
 public class Carousel extends ViewGroup {
     /**
@@ -36,39 +43,66 @@ public class Carousel extends ViewGroup {
      * Fling gesture in progress
      */
     protected static final int TOUCH_STATE_FLING = 2;
+    
+    protected static final int TOUCH_STATE_DISTANCE_SCROLL = 5;
     /**
      * Aligning in progress
      */
     protected static final int TOUCH_STATE_ALIGN = 3;
     protected final int NO_VALUE = Integer.MIN_VALUE + 1777;
     protected final ViewCache <View> viewCache = new ViewCache <>();
-    private final Scroller scroller = new Scroller(getContext(), new DecelerateInterpolator(1.5F));
+    protected static final int SCROLLING_DURATION = 500;
+    final Scroller scroller = new Scroller(getContext(), new DecelerateInterpolator(1.5F));
     private final int minimumVelocity;
     private final int maximumVelocity;
     protected int touchSlop;
     protected int touchState = TOUCH_STATE_RESTING;
+    private final Point down = new Point();
+    /**
+     * The adaptor position of the first visible item
+     */
+    protected int firstItemPosition;
+    /**
+     * The adaptor position of the last visible item
+     */
+    protected int lastItemPosition;
     /**
      * Relative spacing value of Views in container. If <1 Views will overlap, if >1 Views will have spaces between them
      */
     protected float spacing = 0.7f;
     protected int childWidth = 350;
+    /**
+     * The adaptor position of selected item
+     */
+    protected int selectedPosition = INVALID_POSITION;
+    protected OnItemClickListener onItemClickListener;
+    protected OnItemSelectedListener onItemSelectedListener;
+    private boolean handleSelectionOnActionUp = false;
+    private boolean interceptTouchEvents;
+    private int centerItemOffset;
     protected int childHeight = 350;
     protected Adapter adapter;
     protected int rightEdge = NO_VALUE;
     protected int leftEdge = NO_VALUE;
-    private VelocityTracker mVelocityTracker;
-    private float mLastMotionX;
+    /**
+     * How long will alignment animation take
+     */
+    private int alignTime = 1000;
+    private boolean allowLongPress;
     /**
      * Index of view in center of screen, which is most in foreground
      */
     private int reverseOrderIndex = -1;
+    private VelocityTracker velocityTracker;
+    private int selection;
+    private float lastMotionX;
     /**
      * Movement speed will be divided by this coefficient;
      */
-    private int mSlowDownCoefficient = 1;
-    private int selection;
-    private int mFirstVisibleChild;
-    private int mLastVisibleChild;
+    private int slowDownCoefficient = 1;
+    private int firstVisibleChild;
+    private int lastVisibleChild;
+    
     private final DataSetObserver dataSetObserver = new DataSetObserver() {
         
         @Override
@@ -83,8 +117,6 @@ public class Carousel extends ViewGroup {
         }
         
     };
-    
-    private OnItemSelectedListener mOnItemSelectedListener;
     
     public Carousel(Context context) {
         this(context, null);
@@ -155,16 +187,21 @@ public class Carousel extends ViewGroup {
             if (scroller.getFinalX() == scroller.getCurrX()) {
                 scroller.abortAnimation();
                 touchState = TOUCH_STATE_RESTING;
-                clearChildrenCache();
-            } else {
-                final int x = scroller.getCurrX();
-                scrollTo(x, 0);
-            
-                postInvalidate();
+                if (!checkScrollPosition()) {
+                    clearChildrenCache();
+                }
+                return;
             }
-        } else if (touchState == TOUCH_STATE_FLING) {
+        
+            int x = scroller.getCurrX();
+            scrollTo(x, 0);
+        
+            postInvalidate();
+        } else if (touchState == TOUCH_STATE_FLING || touchState == TOUCH_STATE_DISTANCE_SCROLL) {
             touchState = TOUCH_STATE_RESTING;
-            clearChildrenCache();
+            if (!checkScrollPosition()) {
+                clearChildrenCache();
+            }
         }
         
         refill();
@@ -189,13 +226,13 @@ public class Carousel extends ViewGroup {
             final int bottom = top + v.getMeasuredHeight();
             v.layout(left, top, right, bottom);
     
-            mFirstVisibleChild = selection;
-            mLastVisibleChild = selection;
+            firstVisibleChild = selection;
+            lastVisibleChild = selection;
     
-            if (mLastVisibleChild == adapter.getCount() - 1) {
+            if (lastVisibleChild == adapter.getCount() - 1) {
                 rightEdge = right;
             }
-            if (mFirstVisibleChild == 0) {
+            if (firstVisibleChild == 0) {
                 leftEdge = left;
             }
         }
@@ -227,7 +264,7 @@ public class Carousel extends ViewGroup {
                 minDiffIndex = i;
             }
         }
-        
+    
         if (minDiff != Integer.MAX_VALUE) {
             reverseOrderIndex = minDiffIndex;
         }
@@ -239,12 +276,22 @@ public class Carousel extends ViewGroup {
             oldSelected.setSelected(false);
             newSelected.setSelected(true);
         
-            selection = mFirstVisibleChild + reverseOrderIndex;
-            if (mOnItemSelectedListener != null) {
-                mOnItemSelectedListener.onItemSelected(newSelected, selection);
+            selection = firstVisibleChild + reverseOrderIndex;
+            if (onItemSelectedListener != null) {
+                onItemSelectedListener.onItemSelected(newSelected, selection);
             }
         }
-        
+    
+    }
+    
+    protected boolean checkScrollPosition() {
+        if (centerItemOffset != 0) {
+            scroller.startScroll(getScrollX(), 0, centerItemOffset, 0, alignTime);
+            touchState = TOUCH_STATE_ALIGN;
+            invalidate();
+            return true;
+        }
+        return false;
     }
     
     /**
@@ -300,7 +347,7 @@ public class Carousel extends ViewGroup {
         final int pwms = MeasureSpec.makeMeasureSpec(childWidth, MeasureSpec.EXACTLY);
         final int phms = MeasureSpec.makeMeasureSpec(childHeight, MeasureSpec.EXACTLY);
         measureChild(child, pwms, phms);
-        child.setDrawingCacheEnabled(isChildrenDrawnWithCacheEnabled());
+        // child.setDrawingCacheEnabled(isChildrenDrawnWithCacheEnabled());
     
         return child;
     }
@@ -334,13 +381,13 @@ public class Carousel extends ViewGroup {
         final int bottom = selectedTop + v.getMeasuredHeight();
         v.layout(selectedLeft, selectedTop, right, bottom);
     
-        mFirstVisibleChild = selection;
-        mLastVisibleChild = selection;
+        firstVisibleChild = selection;
+        lastVisibleChild = selection;
     
-        if (mLastVisibleChild == adapter.getCount() - 1) {
+        if (lastVisibleChild == adapter.getCount() - 1) {
             rightEdge = right;
         }
-        if (mFirstVisibleChild == 0) {
+        if (firstVisibleChild == 0) {
             leftEdge = selectedLeft;
         }
     
@@ -382,22 +429,22 @@ public class Carousel extends ViewGroup {
         if (getChildCount() == 0) {
             return;
         }
-        
+    
         View child = getChildAt(0);
         int childRight = child.getRight();
         int newRight = childRight - (int) (childWidth * spacing);
+    
+        while (newRight - getPartOfViewCoveredBySibling() > leftScreenEdge && firstVisibleChild > 0) {
+            firstVisibleChild--;
         
-        while (newRight - getPartOfViewCoveredBySibling() > leftScreenEdge && mFirstVisibleChild > 0) {
-            mFirstVisibleChild--;
-            
-            child = getViewFromAdapter(mFirstVisibleChild);
+            child = getViewFromAdapter(firstVisibleChild);
             child.setSelected(false);
             reverseOrderIndex++;
-            
+        
             addAndMeasureChild(child, LAYOUT_MODE_TO_BEFORE);
             newRight = layoutChildToBefore(child, newRight);
-            
-            if (mFirstVisibleChild <= 0) {
+        
+            if (firstVisibleChild <= 0) {
                 leftEdge = child.getLeft();
             }
         }
@@ -408,25 +455,25 @@ public class Carousel extends ViewGroup {
      * Checks and refills empty area on the right
      */
     protected void refillLeftToRight(final int leftScreenEdge, final int rightScreenEdge) {
-        
+    
         View child;
         int newLeft;
-        
+    
         child = getChildAt(getChildCount() - 1);
         int childLeft = child.getLeft();
         newLeft = childLeft + (int) (childWidth * spacing);
     
-        while (newLeft + getPartOfViewCoveredBySibling() < rightScreenEdge && mLastVisibleChild < adapter
+        while (newLeft + getPartOfViewCoveredBySibling() < rightScreenEdge && lastVisibleChild < adapter
                 .getCount() - 1) {
-            mLastVisibleChild++;
+            lastVisibleChild++;
         
-            child = getViewFromAdapter(mLastVisibleChild);
+            child = getViewFromAdapter(lastVisibleChild);
             child.setSelected(false);
         
             addAndMeasureChild(child, LAYOUT_MODE_AFTER);
             newLeft = layoutChild(child, newLeft);
         
-            if (mLastVisibleChild >= adapter.getCount() - 1) {
+            if (lastVisibleChild >= adapter.getCount() - 1) {
                 rightEdge = child.getRight();
             }
         }
@@ -450,13 +497,13 @@ public class Carousel extends ViewGroup {
         
             viewCache.cacheView(firstChild);
         
-            mFirstVisibleChild++;
+            firstVisibleChild++;
             reverseOrderIndex--;
         
             if (reverseOrderIndex == 0) {
                 break;
             }
-            
+        
             // Continue to check the next child only if we have more than
             // one child left
             if (getChildCount() > 1) {
@@ -482,14 +529,14 @@ public class Carousel extends ViewGroup {
                 getChildCount() > 1) {
             // remove the right view
             removeViewsInLayout(getChildCount() - 1, 1);
-        
+    
             viewCache.cacheView(lastChild);
-        
-            mLastVisibleChild--;
+    
+            lastVisibleChild--;
             if (getChildCount() - 1 == reverseOrderIndex) {
                 break;
             }
-            
+    
             // Continue to check the next child only if we have more than
             // one child left
             if (getChildCount() > 1) {
@@ -558,7 +605,7 @@ public class Carousel extends ViewGroup {
                  * Locally do absolute value. mLastMotionX is set to the x value
                  * of the down event.
                  */
-                final int xDiff = (int) Math.abs(x - mLastMotionX);
+                final int xDiff = (int) Math.abs(x - lastMotionX);
                 
                 final int touchSlop = this.touchSlop;
                 final boolean xMoved = xDiff > touchSlop;
@@ -566,25 +613,47 @@ public class Carousel extends ViewGroup {
                 if (xMoved) {
                     // Scroll if the user moved far enough along the axis
                     touchState = TOUCH_STATE_SCROLLING;
+                    handleSelectionOnActionUp = false;
                     enableChildrenCache();
                     cancelLongPress();
                 }
                 
                 break;
-            
+    
             case MotionEvent.ACTION_DOWN:
                 // Remember location of down touch
-                mLastMotionX = x;
-                
+                lastMotionX = x;
+        
                 /*
                  * If being flinged and user touches the screen, initiate drag;
                  * otherwise don't.  mScroller.isFinished should be false when
                  * being flinged.
                  */
                 touchState = scroller.isFinished() ? TOUCH_STATE_RESTING : TOUCH_STATE_SCROLLING;
+                //if he had normal click in rested state, remember for action up check
+                if (touchState == TOUCH_STATE_RESTING) {
+                    handleSelectionOnActionUp = true;
+                }
                 break;
-            
+    
             case MotionEvent.ACTION_UP:
+                //if we had normal down click and we haven't moved enough to initiate drag, take action as a click on down coordinates
+                if (handleSelectionOnActionUp && touchState == TOUCH_STATE_RESTING) {
+                    final double d = ToolBox.getLineLength(down.x, down.y, x, y);
+                    if ((ev.getEventTime() - ev.getDownTime()) < ViewConfiguration.getLongPressTimeout() && d < this.touchSlop) {
+                        handleClick(down);
+                    }
+                }
+                // Release the drag
+                allowLongPress = false;
+                handleSelectionOnActionUp = false;
+                down.x = -1;
+                down.y = -1;
+                if (touchState == TOUCH_STATE_SCROLLING) {
+                    if (checkScrollPosition()) {
+                        break;
+                    }
+                }
                 touchState = TOUCH_STATE_RESTING;
                 clearChildrenCache();
                 break;
@@ -595,7 +664,7 @@ public class Carousel extends ViewGroup {
     }
     
     protected void scrollByDelta(int deltaX) {
-        deltaX /= mSlowDownCoefficient;
+        deltaX /= slowDownCoefficient;
     
         final int centerItemLeft = getWidth() / 2 - childWidth / 2;
         final int centerItemRight = getWidth() / 2 + childWidth / 2;
@@ -615,22 +684,33 @@ public class Carousel extends ViewGroup {
         }
         
         final int x = getScrollX() + deltaX;
-        
+    
         if (x < (leftInPixels - centerItemLeft)) {
             deltaX -= x - (leftInPixels - centerItemLeft);
         } else if (x > rightInPixels - centerItemRight) {
             deltaX -= x - (rightInPixels - centerItemRight);
         }
-        
+    
         scrollBy(deltaX, 0);
+    }
+    
+    /**
+     * Scroll widget by given distance in pixels
+     *
+     * @param dx
+     */
+    public void scroll(int dx) {
+        scroller.startScroll(getScrollX(), 0, dx, 0, SCROLLING_DURATION);
+        touchState = TOUCH_STATE_DISTANCE_SCROLL;
+        invalidate();
     }
     
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (mVelocityTracker == null) {
-            mVelocityTracker = VelocityTracker.obtain();
+        if (velocityTracker == null) {
+            velocityTracker = VelocityTracker.obtain();
         }
-        mVelocityTracker.addMovement(event);
+        velocityTracker.addMovement(event);
         
         final int action = event.getAction();
         final float x = event.getX();
@@ -645,22 +725,22 @@ public class Carousel extends ViewGroup {
                 if (!scroller.isFinished()) {
                     scroller.forceFinished(true);
                 }
-        
+                
                 // Remember where the motion event started
-                mLastMotionX = x;
-        
+                lastMotionX = x;
+                
                 break;
             case MotionEvent.ACTION_MOVE:
-        
+                
                 if (touchState == TOUCH_STATE_SCROLLING) {
                     // Scroll to follow the motion event
-                    final int deltaX = (int) (mLastMotionX - x);
-                    mLastMotionX = x;
-            
+                    final int deltaX = (int) (lastMotionX - x);
+                    lastMotionX = x;
+                    
                     scrollByDelta(deltaX);
                 } else {
-                    final int xDiff = (int) Math.abs(x - mLastMotionX);
-            
+                    final int xDiff = (int) Math.abs(x - lastMotionX);
+                    
                     final int touchSlop = this.touchSlop;
                     final boolean xMoved = xDiff > touchSlop;
                     
@@ -675,11 +755,11 @@ public class Carousel extends ViewGroup {
             case MotionEvent.ACTION_UP:
                 //if we had normal down click and we haven't moved enough to initiate drag, take action as a click on down coordinates
                 if (touchState == TOUCH_STATE_SCROLLING) {
-        
-                    mVelocityTracker.computeCurrentVelocity(1000, maximumVelocity);
-                    int initialXVelocity = (int) mVelocityTracker.getXVelocity();
-                    int initialYVelocity = (int) mVelocityTracker.getYVelocity();
-        
+    
+                    velocityTracker.computeCurrentVelocity(1000, maximumVelocity);
+                    int initialXVelocity = (int) velocityTracker.getXVelocity();
+                    int initialYVelocity = (int) velocityTracker.getYVelocity();
+    
                     if (Math.abs(initialXVelocity) + Math.abs(initialYVelocity) > minimumVelocity) {
                         fling(-initialXVelocity, -initialYVelocity);
                     } else {
@@ -687,12 +767,12 @@ public class Carousel extends ViewGroup {
                         clearChildrenCache();
                         touchState = TOUCH_STATE_RESTING;
                     }
-                    
-                    if (mVelocityTracker != null) {
-                        mVelocityTracker.recycle();
-                        mVelocityTracker = null;
+    
+                    if (velocityTracker != null) {
+                        velocityTracker.recycle();
+                        velocityTracker = null;
                     }
-                    
+    
                     break;
                 }
                 
@@ -709,7 +789,7 @@ public class Carousel extends ViewGroup {
     }
     
     public void fling(int velocityX, int velocityY) {
-        velocityX /= mSlowDownCoefficient;
+        velocityX /= slowDownCoefficient;
     
         touchState = TOUCH_STATE_FLING;
         final int x = getScrollX();
@@ -741,7 +821,7 @@ public class Carousel extends ViewGroup {
         setChildrenDrawingCacheEnabled(true);
     }
     
-    private void clearChildrenCache() {
+    void clearChildrenCache() {
         setChildrenDrawnWithCacheEnabled(false);
     }
     
@@ -766,11 +846,48 @@ public class Carousel extends ViewGroup {
         if (c < 1) {
             throw new IllegalArgumentException("Slowdown coeficient must be greater than 0");
         }
-        mSlowDownCoefficient = c;
+        slowDownCoefficient = c;
+    }
+    
+    protected void handleClick(Point p) {
+        final int c = getChildCount();
+        View v;
+        final Rect r = new Rect();
+        for (int i = 0; i < c; i++) {
+            v = getChildAt(i);
+            v.getHitRect(r);
+            if (r.contains(getScrollX() + p.x, getScrollY() + p.y)) {
+                final View old = getSelectedView();
+                if (old != null) {
+                    old.setSelected(false);
+                }
+                
+                int position = firstItemPosition + i;
+                if (position >= adapter.getCount()) {
+                    position = position - adapter.getCount();
+                }
+                
+                selectedPosition = position;
+                v.setSelected(true);
+                
+                if (onItemClickListener != null) {
+                    // onItemClickListener.onItemClick(this, v, position, getItemIdAtPosition(position));
+                }
+                if (onItemSelectedListener != null) {
+                    // onItemSelectedListener.onItemSelected(this, v, position, getItemIdAtPosition(position));
+                }
+                
+                break;
+            }
+        }
+    }
+    
+    public long getItemIdAtPosition(int position) {
+        return adapter.getItemId(position);
     }
     
     public void setOnItemSelectedListener(OnItemSelectedListener onItemSelectedListener) {
-        mOnItemSelectedListener = onItemSelectedListener;
+        this.onItemSelectedListener = onItemSelectedListener;
     }
     
     public interface OnItemSelectedListener {

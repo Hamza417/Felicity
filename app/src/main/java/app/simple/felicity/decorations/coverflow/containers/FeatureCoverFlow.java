@@ -113,6 +113,12 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
      * Size of reflection as a fraction of original image (0-1)
      */
     private float reflectionHeight = 0.5f;
+    
+    /**
+     * Reflection enable or disable
+     */
+    private boolean reflectionEnabled = false;
+    
     /**
      * Gap between reflection and original image in pixels
      */
@@ -156,6 +162,7 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
         if (cacheSize <= 0) {
             cacheSize = DEFAULT_MAX_CACHE_SIZE;
         }
+    
         cachedFrames = new MyCache(cacheSize);
         
         setChildrenDrawingOrderEnabled(true);
@@ -651,7 +658,7 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
         
         //set matrix to child's transformation
         setChildTransformation(child, matrix);
-        
+    
         //Generate child bitmap
         Bitmap bitmap = child.getDrawingCache();
     
@@ -661,24 +668,28 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
         //set child transformation on canvas
         canvas.concat(matrix);
     
-        final Bitmap rfCache = ((CoverFrame) child).reflectionCache;
-    
-        if (reflectionBackgroundColor != Color.TRANSPARENT) {
-            final int top = bitmap.getHeight() + reflectionGap - 2;
-            final float frame = 1.0f;
-            reflectionPaint.setColor(reflectionBackgroundColor);
-            canvas.drawRect(frame, top + frame, rfCache.getWidth() - frame, top + rfCache.getHeight() - frame, reflectionPaint);
+        if (reflectionEnabled) {
+            final Bitmap rfCache;
+        
+            rfCache = ((CoverFrame) child).reflectionCache;
+        
+            if (reflectionBackgroundColor != Color.TRANSPARENT) {
+                final int top = bitmap.getHeight() + reflectionGap - 2;
+                final float frame = 1.0f;
+                reflectionPaint.setColor(reflectionBackgroundColor);
+                canvas.drawRect(frame, top + frame, rfCache.getWidth() - frame, top + rfCache.getHeight() - frame, reflectionPaint);
+            }
+        
+            //Draw reflection
+            canvas.drawBitmap(rfCache, 0.0f, bitmap.getHeight() - 2 + reflectionGap, paint);
         }
     
         paint.reset();
         paint.setAntiAlias(true);
         paint.setFilterBitmap(true);
     
-        //Draw child bitmap with applied transforms
+        // Draw child bitmap with applied transforms
         canvas.drawBitmap(bitmap, 0.0f, 0.0f, paint);
-    
-        //Draw reflection
-        canvas.drawBitmap(rfCache, 0.0f, bitmap.getHeight() - 2 + reflectionGap, paint);
     
         canvas.restore();
     
@@ -1475,30 +1486,35 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
         
         @Override
         public Bitmap getDrawingCache(boolean autoScale) {
-            final Bitmap b = super.getDrawingCache(autoScale);
-    
-            if (reflectionCacheInvalid) {
-                //noinspection StatementWithEmptyBody
-                if (touchState != TOUCH_STATE_FLING && touchState != TOUCH_STATE_ALIGN || reflectionCache == null) {
+            if (reflectionEnabled) {
+                final Bitmap b = super.getDrawingCache(autoScale);
+        
+                if (reflectionCacheInvalid) {
+                    //noinspection StatementWithEmptyBody
+                    if (touchState != TOUCH_STATE_FLING && touchState != TOUCH_STATE_ALIGN || reflectionCache == null) {
+                        /*
+                         * This block will disable reflection cache when user is flinging or aligning
+                         * This is because during flinging and aligning views are moving very fast and
+                         * it is not possible to use same reflection cache for all positions
+                         * This will make reflections to flicker
+                         */
+                    }
+            
                     /*
-                     * This block will disable reflection cache when user is flinging or aligning
-                     * This is because during flinging and aligning views are moving very fast and
-                     * it is not possible to use same reflection cache for all positions
-                     * This will make reflections to flicker
+                     * We'll draw the reflection anyway
                      */
+                    try {
+                        reflectionCache = createReflectionBitmap(b);
+                        reflectionCacheInvalid = false;
+                    } catch (NullPointerException e) {
+                        Log.e(VIEW_LOG_TAG, "Null pointer in createReflectionBitmap. Bitmap b=" + b, e);
+                    }
                 }
         
-                /*
-                 * We'll draw the reflection anyway
-                 */
-                try {
-                    reflectionCache = createReflectionBitmap(b);
-                    reflectionCacheInvalid = false;
-                } catch (NullPointerException e) {
-                    Log.e(VIEW_LOG_TAG, "Null pointer in createReflectionBitmap. Bitmap b=" + b, e);
-                }
+                return b;
+            } else {
+                return super.getDrawingCache(autoScale);
             }
-            return b;
         }
         
         public void recycle() {

@@ -11,9 +11,12 @@ import android.graphics.Paint;
 import android.graphics.PaintFlagsDrawFilter;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
+import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.Shader;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -29,10 +32,30 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     private final Matrix reflectionMatrix = new Matrix();
     private final Matrix matrix = new Matrix();
     private final Matrix tempMatrix = new Matrix();
+    
+    private final Matrix tempHit = new Matrix();
     private final Paint paint = new Paint();
     private final Paint reflectionPaint = new Paint();
+    
     private final PorterDuffXfermode porterDuffXfermode = new PorterDuffXfermode(PorterDuff.Mode.DST_IN);
     private final Canvas reflectionCanvas = new Canvas();
+    private final RectF touchRect = new RectF();
+    private final Rect tempRect = new Rect();
+    /**
+     * The adaptor position of the first visible item
+     */
+    protected int firstItemPosition;
+    private View motionTarget;
+    private float targetLeft;
+    private float targetTop;
+    private int scrollToPositionOnNextInvalidate = -1;
+    private int centerItemOffset;
+    /**
+     * Index of view in center of screen, which is most in foreground
+     */
+    private int reverseOrderIndex = -1;
+    private int lastCenterItemIndex = -1;
+    
     /**
      * Widget size on which was tuning of parameters done. This value is used to scale parameters on when widgets has different size
      */
@@ -87,7 +110,6 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
      */
     private float radiusInMatrixSpace = 350F;
     
-    private boolean invalidated = false;
     /**
      * Gap between reflection and original image in pixels
      */
@@ -95,6 +117,10 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     
     private int coverWidth = 350;
     private int coverHeight = 240;
+    private boolean invalidated = false;
+    private int lastTouchState = -1;
+    
+    private int lastCenterItemPosition = -1;
     
     public ArtFlowCarousel(Context context) {
         super(context);
@@ -125,8 +151,164 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     }
     
     @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        final int action = ev.getAction();
+        final float xf = ev.getX();
+        final float yf = ev.getY();
+        final RectF frame = touchRect;
+        
+        if (action == MotionEvent.ACTION_DOWN) {
+            if (motionTarget != null) {
+                // this is weird, we got a pen down, but we thought it was
+                // already down!
+                // We should probably send an ACTION_UP to the current
+                // target.
+                motionTarget = null;
+            }
+            // If we're disallowing intercept or if we're allowing and we didn't
+            // intercept
+            if (!onInterceptTouchEvent(ev)) {
+                // reset this event's action (just to protect ourselves)
+                ev.setAction(MotionEvent.ACTION_DOWN);
+                // We know we want to dispatch the event down, find a child
+                // who can handle it, start with the front-most child.
+                
+                final int count = getChildCount();
+                final int[] childOrder = new int[count];
+                
+                for (int i = 0; i < count; i++) {
+                    childOrder[i] = getChildDrawingOrder(count, i);
+                }
+                
+                for (int i = count - 1; i >= 0; i--) {
+                    final View child = getChildAt(childOrder[i]);
+                    if (child.getVisibility() == VISIBLE || child.getAnimation() != null) {
+                        getScrolledTransformedChildRectangle(child, frame);
+                        
+                        if (frame.contains(xf, yf)) {
+                            // offset the event to the view's coordinate system
+                            final float xc = xf - frame.left;
+                            final float yc = yf - frame.top;
+                            ev.setLocation(xc, yc);
+                            if (child.dispatchTouchEvent(ev)) {
+                                // Event handled, we have a target now.
+                                motionTarget = child;
+                                targetTop = frame.top;
+                                targetLeft = frame.left;
+                                return true;
+                            }
+                            
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        boolean isUpOrCancel = action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL;
+        
+        // The event wasn't an ACTION_DOWN, dispatch it to our target if
+        // we have one.
+        final View target = motionTarget;
+        if (target == null) {
+            // We don't have a target, this means we're handling the
+            // event as a regular view.
+            ev.setLocation(xf, yf);
+            return onTouchEvent(ev);
+        }
+        
+        // if have a target, see if we're allowed to and want to intercept its
+        // events
+        if (onInterceptTouchEvent(ev)) {
+            final float xc = xf - targetLeft;
+            final float yc = yf - targetTop;
+            ev.setAction(MotionEvent.ACTION_CANCEL);
+            ev.setLocation(xc, yc);
+            if (!target.dispatchTouchEvent(ev)) {
+                // target didn't handle ACTION_CANCEL. not much we can do
+                // but they should have.
+            }
+            // clear the target
+            motionTarget = null;
+            // Don't dispatch this event to our own view, because we already
+            // saw it when intercepting; we just want to give the following
+            // event to the normal onTouchEvent().
+            return true;
+        }
+        
+        if (isUpOrCancel) {
+            motionTarget = null;
+            targetTop = -1;
+            targetLeft = -1;
+        }
+        
+        // finally offset the event to the target's coordinate system and
+        // dispatch the event.
+        final float xc = xf - targetLeft;
+        final float yc = yf - targetTop;
+        ev.setLocation(xc, yc);
+        
+        return target.dispatchTouchEvent(ev);
+    }
+    
+    private void getScrolledTransformedChildRectangle(View child, RectF r) {
+        transformChildHitRectangle(child, r);
+        final int offset = child.getLeft() - getScrollX();
+        r.offset(offset, child.getTop());
+    }
+    
+    /**
+     * Fill outRect with transformed child hit rectangle. Rectangle is not moved to its position on screen, neither getSroolX is accounted for
+     *
+     * @param child   child view
+     * @param outRect output rectangle
+     */
+    protected void transformChildHitRectangle(View child, RectF outRect) {
+        outRect.left = 0;
+        outRect.top = 0;
+        outRect.right = child.getWidth();
+        outRect.bottom = child.getHeight();
+        
+        setChildTransformation(child, tempHit);
+        tempHit.mapRect(outRect);
+    }
+    
+    @Override
     public void computeScroll() {
+        // if we don't have an adapter, we don't need to do anything
+        if (adapter == null) {
+            return;
+        }
+        if (adapter.getCount() == 0) {
+            return;
+        }
+        
+        if (getChildCount() == 0) { // release memory resources was probably called before, and onLayout didn't get called to fill container again
+            requestLayout();
+        }
+        
+        if (touchState == TOUCH_STATE_ALIGN) {
+            if (scroller.computeScrollOffset()) {
+                if (scroller.getFinalX() == scroller.getCurrX()) {
+                    scroller.abortAnimation();
+                    touchState = TOUCH_STATE_RESTING;
+                    clearChildrenCache();
+                    return;
+                }
+                
+                int x = scroller.getCurrX();
+                scrollTo(x, 0);
+                
+                postInvalidate();
+            } else {
+                touchState = TOUCH_STATE_RESTING;
+                clearChildrenCache();
+            }
+            return;
+        }
+        
         super.computeScroll();
+        
         for (int i = 0; i < getChildCount(); i++) {
             setTransformation(getChildAt(i));
         }
@@ -451,7 +633,7 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
                 if (touchState != TOUCH_STATE_FLING && touchState != TOUCH_STATE_ALIGN || reflectionCache == null) {
                     /*
                      * This block will disable reflection cache when user is flinging or aligning
-                     * This is because during flinging and aligning views are moving very fast and
+                     * This is because during flinging and aligning, views are moving very fast and
                      * it is not possible to use same reflection cache for all positions
                      * This will make reflections to flicker
                      */
