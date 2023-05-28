@@ -246,8 +246,8 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
         if (reverseOrderIndex == -1 && (Math.abs(d) < sz || d >= 0)) {
             reverseOrderIndex = i;
             centerItemOffset = d;
-            Log.d(TAG, "centerItemOffset = " + centerItemOffset);
             lastCenterItemIndex = i;
+            Log.d(TAG, "reverseOrderIndex = " + reverseOrderIndex + ", centerItemOffset = " + centerItemOffset + ", lastCenterItemIndex = " + lastCenterItemIndex);
             return childCount - 1;
         }
     
@@ -489,9 +489,7 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     
     @Override
     protected boolean checkScrollPosition() {
-        Log.d(TAG, "checkScrollPosition: " + getScrollX());
         if (centerItemOffset != 0) {
-            Log.d(TAG, "checkScrollPosition: centerItemOffset = " + centerItemOffset);
             scroller.startScroll(getScrollX(), 0, centerItemOffset, 0, alignTime);
             touchState = TOUCH_STATE_ALIGN;
             invalidate();
@@ -649,16 +647,34 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     
     private void setChildTransformation(View child, Matrix m) {
         m.reset();
-        
+    
         addChildRotation(child, m);
         addChildScale(child, m);
         addChildCircularPathZOffset(child, m);
         addChildAdjustPosition(child, m);
-        
+    
         //set coordinate system origin to center of child
         m.preTranslate(-child.getWidth() / 2f, -child.getHeight() / 2f);
         //move back
         m.postTranslate(child.getWidth() / 2f, child.getHeight() / 2f);
+    }
+    
+    public void scrollToPosition(int position) {
+        if (adapter == null || adapter.getCount() == 0) {
+            throw new IllegalStateException("You are trying to scroll container with no adapter set. Set adapter first.");
+        }
+        
+        if (lastCenterItemIndex != -1) {
+            final int lastCenterItemPosition = (firstItemPosition + lastCenterItemIndex) % adapter.getCount();
+            final int di = lastCenterItemPosition - position;
+            final int dst = (int) (di * coverWidth * spacing);
+            scrollToPositionOnNextInvalidate = -1;
+            scrollBy(-dst, 0);
+        } else {
+            scrollToPositionOnNextInvalidate = position;
+        }
+        
+        invalidate();
     }
     
     private void addChildRotation(View v, Matrix m) {

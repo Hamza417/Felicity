@@ -1,6 +1,7 @@
 package app.simple.felicity.ui.app
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -32,6 +33,22 @@ class ArtFlow : ScopedFragment() {
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) {
             coverFlow.adapter = SongsAdapter(requireContext(), it)
+
+            coverFlow.setOnScrollPositionListener(object : ArtFlowCarousel.OnScrollPositionListener {
+                override fun onScrolledToPosition(position: Int) {
+                    Log.d("ArtFlow", "Scrolled to position: $position")
+                }
+
+                override fun onScrolling() {
+                    Log.d("ArtFlow", "Scrolling")
+                }
+            })
+
+            coverFlow.setOnItemSelectedListener { child, position ->
+                Log.d("ArtFlow", "Selected item: $position")
+            }
+
+            coverFlow.scrollToPosition(100)
         }
     }
 

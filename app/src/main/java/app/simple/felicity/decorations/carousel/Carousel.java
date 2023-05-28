@@ -274,19 +274,22 @@ public class Carousel extends ViewGroup {
             reverseOrderIndex = minDiffIndex;
         }
     
-        if (oldReverseIndex != reverseOrderIndex) {
-            View oldSelected = getChildAt(oldReverseIndex);
-            View newSelected = getChildAt(reverseOrderIndex);
-        
-            oldSelected.setSelected(false);
-            newSelected.setSelected(true);
-        
-            selection = firstVisibleChild + reverseOrderIndex;
-            if (onItemSelectedListener != null) {
-                onItemSelectedListener.onItemSelected(newSelected, selection);
+        try {
+            if (oldReverseIndex != reverseOrderIndex) {
+                View oldSelected = getChildAt(oldReverseIndex);
+                View newSelected = getChildAt(reverseOrderIndex);
+            
+                oldSelected.setSelected(false);
+                newSelected.setSelected(true);
+            
+                selection = firstVisibleChild + reverseOrderIndex;
+                if (onItemSelectedListener != null) {
+                    onItemSelectedListener.onItemSelected(newSelected, selection);
+                }
             }
+        } catch (NullPointerException e) {
+            Log.e("Carousel", "NullPointerException in updateReverseOrderIndex");
         }
-    
     }
     
     protected boolean checkScrollPosition() {
