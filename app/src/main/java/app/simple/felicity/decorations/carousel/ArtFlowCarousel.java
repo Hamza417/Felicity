@@ -247,7 +247,7 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
             reverseOrderIndex = i;
             centerItemOffset = d;
             lastCenterItemIndex = i;
-            Log.d(TAG, "reverseOrderIndex = " + reverseOrderIndex + ", centerItemOffset = " + centerItemOffset + ", lastCenterItemIndex = " + lastCenterItemIndex);
+            // Log.d(TAG, "reverseOrderIndex = " + reverseOrderIndex + ", centerItemOffset = " + centerItemOffset + ", lastCenterItemIndex = " + lastCenterItemIndex);
             return childCount - 1;
         }
     

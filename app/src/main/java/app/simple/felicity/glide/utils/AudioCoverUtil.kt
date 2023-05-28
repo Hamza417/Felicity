@@ -7,6 +7,7 @@ import android.widget.ImageView
 import app.simple.felicity.R
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverModel
 import app.simple.felicity.glide.modules.GlideApp
+import app.simple.felicity.glide.transformation.Blur
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Greyscale
 import app.simple.felicity.glide.transformation.Padding
@@ -14,6 +15,7 @@ import app.simple.felicity.glide.uricover.UriCoverModel
 import app.simple.felicity.preferences.AppearancePreferences
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.load.resource.bitmap.BitmapTransitionOptions.withCrossFade
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.bumptech.glide.request.RequestListener
@@ -119,6 +121,15 @@ object AudioCoverUtil {
             //                           .setElevation(25F)
             //                           .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE))
             .load(UriCoverModel(this.context, uri))
+            .into(this)
+    }
+
+    fun ImageView.loadBlurredBackground(uri: Uri) {
+        GlideApp.with(this)
+            .asBitmap()
+            .transition(withCrossFade())
+            .transform(CenterCrop(), Blur(25))
+            .load(DescriptorCoverModel(this.context, uri))
             .into(this)
     }
 }

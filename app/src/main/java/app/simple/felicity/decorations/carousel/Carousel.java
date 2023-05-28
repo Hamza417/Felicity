@@ -947,10 +947,11 @@ public class Carousel extends ViewGroup {
                 v.setSelected(true);
                 
                 if (onItemClickListener != null) {
-                    // onItemClickListener.onItemClick(this, v, position, getItemIdAtPosition(position));
+                    onItemClickListener.onItemClick(null, v, position, getItemIdAtPosition(position));
                 }
+    
                 if (onItemSelectedListener != null) {
-                    // onItemSelectedListener.onItemSelected(this, v, position, getItemIdAtPosition(position));
+                    onItemSelectedListener.onItemSelected(this, position);
                 }
                 
                 break;
@@ -967,7 +968,7 @@ public class Carousel extends ViewGroup {
     }
     
     public int getCurrentItemPosition() {
-        return selectedPosition;
+        return selection;
     }
     
     public interface OnItemSelectedListener {
