@@ -673,6 +673,24 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
         } else {
             scrollToPositionOnNextInvalidate = position;
         }
+    
+        invalidate();
+    }
+    
+    public void scrollToPositionSmooth(int position) {
+        if (adapter == null || adapter.getCount() == 0) {
+            throw new IllegalStateException("You are trying to scroll container with no adapter set. Set adapter first.");
+        }
+        
+        if (lastCenterItemIndex != -1) {
+            final int lastCenterItemPosition = (firstItemPosition + lastCenterItemIndex) % adapter.getCount();
+            final int di = lastCenterItemPosition - position;
+            final int dst = (int) (di * coverWidth * spacing);
+            scrollToPositionOnNextInvalidate = -1;
+            scrollBy(-dst, 0);
+        } else {
+            scrollToPositionOnNextInvalidate = position;
+        }
         
         invalidate();
     }

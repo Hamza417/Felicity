@@ -966,6 +966,10 @@ public class Carousel extends ViewGroup {
         this.onItemSelectedListener = onItemSelectedListener;
     }
     
+    public int getCurrentItemPosition() {
+        return selectedPosition;
+    }
+    
     public interface OnItemSelectedListener {
         void onItemSelected(View child, int position);
     }

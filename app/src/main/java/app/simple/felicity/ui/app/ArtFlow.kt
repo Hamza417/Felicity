@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
 import app.simple.felicity.R
 import app.simple.felicity.adapters.SongsAdapter
+import app.simple.felicity.constants.BundleConstants
 import app.simple.felicity.decorations.carousel.ArtFlowCarousel
 import app.simple.felicity.viewmodels.ui.SongsViewModel
 import app.simple.inure.extensions.fragments.ScopedFragment
@@ -46,10 +47,18 @@ class ArtFlow : ScopedFragment() {
 
             coverFlow.setOnItemSelectedListener { child, position ->
                 Log.d("ArtFlow", "Selected item: $position")
+                requireArguments().putInt(BundleConstants.position, position)
             }
 
-            coverFlow.scrollToPosition(100)
+            coverFlow.scrollToPosition(requireArguments().getInt(BundleConstants.position, 0))
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        Log.d("ArtFlow", "Saving state")
+        Log.d("ArtFlow", "Current position: ${coverFlow.currentItemPosition}")
+        outState.putInt(BundleConstants.position, coverFlow.currentItemPosition)
+        super.onSaveInstanceState(outState)
     }
 
     companion object {
