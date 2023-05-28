@@ -1,22 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.carousel.ArtFlowCarousel xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/artflow"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@android:color/black"
-    app:adjustPositionThreshold="0.3"
-    app:alignAnimationTime="@android:integer/config_mediumAnimTime"
-    app:circlePathRadius="1"
-    app:coverHeight="175dp"
-    app:coverWidth="175dp"
-    app:isFastScrollRequired="true"
-    app:maxRotationAngle="60"
-    app:circlePathRadiusInMatrixSpace="900"
-    app:shouldRepeat="false"
-    app:maxScaleFactor="1.6"
-    app:rotationThreshold="0.3"
-    app:spacing="0.5"
-    app:statusBarPaddingRequired="true"
-    tools:ignore="MissingDefaultResource" />
+    android:layout_height="match_parent">
+
+    <app.simple.felicity.decorations.carousel.ArtFlowCarousel xmlns:tools="http://schemas.android.com/tools"
+        android:id="@+id/artflow"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black"
+        app:adjustPositionThreshold="0.3"
+        app:alignAnimationTime="@android:integer/config_mediumAnimTime"
+        app:circlePathRadius="1"
+        app:circlePathRadiusInMatrixSpace="900"
+        app:coverHeight="175dp"
+        app:coverWidth="175dp"
+        app:isFastScrollRequired="true"
+        app:maxRotationAngle="60"
+        app:maxScaleFactor="1.6"
+        app:rotationThreshold="0.3"
+        app:shouldRepeat="false"
+        app:spacing="0.5"
+        app:statusBarPaddingRequired="true"
+        tools:ignore="MissingDefaultResource" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal|bottom"
+        android:layout_margin="@dimen/padding_15"
+        android:orientation="vertical">
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="@dimen/padding_5"
+            android:gravity="center"
+            android:textSize="@dimen/text_size_18"
+            app:appFontStyle="bold"
+            app:textColorStyle="white" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/artist"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:gravity="center"
+            android:textSize="@dimen/desc_text_size"
+            app:appFontStyle="regular"
+            app:textColorStyle="white" />
+
+    </LinearLayout>
+
+</FrameLayout>
