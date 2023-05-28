@@ -108,6 +108,7 @@
         <attr name="verticalPaddingTop" format="dimension" />
         <attr name="verticalPaddingBottom" format="dimension" />
         <attr name="reflectionBackgroundColor" format="color" />
+        <attr name="reflectionEnabled" format="boolean" />
     </declare-styleable>
 
     <declare-styleable name="EndlessLoopAdapterContainer">

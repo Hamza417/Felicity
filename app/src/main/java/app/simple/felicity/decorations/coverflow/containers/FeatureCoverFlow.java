@@ -134,7 +134,7 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
     /**
      * How long will alignment animation take
      */
-    private int alignTime = 1000;
+    private int alignTime = 250;
     /**
      * If you don't want reflections to be transparent, you can set them background of same color as widget background
      */
@@ -196,6 +196,7 @@ public class FeatureCoverFlow extends EndlessLoopAdapterContainer implements Vie
                 paddingTop = a.getDimensionPixelSize(R.styleable.FeatureCoverFlow_verticalPaddingTop, paddingTop);
                 paddingBottom = a.getDimensionPixelSize(R.styleable.FeatureCoverFlow_verticalPaddingBottom, paddingBottom);
                 reflectionBackgroundColor = a.getColor(R.styleable.FeatureCoverFlow_reflectionBackgroundColor, Color.TRANSPARENT);
+                reflectionEnabled = a.getBoolean(R.styleable.FeatureCoverFlow_reflectionEnabled, false);
             }
         }
     }
