@@ -669,7 +669,7 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
             final int di = lastCenterItemPosition - position;
             final int dst = (int) (di * coverWidth * spacing);
             scrollToPositionOnNextInvalidate = -1;
-            scrollBy(-dst, 0);
+            scrollTo(-dst, 0);
         } else {
             scrollToPositionOnNextInvalidate = position;
         }

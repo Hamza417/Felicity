@@ -57,7 +57,7 @@ public class Carousel extends ViewGroup {
     final Scroller scroller = new Scroller(getContext(), new DecelerateInterpolator(1.5F));
     private final int minimumVelocity;
     private final int maximumVelocity;
-    protected int touchSlop;
+    private final int touchSlop;
     protected int touchState = TOUCH_STATE_RESTING;
     private final Point down = new Point();
     /**
@@ -607,9 +607,9 @@ public class Carousel extends ViewGroup {
                  * not dragging, otherwise the shortcut would have caught it. Check
                  * whether the user has moved far enough from his original down touch.
                  */
-                
+    
                 /*
-                 * Locally do absolute value. mLastMotionX is set to the x value
+                 * Locally do absolute value. lastMotionX is set to the x value
                  * of the down event.
                  */
                 final int xDiff = (int) Math.abs(x - lastMotionX);
@@ -630,10 +630,10 @@ public class Carousel extends ViewGroup {
             case MotionEvent.ACTION_DOWN:
                 // Remember location of down touch
                 lastMotionX = x;
-        
+    
                 /*
                  * If being flinged and user touches the screen, initiate drag;
-                 * otherwise don't.  mScroller.isFinished should be false when
+                 * otherwise don't.  scroller.isFinished should be false when
                  * being flinged.
                  */
                 touchState = scroller.isFinished() ? TOUCH_STATE_RESTING : TOUCH_STATE_SCROLLING;
@@ -713,19 +713,22 @@ public class Carousel extends ViewGroup {
         invalidate();
     }
     
-    @Override
     public boolean onTouchEvent(MotionEvent event) {
+        if (adapter == null) {
+            return false;
+        }
         if (velocityTracker == null) {
             velocityTracker = VelocityTracker.obtain();
         }
         velocityTracker.addMovement(event);
-        
+    
         final int action = event.getAction();
         final float x = event.getX();
         final float y = event.getY();
-        
+    
         switch (action) {
             case MotionEvent.ACTION_DOWN:
+                super.onTouchEvent(event);
                 /*
                  * If being flinged and user touches, stop the fling. isFinished
                  * will be false if being flinged.
@@ -733,61 +736,128 @@ public class Carousel extends ViewGroup {
                 if (!scroller.isFinished()) {
                     scroller.forceFinished(true);
                 }
-                
+            
+                down.x = (int) x;
                 // Remember where the motion event started
                 lastMotionX = x;
-                
+                // mLastMotionY = y;
+            
                 break;
             case MotionEvent.ACTION_MOVE:
+                // if we have scrolling disabled, we don't do anything
+                // if (!shouldRepeat && isSrollingDisabled) return false;
+            
                 if (touchState == TOUCH_STATE_SCROLLING) {
                     // Scroll to follow the motion event
                     final int deltaX = (int) (lastMotionX - x);
                     lastMotionX = x;
+                    // mLastMotionY = y;
+                
+                    int sx = getScrollX() + deltaX;
+                
+                    if (down.x > x) {
+                        scrollBy(deltaX, 0);
+                    } else {
+                        final int rightInPixels;
+                        if (rightEdge == NO_VALUE) {
+                            rightInPixels = Integer.MAX_VALUE;
+                        } else {
+                            rightInPixels = rightEdge;
+                        }
                     
-                    scrollByDelta(deltaX);
+                        if (sx < rightInPixels - getWidth()) {
+                            scrollBy(deltaX, 0);
+                        }
+                    }
+                
+                    down.x = (int) x;
+                
                 } else {
                     final int xDiff = (int) Math.abs(x - lastMotionX);
                     
                     final int touchSlop = this.touchSlop;
                     final boolean xMoved = xDiff > touchSlop;
-                    
+                
                     if (xMoved) {
-                        // Scroll if the user moved far enough along the axis
+                    
+                        // Scroll if the user moved far enough along the X axis
                         touchState = TOUCH_STATE_SCROLLING;
                         enableChildrenCache();
-                        cancelLongPress();
+                    
+                        // Either way, cancel any pending longpress
+                        if (allowLongPress) {
+                            allowLongPress = false;
+                            // Try canceling the long press. It could also have been scheduled
+                            // by a distant descendant, so use the allowLongPress flag to block
+                            // everything
+                            cancelLongPress();
+                        }
                     }
                 }
                 break;
             case MotionEvent.ACTION_UP:
-                /* if we had normal down click and we haven't moved enough to initiate drag, take action as a click on down coordinates */
+            
+                //this must be here, in case no child view returns true,
+                //events will propagate back here and on intercept touch event wont be called again
+                //in case of no parent it propagates here, in case of parent it usualy propagates to on cancel
+                if (handleSelectionOnActionUp && touchState == TOUCH_STATE_RESTING) {
+                    final float d = (float) ToolBox.getLineLength(down.x, down.y, x, y);
+                    if ((event.getEventTime() - event.getDownTime()) < ViewConfiguration.getLongPressTimeout() && d < touchSlop) {
+                        handleClick(down);
+                    }
+                    handleSelectionOnActionUp = false;
+                }
+            
+                //if we had normal down click and we haven't moved enough to initiate drag, take action as a click on down coordinates
                 if (touchState == TOUCH_STATE_SCROLLING) {
+                
                     velocityTracker.computeCurrentVelocity(1000, maximumVelocity);
                     int initialXVelocity = (int) velocityTracker.getXVelocity();
                     int initialYVelocity = (int) velocityTracker.getYVelocity();
-    
+                
                     if (Math.abs(initialXVelocity) + Math.abs(initialYVelocity) > minimumVelocity) {
                         fling(-initialXVelocity, -initialYVelocity);
                     } else {
                         // Release the drag
                         clearChildrenCache();
                         touchState = TOUCH_STATE_RESTING;
+                        checkScrollPosition();
+                        allowLongPress = false;
+                    
+                        down.x = -1;
+                        down.y = -1;
                     }
-    
+                
                     if (velocityTracker != null) {
                         velocityTracker.recycle();
                         velocityTracker = null;
                     }
-    
+                
                     break;
                 }
-                
+            
                 // Release the drag
                 clearChildrenCache();
                 touchState = TOUCH_STATE_RESTING;
-                
+                allowLongPress = false;
+            
+                down.x = -1;
+                down.y = -1;
+            
                 break;
             case MotionEvent.ACTION_CANCEL:
+            
+                allowLongPress = false;
+            
+                down.x = -1;
+                down.y = -1;
+            
+                if (touchState == TOUCH_STATE_SCROLLING) {
+                    if (checkScrollPosition()) {
+                        break;
+                    }
+                }
+            
                 touchState = TOUCH_STATE_RESTING;
         }
         
