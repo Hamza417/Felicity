@@ -32,7 +32,6 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     //reflection
     private final Camera camera = new Camera();
     private final Matrix reflectionMatrix = new Matrix();
-    private final Matrix matrix = new Matrix();
     private final Matrix tempMatrix = new Matrix();
     
     private final Matrix tempHit = new Matrix();
@@ -57,7 +56,7 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     /**
      * How long will alignment animation take
      */
-    private int alignTime = 250;
+    private int alignTime = 400;
     private int centerItemOffset;
     /**
      * Index of view in center of screen, which is most in foreground
@@ -208,6 +207,7 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     
         //make sure we never stay unaligned after last draw in resting state
         if (touchState == TOUCH_STATE_RESTING && centerItemOffset != 0) {
+            Log.d(TAG, "we are in resting state, but centerItemOffset is not 0, so we need to scroll to align");
             scrollBy(centerItemOffset, 0);
             postInvalidate();
         }
@@ -224,13 +224,25 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     
     @Override
     protected int getChildDrawingOrder(int childCount, int i) {
+        super.getChildDrawingOrder(childCount, i);
+    
         final int screenCenter = getWidth() / 2 + getScrollX();
         final int myCenter = getChildCenter(i);
         final int d = myCenter - screenCenter;
-        
+    
         final View v = getChildAt(i);
         final int sz = (int) (spacing * v.getWidth() / 2f);
-        
+    
+        /*
+         * This is a hack to fix issue with centerItemOffset being 1 or -1 when it should be 0
+         * This happens when we are scrolling and we are in resting state, but we are not aligned
+         * to center. This is because we are not in resting state, but we are not scrolling either.
+         * We are in between. So we need to scroll to align to center.
+         */
+        if (centerItemOffset == 1 || centerItemOffset == -1) {
+            centerItemOffset = 0;
+        }
+    
         if (reverseOrderIndex == -1 && (Math.abs(d) < sz || d >= 0)) {
             reverseOrderIndex = i;
             centerItemOffset = d;
@@ -238,7 +250,7 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
             lastCenterItemIndex = i;
             return childCount - 1;
         }
-        
+    
         if (reverseOrderIndex == -1) {
             return i;
         } else {
@@ -709,7 +721,8 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     
     @Override
     public boolean onPreDraw() {
-        if (!invalidated) { //this is hack, no idea now is possible that this works, but fixes problem where not all area was redrawn
+        // this is hack, no idea now is possible that this works, but fixes problem where not all area was redrawn
+        if (!invalidated) {
             invalidated = true;
             invalidate();
             return false;

@@ -50,6 +50,7 @@ public class Carousel extends ViewGroup {
      * Aligning in progress
      */
     protected static final int TOUCH_STATE_ALIGN = 3;
+    private static final String TAG = "Carousel";
     protected final int NO_VALUE = Integer.MIN_VALUE + 1777;
     protected final ViewCache <View> viewCache = new ViewCache <>();
     protected static final int SCROLLING_DURATION = 500;
@@ -573,7 +574,6 @@ public class Carousel extends ViewGroup {
         } else {
             return childCount - 1 - (i - reverseOrderIndex);
         }
-        
     }
     
     @Override
@@ -655,6 +655,7 @@ public class Carousel extends ViewGroup {
                 down.y = -1;
                 if (touchState == TOUCH_STATE_SCROLLING) {
                     if (checkScrollPosition()) {
+                        Log.d(TAG, "onInterceptTouchEvent: ACTION_UP: checkScrollPosition returned true, scrolling to nearest item");
                         break;
                     }
                 }
@@ -758,7 +759,6 @@ public class Carousel extends ViewGroup {
             case MotionEvent.ACTION_UP:
                 /* if we had normal down click and we haven't moved enough to initiate drag, take action as a click on down coordinates */
                 if (touchState == TOUCH_STATE_SCROLLING) {
-    
                     velocityTracker.computeCurrentVelocity(1000, maximumVelocity);
                     int initialXVelocity = (int) velocityTracker.getXVelocity();
                     int initialYVelocity = (int) velocityTracker.getYVelocity();
