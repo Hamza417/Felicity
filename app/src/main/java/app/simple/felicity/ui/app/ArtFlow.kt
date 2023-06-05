@@ -5,14 +5,12 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
 import app.simple.felicity.R
 import app.simple.felicity.adapters.SongsAdapter
 import app.simple.felicity.constants.BundleConstants
 import app.simple.felicity.databinding.FragmentArtflowBinding
 import app.simple.felicity.decorations.carousel.ArtFlowCarousel
-import app.simple.felicity.glide.utils.AudioCoverUtil.loadBlurredBackground
 import app.simple.felicity.viewmodels.ui.SongsViewModel
 import app.simple.inure.extensions.fragments.ScopedFragment
 
@@ -40,12 +38,6 @@ class ArtFlow : ScopedFragment() {
             binding?.artflow?.setOnScrollPositionListener(object : ArtFlowCarousel.OnScrollPositionListener {
                 override fun onScrolledToPosition(position: Int) {
                     Log.d("ArtFlow", "Scrolled to position: $position")
-
-                    try {
-                        println(binding?.artflow?.currentItemPosition ?: -1)
-                        binding?.art?.loadBlurredBackground(it[binding?.artflow?.currentItemPosition ?: -1].fileUri.toUri())
-                    } catch (_: java.lang.IndexOutOfBoundsException) {
-                    }
                 }
 
                 override fun onScrolling() {
