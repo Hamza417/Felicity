@@ -7,6 +7,7 @@
     <dimen name="switch_thumb_dimensions">20dp</dimen>
     <dimen name="button_size">40dp</dimen>
     <dimen name="checkbox_dimensions">40dp</dimen>
+    <dimen name="prominent_threshold">72dp</dimen>
 
     <dimen name="min_touch_target_size">48dp</dimen>
     <dimen name="popup_min_size">88dp</dimen>
@@ -33,4 +34,5 @@
     <dimen name="text_size_18">18sp</dimen>
     <dimen name="padding_25">25dp</dimen>
     <dimen name="padding_20">20dp</dimen>
+    <dimen name="carousel_spacing">16dp</dimen>
 </resources>
