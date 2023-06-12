@@ -55,7 +55,7 @@ internal class ProminentLayoutManager(
             val scaleDownAmount = (distanceToCenter / scaleDistanceThreshold).coerceAtMost(1f)
             val rotationAmountFactor = 1.8f
             val scaleAmountFactor = 1.2f
-            val minRotationAmount = 70F
+            val minRotationAmount = 60F
 
             /**
              * We'll need it to be rotate fast first but gradually slows down as it approaches the edge.
