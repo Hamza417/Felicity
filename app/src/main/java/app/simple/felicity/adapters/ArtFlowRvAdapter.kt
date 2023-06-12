@@ -8,6 +8,7 @@ import androidx.core.net.toUri
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.decorations.overscroll.HorizontalListViewHolder
+import app.simple.felicity.glide.modules.GlideApp
 import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromFileDescriptor
 import app.simple.felicity.models.Audio
 
@@ -27,5 +28,10 @@ class ArtFlowRvAdapter(private val data: ArrayList<Audio>) : RecyclerView.Adapte
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
         holder.art.loadFromFileDescriptor(data[position].fileUri.toUri())
+    }
+
+    override fun onViewRecycled(holder: Holder) {
+        super.onViewRecycled(holder)
+        GlideApp.with(holder.itemView.context).clear(holder.art)
     }
 }

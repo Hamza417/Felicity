@@ -53,12 +53,18 @@ internal class ProminentLayoutManager(
             child.isActivated = distanceToCenter < prominentThreshold
 
             val scaleDownAmount = (distanceToCenter / scaleDistanceThreshold).coerceAtMost(1f)
+            val rotationAmount = (distanceToCenter / scaleDistanceThreshold).coerceAtMost(1f)
             val scale = 1f - scaleDownBy * scaleDownAmount
-            val rotation = 0.5f * scaleDownAmount * 360f
+            val rotation = 180f * rotationAmount
 
             child.scaleX = scale
             child.scaleY = scale
-            // child.rotation = rotation
+
+            if (childCenter > containerCenter) {
+                child.rotationY = -rotation
+            } else {
+                child.rotationY = rotation
+            }
 
             val translationDirection = if (childCenter > containerCenter) -1 else 1
             val translationXFromScale = translationDirection * child.width * (1 - scale) / 2f

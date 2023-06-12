@@ -5,18 +5,19 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
-import androidx.recyclerview.widget.PagerSnapHelper
+import androidx.recyclerview.widget.LinearSnapHelper
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ArtFlowRvAdapter
 import app.simple.felicity.databinding.FragmentArtflowRvBinding
 import app.simple.felicity.decorations.itemdecorations.BoundsOffsetDecoration
+import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.layoutmanager.ProminentLayoutManager
 import app.simple.felicity.viewmodels.ui.SongsViewModel
 import app.simple.inure.extensions.fragments.ScopedFragment
 
 class ArtFlowRv : ScopedFragment() {
 
-    private lateinit var snapHelper: PagerSnapHelper
+    private lateinit var snapHelper: LinearSnapHelper
     private var layoutManager: ProminentLayoutManager? = null
     private lateinit var songsViewModel: SongsViewModel
     private lateinit var binding: FragmentArtflowRvBinding
@@ -35,7 +36,7 @@ class ArtFlowRv : ScopedFragment() {
         startPostponedEnterTransition()
 
         layoutManager = ProminentLayoutManager(requireContext(), 2.5F, 0.8F)
-        snapHelper = PagerSnapHelper()
+        snapHelper = LinearSnapHelper()
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) {
             with(binding.artFlow) {
@@ -43,7 +44,7 @@ class ArtFlowRv : ScopedFragment() {
                 layoutManager = this@ArtFlowRv.layoutManager
 
                 val spacing = resources.getDimensionPixelSize(R.dimen.carousel_spacing)
-                // addItemDecoration(LinearHorizontalSpacingDecoration(spacing))
+                addItemDecoration(LinearHorizontalSpacingDecoration(spacing))
                 addItemDecoration(BoundsOffsetDecoration())
 
                 snapHelper.attachToRecyclerView(this)
