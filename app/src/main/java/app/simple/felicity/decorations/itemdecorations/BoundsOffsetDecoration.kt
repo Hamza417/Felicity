@@ -19,6 +19,9 @@ class BoundsOffsetDecoration : RecyclerView.ItemDecoration() {
             outRect.left = offset
         } else if (itemPosition == state.itemCount - 1) {
             outRect.right = offset
+        } else {
+            outRect.left = -60
+            outRect.right = -60
         }
     }
 }
