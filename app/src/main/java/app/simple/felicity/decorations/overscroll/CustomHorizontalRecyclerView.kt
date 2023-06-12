@@ -3,6 +3,7 @@ package app.simple.felicity.decorations.overscroll
 import android.content.Context
 import android.graphics.drawable.ShapeDrawable
 import android.util.AttributeSet
+import android.view.animation.DecelerateInterpolator
 import android.view.animation.Interpolator
 import android.widget.EdgeEffect
 import androidx.recyclerview.widget.DividerItemDecoration
@@ -24,7 +25,7 @@ import kotlin.math.pow
  * Custom recycler view with nice layout animation and
  * smooth overscroll effect and various states retention
  */
-open class CustomHorizontalRecyclerView(context: Context, attrs: AttributeSet?) : ThemeRecyclerView(context, attrs) {
+open class CustomHorizontalRecyclerView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : ThemeRecyclerView(context, attrs, defStyleAttr) {
 
     // Change pow to control speed.
     // Bigger = faster. RecyclerView default is 5.
@@ -33,7 +34,7 @@ open class CustomHorizontalRecyclerView(context: Context, attrs: AttributeSet?) 
     private var interpolator: Interpolator? = null
 
     init {
-        context.theme.obtainStyledAttributes(attrs, R.styleable.RecyclerView, 0, 0).apply {
+        context.theme.obtainStyledAttributes(attrs, R.styleable.RecyclerView, defStyleAttr, 0).apply {
             try {
                 if (getBoolean(R.styleable.RecyclerView_statusBarPaddingRequired, true)) {
                     setPadding(paddingLeft, StatusBarHeight.getStatusBarHeight(resources) + paddingTop, paddingRight, paddingBottom)
@@ -150,7 +151,7 @@ open class CustomHorizontalRecyclerView(context: Context, attrs: AttributeSet?) 
     }
 
     override fun smoothScrollBy(dx: Int, dy: Int) {
-        super.smoothScrollBy(dx, dy, interpolator)
+        super.smoothScrollBy(dx, dy, DecelerateInterpolator(1.5F))
     }
 
     override fun setAdapter(adapter: Adapter<*>?) {

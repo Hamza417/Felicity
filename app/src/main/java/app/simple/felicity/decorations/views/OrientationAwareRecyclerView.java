@@ -19,6 +19,8 @@ package app.simple.felicity.decorations.views;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.Interpolator;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -86,12 +88,16 @@ public class OrientationAwareRecyclerView extends RecyclerView {
                 break;
             }
         }
-        
+    
         if (!allowScroll) {
             return false;
         }
-        
+    
         return super.onInterceptTouchEvent(e);
     }
     
+    @Override
+    public void smoothScrollBy(int dx, int dy, @Nullable Interpolator interpolator) {
+        super.smoothScrollBy(dx, dy, new DecelerateInterpolator(1.5F));
+    }
 }

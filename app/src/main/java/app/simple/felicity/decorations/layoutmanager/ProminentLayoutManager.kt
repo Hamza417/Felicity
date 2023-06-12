@@ -53,8 +53,9 @@ internal class ProminentLayoutManager(
             child.isActivated = distanceToCenter < prominentThreshold
 
             val scaleDownAmount = (distanceToCenter / scaleDistanceThreshold).coerceAtMost(1f)
-            val rotationAmountFactor = 1.5f
+            val rotationAmountFactor = 1.8f
             val scaleAmountFactor = 1.2f
+            val minRotationAmount = 70F
 
             /**
              * We'll need it to be rotate fast first but gradually slows down as it approaches the edge.
@@ -67,9 +68,9 @@ internal class ProminentLayoutManager(
             child.scaleY = scale
 
             if (childCenter > containerCenter) {
-                child.rotationY = -rotation
+                child.rotationY = if (-rotation < -minRotationAmount) -minRotationAmount else (-rotation * 1.2f).coerceAtLeast(-minRotationAmount)
             } else {
-                child.rotationY = rotation
+                child.rotationY = if (rotation > minRotationAmount) minRotationAmount else (rotation * 1.2f).coerceAtMost(minRotationAmount)
             }
 
             val translationDirection = if (childCenter > containerCenter) -1 else 1
@@ -89,6 +90,7 @@ internal class ProminentLayoutManager(
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun getExtraLayoutSpace(state: RecyclerView.State): Int {
         // Since we're scaling down items, we need to pre-load more of them offscreen.
         // The value is sort of empirical: the more we scale down, the more extra space we need.
