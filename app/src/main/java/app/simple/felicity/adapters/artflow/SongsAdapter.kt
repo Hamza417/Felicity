@@ -1,4 +1,4 @@
-package app.simple.felicity.adapters
+package app.simple.felicity.adapters.artflow
 
 import android.content.Context
 import android.view.LayoutInflater
@@ -40,7 +40,7 @@ class SongsAdapter(private val context: Context, private val audio: ArrayList<Au
         val view: View
 
         if (convertView == null) {
-            view = LayoutInflater.from(context).inflate(R.layout.adapter_songs, parent, false)
+            view = LayoutInflater.from(context).inflate(R.layout.adapter_songs_flow, parent, false)
             holder = Holder()
             holder.art = view.findViewById(R.id.album_art)
             holder.title = view.findViewById(R.id.title)

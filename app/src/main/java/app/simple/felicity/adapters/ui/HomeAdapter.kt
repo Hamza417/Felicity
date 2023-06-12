@@ -1,4 +1,4 @@
-package app.simple.felicity.adapters
+package app.simple.felicity.adapters.ui
 
 import android.view.LayoutInflater
 import android.view.View
@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
+import app.simple.felicity.adapters.artflow.ArtFlowAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.views.FelicityImageSlider

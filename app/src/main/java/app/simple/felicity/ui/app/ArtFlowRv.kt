@@ -11,7 +11,7 @@ import android.view.ViewGroup
 import androidx.core.view.doOnPreDraw
 import androidx.lifecycle.ViewModelProvider
 import app.simple.felicity.R
-import app.simple.felicity.adapters.ArtFlowRvAdapter
+import app.simple.felicity.adapters.artflow.ArtFlowRvAdapter
 import app.simple.felicity.constants.BundleConstants
 import app.simple.felicity.databinding.FragmentArtflowRvBinding
 import app.simple.felicity.decorations.helpers.GravitySnapHelper

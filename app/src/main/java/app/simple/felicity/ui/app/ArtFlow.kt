@@ -7,7 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
 import app.simple.felicity.R
-import app.simple.felicity.adapters.SongsAdapter
+import app.simple.felicity.adapters.artflow.SongsAdapter
 import app.simple.felicity.constants.BundleConstants
 import app.simple.felicity.databinding.FragmentArtflowBinding
 import app.simple.felicity.decorations.carousel.ArtFlowCarousel

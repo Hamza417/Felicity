@@ -7,7 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
-import app.simple.felicity.adapters.HomeAdapter
+import app.simple.felicity.adapters.ui.HomeAdapter
 import app.simple.felicity.databinding.FragmentHomeBinding
 import app.simple.felicity.viewmodels.ui.HomeViewModel
 import app.simple.inure.extensions.fragments.ScopedFragment

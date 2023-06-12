@@ -35,4 +35,7 @@
     <dimen name="padding_25">25dp</dimen>
     <dimen name="padding_20">20dp</dimen>
     <dimen name="carousel_spacing">16dp</dimen>
+    <dimen name="text_size_16">16sp</dimen>
+    <dimen name="text_size_14">14sp</dimen>
+    <dimen name="text_size_12">12sp</dimen>
 </resources>
