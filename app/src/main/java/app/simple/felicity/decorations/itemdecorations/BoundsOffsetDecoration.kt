@@ -6,6 +6,8 @@ import android.view.View
 import androidx.recyclerview.widget.RecyclerView
 
 class BoundsOffsetDecoration : RecyclerView.ItemDecoration() {
+
+    private val negativeOffset = -160
     override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
         super.getItemOffsets(outRect, view, parent, state)
 
@@ -25,8 +27,8 @@ class BoundsOffsetDecoration : RecyclerView.ItemDecoration() {
                 outRect.right = offset
             }
             else -> {
-                outRect.left = -60
-                outRect.right = -60
+                outRect.left = negativeOffset
+                outRect.right = negativeOffset
             }
         }
     }

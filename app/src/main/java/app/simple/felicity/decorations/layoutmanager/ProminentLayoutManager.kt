@@ -55,7 +55,7 @@ internal class ProminentLayoutManager(
             val scaleDownAmount = (distanceToCenter / scaleDistanceThreshold).coerceAtMost(1f)
             val rotationAmountFactor = 1.8f
             val scaleAmountFactor = 1.2f
-            val minRotationAmount = 60F
+            val minRotationAmount = 50F
 
             /**
              * We'll need it to be rotate fast first but gradually slows down as it approaches the edge.
@@ -68,8 +68,10 @@ internal class ProminentLayoutManager(
             child.scaleY = scale
 
             if (childCenter > containerCenter) {
+                // Rotate clockwise because it's on the right side
                 child.rotationY = if (-rotation < -minRotationAmount) -minRotationAmount else (-rotation * 1.2f).coerceAtLeast(-minRotationAmount)
             } else {
+                // Rotate counter-clockwise because it's on the left side
                 child.rotationY = if (rotation > minRotationAmount) minRotationAmount else (rotation * 1.2f).coerceAtMost(minRotationAmount)
             }
 
@@ -77,15 +79,21 @@ internal class ProminentLayoutManager(
             val translationXFromScale = translationDirection * child.width * (1 - scale) / 2f
             child.translationX = translationXFromScale + translationXForward
 
+            /**
+             * This will prevent the right items from overlapping the
+             * item in the center.
+             */
+            child.translationZ = -abs(translationXFromScale * 2)
+
             translationXForward = 0f
 
             if (translationXFromScale > 0 && i >= 1) {
                 // Edit previous child
-                getChildAt(i - 1)!!.translationX += 2 * translationXFromScale
+                getChildAt(i - 1)!!.translationX += 1 * translationXFromScale
 
             } else if (translationXFromScale < 0) {
                 // Pass on to next child
-                translationXForward = 2 * translationXFromScale
+                translationXForward = 1 * translationXFromScale
             }
         }
     }
