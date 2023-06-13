@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.doOnPreDraw
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.artflow.ArtFlowRvAdapter
 import app.simple.felicity.constants.BundleConstants
@@ -56,6 +57,18 @@ class ArtFlowRv : ScopedFragment() {
                     binding.title.text = it[position].title
                     binding.artist.text = it[position].artist
                 }
+
+                addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                        if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                            binding.title.visibility = View.VISIBLE
+                            binding.artist.visibility = View.VISIBLE
+                        } else {
+                            binding.title.visibility = View.INVISIBLE
+                            binding.artist.visibility = View.INVISIBLE
+                        }
+                    }
+                })
 
                 snapHelper.attachToRecyclerView(this)
 
