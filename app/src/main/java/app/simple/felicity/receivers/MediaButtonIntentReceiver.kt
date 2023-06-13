@@ -36,9 +36,9 @@ class MediaButtonIntentReceiver : BroadcastReceiver() {
         val tag: String = MediaButtonIntentReceiver::class.java.simpleName
         private const val MSG_HEADSET_DOUBLE_CLICK_TIMEOUT = 2
         private const val DOUBLE_CLICK = 400
-        private var mWakeLock: PowerManager.WakeLock? = null
-        private var mClickCounter = 0
-        private var mLastClickTime: Long = 0
+        private var wakeLock: PowerManager.WakeLock? = null
+        private var clickCounter = 0
+        private var lastClickTime: Long = 0
 
         @SuppressLint("HandlerLeak") // false alarm, handler is already static
         private val mHandler: Handler = object : Handler(Looper.getMainLooper()) {
@@ -48,7 +48,7 @@ class MediaButtonIntentReceiver : BroadcastReceiver() {
                         val clickCount: Int = msg.arg1
                         if (DEBUG) Log.v(tag, "Handling headset click, count = $clickCount")
                         val command: String? = when (clickCount) {
-                            1 -> ServiceConstants.actionTogglePausePager
+                            1 -> ServiceConstants.actionTogglePause
                             else -> null
                         }
                         if (command != null) {
@@ -72,12 +72,12 @@ class MediaButtonIntentReceiver : BroadcastReceiver() {
                 // Fallback to system time if event time was not available.
                 var command: String? = null
                 when (keycode) {
-                    KeyEvent.KEYCODE_MEDIA_STOP -> command = ServiceConstants.actionStopPager
-                    KeyEvent.KEYCODE_HEADSETHOOK, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> command = ServiceConstants.actionTogglePausePager
-                    KeyEvent.KEYCODE_MEDIA_NEXT -> command = ServiceConstants.actionSkipPager
-                    KeyEvent.KEYCODE_MEDIA_PREVIOUS -> command = ServiceConstants.actionRewindPager
-                    KeyEvent.KEYCODE_MEDIA_PAUSE -> command = ServiceConstants.actionPausePager
-                    KeyEvent.KEYCODE_MEDIA_PLAY -> command = ServiceConstants.actionPlayPager
+                    KeyEvent.KEYCODE_MEDIA_STOP -> command = ServiceConstants.actionStop
+                    KeyEvent.KEYCODE_HEADSETHOOK, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> command = ServiceConstants.actionTogglePause
+                    KeyEvent.KEYCODE_MEDIA_NEXT -> command = ServiceConstants.actionSkip
+                    KeyEvent.KEYCODE_MEDIA_PREVIOUS -> command = ServiceConstants.actionRewind
+                    KeyEvent.KEYCODE_MEDIA_PAUSE -> command = ServiceConstants.actionPause
+                    KeyEvent.KEYCODE_MEDIA_PLAY -> command = ServiceConstants.actionPlay
                 }
                 if (command != null) {
                     if (action == KeyEvent.ACTION_DOWN) {
@@ -90,19 +90,19 @@ class MediaButtonIntentReceiver : BroadcastReceiver() {
                             // The service may or may not be running, but we need to send it
                             // a command.
                             if (keycode == KeyEvent.KEYCODE_HEADSETHOOK || keycode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) {
-                                if (eventTime - mLastClickTime >= DOUBLE_CLICK) {
-                                    mClickCounter = 0
+                                if (eventTime - lastClickTime >= DOUBLE_CLICK) {
+                                    clickCounter = 0
                                 }
-                                mClickCounter++
-                                if (DEBUG) Log.v(tag, "Got headset click, count = $mClickCounter")
+                                clickCounter++
+                                if (DEBUG) Log.v(tag, "Got headset click, count = $clickCounter")
                                 mHandler.removeMessages(MSG_HEADSET_DOUBLE_CLICK_TIMEOUT)
                                 val msg: Message = mHandler.obtainMessage(
-                                        MSG_HEADSET_DOUBLE_CLICK_TIMEOUT, mClickCounter, 0, context)
-                                val delay = if (mClickCounter < 3) DOUBLE_CLICK.toLong() else 0.toLong()
-                                if (mClickCounter >= 3) {
-                                    mClickCounter = 0
+                                        MSG_HEADSET_DOUBLE_CLICK_TIMEOUT, clickCounter, 0, context)
+                                val delay = if (clickCounter < 3) DOUBLE_CLICK.toLong() else 0.toLong()
+                                if (clickCounter >= 3) {
+                                    clickCounter = 0
                                 }
-                                mLastClickTime = eventTime
+                                lastClickTime = eventTime
                                 acquireWakeLockAndSendMessage(context, msg, delay)
                             } else {
                                 startService(context, command)
@@ -132,15 +132,15 @@ class MediaButtonIntentReceiver : BroadcastReceiver() {
         }
 
         private fun acquireWakeLockAndSendMessage(context: Context, msg: Message, delay: Long) {
-            if (mWakeLock == null) {
+            if (wakeLock == null) {
                 val appContext: Context = context.applicationContext
                 val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
-                mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "felicit:headset_button")
-                mWakeLock?.setReferenceCounted(false)
+                wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "felicity:headset_button")
+                wakeLock?.setReferenceCounted(false)
             }
             if (DEBUG) Log.v(tag, "Acquiring wake lock and sending " + msg.what)
             // Make sure we don't indefinitely hold the wake lock under any circumstances
-            mWakeLock!!.acquire(10000)
+            wakeLock!!.acquire(10000)
             mHandler.sendMessageDelayed(msg, delay)
         }
 
@@ -149,10 +149,10 @@ class MediaButtonIntentReceiver : BroadcastReceiver() {
                 if (DEBUG) Log.v(tag, "Handler still has messages pending, not releasing wake lock")
                 return
             }
-            if (mWakeLock != null) {
+            if (wakeLock != null) {
                 if (DEBUG) Log.v(tag, "Releasing wake lock")
-                mWakeLock!!.release()
-                mWakeLock = null
+                wakeLock!!.release()
+                wakeLock = null
             }
         }
     }
