@@ -12,8 +12,7 @@
         android:background="@android:color/transparent"
         app:snapGravity="center"
         android:layout_gravity="center_vertical"
-        app:snapScrollMsPerInch="20"
-        app:statusBarPaddingRequired="false" />
+        app:snapScrollMsPerInch="20" />
 
     <LinearLayout
         android:layout_width="match_parent"

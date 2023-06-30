@@ -68,7 +68,7 @@ class AudioService : Service(),
     private val intVolumeMin = 0
     private val floatVolumeMax = 1f
     private val floatVolumeMin = 0f
-    private val channelId = "inure_mini_player_ia"
+    private val channelId = "felicity_service"
     private val notificationId = 54786214
 
     private var wasPlaying = false

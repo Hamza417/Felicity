@@ -79,13 +79,46 @@
         <attr name="isLrcIndicatorTextBold" format="boolean" />
     </declare-styleable>
 
+    <attr name="statusPaddingRequired" format="boolean" />
+    <attr name="navigationPaddingRequired" format="boolean" />
+
     <declare-styleable name="RecyclerView">
-        <attr name="statusBarPaddingRequired" format="boolean" />
         <attr name="manuallyAnimated" format="boolean" />
         <attr name="isFastScrollRequired" format="boolean" />
         <attr name="isEdgeColorRequired" format="boolean" />
         <attr name="isFadingEdgeRequired" format="boolean" />
-        <attr name="isTopFadingEdgeOnly" format="boolean" />
+        <attr name="statusPaddingRequired" />
+        <attr name="navigationPaddingRequired" />
+    </declare-styleable>
+
+    <declare-styleable name="PaddingAwareFrameLayout">
+        <attr name="statusPaddingRequired" />
+        <attr name="navigationPaddingRequired" />
+    </declare-styleable>
+
+    <declare-styleable name="PaddingAwareLinearLayout">
+        <attr name="statusPaddingRequired" />
+        <attr name="navigationPaddingRequired" />
+    </declare-styleable>
+
+    <declare-styleable name="PaddingAwareRelativeLayout">
+        <attr name="statusPaddingRequired" />
+        <attr name="navigationPaddingRequired" />
+    </declare-styleable>
+
+    <declare-styleable name="PaddingAwareConstraintLayout">
+        <attr name="statusPaddingRequired" />
+        <attr name="navigationPaddingRequired" />
+    </declare-styleable>
+
+    <declare-styleable name="PaddingAwareCoordinatorLayout">
+        <attr name="statusPaddingRequired" />
+        <attr name="navigationPaddingRequired" />
+    </declare-styleable>
+
+    <declare-styleable name="PaddingAwareNestedScrollView">
+        <attr name="statusPaddingRequired" />
+        <attr name="navigationPaddingRequired" />
     </declare-styleable>
 
     <declare-styleable name="FeatureCoverFlow">

@@ -5,7 +5,6 @@ import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.StrictMode
-import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
@@ -40,6 +39,7 @@ open class BaseActivity : AppCompatActivity() {
 
     private fun makeAppFullScreen() {
         window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -86,15 +86,16 @@ open class BaseActivity : AppCompatActivity() {
         }
     }
 
-    override fun setContentView(view: View?) {
-        super.setContentView(view)
-        fixNavigationBarOverlap()
-    }
-
     private fun setStrictModePolicy() {
         StrictMode.setVmPolicy(
                 StrictMode.VmPolicy.Builder()
                     .detectAll()
                     .build())
+    }
+
+    companion object {
+        const val TAG = "BaseActivity"
+        var statusBarHeight = 0
+        var navigationBarHeight = 0
     }
 }

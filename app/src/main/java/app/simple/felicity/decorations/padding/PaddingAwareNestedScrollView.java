@@ -2,36 +2,40 @@ package app.simple.felicity.decorations.padding;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.TypedArray;
 import android.util.AttributeSet;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import app.simple.felicity.R;
 import app.simple.felicity.decorations.fastscroll.FastScrollNestedScrollView;
-import app.simple.felicity.utils.StatusBarHeight;
 
 public class PaddingAwareNestedScrollView extends FastScrollNestedScrollView implements SharedPreferences.OnSharedPreferenceChangeListener {
+    
+    private boolean statusPaddingRequired = true;
+    private boolean navigationPaddingRequired = true;
+    
     public PaddingAwareNestedScrollView(@NonNull Context context) {
         super(context);
-        init();
+        init(null);
     }
     
     public PaddingAwareNestedScrollView(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
-        init();
+        init(attrs);
     }
     
-    private void init() {
+    private void init(AttributeSet attrs) {
+        try (TypedArray typedArray = getContext().obtainStyledAttributes(attrs, R.styleable.PaddingAwareNestedScrollView)) {
+            statusPaddingRequired = typedArray.getBoolean(R.styleable.PaddingAwareNestedScrollView_statusPaddingRequired, true);
+            navigationPaddingRequired = typedArray.getBoolean(R.styleable.PaddingAwareNestedScrollView_navigationPaddingRequired, true);
+            
+            Utils.applySystemBarPadding(this, statusPaddingRequired, navigationPaddingRequired);
+        }
+        
         if (isInEditMode()) {
             return;
         }
-        updatePadding();
-    }
-    
-    private void updatePadding() {
-        setPadding(getPaddingLeft(),
-                StatusBarHeight.getStatusBarHeight(getResources()) + getPaddingTop(),
-                getPaddingRight(),
-                getPaddingBottom());
     }
     
     @Override

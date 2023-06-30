@@ -22,7 +22,6 @@
         app:rotationThreshold="0.3"
         app:shouldRepeat="false"
         app:spacing="0.5"
-        app:statusBarPaddingRequired="true"
         tools:ignore="MissingDefaultResource" />
 
     <LinearLayout

@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     tools:parentTag="android.widget.FrameLayout">
 
-    <app.simple.felicity.decorations.theme.ThemeCoordinatorLayout
+    <app.simple.felicity.decorations.padding.PaddingAwareFrameLayout
         android:id="@+id/app_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -155,6 +155,6 @@
 
             </app.simple.felicity.decorations.theme.ThemeLinearLayout>
         </app.simple.felicity.decorations.theme.ThemeLinearLayout>
-    </app.simple.felicity.decorations.theme.ThemeCoordinatorLayout>
+    </app.simple.felicity.decorations.padding.PaddingAwareFrameLayout>
 </merge>
 

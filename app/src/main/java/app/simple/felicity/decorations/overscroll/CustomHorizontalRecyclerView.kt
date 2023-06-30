@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
+import app.simple.felicity.decorations.padding.Utils
 import app.simple.felicity.decorations.theme.ThemeRecyclerView
 import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.theme.managers.ThemeManager
@@ -32,13 +33,16 @@ open class CustomHorizontalRecyclerView(context: Context, attrs: AttributeSet?, 
     private val POW = 1.0
     private var isLandscape = false
     private var interpolator: Interpolator? = null
+    private var statusBarPaddingRequired = true
+    private var navigationBarPaddingRequired = true
 
     init {
         context.theme.obtainStyledAttributes(attrs, R.styleable.RecyclerView, defStyleAttr, 0).apply {
             try {
-                if (getBoolean(R.styleable.RecyclerView_statusBarPaddingRequired, true)) {
-                    setPadding(paddingLeft, StatusBarHeight.getStatusBarHeight(resources) + paddingTop, paddingRight, paddingBottom)
-                }
+                statusBarPaddingRequired = getBoolean(R.styleable.RecyclerView_statusPaddingRequired, true)
+                navigationBarPaddingRequired = getBoolean(R.styleable.RecyclerView_navigationPaddingRequired, true)
+
+                Utils.applySystemBarPadding(this@CustomHorizontalRecyclerView, statusBarPaddingRequired, navigationBarPaddingRequired)
 
                 isLandscape = StatusBarHeight.isLandscape(context)
 

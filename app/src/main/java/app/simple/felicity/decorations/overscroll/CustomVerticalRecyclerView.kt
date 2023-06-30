@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.SimpleItemAnimator
 import app.simple.felicity.R
 import app.simple.felicity.decorations.fastscroll.FastScrollerBuilder
 import app.simple.felicity.decorations.itemdecorations.DividerItemDecoration
+import app.simple.felicity.decorations.padding.Utils
 import app.simple.felicity.decorations.theme.ThemeRecyclerView
 import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AppearancePreferences
@@ -34,14 +35,13 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
     private var fastScroll = true
     private var isEdgeColorRequired = true
     private var isFastScrollerAdded = false
-    private var isTopFadingEdge = true
+    private var statusBarPaddingRequired = true
+    private var navigationBarPaddingRequired = true
 
     private var dividerItemDecoration: DividerItemDecoration? = null
     private var fastScrollerBuilder: FastScrollerBuilder? = null
 
     private var edgeColor = 0
-
-    var parentViewTag: String? = null
 
     init {
         if (isInEditMode.invert()) {
@@ -49,20 +49,19 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
                 try {
                     edgeColor = ThemeManager.accent.primaryAccentColor
 
-                    if (getBoolean(R.styleable.RecyclerView_statusBarPaddingRequired, true)) {
-                        setPadding(paddingLeft, StatusBarHeight.getStatusBarHeight(resources) + paddingTop, paddingRight, paddingBottom)
-                    }
-
                     if (getBoolean(R.styleable.RecyclerView_isFadingEdgeRequired, false)) {
                         isVerticalFadingEdgeEnabled = true
                         setFadingEdgeLength(StatusBarHeight.getStatusBarHeight(resources) + paddingTop)
                     }
 
-                    isTopFadingEdge = getBoolean(R.styleable.RecyclerView_isTopFadingEdgeOnly, true)
-
                     fastScroll = getBoolean(R.styleable.RecyclerView_isFastScrollRequired, true)
                     manuallyAnimated = getBoolean(R.styleable.RecyclerView_manuallyAnimated, false)
                     isEdgeColorRequired = getBoolean(R.styleable.RecyclerView_isEdgeColorRequired, true)
+
+                    statusBarPaddingRequired = getBoolean(R.styleable.RecyclerView_statusPaddingRequired, true)
+                    navigationBarPaddingRequired = getBoolean(R.styleable.RecyclerView_navigationPaddingRequired, true)
+
+                    Utils.applySystemBarPadding(this@CustomVerticalRecyclerView, statusBarPaddingRequired, navigationBarPaddingRequired)
 
                     if (AccessibilityPreferences.isAnimationReduced()) {
                         layoutAnimation = null
@@ -232,23 +231,27 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
     }
 
     override fun isPaddingOffsetRequired(): Boolean {
-        return isTopFadingEdge
+        return statusBarPaddingRequired || navigationBarPaddingRequired
     }
 
     override fun getTopPaddingOffset(): Int {
-        return -paddingTop
+        return if (statusBarPaddingRequired) {
+            -paddingTop
+        } else {
+            0
+        }
     }
 
     override fun getBottomPaddingOffset(): Int {
-        return paddingBottom
+        return if (navigationBarPaddingRequired) {
+            paddingBottom
+        } else {
+            0
+        }
     }
 
     override fun getBottomFadingEdgeStrength(): Float {
-        return if (isTopFadingEdge) {
-            0f
-        } else {
-            super.getBottomFadingEdgeStrength()
-        }
+        return super.getBottomFadingEdgeStrength()
     }
 
     /**
