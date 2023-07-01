@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -15,7 +16,10 @@ import android.view.WindowInsetsAnimation
 import androidx.annotation.IntegerRes
 import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
+import androidx.transition.ArcMotion
+import androidx.transition.Fade
 import app.simple.felicity.R
+import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.utils.ConditionUtils.isNotNull
@@ -136,6 +140,96 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
             }
             transaction.commitAllowingStateLoss()
         }
+    }
+
+    /**
+     * Open fragment using arc animation for shared element
+     *
+     * If the fragment does not need to be pushed into backstack
+     * leave the [tag] unattended
+     *
+     * @param fragment [ScopedFragment]
+     * @param icon [View] that needs to be animated
+     * @param tag back stack tag for fragment
+     */
+    protected fun openFragmentArc(fragment: ScopedFragment, icon: View, tag: String? = null, duration: Long? = null) {
+        fragment.setArcTransitions(duration ?: resources.getInteger(R.integer.animation_duration).toLong())
+
+        //        try {
+        //            (fragment.exitTransition as TransitionSet?)?.excludeTarget(icon, true)
+        //        } catch (e: java.lang.ClassCastException) {
+        //            (fragment.exitTransition as MaterialContainerTransform?)?.excludeTarget(icon, true)
+        //        }
+
+        try {
+            val transaction = requireActivity().supportFragmentManager.beginTransaction().apply {
+                setReorderingAllowed(true)
+                addSharedElement(icon, icon.transitionName)
+                replace(R.id.app_container, fragment, tag)
+                if (tag.isNotNull()) {
+                    addToBackStack(tag)
+                }
+            }
+
+            transaction.commit()
+        } catch (e: IllegalStateException) {
+            val transaction = requireActivity().supportFragmentManager.beginTransaction().apply {
+                setReorderingAllowed(true)
+                addSharedElement(icon, icon.transitionName)
+                replace(R.id.app_container, fragment, tag)
+                if (tag.isNotNull()) {
+                    addToBackStack(tag)
+                }
+            }
+
+            transaction.commitAllowingStateLoss()
+        }
+    }
+
+    open fun setArcTransitions(duration: Long) {
+        setTransitions()
+
+        if (BehaviourPreferences.isArcAnimationOn()) {
+            sharedElementEnterTransition = MaterialContainerTransform().apply {
+                setDuration(duration)
+                setAllContainerColors(Color.TRANSPARENT)
+                scrimColor = Color.TRANSPARENT
+                setPathMotion(ArcMotion().apply {
+                    maximumAngle = this.maximumAngle
+                    minimumHorizontalAngle = this.minimumHorizontalAngle
+                    minimumVerticalAngle = this.minimumVerticalAngle
+                })
+            }
+            sharedElementReturnTransition = MaterialContainerTransform().apply {
+                setDuration(duration)
+                setAllContainerColors(Color.TRANSPARENT)
+                scrimColor = Color.TRANSPARENT
+                setPathMotion(ArcMotion().apply {
+                    maximumAngle = this.maximumAngle
+                    minimumHorizontalAngle = this.minimumHorizontalAngle
+                    minimumVerticalAngle = this.minimumVerticalAngle
+                })
+            }
+        }
+    }
+
+    /**
+     * Sets fragment transitions prior to creating a new fragment.
+     * Used with shared elements
+     */
+    open fun setTransitions() {
+        allowEnterTransitionOverlap = true
+        allowReturnTransitionOverlap = true
+
+        /**
+         * Animations are expensive, every time a view is added into the
+         * animating view transaction time will increase a little
+         * making the interaction a little bit slow.
+         */
+        exitTransition = Fade()
+        enterTransition = Fade()
+        returnTransition = Fade()
+        reenterTransition = Fade()
     }
 
     /**

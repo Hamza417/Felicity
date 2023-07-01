@@ -1,6 +1,7 @@
 package app.simple.felicity.adapters.ui
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.core.net.toUri
 import androidx.recyclerview.widget.RecyclerView
@@ -11,7 +12,7 @@ import app.simple.felicity.models.Audio
 
 class SongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Adapter<SongsAdapter.Holder>() {
 
-    var onItemClickListener: ((Audio, Int) -> Unit)? = null
+    var onItemClickListener: ((Audio, Int, View) -> Unit)? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         val binding = AdapterSongsBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -26,9 +27,10 @@ class SongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Adapter<S
         return audio.size
     }
 
-    inner class Holder(private val binding: AdapterSongsBinding) : VerticalListViewHolder(binding.root) {
+    inner class Holder(val binding: AdapterSongsBinding) : VerticalListViewHolder(binding.root) {
         fun bind(audio: Audio) {
             binding.apply {
+                albumArt.transitionName = audio.fileUri
                 title.text = audio.title
                 artist.text = audio.artist
                 details.text = audio.album
@@ -36,7 +38,7 @@ class SongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Adapter<S
             }
 
             binding.root.setOnClickListener {
-                onItemClickListener?.invoke(audio, bindingAdapterPosition)
+                onItemClickListener?.invoke(audio, bindingAdapterPosition, binding.albumArt)
             }
         }
     }

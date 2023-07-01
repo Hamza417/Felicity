@@ -6,7 +6,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.core.app.SharedElementCallback
+import androidx.core.view.get
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.DefaultPlayerAdapter
@@ -32,12 +35,38 @@ class DefaultPlayer : PlayerFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        startPostponedEnterTransition()
+
+        setEnterSharedElementCallback(object : SharedElementCallback() {
+            override fun onMapSharedElements(names: List<String>, sharedElements: MutableMap<String, View>) {
+                // Locate the ViewHolder for the clicked position.
+                val selectedViewHolder = (binding.artSlider[0] as RecyclerView)
+                    .findViewHolderForAdapterPosition(MusicPreferences.getMusicPosition())
+                if (selectedViewHolder is DefaultPlayerAdapter.Holder) {
+                    // Map the first shared element name to the child ImageView.
+                    sharedElements[names[0]] = selectedViewHolder.binding.art
+                }
+            }
+        })
+
+        postponeEnterTransition()
 
         playerViewModel.getSongs().observe(viewLifecycleOwner) { list ->
             audios = list
             binding.artSlider.adapter = DefaultPlayerAdapter(list)
             binding.artSlider.setCurrentItem(MusicPreferences.getMusicPosition(), false)
+
+            /**
+             * This will break the transition for some reason, start the animation without
+             * any callback
+             */
+            //                (view.parent as? ViewGroup)?.doOnPreDraw {
+            //                    startPostponedEnterTransition()
+            //                }
+
+            /**
+             * Like this, it works fine here
+             */
+            startPostponedEnterTransition()
             setMetaData(binding.artSlider.currentItem)
 
             binding.artSlider.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {

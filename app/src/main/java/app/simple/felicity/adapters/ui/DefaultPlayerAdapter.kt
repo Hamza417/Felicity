@@ -10,9 +10,10 @@ import app.simple.felicity.models.Audio
 
 class DefaultPlayerAdapter(private val data: ArrayList<Audio>) : RecyclerView.Adapter<DefaultPlayerAdapter.Holder>() {
 
-    inner class Holder(private val binding: AdapterPlayerSliderBinding) : RecyclerView.ViewHolder(binding.root) {
+    inner class Holder(val binding: AdapterPlayerSliderBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(audio: Audio) {
             binding.apply {
+                art.transitionName = audio.fileUri
                 art.loadFromFileDescriptorFullScreen(audio.fileUri.toUri())
             }
         }

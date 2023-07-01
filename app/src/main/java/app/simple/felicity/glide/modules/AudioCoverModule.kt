@@ -32,7 +32,7 @@ class AudioCoverModule : AppGlideModule() {
         val requestOptions = RequestOptions()
 
         requestOptions.format(DecodeFormat.PREFER_ARGB_8888)
-        requestOptions.diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+        requestOptions.diskCacheStrategy(DiskCacheStrategy.NONE)
         requestOptions.fallback(R.drawable.ic_felicity)
         requestOptions.error(R.drawable.ic_felicity)
 
