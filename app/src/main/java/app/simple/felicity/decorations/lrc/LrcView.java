@@ -131,7 +131,6 @@ public class LrcView extends View {
             mPlayDrawable = mPlayDrawable == null ? ContextCompat.getDrawable(context, R.drawable.ic_play) : mPlayDrawable;
             isCurrentTextBold = typedArray.getBoolean(R.styleable.LrcView_isLrcCurrentTextBold, true);
             isLrcIndicatorTextBold = typedArray.getBoolean(R.styleable.LrcView_isLrcIndicatorTextBold, false);
-            typedArray.recycle();
             
             setupConfigs(context);
         }

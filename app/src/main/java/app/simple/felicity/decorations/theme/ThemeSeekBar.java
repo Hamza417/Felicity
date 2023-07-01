@@ -19,12 +19,11 @@ import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.animation.DecelerateInterpolator;
 
+import java.util.Objects;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatSeekBar;
-
-import java.util.Objects;
-
 import app.simple.felicity.R;
 import app.simple.felicity.interfaces.ThemeChangedListener;
 import app.simple.felicity.preferences.AppearancePreferences;
@@ -32,6 +31,7 @@ import app.simple.felicity.preferences.BehaviourPreferences;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.themes.Theme;
 import app.simple.felicity.utils.ColorUtils;
+import top.defaults.drawabletoolbox.DrawableBuilder;
 
 // TODO - make a custom seekbar
 public class ThemeSeekBar extends AppCompatSeekBar implements ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
@@ -85,18 +85,18 @@ public class ThemeSeekBar extends AppCompatSeekBar implements ThemeChangedListen
     }
 
     private void setThumb(float cornerRadius) {
-//        if (!isInEditMode()) {
-//            setThumb(new DrawableBuilder()
-//                    .rectangle()
-//                    .cornerRadius((int) cornerRadius)
-//                    .width(getResources().getDimensionPixelOffset(R.dimen.seekbar_thumb_size))
-//                    .height(getResources().getDimensionPixelOffset(R.dimen.seekbar_thumb_size))
-//                    .ripple(false)
-//                    .strokeColor(AppearancePreferences.INSTANCE.getAccentColor())
-//                    .strokeWidth(getResources().getDimensionPixelOffset(R.dimen.seekbar_stroke_size))
-//                    .solidColor(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getBackground())
-//                    .build());
-//        }
+        if (!isInEditMode()) {
+            setThumb(new DrawableBuilder()
+                    .rectangle()
+                    .cornerRadius((int) cornerRadius)
+                    .width(getResources().getDimensionPixelOffset(R.dimen.seekbar_thumb_size))
+                    .height(getResources().getDimensionPixelOffset(R.dimen.seekbar_thumb_size))
+                    .ripple(false)
+                    .strokeColor(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor())
+                    .strokeWidth(getResources().getDimensionPixelOffset(R.dimen.seekbar_stroke_size))
+                    .solidColor(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getBackgroundColor())
+                    .build());
+        }
     }
 
     @SuppressWarnings("unused")
@@ -111,13 +111,13 @@ public class ThemeSeekBar extends AppCompatSeekBar implements ThemeChangedListen
         shape.getPaint().setStyle(Paint.Style.STROKE);
         shape.getPaint().setStrokeWidth(4);
         shape.getPaint().setStrokeCap(Paint.Cap.ROUND);
-        shape.getPaint().setShadowLayer(shadowRadius, 0, dY, ColorUtils.INSTANCE.changeAlpha(AppearancePreferences.INSTANCE.getAccentColor(), 216));
+        shape.getPaint().setShadowLayer(shadowRadius, 0, dY, ColorUtils.INSTANCE.changeAlpha(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(), 216));
         shape.getPaint().setColor(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getDividerColor());
 
         ShapeDrawable shapeD = new ShapeDrawable();
         shapeD.getPaint().setStyle(Paint.Style.FILL);
-        shapeD.getPaint().setColor(AppearancePreferences.INSTANCE.getAccentColor());
-        shapeD.setShape(new RoundRectShape(new float[]{r, r, r, r, r, r, r, r}, null, null));
+        shapeD.getPaint().setColor(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
+        shapeD.setShape(new RoundRectShape(new float[] {r, r, r, r, r, r, r, r}, null, null));
         ClipDrawable progress = new ClipDrawable(shapeD, Gravity.START, ClipDrawable.HORIZONTAL);
 
         ShapeDrawable secondary = new ShapeDrawable();
@@ -126,7 +126,7 @@ public class ThemeSeekBar extends AppCompatSeekBar implements ThemeChangedListen
         secondary.getPaint().setStyle(Paint.Style.STROKE);
         secondary.getPaint().setStrokeWidth(4);
         secondary.getPaint().setStrokeCap(Paint.Cap.ROUND);
-        secondary.getPaint().setShadowLayer(shadowRadius, 0, dY, ColorUtils.INSTANCE.changeAlpha(AppearancePreferences.INSTANCE.getAccentColor(), 216));
+        secondary.getPaint().setShadowLayer(shadowRadius, 0, dY, ColorUtils.INSTANCE.changeAlpha(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(), 216));
         secondary.getPaint().setColor(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getDividerColor());
         ClipDrawable secondaryProgress = new ClipDrawable(secondary, Gravity.START, ClipDrawable.HORIZONTAL);
 
@@ -162,7 +162,7 @@ public class ThemeSeekBar extends AppCompatSeekBar implements ThemeChangedListen
 
         if (!isInEditMode()) {
             if (BehaviourPreferences.INSTANCE.areColoredShadowsOn()) {
-                backgroundShape.getPaint().setShadowLayer(shadowRadius, 0, dY, ColorUtils.INSTANCE.changeAlpha(AppearancePreferences.INSTANCE.getAccentColor(), 232));
+                backgroundShape.getPaint().setShadowLayer(shadowRadius, 0, dY, ColorUtils.INSTANCE.changeAlpha(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(), 232));
             } else {
                 backgroundShape.getPaint().setShadowLayer(shadowRadius, 0, dY, ColorUtils.INSTANCE.changeAlpha(Color.GRAY, 216));
             }
@@ -184,17 +184,17 @@ public class ThemeSeekBar extends AppCompatSeekBar implements ThemeChangedListen
         backgroundClip.setLevel(10000);
 
         //SecondaryProgress
-        GradientDrawable fg2GradDrawable = new GradientDrawable(fgGradDirection, new int[]{
-                ColorUtils.INSTANCE.changeAlpha(AppearancePreferences.INSTANCE.getAccentColor(), 96),
-                ColorUtils.INSTANCE.changeAlpha(AppearancePreferences.INSTANCE.getAccentColor(), 96)});
+        GradientDrawable fg2GradDrawable = new GradientDrawable(fgGradDirection, new int[] {
+                ColorUtils.INSTANCE.changeAlpha(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(), 96),
+                ColorUtils.INSTANCE.changeAlpha(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(), 96)});
         fg2GradDrawable.setShape(GradientDrawable.RECTANGLE);
         fg2GradDrawable.setCornerRadius(cornerRadius / divideFactor);
         ClipDrawable fg2clip = new ClipDrawable(fg2GradDrawable, Gravity.START, ClipDrawable.HORIZONTAL);
 
         //Progress
-        GradientDrawable fg1GradDrawable = new GradientDrawable(fgGradDirection, new int[]{
-                AppearancePreferences.INSTANCE.getAccentColor(),
-                AppearancePreferences.INSTANCE.getAccentColor()});
+        GradientDrawable fg1GradDrawable = new GradientDrawable(fgGradDirection, new int[] {
+                ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(),
+                ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor()});
         fg1GradDrawable.setShape(GradientDrawable.RECTANGLE);
         fg1GradDrawable.setCornerRadius(cornerRadius / divideFactor);
         ClipDrawable fg1clip = new ClipDrawable(fg1GradDrawable, Gravity.START, ClipDrawable.HORIZONTAL);

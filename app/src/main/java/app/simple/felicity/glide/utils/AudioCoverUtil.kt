@@ -68,7 +68,9 @@ object AudioCoverUtil {
             .addListener(object : RequestListener<Bitmap> {
                 override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Bitmap>?, isFirstResource: Boolean): Boolean {
                     this@loadFromFileDescriptorFullScreen.setImageResource(R.drawable.ic_felicity).also {
-                        (this@loadFromFileDescriptorFullScreen.drawable as AnimatedVectorDrawable).start()
+                        kotlin.runCatching {
+                            (this@loadFromFileDescriptorFullScreen.drawable as AnimatedVectorDrawable).start()
+                        }
                     }
                     return true
                 }

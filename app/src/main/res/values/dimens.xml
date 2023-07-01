@@ -8,6 +8,8 @@
     <dimen name="button_size">40dp</dimen>
     <dimen name="checkbox_dimensions">40dp</dimen>
     <dimen name="prominent_threshold">72dp</dimen>
+    <dimen name="seekbar_thumb_size">35dp</dimen>
+    <dimen name="seekbar_stroke_size">6dp</dimen>
 
     <dimen name="min_touch_target_size">48dp</dimen>
     <dimen name="popup_min_size">88dp</dimen>
@@ -38,4 +40,7 @@
     <dimen name="text_size_16">16sp</dimen>
     <dimen name="text_size_14">14sp</dimen>
     <dimen name="text_size_12">12sp</dimen>
+    <dimen name="gap">1dp</dimen>
+    <dimen name="text_size_22">22sp</dimen>
+    <dimen name="loader_size">40dp</dimen>
 </resources>

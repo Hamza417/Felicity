@@ -127,15 +127,6 @@ class AudioService : Service(),
             }
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
-            audioModels = MediaLoader.getCurrentMediaList(
-                    MusicPreferences.getMediaMusicCategory(), applicationContext)!!.toArrayList()
-
-            withContext(Dispatchers.Main) {
-                startService()
-            }
-        }
-
         return START_REDELIVER_INTENT
     }
 
@@ -156,11 +147,6 @@ class AudioService : Service(),
             .build()
 
         registerReceiver(becomingNoisyReceiver, audioBecomingNoisyFilter)
-    }
-
-    private fun startService() {
-        currentPosition = MusicPreferences.getMusicPosition()
-        setCurrentPosition(currentPosition)
     }
 
     override fun onAudioFocusChange(focusChange: Int) {
@@ -350,10 +336,8 @@ class AudioService : Service(),
     }
 
     private fun requestAudioFocus(): Boolean {
-        val value: Int
-        value = audioManager?.requestAudioFocus(focusRequest!!)!!
-
-        return value == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        return audioManager?.requestAudioFocus(focusRequest!!)!! ==
+                AudioManager.AUDIOFOCUS_REQUEST_GRANTED
     }
 
     private fun removeAudioFocus() {
@@ -387,11 +371,18 @@ class AudioService : Service(),
     }
 
     fun setCurrentPosition(currentPosition: Int) {
-        if (this.currentPosition != currentPosition || audioModels!![currentPosition].id != MusicPreferences.getLastMusicId()) {
-            this.currentPosition = currentPosition
-            initAudioPlayer()
-        } else {
-            setupMetadata()
+        CoroutineScope(Dispatchers.IO).launch {
+            audioModels = MediaLoader.getCurrentMediaList(
+                    MusicPreferences.getMediaMusicCategory(), applicationContext)!!.toArrayList()
+
+            withContext(Dispatchers.Main) {
+                if (this@AudioService.currentPosition != currentPosition || audioModels!![currentPosition].id != MusicPreferences.getLastMusicId()) {
+                    this@AudioService.currentPosition = currentPosition
+                    initAudioPlayer()
+                } else {
+                    setupMetadata()
+                }
+            }
         }
     }
 

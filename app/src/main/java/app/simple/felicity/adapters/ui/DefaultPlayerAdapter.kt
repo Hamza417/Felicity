@@ -4,7 +4,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.net.toUri
 import app.simple.felicity.databinding.AdapterPlayerSliderBinding
-import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromFileDescriptor
+import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromFileDescriptorFullScreen
 import app.simple.felicity.models.Audio
 import com.smarteist.autoimageslider.SliderViewAdapter
 
@@ -13,7 +13,7 @@ class DefaultPlayerAdapter(private val data: ArrayList<Audio>) : SliderViewAdapt
     inner class Holder(private val binding: AdapterPlayerSliderBinding) : ViewHolder(binding.root) {
         fun bind(audio: Audio) {
             binding.apply {
-                art.loadFromFileDescriptor(audio.fileUri.toUri())
+                art.loadFromFileDescriptorFullScreen(audio.fileUri.toUri())
             }
         }
     }
