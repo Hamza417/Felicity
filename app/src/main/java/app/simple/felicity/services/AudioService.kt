@@ -365,11 +365,6 @@ class AudioService : Service(),
         }
     }
 
-    fun setAudioPlayerProps(audioModel: ArrayList<Audio>, currentPosition: Int) {
-        this.audioModels = audioModel
-        this.metaData = audioModel[currentPosition]
-    }
-
     fun setCurrentPosition(currentPosition: Int) {
         CoroutineScope(Dispatchers.IO).launch {
             audioModels = MediaLoader.getCurrentMediaList(
@@ -633,6 +628,7 @@ class AudioService : Service(),
         removeAudioFocus()
         unregisterReceiver(becomingNoisyReceiver)
         unregisterSharedPreferenceChangeListener()
+        Log.d("AudioService", "onDestroy: ")
     }
 
     fun isPlaying(): Boolean {
@@ -646,8 +642,8 @@ class AudioService : Service(),
     }
 
     companion object {
-        fun getIntent(requireContext: Context): Intent {
-            return Intent(requireContext, AudioService::class.java)
+        fun getIntent(context: Context): Intent {
+            return Intent(context, AudioService::class.java)
         }
     }
 }

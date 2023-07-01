@@ -58,15 +58,21 @@ class DefaultPlayer : PlayerFragment() {
         }
 
         binding.nextButton.setOnClickListener {
+            handler.removeCallbacks(progressRunnable)
             audioService?.playNext()
         }
 
         binding.previousButton.setOnClickListener {
+            handler.removeCallbacks(progressRunnable)
             audioService?.playPrevious()
         }
 
         binding.playButton.setOnClickListener {
             audioService?.changePlayerState()
+        }
+
+        binding.closeButton.setOnClickListener {
+            stopService()
         }
 
         binding.seekbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -113,8 +119,10 @@ class DefaultPlayer : PlayerFragment() {
 
     override fun onMetaData() {
         audioService?.let {
+            handler.removeCallbacks(progressRunnable)
             binding.seekbar.max = it.getDuration()
             binding.currentDuration.text = NumberUtils.getFormattedTime(it.getDuration().toLong())
+            handler.post(progressRunnable)
         }
     }
 

@@ -3,7 +3,6 @@ package app.simple.felicity.extensions.fragments
 import android.content.*
 import android.os.Bundle
 import android.os.IBinder
-import android.util.Log
 import android.view.View
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -46,7 +45,6 @@ abstract class PlayerFragment : ScopedFragment() {
                         onPrepared()
                     }
                     ServiceConstants.actionMetaData -> {
-                        Log.d("AudioService", "MetaData")
                         onMetaData()
                         handler.post(progressRunnable)
                     }
@@ -80,7 +78,6 @@ abstract class PlayerFragment : ScopedFragment() {
                 audioService = (service as AudioService.AudioBinder).getService()
                 audioService?.setCurrentPosition(MusicPreferences.getMusicPosition())
                 onServiceConnected()
-                Log.d("AudioService", "Connected")
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
@@ -90,14 +87,25 @@ abstract class PlayerFragment : ScopedFragment() {
         }
 
         lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                requireContext().bindService(
-                        AudioService.getIntent(requireContext()),
-                        serviceConnection!!, Context.BIND_AUTO_CREATE)
-
-                LocalBroadcastManager.getInstance(requireContext())
-                    .registerReceiver(audioBroadcastReceiver!!, audioIntentFilter)
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                startService()
             }
+        }
+    }
+
+    private fun startService() {
+        LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(audioBroadcastReceiver!!) // Just to be safe
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(audioBroadcastReceiver!!, audioIntentFilter)
+        val intent = AudioService.getIntent(requireActivity()) // Activity context will keep the foreground service alive
+        requireContext().startService(intent)
+        serviceConnection?.let { requireContext().bindService(intent, it, Context.BIND_AUTO_CREATE) }
+    }
+
+    protected fun stopService() {
+        kotlin.runCatching {
+            requireContext().unbindService(serviceConnection!!)
+            requireContext().stopService(AudioService.getIntent(requireActivity().applicationContext))
+            goBack()
         }
     }
 
