@@ -3,16 +3,18 @@ package app.simple.felicity.adapters.ui
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.artflow.ArtFlowAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.decorations.theme.ThemeFrameLayout
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.views.FelicityImageSlider
 import app.simple.felicity.models.Audio
 
 class HomeAdapter(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
+
+    var onContainerClicked: ((View, Int) -> Unit)? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return Holder(LayoutInflater.from(parent.context).inflate(R.layout.adapter_home, parent, false))
@@ -39,10 +41,14 @@ class HomeAdapter(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) : Re
         //                setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom)
         //            }
         //        }
+
+        h.title.setOnClickListener {
+            onContainerClicked?.invoke(it, position)
+        }
     }
 
     inner class Holder(itemView: View) : VerticalListViewHolder(itemView) {
-        val container: FrameLayout = itemView.findViewById(R.id.container)
+        val container: ThemeFrameLayout = itemView.findViewById(R.id.container)
         val sliderView: FelicityImageSlider = itemView.findViewById(R.id.imageSlider)
         val title: TypeFaceTextView = itemView.findViewById(R.id.title)
     }

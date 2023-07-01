@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
+import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.HomeAdapter
 import app.simple.felicity.databinding.FragmentHomeBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
@@ -35,6 +36,15 @@ class Home : ScopedFragment() {
 
         homeViewModel?.getHomeData()?.observe(viewLifecycleOwner) {
             binding?.recyclerView?.adapter = HomeAdapter(it)
+
+            (binding?.recyclerView?.adapter as HomeAdapter).onContainerClicked = { view, position ->
+                when (it[position].first) {
+                    R.string.songs -> {
+                        openFragmentSlide(Songs.newInstance(), "songs")
+                    }
+                }
+            }
+
             binding?.recyclerView?.scheduleLayoutAnimation()
         }
     }
