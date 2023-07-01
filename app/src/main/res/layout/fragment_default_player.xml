@@ -25,24 +25,9 @@
             android:layout_gravity="bottom|start"
             android:layout_margin="@dimen/dialog_padding"
             android:backgroundTint="@android:color/white"
-            android:padding="@dimen/popup_padding"
+            android:padding="@dimen/padding_10"
             app:appFontStyle="bold"
             app:textColorStyle="secondary" />
-
-        <app.simple.felicity.decorations.lrc.LrcView
-            android:id="@+id/lrc_view"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_gravity="bottom"
-            android:alpha="0"
-            android:fadingEdge="vertical"
-            android:fadingEdgeLength="25dp"
-            android:requiresFadingEdge="vertical"
-            app:isLrcCurrentTextBold="true"
-            app:lrcLineSpaceSize="@dimen/text_size_14"
-            app:lrcTextSize="@dimen/popup_text_size"
-            app:playIconHeight="@dimen/panel_item_padding"
-            app:playIconWidth="@dimen/panel_item_padding" />
 
     </FrameLayout>
 

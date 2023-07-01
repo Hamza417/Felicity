@@ -85,6 +85,7 @@ abstract class PlayerFragment : ScopedFragment() {
 
             override fun onServiceDisconnected(name: ComponentName?) {
                 audioService = null
+                onServiceDisconnected()
             }
         }
 

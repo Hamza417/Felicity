@@ -23,6 +23,7 @@ import app.simple.felicity.utils.ColorUtils.animateColorChange
 import app.simple.felicity.utils.ColorUtils.animateDrawableColorChange
 import app.simple.felicity.utils.ConditionUtils.invert
 import app.simple.felicity.utils.TypeFace
+import app.simple.felicity.utils.ViewUtils
 import app.simple.felicity.utils.ViewUtils.fadeInAnimation
 import app.simple.felicity.utils.ViewUtils.fadeOutAnimation
 import app.simple.felicity.utils.ViewUtils.slideInAnimation
@@ -186,10 +187,10 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
         }
     }
 
-    fun setTextWithSlideAnimation(text: String, duration: Long = 250, delay: Long = 0L, completion: (() -> Unit)? = null) {
-        slideOutAnimation(duration, delay / 2L) {
+    fun setTextWithSlideAnimation(text: String, duration: Long = 250, direction: Int = ViewUtils.LEFT, delay: Long = 0L, completion: (() -> Unit)? = null) {
+        slideOutAnimation(duration, delay / 2L, direction) {
             this.text = text
-            slideInAnimation(duration, delay / 2L) {
+            slideInAnimation(duration, delay / 2L, direction) {
                 completion?.let {
                     it()
                 }

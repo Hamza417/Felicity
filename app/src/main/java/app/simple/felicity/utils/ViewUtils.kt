@@ -19,6 +19,10 @@ import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 
 object ViewUtils {
+
+    const val LEFT = -1
+    const val RIGHT = 1
+
     /**
      * Dim the background when PopupWindow shows
      * Should be called from showAsDropDown function
@@ -241,14 +245,9 @@ object ViewUtils {
             }
     }
 
-    fun View.slideOutAnimation(
-            duration: Long = 300,
-            delay: Long = 0L,
-            visibility: Int = View.INVISIBLE,
-            completion: (() -> Unit)? = null
-    ) {
+    fun View.slideOutAnimation(duration: Long = 300, delay: Long = 0L, direction: Int, visibility: Int = View.INVISIBLE, completion: (() -> Unit)? = null) {
         animate()
-            .translationX(-50F)
+            .translationX(direction * 50F)
             .alpha(0f)
             .setDuration(duration)
             .setStartDelay(delay)
@@ -261,12 +260,8 @@ object ViewUtils {
             }
     }
 
-    fun View.slideInAnimation(
-            duration: Long = 300,
-            delay: Long = 0L,
-            completion: (() -> Unit)? = null
-    ) {
-        translationX = 50F
+    fun View.slideInAnimation(duration: Long = 300, delay: Long = 0L, direction: Int, completion: (() -> Unit)? = null) {
+        translationX = 50F * -direction
         visibility = View.VISIBLE
         animate()
             .translationX(0f)

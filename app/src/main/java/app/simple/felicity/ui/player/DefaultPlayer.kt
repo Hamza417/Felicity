@@ -10,11 +10,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.viewpager2.widget.ViewPager2
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.DefaultPlayerAdapter
+import app.simple.felicity.constants.BundleConstants
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
 import app.simple.felicity.extensions.fragments.PlayerFragment
-import app.simple.felicity.models.Audio
 import app.simple.felicity.preferences.MusicPreferences
+import app.simple.felicity.utils.AudioUtils.toBitrate
 import app.simple.felicity.utils.NumberUtils
+import app.simple.felicity.utils.ViewUtils
 import app.simple.felicity.viewmodels.ui.PlayerViewModel
 
 class DefaultPlayer : PlayerFragment() {
@@ -35,8 +37,8 @@ class DefaultPlayer : PlayerFragment() {
         playerViewModel.getSongs().observe(viewLifecycleOwner) { list ->
             audios = list
             binding.artSlider.adapter = DefaultPlayerAdapter(list)
-            binding.artSlider.currentItem = MusicPreferences.getMusicPosition()
-            setMetaData(list[MusicPreferences.getMusicPosition()])
+            binding.artSlider.setCurrentItem(MusicPreferences.getMusicPosition(), false)
+            setMetaData(binding.artSlider.currentItem)
 
             binding.artSlider.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
                 override fun onPageScrollStateChanged(state: Int) {
@@ -48,7 +50,7 @@ class DefaultPlayer : PlayerFragment() {
                             MusicPreferences.setMusicPosition(binding.artSlider.currentItem)
                             MusicPreferences.setLastMusicId(list[binding.artSlider.currentItem].id)
                             audioService?.setCurrentPosition(binding.artSlider.currentItem)
-                            setMetaData(list[MusicPreferences.getMusicPosition()])
+                            setMetaData(binding.artSlider.currentItem)
                         }
                     }
                 }
@@ -132,7 +134,7 @@ class DefaultPlayer : PlayerFragment() {
             binding.artSlider.setCurrentItem(0, true)
         }
 
-        setMetaData(audios[binding.artSlider.currentItem])
+        setMetaData(binding.artSlider.currentItem)
     }
 
     override fun onPrevious() {
@@ -143,7 +145,7 @@ class DefaultPlayer : PlayerFragment() {
             binding.artSlider.setCurrentItem(audios.size - 1, true)
         }
 
-        setMetaData(audios[binding.artSlider.currentItem])
+        setMetaData(binding.artSlider.currentItem)
     }
 
     override fun onBuffering(progress: Int) {
@@ -167,18 +169,40 @@ class DefaultPlayer : PlayerFragment() {
         }
     }
 
-    private fun setMetaData(audio: Audio) {
-        binding.title.text = audio.title
-        binding.artist.text = audio.artist
-        binding.album.text = audio.album
-        binding.info.text = buildString {
-            append(".")
-            append(audio.path.substringAfterLast("."))
-            append(" | ")
-            append(audio.bitrate)
-            append(" | ")
-            append(audio.mimeType)
+    private fun setMetaData(position: Int) {
+        if (requireArguments().getInt(BundleConstants.position) < position) {
+            binding.title.setTextWithSlideAnimation(audios[position].title, 250L, ViewUtils.LEFT, 0L)
+            binding.artist.setTextWithSlideAnimation(audios[position].artist, 250L, ViewUtils.LEFT, 50L)
+            binding.album.setTextWithSlideAnimation(audios[position].album, 250L, ViewUtils.LEFT, 100L)
+            binding.info.setTextWithSlideAnimation(buildString {
+                append(".")
+                append(audios[position].path?.substringAfterLast("."))
+                append(", ")
+                append(audios[position].bitrate.toBitrate())
+                append(", ")
+                append(audios[position].mimeType)
+            }, 250L, ViewUtils.LEFT, 150L)
+        } else {
+            binding.title.setTextWithSlideAnimation(audios[position].title, 250L, ViewUtils.RIGHT, 0L)
+            binding.artist.setTextWithSlideAnimation(audios[position].artist, 250L, ViewUtils.RIGHT, 50L)
+            binding.album.setTextWithSlideAnimation(audios[position].album, 250L, ViewUtils.RIGHT, 100L)
+            binding.info.setTextWithSlideAnimation(buildString {
+                append(".")
+                append(audios[position].path?.substringAfterLast("."))
+                append(", ")
+                append(audios[position].bitrate.toBitrate())
+                append(", ")
+                append(audios[position].mimeType)
+            }, 250L, ViewUtils.RIGHT, 150L)
         }
+
+        binding.number.text = buildString {
+            append(position + 1)
+            append("/")
+            append(audios.size)
+        }
+
+        requireArguments().putInt(BundleConstants.position, position)
     }
 
     companion object {
