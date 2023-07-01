@@ -199,6 +199,10 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         }
     }
 
+    protected fun postDelayed(delayMillis: Long, action: () -> Unit) {
+        handler.postDelayed(action, delayMillis)
+    }
+
     protected fun goBack() {
         requireActivity().onBackPressedDispatcher.onBackPressed()
     }

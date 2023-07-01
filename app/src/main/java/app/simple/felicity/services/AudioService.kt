@@ -327,7 +327,7 @@ class AudioService : Service(),
                     createNotificationChannel()
                     showNotification(generateAction(R.drawable.ic_pause, "pause", ServiceConstants.actionPause))
                     setPlaybackState(PlaybackStateCompat.STATE_PLAYING)
-                    LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ServiceConstants.actionPlay))
+                    LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ServiceConstants.actionMetaData))
                 }
             }
         }.getOrElse {

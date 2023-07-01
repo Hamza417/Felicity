@@ -3,14 +3,14 @@ package app.simple.felicity.adapters.ui
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.net.toUri
+import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterPlayerSliderBinding
 import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromFileDescriptorFullScreen
 import app.simple.felicity.models.Audio
-import com.smarteist.autoimageslider.SliderViewAdapter
 
-class DefaultPlayerAdapter(private val data: ArrayList<Audio>) : SliderViewAdapter<DefaultPlayerAdapter.Holder>() {
+class DefaultPlayerAdapter(private val data: ArrayList<Audio>) : RecyclerView.Adapter<DefaultPlayerAdapter.Holder>() {
 
-    inner class Holder(private val binding: AdapterPlayerSliderBinding) : ViewHolder(binding.root) {
+    inner class Holder(private val binding: AdapterPlayerSliderBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(audio: Audio) {
             binding.apply {
                 art.loadFromFileDescriptorFullScreen(audio.fileUri.toUri())
@@ -18,12 +18,12 @@ class DefaultPlayerAdapter(private val data: ArrayList<Audio>) : SliderViewAdapt
         }
     }
 
-    override fun getCount(): Int {
+    override fun getItemCount(): Int {
         return data.size
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup?): Holder {
-        val binding = AdapterPlayerSliderBinding.inflate(LayoutInflater.from(parent?.context), parent, false)
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
+        val binding = AdapterPlayerSliderBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return Holder(binding)
     }
 

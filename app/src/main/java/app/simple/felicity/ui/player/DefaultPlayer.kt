@@ -1,34 +1,26 @@
 package app.simple.felicity.ui.player
 
-import android.content.ComponentName
-import android.content.Context
-import android.content.ServiceConnection
 import android.os.Bundle
-import android.os.IBinder
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.lifecycle.Lifecycle
+import android.widget.SeekBar
+import android.widget.Toast
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
+import androidx.viewpager2.widget.ViewPager2
+import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.DefaultPlayerAdapter
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
-import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.extensions.fragments.PlayerFragment
 import app.simple.felicity.models.Audio
 import app.simple.felicity.preferences.MusicPreferences
-import app.simple.felicity.services.AudioService
+import app.simple.felicity.utils.NumberUtils
 import app.simple.felicity.viewmodels.ui.PlayerViewModel
-import kotlinx.coroutines.launch
 
-class DefaultPlayer : ScopedFragment() {
+class DefaultPlayer : PlayerFragment() {
 
     private lateinit var binding: FragmentDefaultPlayerBinding
     private lateinit var playerViewModel: PlayerViewModel
-
-    private var audioService: AudioService? = null
-    private var serviceConnection: ServiceConnection? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentDefaultPlayerBinding.inflate(inflater, container, false)
@@ -40,41 +32,142 @@ class DefaultPlayer : ScopedFragment() {
         super.onViewCreated(view, savedInstanceState)
         startPostponedEnterTransition()
 
-        serviceConnection = object : ServiceConnection {
-            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                audioService = (service as AudioService.AudioBinder).getService()
-                Log.d("AudioService", "Connected")
-            }
+        playerViewModel.getSongs().observe(viewLifecycleOwner) { list ->
+            audios = list
+            binding.artSlider.adapter = DefaultPlayerAdapter(list)
+            binding.artSlider.currentItem = MusicPreferences.getMusicPosition()
+            setMetaData(list[MusicPreferences.getMusicPosition()])
 
-            override fun onServiceDisconnected(name: ComponentName?) {
-                audioService = null
-            }
+            binding.artSlider.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+                override fun onPageScrollStateChanged(state: Int) {
+                    super.onPageScrollStateChanged(state)
+                    if (state == ViewPager2.SCROLL_STATE_IDLE) {
+                        if (binding.artSlider.currentItem != MusicPreferences.getMusicPosition()) {
+                            handler.removeCallbacks(progressRunnable)
+                            currentSeekPosition = 0
+                            MusicPreferences.setMusicPosition(binding.artSlider.currentItem)
+                            MusicPreferences.setLastMusicId(list[binding.artSlider.currentItem].id)
+                            audioService?.setCurrentPosition(binding.artSlider.currentItem)
+                            setMetaData(list[MusicPreferences.getMusicPosition()])
+                        }
+                    }
+                }
+            })
         }
 
-        playerViewModel.getSongs().observe(viewLifecycleOwner) { list ->
-            binding.artSlider.setSliderAdapter(DefaultPlayerAdapter(list))
-            binding.artSlider.currentPagePosition = MusicPreferences.getMusicPosition()
-            binding.artSlider.isAutoCycle = false
-            setData(list[MusicPreferences.getMusicPosition()])
+        binding.nextButton.setOnClickListener {
+            audioService?.playNext()
+        }
 
-            binding.artSlider.setCurrentPageListener {
-                MusicPreferences.setMusicPosition(it)
-                MusicPreferences.setLastMusicId(list[it].id)
-                audioService?.setCurrentPosition(it)
-                setData(list[it])
+        binding.previousButton.setOnClickListener {
+            audioService?.playPrevious()
+        }
+
+        binding.playButton.setOnClickListener {
+            audioService?.changePlayerState()
+        }
+
+        binding.seekbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    binding.currentProgress.text = NumberUtils.getFormattedTime(progress.toLong())
+                    currentSeekPosition = progress
+                }
             }
 
-            lifecycleScope.launch {
-                repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                    requireContext().bindService(
-                            AudioService.getIntent(requireContext()),
-                            serviceConnection!!, Context.BIND_AUTO_CREATE)
+            override fun onStartTrackingTouch(seekBar: SeekBar) {
+                if (seekBar.max != audioService?.getDuration()!!) {
+                    seekBar.max = audioService?.getDuration()!!
                 }
+
+                binding.seekbar.clearAnimation()
+                handler.removeCallbacks(progressRunnable)
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar) {
+                audioService?.seek(seekBar.progress)
+                handler.post(progressRunnable)
+            }
+        })
+    }
+
+    override fun onServiceConnected() {
+
+    }
+
+    override fun onServiceDisconnected() {
+
+    }
+
+    override fun onPrepared() {
+        audioService?.let {
+            if (it.isPlaying()) {
+                onStateChanged(true)
+            } else {
+                onStateChanged(false)
             }
         }
     }
 
-    private fun setData(audio: Audio) {
+    override fun onMetaData() {
+        audioService?.let {
+            binding.seekbar.max = it.getDuration()
+            binding.currentDuration.text = NumberUtils.getFormattedTime(it.getDuration().toLong())
+        }
+    }
+
+    override fun onQuitMusicService() {
+        goBack()
+    }
+
+    override fun onStateChanged(isPlaying: Boolean) {
+        buttonStatus(isPlaying)
+    }
+
+    override fun onNext() {
+        currentSeekPosition = 0
+        if (binding.artSlider.currentItem < audios.size - 1) {
+            binding.artSlider.setCurrentItem(binding.artSlider.currentItem + 1, true)
+        } else {
+            binding.artSlider.setCurrentItem(0, true)
+        }
+
+        setMetaData(audios[binding.artSlider.currentItem])
+    }
+
+    override fun onPrevious() {
+        currentSeekPosition = 0
+        if (binding.artSlider.currentItem > 0) {
+            binding.artSlider.setCurrentItem(binding.artSlider.currentItem - 1, true)
+        } else {
+            binding.artSlider.setCurrentItem(audios.size - 1, true)
+        }
+
+        setMetaData(audios[binding.artSlider.currentItem])
+    }
+
+    override fun onBuffering(progress: Int) {
+        binding.seekbar.updateSecondaryProgress(progress)
+    }
+
+    override fun onMediaError(error: String) {
+        Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onProgress(progress: Int, duration: Int) {
+        binding.seekbar.updateProgress(progress, duration)
+        binding.currentProgress.text = NumberUtils.getFormattedTime(progress.toLong())
+    }
+
+    private fun buttonStatus(isPlaying: Boolean, animate: Boolean = true) {
+        if (isPlaying) {
+            binding.playButton.setIcon(R.drawable.ic_pause, animate)
+        } else {
+            binding.playButton.setIcon(R.drawable.ic_play, animate)
+        }
+    }
+
+    private fun setMetaData(audio: Audio) {
         binding.title.text = audio.title
         binding.artist.text = audio.artist
         binding.album.text = audio.album

@@ -13,7 +13,7 @@
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <app.simple.felicity.decorations.views.FelicityArtPager
+        <androidx.viewpager2.widget.ViewPager2
             android:id="@+id/art_slider"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
@@ -158,7 +158,7 @@
         app:layout_constraintTop_toBottomOf="@+id/info">
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
-            android:id="@+id/current_time_mime"
+            android:id="@+id/current_progress"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
@@ -167,13 +167,13 @@
             android:maxLines="1"
             android:text="--:--"
             android:textAlignment="center"
-            android:textSize="@dimen/text_size_16"
+            android:textSize="@dimen/text_size_14"
             app:appFontStyle="regular"
             app:textColorStyle="secondary"
             tools:ignore="HardcodedText,RtlCompat" />
 
         <app.simple.felicity.decorations.theme.ThemeSeekBar
-            android:id="@+id/seekbar_mime"
+            android:id="@+id/seekbar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
@@ -182,7 +182,7 @@
             android:splitTrack="false" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
-            android:id="@+id/current_duration_mime"
+            android:id="@+id/current_duration"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
@@ -191,7 +191,7 @@
             android:maxLines="1"
             android:text="--:--"
             android:textAlignment="center"
-            android:textSize="@dimen/text_size_16"
+            android:textSize="@dimen/text_size_14"
             app:appFontStyle="regular"
             app:textColorStyle="secondary"
             tools:ignore="HardcodedText,RtlCompat" />
