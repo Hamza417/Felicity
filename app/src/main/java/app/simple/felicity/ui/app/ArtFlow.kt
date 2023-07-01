@@ -11,8 +11,8 @@ import app.simple.felicity.adapters.artflow.SongsAdapter
 import app.simple.felicity.constants.BundleConstants
 import app.simple.felicity.databinding.FragmentArtflowBinding
 import app.simple.felicity.decorations.carousel.ArtFlowCarousel
+import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.viewmodels.ui.SongsViewModel
-import app.simple.inure.extensions.fragments.ScopedFragment
 
 class ArtFlow : ScopedFragment() {
 

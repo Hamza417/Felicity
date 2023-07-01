@@ -8,9 +8,9 @@ import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentSplashScreenBinding
+import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.ui.app.ArtFlow
 import app.simple.felicity.viewmodels.misc.DatabaseGeneratorViewModel
-import app.simple.inure.extensions.fragments.ScopedFragment
 
 @SuppressLint("CustomSplashScreen")
 class SplashScreen : ScopedFragment() {

@@ -9,6 +9,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.loaders.MediaLoader
 import app.simple.felicity.models.Audio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -31,7 +32,7 @@ class SongsViewModel(application: Application) : WrappedViewModel(application) {
 
     private fun loadData() {
         viewModelScope.launch(Dispatchers.IO) {
-            globalList = loadSongs()
+            globalList = MediaLoader.getSongs(applicationContext()) as ArrayList<Audio>
             songs.postValue(globalList)
         }
     }

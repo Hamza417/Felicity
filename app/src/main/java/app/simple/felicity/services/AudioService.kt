@@ -24,11 +24,13 @@ import app.simple.felicity.constants.ServiceConstants
 import app.simple.felicity.exceptions.FelicityPlayerException
 import app.simple.felicity.helpers.ImageHelper.getBitmapFromUri
 import app.simple.felicity.helpers.ImageHelper.getBitmapFromUriForNotifications
+import app.simple.felicity.loaders.MediaLoader
 import app.simple.felicity.models.Audio
 import app.simple.felicity.preferences.MusicPreferences
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.receivers.MediaButtonIntentReceiver
+import app.simple.felicity.utils.ArrayUtils.toArrayList
 import app.simple.felicity.utils.ConditionUtils.invert
 import app.simple.felicity.utils.ConditionUtils.isNotNull
 import app.simple.felicity.utils.ConditionUtils.isZero
@@ -124,6 +126,16 @@ class AudioService : Service(),
                 }
             }
         }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            audioModels = MediaLoader.getCurrentMediaList(
+                    MusicPreferences.getMediaMusicCategory(), applicationContext)!!.toArrayList()
+
+            withContext(Dispatchers.Main) {
+                startService()
+            }
+        }
+
         return START_REDELIVER_INTENT
     }
 
@@ -144,6 +156,11 @@ class AudioService : Service(),
             .build()
 
         registerReceiver(becomingNoisyReceiver, audioBecomingNoisyFilter)
+    }
+
+    private fun startService() {
+        currentPosition = MusicPreferences.getMusicPosition()
+        setCurrentPosition(currentPosition)
     }
 
     override fun onAudioFocusChange(focusChange: Int) {
@@ -635,5 +652,11 @@ class AudioService : Service(),
         }
 
         return false
+    }
+
+    companion object {
+        fun getIntent(requireContext: Context): Intent {
+            return Intent(requireContext, AudioService::class.java)
+        }
     }
 }

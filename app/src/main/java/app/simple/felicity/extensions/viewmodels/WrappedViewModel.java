@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.provider.MediaStore;
@@ -11,6 +12,7 @@ import android.provider.MediaStore;
 import java.util.Objects;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -19,7 +21,7 @@ import app.simple.felicity.extensions.livedata.ErrorLiveData;
 import app.simple.felicity.preferences.ConfigurationPreferences;
 import app.simple.felicity.utils.ContextUtils;
 
-public class WrappedViewModel extends AndroidViewModel {
+public class WrappedViewModel extends AndroidViewModel implements SharedPreferences.OnSharedPreferenceChangeListener {
     
     @SuppressLint ("InlinedApi")
     // Mostly, false positives
@@ -52,6 +54,7 @@ public class WrappedViewModel extends AndroidViewModel {
     
     public WrappedViewModel(@NonNull Application application) {
         super(application);
+        app.simple.felicity.preferences.SharedPreferences.INSTANCE.registerListener(this);
     }
     
     public final Context getContext() {
@@ -114,5 +117,12 @@ public class WrappedViewModel extends AndroidViewModel {
         } catch (NullPointerException e) {
             e.printStackTrace();
         }
+        
+        app.simple.felicity.preferences.SharedPreferences.INSTANCE.unregisterListener(this);
+    }
+    
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, @Nullable String s) {
+    
     }
 }

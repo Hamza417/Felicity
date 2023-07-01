@@ -11,6 +11,8 @@ import app.simple.felicity.models.Audio
 
 class SongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Adapter<SongsAdapter.Holder>() {
 
+    var onItemClickListener: ((Audio, Int) -> Unit)? = null
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         val binding = AdapterSongsBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return Holder(binding)
@@ -31,6 +33,10 @@ class SongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Adapter<S
                 artist.text = audio.artist
                 details.text = audio.album
                 albumArt.loadFromUri(audio.artUri.toUri())
+            }
+
+            binding.root.setOnClickListener {
+                onItemClickListener?.invoke(audio, bindingAdapterPosition)
             }
         }
     }

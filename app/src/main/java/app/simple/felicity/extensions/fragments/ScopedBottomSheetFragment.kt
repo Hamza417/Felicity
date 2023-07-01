@@ -15,7 +15,6 @@ import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.utils.ViewUtils
-import app.simple.inure.extensions.fragments.ScopedFragment
 import com.google.android.material.R.id.design_bottom_sheet
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog

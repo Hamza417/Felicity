@@ -16,9 +16,9 @@ import app.simple.felicity.databinding.FragmentArtflowRvBinding
 import app.simple.felicity.decorations.itemdecorations.BoundsOffsetDecoration
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.layoutmanager.ProminentLayoutManager
+import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.utils.ConditionUtils.isNotNull
 import app.simple.felicity.viewmodels.ui.SongsViewModel
-import app.simple.inure.extensions.fragments.ScopedFragment
 
 class ArtFlowRv : ScopedFragment() {
 

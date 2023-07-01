@@ -10,7 +10,6 @@ import app.simple.felicity.decorations.ime.ControlFocusInsetsAnimationCallback
 import app.simple.felicity.decorations.ime.HeightDeferringInsetsAnimationCallback
 import app.simple.inure.decorations.ime.RootViewDeferringInsetsCallback
 import app.simple.inure.decorations.ime.TranslateDeferringInsetsAnimationCallback
-import app.simple.inure.extensions.fragments.ScopedFragment
 
 open class KeyboardScopedFragment : ScopedFragment() {
 

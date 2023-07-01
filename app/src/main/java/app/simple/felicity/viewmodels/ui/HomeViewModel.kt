@@ -4,12 +4,11 @@ import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
-import app.simple.felicity.database.instances.AudioDatabase
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.loaders.MediaLoader
 import app.simple.felicity.models.Audio
 import app.simple.felicity.utils.ArrayUtils.toArrayList
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class HomeViewModel(application: Application) : WrappedViewModel(application) {
@@ -26,13 +25,10 @@ class HomeViewModel(application: Application) : WrappedViewModel(application) {
 
     private fun loadData() {
         viewModelScope.launch(Dispatchers.IO) {
-            delay(400)
-            val audioDao = AudioDatabase.getInstance(applicationContext())?.audioDao()!!
-
-            val songs = audioDao.getAllAudio().toArrayList()
-            val albums = audioDao.getAllAlbums().toArrayList()
-            val artists = audioDao.getAllArtists().toArrayList()
-            val recentlyAdded = audioDao.getRecentAudio().toArrayList()
+            val songs = MediaLoader.getSongs(applicationContext())!!.toArrayList()
+            val albums = MediaLoader.getAlbums(applicationContext())!!.toArrayList()
+            val artists = MediaLoader.getArtists(applicationContext())!!.toArrayList()
+            val recentlyAdded = MediaLoader.getRecentlyAdded(applicationContext())!!.toArrayList()
 
             val homeData = arrayListOf<Pair<Int, ArrayList<Audio>>>()
 

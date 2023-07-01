@@ -1,11 +1,10 @@
-package app.simple.inure.extensions.fragments
+package app.simple.felicity.extensions.fragments
 
 import android.app.Application
 import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -16,9 +15,10 @@ import android.view.WindowInsetsAnimation
 import androidx.annotation.IntegerRes
 import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
-import app.simple.felicity.preferences.BehaviourPreferences
+import app.simple.felicity.R
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.utils.ConditionUtils.isNotNull
 import com.google.android.material.transition.*
 import kotlinx.coroutines.CoroutineScope
 
@@ -99,132 +99,42 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         reenterTransition = null
     }
 
-    /**
-     * Sets fragment transitions prior to creating a new fragment.
-     * Used with shared elements
-     */
-    //    open fun setTransitions() {
-    //        allowEnterTransitionOverlap = true
-    //        allowReturnTransitionOverlap = true
-    //
-    //        /**
-    //         * Animations are expensive, every time a view is added into the
-    //         * animating view transaction time will increase a little
-    //         * making the interaction a little bit slow.
-    //         */
-    //        if (BehaviourPreferences.isTransitionOn()) {
-    //            when (BehaviourPreferences.getTransitionType()) {
-    //                PopupTransitionType.FADE -> {
-    //                    exitTransition = Fade()
-    //                    enterTransition = Fade()
-    //                    returnTransition = Fade()
-    //                    reenterTransition = Fade()
-    //                }
-    //                PopupTransitionType.ELEVATION -> {
-    //                    enterTransition = MaterialElevationScale(true)
-    //                    exitTransition = MaterialElevationScale(false)
-    //                    returnTransition = MaterialElevationScale(false)
-    //                    reenterTransition = MaterialElevationScale(true)
-    //                }
-    //                PopupTransitionType.SHARED_AXIS_X -> {
-    //                    enterTransition = MaterialSharedAxis(MaterialSharedAxis.X, true)
-    //                    exitTransition = MaterialSharedAxis(MaterialSharedAxis.X, true)
-    //                    reenterTransition = MaterialSharedAxis(MaterialSharedAxis.X, false)
-    //                    returnTransition = MaterialSharedAxis(MaterialSharedAxis.X, false)
-    //                }
-    //                PopupTransitionType.SHARED_AXIS_Y -> {
-    //                    enterTransition = MaterialSharedAxis(MaterialSharedAxis.Y, true)
-    //                    exitTransition = MaterialSharedAxis(MaterialSharedAxis.Y, true)
-    //                    reenterTransition = MaterialSharedAxis(MaterialSharedAxis.Y, false)
-    //                    returnTransition = MaterialSharedAxis(MaterialSharedAxis.Y, false)
-    //                }
-    //                PopupTransitionType.SHARED_AXIS_Z -> {
-    //                    enterTransition = MaterialSharedAxis(MaterialSharedAxis.Z, true)
-    //                    exitTransition = MaterialSharedAxis(MaterialSharedAxis.Z, true)
-    //                    reenterTransition = MaterialSharedAxis(MaterialSharedAxis.Z, false)
-    //                    returnTransition = MaterialSharedAxis(MaterialSharedAxis.Z, false)
-    //                }
-    //                PopupTransitionType.THROUGH -> {
-    //                    exitTransition = MaterialFadeThrough()
-    //                    enterTransition = MaterialFadeThrough()
-    //                    returnTransition = MaterialFadeThrough()
-    //                    reenterTransition = MaterialFadeThrough()
-    //                }
-    //            }
-    //        } else {
-    //            clearTransitions()
-    //        }
-    //    }
-
     private fun clearTransitions() {
         clearEnterTransition()
         clearExitTransition()
         clearReEnterTransition()
     }
 
-    //    open fun setArcTransitions(duration: Long) {
-    //        setTransitions()
-    //
-    //        if (BehaviourPreferences.isArcAnimationOn()) {
-    //            when (BehaviourPreferences.getArcType()) {
-    //                PopupArcType.INURE -> {
-    //                    sharedElementEnterTransition = MaterialContainerTransform().apply {
-    //                        setDuration(duration)
-    //                        setAllContainerColors(Color.TRANSPARENT)
-    //                        scrimColor = Color.TRANSPARENT
-    //                        setPathMotion(ArcMotion().apply {
-    //                            maximumAngle = this.maximumAngle
-    //                            minimumHorizontalAngle = this.minimumHorizontalAngle
-    //                            minimumVerticalAngle = this.minimumVerticalAngle
-    //                        })
-    //                    }
-    //                    sharedElementReturnTransition = MaterialContainerTransform().apply {
-    //                        setDuration(duration)
-    //                        setAllContainerColors(Color.TRANSPARENT)
-    //                        scrimColor = Color.TRANSPARENT
-    //                        setPathMotion(ArcMotion().apply {
-    //                            maximumAngle = this.maximumAngle
-    //                            minimumHorizontalAngle = this.minimumHorizontalAngle
-    //                            minimumVerticalAngle = this.minimumVerticalAngle
-    //                        })
-    //                    }
-    //                }
-    //                PopupArcType.MATERIAL -> {
-    //                    sharedElementEnterTransition = MaterialContainerTransform().apply {
-    //                        setDuration(duration)
-    //                        setAllContainerColors(Color.TRANSPARENT)
-    //                        scrimColor = Color.TRANSPARENT
-    //                        setPathMotion(MaterialArcMotion())
-    //                    }
-    //                    sharedElementReturnTransition = MaterialContainerTransform().apply {
-    //                        setDuration(duration)
-    //                        setAllContainerColors(Color.TRANSPARENT)
-    //                        scrimColor = Color.TRANSPARENT
-    //                        setPathMotion(MaterialArcMotion())
-    //                    }
-    //                }
-    //                PopupArcType.LEGACY -> {
-    //                    sharedElementEnterTransition = DetailsTransitionArc()
-    //                    sharedElementReturnTransition = DetailsTransitionArc()
-    //                }
-    //            }
-    //        }
-    //    }
+    /**
+     * Open fragment using slide animation
+     *
+     * If the fragment does not need to be pushed into backstack
+     * leave the [tag] unattended
+     *
+     * @param fragment [Fragment]
+     * @param tag back stack tag for fragment
+     */
+    protected fun openFragmentSlide(fragment: ScopedFragment, tag: String? = null) {
+        clearTransitions()
 
-    open fun setLinearTransitions(duration: Long) {
-        // setTransitions()
-
-        if (BehaviourPreferences.isArcAnimationOn()) {
-            sharedElementEnterTransition = MaterialContainerTransform().apply {
-                setDuration(duration)
-                setAllContainerColors(Color.TRANSPARENT)
-                scrimColor = Color.TRANSPARENT
+        try {
+            val transaction = requireActivity().supportFragmentManager.beginTransaction()
+            transaction.setReorderingAllowed(true)
+            transaction.setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left, R.anim.enter_from_left, R.anim.exit_to_right)
+            transaction.replace(R.id.app_container, fragment, tag)
+            if (tag.isNotNull()) {
+                transaction.addToBackStack(tag)
             }
-            sharedElementReturnTransition = MaterialContainerTransform().apply {
-                setDuration(duration)
-                setAllContainerColors(Color.TRANSPARENT)
-                scrimColor = Color.TRANSPARENT
+            transaction.commit()
+        } catch (e: IllegalStateException) {
+            val transaction = requireActivity().supportFragmentManager.beginTransaction()
+            transaction.setReorderingAllowed(true)
+            transaction.setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left, R.anim.enter_from_left, R.anim.exit_to_right)
+            transaction.replace(R.id.app_container, fragment, tag)
+            if (tag.isNotNull()) {
+                transaction.addToBackStack(tag)
             }
+            transaction.commitAllowingStateLoss()
         }
     }
 

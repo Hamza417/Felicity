@@ -22,7 +22,6 @@ import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenc
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.utils.StatusBarHeight
 import app.simple.felicity.utils.ViewUtils
-import app.simple.inure.extensions.fragments.ScopedFragment
 
 open class ScopedDialogFragment : DialogFragment(), SharedPreferences.OnSharedPreferenceChangeListener {
 
