@@ -14,6 +14,8 @@ development process.
 
 **(13 Jun, 2023)** I've finalized second level design framework and written most of the APIs now, I still haven't found this app's design language, I'm not sure how this app will look like yet.
 
+**(9 Sept, 2023)** I think I've understood the design language and would like to draw the first iteration in a month or two, if you're intrested you can join the channel now because I'll start dropping the updates soon.
+
 ## Screenshots
 
 ### Initial Look of the app
