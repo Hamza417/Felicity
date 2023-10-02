@@ -6,13 +6,13 @@ import android.net.Uri
 import android.widget.ImageView
 import app.simple.felicity.R
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverModel
-import app.simple.felicity.glide.modules.GlideApp
 import app.simple.felicity.glide.transformation.Blur
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Greyscale
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.uricover.UriCoverModel
 import app.simple.felicity.preferences.AppearancePreferences
+import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.load.resource.bitmap.BitmapTransitionOptions.withCrossFade
@@ -29,7 +29,7 @@ object AudioCoverUtil {
      * Asynchronously load Album Arts for song files from their URIs using file descriptor
      */
     fun ImageView.loadFromFileDescriptor(uri: Uri) {
-        GlideApp.with(this)
+        Glide.with(this)
             .asBitmap()
             .transform(RoundedCorners(AppearancePreferences.getCornerRadius().div(2).toInt()),
                        Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()),
@@ -61,7 +61,7 @@ object AudioCoverUtil {
      * Asynchronously load Album Arts for song files from their URIs using file descriptor
      */
     fun ImageView.loadFromFileDescriptorFullScreen(uri: Uri) {
-        GlideApp.with(this)
+        Glide.with(this)
             .asBitmap()
             .transform(CenterCrop())
             .load(DescriptorCoverModel(this.context, uri))
@@ -89,7 +89,7 @@ object AudioCoverUtil {
      * Asynchronously load Album Arts for song files from their URIs using file descriptor
      */
     fun ImageView.loadFromFileDescriptorGreyscale(uri: Uri) {
-        GlideApp.with(this)
+        Glide.with(this)
             .asBitmap()
             .transform(CenterCrop(), Greyscale())
             .load(DescriptorCoverModel(this.context, uri))
@@ -114,7 +114,7 @@ object AudioCoverUtil {
      * Asynchronously load Album Arts for song files from their URIs
      */
     fun ImageView.loadFromUri(uri: Uri) {
-        GlideApp.with(this)
+        Glide.with(this)
             .asBitmap()
             .dontTransform()
             //            .transform(RoundedCorners(AppearancePreferences.getCornerRadius().toInt().times(2)),
@@ -127,7 +127,7 @@ object AudioCoverUtil {
     }
 
     fun ImageView.loadBlurredBackground(uri: Uri) {
-        GlideApp.with(this)
+        Glide.with(this)
             .asBitmap()
             .transition(withCrossFade())
             .transform(CenterCrop(), Blur(25))
