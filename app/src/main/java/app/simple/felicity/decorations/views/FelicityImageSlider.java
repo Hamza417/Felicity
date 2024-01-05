@@ -3,12 +3,12 @@ package app.simple.felicity.decorations.views;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.view.Gravity;
+import android.view.animation.AccelerateDecelerateInterpolator;
 
 import com.smarteist.autoimageslider.IndicatorView.animation.type.IndicatorAnimationType;
 import com.smarteist.autoimageslider.SliderAnimations;
 import com.smarteist.autoimageslider.SliderView;
 
-import androidx.interpolator.view.animation.LinearOutSlowInInterpolator;
 import app.simple.felicity.R;
 import app.simple.felicity.theme.managers.ThemeManager;
 
@@ -32,12 +32,11 @@ public class FelicityImageSlider extends SliderView {
         if (isInEditMode()) {
             return;
         }
-    
-        setSliderAnimationDuration(getResources().getInteger(R.integer.art_flow_anim_duration), new LinearOutSlowInInterpolator());
+
+        setSliderAnimationDuration(getResources().getInteger(R.integer.art_flow_anim_duration), new AccelerateDecelerateInterpolator());
         setSliderTransformAnimation(SliderAnimations.SIMPLETRANSFORMATION);
         setScrollTimeInSec(3);
         setAutoCycleDirection(SliderView.AUTO_CYCLE_DIRECTION_RIGHT);
-        setIndicatorAnimationDuration(getResources().getInteger(R.integer.art_flow_anim_duration));
         setIndicatorSelectedColor(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
         setIndicatorUnselectedColor(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor());
         setIndicatorVisibility(true);

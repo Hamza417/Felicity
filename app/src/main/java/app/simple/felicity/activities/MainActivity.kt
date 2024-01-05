@@ -11,6 +11,9 @@ class MainActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Keep screen on
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
         if (savedInstanceState.isNull()) {
             supportFragmentManager.beginTransaction()
                 .replace(R.id.app_container, SplashScreen.newInstance())
