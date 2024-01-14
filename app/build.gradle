@@ -27,6 +27,21 @@ android {
         }
     }
 
+    // Create flavor dimensions
+    flavorDimensions.add("default")
+
+    productFlavors {
+        dev {
+            dimension "default"
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+        }
+
+        production {
+            dimension "default"
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -59,10 +74,10 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.fragment:fragment-ktx:1.6.2'
     implementation 'androidx.activity:activity-ktx:1.8.2'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.6.2'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
-    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.6.2'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.7.0'
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'androidx.recyclerview:recyclerview-selection:1.1.0'
     implementation 'androidx.webkit:webkit:1.9.0'
@@ -80,6 +95,7 @@ dependencies {
     // Third party
     implementation 'com.github.duanhong169:drawabletoolbox:1.0.7'
     implementation 'com.github.smarteist:Android-Image-Slider:1.4.0'
+    implementation 'com.anggrayudi:storage:1.5.5'
 
     // Toolkit
     implementation 'com.github.android:renderscript-intrinsics-replacement-toolkit:b6363490c3'

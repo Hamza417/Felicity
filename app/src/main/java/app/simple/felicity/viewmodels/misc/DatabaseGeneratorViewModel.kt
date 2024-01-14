@@ -84,7 +84,7 @@ class DatabaseGeneratorViewModel(application: Application) : WrappedViewModel(ap
                 }*/
 
                 allAudioModel.add(audioModel)
-                audioDao.insert(audioModel)
+                // audioDao.insert(audioModel)
             } while (cursor!!.moveToNext())
 
             cursor!!.close()

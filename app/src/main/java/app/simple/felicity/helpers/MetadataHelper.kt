@@ -1,4 +1,4 @@
-package app.simple.felicity.loaders
+package app.simple.felicity.helpers
 
 import android.content.Context
 import android.graphics.Bitmap
