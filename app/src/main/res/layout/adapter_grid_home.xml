@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/category_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/padding_15"
+        android:text="Sample Text"
+        android:textSize="@dimen/text_size_22"
+        app:appFontStyle="bold"
+        app:textColorStyle="primary"
+        tools:ignore="HardcodedText" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/art_grid"
+        android:layout_width="match_parent"
+        android:layout_height="750dp"
+        android:padding="@dimen/padding_15" />
+
+</LinearLayout>

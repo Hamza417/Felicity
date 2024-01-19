@@ -91,6 +91,7 @@ dependencies {
 
     // Google
     implementation 'com.google.android.material:material:1.11.0'
+    implementation 'com.google.android.flexbox:flexbox:3.0.0'
 
     // Third party
     implementation 'com.github.duanhong169:drawabletoolbox:1.0.7'

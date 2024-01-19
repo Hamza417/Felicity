@@ -8,9 +8,11 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
 import app.simple.felicity.R
+import app.simple.felicity.adapters.home.AdapterGridHome
 import app.simple.felicity.adapters.ui.HomeAdapter
 import app.simple.felicity.databinding.FragmentHomeBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.ui.HomeViewModel
 
 class Home : ScopedFragment() {
@@ -30,19 +32,30 @@ class Home : ScopedFragment() {
         super.onViewCreated(view, savedInstanceState)
         startPostponedEnterTransition()
         binding?.recyclerView?.setHasFixedSize(true)
-        binding?.recyclerView?.backgroundTintList = ColorStateList(
-                arrayOf(intArrayOf()),
-                intArrayOf(Color.BLACK))
 
         homeViewModel?.getHomeData()?.observe(viewLifecycleOwner) {
-            binding?.recyclerView?.adapter = HomeAdapter(it)
+            if (false) { // TODO
+                binding?.recyclerView?.backgroundTintList = ColorStateList(
+                    arrayOf(intArrayOf()),
+                    intArrayOf(Color.BLACK)
+                )
 
-            (binding?.recyclerView?.adapter as HomeAdapter).onContainerClicked = { view, position ->
-                when (it[position].first) {
-                    R.string.songs -> {
-                        openFragmentSlide(Songs.newInstance(), "songs")
+                binding?.recyclerView?.adapter = HomeAdapter(it)
+
+                (binding?.recyclerView?.adapter as HomeAdapter).onContainerClicked =
+                    { view, position ->
+                        when (it[position].first) {
+                            R.string.songs -> {
+                                openFragmentSlide(Songs.newInstance(), "songs")
+                            }
+                        }
                     }
-                }
+            } else {
+                binding?.recyclerView?.backgroundTintList = ColorStateList(
+                    arrayOf(intArrayOf()),
+                    intArrayOf(ThemeManager.theme.viewGroupTheme.backgroundColor)
+                )
+                binding?.recyclerView?.adapter = AdapterGridHome(it)
             }
 
             binding?.recyclerView?.scheduleLayoutAnimation()
