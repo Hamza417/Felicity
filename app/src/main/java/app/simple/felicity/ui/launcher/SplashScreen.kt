@@ -9,7 +9,10 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentSplashScreenBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.app.Home
+import app.simple.felicity.utils.BitmapHelper.addLinearGradient
+import app.simple.felicity.utils.BitmapHelper.toBitmapKeepingSize
 import app.simple.felicity.viewmodels.misc.DatabaseGeneratorViewModel
 
 @SuppressLint("CustomSplashScreen")
@@ -19,9 +22,8 @@ class SplashScreen : ScopedFragment() {
     private var binding: FragmentSplashScreenBinding? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        return binding?.root ?: FragmentSplashScreenBinding.inflate(inflater, container, false).also {
-            binding = it
-        }.root
+        binding = FragmentSplashScreenBinding.inflate(inflater, container, false)
+        return binding!!.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -34,6 +36,9 @@ class SplashScreen : ScopedFragment() {
                 .replace(R.id.app_container, Home.newInstance())
                 .commitAllowingStateLoss()
         }
+
+        binding?.appIcon?.setImageBitmap(R.drawable.ic_felicity.toBitmapKeepingSize(requireContext(), 10)
+                                             .addLinearGradient(intArrayOf(ThemeManager.accent.primaryAccentColor, ThemeManager.accent.secondaryAccentColor)))
     }
 
     companion object {
