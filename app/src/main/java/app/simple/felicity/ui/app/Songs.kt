@@ -8,7 +8,6 @@ import androidx.core.app.SharedElementCallback
 import androidx.core.view.doOnPreDraw
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
-import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.SongsAdapter
 import app.simple.felicity.constants.BundleConstants
 import app.simple.felicity.databinding.FragmentSongsBinding
@@ -25,12 +24,11 @@ class Songs : ScopedFragment() {
     private lateinit var songsViewModel: SongsViewModel
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        val view = inflater.inflate(R.layout.fragment_songs, container, false)
 
-        binding = FragmentSongsBinding.bind(view)
+        binding = FragmentSongsBinding.inflate(inflater, container, false)
         songsViewModel = ViewModelProvider(requireActivity())[SongsViewModel::class.java]
 
-        return view
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

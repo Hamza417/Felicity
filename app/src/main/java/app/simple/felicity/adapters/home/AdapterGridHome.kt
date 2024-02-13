@@ -36,6 +36,7 @@ class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) 
 
             val spannedGridLayoutManager =
                 SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, 3)
+
             spannedGridLayoutManager.spanSizeLookup =
                 SpannedGridLayoutManager.SpanSizeLookup { position ->
                     if (position % 7 == 0) {
@@ -49,6 +50,14 @@ class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) 
             adapterGridHomeBinding.artGrid.layoutManager = spannedGridLayoutManager
             adapterGridHomeBinding.artGrid.adapter =
                 AdapterGridArt(data[bindingAdapterPosition].second)
+
+            adapterGridHomeBinding.artGrid.post {
+                adapterGridHomeBinding.artGrid.layoutParams.height =
+                    spannedGridLayoutManager.getTotalHeight() +
+                            adapterGridHomeBinding.artGrid.paddingTop +
+                            adapterGridHomeBinding.artGrid.paddingBottom
+                adapterGridHomeBinding.artGrid.requestLayout()
+            }
         }
     }
 }

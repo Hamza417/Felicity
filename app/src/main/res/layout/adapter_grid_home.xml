@@ -20,7 +20,7 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/art_grid"
         android:layout_width="match_parent"
-        android:layout_height="750dp"
+        android:layout_height="wrap_content"
         android:padding="@dimen/padding_15" />
 
 </LinearLayout>

@@ -20,7 +20,11 @@ class Home : ScopedFragment() {
     private var binding: FragmentHomeBinding? = null
     private var homeViewModel: HomeViewModel? = null
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
         binding = FragmentHomeBinding.inflate(inflater, container, false)
 
         homeViewModel = ViewModelProvider(requireActivity())[HomeViewModel::class.java]
