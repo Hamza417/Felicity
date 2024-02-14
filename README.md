@@ -23,7 +23,7 @@ development process.
 ### Initial Look of the app
 
 #### Home Screen
-![01](screenshots/01.png) ![01](fastlane/metadata/android/en-US/images/phoneScreenshots/01.png
+![01](screenshots/01.png) ![01](/fastlane/metadata/android/en-US/images/phoneScreenshots/01.png)
 
 #### Felicity ArtFlow
 ![02](screenshots/02.png)
