@@ -1,4 +1,4 @@
-package app.simple.felicity.adapters.ui
+package app.simple.felicity.adapters.player
 
 import android.view.LayoutInflater
 import android.view.ViewGroup

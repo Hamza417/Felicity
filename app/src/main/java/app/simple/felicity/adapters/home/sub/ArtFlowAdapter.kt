@@ -1,4 +1,4 @@
-package app.simple.felicity.adapters.artflow
+package app.simple.felicity.adapters.home.sub
 
 import android.view.LayoutInflater
 import android.view.View

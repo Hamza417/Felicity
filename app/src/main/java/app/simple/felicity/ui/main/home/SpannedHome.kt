@@ -6,8 +6,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
-import app.simple.felicity.adapters.home.AdapterGridArt
-import app.simple.felicity.adapters.home.AdapterGridHome
+import app.simple.felicity.adapters.home.main.AdapterGridHome
+import app.simple.felicity.adapters.home.sub.AdapterGridArt
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.utils.RecyclerViewUtils.randomViewHolder
@@ -66,6 +66,17 @@ class SpannedHome : ScopedFragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         binding = null
+    }
+
+    override fun onPause() {
+        super.onPause()
+        handler.removeCallbacks(randomizer)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        handler.removeCallbacks(randomizer) // Just to be sure
+        handler.postDelayed(randomizer, DELAY)
     }
 
     companion object {

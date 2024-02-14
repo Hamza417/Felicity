@@ -1,9 +1,10 @@
-package app.simple.felicity.adapters.home
+package app.simple.felicity.adapters.home.main
 
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.adapters.home.sub.AdapterGridArt
 import app.simple.felicity.databinding.AdapterFelicityMainHeaderBinding
 import app.simple.felicity.databinding.AdapterGridHomeBinding
 import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize

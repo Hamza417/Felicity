@@ -1,18 +1,18 @@
-package app.simple.felicity.adapters.ui
+package app.simple.felicity.adapters.home.main
 
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
-import app.simple.felicity.adapters.artflow.ArtFlowAdapter
+import app.simple.felicity.adapters.home.sub.ArtFlowAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.theme.ThemeFrameLayout
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.views.FelicityImageSlider
 import app.simple.felicity.models.Audio
 
-class HomeAdapter(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
+class AdapterArtFlowHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     var onContainerClicked: ((View, Int) -> Unit)? = null
 

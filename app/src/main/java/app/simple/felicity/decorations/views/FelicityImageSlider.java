@@ -32,7 +32,7 @@ public class FelicityImageSlider extends SliderView {
         if (isInEditMode()) {
             return;
         }
-
+        
         setSliderAnimationDuration(getResources().getInteger(R.integer.art_flow_anim_duration), new AccelerateDecelerateInterpolator());
         setSliderTransformAnimation(SliderAnimations.SIMPLETRANSFORMATION);
         setScrollTimeInSec(3);
@@ -46,5 +46,12 @@ public class FelicityImageSlider extends SliderView {
         setIndicatorRadius(2);
         setAutoCycle(true);
         startAutoCycle();
+    }
+    
+    public void restartCycle() {
+        if (isAutoCycle()) {
+            stopAutoCycle();
+            startAutoCycle();
+        }
     }
 }

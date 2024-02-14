@@ -12,7 +12,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import app.simple.felicity.R
-import app.simple.felicity.adapters.ui.DefaultPlayerAdapter
+import app.simple.felicity.adapters.player.DefaultPlayerAdapter
 import app.simple.felicity.constants.BundleConstants
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
 import app.simple.felicity.extensions.fragments.PlayerFragment

@@ -10,7 +10,7 @@ import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentSplashScreenBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.theme.managers.ThemeManager
-import app.simple.felicity.ui.main.home.SpannedHome
+import app.simple.felicity.ui.main.home.ArtFlowHome
 import app.simple.felicity.utils.BitmapHelper.addLinearGradient
 import app.simple.felicity.utils.BitmapHelper.toBitmapKeepingSize
 import app.simple.felicity.viewmodels.misc.DatabaseGeneratorViewModel
@@ -33,7 +33,7 @@ class SplashScreen : ScopedFragment() {
         databaseGeneratorViewModels.getGeneratedData().observe(viewLifecycleOwner) {
             parentFragmentManager.beginTransaction()
                 .setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left, R.anim.enter_from_left, R.anim.exit_to_right)
-                .replace(R.id.app_container, SpannedHome.newInstance())
+                .replace(R.id.app_container, ArtFlowHome.newInstance())
                 .commitAllowingStateLoss()
         }
 
