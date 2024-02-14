@@ -16,6 +16,8 @@ development process.
 
 **(9 Sept, 2023)** I think I've understood the design language and would like to draw the first iteration in a month or two, if you're intrested you can join the channel now because I'll start dropping the updates soon.
 
+**(14 Feb, 2024)** I've designed the first few rough interfaces and currently testing their usability.
+ 
 ## Screenshots
 
 ### Initial Look of the app
