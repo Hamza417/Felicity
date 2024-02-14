@@ -10,8 +10,7 @@ import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutMa
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.models.Audio
 
-class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) :
-    RecyclerView.Adapter<AdapterGridHome.Holder>() {
+class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) : RecyclerView.Adapter<AdapterGridHome.Holder>() {
 
     private var adapterGridHomeBinding: AdapterGridHomeBinding? = null
 
@@ -31,25 +30,20 @@ class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) 
 
     inner class Holder(itemView: View) : VerticalListViewHolder(itemView) {
         fun bind(adapterGridHomeBinding: AdapterGridHomeBinding) {
-            adapterGridHomeBinding.categoryTitle.text =
-                adapterGridHomeBinding.root.context.getString(data[bindingAdapterPosition].first)
+            adapterGridHomeBinding.categoryTitle.text = adapterGridHomeBinding.root.context.getString(data[bindingAdapterPosition].first)
 
-            val spannedGridLayoutManager =
-                SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, 3)
-
-            spannedGridLayoutManager.spanSizeLookup =
-                SpannedGridLayoutManager.SpanSizeLookup { position ->
-                    if (position % 7 == 0) {
-                        SpanSize(2, 2)
-                    } else {
-                        SpanSize(1, 1)
-                    }
+            val spannedGridLayoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, 3)
+            spannedGridLayoutManager.spanSizeLookup = SpannedGridLayoutManager.SpanSizeLookup { position ->
+                if (position % 7 == 0) {
+                    SpanSize(2, 2)
+                } else {
+                    SpanSize(1, 1)
                 }
+            }
 
             adapterGridHomeBinding.artGrid.setHasFixedSize(true)
             adapterGridHomeBinding.artGrid.layoutManager = spannedGridLayoutManager
-            adapterGridHomeBinding.artGrid.adapter =
-                AdapterGridArt(data[bindingAdapterPosition].second)
+            adapterGridHomeBinding.artGrid.adapter = AdapterGridArt(data[bindingAdapterPosition].second)
 
             adapterGridHomeBinding.artGrid.post {
                 adapterGridHomeBinding.artGrid.layoutParams.height =

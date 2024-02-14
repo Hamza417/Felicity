@@ -25,7 +25,7 @@ class AdapterGridArt(private val data: ArrayList<Audio>) :
     }
 
     override fun getItemCount(): Int {
-        return data.size.coerceAtMost(12) //(data.size % 3).coerceAtMost(10)
+        return (data.size / 3).coerceAtMost(9)
     }
 
     inner class Holder(itemView: View) : RecyclerView.ViewHolder(itemView) {

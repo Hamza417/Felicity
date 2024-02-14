@@ -75,6 +75,10 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
             setHasFixedSize(true)
 
+            if (statusBarPaddingRequired) {
+                clipToPadding = false
+            }
+
             addDividers()
 
             this.edgeEffectFactory = object : EdgeEffectFactory() {

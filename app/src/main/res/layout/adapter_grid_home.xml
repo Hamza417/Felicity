@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:padding="@dimen/padding_15"
         android:text="Sample Text"
-        android:textSize="@dimen/text_size_22"
+        android:textSize="@dimen/text_size_36"
         app:appFontStyle="bold"
         app:textColorStyle="primary"
         tools:ignore="HardcodedText" />

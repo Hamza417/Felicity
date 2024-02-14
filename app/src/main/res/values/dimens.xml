@@ -30,17 +30,23 @@
     <dimen name="album_art_dimen">80dp</dimen>
     <dimen name="art_flow_title_text_size">32sp</dimen>
     <dimen name="art_flow_artist_text_size">18sp</dimen>
+
     <dimen name="padding_5">5dp</dimen>
     <dimen name="padding_10">10dp</dimen>
     <dimen name="padding_15">15dp</dimen>
-    <dimen name="text_size_18">18sp</dimen>
     <dimen name="padding_25">25dp</dimen>
     <dimen name="padding_20">20dp</dimen>
-    <dimen name="carousel_spacing">16dp</dimen>
-    <dimen name="text_size_16">16sp</dimen>
-    <dimen name="text_size_14">14sp</dimen>
+
     <dimen name="text_size_12">12sp</dimen>
-    <dimen name="gap">1dp</dimen>
+    <dimen name="text_size_14">14sp</dimen>
+    <dimen name="text_size_16">16sp</dimen>
+    <dimen name="text_size_18">18sp</dimen>
     <dimen name="text_size_22">22sp</dimen>
+    <dimen name="text_size_36">36sp</dimen>
+    <dimen name="text_size_48">48sp</dimen>
+    <dimen name="text_size_72">72sp</dimen>
+
+    <dimen name="carousel_spacing">16dp</dimen>
+    <dimen name="gap">1dp</dimen>
     <dimen name="loader_size">40dp</dimen>
 </resources>
