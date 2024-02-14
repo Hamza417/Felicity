@@ -10,6 +10,7 @@ import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
 import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.models.Audio
+import app.simple.felicity.utils.ArrayUtils.getTwoRandomIndices
 import app.simple.felicity.utils.RecyclerViewUtils
 
 class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
@@ -57,10 +58,11 @@ class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) 
             this.adapterGridHomeBinding = adapterGridHomeBinding
 
             adapterGridHomeBinding.categoryTitle.text = adapterGridHomeBinding.root.context.getString(data[bindingAdapterPosition.minus(1)].first)
+            val randomPossibleAlternateSpanPositions = intArrayOf(1, 2, 3, 4, 5, 7, 8, 9).getTwoRandomIndices()
 
             val spannedGridLayoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, 3)
             spannedGridLayoutManager.spanSizeLookup = SpannedGridLayoutManager.SpanSizeLookup { position ->
-                if (position % 7 == 0) {
+                if (position in randomPossibleAlternateSpanPositions) {
                     SpanSize(2, 2)
                 } else {
                     SpanSize(1, 1)
@@ -70,6 +72,7 @@ class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) 
             adapterGridHomeBinding.artGrid.setHasFixedSize(true)
             adapterGridHomeBinding.artGrid.layoutManager = spannedGridLayoutManager
             adapterGridHomeBinding.artGrid.adapter = AdapterGridArt(data[bindingAdapterPosition.minus(1)].second)
+            adapterGridHomeBinding.artGrid.scheduleLayoutAnimation()
 
             adapterGridHomeBinding.artGrid.post {
                 adapterGridHomeBinding.artGrid.layoutParams.height =

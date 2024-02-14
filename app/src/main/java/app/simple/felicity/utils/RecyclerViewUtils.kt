@@ -71,4 +71,22 @@ object RecyclerViewUtils {
             }
         }
     }
+
+    /**
+     * Get a random view holder from the RecyclerView.
+     * @param T The type of the view holder to get.
+     * @param action The action to perform on the view holder.
+     * @return A random view holder from the RecyclerView.
+     * @see RecyclerView.ViewHolder
+     * @see RecyclerView.getChildViewHolder
+     * @see RecyclerView.getChildAt
+     * @see RecyclerView.getChildCount
+     */
+    inline fun <reified T : RecyclerView.ViewHolder> RecyclerView.randomViewHolder(action: (T) -> Unit) {
+        val randomIndex = (0 until childCount).random()
+        val holder = getChildViewHolder(getChildAt(randomIndex))
+        if (holder is T) {
+            action(holder)
+        }
+    }
 }

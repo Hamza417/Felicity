@@ -6,11 +6,11 @@ import android.view.ViewGroup
 import androidx.core.net.toUri
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterGridImageBinding
-import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromUriWithAnimation
+import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromUri
 import app.simple.felicity.models.Audio
 
 class AdapterGridArt(private val data: ArrayList<Audio>) :
-    RecyclerView.Adapter<AdapterGridArt.Holder>() {
+        RecyclerView.Adapter<AdapterGridArt.Holder>() {
 
     private var adapterGridImageBinding: AdapterGridImageBinding? = null
 
@@ -36,7 +36,7 @@ class AdapterGridArt(private val data: ArrayList<Audio>) :
         var adapterGridImageBinding: AdapterGridImageBinding? = null
         fun bind(adapterGridImageBinding: AdapterGridImageBinding) {
             this.adapterGridImageBinding = adapterGridImageBinding
-            adapterGridImageBinding.art.loadFromUriWithAnimation(data[bindingAdapterPosition].artUri.toUri())
+            adapterGridImageBinding.art.loadFromUri(data[absoluteAdapterPosition].artUri.toUri())
         }
     }
 
@@ -74,12 +74,10 @@ class AdapterGridArt(private val data: ArrayList<Audio>) :
         val randomItemTwo = data.subList(itemCount, data.size).random()
         val replacedItemOne = data[randomIndexOne]
         val replacedItemTwo = data[randomIndexTwo]
-        val replacedIndexOne = data.indexOf(randomItemOne)
-        val replacedIndexTwo = data.indexOf(randomItemTwo)
         data[randomIndexOne] = randomItemOne
         data[randomIndexTwo] = randomItemTwo
-        data[replacedIndexOne] = replacedItemOne
-        data[replacedIndexTwo] = replacedItemTwo
+        data[data.indexOf(randomItemOne)] = replacedItemOne
+        data[data.indexOf(randomItemTwo)] = replacedItemTwo
         notifyItemChanged(randomIndexOne)
         notifyItemChanged(randomIndexTwo)
     }

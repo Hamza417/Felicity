@@ -119,6 +119,7 @@ object AudioCoverUtil {
         Glide.with(this)
             .asBitmap()
             .dontTransform()
+            .dontAnimate()
             //            .transform(RoundedCorners(AppearancePreferences.getCornerRadius().toInt().times(2)),
             //                       Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()),
             //                       BlurShadow(this.context)
@@ -134,7 +135,7 @@ object AudioCoverUtil {
             .transition(GenericTransitionOptions.with(R.anim.zoom_in))
             .dontTransform()
             .load(UriCoverModel(this.context, uri))
-            .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+            .diskCacheStrategy(DiskCacheStrategy.ALL)
             .into(this)
     }
 

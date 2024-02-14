@@ -1,7 +1,6 @@
 package app.simple.felicity.ui.main.home
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,7 +9,7 @@ import app.simple.felicity.adapters.home.AdapterGridArt
 import app.simple.felicity.adapters.home.AdapterGridHome
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.utils.RecyclerViewUtils.forEachViewHolderIndexed
+import app.simple.felicity.utils.RecyclerViewUtils.randomViewHolder
 import app.simple.felicity.viewmodels.ui.HomeViewModel
 
 class SpannedHome : ScopedFragment() {
@@ -43,10 +42,9 @@ class SpannedHome : ScopedFragment() {
 
     private val randomizer: Runnable = object : Runnable {
         override fun run() {
-            binding?.recyclerView?.forEachViewHolderIndexed<AdapterGridHome.Holder> { holder, index ->
-                Log.d(TAG, "run: $index")
-                postDelayed(BASIC_DURATION * index) {
-                    (holder.adapterGridHomeBinding?.artGrid?.adapter as AdapterGridArt).randomizeAnyOne()
+            binding?.recyclerView?.randomViewHolder<AdapterGridHome.Holder> { holder ->
+                (holder.adapterGridHomeBinding?.artGrid?.adapter as AdapterGridArt).randomize().also {
+                    holder.adapterGridHomeBinding?.artGrid?.scheduleLayoutAnimation()
                 }
             }
 

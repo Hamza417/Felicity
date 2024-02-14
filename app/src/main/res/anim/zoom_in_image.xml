@@ -14,7 +14,7 @@
         android:toYScale="1" />
 
     <alpha
-        android:fromAlpha="1"
+        android:fromAlpha="0"
         android:toAlpha="1" />
 
 </set>
