@@ -46,7 +46,7 @@ class SpannedHome : ScopedFragment() {
             binding?.recyclerView?.forEachViewHolderIndexed<AdapterGridHome.Holder> { holder, index ->
                 Log.d(TAG, "run: $index")
                 postDelayed(BASIC_DURATION * index) {
-                    (holder.adapterGridHomeBinding?.artGrid?.adapter as AdapterGridArt).randomize()
+                    (holder.adapterGridHomeBinding?.artGrid?.adapter as AdapterGridArt).randomizeAnyOne()
                 }
             }
 

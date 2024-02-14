@@ -45,7 +45,7 @@ class AdapterGridArt(private val data: ArrayList<Audio>) :
         data.shuffle()
         for (i in 0 until itemCount) {
             // Notify position change
-            notifyItemMoved(copy.indexOf(data[i]), i)
+            notifyItemChanged(i)
         }
     }
 
@@ -56,7 +56,31 @@ class AdapterGridArt(private val data: ArrayList<Audio>) :
     fun randomizeAnyOne() {
         val randomIndex = (0 until itemCount).random()
         val randomItem = data.subList(itemCount, data.size).random()
+        val replacedItem = data[randomIndex]
+        val replacedIndex = data.indexOf(randomItem)
         data[randomIndex] = randomItem
+        data[replacedIndex] = replacedItem
         notifyItemChanged(randomIndex)
+    }
+
+    /**
+     * Replace any two items from the top 9 items with random items
+     * from the remaining items in the list.
+     */
+    fun randomizeAnyTwo() {
+        val randomIndexOne = (0 until itemCount).random()
+        val randomIndexTwo = (0 until itemCount).random()
+        val randomItemOne = data.subList(itemCount, data.size).random()
+        val randomItemTwo = data.subList(itemCount, data.size).random()
+        val replacedItemOne = data[randomIndexOne]
+        val replacedItemTwo = data[randomIndexTwo]
+        val replacedIndexOne = data.indexOf(randomItemOne)
+        val replacedIndexTwo = data.indexOf(randomItemTwo)
+        data[randomIndexOne] = randomItemOne
+        data[randomIndexTwo] = randomItemTwo
+        data[replacedIndexOne] = replacedItemOne
+        data[replacedIndexTwo] = replacedItemTwo
+        notifyItemChanged(randomIndexOne)
+        notifyItemChanged(randomIndexTwo)
     }
 }

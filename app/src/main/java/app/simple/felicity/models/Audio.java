@@ -302,4 +302,88 @@ public class Audio implements Parcelable {
                 ", dateTaken=" + dateTaken +
                 '}';
     }
+    
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        
+        Audio audio = (Audio) o;
+        
+        if (getTrack() != audio.getTrack()) {
+            return false;
+        }
+        if (getYear() != audio.getYear()) {
+            return false;
+        }
+        if (getSize() != audio.getSize()) {
+            return false;
+        }
+        if (getBitrate() != audio.getBitrate()) {
+            return false;
+        }
+        if (getDuration() != audio.getDuration()) {
+            return false;
+        }
+        if (getId() != audio.getId()) {
+            return false;
+        }
+        if (getDateAdded() != audio.getDateAdded()) {
+            return false;
+        }
+        if (getDateModified() != audio.getDateModified()) {
+            return false;
+        }
+        if (getDateTaken() != audio.getDateTaken()) {
+            return false;
+        }
+        if (getName() != null ? !getName().equals(audio.getName()) : audio.getName() != null) {
+            return false;
+        }
+        if (getTitle() != null ? !getTitle().equals(audio.getTitle()) : audio.getTitle() != null) {
+            return false;
+        }
+        if (getArtist() != null ? !getArtist().equals(audio.getArtist()) : audio.getArtist() != null) {
+            return false;
+        }
+        if (getAlbum() != null ? !getAlbum().equals(audio.getAlbum()) : audio.getAlbum() != null) {
+            return false;
+        }
+        if (getArtUri() != null ? !getArtUri().equals(audio.getArtUri()) : audio.getArtUri() != null) {
+            return false;
+        }
+        if (getFileUri() != null ? !getFileUri().equals(audio.getFileUri()) : audio.getFileUri() != null) {
+            return false;
+        }
+        if (getPath() != null ? !getPath().equals(audio.getPath()) : audio.getPath() != null) {
+            return false;
+        }
+        return getMimeType() != null ? getMimeType().equals(audio.getMimeType()) : audio.getMimeType() == null;
+    }
+    
+    @Override
+    public int hashCode() {
+        int result = getName() != null ? getName().hashCode() : 0;
+        result = 31 * result + (getTitle() != null ? getTitle().hashCode() : 0);
+        result = 31 * result + (getArtist() != null ? getArtist().hashCode() : 0);
+        result = 31 * result + (getAlbum() != null ? getAlbum().hashCode() : 0);
+        result = 31 * result + (getArtUri() != null ? getArtUri().hashCode() : 0);
+        result = 31 * result + (getFileUri() != null ? getFileUri().hashCode() : 0);
+        result = 31 * result + (getPath() != null ? getPath().hashCode() : 0);
+        result = 31 * result + (getMimeType() != null ? getMimeType().hashCode() : 0);
+        result = 31 * result + getTrack();
+        result = 31 * result + getYear();
+        result = 31 * result + getSize();
+        result = 31 * result + getBitrate();
+        result = 31 * result + (int) (getDuration() ^ (getDuration() >>> 32));
+        result = 31 * result + (int) (getId() ^ (getId() >>> 32));
+        result = 31 * result + (int) (getDateAdded() ^ (getDateAdded() >>> 32));
+        result = 31 * result + (int) (getDateModified() ^ (getDateModified() >>> 32));
+        result = 31 * result + (int) (getDateTaken() ^ (getDateTaken() >>> 32));
+        return result;
+    }
 }

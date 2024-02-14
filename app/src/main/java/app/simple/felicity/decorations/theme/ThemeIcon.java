@@ -7,13 +7,12 @@ import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
 import android.util.AttributeSet;
 
+import java.util.Objects;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatImageView;
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator;
-
-import java.util.Objects;
-
 import app.simple.felicity.R;
 import app.simple.felicity.interfaces.ThemeChangedListener;
 import app.simple.felicity.loaders.ImageLoader;
@@ -23,30 +22,31 @@ import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.themes.Theme;
 
 public class ThemeIcon extends AppCompatImageView implements ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
-
+    
     private ValueAnimator valueAnimator;
     private int tintMode;
-
+    
     public ThemeIcon(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         init(attrs);
     }
-
+    
     public ThemeIcon(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init(attrs);
     }
-
+    
     private void init(AttributeSet attrs) {
         if (isInEditMode()) {
             return;
         }
-        try (TypedArray typedArray = getContext().obtainStyledAttributes(attrs, R.styleable.ThemeIcon)) {
-            tintMode = typedArray.getInteger(R.styleable.ThemeIcon_tintType, 0);
-            setTintColor(tintMode, false);
-        }
+        
+        TypedArray typedArray = getContext().obtainStyledAttributes(attrs, R.styleable.ThemeIcon);
+        tintMode = typedArray.getInteger(R.styleable.ThemeIcon_tintType, 0);
+        setTintColor(tintMode, false);
+        typedArray.recycle();
     }
-
+    
     private void setTint(int endColor, boolean animate) {
         if (animate) {
             valueAnimator = ValueAnimator.ofArgb(getImageTintList().getDefaultColor(), endColor);
@@ -58,7 +58,7 @@ public class ThemeIcon extends AppCompatImageView implements ThemeChangedListene
             setImageTintList(ColorStateList.valueOf(endColor));
         }
     }
-
+    
     private void setTintColor(int tintMode, boolean animate) {
         switch (tintMode) {
             case 0: {
@@ -70,7 +70,7 @@ public class ThemeIcon extends AppCompatImageView implements ThemeChangedListene
                 break;
             }
             case 2: {
-                setTint(AppearancePreferences.INSTANCE.getAccentColor(), animate);
+                setTint(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(), animate);
                 break;
             }
             case 3: {
@@ -78,7 +78,7 @@ public class ThemeIcon extends AppCompatImageView implements ThemeChangedListene
             }
         }
     }
-
+    
     public void setIcon(int resId, boolean animate) {
         if (animate && !AccessibilityPreferences.INSTANCE.isAnimationReduced()) {
             ImageLoader.INSTANCE.loadImage(resId, this, 0);
@@ -86,7 +86,7 @@ public class ThemeIcon extends AppCompatImageView implements ThemeChangedListene
             setImageResource(resId);
         }
     }
-
+    
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
@@ -96,12 +96,12 @@ public class ThemeIcon extends AppCompatImageView implements ThemeChangedListene
         app.simple.felicity.preferences.SharedPreferences.INSTANCE.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
         ThemeManager.INSTANCE.addListener(this);
     }
-
+    
     @Override
     public void onThemeChanged(@NonNull Theme theme, boolean animate) {
         setTintColor(tintMode, animate);
     }
-
+    
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
@@ -111,7 +111,7 @@ public class ThemeIcon extends AppCompatImageView implements ThemeChangedListene
             valueAnimator.cancel();
         }
     }
-
+    
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         if (Objects.equals(key, AppearancePreferences.accentColor)) {

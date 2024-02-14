@@ -4,28 +4,49 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.databinding.AdapterFelicityMainHeaderBinding
 import app.simple.felicity.databinding.AdapterGridHomeBinding
 import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
 import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.models.Audio
+import app.simple.felicity.utils.RecyclerViewUtils
 
-class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) : RecyclerView.Adapter<AdapterGridHome.Holder>() {
+class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
-    private var adapterGridHomeBinding: AdapterGridHomeBinding? = null
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
+        return when (viewType) {
+            RecyclerViewUtils.TYPE_HEADER -> {
+                Header(AdapterFelicityMainHeaderBinding.inflate(LayoutInflater.from(parent.context), parent, false).root)
+            }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-        adapterGridHomeBinding =
-            AdapterGridHomeBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return Holder(adapterGridHomeBinding!!.root)
+            RecyclerViewUtils.TYPE_ITEM -> {
+
+                Holder(AdapterGridHomeBinding.inflate(LayoutInflater.from(parent.context), parent, false).root)
+            }
+
+            else -> {
+                throw IllegalArgumentException("Invalid view type")
+            }
+        }
     }
 
-    override fun onBindViewHolder(holder: Holder, position: Int) {
-        holder.bind(adapterGridHomeBinding!!)
+    override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
+        if (holder is Holder) {
+            holder.bind(AdapterGridHomeBinding.bind(holder.itemView))
+        }
     }
 
     override fun getItemCount(): Int {
-        return data.size
+        return data.size.plus(1)
+    }
+
+    override fun getItemViewType(position: Int): Int {
+        return if (position == 0) {
+            RecyclerViewUtils.TYPE_HEADER
+        } else {
+            RecyclerViewUtils.TYPE_ITEM
+        }
     }
 
     inner class Holder(itemView: View) : VerticalListViewHolder(itemView) {
@@ -35,7 +56,7 @@ class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) 
         fun bind(adapterGridHomeBinding: AdapterGridHomeBinding) {
             this.adapterGridHomeBinding = adapterGridHomeBinding
 
-            adapterGridHomeBinding.categoryTitle.text = adapterGridHomeBinding.root.context.getString(data[bindingAdapterPosition].first)
+            adapterGridHomeBinding.categoryTitle.text = adapterGridHomeBinding.root.context.getString(data[bindingAdapterPosition.minus(1)].first)
 
             val spannedGridLayoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, 3)
             spannedGridLayoutManager.spanSizeLookup = SpannedGridLayoutManager.SpanSizeLookup { position ->
@@ -48,7 +69,7 @@ class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) 
 
             adapterGridHomeBinding.artGrid.setHasFixedSize(true)
             adapterGridHomeBinding.artGrid.layoutManager = spannedGridLayoutManager
-            adapterGridHomeBinding.artGrid.adapter = AdapterGridArt(data[bindingAdapterPosition].second)
+            adapterGridHomeBinding.artGrid.adapter = AdapterGridArt(data[bindingAdapterPosition.minus(1)].second)
 
             adapterGridHomeBinding.artGrid.post {
                 adapterGridHomeBinding.artGrid.layoutParams.height =
@@ -59,4 +80,6 @@ class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) 
             }
         }
     }
+
+    inner class Header(itemView: View) : VerticalListViewHolder(itemView)
 }
