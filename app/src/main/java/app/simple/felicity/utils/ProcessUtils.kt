@@ -18,4 +18,12 @@ object ProcessUtils {
 
         return block()
     }
+
+    inline fun <T> withDelay(delay: Long, crossinline block: () -> T) {
+        ensureOnMainThread {
+            android.os.Handler(Looper.getMainLooper()).postDelayed({
+                                                                       block()
+                                                                   }, delay)
+        }
+    }
 }

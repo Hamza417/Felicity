@@ -12,8 +12,10 @@ import app.simple.felicity.glide.transformation.Greyscale
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.uricover.UriCoverModel
 import app.simple.felicity.preferences.AppearancePreferences
+import com.bumptech.glide.GenericTransitionOptions
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.load.resource.bitmap.BitmapTransitionOptions.withCrossFade
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
@@ -123,6 +125,16 @@ object AudioCoverUtil {
             //                           .setElevation(25F)
             //                           .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE))
             .load(UriCoverModel(this.context, uri))
+            .into(this)
+    }
+
+    fun ImageView.loadFromUriWithAnimation(uri: Uri) {
+        Glide.with(this)
+            .asBitmap()
+            .transition(GenericTransitionOptions.with(R.anim.zoom_in))
+            .dontTransform()
+            .load(UriCoverModel(this.context, uri))
+            .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
             .into(this)
     }
 

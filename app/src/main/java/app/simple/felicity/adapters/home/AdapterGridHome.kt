@@ -29,7 +29,12 @@ class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) 
     }
 
     inner class Holder(itemView: View) : VerticalListViewHolder(itemView) {
+
+        var adapterGridHomeBinding: AdapterGridHomeBinding? = null
+
         fun bind(adapterGridHomeBinding: AdapterGridHomeBinding) {
+            this.adapterGridHomeBinding = adapterGridHomeBinding
+
             adapterGridHomeBinding.categoryTitle.text = adapterGridHomeBinding.root.context.getString(data[bindingAdapterPosition].first)
 
             val spannedGridLayoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, 3)

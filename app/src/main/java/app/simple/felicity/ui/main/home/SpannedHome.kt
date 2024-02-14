@@ -1,13 +1,16 @@
 package app.simple.felicity.ui.main.home
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
+import app.simple.felicity.adapters.home.AdapterGridArt
 import app.simple.felicity.adapters.home.AdapterGridHome
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.utils.RecyclerViewUtils.forEachViewHolderIndexed
 import app.simple.felicity.viewmodels.ui.HomeViewModel
 
 class SpannedHome : ScopedFragment() {
@@ -26,11 +29,28 @@ class SpannedHome : ScopedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         startPostponedEnterTransition()
-        binding?.recyclerView?.setHasFixedSize(true)
+        binding?.recyclerView?.setHasFixedSize(false)
 
         homeViewModel?.getHomeData()?.observe(viewLifecycleOwner) {
             binding?.recyclerView?.adapter = AdapterGridHome(it)
             binding?.recyclerView?.scheduleLayoutAnimation()
+            // Disable item animations
+            binding?.recyclerView?.itemAnimator = null
+
+            handler.postDelayed(randomizer, DELAY)
+        }
+    }
+
+    private val randomizer: Runnable = object : Runnable {
+        override fun run() {
+            binding?.recyclerView?.forEachViewHolderIndexed<AdapterGridHome.Holder> { holder, index ->
+                Log.d(TAG, "run: $index")
+                postDelayed(BASIC_DURATION * index) {
+                    (holder.adapterGridHomeBinding?.artGrid?.adapter as AdapterGridArt).randomize()
+                }
+            }
+
+            handler.postDelayed(this, DELAY)
         }
     }
 
@@ -46,5 +66,10 @@ class SpannedHome : ScopedFragment() {
             fragment.arguments = args
             return fragment
         }
+
+        private const val TAG = "SpannedHome"
+        private const val DELAY = 3_000L
+        private const val BASIC_DURATION = 1_500L
+        private const val SMALL_DURATION = 250L
     }
 }

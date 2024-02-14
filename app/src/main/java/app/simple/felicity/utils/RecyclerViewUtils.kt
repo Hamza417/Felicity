@@ -34,4 +34,41 @@ object RecyclerViewUtils {
             }
         }
     }
+
+    /**
+     * Iterate over all view holders in the RecyclerView and perform the given action on each.
+     * @param action The action to perform on each view holder.
+     * @param T The type of the view holder to perform the action on.
+     * @see RecyclerView.ViewHolder
+     * @see RecyclerView.getChildViewHolder
+     * @see RecyclerView.getChildAt
+     * @see RecyclerView.getChildCount
+     */
+    inline fun <reified T : RecyclerView.ViewHolder> RecyclerView.forEachViewHolder(action: (T) -> Unit) {
+        for (i in 0 until childCount) {
+            val holder = getChildViewHolder(getChildAt(i))
+            if (holder is T) {
+                action(holder)
+            }
+        }
+    }
+
+    /**
+     * Iterate over all view holders in the RecyclerView and perform the given action on each.
+     * @param action The action to perform on each view holder.
+     * @param count The current count of the view holder.
+     * @param T The type of the view holder to perform the action on.
+     * @see RecyclerView.ViewHolder
+     * @see RecyclerView.getChildViewHolder
+     * @see RecyclerView.getChildAt
+     * @see RecyclerView.getChildCount
+     */
+    inline fun <reified T : RecyclerView.ViewHolder> RecyclerView.forEachViewHolderIndexed(action: (T, Int) -> Unit) {
+        for (i in 0 until childCount) {
+            val holder = getChildViewHolder(getChildAt(i))
+            if (holder is T) {
+                action(holder, i)
+            }
+        }
+    }
 }
