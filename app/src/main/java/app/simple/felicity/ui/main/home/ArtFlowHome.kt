@@ -22,13 +22,9 @@ class ArtFlowHome : ScopedFragment() {
     private var binding: FragmentHomeArtflowBinding? = null
     private var homeViewModel: HomeViewModel? = null
 
-    override fun onCreateView(
-            inflater: LayoutInflater,
-            container: ViewGroup?,
-            savedInstanceState: Bundle?
-    ): View? {
-        binding = FragmentHomeArtflowBinding.inflate(inflater, container, false)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
 
+        binding = FragmentHomeArtflowBinding.inflate(inflater, container, false)
         homeViewModel = ViewModelProvider(requireActivity())[HomeViewModel::class.java]
 
         return binding?.root
@@ -39,14 +35,11 @@ class ArtFlowHome : ScopedFragment() {
         super.onViewCreated(view, savedInstanceState)
         startPostponedEnterTransition()
         binding?.recyclerView?.setHasFixedSize(true)
+        binding?.recyclerView?.backgroundTintList = ColorStateList(arrayOf(intArrayOf()), intArrayOf(Color.BLACK))
 
         homeViewModel?.getHomeData()?.observe(viewLifecycleOwner) { list ->
-            binding?.recyclerView?.backgroundTintList = ColorStateList(
-                    arrayOf(intArrayOf()),
-                    intArrayOf(Color.BLACK)
-            )
-
             binding?.recyclerView?.adapter = AdapterArtFlowHome(list)
+            binding?.recyclerView?.scheduleLayoutAnimation()
 
             (binding?.recyclerView?.adapter as AdapterArtFlowHome).onContainerClicked = { _, position ->
                 when (list[position].first) {
@@ -56,8 +49,6 @@ class ArtFlowHome : ScopedFragment() {
                 }
             }
 
-            binding?.recyclerView?.scheduleLayoutAnimation()
-
             binding?.recyclerView?.setOnTouchListener { v, event ->
                 when (event.action) {
                     MotionEvent.ACTION_UP -> {
@@ -66,6 +57,7 @@ class ArtFlowHome : ScopedFragment() {
                         }
                     }
                 }
+
                 false
             }
         }
