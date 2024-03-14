@@ -11,4 +11,6 @@
     <string name="albums">Albums</string>
     <string name="recently_added">Recently Added</string>
     <string name="player">Player</string>
+    <string name="search">Search</string>
+    <string name="preferences">Preferences</string>
 </resources>

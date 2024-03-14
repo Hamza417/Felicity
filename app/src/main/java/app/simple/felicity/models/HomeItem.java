@@ -21,6 +21,9 @@ public class HomeItem {
         this.audios = audios;
     }
     
+    public HomeItem() {
+    }
+    
     public ArrayList <Audio> getAudios() {
         return audios;
     }

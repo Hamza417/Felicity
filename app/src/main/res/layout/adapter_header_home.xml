@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="@dimen/padding_20">
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        android:id="@+id/app_icon"
+        android:layout_width="@dimen/icon_size_50"
+        android:layout_height="@dimen/icon_size_50"
+        android:layout_gravity="center_vertical"
+        android:contentDescription="@string/app_name"
+        android:scaleType="fitCenter"
+        android:transitionName="@string/app_name"
+        app:buttonTintType="accent"
+        app:srcCompat="@drawable/ic_felicity" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/typeFaceTextView02"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_marginStart="8dp"
+        android:layout_weight="1"
+        android:ellipsize="marquee"
+        android:marqueeRepeatLimit="marquee_forever"
+        android:singleLine="true"
+        android:text="@string/app_name_full"
+        android:textSize="@dimen/text_size_22"
+        app:appFontStyle="light"
+        app:textColorStyle="heading" />
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        android:id="@+id/search"
+        android:layout_width="@dimen/button_size"
+        android:layout_height="@dimen/button_size"
+        android:layout_gravity="center_vertical"
+        android:layout_marginEnd="8dp"
+        android:contentDescription="@string/search"
+        android:src="@drawable/ic_search"
+        android:transitionName="@string/search"
+        app:buttonTintType="regular" />
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        android:id="@+id/settings"
+        android:layout_width="@dimen/button_size"
+        android:layout_height="@dimen/button_size"
+        android:layout_gravity="center_vertical"
+        android:contentDescription="@string/preferences"
+        android:src="@drawable/ic_settings"
+        android:transitionName="@string/preferences"
+        app:buttonTintType="regular" />
+
+</LinearLayout>

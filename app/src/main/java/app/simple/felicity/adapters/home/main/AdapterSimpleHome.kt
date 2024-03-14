@@ -4,22 +4,65 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.databinding.AdapterDividerBinding
+import app.simple.felicity.databinding.AdapterHeaderHomeBinding
 import app.simple.felicity.databinding.AdapterHomeSimpleBinding
+import app.simple.felicity.decorations.overscroll.RecyclerViewUtils
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.models.HomeItem
 
-class AdapterSimpleHome(private val data: ArrayList<HomeItem>) : RecyclerView.Adapter<AdapterSimpleHome.Holder>() {
+class AdapterSimpleHome(private val data: ArrayList<HomeItem>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-        return Holder(AdapterHomeSimpleBinding.inflate(LayoutInflater.from(parent.context), parent, false).root)
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
+        return when (viewType) {
+            RecyclerViewUtils.TYPE_HEADER -> {
+                Header(AdapterHeaderHomeBinding.inflate(LayoutInflater.from(parent.context), parent, false).root)
+            }
+
+            RecyclerViewUtils.TYPE_ITEM -> {
+                Holder(AdapterHomeSimpleBinding.inflate(LayoutInflater.from(parent.context), parent, false).root)
+            }
+
+            RecyclerViewUtils.TYPE_DIVIDER -> {
+                Divider(AdapterDividerBinding.inflate(LayoutInflater.from(parent.context), parent, false).root)
+            }
+
+            else -> {
+                throw RuntimeException("there is no type that matches the type $viewType + make sure your using types correctly")
+            }
+        }
     }
 
-    override fun onBindViewHolder(holder: Holder, position: Int) {
-        holder.bind(AdapterHomeSimpleBinding.bind(holder.itemView))
+    override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
+        when (holder) {
+            is Holder -> {
+                holder.bind(AdapterHomeSimpleBinding.bind(holder.itemView))
+            }
+
+            is Header -> {
+                holder.bind(AdapterHeaderHomeBinding.bind(holder.itemView))
+            }
+        }
     }
 
     override fun getItemCount(): Int {
         return data.size
+    }
+
+    override fun getItemViewType(position: Int): Int {
+        return when (position) {
+            0 -> {
+                RecyclerViewUtils.TYPE_HEADER
+            }
+
+            1 -> {
+                RecyclerViewUtils.TYPE_DIVIDER
+            }
+
+            else -> {
+                RecyclerViewUtils.TYPE_ITEM
+            }
+        }
     }
 
     inner class Holder(itemView: View) : VerticalListViewHolder(itemView) {
@@ -32,4 +75,14 @@ class AdapterSimpleHome(private val data: ArrayList<HomeItem>) : RecyclerView.Ad
             adapterHomeSimpleBinding.title.text = itemView.context.getString(data[bindingAdapterPosition].title)
         }
     }
+
+    inner class Header(itemView: View) : VerticalListViewHolder(itemView) {
+        var adapterHeaderHomeBinding: AdapterHeaderHomeBinding? = null
+
+        fun bind(adapterHeaderHomeBinding: AdapterHeaderHomeBinding) {
+            this.adapterHeaderHomeBinding = adapterHeaderHomeBinding
+        }
+    }
+
+    inner class Divider(itemView: View) : VerticalListViewHolder(itemView)
 }

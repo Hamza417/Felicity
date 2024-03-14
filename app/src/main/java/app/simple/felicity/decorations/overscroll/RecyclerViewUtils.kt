@@ -5,6 +5,11 @@ import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 
 object RecyclerViewUtils {
+
+    const val TYPE_HEADER = 0
+    const val TYPE_ITEM = 1
+    const val TYPE_DIVIDER = 2
+
     private fun RecyclerView.smoothScrollToCenteredPosition(position: Int) {
         val smoothScroller = object : LinearSmoothScroller(context) {
             override fun calculateDxToMakeVisible(view: View?, snapPreference: Int): Int {

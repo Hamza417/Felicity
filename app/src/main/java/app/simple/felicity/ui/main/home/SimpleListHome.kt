@@ -10,6 +10,7 @@ import app.simple.felicity.adapters.home.main.AdapterSimpleHome
 import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
 import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.models.HomeItem
 import app.simple.felicity.viewmodels.ui.HomeViewModel
 
 class SimpleListHome : ScopedFragment() {
@@ -32,6 +33,9 @@ class SimpleListHome : ScopedFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         homeViewModel.getHomeData().observe(viewLifecycleOwner) { list ->
+            list.add(0, HomeItem()) // Header
+            list.add(1, HomeItem()) // Divider
+
             recyclerView.adapter = AdapterSimpleHome(list)
 
             (view.parent as? ViewGroup)?.doOnPreDraw {
