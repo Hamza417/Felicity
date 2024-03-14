@@ -107,18 +107,23 @@ class AudioService : Service(),
                 ServiceConstants.actionPlay -> {
                     play()
                 }
+
                 ServiceConstants.actionPause -> {
                     pause()
                 }
+
                 ServiceConstants.actionTogglePause -> {
                     changePlayerState()
                 }
+
                 ServiceConstants.actionNext -> {
                     playNext()
                 }
+
                 ServiceConstants.actionPrevious -> {
                     playPrevious()
                 }
+
                 ServiceConstants.actionQuitMusicService -> {
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
@@ -175,6 +180,7 @@ class AudioService : Service(),
                     pause()
                 }
             }
+
             AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK -> {
                 if (mediaPlayer.isPlaying) {
                     mediaPlayer.setVolume(.1f, .1f)
@@ -212,12 +218,15 @@ class AudioService : Service(),
                 MediaPlayer.MEDIA_ERROR_NOT_VALID_FOR_PROGRESSIVE_PLAYBACK -> {
                     throw FelicityPlayerException("MEDIA_ERROR_NOT_VALID_FOR_PROGRESSIVE_PLAYBACK & extra ${ServiceConstants.getMediaErrorString(extra)}")
                 }
+
                 MediaPlayer.MEDIA_ERROR_SERVER_DIED -> {
                     throw FelicityPlayerException("MEDIA_ERROR_SERVER_DIED & extra ${ServiceConstants.getMediaErrorString(extra)}")
                 }
+
                 MediaPlayer.MEDIA_ERROR_UNKNOWN -> {
                     throw FelicityPlayerException("MEDIA_ERROR_UNKNOWN & extra ${ServiceConstants.getMediaErrorString(extra)}")
                 }
+
                 else -> {
                     /* no-op */
                 }
@@ -414,7 +423,11 @@ class AudioService : Service(),
     }
 
     internal fun getDuration(): Int {
-        return mediaPlayer.duration
+        return try {
+            mediaPlayer.duration
+        } catch (e: IllegalStateException) {
+            0
+        }
     }
 
     internal fun seek(to: Int) {

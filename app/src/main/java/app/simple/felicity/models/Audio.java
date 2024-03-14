@@ -386,13 +386,14 @@ public class Audio implements Parcelable {
     
     @SuppressLint ("Range")
     public void setFromCursor(Cursor cursor) {
+        this.id = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media._ID));
         this.name = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME));
         this.title = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.TITLE));
         this.artist = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST));
         this.album = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM));
         this.albumId = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID));
-        this.artUri = Uri.withAppendedPath(MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI, String.valueOf(albumId)).toString();
-        this.fileUri = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.DATA));
+        this.artUri = Uri.withAppendedPath(Uri.parse("content://media/external/audio/albumart"), String.valueOf(albumId)).toString();
+        this.fileUri = Uri.withAppendedPath(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, String.valueOf(id)).toString();
         this.path = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.DATA));
         this.mimeType = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE));
         this.track = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.TRACK));
@@ -400,7 +401,6 @@ public class Audio implements Parcelable {
         this.size = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.SIZE));
         this.bitrate = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.BITRATE));
         this.duration = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DURATION));
-        this.id = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media._ID));
         this.dateAdded = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED));
         this.dateModified = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DATE_MODIFIED));
         this.dateTaken = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DATE_TAKEN));
