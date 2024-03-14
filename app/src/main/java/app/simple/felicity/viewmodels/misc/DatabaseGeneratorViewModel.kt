@@ -53,7 +53,7 @@ class DatabaseGeneratorViewModel(application: Application) : WrappedViewModel(ap
                 val audioModel = Audio()
                 audioModel.setFromCursor(cursor!!)
                 allAudioModel.add(audioModel)
-                audioDatabase?.audioDao()?.insert(audioModel)
+                // audioDatabase?.audioDao()?.insert(audioModel)
             } while (cursor!!.moveToNext())
 
             cursor!!.close()

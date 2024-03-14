@@ -13,16 +13,19 @@ import android.os.Looper
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsAnimation
+import android.view.animation.DecelerateInterpolator
 import androidx.annotation.IntegerRes
 import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
 import androidx.transition.ArcMotion
 import androidx.transition.Fade
 import app.simple.felicity.R
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.utils.ConditionUtils.isNotNull
+import com.google.android.material.shape.ShapeAppearanceModel
 import com.google.android.material.transition.*
 import kotlinx.coroutines.CoroutineScope
 
@@ -229,7 +232,11 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                 setDuration(duration)
                 setAllContainerColors(Color.TRANSPARENT)
                 scrimColor = Color.TRANSPARENT
-                this.endElevation = 500F
+                this.startElevation = 0F
+                this.endElevation = 50F
+                this.startShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(AppearancePreferences.getCornerRadius())
+                this.endShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(0F)
+                setInterpolator(DecelerateInterpolator(INTERPOLATOR_TENSION_FACTOR))
                 setPathMotion(ArcMotion().apply {
                     maximumAngle = this.maximumAngle
                     minimumHorizontalAngle = this.minimumHorizontalAngle
@@ -240,6 +247,11 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                 setDuration(duration)
                 setAllContainerColors(Color.TRANSPARENT)
                 scrimColor = Color.TRANSPARENT
+                this.startElevation = 50F
+                this.endElevation = -50F
+                this.startShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(0F)
+                this.endShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(AppearancePreferences.getCornerRadius())
+                setInterpolator(DecelerateInterpolator(INTERPOLATOR_TENSION_FACTOR))
                 setPathMotion(ArcMotion().apply {
                     maximumAngle = this.maximumAngle
                     minimumHorizontalAngle = this.minimumHorizontalAngle
@@ -339,5 +351,9 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
 
     protected fun popBackStack() {
         requireActivity().supportFragmentManager.popBackStack()
+    }
+
+    companion object {
+        private const val INTERPOLATOR_TENSION_FACTOR = 1.5F
     }
 }

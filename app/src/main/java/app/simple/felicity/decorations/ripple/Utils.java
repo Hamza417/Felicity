@@ -18,6 +18,7 @@ import com.google.android.material.shape.ShapeAppearanceModel;
 import java.util.Arrays;
 
 import app.simple.felicity.preferences.AppearancePreferences;
+import app.simple.felicity.theme.managers.ThemeManager;
 
 public class Utils {
     
@@ -54,7 +55,7 @@ public class Utils {
         RoundRectShape shape = new RoundRectShape(outerRadii, null, innerRadii);
         ShapeDrawable mask = new ShapeDrawable(shape);
         
-        ColorStateList stateList = ColorStateList.valueOf(AppearancePreferences.INSTANCE.getAccentColor());
+        ColorStateList stateList = ColorStateList.valueOf(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
         
         RippleDrawable rippleDrawable = new RippleDrawable(stateList, backgroundDrawable, mask);
         rippleDrawable.setAlpha(alpha);
@@ -71,7 +72,7 @@ public class Utils {
         RoundRectShape shape = new RoundRectShape(outerRadii, null, innerRadii);
         ShapeDrawable mask = new ShapeDrawable(shape);
         
-        ColorStateList stateList = ColorStateList.valueOf(AppearancePreferences.INSTANCE.getAccentColor());
+        ColorStateList stateList = ColorStateList.valueOf(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
         
         RippleDrawable rippleDrawable = new RippleDrawable(stateList, backgroundDrawable, mask);
         rippleDrawable.setAlpha(alpha);
