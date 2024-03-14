@@ -5,7 +5,6 @@ import android.app.Application;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.provider.MediaStore;
 
@@ -89,20 +88,12 @@ public class WrappedViewModel extends AndroidViewModel implements SharedPreferen
         return getApplication().getContentResolver();
     }
     
-    public final PackageManager getPackageManager() {
-        return getContext().getPackageManager();
-    }
-    
     protected void postWarning(String string) {
         warning.postValue(string);
     }
     
     protected void postError(Throwable throwable) {
         error.postError(throwable, getApplication());
-    }
-    
-    public void onAppUninstalled(String packageName) {
-    
     }
     
     public void cleanErrorStack() {
@@ -114,8 +105,7 @@ public class WrappedViewModel extends AndroidViewModel implements SharedPreferen
         super.onCleared();
         try {
             Objects.requireNonNull(StackTraceDatabase.Companion.getInstance()).close();
-        } catch (NullPointerException e) {
-            e.printStackTrace();
+        } catch (NullPointerException ignored) {
         }
         
         app.simple.felicity.preferences.SharedPreferences.INSTANCE.unregisterListener(this);

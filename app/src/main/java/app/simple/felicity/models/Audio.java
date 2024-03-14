@@ -1,7 +1,11 @@
 package app.simple.felicity.models;
 
+import android.annotation.SuppressLint;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.provider.MediaStore;
 
 import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
@@ -10,18 +14,6 @@ import androidx.room.PrimaryKey;
 
 @Entity (tableName = "audio")
 public class Audio implements Parcelable {
-    
-    public static final Creator <Audio> CREATOR = new Creator <>() {
-        @Override
-        public Audio createFromParcel(Parcel in) {
-            return new Audio(in);
-        }
-        
-        @Override
-        public Audio[] newArray(int size) {
-            return new Audio[size];
-        }
-    };
     
     @ColumnInfo (name = "name")
     private String name;
@@ -34,6 +26,18 @@ public class Audio implements Parcelable {
     
     @ColumnInfo (name = "album")
     private String album;
+    
+    public static final Creator <Audio> CREATOR = new Creator <Audio>() {
+        @Override
+        public Audio createFromParcel(Parcel in) {
+            return new Audio(in);
+        }
+        
+        @Override
+        public Audio[] newArray(int size) {
+            return new Audio[size];
+        }
+    };
     
     @ColumnInfo (name = "art_uri")
     private String artUri;
@@ -77,32 +81,15 @@ public class Audio implements Parcelable {
     
     public Audio() {
     }
-    
-    public Audio(String name, String title, String artist, String album, String artUri, String fileUri, String path, String mimeType, int track, int year, int size, int bitrate, long duration, long id, long dateAdded, long dateModified, long dateTaken) {
-        this.name = name;
-        this.title = title;
-        this.artist = artist;
-        this.album = album;
-        this.artUri = artUri;
-        this.fileUri = fileUri;
-        this.path = path;
-        this.mimeType = mimeType;
-        this.track = track;
-        this.year = year;
-        this.size = size;
-        this.bitrate = bitrate;
-        this.duration = duration;
-        this.id = id;
-        this.dateAdded = dateAdded;
-        this.dateModified = dateModified;
-        this.dateTaken = dateTaken;
-    }
+    @ColumnInfo (name = "album_id")
+    private long albumId;
     
     protected Audio(Parcel in) {
         name = in.readString();
         title = in.readString();
         artist = in.readString();
         album = in.readString();
+        albumId = in.readLong();
         artUri = in.readString();
         fileUri = in.readString();
         path = in.readString();
@@ -119,11 +106,17 @@ public class Audio implements Parcelable {
     }
     
     @Override
+    public int describeContents() {
+        return 0;
+    }
+    
+    @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(name);
         dest.writeString(title);
         dest.writeString(artist);
         dest.writeString(album);
+        dest.writeLong(albumId);
         dest.writeString(artUri);
         dest.writeString(fileUri);
         dest.writeString(path);
@@ -137,11 +130,6 @@ public class Audio implements Parcelable {
         dest.writeLong(dateAdded);
         dest.writeLong(dateModified);
         dest.writeLong(dateTaken);
-    }
-    
-    @Override
-    public int describeContents() {
-        return 0;
     }
     
     public String getName() {
@@ -174,6 +162,14 @@ public class Audio implements Parcelable {
     
     public void setAlbum(String album) {
         this.album = album;
+    }
+    
+    public long getAlbumId() {
+        return albumId;
+    }
+    
+    public void setAlbumId(long albumId) {
+        this.albumId = albumId;
     }
     
     public String getArtUri() {
@@ -371,6 +367,7 @@ public class Audio implements Parcelable {
         result = 31 * result + (getTitle() != null ? getTitle().hashCode() : 0);
         result = 31 * result + (getArtist() != null ? getArtist().hashCode() : 0);
         result = 31 * result + (getAlbum() != null ? getAlbum().hashCode() : 0);
+        result = 31 * result + (int) (getAlbumId() ^ (getAlbumId() >>> 32));
         result = 31 * result + (getArtUri() != null ? getArtUri().hashCode() : 0);
         result = 31 * result + (getFileUri() != null ? getFileUri().hashCode() : 0);
         result = 31 * result + (getPath() != null ? getPath().hashCode() : 0);
@@ -385,5 +382,27 @@ public class Audio implements Parcelable {
         result = 31 * result + (int) (getDateModified() ^ (getDateModified() >>> 32));
         result = 31 * result + (int) (getDateTaken() ^ (getDateTaken() >>> 32));
         return result;
+    }
+    
+    @SuppressLint ("Range")
+    public void setFromCursor(Cursor cursor) {
+        this.name = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME));
+        this.title = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.TITLE));
+        this.artist = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST));
+        this.album = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM));
+        this.albumId = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID));
+        this.artUri = Uri.withAppendedPath(MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI, String.valueOf(albumId)).toString();
+        this.fileUri = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.DATA));
+        this.path = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.DATA));
+        this.mimeType = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE));
+        this.track = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.TRACK));
+        this.year = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.YEAR));
+        this.size = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.SIZE));
+        this.bitrate = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.BITRATE));
+        this.duration = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DURATION));
+        this.id = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media._ID));
+        this.dateAdded = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED));
+        this.dateModified = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DATE_MODIFIED));
+        this.dateTaken = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DATE_TAKEN));
     }
 }
