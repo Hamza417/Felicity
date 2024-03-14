@@ -49,4 +49,5 @@
     <dimen name="carousel_spacing">16dp</dimen>
     <dimen name="gap">1dp</dimen>
     <dimen name="loader_size">40dp</dimen>
+    <dimen name="icon_size_40">40dp</dimen>
 </resources>

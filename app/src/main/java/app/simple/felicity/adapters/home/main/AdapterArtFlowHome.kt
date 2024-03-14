@@ -10,9 +10,9 @@ import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.theme.ThemeFrameLayout
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.views.FelicityImageSlider
-import app.simple.felicity.models.Audio
+import app.simple.felicity.models.HomeItem
 
-class AdapterArtFlowHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
+class AdapterArtFlowHome(private val data: ArrayList<HomeItem>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     var onContainerClicked: ((View, Int) -> Unit)? = null
 
@@ -26,8 +26,8 @@ class AdapterArtFlowHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>
 
     override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
         val h = holder as Holder
-        h.title.text = h.title.context.getString(data[position].first)
-        h.sliderView.setSliderAdapter(ArtFlowAdapter(data[position].second))
+        h.title.text = h.title.context.getString(data[position].title)
+        h.sliderView.setSliderAdapter(ArtFlowAdapter(data[position].audios))
 
         //        if(position == 0) {
         //            h.title.apply {

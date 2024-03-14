@@ -42,14 +42,14 @@ class ArtFlowHome : ScopedFragment() {
             binding?.recyclerView?.scheduleLayoutAnimation()
 
             (binding?.recyclerView?.adapter as AdapterArtFlowHome).onContainerClicked = { _, position ->
-                when (list[position].first) {
+                when (list[position].title) {
                     R.string.songs -> {
                         openFragmentSlide(Songs.newInstance(), "songs")
                     }
                 }
             }
 
-            binding?.recyclerView?.setOnTouchListener { v, event ->
+            binding?.recyclerView?.setOnTouchListener { _, event ->
                 when (event.action) {
                     MotionEvent.ACTION_UP -> {
                         binding?.recyclerView?.forEachViewHolder<AdapterArtFlowHome.Holder> {

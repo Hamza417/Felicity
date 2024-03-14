@@ -10,11 +10,11 @@ import app.simple.felicity.databinding.AdapterGridHomeBinding
 import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
 import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.models.Audio
+import app.simple.felicity.models.HomeItem
 import app.simple.felicity.utils.ArrayUtils.getTwoRandomIndices
 import app.simple.felicity.utils.RecyclerViewUtils
 
-class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
+class AdapterGridHome(private val data: ArrayList<HomeItem>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
@@ -58,7 +58,7 @@ class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) 
         fun bind(adapterGridHomeBinding: AdapterGridHomeBinding) {
             this.adapterGridHomeBinding = adapterGridHomeBinding
 
-            adapterGridHomeBinding.categoryTitle.text = adapterGridHomeBinding.root.context.getString(data[bindingAdapterPosition.minus(1)].first)
+            adapterGridHomeBinding.categoryTitle.text = adapterGridHomeBinding.root.context.getString(data[bindingAdapterPosition.minus(1)].title)
             val randomPossibleAlternateSpanPositions = intArrayOf(1, 2, 3, 4, 5, 7).getTwoRandomIndices()
 
             val spannedGridLayoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, 3)
@@ -72,7 +72,7 @@ class AdapterGridHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) 
 
             adapterGridHomeBinding.artGrid.setHasFixedSize(true)
             adapterGridHomeBinding.artGrid.layoutManager = spannedGridLayoutManager
-            adapterGridHomeBinding.artGrid.adapter = AdapterGridArt(data[bindingAdapterPosition.minus(1)].second)
+            adapterGridHomeBinding.artGrid.adapter = AdapterGridArt(data[bindingAdapterPosition.minus(1)].audios)
             adapterGridHomeBinding.artGrid.scheduleLayoutAnimation()
 
             adapterGridHomeBinding.artGrid.post {

@@ -6,20 +6,20 @@ import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.loaders.MediaLoader
-import app.simple.felicity.models.Audio
+import app.simple.felicity.models.HomeItem
 import app.simple.felicity.utils.ArrayUtils.toArrayList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class HomeViewModel(application: Application) : WrappedViewModel(application) {
 
-    private val data: MutableLiveData<ArrayList<Pair<Int, ArrayList<Audio>>>> by lazy {
-        MutableLiveData<ArrayList<Pair<Int, ArrayList<Audio>>>>().also {
+    private val data: MutableLiveData<ArrayList<HomeItem>> by lazy {
+        MutableLiveData<ArrayList<HomeItem>>().also {
             loadData()
         }
     }
 
-    fun getHomeData(): MutableLiveData<ArrayList<Pair<Int, ArrayList<Audio>>>> {
+    fun getHomeData(): MutableLiveData<ArrayList<HomeItem>> {
         return data
     }
 
@@ -30,12 +30,12 @@ class HomeViewModel(application: Application) : WrappedViewModel(application) {
             val artists = MediaLoader.getArtists(applicationContext())!!.toArrayList()
             val recentlyAdded = MediaLoader.getRecentlyAdded(applicationContext())!!.toArrayList()
 
-            val homeData = arrayListOf<Pair<Int, ArrayList<Audio>>>()
+            val homeData = arrayListOf<HomeItem>()
 
-            homeData.add(Pair(R.string.songs, songs))
-            homeData.add(Pair(R.string.albums, albums))
-            homeData.add(Pair(R.string.artists, artists))
-            homeData.add(Pair(R.string.recently_added, recentlyAdded))
+            homeData.add(HomeItem(R.string.songs, R.drawable.ic_music, songs))
+            homeData.add(HomeItem(R.string.albums, R.drawable.ic_album, albums))
+            homeData.add(HomeItem(R.string.artists, R.drawable.ic_artist, artists))
+            homeData.add(HomeItem(R.string.recently_added, R.drawable.ic_history, recentlyAdded))
 
             data.postValue(homeData)
         }

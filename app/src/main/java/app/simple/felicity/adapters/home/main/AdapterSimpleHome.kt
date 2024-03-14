@@ -4,12 +4,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterHomeSimpleBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.models.Audio
+import app.simple.felicity.models.HomeItem
 
-class AdapterSimpleHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>) : RecyclerView.Adapter<AdapterSimpleHome.Holder>() {
+class AdapterSimpleHome(private val data: ArrayList<HomeItem>) : RecyclerView.Adapter<AdapterSimpleHome.Holder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         return Holder(AdapterHomeSimpleBinding.inflate(LayoutInflater.from(parent.context), parent, false).root)
@@ -29,8 +28,8 @@ class AdapterSimpleHome(private val data: ArrayList<Pair<Int, ArrayList<Audio>>>
         fun bind(adapterHomeSimpleBinding: AdapterHomeSimpleBinding) {
             this.adapterHomeSimpleBinding = adapterHomeSimpleBinding
 
-            adapterHomeSimpleBinding.icon.setImageResource(R.drawable.ic_felicity)
-            adapterHomeSimpleBinding.title.text = itemView.context.getString(data[bindingAdapterPosition].first)
+            adapterHomeSimpleBinding.icon.setImageResource(data[bindingAdapterPosition].icon)
+            adapterHomeSimpleBinding.title.text = itemView.context.getString(data[bindingAdapterPosition].title)
         }
     }
 }
