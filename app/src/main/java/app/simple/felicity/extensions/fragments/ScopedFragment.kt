@@ -186,6 +186,41 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         }
     }
 
+    protected fun openFragmentFlow(fragment: ScopedFragment, icon: View, tag: String? = null, duration: Long? = null) {
+        fragment.setArcTransitions(duration ?: resources.getInteger(R.integer.animation_duration).toLong())
+
+        //        try {
+        //            (fragment.exitTransition as TransitionSet?)?.excludeTarget(icon, true)
+        //        } catch (e: java.lang.ClassCastException) {
+        //            (fragment.exitTransition as MaterialContainerTransform?)?.excludeTarget(icon, true)
+        //        }
+
+        try {
+            val transaction = requireActivity().supportFragmentManager.beginTransaction().apply {
+                setReorderingAllowed(true)
+                addSharedElement(icon, icon.transitionName)
+                replace(R.id.app_container, fragment, tag)
+                if (tag.isNotNull()) {
+                    addToBackStack(tag)
+                }
+            }
+
+            transaction.commit()
+        } catch (e: IllegalStateException) {
+            val transaction = requireActivity().supportFragmentManager.beginTransaction().apply {
+                setReorderingAllowed(true)
+                addSharedElement(icon, icon.transitionName)
+                replace(R.id.app_container, fragment, tag)
+                if (tag.isNotNull()) {
+                    addToBackStack(tag)
+                }
+            }
+
+            transaction.commitAllowingStateLoss()
+        }
+    }
+
+
     open fun setArcTransitions(duration: Long) {
         setTransitions()
 
@@ -194,6 +229,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                 setDuration(duration)
                 setAllContainerColors(Color.TRANSPARENT)
                 scrimColor = Color.TRANSPARENT
+                this.endElevation = 500F
                 setPathMotion(ArcMotion().apply {
                     maximumAngle = this.maximumAngle
                     minimumHorizontalAngle = this.minimumHorizontalAngle

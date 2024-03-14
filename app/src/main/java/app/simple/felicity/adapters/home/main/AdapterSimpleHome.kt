@@ -76,10 +76,10 @@ class AdapterSimpleHome(private val data: ArrayList<HomeItem>) : RecyclerView.Ad
 
             adapterHomeSimpleBinding.icon.setImageResource(data[position].icon)
             adapterHomeSimpleBinding.title.text = itemView.context.getString(data[position].title)
-            adapterHomeSimpleBinding.icon.transitionName = itemView.context.getString(data[position].title)
+            adapterHomeSimpleBinding.container.transitionName = itemView.context.getString(data[position].title)
 
             adapterHomeSimpleBinding.container.setOnClickListener {
-                adapterSimpleHomeCallbacks?.onItemClicked(data[position], position, adapterHomeSimpleBinding.icon)
+                adapterSimpleHomeCallbacks?.onItemClicked(data[position], position, adapterHomeSimpleBinding.container)
             }
         }
     }

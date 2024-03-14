@@ -19,29 +19,29 @@ class SimpleListHome : ScopedFragment() {
 
     private lateinit var recyclerView: CustomVerticalRecyclerView
 
-    private val homeViewModel: HomeViewModel by lazy {
-        ViewModelProvider(requireActivity())[HomeViewModel::class.java]
-    }
+    private var homeViewModel: HomeViewModel? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val binding = FragmentHomeSimpleBinding.inflate(inflater, container, false)
 
         recyclerView = binding.recyclerView
+        homeViewModel = ViewModelProvider(requireActivity())[HomeViewModel::class.java]
 
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        postponeEnterTransition()
 
-        homeViewModel.getHomeData().observe(viewLifecycleOwner) { list ->
+        homeViewModel!!.getHomeData().observe(viewLifecycleOwner) { list ->
             recyclerView.adapter = AdapterSimpleHome(list)
 
             (recyclerView.adapter as AdapterSimpleHome).setAdapterSimpleHomeCallbacks(object : AdapterSimpleHome.Companion.AdapterSimpleHomeCallbacks {
-                override fun onItemClicked(homeItem: HomeItem, position: Int, icon: View) {
+                override fun onItemClicked(homeItem: HomeItem, position: Int, container: View) {
                     when (homeItem.title) {
                         R.string.songs -> {
-                            openFragmentSlide(Songs.newInstance(), TAG)
+                            openFragmentArc(Songs.newInstance(), container, TAG)
                         }
                     }
                 }

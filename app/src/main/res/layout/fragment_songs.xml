@@ -6,5 +6,6 @@
     android:layout_height="match_parent"
     android:clipToPadding="false"
     android:layoutAnimation="@anim/list_animation_controller"
+    android:transitionName="@string/songs"
     app:fastScrollEnabled="false"
     app:isFadingEdgeRequired="true" />

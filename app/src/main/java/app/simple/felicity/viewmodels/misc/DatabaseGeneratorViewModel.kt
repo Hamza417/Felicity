@@ -48,10 +48,12 @@ class DatabaseGeneratorViewModel(application: Application) : WrappedViewModel(ap
                 "LOWER (" + MediaStore.Audio.Media.TITLE + ") ASC")
 
         if (cursor != null && cursor!!.moveToFirst()) {
+            val audioDatabase = AudioDatabase.getInstance(context)
             do {
                 val audioModel = Audio()
                 audioModel.setFromCursor(cursor!!)
                 allAudioModel.add(audioModel)
+                // audioDatabase?.audioDao()?.insert(audioModel)
             } while (cursor!!.moveToNext())
 
             cursor!!.close()
