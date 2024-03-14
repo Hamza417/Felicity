@@ -13,6 +13,8 @@ import app.simple.felicity.models.HomeItem
 
 class AdapterSimpleHome(private val data: ArrayList<HomeItem>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
+    private var adapterSimpleHomeCallbacks: AdapterSimpleHomeCallbacks? = null
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
             RecyclerViewUtils.TYPE_HEADER -> {
@@ -46,7 +48,7 @@ class AdapterSimpleHome(private val data: ArrayList<HomeItem>) : RecyclerView.Ad
     }
 
     override fun getItemCount(): Int {
-        return data.size
+        return data.size.plus(2)
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -70,9 +72,15 @@ class AdapterSimpleHome(private val data: ArrayList<HomeItem>) : RecyclerView.Ad
 
         fun bind(adapterHomeSimpleBinding: AdapterHomeSimpleBinding) {
             this.adapterHomeSimpleBinding = adapterHomeSimpleBinding
+            val position = bindingAdapterPosition.minus(2)
 
-            adapterHomeSimpleBinding.icon.setImageResource(data[bindingAdapterPosition].icon)
-            adapterHomeSimpleBinding.title.text = itemView.context.getString(data[bindingAdapterPosition].title)
+            adapterHomeSimpleBinding.icon.setImageResource(data[position].icon)
+            adapterHomeSimpleBinding.title.text = itemView.context.getString(data[position].title)
+            adapterHomeSimpleBinding.icon.transitionName = itemView.context.getString(data[position].title)
+
+            adapterHomeSimpleBinding.container.setOnClickListener {
+                adapterSimpleHomeCallbacks?.onItemClicked(data[position], position, adapterHomeSimpleBinding.icon)
+            }
         }
     }
 
@@ -85,4 +93,16 @@ class AdapterSimpleHome(private val data: ArrayList<HomeItem>) : RecyclerView.Ad
     }
 
     inner class Divider(itemView: View) : VerticalListViewHolder(itemView)
+
+    fun setAdapterSimpleHomeCallbacks(adapterSimpleHomeCallbacks: AdapterSimpleHomeCallbacks) {
+        this.adapterSimpleHomeCallbacks = adapterSimpleHomeCallbacks
+    }
+
+    companion object {
+        private const val TAG = "AdapterSimpleHome"
+
+        interface AdapterSimpleHomeCallbacks {
+            fun onItemClicked(homeItem: HomeItem, position: Int, icon: View)
+        }
+    }
 }

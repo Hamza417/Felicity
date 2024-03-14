@@ -3,13 +3,11 @@ package app.simple.felicity.viewmodels.ui
 import android.annotation.SuppressLint
 import android.app.Application
 import android.database.Cursor
-import android.net.Uri
 import android.provider.MediaStore
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
-import app.simple.felicity.loaders.MediaLoader
 import app.simple.felicity.models.Audio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -17,7 +15,6 @@ import kotlinx.coroutines.launch
 class SongsViewModel(application: Application) : WrappedViewModel(application) {
 
     private var cursor: Cursor? = null
-    private var globalList = arrayListOf<Audio>()
     private val selection = MediaStore.Audio.Media.IS_MUSIC + " != 0"
 
     private val songs: MutableLiveData<ArrayList<Audio>> by lazy {
@@ -32,8 +29,7 @@ class SongsViewModel(application: Application) : WrappedViewModel(application) {
 
     private fun loadData() {
         viewModelScope.launch(Dispatchers.IO) {
-            globalList = MediaLoader.getSongs(applicationContext()) as ArrayList<Audio>
-            songs.postValue(globalList)
+            songs.postValue(loadSongs())
         }
     }
 
@@ -51,37 +47,7 @@ class SongsViewModel(application: Application) : WrappedViewModel(application) {
         if (cursor != null && cursor!!.moveToFirst()) {
             do {
                 val audioModel = Audio()
-                val albumId = cursor!!.getLong(cursor!!.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID))
-
-                audioModel.name = cursor!!.getString(cursor!!.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME))
-                audioModel.title = cursor!!.getString(cursor!!.getColumnIndex(MediaStore.Audio.Media.TITLE))
-                audioModel.id = cursor!!.getLong(cursor!!.getColumnIndex(MediaStore.Audio.Media._ID))
-                audioModel.fileUri = Uri.withAppendedPath(externalContentUri, audioModel.id.toString()).toString()
-                audioModel.path = cursor!!.getString(cursor!!.getColumnIndex(MediaStore.Audio.Media.DATA))
-                audioModel.size = cursor!!.getInt(cursor!!.getColumnIndex(MediaStore.Audio.Media.SIZE))
-                audioModel.album = cursor!!.getString(cursor!!.getColumnIndex(MediaStore.Audio.Media.ALBUM))
-                audioModel.artist = cursor!!.getString(cursor!!.getColumnIndex(MediaStore.Audio.Media.ARTIST))
-                audioModel.duration = cursor!!.getLong(cursor!!.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION))
-                audioModel.dateAdded = cursor!!.getLong(cursor!!.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED))
-                audioModel.dateModified = cursor!!.getLong(cursor!!.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED))
-                audioModel.dateTaken = cursor!!.getLong(cursor!!.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_TAKEN))
-                audioModel.artUri = Uri.withAppendedPath(Uri.parse("content://media/external/audio/albumart"), albumId.toString()).toString()
-                audioModel.track = cursor!!.getInt(cursor!!.getColumnIndex(MediaStore.Audio.Media.TRACK))
-                audioModel.mimeType = cursor!!.getString(cursor!!.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE))
-                audioModel.year = cursor!!.getInt(cursor!!.getColumnIndex(MediaStore.Audio.Media.YEAR))
-                audioModel.bitrate = cursor!!.getInt(cursor!!.getColumnIndex(MediaStore.Audio.Media.BITRATE))
-
-                //for android 10 exclusively
-                /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    Uri contentUri = Uri.withAppendedPath(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, String.valueOf(id));
-                    try {
-                        AssetFileDescriptor file = audioContext.getContentResolver().openAssetFileDescriptor(contentUri, "r");
-                        audioContent.setMusicPathQ(file);
-                    } catch (FileNotFoundException e) {
-                        e.printStackTrace();
-                    }
-                }*/
-
+                audioModel.setFromCursor(cursor!!)
                 allAudioModel.add(audioModel)
             } while (cursor!!.moveToNext())
             cursor!!.close()

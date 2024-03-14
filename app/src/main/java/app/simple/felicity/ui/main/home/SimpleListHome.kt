@@ -6,11 +6,13 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.doOnPreDraw
 import androidx.lifecycle.ViewModelProvider
+import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterSimpleHome
 import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.models.HomeItem
+import app.simple.felicity.ui.app.Songs
 import app.simple.felicity.viewmodels.ui.HomeViewModel
 
 class SimpleListHome : ScopedFragment() {
@@ -33,10 +35,17 @@ class SimpleListHome : ScopedFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         homeViewModel.getHomeData().observe(viewLifecycleOwner) { list ->
-            list.add(0, HomeItem()) // Header
-            list.add(1, HomeItem()) // Divider
-
             recyclerView.adapter = AdapterSimpleHome(list)
+
+            (recyclerView.adapter as AdapterSimpleHome).setAdapterSimpleHomeCallbacks(object : AdapterSimpleHome.Companion.AdapterSimpleHomeCallbacks {
+                override fun onItemClicked(homeItem: HomeItem, position: Int, icon: View) {
+                    when (homeItem.title) {
+                        R.string.songs -> {
+                            openFragmentSlide(Songs.newInstance(), TAG)
+                        }
+                    }
+                }
+            })
 
             (view.parent as? ViewGroup)?.doOnPreDraw {
                 startPostponedEnterTransition()

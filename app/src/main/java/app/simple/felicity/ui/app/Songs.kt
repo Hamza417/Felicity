@@ -108,5 +108,7 @@ class Songs : ScopedFragment() {
             fragment.arguments = args
             return fragment
         }
+
+        const val TAG = "Songs"
     }
 }
