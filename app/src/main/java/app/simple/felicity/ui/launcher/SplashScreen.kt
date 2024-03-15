@@ -9,16 +9,16 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentSplashScreenBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.extensions.viewmodels.DatabaseLoaderViewModel
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.main.home.SimpleListHome
 import app.simple.felicity.utils.BitmapHelper.addLinearGradient
 import app.simple.felicity.utils.BitmapHelper.toBitmapKeepingSize
-import app.simple.felicity.viewmodels.misc.DatabaseGeneratorViewModel
 
 @SuppressLint("CustomSplashScreen")
 class SplashScreen : ScopedFragment() {
 
-    private val databaseGeneratorViewModels: DatabaseGeneratorViewModel by viewModels()
+    private val databaseLoaderViewModels: DatabaseLoaderViewModel by viewModels()
     private var binding: FragmentSplashScreenBinding? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -30,12 +30,10 @@ class SplashScreen : ScopedFragment() {
         super.onViewCreated(view, savedInstanceState)
         startPostponedEnterTransition()
 
-        databaseGeneratorViewModels.getGeneratedData().observe(viewLifecycleOwner) {
-            parentFragmentManager.beginTransaction()
-                .setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left, R.anim.enter_from_left, R.anim.exit_to_right)
-                .replace(R.id.app_container, SimpleListHome.newInstance())
-                .commitAllowingStateLoss()
-        }
+        parentFragmentManager.beginTransaction()
+            .setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left, R.anim.enter_from_left, R.anim.exit_to_right)
+            .replace(R.id.app_container, SimpleListHome.newInstance())
+            .commitAllowingStateLoss()
 
         binding?.appIcon?.setImageBitmap(R.drawable.ic_felicity.toBitmapKeepingSize(requireContext(), 10)
                                              .addLinearGradient(intArrayOf(ThemeManager.accent.primaryAccentColor, ThemeManager.accent.secondaryAccentColor)))

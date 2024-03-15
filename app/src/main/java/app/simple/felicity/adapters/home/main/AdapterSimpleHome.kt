@@ -9,9 +9,9 @@ import app.simple.felicity.databinding.AdapterHeaderHomeBinding
 import app.simple.felicity.databinding.AdapterHomeSimpleBinding
 import app.simple.felicity.decorations.overscroll.RecyclerViewUtils
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.models.HomeItem
+import app.simple.felicity.models.home.Home
 
-class AdapterSimpleHome(private val data: ArrayList<HomeItem>) : RecyclerView.Adapter<VerticalListViewHolder>() {
+class AdapterSimpleHome(private val data: ArrayList<Home>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var adapterSimpleHomeCallbacks: AdapterSimpleHomeCallbacks? = null
 
@@ -102,7 +102,7 @@ class AdapterSimpleHome(private val data: ArrayList<HomeItem>) : RecyclerView.Ad
         private const val TAG = "AdapterSimpleHome"
 
         interface AdapterSimpleHomeCallbacks {
-            fun onItemClicked(homeItem: HomeItem, position: Int, icon: View)
+            fun onItemClicked(home: Home, position: Int, icon: View)
         }
     }
 }

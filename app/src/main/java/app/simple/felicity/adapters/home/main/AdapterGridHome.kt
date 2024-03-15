@@ -10,11 +10,11 @@ import app.simple.felicity.databinding.AdapterGridHomeBinding
 import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
 import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.models.HomeItem
+import app.simple.felicity.models.home.Home
 import app.simple.felicity.utils.ArrayUtils.getTwoRandomIndices
 import app.simple.felicity.utils.RecyclerViewUtils
 
-class AdapterGridHome(private val data: ArrayList<HomeItem>) : RecyclerView.Adapter<VerticalListViewHolder>() {
+class AdapterGridHome(private val data: ArrayList<Home>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
@@ -72,7 +72,7 @@ class AdapterGridHome(private val data: ArrayList<HomeItem>) : RecyclerView.Adap
 
             adapterGridHomeBinding.artGrid.setHasFixedSize(true)
             adapterGridHomeBinding.artGrid.layoutManager = spannedGridLayoutManager
-            adapterGridHomeBinding.artGrid.adapter = AdapterGridArt(data[bindingAdapterPosition.minus(1)].audios)
+            adapterGridHomeBinding.artGrid.adapter = AdapterGridArt(data)
             adapterGridHomeBinding.artGrid.scheduleLayoutAnimation()
 
             adapterGridHomeBinding.artGrid.post {

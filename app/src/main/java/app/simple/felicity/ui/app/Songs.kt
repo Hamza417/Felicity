@@ -12,7 +12,6 @@ import app.simple.felicity.adapters.ui.SongsAdapter
 import app.simple.felicity.constants.BundleConstants
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.loaders.MediaLoader
 import app.simple.felicity.preferences.MusicPreferences
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.utils.ConditionUtils.invert
@@ -40,7 +39,7 @@ class Songs : ScopedFragment() {
 
             (binding.recyclerView.adapter as SongsAdapter).onItemClickListener = { _, position, view ->
                 MusicPreferences.setMusicPosition(position)
-                MusicPreferences.setMediaMusicCategory(MediaLoader.MEDIA_ID_SONGS)
+
                 openFragmentArc(DefaultPlayer.newInstance(), view, "audio_player_pager")
                 requireArguments().putInt(BundleConstants.position, position)
             }

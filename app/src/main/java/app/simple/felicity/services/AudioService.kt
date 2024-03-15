@@ -24,13 +24,12 @@ import app.simple.felicity.constants.ServiceConstants
 import app.simple.felicity.exceptions.FelicityPlayerException
 import app.simple.felicity.helpers.ImageHelper.getBitmapFromUri
 import app.simple.felicity.helpers.ImageHelper.getBitmapFromUriForNotifications
-import app.simple.felicity.loaders.MediaLoader
+import app.simple.felicity.loaders.MediaLoader.loadAudios
 import app.simple.felicity.models.Audio
 import app.simple.felicity.preferences.MusicPreferences
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.receivers.MediaButtonIntentReceiver
-import app.simple.felicity.utils.ArrayUtils.toArrayList
 import app.simple.felicity.utils.ConditionUtils.invert
 import app.simple.felicity.utils.ConditionUtils.isNotNull
 import app.simple.felicity.utils.ConditionUtils.isZero
@@ -376,8 +375,7 @@ class AudioService : Service(),
 
     fun setCurrentPosition(currentPosition: Int) {
         CoroutineScope(Dispatchers.IO).launch {
-            audioModels = MediaLoader.getCurrentMediaList(
-                    MusicPreferences.getMediaMusicCategory(), applicationContext)!!.toArrayList()
+            audioModels = applicationContext.loadAudios()
 
             withContext(Dispatchers.Main) {
                 if (this@AudioService.currentPosition != currentPosition || audioModels!![currentPosition].id != MusicPreferences.getLastMusicId()) {

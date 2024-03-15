@@ -1,13 +1,9 @@
-package app.simple.felicity.models;
-
-import java.util.ArrayList;
+package app.simple.felicity.models.home;
 
 import androidx.annotation.DrawableRes;
 import androidx.annotation.StringRes;
 
-public class HomeItem {
-    
-    private ArrayList <Audio> audios;
+public class Home {
     
     @StringRes
     private int title;
@@ -15,21 +11,9 @@ public class HomeItem {
     @DrawableRes
     private int icon;
     
-    public HomeItem(int title, int icon, ArrayList <Audio> audios) {
+    public Home(int title, int icon) {
         this.title = title;
         this.icon = icon;
-        this.audios = audios;
-    }
-    
-    public HomeItem() {
-    }
-    
-    public ArrayList <Audio> getAudios() {
-        return audios;
-    }
-    
-    public void setAudios(ArrayList <Audio> audios) {
-        this.audios = audios;
     }
     
     public int getTitle() {

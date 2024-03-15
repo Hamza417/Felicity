@@ -1,7 +1,6 @@
 package app.simple.felicity.preferences
 
 import android.annotation.SuppressLint
-import app.simple.felicity.loaders.MediaLoader
 
 object MusicPreferences {
 
@@ -12,17 +11,6 @@ object MusicPreferences {
     const val musicRepeat = "music_repeat"
     const val musicPosition = "music_position"
     const val fromSearch = "from_search"
-    const val media_music_category = "media_music_category"
-
-    // ---------------------------------------------------------------------------------------------------------- //
-
-    fun setMediaMusicCategory(value: String) {
-        SharedPreferences.getSharedPreferences().edit().putString(media_music_category, value).apply()
-    }
-
-    fun getMediaMusicCategory(): String {
-        return SharedPreferences.getSharedPreferences().getString(media_music_category, MediaLoader.MEDIA_ID_SONGS)!!
-    }
 
     // ---------------------------------------------------------------------------------------------------------- //
 

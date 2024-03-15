@@ -11,7 +11,7 @@ import app.simple.felicity.adapters.home.main.AdapterSimpleHome
 import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.models.HomeItem
+import app.simple.felicity.models.home.Home
 import app.simple.felicity.ui.app.Songs
 import app.simple.felicity.viewmodels.ui.HomeViewModel
 
@@ -38,8 +38,8 @@ class SimpleListHome : ScopedFragment() {
             recyclerView.adapter = AdapterSimpleHome(list)
 
             (recyclerView.adapter as AdapterSimpleHome).setAdapterSimpleHomeCallbacks(object : AdapterSimpleHome.Companion.AdapterSimpleHomeCallbacks {
-                override fun onItemClicked(homeItem: HomeItem, position: Int, view1: View) {
-                    when (homeItem.title) {
+                override fun onItemClicked(home: Home, position: Int, view1: View) {
+                    when (home.title) {
                         R.string.songs -> {
                             openFragmentArc(Songs.newInstance(), view1, TAG)
                         }

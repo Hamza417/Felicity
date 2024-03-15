@@ -3,13 +3,11 @@ package app.simple.felicity.adapters.home.sub
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.net.toUri
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterGridImageBinding
-import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromUri
-import app.simple.felicity.models.Audio
+import app.simple.felicity.models.home.Home
 
-class AdapterGridArt(private val data: ArrayList<Audio>) :
+class AdapterGridArt(private val data: ArrayList<Home>) :
         RecyclerView.Adapter<AdapterGridArt.Holder>() {
 
     private var adapterGridImageBinding: AdapterGridImageBinding? = null
@@ -29,14 +27,14 @@ class AdapterGridArt(private val data: ArrayList<Audio>) :
     }
 
     override fun getItemId(position: Int): Long {
-        return data[position].id
+        return data[position].title.toLong()
     }
 
     inner class Holder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         var adapterGridImageBinding: AdapterGridImageBinding? = null
         fun bind(adapterGridImageBinding: AdapterGridImageBinding) {
             this.adapterGridImageBinding = adapterGridImageBinding
-            adapterGridImageBinding.art.loadFromUri(data[absoluteAdapterPosition].artUri.toUri())
+
         }
     }
 
@@ -47,38 +45,5 @@ class AdapterGridArt(private val data: ArrayList<Audio>) :
             // Notify position change
             notifyItemChanged(i)
         }
-    }
-
-    /**
-     * Replace any one item from the top 9 items with a random item
-     * from the remaining items in the list.
-     */
-    fun randomizeAnyOne() {
-        val randomIndex = (0 until itemCount).random()
-        val randomItem = data.subList(itemCount, data.size).random()
-        val replacedItem = data[randomIndex]
-        val replacedIndex = data.indexOf(randomItem)
-        data[randomIndex] = randomItem
-        data[replacedIndex] = replacedItem
-        notifyItemChanged(randomIndex)
-    }
-
-    /**
-     * Replace any two items from the top 9 items with random items
-     * from the remaining items in the list.
-     */
-    fun randomizeAnyTwo() {
-        val randomIndexOne = (0 until itemCount).random()
-        val randomIndexTwo = (0 until itemCount).random()
-        val randomItemOne = data.subList(itemCount, data.size).random()
-        val randomItemTwo = data.subList(itemCount, data.size).random()
-        val replacedItemOne = data[randomIndexOne]
-        val replacedItemTwo = data[randomIndexTwo]
-        data[randomIndexOne] = randomItemOne
-        data[randomIndexTwo] = randomItemTwo
-        data[data.indexOf(randomItemOne)] = replacedItemOne
-        data[data.indexOf(randomItemTwo)] = replacedItemTwo
-        notifyItemChanged(randomIndexOne)
-        notifyItemChanged(randomIndexTwo)
     }
 }

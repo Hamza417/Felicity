@@ -81,6 +81,7 @@ public class Audio implements Parcelable {
     
     public Audio() {
     }
+    
     @ColumnInfo (name = "album_id")
     private long albumId;
     
@@ -385,24 +386,90 @@ public class Audio implements Parcelable {
     }
     
     @SuppressLint ("Range")
-    public void setFromCursor(Cursor cursor) {
-        this.id = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media._ID));
-        this.name = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME));
-        this.title = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.TITLE));
-        this.artist = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST));
-        this.album = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM));
-        this.albumId = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID));
+    public Audio(Cursor cursor) {
+        int columnIndex;
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media._ID);
+        if (columnIndex != -1) {
+            this.id = cursor.getLong(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME);
+        if (columnIndex != -1) {
+            this.name = cursor.getString(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.TITLE);
+        if (columnIndex != -1) {
+            this.title = cursor.getString(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST);
+        if (columnIndex != -1) {
+            this.artist = cursor.getString(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM);
+        if (columnIndex != -1) {
+            this.album = cursor.getString(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID);
+        if (columnIndex != -1) {
+            this.albumId = cursor.getLong(columnIndex);
+        }
+        
         this.artUri = Uri.withAppendedPath(Uri.parse("content://media/external/audio/albumart"), String.valueOf(albumId)).toString();
         this.fileUri = Uri.withAppendedPath(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, String.valueOf(id)).toString();
-        this.path = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.DATA));
-        this.mimeType = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE));
-        this.track = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.TRACK));
-        this.year = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.YEAR));
-        this.size = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.SIZE));
-        this.bitrate = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.BITRATE));
-        this.duration = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DURATION));
-        this.dateAdded = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED));
-        this.dateModified = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DATE_MODIFIED));
-        this.dateTaken = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DATE_TAKEN));
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.DATA);
+        if (columnIndex != -1) {
+            this.path = cursor.getString(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE);
+        if (columnIndex != -1) {
+            this.mimeType = cursor.getString(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.TRACK);
+        if (columnIndex != -1) {
+            this.track = cursor.getInt(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.YEAR);
+        if (columnIndex != -1) {
+            this.year = cursor.getInt(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.SIZE);
+        if (columnIndex != -1) {
+            this.size = cursor.getInt(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.BITRATE);
+        if (columnIndex != -1) {
+            this.bitrate = cursor.getInt(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION);
+        if (columnIndex != -1) {
+            this.duration = cursor.getLong(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED);
+        if (columnIndex != -1) {
+            this.dateAdded = cursor.getLong(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_MODIFIED);
+        if (columnIndex != -1) {
+            this.dateModified = cursor.getLong(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_TAKEN);
+        if (columnIndex != -1) {
+            this.dateTaken = cursor.getLong(columnIndex);
+        }
     }
 }

@@ -1,12 +1,9 @@
 package app.simple.felicity.extensions.viewmodels;
 
-import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.net.Uri;
-import android.provider.MediaStore;
 
 import java.util.Objects;
 
@@ -21,31 +18,6 @@ import app.simple.felicity.preferences.ConfigurationPreferences;
 import app.simple.felicity.utils.ContextUtils;
 
 public class WrappedViewModel extends AndroidViewModel implements SharedPreferences.OnSharedPreferenceChangeListener {
-    
-    @SuppressLint ("InlinedApi")
-    // Mostly, false positives
-    public final String[] audioProjection = {MediaStore.Audio.Media.DATA,
-            MediaStore.Audio.Media.ALBUM_ID,
-            MediaStore.Audio.Media.ALBUM,
-            MediaStore.Audio.Media.TITLE,
-            MediaStore.Audio.Media.DURATION,
-            MediaStore.Audio.Media.ARTIST,
-            MediaStore.Audio.Media.DISPLAY_NAME,
-            MediaStore.Audio.Media._ID,
-            MediaStore.Audio.Media.ARTIST_ID,
-            MediaStore.Audio.Media.SIZE,
-            MediaStore.Audio.Media.DATE_ADDED,
-            MediaStore.Audio.Media.DATE_MODIFIED,
-            MediaStore.Audio.Media.DATE_TAKEN,
-            MediaStore.Audio.Media.MIME_TYPE,
-            MediaStore.Audio.Media.TRACK,
-            MediaStore.Audio.Media.YEAR,
-            MediaStore.Audio.Media.BITRATE,
-            MediaStore.Audio.Media.COMPOSER,
-    };
-    
-    public final Uri internalContentUri = MediaStore.Audio.Media.INTERNAL_CONTENT_URI;
-    public final Uri externalContentUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
     
     public final ErrorLiveData error = new ErrorLiveData();
     public final MutableLiveData <String> warning = new MutableLiveData <>();
