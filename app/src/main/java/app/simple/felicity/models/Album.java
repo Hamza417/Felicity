@@ -24,7 +24,7 @@ public class Album implements Parcelable, Serializable {
         }
     };
     private int id;
-    private int albumId;
+    private long albumId;
     private String albumName;
     private int artistId;
     private String artistName;
@@ -47,7 +47,7 @@ public class Album implements Parcelable, Serializable {
         
         columnIndex = cursor.getColumnIndex(MediaStore.Audio.Albums.ALBUM_ID);
         if (columnIndex != -1) {
-            this.albumId = cursor.getInt(columnIndex);
+            this.albumId = cursor.getLong(columnIndex);
         }
         
         columnIndex = cursor.getColumnIndex(MediaStore.Audio.Albums.ALBUM);
@@ -106,7 +106,7 @@ public class Album implements Parcelable, Serializable {
         this.id = id;
     }
     
-    public int getAlbumId() {
+    public long getAlbumId() {
         return albumId;
     }
     
@@ -178,7 +178,7 @@ public class Album implements Parcelable, Serializable {
     @Override
     public void writeToParcel(@NonNull Parcel dest, int flags) {
         dest.writeInt(id);
-        dest.writeInt(albumId);
+        dest.writeLong(albumId);
         dest.writeString(albumName);
         dest.writeInt(artistId);
         dest.writeString(artistName);
@@ -229,7 +229,7 @@ public class Album implements Parcelable, Serializable {
     @Override
     public int hashCode() {
         int result = getId();
-        result = 31 * result + getAlbumId();
+        result = 31 * result + (int) (getAlbumId() ^ (getAlbumId() >>> 32));
         result = 31 * result + getAlbumName().hashCode();
         result = 31 * result + getArtistId();
         result = 31 * result + getArtistName().hashCode();
