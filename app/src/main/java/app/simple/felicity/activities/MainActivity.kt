@@ -3,7 +3,7 @@ package app.simple.felicity.activities
 import android.os.Bundle
 import app.simple.felicity.R
 import app.simple.felicity.extensions.activities.BaseActivity
-import app.simple.felicity.ui.main.home.SimpleListHome
+import app.simple.felicity.ui.main.home.ArtFlowHome
 import app.simple.felicity.utils.ConditionUtils.isNull
 
 class MainActivity : BaseActivity() {
@@ -16,7 +16,7 @@ class MainActivity : BaseActivity() {
 
         if (savedInstanceState.isNull()) {
             supportFragmentManager.beginTransaction()
-                .replace(R.id.app_container, SimpleListHome.newInstance())
+                .replace(R.id.app_container, ArtFlowHome.newInstance())
                 .commit()
         }
     }

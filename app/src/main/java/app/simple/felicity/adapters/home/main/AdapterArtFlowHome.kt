@@ -14,7 +14,7 @@ import app.simple.felicity.models.home.Home
 
 class AdapterArtFlowHome(private val data: ArrayList<Home>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
-    var onContainerClicked: ((View, Int) -> Unit)? = null
+    private var adapterArtFlowHomeCallbacks: AdapterArtFlowHomeCallbacks? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return Holder(LayoutInflater.from(parent.context).inflate(R.layout.adapter_home, parent, false))
@@ -43,7 +43,7 @@ class AdapterArtFlowHome(private val data: ArrayList<Home>) : RecyclerView.Adapt
         //        }
 
         h.title.setOnClickListener {
-            onContainerClicked?.invoke(it, position)
+            adapterArtFlowHomeCallbacks?.onClicked(it, position)
         }
     }
 
@@ -51,5 +51,15 @@ class AdapterArtFlowHome(private val data: ArrayList<Home>) : RecyclerView.Adapt
         val container: ThemeFrameLayout = itemView.findViewById(R.id.container)
         val sliderView: FelicityImageSlider = itemView.findViewById(R.id.imageSlider)
         val title: TypeFaceTextView = itemView.findViewById(R.id.title)
+    }
+
+    fun setAdapterArtFlowHomeCallbacks(adapterArtFlowHomeCallbacks: AdapterArtFlowHomeCallbacks) {
+        this.adapterArtFlowHomeCallbacks = adapterArtFlowHomeCallbacks
+    }
+
+    companion object {
+        interface AdapterArtFlowHomeCallbacks {
+            fun onClicked(view: View, position: Int)
+        }
     }
 }

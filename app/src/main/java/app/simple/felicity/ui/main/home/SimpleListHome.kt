@@ -38,10 +38,10 @@ class SimpleListHome : ScopedFragment() {
             recyclerView.adapter = AdapterSimpleHome(list)
 
             (recyclerView.adapter as AdapterSimpleHome).setAdapterSimpleHomeCallbacks(object : AdapterSimpleHome.Companion.AdapterSimpleHomeCallbacks {
-                override fun onItemClicked(home: Home, position: Int, view1: View) {
+                override fun onItemClicked(home: Home, position: Int, view: View) {
                     when (home.title) {
                         R.string.songs -> {
-                            openFragmentArc(Songs.newInstance(), view1, TAG)
+                            openFragmentArc(Songs.newInstance(), view, TAG)
                         }
                     }
                 }

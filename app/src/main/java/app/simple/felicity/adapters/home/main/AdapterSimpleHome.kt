@@ -102,7 +102,7 @@ class AdapterSimpleHome(private val data: ArrayList<Home>) : RecyclerView.Adapte
         private const val TAG = "AdapterSimpleHome"
 
         interface AdapterSimpleHomeCallbacks {
-            fun onItemClicked(home: Home, position: Int, icon: View)
+            fun onItemClicked(home: Home, position: Int, view: View)
         }
     }
 }

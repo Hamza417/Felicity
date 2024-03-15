@@ -7,7 +7,7 @@ import app.simple.felicity.R
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.views.SquareImageView
 import app.simple.felicity.models.home.Home
-import app.simple.felicity.models.home.HomeModelUtils
+import app.simple.felicity.models.home.HomeUtils
 import com.smarteist.autoimageslider.SliderViewAdapter
 
 class ArtFlowAdapter(private val data: Home) : SliderViewAdapter<ArtFlowAdapter.ArtFlowViewHolder>() {
@@ -19,7 +19,7 @@ class ArtFlowAdapter(private val data: Home) : SliderViewAdapter<ArtFlowAdapter.
     }
 
     override fun getCount(): Int {
-        return HomeModelUtils.getHomeDataSize(data).coerceAtMost(25)
+        return HomeUtils.getHomeDataSize(data).coerceAtMost(25)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup?): ArtFlowViewHolder {
@@ -27,6 +27,6 @@ class ArtFlowAdapter(private val data: Home) : SliderViewAdapter<ArtFlowAdapter.
     }
 
     override fun onBindViewHolder(viewHolder: ArtFlowViewHolder, position: Int) {
-
+        HomeUtils.loadHomeAlbumArt(data, viewHolder.art, position)
     }
 }

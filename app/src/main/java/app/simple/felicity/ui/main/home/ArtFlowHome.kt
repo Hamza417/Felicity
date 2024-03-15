@@ -38,16 +38,19 @@ class ArtFlowHome : ScopedFragment() {
         binding?.recyclerView?.backgroundTintList = ColorStateList(arrayOf(intArrayOf()), intArrayOf(Color.BLACK))
 
         homeViewModel?.getHomeData()?.observe(viewLifecycleOwner) { list ->
-            binding?.recyclerView?.adapter = AdapterArtFlowHome(list)
+            val adapter = AdapterArtFlowHome(list)
+            binding?.recyclerView?.adapter = adapter
             binding?.recyclerView?.scheduleLayoutAnimation()
 
-            (binding?.recyclerView?.adapter as AdapterArtFlowHome).onContainerClicked = { _, position ->
-                when (list[position].title) {
-                    R.string.songs -> {
-                        openFragmentSlide(Songs.newInstance(), "songs")
+            adapter.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
+                override fun onClicked(view: View, position: Int) {
+                    when (list[position].title) {
+                        R.string.songs -> {
+                            openFragmentSlide(Songs.newInstance(), "songs")
+                        }
                     }
                 }
-            }
+            })
 
             binding?.recyclerView?.setOnTouchListener { _, event ->
                 when (event.action) {
