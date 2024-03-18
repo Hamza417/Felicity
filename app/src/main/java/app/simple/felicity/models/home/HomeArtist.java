@@ -9,7 +9,7 @@ public class HomeArtist extends Home {
     private ArrayList <Artist> artists;
     
     public HomeArtist(int title, int icon, ArrayList <Artist> artists) {
-        super(title, icon);
+        super(title, icon, artists.size());
         this.artists = artists;
     }
     
@@ -19,5 +19,6 @@ public class HomeArtist extends Home {
     
     public void setArtists(ArrayList <Artist> artists) {
         this.artists = artists;
+        setSize(artists.size());
     }
 }

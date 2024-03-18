@@ -11,9 +11,12 @@ public class Home {
     @DrawableRes
     private int icon;
     
-    public Home(int title, int icon) {
+    private int size;
+    
+    public Home(int title, int icon, int size) {
         this.title = title;
         this.icon = icon;
+        this.size = size;
     }
     
     public int getTitle() {
@@ -30,5 +33,13 @@ public class Home {
     
     public void setIcon(int icon) {
         this.icon = icon;
+    }
+    
+    public int getSize() {
+        return size;
+    }
+    
+    public void setSize(int size) {
+        this.size = size;
     }
 }

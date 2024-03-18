@@ -6,8 +6,9 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterGridImageBinding
 import app.simple.felicity.models.home.Home
+import app.simple.felicity.models.home.HomeUtils
 
-class AdapterGridArt(private val data: ArrayList<Home>) :
+class AdapterGridArt(private val data: Home) :
         RecyclerView.Adapter<AdapterGridArt.Holder>() {
 
     private var adapterGridImageBinding: AdapterGridImageBinding? = null
@@ -27,20 +28,22 @@ class AdapterGridArt(private val data: ArrayList<Home>) :
     }
 
     override fun getItemId(position: Int): Long {
-        return data[position].title.toLong()
+        return data.title.toLong()
     }
 
     inner class Holder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         var adapterGridImageBinding: AdapterGridImageBinding? = null
+
         fun bind(adapterGridImageBinding: AdapterGridImageBinding) {
             this.adapterGridImageBinding = adapterGridImageBinding
 
+            HomeUtils.loadHomeAlbumArt(data, adapterGridImageBinding.art, bindingAdapterPosition)
         }
     }
 
     fun randomize() {
-        val copy = data.toList()
-        data.shuffle()
+        HomeUtils.randomizeHomeData(data)
+
         for (i in 0 until itemCount) {
             // Notify position change
             notifyItemChanged(i)

@@ -72,7 +72,7 @@ class AdapterGridHome(private val data: ArrayList<Home>) : RecyclerView.Adapter<
 
             adapterGridHomeBinding.artGrid.setHasFixedSize(true)
             adapterGridHomeBinding.artGrid.layoutManager = spannedGridLayoutManager
-            adapterGridHomeBinding.artGrid.adapter = AdapterGridArt(data)
+            adapterGridHomeBinding.artGrid.adapter = AdapterGridArt(data[bindingAdapterPosition.minus(1)])
             adapterGridHomeBinding.artGrid.scheduleLayoutAnimation()
 
             adapterGridHomeBinding.artGrid.post {

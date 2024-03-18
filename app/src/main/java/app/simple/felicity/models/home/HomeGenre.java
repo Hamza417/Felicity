@@ -9,7 +9,7 @@ public class HomeGenre extends Home {
     private ArrayList <Genre> genres;
     
     public HomeGenre(int title, int icon, ArrayList <Genre> genres) {
-        super(title, icon);
+        super(title, icon, genres.size());
         this.genres = genres;
     }
     
@@ -19,5 +19,6 @@ public class HomeGenre extends Home {
     
     public void setGenres(ArrayList <Genre> genres) {
         this.genres = genres;
+        setSize(genres.size());
     }
 }

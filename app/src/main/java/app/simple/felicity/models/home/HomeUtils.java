@@ -3,6 +3,8 @@ package app.simple.felicity.models.home;
 import android.net.Uri;
 import android.widget.ImageView;
 
+import java.util.Collections;
+
 import app.simple.felicity.glide.albumcover.AlbumCoverUtils;
 import app.simple.felicity.glide.utils.AudioCoverUtil;
 
@@ -30,6 +32,18 @@ public class HomeUtils {
         
         } else if (home instanceof HomeArtist) {
         
+        }
+    }
+    
+    public static void randomizeHomeData(Home home) {
+        if (home instanceof HomeAudio) {
+            Collections.shuffle(((HomeAudio) home).getAudios());
+        } else if (home instanceof HomeAlbum) {
+            Collections.shuffle(((HomeAlbum) home).getAlbums());
+        } else if (home instanceof HomeGenre) {
+            Collections.shuffle(((HomeGenre) home).getGenres());
+        } else if (home instanceof HomeArtist) {
+            Collections.shuffle(((HomeArtist) home).getArtists());
         }
     }
 }

@@ -9,7 +9,7 @@ public class HomeAudio extends Home {
     private ArrayList <Audio> audios;
     
     public HomeAudio(int title, int icon, ArrayList <Audio> audios) {
-        super(title, icon);
+        super(title, icon, audios.size());
         this.audios = audios;
     }
     
@@ -19,5 +19,6 @@ public class HomeAudio extends Home {
     
     public void setAudios(ArrayList <Audio> audios) {
         this.audios = audios;
+        setSize(audios.size());
     }
 }
