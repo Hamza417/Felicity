@@ -36,8 +36,6 @@ class SpannedHome : ScopedFragment() {
             binding?.recyclerView?.scheduleLayoutAnimation()
             // Disable item animations
             binding?.recyclerView?.itemAnimator = null
-
-            handler.postDelayed(randomizer, DELAY)
         }
     }
 
