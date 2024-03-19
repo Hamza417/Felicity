@@ -12,8 +12,9 @@ import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.models.home.Home
-import app.simple.felicity.ui.lists.albums.PeristyleAlbums
-import app.simple.felicity.ui.lists.songs.SimpleSongs
+import app.simple.felicity.ui.main.albums.PeristyleAlbums
+import app.simple.felicity.ui.main.artists.PeristyleArtists
+import app.simple.felicity.ui.main.songs.SimpleSongs
 import app.simple.felicity.viewmodels.ui.HomeViewModel
 
 class SimpleListHome : ScopedFragment() {
@@ -47,6 +48,10 @@ class SimpleListHome : ScopedFragment() {
 
                         R.string.albums -> {
                             openFragmentArc(PeristyleAlbums.newInstance(), view, PeristyleAlbums.TAG)
+                        }
+
+                        R.string.artists -> {
+                            openFragmentArc(PeristyleArtists.newInstance(), view, PeristyleArtists.TAG)
                         }
                     }
                 }

@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.lists.albums
+package app.simple.felicity.ui.main.albums
 
 import android.os.Bundle
 import android.view.LayoutInflater
