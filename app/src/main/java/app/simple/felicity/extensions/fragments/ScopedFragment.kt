@@ -11,11 +11,13 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsAnimation
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.IntegerRes
 import androidx.annotation.RequiresApi
+import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
 import androidx.transition.Fade
 import app.simple.felicity.R
@@ -336,6 +338,12 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                  * to clear up any old state.
                  */
             }
+        }
+    }
+
+    protected fun startPostViewTransition(view: View) {
+        (view.parent as? ViewGroup)?.doOnPreDraw {
+            startPostponedEnterTransition()
         }
     }
 

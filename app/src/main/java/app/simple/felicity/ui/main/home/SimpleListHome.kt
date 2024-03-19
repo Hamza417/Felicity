@@ -12,6 +12,7 @@ import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.models.home.Home
+import app.simple.felicity.ui.lists.albums.PeristyleAlbums
 import app.simple.felicity.ui.lists.songs.SimpleSongs
 import app.simple.felicity.viewmodels.ui.HomeViewModel
 
@@ -42,6 +43,10 @@ class SimpleListHome : ScopedFragment() {
                     when (home.title) {
                         R.string.songs -> {
                             openFragmentArc(SimpleSongs.newInstance(), view, TAG)
+                        }
+
+                        R.string.albums -> {
+                            openFragmentArc(PeristyleAlbums.newInstance(), view, PeristyleAlbums.TAG)
                         }
                     }
                 }
