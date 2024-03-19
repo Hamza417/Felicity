@@ -57,11 +57,11 @@ class AdapterGridHome(private val data: ArrayList<Home>) : RecyclerView.Adapter<
 
         fun bind(adapterGridHomeBinding: AdapterGridHomeBinding) {
             this.adapterGridHomeBinding = adapterGridHomeBinding
-
             adapterGridHomeBinding.categoryTitle.text = adapterGridHomeBinding.root.context.getString(data[bindingAdapterPosition.minus(1)].title)
-            val randomPossibleAlternateSpanPositions = intArrayOf(1, 2, 3, 4, 5, 7).getTwoRandomIndices()
 
+            val randomPossibleAlternateSpanPositions = intArrayOf(1, 2, 3, 4, 5, 7).getTwoRandomIndices()
             val spannedGridLayoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, 3)
+
             spannedGridLayoutManager.spanSizeLookup = SpannedGridLayoutManager.SpanSizeLookup { position ->
                 if (position in randomPossibleAlternateSpanPositions) {
                     SpanSize(2, 2)

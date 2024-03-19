@@ -15,7 +15,7 @@
         android:scaleType="fitCenter"
         android:transitionName="@string/app_name"
         app:buttonTintType="accent"
-        app:srcCompat="@drawable/ic_felicity" />
+        app:srcCompat="@drawable/ic_felicity_full" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
         android:id="@+id/typeFaceTextView02"
