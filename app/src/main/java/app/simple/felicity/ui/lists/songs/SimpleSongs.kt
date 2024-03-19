@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.app
+package app.simple.felicity.ui.lists.songs
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -8,7 +8,7 @@ import androidx.core.app.SharedElementCallback
 import androidx.core.view.doOnPreDraw
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
-import app.simple.felicity.adapters.ui.SongsAdapter
+import app.simple.felicity.adapters.ui.lists.songs.SimpleSongsAdapter
 import app.simple.felicity.constants.BundleConstants
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
@@ -17,7 +17,7 @@ import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.utils.ConditionUtils.invert
 import app.simple.felicity.viewmodels.ui.SongsViewModel
 
-class Songs : ScopedFragment() {
+class SimpleSongs : ScopedFragment() {
 
     private lateinit var binding: FragmentSongsBinding
     private lateinit var songsViewModel: SongsViewModel
@@ -35,9 +35,9 @@ class Songs : ScopedFragment() {
         postponeEnterTransition()
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) {
-            binding.recyclerView.adapter = SongsAdapter(it)
+            binding.recyclerView.adapter = SimpleSongsAdapter(it)
 
-            (binding.recyclerView.adapter as SongsAdapter).onItemClickListener = { _, position, view ->
+            (binding.recyclerView.adapter as SimpleSongsAdapter).onItemClickListener = { _, position, view ->
                 MusicPreferences.setMusicPosition(position)
 
                 openFragmentArc(DefaultPlayer.newInstance(), view, "audio_player_pager")
@@ -92,7 +92,7 @@ class Songs : ScopedFragment() {
             override fun onMapSharedElements(names: MutableList<String>, sharedElements: MutableMap<String, View>) {
                 // Locate the ViewHolder for the clicked position.
                 val selectedViewHolder = binding.recyclerView.findViewHolderForAdapterPosition(MusicPreferences.getMusicPosition().plus(1))
-                if (selectedViewHolder is SongsAdapter.Holder) {
+                if (selectedViewHolder is SimpleSongsAdapter.Holder) {
                     // Map the first shared element name to the child ImageView.
                     sharedElements[names[0]] = selectedViewHolder.binding.albumArt
                 }
@@ -101,9 +101,9 @@ class Songs : ScopedFragment() {
     }
 
     companion object {
-        fun newInstance(): Songs {
+        fun newInstance(): SimpleSongs {
             val args = Bundle()
-            val fragment = Songs()
+            val fragment = SimpleSongs()
             fragment.arguments = args
             return fragment
         }

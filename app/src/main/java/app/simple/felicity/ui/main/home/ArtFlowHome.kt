@@ -13,7 +13,7 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterArtFlowHome
 import app.simple.felicity.databinding.FragmentHomeArtflowBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.ui.app.Songs
+import app.simple.felicity.ui.lists.songs.SimpleSongs
 import app.simple.felicity.utils.RecyclerViewUtils.forEachViewHolder
 import app.simple.felicity.viewmodels.ui.HomeViewModel
 
@@ -46,7 +46,7 @@ class ArtFlowHome : ScopedFragment() {
                 override fun onClicked(view: View, position: Int) {
                     when (list[position].title) {
                         R.string.songs -> {
-                            openFragmentSlide(Songs.newInstance(), "songs")
+                            openFragmentSlide(SimpleSongs.newInstance(), "songs")
                         }
                     }
                 }

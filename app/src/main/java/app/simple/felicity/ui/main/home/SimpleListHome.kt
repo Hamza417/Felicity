@@ -12,7 +12,7 @@ import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.models.home.Home
-import app.simple.felicity.ui.app.Songs
+import app.simple.felicity.ui.lists.songs.SimpleSongs
 import app.simple.felicity.viewmodels.ui.HomeViewModel
 
 class SimpleListHome : ScopedFragment() {
@@ -41,7 +41,7 @@ class SimpleListHome : ScopedFragment() {
                 override fun onItemClicked(home: Home, position: Int, view: View) {
                     when (home.title) {
                         R.string.songs -> {
-                            openFragmentArc(Songs.newInstance(), view, TAG)
+                            openFragmentArc(SimpleSongs.newInstance(), view, TAG)
                         }
                     }
                 }

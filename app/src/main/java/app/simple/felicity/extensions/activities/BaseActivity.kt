@@ -16,6 +16,7 @@ import app.simple.felicity.R
 import app.simple.felicity.preferences.SharedPreferences
 import app.simple.felicity.theme.accents.Felicity
 import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.theme.managers.ThemeUtils
 import app.simple.felicity.theme.themes.LightTheme
 
 open class BaseActivity : AppCompatActivity() {
@@ -35,6 +36,7 @@ open class BaseActivity : AppCompatActivity() {
     private fun initTheme() {
         ThemeManager.theme = LightTheme()
         ThemeManager.accent = Felicity()
+        ThemeUtils.updateNavAndStatusColors(resources, window)
     }
 
     private fun makeAppFullScreen() {

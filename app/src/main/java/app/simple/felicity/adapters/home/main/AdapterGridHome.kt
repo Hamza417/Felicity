@@ -5,8 +5,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.adapters.home.sub.AdapterGridArt
-import app.simple.felicity.databinding.AdapterFelicityMainHeaderBinding
 import app.simple.felicity.databinding.AdapterGridHomeBinding
+import app.simple.felicity.databinding.AdapterHeaderFelicityMainBinding
 import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
 import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -19,7 +19,7 @@ class AdapterGridHome(private val data: ArrayList<Home>) : RecyclerView.Adapter<
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
             RecyclerViewUtils.TYPE_HEADER -> {
-                Header(AdapterFelicityMainHeaderBinding.inflate(LayoutInflater.from(parent.context), parent, false).root)
+                Header(AdapterHeaderFelicityMainBinding.inflate(LayoutInflater.from(parent.context), parent, false).root)
             }
 
             RecyclerViewUtils.TYPE_ITEM -> {
