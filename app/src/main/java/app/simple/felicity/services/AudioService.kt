@@ -652,6 +652,14 @@ class AudioService : Service(),
         return false
     }
 
+    fun setList(list: List<Audio>) {
+        audioModels = list as ArrayList<Audio>
+    }
+
+    fun getList(): ArrayList<Audio>? {
+        return audioModels
+    }
+
     companion object {
         fun getIntent(context: Context): Intent {
             return Intent(context, AudioService::class.java)

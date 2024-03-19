@@ -17,7 +17,6 @@ import android.view.animation.DecelerateInterpolator
 import androidx.annotation.IntegerRes
 import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
-import androidx.transition.ArcMotion
 import androidx.transition.Fade
 import app.simple.felicity.R
 import app.simple.felicity.preferences.AppearancePreferences
@@ -223,7 +222,6 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         }
     }
 
-
     open fun setArcTransitions(duration: Long) {
         setTransitions()
 
@@ -237,11 +235,11 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                 this.startShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(AppearancePreferences.getCornerRadius())
                 this.endShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(0F)
                 setInterpolator(DecelerateInterpolator(INTERPOLATOR_TENSION_FACTOR))
-                setPathMotion(ArcMotion().apply {
-                    maximumAngle = this.maximumAngle
-                    minimumHorizontalAngle = this.minimumHorizontalAngle
-                    minimumVerticalAngle = this.minimumVerticalAngle
-                })
+                //                setPathMotion(ArcMotion().apply {
+                //                    maximumAngle = this.maximumAngle
+                //                    minimumHorizontalAngle = this.minimumHorizontalAngle
+                //                    minimumVerticalAngle = this.minimumVerticalAngle
+                //                })
             }
             sharedElementReturnTransition = MaterialContainerTransform().apply {
                 setDuration(duration)
@@ -252,11 +250,11 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                 this.startShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(0F)
                 this.endShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(AppearancePreferences.getCornerRadius())
                 setInterpolator(DecelerateInterpolator(INTERPOLATOR_TENSION_FACTOR))
-                setPathMotion(ArcMotion().apply {
-                    maximumAngle = this.maximumAngle
-                    minimumHorizontalAngle = this.minimumHorizontalAngle
-                    minimumVerticalAngle = this.minimumVerticalAngle
-                })
+                //                setPathMotion(ArcMotion().apply {
+                //                    maximumAngle = this.maximumAngle
+                //                    minimumHorizontalAngle = this.minimumHorizontalAngle
+                //                    minimumVerticalAngle = this.minimumVerticalAngle
+                //                })
             }
         }
     }

@@ -51,7 +51,7 @@ class DefaultPlayer : PlayerFragment() {
         postponeEnterTransition()
 
         playerViewModel.getSongs().observe(viewLifecycleOwner) { list ->
-            audios = list
+            setList(list)
             binding.artSlider.adapter = DefaultPlayerAdapter(list)
             binding.artSlider.setCurrentItem(MusicPreferences.getMusicPosition(), false)
 
@@ -165,7 +165,7 @@ class DefaultPlayer : PlayerFragment() {
 
     override fun onNext() {
         currentSeekPosition = 0
-        if (binding.artSlider.currentItem < audios.size - 1) {
+        if (binding.artSlider.currentItem < getAudios().size - 1) {
             binding.artSlider.setCurrentItem(binding.artSlider.currentItem + 1, true)
         } else {
             binding.artSlider.setCurrentItem(0, true)
@@ -179,7 +179,7 @@ class DefaultPlayer : PlayerFragment() {
         if (binding.artSlider.currentItem > 0) {
             binding.artSlider.setCurrentItem(binding.artSlider.currentItem - 1, true)
         } else {
-            binding.artSlider.setCurrentItem(audios.size - 1, true)
+            binding.artSlider.setCurrentItem(getAudios().size - 1, true)
         }
 
         setMetaData(binding.artSlider.currentItem)
@@ -208,35 +208,35 @@ class DefaultPlayer : PlayerFragment() {
 
     private fun setMetaData(position: Int) {
         if (requireArguments().getInt(BundleConstants.position) < position) {
-            binding.title.setTextWithSlideAnimation(audios[position].title, 250L, ViewUtils.LEFT, 0L)
-            binding.artist.setTextWithSlideAnimation(audios[position].artist, 250L, ViewUtils.LEFT, 50L)
-            binding.album.setTextWithSlideAnimation(audios[position].album, 250L, ViewUtils.LEFT, 100L)
+            binding.title.setTextWithSlideAnimation(getAudios()[position].title, 250L, ViewUtils.LEFT, 0L)
+            binding.artist.setTextWithSlideAnimation(getAudios()[position].artist, 250L, ViewUtils.LEFT, 50L)
+            binding.album.setTextWithSlideAnimation(getAudios()[position].album, 250L, ViewUtils.LEFT, 100L)
             binding.info.setTextWithSlideAnimation(buildString {
                 append(".")
-                append(audios[position].path?.substringAfterLast("."))
+                append(getAudios()[position].path?.substringAfterLast("."))
                 append(", ")
-                append(audios[position].bitrate.toBitrate())
+                append(getAudios()[position].bitrate.toBitrate())
                 append(", ")
-                append(audios[position].mimeType)
+                append(getAudios()[position].mimeType)
             }, 250L, ViewUtils.LEFT, 150L)
         } else {
-            binding.title.setTextWithSlideAnimation(audios[position].title, 250L, ViewUtils.RIGHT, 0L)
-            binding.artist.setTextWithSlideAnimation(audios[position].artist, 250L, ViewUtils.RIGHT, 50L)
-            binding.album.setTextWithSlideAnimation(audios[position].album, 250L, ViewUtils.RIGHT, 100L)
+            binding.title.setTextWithSlideAnimation(getAudios()[position].title, 250L, ViewUtils.RIGHT, 0L)
+            binding.artist.setTextWithSlideAnimation(getAudios()[position].artist, 250L, ViewUtils.RIGHT, 50L)
+            binding.album.setTextWithSlideAnimation(getAudios()[position].album, 250L, ViewUtils.RIGHT, 100L)
             binding.info.setTextWithSlideAnimation(buildString {
                 append(".")
-                append(audios[position].path?.substringAfterLast("."))
+                append(getAudios()[position].path?.substringAfterLast("."))
                 append(", ")
-                append(audios[position].bitrate.toBitrate())
+                append(getAudios()[position].bitrate.toBitrate())
                 append(", ")
-                append(audios[position].mimeType)
+                append(getAudios()[position].mimeType)
             }, 250L, ViewUtils.RIGHT, 150L)
         }
 
         binding.number.text = buildString {
             append(position + 1)
             append("/")
-            append(audios.size)
+            append(getAudios().size)
         }
 
         requireArguments().putInt(BundleConstants.position, position)

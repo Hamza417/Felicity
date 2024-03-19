@@ -23,10 +23,9 @@ import kotlinx.coroutines.launch
 abstract class PlayerFragment : ScopedFragment() {
 
     protected var audioService: AudioService? = null
-    protected var serviceConnection: ServiceConnection? = null
+    private var serviceConnection: ServiceConnection? = null
     private var audioBroadcastReceiver: BroadcastReceiver? = null
     private val audioIntentFilter = IntentFilter()
-    protected var audios = ArrayList<Audio>()
 
     protected var currentSeekPosition = 0
 
@@ -138,6 +137,14 @@ abstract class PlayerFragment : ScopedFragment() {
 
         LocalBroadcastManager.getInstance(requireContext())
             .unregisterReceiver(audioBroadcastReceiver!!)
+    }
+
+    protected fun setList(list: List<Audio>) {
+        audioService?.setList(list)
+    }
+
+    protected fun getAudios(): List<Audio> {
+        return audioService?.getList() ?: emptyList()
     }
 
     abstract fun onServiceConnected()
