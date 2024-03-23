@@ -10,6 +10,7 @@
     <dimen name="prominent_threshold">72dp</dimen>
     <dimen name="seekbar_thumb_size">35dp</dimen>
     <dimen name="seekbar_stroke_size">6dp</dimen>
+    <dimen name="volume_knob_dimension">250dp</dimen>
 
     <dimen name="min_touch_target_size">48dp</dimen>
     <dimen name="popup_min_size">88dp</dimen>
