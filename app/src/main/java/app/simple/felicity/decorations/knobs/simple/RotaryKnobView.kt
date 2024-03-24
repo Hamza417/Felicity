@@ -4,10 +4,14 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.TransitionDrawable
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.util.AttributeSet
+import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
-import androidx.appcompat.widget.AppCompatImageView
+import android.widget.ImageView
+import android.widget.RelativeLayout
 import app.simple.felicity.R
 import app.simple.felicity.helpers.ImageHelper.toBitmapDrawable
 import app.simple.felicity.maths.Angle.normalizeEulerAngle
@@ -18,28 +22,45 @@ import kotlin.math.abs
 import kotlin.math.atan2
 
 @SuppressLint("ClickableViewAccessibility")
-class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) : AppCompatImageView(context, attrs, defStyleAttr) {
+class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) : RelativeLayout(context, attrs, defStyleAttr) {
+
+    private var vibration: Vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
     private var lastDialAngle = 0F
     private var startAngle = 0F
     private var lastAngle = 0F
 
+    private var knobImageView: ImageView
     var knobDrawable: TransitionDrawable
     var value = 130
+
+    var haptic = false
 
     private var listener: RotaryKnobListener? = null
 
     init {
-        knobDrawable = TransitionDrawable(
-                arrayOf<Drawable>(
-                        R.drawable.knob_normal.toBitmapDrawable(context, resources.getDimensionPixelSize(R.dimen.volume_knob_dimension)),
-                        R.drawable.knob_pressed.toBitmapDrawable(context, resources.getDimensionPixelSize(R.dimen.volume_knob_dimension))
+
+        val view = LayoutInflater.from(context).inflate(R.layout.knob, this, true)
+        knobImageView = view.findViewById(R.id.knobImageView)
+
+        context.theme.obtainStyledAttributes(attrs, R.styleable.RotaryKnobView, 0, 0).apply {
+            try {
+                value = getInt(R.styleable.RotaryKnobView_initialValue, 50)
+
+                knobDrawable = TransitionDrawable(
+                        arrayOf<Drawable>(
+                                R.drawable.knob_normal.toBitmapDrawable(context, resources.getDimensionPixelSize(R.dimen.volume_knob_dimension)),
+                                R.drawable.knob_pressed.toBitmapDrawable(context, resources.getDimensionPixelSize(R.dimen.volume_knob_dimension))
+                        )
                 )
-        )
 
-        knobDrawable.isCrossFadeEnabled = true
-        setImageDrawable(knobDrawable)
+                knobDrawable.isCrossFadeEnabled = true
 
+                knobImageView.setImageDrawable(knobDrawable)
+            } finally {
+                recycle()
+            }
+        }
         this.setOnTouchListener(MyOnTouchListener())
     }
 
@@ -53,18 +74,18 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
 
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    parent.requestDisallowInterceptTouchEvent(true)
                     knobDrawable.startTransition(500)
-                    lastDialAngle = rotation
+                    lastDialAngle = knobImageView.rotation
                     startAngle = calculateAngle(event.x, event.y)
                     feedback()
                     return true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
+                    requestDisallowInterceptTouchEvent(true)
+
                     val currentAngle = calculateAngle(event.x, event.y)
-                    val rawFinalAngle = currentAngle - startAngle + lastDialAngle
-                    val finalAngle = rawFinalAngle.normalizeEulerAngle(false)
+                    val finalAngle = (currentAngle - startAngle + lastDialAngle).normalizeEulerAngle(false)
 
                     setKnobPosition(finalAngle)
 
@@ -77,7 +98,6 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
                 }
 
                 MotionEvent.ACTION_UP -> {
-                    parent.requestDisallowInterceptTouchEvent(false)
                     knobDrawable.reverseTransition(300)
                     return true
                 }
@@ -123,7 +143,8 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
     }
 
     fun setKnobPosition(deg: Float) {
-        rotation = deg
+        knobImageView.rotation = deg
+
     }
 
     fun setListener(rotaryKnobListener: RotaryKnobListener) {
@@ -132,14 +153,9 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
 
     private fun feedback() {
         CoroutineScope(Dispatchers.Default).launch {
-            // TODO: Implement haptic feedback
+            if (haptic) {
+                vibration.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+            }
         }
-    }
-
-    companion object {
-        const val TAG = "RotaryKnobView"
-
-        private const val START_RANGE = -150F
-        private const val END_RANGE = 150F
     }
 }

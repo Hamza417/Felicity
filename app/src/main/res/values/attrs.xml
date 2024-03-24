@@ -178,4 +178,10 @@
         <attr name="aspectRatio" format="string" />
     </declare-styleable>
 
+    <declare-styleable name="RotaryKnobView">
+        <attr name="minValue" format="integer" />
+        <attr name="maxValue" format="integer" />
+        <attr name="initialValue" format="integer" />
+    </declare-styleable>
+
 </resources>

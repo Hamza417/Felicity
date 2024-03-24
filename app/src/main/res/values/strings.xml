@@ -13,4 +13,5 @@
     <string name="player">Player</string>
     <string name="search">Search</string>
     <string name="preferences">Preferences</string>
+    <string name="knob">Knob</string>
 </resources>
