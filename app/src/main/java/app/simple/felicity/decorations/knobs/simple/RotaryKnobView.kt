@@ -7,6 +7,7 @@ import android.graphics.drawable.TransitionDrawable
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.AttributeSet
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -34,7 +35,7 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
     var knobDrawable: TransitionDrawable
     var value = 130
 
-    var haptic = false
+    private var haptic = false
 
     private var listener: RotaryKnobListener? = null
 
@@ -61,6 +62,7 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
                 recycle()
             }
         }
+
         this.setOnTouchListener(MyOnTouchListener())
     }
 
@@ -71,7 +73,6 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
      */
     private inner class MyOnTouchListener : OnTouchListener {
         override fun onTouch(v: View?, event: MotionEvent): Boolean {
-
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     knobDrawable.startTransition(500)
@@ -85,14 +86,35 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
                     requestDisallowInterceptTouchEvent(true)
 
                     val currentAngle = calculateAngle(event.x, event.y)
-                    val finalAngle = (currentAngle - startAngle + lastDialAngle).normalizeEulerAngle(false)
+                    val angleDifference = currentAngle - startAngle
+                    var finalAngle = (lastDialAngle + angleDifference).normalizeEulerAngle(false)
+                    val lockedAngle: Float
 
-                    setKnobPosition(finalAngle)
+                    // Normalize to -180 to 180 range
+                    if (finalAngle > 180) finalAngle -= 360
+
+                    Log.d(TAG, "Rotation: ${knobImageView.rotation} Angle: $currentAngle Final Angle: $finalAngle")
+
+                    // Check if final angle is within -150 to 150 range
+                    when {
+                        knobImageView.rotation in START..END -> {
+                            setKnobPosition(finalAngle)
+                            lastAngle = finalAngle
+                        }
+
+                        knobImageView.rotation > END -> {
+                            setKnobPosition(END)
+                            lastAngle = END
+                        }
+
+                        knobImageView.rotation < START -> {
+                            setKnobPosition(START)
+                            lastAngle = START
+                        }
+                    }
 
                     listener?.onRotate(finalAngle)
                     listener?.onIncrement(abs(lastAngle - finalAngle))
-
-                    lastAngle = finalAngle
 
                     return true
                 }
@@ -157,5 +179,11 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
                 vibration.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "RotaryKnobView"
+        private const val START = -150F
+        private const val END = 150F
     }
 }
