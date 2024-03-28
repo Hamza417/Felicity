@@ -7,7 +7,6 @@ import android.graphics.drawable.TransitionDrawable
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.AttributeSet
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -93,21 +92,21 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
                     // Normalize to -180 to 180 range
                     if (finalAngle > 180) finalAngle -= 360
 
-                    Log.d(TAG, "Rotation: ${knobImageView.rotation} Angle: $currentAngle Final Angle: $finalAngle")
+                    // Log.d(TAG, "Rotation: ${knobImageView.rotation} Angle: $currentAngle Final Angle: $finalAngle")
 
                     // Check if final angle is within -150 to 150 range
                     when {
-                        knobImageView.rotation in START..END -> {
+                        finalAngle in START..END -> {
                             setKnobPosition(finalAngle)
                             lastAngle = finalAngle
                         }
 
-                        knobImageView.rotation > END -> {
+                        finalAngle > END -> {
                             setKnobPosition(END)
                             lastAngle = END
                         }
 
-                        knobImageView.rotation < START -> {
+                        finalAngle < START -> {
                             setKnobPosition(START)
                             lastAngle = START
                         }
@@ -166,7 +165,6 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
 
     fun setKnobPosition(deg: Float) {
         knobImageView.rotation = deg
-
     }
 
     fun setListener(rotaryKnobListener: RotaryKnobListener) {
