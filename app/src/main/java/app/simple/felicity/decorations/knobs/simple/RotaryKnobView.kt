@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.atan2
 
+// TODO - fix over scrolling
 @SuppressLint("ClickableViewAccessibility")
 class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) : RelativeLayout(context, attrs, defStyleAttr) {
 
