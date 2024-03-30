@@ -6,7 +6,7 @@ object BehaviourPreferences {
 
     private const val dimWindows = "is_dimming_windows_on"
     private const val blurWindow = "is_blurring_windows_on"
-    private const val coloredShadows = "are_colored_shadows_on"
+    const val COLORED_SHADOWS = "are_colored_shadows_on"
     private const val transition = "is_transition_on"
     private const val arcAnimation = "is_animation_on"
     private const val marquee = "is_marquee_on"
@@ -40,11 +40,11 @@ object BehaviourPreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setColoredShadows(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(coloredShadows, boolean).apply()
+        SharedPreferences.getSharedPreferences().edit().putBoolean(COLORED_SHADOWS, boolean).apply()
     }
 
     fun areColoredShadowsOn(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(coloredShadows, true)
+        return SharedPreferences.getSharedPreferences().getBoolean(COLORED_SHADOWS, true)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //

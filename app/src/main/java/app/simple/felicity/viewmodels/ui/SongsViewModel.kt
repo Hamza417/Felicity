@@ -8,7 +8,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.loaders.MediaLoader.loadAudios
-import app.simple.felicity.models.Audio
+import app.simple.felicity.models.normal.Audio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 

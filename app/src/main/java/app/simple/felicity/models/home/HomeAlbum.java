@@ -2,7 +2,7 @@ package app.simple.felicity.models.home;
 
 import java.util.ArrayList;
 
-import app.simple.felicity.models.Album;
+import app.simple.felicity.models.normal.Album;
 
 public class HomeAlbum extends Home {
     

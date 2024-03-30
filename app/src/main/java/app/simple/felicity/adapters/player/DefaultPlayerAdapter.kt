@@ -6,7 +6,7 @@ import androidx.core.net.toUri
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterPlayerSliderBinding
 import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromFileDescriptorFullScreen
-import app.simple.felicity.models.Audio
+import app.simple.felicity.models.normal.Audio
 
 class DefaultPlayerAdapter(private val data: ArrayList<Audio>) : RecyclerView.Adapter<DefaultPlayerAdapter.Holder>() {
 

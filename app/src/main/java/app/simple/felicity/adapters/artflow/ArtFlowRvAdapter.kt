@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.decorations.overscroll.HorizontalListViewHolder
 import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromFileDescriptor
-import app.simple.felicity.models.Audio
+import app.simple.felicity.models.normal.Audio
 import com.bumptech.glide.Glide
 
 class ArtFlowRvAdapter(private val data: ArrayList<Audio>) : RecyclerView.Adapter<ArtFlowRvAdapter.Holder>() {

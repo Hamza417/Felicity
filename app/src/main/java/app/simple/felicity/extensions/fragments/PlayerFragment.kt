@@ -15,7 +15,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import app.simple.felicity.constants.ServiceConstants
 import app.simple.felicity.helpers.IntentHelper
-import app.simple.felicity.models.Audio
+import app.simple.felicity.models.normal.Audio
 import app.simple.felicity.preferences.MusicPreferences
 import app.simple.felicity.services.AudioService
 import kotlinx.coroutines.launch

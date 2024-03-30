@@ -2,7 +2,7 @@ package app.simple.felicity.models.home;
 
 import java.util.ArrayList;
 
-import app.simple.felicity.models.Genre;
+import app.simple.felicity.models.normal.Genre;
 
 public class HomeGenre extends Home {
     

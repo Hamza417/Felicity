@@ -3,6 +3,7 @@
     <dimen name="seekbar_max_height">10dp</dimen>
     <dimen name="cursor_width">1dp</dimen>
     <dimen name="switch_width">50dp</dimen>
+    <dimen name="switch_height">30dp</dimen>
     <dimen name="switch_padding">5dp</dimen>
     <dimen name="switch_thumb_dimensions">20dp</dimen>
     <dimen name="button_size">40dp</dimen>

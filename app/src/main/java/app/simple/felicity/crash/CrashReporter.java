@@ -4,17 +4,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
-import androidx.annotation.NonNull;
-
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Objects;
 
+import androidx.annotation.NonNull;
 import app.simple.felicity.activities.CrashReporterActivity;
 import app.simple.felicity.database.instances.StackTraceDatabase;
-import app.simple.felicity.models.StackTrace;
+import app.simple.felicity.models.normal.StackTrace;
 import app.simple.felicity.preferences.CrashPreferences;
 
 /*

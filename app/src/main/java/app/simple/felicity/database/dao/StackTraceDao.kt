@@ -1,7 +1,11 @@
 package app.simple.felicity.database.dao
 
-import androidx.room.*
-import app.simple.felicity.models.StackTrace
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import app.simple.felicity.models.normal.StackTrace
 
 @Dao
 interface StackTraceDao {

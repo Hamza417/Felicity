@@ -5,7 +5,7 @@ import android.content.Context
 import androidx.lifecycle.MutableLiveData
 import app.simple.felicity.crash.Utils
 import app.simple.felicity.database.instances.StackTraceDatabase
-import app.simple.felicity.models.StackTrace
+import app.simple.felicity.models.normal.StackTrace
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

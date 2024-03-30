@@ -25,7 +25,7 @@ import app.simple.felicity.exceptions.FelicityPlayerException
 import app.simple.felicity.helpers.ImageHelper.getBitmapFromUri
 import app.simple.felicity.helpers.ImageHelper.getBitmapFromUriForNotifications
 import app.simple.felicity.loaders.MediaLoader.loadAudios
-import app.simple.felicity.models.Audio
+import app.simple.felicity.models.normal.Audio
 import app.simple.felicity.preferences.MusicPreferences
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener

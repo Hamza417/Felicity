@@ -1,4 +1,4 @@
-package app.simple.felicity.models;
+package app.simple.felicity.models.normal;
 
 import android.database.Cursor;
 import android.os.Parcel;

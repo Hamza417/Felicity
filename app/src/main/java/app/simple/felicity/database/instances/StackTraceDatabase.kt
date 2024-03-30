@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import app.simple.felicity.database.dao.StackTraceDao
-import app.simple.felicity.models.StackTrace
+import app.simple.felicity.models.normal.StackTrace
 import app.simple.felicity.utils.ConditionUtils.invert
 
 @Database(entities = [StackTrace::class], exportSchema = true, version = 1)

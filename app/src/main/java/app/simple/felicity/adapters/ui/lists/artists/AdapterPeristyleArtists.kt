@@ -6,7 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterArtistsPeristyleBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.models.Artist
+import app.simple.felicity.models.normal.Artist
 
 class AdapterPeristyleArtists(private val artists: ArrayList<Artist>) : RecyclerView.Adapter<AdapterPeristyleArtists.Holder>() {
 

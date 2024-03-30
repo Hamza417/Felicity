@@ -11,7 +11,7 @@ import app.simple.felicity.R
 import app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromFileDescriptor
-import app.simple.felicity.models.Audio
+import app.simple.felicity.models.normal.Audio
 
 class SongsAdapter(private val context: Context, private val audio: ArrayList<Audio>) : BaseAdapter() {
 

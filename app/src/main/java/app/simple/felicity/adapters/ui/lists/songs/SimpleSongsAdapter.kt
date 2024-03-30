@@ -8,7 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterSimpleSongsBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromUri
-import app.simple.felicity.models.Audio
+import app.simple.felicity.models.normal.Audio
 
 class SimpleSongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Adapter<SimpleSongsAdapter.Holder>() {
 

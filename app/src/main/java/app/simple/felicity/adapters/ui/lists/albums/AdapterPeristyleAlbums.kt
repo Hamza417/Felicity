@@ -7,7 +7,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterAlbumsPeristyleBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.glide.albumcover.AlbumCoverUtils.loadAlbumCoverSquare
-import app.simple.felicity.models.Album
+import app.simple.felicity.models.normal.Album
 
 class AdapterPeristyleAlbums(private val albums: ArrayList<Album>) : RecyclerView.Adapter<AdapterPeristyleAlbums.Holder>() {
 

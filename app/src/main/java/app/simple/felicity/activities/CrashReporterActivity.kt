@@ -11,7 +11,7 @@ import app.simple.felicity.decorations.ripple.DynamicRippleTextView
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.factories.misc.ErrorViewModelFactory
-import app.simple.felicity.models.StackTrace
+import app.simple.felicity.models.normal.StackTrace
 import app.simple.felicity.preferences.CrashPreferences
 import app.simple.felicity.utils.ConditionUtils.invert
 import app.simple.felicity.utils.DateUtils.toDate
