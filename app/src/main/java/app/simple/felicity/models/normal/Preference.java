@@ -4,22 +4,10 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 import androidx.annotation.DrawableRes;
-import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 
 public class Preference implements Parcelable {
     
-    public static final Creator <Preference> CREATOR = new Creator <Preference>() {
-        @Override
-        public Preference createFromParcel(Parcel in) {
-            return new Preference(in);
-        }
-        
-        @Override
-        public Preference[] newArray(int size) {
-            return new Preference[size];
-        }
-    };
     @StringRes
     private int title;
     @StringRes
@@ -42,6 +30,34 @@ public class Preference implements Parcelable {
         isChecked = in.readByte() != 0;
         isOptions = in.readByte() != 0;
         isPopup = in.readByte() != 0;
+    }
+    
+    public static final Creator <Preference> CREATOR = new Creator <Preference>() {
+        @Override
+        public Preference createFromParcel(Parcel in) {
+            return new Preference(in);
+        }
+        
+        @Override
+        public Preference[] newArray(int size) {
+            return new Preference[size];
+        }
+    };
+    
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeInt(title);
+        dest.writeInt(summary);
+        dest.writeInt(icon);
+        dest.writeByte((byte) (isSwitch ? 1 : 0));
+        dest.writeByte((byte) (isChecked ? 1 : 0));
+        dest.writeByte((byte) (isOptions ? 1 : 0));
+        dest.writeByte((byte) (isPopup ? 1 : 0));
+    }
+    
+    @Override
+    public int describeContents() {
+        return 0;
     }
     
     public int getTitle() {
@@ -100,19 +116,4 @@ public class Preference implements Parcelable {
         isPopup = popup;
     }
     
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-    
-    @Override
-    public void writeToParcel(@NonNull Parcel dest, int flags) {
-        dest.writeInt(title);
-        dest.writeInt(summary);
-        dest.writeInt(icon);
-        dest.writeByte((byte) (isSwitch ? 1 : 0));
-        dest.writeByte((byte) (isChecked ? 1 : 0));
-        dest.writeByte((byte) (isOptions ? 1 : 0));
-        dest.writeByte((byte) (isPopup ? 1 : 0));
-    }
 }

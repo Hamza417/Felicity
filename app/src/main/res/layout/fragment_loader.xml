@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.padding.PaddingAwareLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
+        android:id="@+id/loader_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <app.simple.felicity.decorations.corners.DynamicCornerLinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_margin="@dimen/padding_15"
+        android:orientation="horizontal"
+        android:padding="@dimen/padding_15">
+
+        <app.simple.felicity.decorations.views.Loader
+            android:layout_width="@dimen/loader_size"
+            android:layout_height="@dimen/loader_size" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical" />
+
+    </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+
+</app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>

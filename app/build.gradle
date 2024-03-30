@@ -97,6 +97,7 @@ dependencies {
     implementation 'com.github.duanhong169:drawabletoolbox:1.0.7'
     implementation 'com.github.smarteist:Android-Image-Slider:1.4.0'
     implementation 'com.anggrayudi:storage:1.5.5'
+    implementation 'com.caverock:androidsvg-aar:1.4'
 
     // Toolkit
     implementation 'com.github.android:renderscript-intrinsics-replacement-toolkit:b6363490c3'
