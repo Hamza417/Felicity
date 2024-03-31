@@ -215,8 +215,6 @@ class DefaultPlayer : PlayerFragment() {
                 append(getAudios()[position].path?.substringAfterLast("."))
                 append(", ")
                 append(getAudios()[position].bitrate)
-                append(", ")
-                append(getAudios()[position].mimeType)
             }, 250L, ViewUtils.LEFT, 150L)
         } else {
             binding.title.setTextWithSlideAnimation(getAudios()[position].title ?: "", 250L, ViewUtils.RIGHT, 0L)
@@ -227,8 +225,6 @@ class DefaultPlayer : PlayerFragment() {
                 append(getAudios()[position].path?.substringAfterLast("."))
                 append(", ")
                 append(getAudios()[position].bitrate)
-                append(", ")
-                append(getAudios()[position].mimeType)
             }, 250L, ViewUtils.RIGHT, 150L)
         }
 
