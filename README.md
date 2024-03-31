@@ -12,11 +12,11 @@ development process.
 
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FHamza417%2FFelicity&count_bg=%233DA0C8&title_bg=%23555555&icon=strapi.svg&icon_color=%23E7E7E7&title=Total+Hits&edge_flat=false)](https://hits.seeyoufarm.com)
 
-**(13 Jun, 2023)** I've finalized second level design framework and written most of the APIs now, I still haven't found this app's design language, I'm not sure how this app will look like yet.
-
-**(9 Sept, 2023)** I think I've understood the design language and would like to draw the first iteration in a month or two, if you're intrested you can join the channel now because I'll start dropping the updates soon.
-
-**(14 Feb, 2024)** I've designed the first few rough interfaces and currently testing their usability.
+**(31 March, 2024)** I'm finalizing the loader soon. I'm yet to be sure whether to use MediaStore
+APIs or
+simply use the direct storage to unify the whole apps data structure. Using MediaStore doesn't seem
+to be
+allowing complex UI manuevers, so I might stick to the direct storage.
  
 ## Screenshots
 

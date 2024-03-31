@@ -27,10 +27,12 @@
         android:padding="@dimen/padding_15">
 
         <app.simple.felicity.decorations.views.Loader
+            android:id="@+id/loader"
             android:layout_width="@dimen/loader_size"
             android:layout_height="@dimen/loader_size" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/loading"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"

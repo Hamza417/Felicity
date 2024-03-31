@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
+import app.simple.felicity.R
 import app.simple.felicity.adapters.loader.AdapterLoader
 import app.simple.felicity.databinding.FragmentLoaderBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
@@ -38,6 +39,13 @@ class DataLoader : ScopedFragment() {
         dataLoaderViewModel?.getData()?.observe(viewLifecycleOwner) { file ->
             adapterLoader?.updateFile(file)
             binding?.recyclerView?.smoothScrollToPosition(0)
+        }
+
+        dataLoaderViewModel?.getLoaded()?.observe(viewLifecycleOwner) { loaded ->
+            if (loaded) {
+                binding?.loading?.setText(R.string.done)
+                binding?.loader?.loaded()
+            }
         }
     }
 
