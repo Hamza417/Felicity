@@ -29,16 +29,29 @@
         <app.simple.felicity.decorations.views.Loader
             android:id="@+id/loader"
             android:layout_width="@dimen/loader_size"
-            android:layout_height="@dimen/loader_size" />
+            android:layout_height="@dimen/loader_size"
+            android:layout_gravity="center_vertical" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
             android:id="@+id/loading"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
-            android:layout_marginStart="@dimen/padding_15"
+            android:layout_marginHorizontal="@dimen/padding_15"
             android:layout_weight="1"
             android:text="@string/loading" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/open_app_now"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:padding="@dimen/padding_15"
+            android:text="@string/open_app_now"
+            android:textSize="@dimen/text_size_16"
+            android:visibility="invisible"
+            app:appFontStyle="bold"
+            app:textColorStyle="accent" />
 
     </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
 

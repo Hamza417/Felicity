@@ -23,6 +23,7 @@ import app.simple.felicity.theme.managers.ThemeManager;
 public class Loader extends AppCompatImageView {
     
     private ValueAnimator rotateAnimator;
+    private static long ANIMATION_DURATION = BehaviourPreferences.INSTANCE.getAnimationDuration() * 2;
     
     public Loader(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -69,7 +70,7 @@ public class Loader extends AppCompatImageView {
     private void animateColor(int toColor) {
         ValueAnimator valueAnimator = ValueAnimator.ofArgb(getDefaultColor(), toColor);
         valueAnimator.setInterpolator(new LinearOutSlowInInterpolator());
-        valueAnimator.setDuration(getResources().getInteger(R.integer.animation_duration));
+        valueAnimator.setDuration(ANIMATION_DURATION);
         valueAnimator.addUpdateListener(animation -> setImageTintList(ColorStateList.valueOf((int) animation.getAnimatedValue())));
         valueAnimator.start();
     }
@@ -77,7 +78,7 @@ public class Loader extends AppCompatImageView {
     private void animateRotation(int repeatCount, TimeInterpolator interpolator) {
         rotateAnimator = ValueAnimator.ofFloat(getRotation(), 360);
         rotateAnimator.setInterpolator(interpolator);
-        rotateAnimator.setDuration(BehaviourPreferences.INSTANCE.getAnimationDuration());
+        rotateAnimator.setDuration(ANIMATION_DURATION);
         rotateAnimator.addUpdateListener(animation -> setRotation((float) animation.getAnimatedValue()));
         rotateAnimator.setRepeatCount(repeatCount);
         rotateAnimator.start();

@@ -16,4 +16,5 @@
     <string name="knob">Knob</string>
     <string name="loading">Loading</string>
     <string name="done">Done</string>
+    <string name="open_app_now">Open App Now</string>
 </resources>

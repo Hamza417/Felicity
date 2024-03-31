@@ -2,7 +2,6 @@ package app.simple.felicity.viewmodels.data
 
 import android.app.Application
 import android.os.Environment
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
@@ -43,21 +42,20 @@ class DataLoaderViewModel(application: Application) : WrappedViewModel(applicati
         viewModelScope.launch(Dispatchers.IO) {
             val paths = arrayListOf(Environment.getExternalStorageDirectory(), SDCard.findSdCardPath(context))
             val audioDatabase = AudioDatabase.getInstance(context)
-            Log.d(TAG, "loadData: $paths")
 
             paths.forEach { file ->
                 file?.walkTopDown()?.forEach {
                     if (it.isFile) {
                         if (it.isAudioFile()) {
-                            Log.d(TAG, "loadData: $it")
                             val audio = Audio()
                             val retriever = MediaMetadataLoader(it)
 
                             retriever.setAudioMetadata(audio)
+                            retriever.close()
+
                             audioDatabase?.audioDao()?.insert(audio)
                             data.postValue(it)
                             dataList.add(it)
-                            retriever.close()
                         }
                     }
                 }
