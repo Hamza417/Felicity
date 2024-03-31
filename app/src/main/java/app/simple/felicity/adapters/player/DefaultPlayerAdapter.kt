@@ -2,10 +2,8 @@ package app.simple.felicity.adapters.player
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.core.net.toUri
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterPlayerSliderBinding
-import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromFileDescriptorFullScreen
 import app.simple.felicity.models.normal.Audio
 
 class DefaultPlayerAdapter(private val data: ArrayList<Audio>) : RecyclerView.Adapter<DefaultPlayerAdapter.Holder>() {
@@ -13,8 +11,8 @@ class DefaultPlayerAdapter(private val data: ArrayList<Audio>) : RecyclerView.Ad
     inner class Holder(val binding: AdapterPlayerSliderBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(audio: Audio) {
             binding.apply {
-                art.transitionName = audio.fileUri
-                art.loadFromFileDescriptorFullScreen(audio.fileUri.toUri())
+                //                art.transitionName = audio.fileUri
+                //                art.loadFromFileDescriptorFullScreen(audio.fileUri.toUri())
             }
         }
     }

@@ -3,11 +3,9 @@ package app.simple.felicity.adapters.ui.lists.songs
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.net.toUri
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterSimpleSongsBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromUri
 import app.simple.felicity.models.normal.Audio
 
 class SimpleSongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Adapter<SimpleSongsAdapter.Holder>() {
@@ -29,11 +27,11 @@ class SimpleSongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Ada
     inner class Holder(val binding: AdapterSimpleSongsBinding) : VerticalListViewHolder(binding.root) {
         fun bind(audio: Audio) {
             binding.apply {
-                albumArt.transitionName = audio.fileUri
+                // albumArt.transitionName = audio.fileUri
                 title.text = audio.title
                 artist.text = audio.artist
                 details.text = audio.album
-                albumArt.loadFromUri(audio.artUri.toUri())
+                // albumArt.loadFromUri(audio.artUri.toUri())
             }
 
             binding.root.setOnClickListener {

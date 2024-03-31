@@ -17,7 +17,6 @@ import app.simple.felicity.constants.BundleConstants
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
 import app.simple.felicity.extensions.fragments.PlayerFragment
 import app.simple.felicity.preferences.MusicPreferences
-import app.simple.felicity.utils.AudioUtils.toBitrate
 import app.simple.felicity.utils.NumberUtils
 import app.simple.felicity.utils.ViewUtils
 import app.simple.felicity.viewmodels.ui.PlayerViewModel
@@ -208,26 +207,26 @@ class DefaultPlayer : PlayerFragment() {
 
     private fun setMetaData(position: Int) {
         if (requireArguments().getInt(BundleConstants.position) < position) {
-            binding.title.setTextWithSlideAnimation(getAudios()[position].title, 250L, ViewUtils.LEFT, 0L)
-            binding.artist.setTextWithSlideAnimation(getAudios()[position].artist, 250L, ViewUtils.LEFT, 50L)
-            binding.album.setTextWithSlideAnimation(getAudios()[position].album, 250L, ViewUtils.LEFT, 100L)
+            binding.title.setTextWithSlideAnimation(getAudios()[position].title ?: "", 250L, ViewUtils.LEFT, 0L)
+            binding.artist.setTextWithSlideAnimation(getAudios()[position].artist ?: "", 250L, ViewUtils.LEFT, 50L)
+            binding.album.setTextWithSlideAnimation(getAudios()[position].album ?: "", 250L, ViewUtils.LEFT, 100L)
             binding.info.setTextWithSlideAnimation(buildString {
                 append(".")
                 append(getAudios()[position].path?.substringAfterLast("."))
                 append(", ")
-                append(getAudios()[position].bitrate.toBitrate())
+                append(getAudios()[position].bitrate)
                 append(", ")
                 append(getAudios()[position].mimeType)
             }, 250L, ViewUtils.LEFT, 150L)
         } else {
-            binding.title.setTextWithSlideAnimation(getAudios()[position].title, 250L, ViewUtils.RIGHT, 0L)
-            binding.artist.setTextWithSlideAnimation(getAudios()[position].artist, 250L, ViewUtils.RIGHT, 50L)
-            binding.album.setTextWithSlideAnimation(getAudios()[position].album, 250L, ViewUtils.RIGHT, 100L)
+            binding.title.setTextWithSlideAnimation(getAudios()[position].title ?: "", 250L, ViewUtils.RIGHT, 0L)
+            binding.artist.setTextWithSlideAnimation(getAudios()[position].artist ?: "", 250L, ViewUtils.RIGHT, 50L)
+            binding.album.setTextWithSlideAnimation(getAudios()[position].album ?: "", 250L, ViewUtils.RIGHT, 100L)
             binding.info.setTextWithSlideAnimation(buildString {
                 append(".")
                 append(getAudios()[position].path?.substringAfterLast("."))
                 append(", ")
-                append(getAudios()[position].bitrate.toBitrate())
+                append(getAudios()[position].bitrate)
                 append(", ")
                 append(getAudios()[position].mimeType)
             }, 250L, ViewUtils.RIGHT, 150L)

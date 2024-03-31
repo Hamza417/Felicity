@@ -15,15 +15,12 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.core.net.toUri
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.media.app.NotificationCompat.MediaStyle
 import app.simple.felicity.R
 import app.simple.felicity.activities.MainActivity
 import app.simple.felicity.constants.ServiceConstants
 import app.simple.felicity.exceptions.FelicityPlayerException
-import app.simple.felicity.helpers.ImageHelper.getBitmapFromUri
-import app.simple.felicity.helpers.ImageHelper.getBitmapFromUriForNotifications
 import app.simple.felicity.loaders.MediaLoader.loadAudios
 import app.simple.felicity.models.normal.Audio
 import app.simple.felicity.preferences.MusicPreferences
@@ -322,10 +319,6 @@ class AudioService : Service(),
                     putString(MediaMetadataCompat.METADATA_KEY_ARTIST, metaData?.artist)
                     putString(MediaMetadataCompat.METADATA_KEY_ALBUM, metaData?.album)
                     putLong(MediaMetadataCompat.METADATA_KEY_DURATION, mediaPlayer.duration.toLong())
-                    putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART,
-                              getBitmapFromUriForNotifications(applicationContext,
-                                                               audioModels?.get(currentPosition)?.artUri!!, 1024))
-                    putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, metaData?.artUri)
                     mediaMetadataCompat = build()
                 }
 
@@ -361,10 +354,10 @@ class AudioService : Service(),
             mediaPlayer.setOnPreparedListener(this)
             mediaPlayer.setOnSeekCompleteListener(this)
             mediaPlayer.setOnBufferingUpdateListener(this)
-            mediaPlayer.setDataSource(applicationContext, audioModels!![currentPosition].fileUri.toUri())
+            mediaPlayer.setDataSource(audioModels!![currentPosition].path)
             mediaPlayer.prepareAsync()
             MusicPreferences.setLastMusicId(audioModels!![currentPosition].id)
-            Log.d("AudioServicePager", "initAudioPlayer: ${audioModels!![currentPosition].fileUri}")
+            Log.d("AudioServicePager", "initAudioPlayer: ${audioModels!![currentPosition].path}")
         } catch (e: IllegalStateException) {
             // Unknown error maybe?
             e.printStackTrace()
@@ -598,7 +591,7 @@ class AudioService : Service(),
 
         builder = NotificationCompat.Builder(applicationContext, channelId)
             .setSmallIcon(R.drawable.ic_felicity)
-            .setLargeIcon(getBitmapFromUri(applicationContext, audioModels?.get(currentPosition)?.artUri?.toUri()!!))
+            //            .setLargeIcon(getBitmapFromUri(applicationContext, audioModels?.get(currentPosition)?.artUri?.toUri()!!))
             .setContentTitle(metaData?.title)
             .setContentText(metaData?.artist)
             .setSubText(metaData?.album)

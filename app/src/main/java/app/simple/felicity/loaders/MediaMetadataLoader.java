@@ -4,8 +4,10 @@ import android.content.Context;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
+import android.util.Log;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Objects;
 
 import androidx.annotation.RequiresApi;
@@ -13,7 +15,8 @@ import app.simple.felicity.models.normal.Audio;
 
 public class MediaMetadataLoader {
     
-    private final Uri contentUri;
+    private Uri contentUri;
+    private File file;
     private final MediaMetadataRetriever retriever;
     
     public MediaMetadataLoader(Uri contentUri, Context context) {
@@ -23,16 +26,32 @@ public class MediaMetadataLoader {
     }
     
     public MediaMetadataLoader(File file) {
-        this.contentUri = Uri.fromFile(file);
+        this.file = file;
         this.retriever = new MediaMetadataRetriever();
         retriever.setDataSource(file.getAbsolutePath());
     }
     
+    public void close() {
+        try {
+            retriever.release();
+        } catch (IOException e) {
+            Log.e("MediaMetadataLoader", "Error releasing MediaMetadataRetriever", e);
+        }
+        
+        try {
+            retriever.close();
+        } catch (IOException e) {
+            Log.e("MediaMetadataLoader", "Error closing MediaMetadataRetriever", e);
+        }
+    }
+    
     public void setAudioMetadata(Audio audio) {
+        audio.setName(file.getName());
+        audio.setPath(file.getAbsolutePath());
         audio.setAlbum(getAlbum());
         audio.setAlbumArtist(getAlbumArtist());
         audio.setArtist(getArtist());
-        audio.setAuthor(getAuthor());
+        // audio.setAuthor(getAuthor());
         audio.setBitrate(getBitrate());
         audio.setCompilation(getCompilation());
         audio.setComposer(getComposer());
@@ -40,8 +59,6 @@ public class MediaMetadataLoader {
         audio.setDiscNumber(getDiscNumber());
         audio.setDuration(getDuration());
         audio.setGenre(getGenre());
-        audio.setHasAudio(getHasAudio());
-        audio.setHasVideo(getHasVideo());
         audio.setMimeType(getMIMEType());
         audio.setNumTracks(getNumTracks());
         audio.setTitle(getTitle());
