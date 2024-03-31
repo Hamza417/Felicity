@@ -5,7 +5,11 @@ import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
 
+import java.io.File;
+import java.util.Objects;
+
 import androidx.annotation.RequiresApi;
+import app.simple.felicity.models.normal.Audio;
 
 public class MediaMetadataLoader {
     
@@ -18,7 +22,40 @@ public class MediaMetadataLoader {
         retriever.setDataSource(context, contentUri);
     }
     
-    private String getCDTrackNumber() {
+    public MediaMetadataLoader(File file) {
+        this.contentUri = Uri.fromFile(file);
+        this.retriever = new MediaMetadataRetriever();
+        retriever.setDataSource(file.getAbsolutePath());
+    }
+    
+    public void setAudioMetadata(Audio audio) {
+        audio.setAlbum(getAlbum());
+        audio.setAlbumArtist(getAlbumArtist());
+        audio.setArtist(getArtist());
+        audio.setAuthor(getAuthor());
+        audio.setBitrate(getBitrate());
+        audio.setCompilation(getCompilation());
+        audio.setComposer(getComposer());
+        audio.setDate(getDate());
+        audio.setDiscNumber(getDiscNumber());
+        audio.setDuration(getDuration());
+        audio.setGenre(getGenre());
+        audio.setHasAudio(getHasAudio());
+        audio.setHasVideo(getHasVideo());
+        audio.setMimeType(getMIMEType());
+        audio.setNumTracks(getNumTracks());
+        audio.setTitle(getTitle());
+        audio.setTrackNumber(getTrackNumber());
+        audio.setWriter(getWriter());
+        audio.setYear(getYear());
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            audio.setSamplingRate(getSamplingRate());
+            audio.setBitPerSample(getBitPerSample());
+        }
+    }
+    
+    private String getTrackNumber() {
         return retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER);
     }
     
@@ -54,8 +91,8 @@ public class MediaMetadataLoader {
         return retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR);
     }
     
-    private String getDuration() {
-        return retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+    private long getDuration() {
+        return Long.parseLong(Objects.requireNonNull(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)));
     }
     
     private String getNumTracks() {
@@ -66,7 +103,7 @@ public class MediaMetadataLoader {
         return retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_WRITER);
     }
     
-    private String getMIMIType() {
+    private String getMIMEType() {
         return retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE);
     }
     
@@ -88,14 +125,6 @@ public class MediaMetadataLoader {
     
     private String getHasVideo() {
         return retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_VIDEO);
-    }
-    
-    private String getVideoWidth() {
-        return retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH);
-    }
-    
-    private String getVideoHeight() {
-        return retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT);
     }
     
     private String getBitrate() {

@@ -17,6 +17,7 @@ import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
 public class SDCard {
@@ -104,6 +105,7 @@ public class SDCard {
     /**
      * Find path to removable SD card.
      */
+    @Nullable
     public static File findSdCardPath(Context context) {
         String[] mountFields;
         BufferedReader bufferedReader = null;

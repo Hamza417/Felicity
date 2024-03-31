@@ -30,8 +30,11 @@ public class Loader extends AppCompatImageView {
     }
     
     private void init() {
-        setImageResource(R.drawable.ic_felicity);
+        setImageResource(R.drawable.ic_felicity_full);
         startAnimation(AnimationUtils.loadAnimation(getContext(), R.anim.loader));
+        int padding = getResources().getDimensionPixelSize(R.dimen.padding_5);
+        setPadding(padding, padding, padding, padding);
+        setImageTintList(ColorStateList.valueOf(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor()));
         
         setFocusable(false);
         setClickable(false);
