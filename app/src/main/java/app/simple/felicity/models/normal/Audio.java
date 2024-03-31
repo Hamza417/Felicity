@@ -17,7 +17,7 @@ public class Audio implements Parcelable {
     @ColumnInfo (name = "name")
     private String name;
     @ColumnInfo (name = "id")
-    @PrimaryKey
+    @PrimaryKey (autoGenerate = true)
     private long id;
     @ColumnInfo (name = "title")
     @Nullable
