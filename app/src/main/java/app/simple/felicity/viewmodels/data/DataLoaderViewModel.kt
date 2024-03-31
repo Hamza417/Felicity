@@ -47,17 +47,19 @@ class DataLoaderViewModel(application: Application) : WrappedViewModel(applicati
 
             paths.forEach { file ->
                 file?.walkTopDown()?.forEach {
-                    if (it.isFile) {
-                        if (it.isAudioFile()) {
-                            Log.d(TAG, "loadData: $it")
-                            val audio = Audio()
-                            val retriever = MediaMetadataLoader(it)
+                    launch {
+                        if (it.isFile) {
+                            if (it.isAudioFile()) {
+                                Log.d(TAG, "loadData: $it")
+                                val audio = Audio()
+                                val retriever = MediaMetadataLoader(it)
 
-                            retriever.setAudioMetadata(audio)
-                            audioDatabase?.audioDao()?.insert(audio)
-                            data.postValue(it)
-                            dataList.add(it)
-                            retriever.close()
+                                retriever.setAudioMetadata(audio)
+                                audioDatabase?.audioDao()?.insert(audio)
+                                data.postValue(it)
+                                dataList.add(it)
+                                retriever.close()
+                            }
                         }
                     }
                 }

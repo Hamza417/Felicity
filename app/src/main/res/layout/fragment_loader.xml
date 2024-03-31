@@ -33,7 +33,10 @@
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical" />
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="@dimen/padding_15"
+            android:layout_weight="1"
+            android:text="@string/loading" />
 
     </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
 

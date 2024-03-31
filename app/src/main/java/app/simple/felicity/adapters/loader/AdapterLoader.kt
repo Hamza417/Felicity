@@ -34,7 +34,7 @@ class AdapterLoader : RecyclerView.Adapter<AdapterLoader.Holder>() {
     }
 
     fun updateFile(file: File) {
-        data.add(file)
-        notifyItemInserted((data.size - 1).coerceAtLeast(0))
+        data.add(0, file)
+        notifyItemInserted(0)
     }
 }

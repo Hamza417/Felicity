@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
 import app.simple.felicity.adapters.loader.AdapterLoader
 import app.simple.felicity.databinding.FragmentLoaderBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
@@ -27,12 +28,16 @@ class DataLoader : ScopedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         startPostponedEnterTransition()
+
         adapterLoader = AdapterLoader()
+        (binding?.recyclerView?.layoutManager as LinearLayoutManager).reverseLayout = true
+        (binding?.recyclerView?.layoutManager as LinearLayoutManager).stackFromEnd = true
+        binding?.recyclerView?.itemAnimator = null
         binding?.recyclerView?.adapter = adapterLoader
 
         dataLoaderViewModel?.getData()?.observe(viewLifecycleOwner) { file ->
             adapterLoader?.updateFile(file)
-            binding?.recyclerView?.smoothScrollToPosition(adapterLoader?.itemCount ?: 0)
+            binding?.recyclerView?.smoothScrollToPosition(0)
         }
     }
 

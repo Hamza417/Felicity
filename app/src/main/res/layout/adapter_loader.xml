@@ -4,6 +4,8 @@
     android:id="@+id/data"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:ellipsize="end"
+    android:maxLines="1"
     android:padding="@dimen/padding_5"
     android:textSize="@dimen/text_size_14"
     app:appFontStyle="regular"
