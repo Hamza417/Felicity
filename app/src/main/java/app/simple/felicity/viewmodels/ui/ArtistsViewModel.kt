@@ -5,7 +5,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
-import app.simple.felicity.loaders.MediaLoader.loadArtists
+import app.simple.felicity.loaders.MediaStoreLoader.loadArtists
 import app.simple.felicity.models.normal.Artist
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

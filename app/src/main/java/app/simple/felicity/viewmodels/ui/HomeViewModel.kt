@@ -5,9 +5,9 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
-import app.simple.felicity.loaders.MediaLoader.loadAlbums
-import app.simple.felicity.loaders.MediaLoader.loadArtists
-import app.simple.felicity.loaders.MediaLoader.loadAudios
+import app.simple.felicity.loaders.MediaStoreLoader.loadAlbums
+import app.simple.felicity.loaders.MediaStoreLoader.loadArtists
+import app.simple.felicity.loaders.MediaStoreLoader.loadAudios
 import app.simple.felicity.models.home.Home
 import app.simple.felicity.models.home.HomeAlbum
 import app.simple.felicity.models.home.HomeArtist

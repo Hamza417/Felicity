@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterSimpleSongsBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.glide.pathcover.Utils.loadFromPath
 import app.simple.felicity.models.normal.Audio
 
 class SimpleSongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Adapter<SimpleSongsAdapter.Holder>() {
@@ -31,7 +32,7 @@ class SimpleSongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Ada
                 title.text = audio.title
                 artist.text = audio.artist
                 details.text = audio.album
-                // albumArt.loadFromUri(audio.artUri.toUri())
+                albumArt.loadFromPath(audio.path)
             }
 
             binding.root.setOnClickListener {

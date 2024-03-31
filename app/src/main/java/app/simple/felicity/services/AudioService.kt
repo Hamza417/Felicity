@@ -21,7 +21,7 @@ import app.simple.felicity.R
 import app.simple.felicity.activities.MainActivity
 import app.simple.felicity.constants.ServiceConstants
 import app.simple.felicity.exceptions.FelicityPlayerException
-import app.simple.felicity.loaders.MediaLoader.loadAudios
+import app.simple.felicity.loaders.MediaStoreLoader.loadAudios
 import app.simple.felicity.models.normal.Audio
 import app.simple.felicity.preferences.MusicPreferences
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener

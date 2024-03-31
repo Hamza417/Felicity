@@ -8,7 +8,7 @@ import app.simple.felicity.models.normal.Artist
 import app.simple.felicity.models.normal.Audio
 import app.simple.felicity.models.normal.Genre
 
-object MediaLoader {
+object MediaStoreLoader {
 
     private const val SELECTION = MediaStore.Audio.Media.IS_MUSIC + " != 0"
 
