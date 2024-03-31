@@ -11,6 +11,7 @@ object BehaviourPreferences {
     private const val arcAnimation = "is_animation_on"
     private const val marquee = "is_marquee_on"
     private const val skipLoading = "skip_main_loading_screen"
+    private const val ANIMATION_DURATION = "animation_duration"
 
     const val transitionType = "panel_transition_type"
     const val arcType = "arc_type"
@@ -107,5 +108,15 @@ object BehaviourPreferences {
     fun getStiffness(): Float {
         return SharedPreferences.getSharedPreferences()
             .getFloat(stiffness, SpringForce.STIFFNESS_LOW)
+    }
+
+    // ---------------------------------------------------------------------------------------------------------- //
+
+    fun setAnimationDuration(value: Long) {
+        SharedPreferences.getSharedPreferences().edit().putLong(ANIMATION_DURATION, value).apply()
+    }
+
+    fun getAnimationDuration(): Long {
+        return SharedPreferences.getSharedPreferences().getLong(ANIMATION_DURATION, 500)
     }
 }

@@ -1,5 +1,6 @@
 package app.simple.felicity.decorations.views;
 
+import android.animation.TimeInterpolator;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.ColorStateList;
@@ -7,6 +8,7 @@ import android.graphics.Color;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.animation.AnimationUtils;
+import android.view.animation.LinearInterpolator;
 
 import java.util.Objects;
 
@@ -15,9 +17,12 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatImageView;
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator;
 import app.simple.felicity.R;
+import app.simple.felicity.preferences.BehaviourPreferences;
 import app.simple.felicity.theme.managers.ThemeManager;
 
 public class Loader extends AppCompatImageView {
+    
+    private ValueAnimator rotateAnimator;
     
     public Loader(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -31,7 +36,7 @@ public class Loader extends AppCompatImageView {
     
     private void init() {
         setImageResource(R.drawable.ic_felicity_full);
-        startAnimation(AnimationUtils.loadAnimation(getContext(), R.anim.loader));
+        animateRotation(ValueAnimator.INFINITE, new LinearInterpolator());
         int padding = getResources().getDimensionPixelSize(R.dimen.padding_5);
         setPadding(padding, padding, padding, padding);
         setImageTintList(ColorStateList.valueOf(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor()));
@@ -42,11 +47,13 @@ public class Loader extends AppCompatImageView {
     
     public void loaded() {
         clearAnimation();
+        animateRotation(0, new LinearOutSlowInInterpolator());
         animateColor(Color.parseColor("#27ae60"));
     }
     
     public void error() {
         clearAnimation();
+        animateRotation(0, new LinearOutSlowInInterpolator());
         animateColor(Color.parseColor("#a93226"));
     }
     
@@ -67,6 +74,15 @@ public class Loader extends AppCompatImageView {
         valueAnimator.start();
     }
     
+    private void animateRotation(int repeatCount, TimeInterpolator interpolator) {
+        rotateAnimator = ValueAnimator.ofFloat(getRotation(), 360);
+        rotateAnimator.setInterpolator(interpolator);
+        rotateAnimator.setDuration(BehaviourPreferences.INSTANCE.getAnimationDuration());
+        rotateAnimator.addUpdateListener(animation -> setRotation((float) animation.getAnimatedValue()));
+        rotateAnimator.setRepeatCount(repeatCount);
+        rotateAnimator.start();
+    }
+    
     private int getDefaultColor() {
         try {
             return Objects.requireNonNull(getImageTintList()).getDefaultColor();
@@ -79,5 +95,11 @@ public class Loader extends AppCompatImageView {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         clearAnimation();
+    }
+    
+    @Override
+    public void clearAnimation() {
+        rotateAnimator.cancel();
+        super.clearAnimation();
     }
 }
