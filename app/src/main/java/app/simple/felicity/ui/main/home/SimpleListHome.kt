@@ -1,6 +1,7 @@
 package app.simple.felicity.ui.main.home
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -35,8 +36,10 @@ class SimpleListHome : ScopedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         postponeEnterTransition()
+        val startTime = System.currentTimeMillis()
 
         homeViewModel!!.getHomeData().observe(viewLifecycleOwner) { list ->
+            Log.d(TAG, "onViewCreated: ${System.currentTimeMillis() - startTime} ms")
             recyclerView.adapter = AdapterSimpleHome(list)
 
             (recyclerView.adapter as AdapterSimpleHome).setAdapterSimpleHomeCallbacks(object : AdapterSimpleHome.Companion.AdapterSimpleHomeCallbacks {
