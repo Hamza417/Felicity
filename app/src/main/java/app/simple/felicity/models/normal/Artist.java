@@ -53,7 +53,6 @@ public class Artist implements Parcelable, Serializable {
             numberOfSongs = cursor.getInt(columnIndex);
         }
     }
-    private String artUri;
     
     protected Artist(Parcel in) {
         id = in.readInt();
@@ -64,17 +63,18 @@ public class Artist implements Parcelable, Serializable {
     }
     
     @Override
-    public int describeContents() {
-        return 0;
-    }
-    
-    @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeInt(id);
         dest.writeString(artistName);
         dest.writeString(artUri);
         dest.writeInt(numberOfAlbums);
         dest.writeInt(numberOfSongs);
+    }
+    private String artUri;
+    
+    @Override
+    public int describeContents() {
+        return 0;
     }
     
     public int getId() {
@@ -122,9 +122,11 @@ public class Artist implements Parcelable, Serializable {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof Artist artist)) {
+        if (o == null || getClass() != o.getClass()) {
             return false;
         }
+        
+        Artist artist = (Artist) o;
         
         if (getId() != artist.getId()) {
             return false;

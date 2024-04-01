@@ -31,7 +31,7 @@ public class HomeUtils {
         } else if (home instanceof HomeGenre) {
         
         } else if (home instanceof HomeArtist) {
-        
+            AudioCoverUtil.INSTANCE.loadFromUri(imageView, Uri.parse(((HomeArtist) home).getArtists().get(position).getArtUri()));
         }
     }
     

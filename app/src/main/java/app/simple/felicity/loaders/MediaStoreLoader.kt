@@ -89,15 +89,40 @@ object MediaStoreLoader {
         return albums
     }
 
+    fun Context.loadRandomSongByArtist(artistName: String): Audio? {
+        val audios = ArrayList<Audio>()
+        val sortOrder = "LOWER (" + MediaStore.Audio.Media.TITLE + ") ASC"
+        val selection = "$SELECTION AND ${MediaStore.Audio.Media.ARTIST} = ?"
+        val selectionArgs = arrayOf(artistName)
+        val cursor = contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                AUDIO_PROJECTION, selection,
+                selectionArgs, sortOrder)
+
+        if (cursor != null && cursor.moveToFirst()) {
+            do {
+                audios.add(Audio(cursor))
+            } while (cursor.moveToNext())
+
+            cursor.close()
+        }
+
+        return if (audios.isNotEmpty()) audios.random() else null
+    }
+
     fun Context.loadArtists(sortOrder: String = "LOWER (" + MediaStore.Audio.Artists.ARTIST + ") ASC"): ArrayList<Artist> {
         val artists = ArrayList<Artist>()
+        val audios = loadAudios()
+
         val cursor = contentResolver.query(
                 MediaStore.Audio.Artists.EXTERNAL_CONTENT_URI, ARTIST_PROJECTION,
                 null, null, sortOrder)
 
         if (cursor != null && cursor.moveToFirst()) {
             do {
-                artists.add(Artist(cursor))
+                val artist = Artist(cursor)
+                artist.artUri = audios.find { it.artist == artist.artistName }?.artUri
+                artists.add(artist)
             } while (cursor.moveToNext())
 
             cursor.close()

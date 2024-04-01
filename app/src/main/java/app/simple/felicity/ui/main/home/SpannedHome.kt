@@ -41,20 +41,26 @@ class SpannedHome : ScopedFragment() {
 
     private val randomizer: Runnable = object : Runnable {
         override fun run() {
-            binding?.recyclerView?.randomViewHolder<AdapterGridHome.Holder> { holder ->
-                Log.d(TAG, "run: Randomized")
-                holder.adapterGridHomeBinding?.artGrid?.animate()!!
-                    .alpha(0F)
-                    .setDuration(resources.getInteger(android.R.integer.config_longAnimTime).toLong())
-                    .withEndAction {
-                        (holder.adapterGridHomeBinding?.artGrid?.adapter as AdapterGridArt).randomize()
-                        holder.adapterGridHomeBinding?.artGrid?.scheduleLayoutAnimation()
-                        holder.adapterGridHomeBinding?.artGrid?.animate()!!
-                            .alpha(1F)
-                            .setDuration(resources.getInteger(android.R.integer.config_shortAnimTime).toLong())
-                            .start()
-                    }
-                    .start()
+            try {
+                binding?.recyclerView?.randomViewHolder<AdapterGridHome.Holder> { holder ->
+                    Log.d(TAG, "run: Randomized")
+                    holder.adapterGridHomeBinding?.artGrid?.animate()!!
+                        .alpha(0F)
+                        .setDuration(resources.getInteger(android.R.integer.config_longAnimTime).toLong())
+                        .withEndAction {
+                            (holder.adapterGridHomeBinding?.artGrid?.adapter as AdapterGridArt).randomize()
+                            holder.adapterGridHomeBinding?.artGrid?.scheduleLayoutAnimation()
+                            holder.adapterGridHomeBinding?.artGrid?.animate()!!
+                                .alpha(1F)
+                                .setDuration(resources.getInteger(android.R.integer.config_shortAnimTime).toLong())
+                                .start()
+                        }
+                        .start()
+                }
+            } catch (e: NoSuchElementException) {
+                Log.e(TAG, "run: No such element", e)
+            } catch (e: Exception) {
+                Log.e(TAG, "run: Exception", e)
             }
 
             handler.postDelayed(this, DELAY)
