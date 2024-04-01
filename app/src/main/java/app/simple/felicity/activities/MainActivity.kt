@@ -7,7 +7,7 @@ import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.preferences.MainPreferences
 import app.simple.felicity.ui.launcher.DataLoader
-import app.simple.felicity.ui.main.home.SimpleListHome
+import app.simple.felicity.ui.main.home.SpannedHome
 import app.simple.felicity.utils.ConditionUtils.isNull
 
 class MainActivity : BaseActivity() {
@@ -21,7 +21,7 @@ class MainActivity : BaseActivity() {
         if (savedInstanceState.isNull()) {
             if (MainPreferences.isDataLoaded()) {
                 supportFragmentManager.beginTransaction()
-                    .replace(R.id.app_container, SimpleListHome.newInstance())
+                    .replace(R.id.app_container, SpannedHome.newInstance())
                     .commit()
             } else {
                 supportFragmentManager.beginTransaction()

@@ -11,6 +11,8 @@ import androidx.annotation.NonNull;
 
 public class Artist implements Parcelable, Serializable {
     
+    private int id;
+    private String artistName;
     public static final Creator <Artist> CREATOR = new Creator <Artist>() {
         @Override
         public Artist createFromParcel(Parcel in) {
@@ -22,8 +24,6 @@ public class Artist implements Parcelable, Serializable {
             return new Artist[size];
         }
     };
-    private int id;
-    private String artistName;
     private int numberOfAlbums;
     private int numberOfSongs;
     
@@ -53,25 +53,28 @@ public class Artist implements Parcelable, Serializable {
             numberOfSongs = cursor.getInt(columnIndex);
         }
     }
+    private String artUri;
     
     protected Artist(Parcel in) {
         id = in.readInt();
         artistName = in.readString();
+        artUri = in.readString();
         numberOfAlbums = in.readInt();
         numberOfSongs = in.readInt();
+    }
+    
+    @Override
+    public int describeContents() {
+        return 0;
     }
     
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeInt(id);
         dest.writeString(artistName);
+        dest.writeString(artUri);
         dest.writeInt(numberOfAlbums);
         dest.writeInt(numberOfSongs);
-    }
-    
-    @Override
-    public int describeContents() {
-        return 0;
     }
     
     public int getId() {
@@ -106,16 +109,22 @@ public class Artist implements Parcelable, Serializable {
         this.numberOfSongs = numberOfSongs;
     }
     
+    public String getArtUri() {
+        return artUri;
+    }
+    
+    public void setArtUri(String artUri) {
+        this.artUri = artUri;
+    }
+    
     @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
         }
-        if (o == null || getClass() != o.getClass()) {
+        if (!(o instanceof Artist artist)) {
             return false;
         }
-        
-        Artist artist = (Artist) o;
         
         if (getId() != artist.getId()) {
             return false;

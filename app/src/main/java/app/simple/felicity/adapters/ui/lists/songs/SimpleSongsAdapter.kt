@@ -29,7 +29,7 @@ class SimpleSongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Ada
     inner class Holder(val binding: AdapterSimpleSongsBinding) : VerticalListViewHolder(binding.root) {
         fun bind(audio: Audio) {
             binding.apply {
-                // albumArt.transitionName = audio.fileUri
+                albumArt.transitionName = audio.fileUri
                 title.text = audio.title ?: getString(R.string.unknown)
                 artist.text = audio.artist ?: getString(R.string.unknown)
                 details.text = audio.album ?: getString(R.string.unknown)
