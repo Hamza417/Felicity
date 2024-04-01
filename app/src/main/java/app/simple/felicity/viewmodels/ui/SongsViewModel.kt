@@ -1,20 +1,18 @@
 package app.simple.felicity.viewmodels.ui
 
 import android.app.Application
-import android.database.Cursor
 import android.provider.MediaStore
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
-import app.simple.felicity.loaders.DatabaseLoader.loadAudio
+import app.simple.felicity.loaders.MediaStoreLoader.loadAudios
 import app.simple.felicity.models.normal.Audio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class SongsViewModel(application: Application) : WrappedViewModel(application) {
 
-    private var cursor: Cursor? = null
     private val selection = MediaStore.Audio.Media.IS_MUSIC + " != 0"
 
     private val songs: MutableLiveData<ArrayList<Audio>> by lazy {
@@ -29,7 +27,7 @@ class SongsViewModel(application: Application) : WrappedViewModel(application) {
 
     private fun loadData() {
         viewModelScope.launch(Dispatchers.IO) {
-            songs.postValue(applicationContext().loadAudio())
+            songs.postValue(applicationContext().loadAudios(selection))
         }
     }
 }

@@ -2,11 +2,12 @@ package app.simple.felicity.models.normal;
 
 import android.annotation.SuppressLint;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.provider.MediaStore;
 
-import androidx.annotation.Nullable;
+import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
@@ -16,63 +17,103 @@ public class Audio implements Parcelable {
     
     @ColumnInfo (name = "name")
     private String name;
-    @ColumnInfo (name = "id")
-    @PrimaryKey (autoGenerate = true)
-    private long id;
+    
     @ColumnInfo (name = "title")
-    @Nullable
     private String title;
+    
     @ColumnInfo (name = "artist")
-    @Nullable
     private String artist;
+    
     @ColumnInfo (name = "album")
-    @Nullable
     private String album;
+    
+    public static final Creator <Audio> CREATOR = new Creator <Audio>() {
+        @Override
+        public Audio createFromParcel(Parcel in) {
+            return new Audio(in);
+        }
+        
+        @Override
+        public Audio[] newArray(int size) {
+            return new Audio[size];
+        }
+    };
+    @ColumnInfo (name = "album_artist")
+    private String albumArtist;
+    @ColumnInfo (name = "art_uri")
+    private String artUri;
+    
+    @ColumnInfo (name = "file_uri")
+    private String fileUri;
+    
     @ColumnInfo (name = "path")
     private String path;
+    
+    @ColumnInfo (name = "mime_type")
+    private String mimeType;
+    
+    @ColumnInfo (name = "composer")
+    private String composer;
+    
     @ColumnInfo (name = "track")
     private int track;
-    @ColumnInfo (name = "author")
-    @Nullable
-    private String author;
+    
+    @ColumnInfo (name = "year")
+    private int year;
+    
     @ColumnInfo (name = "size")
     private int size;
-    @ColumnInfo (name = "album_artist")
-    @Nullable
-    private String albumArtist;
-    @ColumnInfo (name = "year")
-    @Nullable
-    private String year;
+    
     @ColumnInfo (name = "bitrate")
-    @Nullable
-    private String bitrate;
-    @ColumnInfo (name = "composer")
-    @Nullable
-    private String composer;
+    private int bitrate;
+    
     @ColumnInfo (name = "duration")
     private long duration;
-    @ColumnInfo (name = "date")
-    @Nullable
-    private String date;
-    @ColumnInfo (name = "disc_number")
-    @Nullable
-    private String discNumber;
-    @ColumnInfo (name = "genre")
-    @Nullable
-    private String genre;
-    @ColumnInfo (name = "track_number")
-    @Nullable
-    private String trackNumber;
+    
+    @ColumnInfo (name = "id")
+    @PrimaryKey
+    private long id;
+    
     @ColumnInfo (name = "date_added")
     private long dateAdded;
+    
     @ColumnInfo (name = "date_modified")
     private long dateModified;
+    
     @ColumnInfo (name = "date_taken")
     private long dateTaken;
+    
+    @ColumnInfo (name = "disk_number")
+    private int diskNumber;
+    
+    @ColumnInfo (name = "track_number")
+    private int trackNumber;
+    
+    public Audio() {
+    }
+    
     @ColumnInfo (name = "album_id")
     private long albumId;
     
-    public Audio() {
+    protected Audio(Parcel in) {
+        name = in.readString();
+        title = in.readString();
+        artist = in.readString();
+        album = in.readString();
+        albumId = in.readLong();
+        artUri = in.readString();
+        fileUri = in.readString();
+        path = in.readString();
+        mimeType = in.readString();
+        track = in.readInt();
+        year = in.readInt();
+        size = in.readInt();
+        bitrate = in.readInt();
+        duration = in.readLong();
+        id = in.readLong();
+        dateAdded = in.readLong();
+        dateModified = in.readLong();
+        dateTaken = in.readLong();
     }
     
     @SuppressLint ("Range")
@@ -109,12 +150,17 @@ public class Audio implements Parcelable {
             this.albumId = cursor.getLong(columnIndex);
         }
         
-        //        this.artUri = Uri.withAppendedPath(Uri.parse("content://media/external/audio/albumart"), String.valueOf(albumId)).toString();
-        //        this.fileUri = Uri.withAppendedPath(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, String.valueOf(id)).toString();
+        this.artUri = Uri.withAppendedPath(Uri.parse("content://media/external/audio/albumart"), String.valueOf(albumId)).toString();
+        this.fileUri = Uri.withAppendedPath(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, String.valueOf(id)).toString();
         
         columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.DATA);
         if (columnIndex != -1) {
             this.path = cursor.getString(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE);
+        if (columnIndex != -1) {
+            this.mimeType = cursor.getString(columnIndex);
         }
         
         columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.TRACK);
@@ -124,7 +170,7 @@ public class Audio implements Parcelable {
         
         columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.YEAR);
         if (columnIndex != -1) {
-            this.year = String.valueOf(cursor.getInt(columnIndex));
+            this.year = cursor.getInt(columnIndex);
         }
         
         columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.SIZE);
@@ -134,7 +180,7 @@ public class Audio implements Parcelable {
         
         columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.BITRATE);
         if (columnIndex != -1) {
-            this.bitrate = String.valueOf(cursor.getInt(columnIndex));
+            this.bitrate = cursor.getInt(columnIndex);
         }
         
         columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION);
@@ -156,69 +202,36 @@ public class Audio implements Parcelable {
         if (columnIndex != -1) {
             this.dateTaken = cursor.getLong(columnIndex);
         }
-    }
-    
-    public static final Creator <Audio> CREATOR = new Creator <>() {
-        @Override
-        public Audio createFromParcel(Parcel in) {
-            return new Audio(in);
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.COMPOSER);
+        if (columnIndex != -1) {
+            this.composer = cursor.getString(columnIndex);
         }
         
-        @Override
-        public Audio[] newArray(int size) {
-            return new Audio[size];
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.DISC_NUMBER);
+        if (columnIndex != -1) {
+            this.diskNumber = cursor.getInt(columnIndex);
         }
-    };
-    
-    protected Audio(Parcel in) {
-        name = in.readString();
-        id = in.readLong();
-        title = in.readString();
-        artist = in.readString();
-        album = in.readString();
-        path = in.readString();
-        track = in.readInt();
-        author = in.readString();
-        size = in.readInt();
-        albumArtist = in.readString();
-        year = in.readString();
-        bitrate = in.readString();
-        composer = in.readString();
-        duration = in.readLong();
-        date = in.readString();
-        discNumber = in.readString();
-        genre = in.readString();
-        trackNumber = in.readString();
-        dateAdded = in.readLong();
-        dateModified = in.readLong();
-        dateTaken = in.readLong();
-        albumId = in.readLong();
-    }
-    
-    @Override
-    public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(name);
-        dest.writeLong(id);
-        dest.writeString(title);
-        dest.writeString(artist);
-        dest.writeString(album);
-        dest.writeString(path);
-        dest.writeInt(track);
-        dest.writeString(author);
-        dest.writeInt(size);
-        dest.writeString(albumArtist);
-        dest.writeString(year);
-        dest.writeString(bitrate);
-        dest.writeString(composer);
-        dest.writeLong(duration);
-        dest.writeString(date);
-        dest.writeString(discNumber);
-        dest.writeString(genre);
-        dest.writeString(trackNumber);
-        dest.writeLong(dateAdded);
-        dest.writeLong(dateModified);
-        dest.writeLong(dateTaken);
-        dest.writeLong(albumId);
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.TRACK);
+        if (columnIndex != -1) {
+            this.trackNumber = cursor.getInt(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ARTIST);
+        if (columnIndex != -1) {
+            this.albumArtist = cursor.getString(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.DISC_NUMBER);
+        if (columnIndex != -1) {
+            this.diskNumber = cursor.getInt(columnIndex);
+        }
+        
+        columnIndex = cursor.getColumnIndex(MediaStore.Audio.Media.TRACK);
+        if (columnIndex != -1) {
+            this.trackNumber = cursor.getInt(columnIndex);
+        }
     }
     
     @Override
@@ -234,31 +247,54 @@ public class Audio implements Parcelable {
         this.name = name;
     }
     
-    @Nullable
     public String getTitle() {
         return title;
     }
     
-    public void setTitle(@Nullable String title) {
-        this.title = title;
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(name);
+        dest.writeString(title);
+        dest.writeString(artist);
+        dest.writeString(album);
+        dest.writeLong(albumId);
+        dest.writeString(artUri);
+        dest.writeString(fileUri);
+        dest.writeString(path);
+        dest.writeString(mimeType);
+        dest.writeInt(track);
+        dest.writeInt(year);
+        dest.writeInt(size);
+        dest.writeInt(bitrate);
+        dest.writeLong(duration);
+        dest.writeLong(id);
+        dest.writeLong(dateAdded);
+        dest.writeLong(dateModified);
+        dest.writeLong(dateTaken);
     }
     
-    @Nullable
     public String getArtist() {
         return artist;
     }
     
-    public void setArtist(@Nullable String artist) {
-        this.artist = artist;
+    public void setTitle(String title) {
+        this.title = title;
     }
     
-    @Nullable
     public String getAlbum() {
         return album;
     }
     
-    public void setAlbum(@Nullable String album) {
+    public void setArtist(String artist) {
+        this.artist = artist;
+    }
+    
+    public void setAlbum(String album) {
         this.album = album;
+    }
+    
+    public String getAlbumArtist() {
+        return albumArtist;
     }
     
     public long getAlbumId() {
@@ -267,6 +303,22 @@ public class Audio implements Parcelable {
     
     public void setAlbumId(long albumId) {
         this.albumId = albumId;
+    }
+    
+    public void setAlbumArtist(String albumArtist) {
+        this.albumArtist = albumArtist;
+    }
+    
+    public String getArtUri() {
+        return artUri;
+    }
+    
+    public void setArtUri(String artUri) {
+        this.artUri = artUri;
+    }
+    
+    public String getFileUri() {
+        return fileUri;
     }
     
     public long getDuration() {
@@ -317,6 +369,14 @@ public class Audio implements Parcelable {
         this.dateTaken = dateTaken;
     }
     
+    public void setFileUri(String fileUri) {
+        this.fileUri = fileUri;
+    }
+    
+    public String getMimeType() {
+        return mimeType;
+    }
+    
     public int getTrack() {
         return track;
     }
@@ -325,8 +385,11 @@ public class Audio implements Parcelable {
         this.track = track;
     }
     
-    @Nullable
-    public String getYear() {
+    public void setMimeType(String mimeType) {
+        this.mimeType = mimeType;
+    }
+    
+    public int getYear() {
         return year;
     }
     
@@ -338,79 +401,147 @@ public class Audio implements Parcelable {
         this.size = size;
     }
     
-    public void setYear(@Nullable String year) {
+    public void setYear(int year) {
         this.year = year;
     }
     
-    @Nullable
-    public String getBitrate() {
+    public int getBitrate() {
         return bitrate;
     }
     
-    public void setBitrate(@Nullable String bitrate) {
+    public void setBitrate(int bitrate) {
         this.bitrate = bitrate;
     }
     
-    @Nullable
-    public String getAuthor() {
-        return author;
-    }
-    
-    public void setAuthor(@Nullable String author) {
-        this.author = author;
-    }
-    
-    @Nullable
-    public String getAlbumArtist() {
-        return albumArtist;
-    }
-    
-    public void setAlbumArtist(@Nullable String albumArtist) {
-        this.albumArtist = albumArtist;
-    }
-    
-    @Nullable
     public String getComposer() {
         return composer;
     }
     
-    public void setComposer(@Nullable String composer) {
+    public void setComposer(String composer) {
         this.composer = composer;
     }
     
-    @Nullable
-    public String getDate() {
-        return date;
+    public int getDiskNumber() {
+        return diskNumber;
     }
     
-    public void setDate(@Nullable String date) {
-        this.date = date;
+    public void setDiskNumber(int diskNumber) {
+        this.diskNumber = diskNumber;
     }
     
-    @Nullable
-    public String getDiscNumber() {
-        return discNumber;
-    }
-    
-    public void setDiscNumber(@Nullable String discNumber) {
-        this.discNumber = discNumber;
-    }
-    
-    @Nullable
-    public String getGenre() {
-        return genre;
-    }
-    
-    public void setGenre(@Nullable String genre) {
-        this.genre = genre;
-    }
-    
-    @Nullable
-    public String getTrackNumber() {
+    public int getTrackNumber() {
         return trackNumber;
     }
     
-    public void setTrackNumber(@Nullable String trackNumber) {
+    public void setTrackNumber(int trackNumber) {
         this.trackNumber = trackNumber;
+    }
+    
+    @NonNull
+    @Override
+    public String toString() {
+        return "AudioModel{" +
+                "name='" + name + '\'' +
+                ", title='" + title + '\'' +
+                ", artist='" + artist + '\'' +
+                ", album='" + album + '\'' +
+                ", artUri='" + artUri + '\'' +
+                ", fileUri='" + fileUri + '\'' +
+                ", path='" + path + '\'' +
+                ", mimeType='" + mimeType + '\'' +
+                ", track=" + track +
+                ", year=" + year +
+                ", size=" + size +
+                ", duration=" + duration +
+                ", id=" + id +
+                ", dateAdded=" + dateAdded +
+                ", dateModified=" + dateModified +
+                ", dateTaken=" + dateTaken +
+                '}';
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        
+        Audio audio = (Audio) o;
+        
+        if (getTrack() != audio.getTrack()) {
+            return false;
+        }
+        if (getYear() != audio.getYear()) {
+            return false;
+        }
+        if (getSize() != audio.getSize()) {
+            return false;
+        }
+        if (getBitrate() != audio.getBitrate()) {
+            return false;
+        }
+        if (getDuration() != audio.getDuration()) {
+            return false;
+        }
+        if (getId() != audio.getId()) {
+            return false;
+        }
+        if (getDateAdded() != audio.getDateAdded()) {
+            return false;
+        }
+        if (getDateModified() != audio.getDateModified()) {
+            return false;
+        }
+        if (getDateTaken() != audio.getDateTaken()) {
+            return false;
+        }
+        if (getName() != null ? !getName().equals(audio.getName()) : audio.getName() != null) {
+            return false;
+        }
+        if (getTitle() != null ? !getTitle().equals(audio.getTitle()) : audio.getTitle() != null) {
+            return false;
+        }
+        if (getArtist() != null ? !getArtist().equals(audio.getArtist()) : audio.getArtist() != null) {
+            return false;
+        }
+        if (getAlbum() != null ? !getAlbum().equals(audio.getAlbum()) : audio.getAlbum() != null) {
+            return false;
+        }
+        if (getArtUri() != null ? !getArtUri().equals(audio.getArtUri()) : audio.getArtUri() != null) {
+            return false;
+        }
+        if (getFileUri() != null ? !getFileUri().equals(audio.getFileUri()) : audio.getFileUri() != null) {
+            return false;
+        }
+        if (getPath() != null ? !getPath().equals(audio.getPath()) : audio.getPath() != null) {
+            return false;
+        }
+        return getMimeType() != null ? getMimeType().equals(audio.getMimeType()) : audio.getMimeType() == null;
+    }
+    
+    @Override
+    public int hashCode() {
+        int result = getName() != null ? getName().hashCode() : 0;
+        result = 31 * result + (getTitle() != null ? getTitle().hashCode() : 0);
+        result = 31 * result + (getArtist() != null ? getArtist().hashCode() : 0);
+        result = 31 * result + (getAlbum() != null ? getAlbum().hashCode() : 0);
+        result = 31 * result + (int) (getAlbumId() ^ (getAlbumId() >>> 32));
+        result = 31 * result + (getArtUri() != null ? getArtUri().hashCode() : 0);
+        result = 31 * result + (getFileUri() != null ? getFileUri().hashCode() : 0);
+        result = 31 * result + (getPath() != null ? getPath().hashCode() : 0);
+        result = 31 * result + (getMimeType() != null ? getMimeType().hashCode() : 0);
+        result = 31 * result + getTrack();
+        result = 31 * result + getYear();
+        result = 31 * result + getSize();
+        result = 31 * result + getBitrate();
+        result = 31 * result + (int) (getDuration() ^ (getDuration() >>> 32));
+        result = 31 * result + (int) (getId() ^ (getId() >>> 32));
+        result = 31 * result + (int) (getDateAdded() ^ (getDateAdded() >>> 32));
+        result = 31 * result + (int) (getDateModified() ^ (getDateModified() >>> 32));
+        result = 31 * result + (int) (getDateTaken() ^ (getDateTaken() >>> 32));
+        return result;
     }
 }

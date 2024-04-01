@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.drawable.AnimatedVectorDrawable
 import android.net.Uri
 import android.widget.ImageView
+import androidx.core.net.toUri
 import app.simple.felicity.R
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverModel
 import app.simple.felicity.glide.transformation.Blur
@@ -127,6 +128,10 @@ object AudioCoverUtil {
             //                           .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE))
             .load(UriCoverModel(this.context, uri))
             .into(this)
+    }
+
+    fun ImageView.loadFromUri(uri: String) {
+        loadFromUri(uri.toUri())
     }
 
     fun ImageView.loadFromUriWithAnimation(uri: Uri) {

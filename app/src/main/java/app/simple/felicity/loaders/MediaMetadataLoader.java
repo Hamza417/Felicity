@@ -37,19 +37,19 @@ public class MediaMetadataLoader {
         audio.setAlbum(getAlbum());
         audio.setAlbumArtist(getAlbumArtist());
         audio.setArtist(getArtist());
-        audio.setBitrate(getBitrate());
+        // audio.setBitrate(getBitrate());
         audio.setComposer(getComposer());
-        audio.setDate(getDate());
-        audio.setDiscNumber(getDiscNumber());
+        audio.setDateTaken(getDate());
+        // audio.setDiscNumber(getDiscNumber());
         audio.setDuration(getDuration());
-        audio.setGenre(getGenre());
+        // audio.setGenre(getGenre());
         audio.setTitle(getTitle());
         audio.setTrackNumber(getTrackNumber());
-        audio.setYear(getYear());
+        // audio.setYear(getYear());
     }
     
-    private String getTrackNumber() {
-        return retriever.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_TRACK);
+    private int getTrackNumber() {
+        return Integer.parseInt(retriever.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_TRACK));
     }
     
     private String getAlbum() {
@@ -64,8 +64,8 @@ public class MediaMetadataLoader {
         return retriever.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_COMPOSER);
     }
     
-    private String getDate() {
-        return retriever.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_DATE);
+    private long getDate() {
+        return Long.parseLong(retriever.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_DATE));
     }
     
     private String getGenre() {
