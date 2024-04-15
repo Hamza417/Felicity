@@ -15,7 +15,7 @@ import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.preferences.MusicPreferences
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.utils.ConditionUtils.invert
-import app.simple.felicity.viewmodels.ui.SongsViewModel
+import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 
 class SimpleSongs : ScopedFragment() {
 

@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.adapters.ui.lists.artists.AdapterPeristyleArtists
 import app.simple.felicity.databinding.FragmentAlbumsBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.viewmodels.ui.ArtistsViewModel
+import app.simple.felicity.viewmodels.main.artists.ArtistsViewModel
 
 class PeristyleArtists : ScopedFragment() {
 

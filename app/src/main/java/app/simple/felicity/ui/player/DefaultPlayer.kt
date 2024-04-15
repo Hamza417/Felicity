@@ -19,7 +19,7 @@ import app.simple.felicity.extensions.fragments.PlayerFragment
 import app.simple.felicity.preferences.MusicPreferences
 import app.simple.felicity.utils.NumberUtils
 import app.simple.felicity.utils.ViewUtils
-import app.simple.felicity.viewmodels.ui.PlayerViewModel
+import app.simple.felicity.viewmodels.main.player.PlayerViewModel
 
 class DefaultPlayer : PlayerFragment() {
 

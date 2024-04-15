@@ -16,7 +16,7 @@ import app.simple.felicity.models.home.Home
 import app.simple.felicity.ui.main.albums.PeristyleAlbums
 import app.simple.felicity.ui.main.artists.PeristyleArtists
 import app.simple.felicity.ui.main.songs.SimpleSongs
-import app.simple.felicity.viewmodels.ui.HomeViewModel
+import app.simple.felicity.viewmodels.main.home.HomeViewModel
 
 class SimpleListHome : ScopedFragment() {
 

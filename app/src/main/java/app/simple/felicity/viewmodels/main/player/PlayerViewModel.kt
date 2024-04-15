@@ -1,4 +1,4 @@
-package app.simple.felicity.viewmodels.ui
+package app.simple.felicity.viewmodels.main.player
 
 import android.app.Application
 import android.content.SharedPreferences

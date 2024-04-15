@@ -11,7 +11,7 @@ import app.simple.felicity.adapters.home.sub.AdapterGridArt
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.utils.RecyclerViewUtils.randomViewHolder
-import app.simple.felicity.viewmodels.ui.HomeViewModel
+import app.simple.felicity.viewmodels.main.home.HomeViewModel
 
 class SpannedHome : ScopedFragment() {
 

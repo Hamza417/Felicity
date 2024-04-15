@@ -1,4 +1,4 @@
-package app.simple.felicity.viewmodels.ui
+package app.simple.felicity.viewmodels.main.home
 
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
@@ -41,6 +41,8 @@ class HomeViewModel(application: Application) : WrappedViewModel(application) {
             homeData.add(HomeAlbum(R.string.albums, R.drawable.ic_album, albums))
             homeData.add(HomeArtist(R.string.artists, R.drawable.ic_artist, artists))
             homeData.add(HomeAudio(R.string.recently_added, R.drawable.ic_history, recentlyAdded))
+            homeData.add(HomeAudio(R.string.folders, R.drawable.ic_folder, arrayListOf()))
+            homeData.add(HomeAudio(R.string.favorites, R.drawable.ic_favorite, arrayListOf()))
 
             data.postValue(homeData)
         }

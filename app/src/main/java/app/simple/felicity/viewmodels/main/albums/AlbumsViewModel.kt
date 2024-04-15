@@ -1,4 +1,4 @@
-package app.simple.felicity.viewmodels.ui
+package app.simple.felicity.viewmodels.main.albums
 
 import android.app.Application
 import androidx.lifecycle.LiveData

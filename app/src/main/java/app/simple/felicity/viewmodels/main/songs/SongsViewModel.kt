@@ -1,4 +1,4 @@
-package app.simple.felicity.viewmodels.ui
+package app.simple.felicity.viewmodels.main.songs
 
 import android.app.Application
 import android.provider.MediaStore
