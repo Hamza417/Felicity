@@ -19,4 +19,6 @@
     <string name="open_app_now">Open App Now</string>
     <string name="folders">Folders</string>
     <string name="favorites">Favorites</string>
+    <string name="links">Links</string>
+    <string name="bookmarks">Bookmarks</string>
 </resources>

@@ -12,6 +12,8 @@ import app.simple.felicity.models.home.Home
 import app.simple.felicity.models.home.HomeAlbum
 import app.simple.felicity.models.home.HomeArtist
 import app.simple.felicity.models.home.HomeAudio
+import app.simple.felicity.models.home.HomeBookmarks
+import app.simple.felicity.models.home.HomeLinks
 import app.simple.felicity.utils.ArrayUtils.toArrayList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -43,6 +45,8 @@ class HomeViewModel(application: Application) : WrappedViewModel(application) {
             homeData.add(HomeAudio(R.string.recently_added, R.drawable.ic_history, recentlyAdded))
             homeData.add(HomeAudio(R.string.folders, R.drawable.ic_folder, arrayListOf()))
             homeData.add(HomeAudio(R.string.favorites, R.drawable.ic_favorite, arrayListOf()))
+            homeData.add(HomeLinks(R.string.links, R.drawable.ic_link, 0))
+            homeData.add(HomeBookmarks(R.string.bookmarks, R.drawable.ic_bookmarks, 0))
 
             data.postValue(homeData)
         }
