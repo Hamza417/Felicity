@@ -9,7 +9,6 @@ import android.util.AttributeSet;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
-
 import app.simple.felicity.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.themes.Theme;
@@ -55,11 +54,13 @@ public class ThemeConstraintLayout extends ConstraintLayout implements ThemeChan
     }
 
     private void setBackground(boolean animate) {
-        if (animate) {
-            valueAnimator = Utils.animateBackgroundColor(this,
-                    ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getBackgroundColor());
-        } else {
-            setBackgroundTintList(ColorStateList.valueOf(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getBackgroundColor()));
+        if (!isInEditMode()) {
+            if (animate) {
+                valueAnimator = Utils.animateBackgroundColor(this,
+                        ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getBackgroundColor());
+            } else {
+                setBackgroundTintList(ColorStateList.valueOf(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getBackgroundColor()));
+            }
         }
     }
 

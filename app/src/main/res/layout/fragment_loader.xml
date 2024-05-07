@@ -18,7 +18,7 @@
         app:isFadingEdgeRequired="true"
         app:isFastScrollRequired="false" />
 
-    <app.simple.felicity.decorations.corners.DynamicCornerLinearLayout
+    <app.simple.felicity.decorations.corners.DynamicCornerConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
@@ -30,7 +30,10 @@
             android:id="@+id/loader"
             android:layout_width="@dimen/loader_size"
             android:layout_height="@dimen/loader_size"
-            android:layout_gravity="center_vertical" />
+            android:layout_gravity="center_vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
             android:id="@+id/loading"
@@ -38,8 +41,29 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:layout_marginHorizontal="@dimen/padding_15"
+            android:layout_marginBottom="1dp"
             android:layout_weight="1"
-            android:text="@string/loading" />
+            android:text="@string/loading"
+            android:textSize="@dimen/text_size_16"
+            app:layout_constraintBottom_toTopOf="@+id/time_remaining"
+            app:layout_constraintEnd_toStartOf="@+id/open_app_now"
+            app:layout_constraintStart_toEndOf="@+id/loader"
+            app:layout_constraintTop_toTopOf="@+id/loader" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/time_remaining"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginHorizontal="@dimen/padding_15"
+            android:layout_weight="1"
+            android:textSize="@dimen/text_size_12"
+            app:appFontStyle="regular"
+            app:layout_constraintBottom_toBottomOf="@+id/loader"
+            app:layout_constraintEnd_toStartOf="@+id/open_app_now"
+            app:layout_constraintStart_toEndOf="@+id/loader"
+            app:layout_constraintTop_toBottomOf="@+id/loading"
+            app:textColorStyle="tertiary" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleTextView
             android:id="@+id/open_app_now"
@@ -51,8 +75,11 @@
             android:textSize="@dimen/text_size_16"
             android:visibility="invisible"
             app:appFontStyle="bold"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
             app:textColorStyle="accent" />
 
-    </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+    </app.simple.felicity.decorations.corners.DynamicCornerConstraintLayout>
 
 </app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>

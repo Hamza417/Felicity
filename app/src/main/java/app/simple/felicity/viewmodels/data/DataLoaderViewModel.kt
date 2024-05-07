@@ -13,20 +13,27 @@ import app.simple.felicity.loaders.JAudioMetadataLoader
 import app.simple.felicity.loaders.LoaderUtils.isAudioFile
 import app.simple.felicity.loaders.MediaMetadataLoader
 import app.simple.felicity.models.normal.Audio
+import app.simple.felicity.tools.MovingAverage
 import app.simple.felicity.utils.SDCard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.jaudiotagger.audio.exceptions.CannotReadException
 import java.io.File
+import kotlin.system.measureTimeMillis
 
 class DataLoaderViewModel(application: Application) : WrappedViewModel(application) {
 
     private val dataList: ArrayList<File> = ArrayList()
+    private val averageTime = MovingAverage(MAX_AVG)
 
     private val data: MutableLiveData<File> by lazy {
         MutableLiveData<File>().also {
             loadData()
         }
+    }
+
+    private val timeRemaining: MutableLiveData<Long> by lazy {
+        MutableLiveData<Long>()
     }
 
     private val loaded: SingleEventLiveData<Boolean> by lazy {
@@ -41,47 +48,60 @@ class DataLoaderViewModel(application: Application) : WrappedViewModel(applicati
         return loaded
     }
 
+    fun getTimeRemaining(): LiveData<Long> {
+        return timeRemaining
+    }
+
     private fun loadData() {
         viewModelScope.launch(Dispatchers.IO) {
             val paths = arrayListOf(Environment.getExternalStorageDirectory(), SDCard.findSdCardPath(context))
             val audioDatabase = AudioDatabase.getInstance(context)
 
-            paths.forEach { file ->
-                file?.walkTopDown()?.forEach {
-                    if (it.isFile) {
-                        try {
-                            if (it.isAudioFile()) {
-                                val audio = Audio()
-                                val retriever = JAudioMetadataLoader(it)
-                                retriever.setAudioMetadata(audio)
+            val files = paths.flatMap { it?.walkTopDown()?.filter { file -> file.isFile && file.isAudioFile() }?.toList() ?: listOf() }
+            val fileCount = files.size
+            var count = 0
 
-                                audioDatabase?.audioDao()?.insert(audio)
-                                data.postValue(it)
-                                dataList.add(it)
-                            }
-                        } catch (e: CannotReadException) {
-                            e.printStackTrace()
-                            Log.d(TAG, "loadData: Cannot read file: ${it.absolutePath}")
-
-                            val audio = Audio()
-                            val retriever = MediaMetadataLoader(it)
-                            retriever.setAudioMetadata(audio)
-
-                            audioDatabase?.audioDao()?.insert(audio)
-                            data.postValue(it)
-                            dataList.add(it)
-
-                            Log.d(TAG, "Successfully read file using MediaMetadataLoader: ${it.absolutePath}")
-                        }
-                    }
+            files.forEach { file ->
+                count++
+                val remaining = fileCount - count
+                val processingTime = measureTimeMillis {
+                    processFile(file, audioDatabase)
                 }
+
+                timeRemaining.postValue((averageTime.next(processingTime) * remaining).toLong())
             }
 
             loaded.postValue(true)
         }
     }
 
+    private fun processFile(file: File, audioDatabase: AudioDatabase?) {
+        try {
+            val audio = Audio()
+            val retriever = JAudioMetadataLoader(file)
+            retriever.setAudioMetadata(audio)
+
+            audioDatabase?.audioDao()?.insert(audio)
+            dataList.add(file)
+            data.postValue(file)
+        } catch (e: CannotReadException) {
+            e.printStackTrace()
+            Log.d(TAG, "loadData: Cannot read file: ${file.absolutePath}")
+
+            val audio = Audio()
+            val retriever = MediaMetadataLoader(file)
+            retriever.setAudioMetadata(audio)
+
+            audioDatabase?.audioDao()?.insert(audio)
+            dataList.add(file)
+            data.postValue(file)
+
+            Log.d(TAG, "Successfully read file using MediaMetadataLoader: ${file.absolutePath}")
+        }
+    }
+
     companion object {
         const val TAG = "DataLoaderViewModel"
+        const val MAX_AVG = 100
     }
 }

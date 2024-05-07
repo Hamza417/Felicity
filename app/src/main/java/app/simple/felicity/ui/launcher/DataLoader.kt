@@ -12,6 +12,7 @@ import app.simple.felicity.databinding.FragmentLoaderBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.preferences.MainPreferences
 import app.simple.felicity.ui.main.home.SimpleListHome
+import app.simple.felicity.utils.NumberUtils
 import app.simple.felicity.utils.ViewUtils.visible
 import app.simple.felicity.viewmodels.data.DataLoaderViewModel
 
@@ -54,6 +55,10 @@ class DataLoader : ScopedFragment() {
                 binding?.openAppNow?.visible(true)
                 MainPreferences.setDataLoaded(true)
             }
+        }
+
+        dataLoaderViewModel?.getTimeRemaining()?.observe(viewLifecycleOwner) { time ->
+            binding?.timeRemaining?.text = getString(R.string.time_remaining, NumberUtils.getFormattedTime(time))
         }
 
         binding?.openAppNow?.setOnClickListener {
