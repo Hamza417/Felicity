@@ -33,8 +33,8 @@ import app.simple.felicity.utils.ViewUtils.slideOutAnimation
 open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
 
     private val typedArray: TypedArray
-    private var colorMode: Int = 1
-    private var drawableTintMode = 2
+    private var colorMode: Int = PRIMARY
+    private var drawableTintMode = DRAWABLE_REGULAR
     private var isDrawableHidden = true
     private var lastDrawableColor = Color.GRAY
 
@@ -62,10 +62,9 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
     private fun init() {
         if (isInEditMode) return
         typeface = TypeFace.getTypeFace(AppearancePreferences.getAppFont(), typedArray.getInt(R.styleable.TypeFaceTextView_appFontStyle, BOLD), context)
-        colorMode = typedArray.getInt(R.styleable.TypeFaceTextView_textColorStyle, 1)
-        drawableTintMode = typedArray.getInt(R.styleable.TypeFaceTextView_drawableTintStyle, 1)
+        colorMode = typedArray.getInt(R.styleable.TypeFaceTextView_textColorStyle, PRIMARY)
+        drawableTintMode = typedArray.getInt(R.styleable.TypeFaceTextView_drawableTintStyle, DRAWABLE_REGULAR)
         isDrawableHidden = typedArray.getBoolean(R.styleable.TypeFaceTextView_isDrawableHidden, true)
-
         hyphenationFrequency = Layout.HYPHENATION_FREQUENCY_NONE
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -73,6 +72,7 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
         }
 
         setTextColor(false)
+        setDrawableTint(false)
 
         //        if (DevelopmentPreferences.get(DevelopmentPreferences.preferencesIndicator) && isDrawableHidden) {
         //            setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
@@ -128,23 +128,23 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
     private fun setTextColor(animate: Boolean) {
         if (animate) {
             when (colorMode) {
-                0 -> this.animateColorChange(ThemeManager.theme.textViewTheme.headerTextColor)
-                1 -> this.animateColorChange(ThemeManager.theme.textViewTheme.primaryTextColor)
-                2 -> this.animateColorChange(ThemeManager.theme.textViewTheme.secondaryTextColor)
-                3 -> this.animateColorChange(ThemeManager.theme.textViewTheme.tertiaryTextColor)
-                4 -> this.animateColorChange(ThemeManager.theme.textViewTheme.quaternaryTextColor)
-                5 -> this.animateColorChange(ThemeManager.accent.primaryAccentColor)
-                6 -> setTextColor(ColorStateList.valueOf(Color.WHITE))
+                HEADER -> this.animateColorChange(ThemeManager.theme.textViewTheme.headerTextColor)
+                PRIMARY -> this.animateColorChange(ThemeManager.theme.textViewTheme.primaryTextColor)
+                SECONDARY -> this.animateColorChange(ThemeManager.theme.textViewTheme.secondaryTextColor)
+                TERTIARY -> this.animateColorChange(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+                QUATERNARY -> this.animateColorChange(ThemeManager.theme.textViewTheme.quaternaryTextColor)
+                ACCENT -> this.animateColorChange(ThemeManager.accent.primaryAccentColor)
+                WHITE -> this.animateColorChange(Color.WHITE)
             }
         } else {
             when (colorMode) {
-                0 -> setTextColor(ThemeManager.theme.textViewTheme.headerTextColor)
-                1 -> setTextColor(ThemeManager.theme.textViewTheme.primaryTextColor)
-                2 -> setTextColor(ThemeManager.theme.textViewTheme.secondaryTextColor)
-                3 -> setTextColor(ThemeManager.theme.textViewTheme.tertiaryTextColor)
-                4 -> setTextColor(ThemeManager.theme.textViewTheme.quaternaryTextColor)
-                5 -> setTextColor(ThemeManager.accent.primaryAccentColor)
-                6 -> setTextColor(ColorStateList.valueOf(Color.WHITE))
+                HEADER -> setTextColor(ThemeManager.theme.textViewTheme.headerTextColor)
+                PRIMARY -> setTextColor(ThemeManager.theme.textViewTheme.primaryTextColor)
+                SECONDARY -> setTextColor(ThemeManager.theme.textViewTheme.secondaryTextColor)
+                TERTIARY -> setTextColor(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+                QUATERNARY -> setTextColor(ThemeManager.theme.textViewTheme.quaternaryTextColor)
+                ACCENT -> setTextColor(ThemeManager.accent.primaryAccentColor)
+                WHITE -> setTextColor(ColorStateList.valueOf(Color.WHITE))
             }
         }
     }
@@ -152,15 +152,17 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
     private fun setDrawableTint(animate: Boolean) {
         if (animate) {
             when (drawableTintMode) {
-                0, 3 -> animateDrawableColorChange(lastDrawableColor, ThemeManager.accent.primaryAccentColor)
-                1 -> animateDrawableColorChange(lastDrawableColor, ThemeManager.theme.iconTheme.regularIconColor)
-                2 -> animateDrawableColorChange(lastDrawableColor, ThemeManager.theme.iconTheme.secondaryIconColor)
+                DRAWABLE_ACCENT -> animateDrawableColorChange(lastDrawableColor, ThemeManager.accent.primaryAccentColor)
+                DRAWABLE_REGULAR -> animateDrawableColorChange(lastDrawableColor, ThemeManager.theme.iconTheme.regularIconColor)
+                DRAWABLE_SECONDARY -> animateDrawableColorChange(lastDrawableColor, ThemeManager.theme.iconTheme.secondaryIconColor)
+                DRAWABLE_WARNING -> animateDrawableColorChange(lastDrawableColor, Color.RED)
             }
         } else {
             when (drawableTintMode) {
-                0, 3 -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(ThemeManager.accent.primaryAccentColor))
-                1 -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(ThemeManager.theme.iconTheme.regularIconColor))
-                2 -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(ThemeManager.theme.iconTheme.secondaryIconColor))
+                DRAWABLE_ACCENT -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(ThemeManager.accent.primaryAccentColor))
+                DRAWABLE_REGULAR -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(ThemeManager.theme.iconTheme.regularIconColor))
+                DRAWABLE_SECONDARY -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(ThemeManager.theme.iconTheme.secondaryIconColor))
+                DRAWABLE_WARNING -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(Color.RED))
             }
         }
 
@@ -169,10 +171,11 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
 
     private fun setLastDrawableColor() {
         lastDrawableColor = when (drawableTintMode) {
-            0 -> ThemeManager.accent.primaryAccentColor
-            1 -> ThemeManager.theme.iconTheme.regularIconColor
-            2 -> ThemeManager.theme.iconTheme.secondaryIconColor
-            else -> ThemeManager.theme.iconTheme.secondaryIconColor
+            DRAWABLE_ACCENT -> ThemeManager.accent.primaryAccentColor
+            DRAWABLE_REGULAR -> ThemeManager.theme.iconTheme.regularIconColor
+            DRAWABLE_SECONDARY -> ThemeManager.theme.iconTheme.secondaryIconColor
+            DRAWABLE_WARNING -> Color.RED
+            else -> Color.GRAY
         }
     }
 
@@ -223,5 +226,18 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
         const val REGULAR = 1
         const val MEDIUM = 2
         const val BOLD = 3
+
+        const val HEADER = 0
+        const val PRIMARY = 1
+        const val SECONDARY = 2
+        const val TERTIARY = 3
+        const val QUATERNARY = 4
+        const val ACCENT = 5
+        const val WHITE = 6
+
+        const val DRAWABLE_ACCENT = 0
+        const val DRAWABLE_REGULAR = 1
+        const val DRAWABLE_SECONDARY = 2
+        const val DRAWABLE_WARNING = 3
     }
 }
