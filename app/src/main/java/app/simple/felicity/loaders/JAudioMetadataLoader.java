@@ -28,6 +28,7 @@ public class JAudioMetadataLoader {
     }
     
     public void setAudioMetadata(Audio audio) {
+        audio.setId(generateId());
         audio.setName(file.getName());
         audio.setPath(file.getAbsolutePath());
         audio.setAlbum(getAlbum());
@@ -125,5 +126,9 @@ public class JAudioMetadataLoader {
     
     private long getBitPerSample() {
         return audioFile.getAudioHeader().getBitsPerSample();
+    }
+    
+    private int generateId() {
+        return file.getAbsolutePath().hashCode();
     }
 }

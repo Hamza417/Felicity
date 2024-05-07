@@ -23,6 +23,7 @@ public class MediaMetadataLoader {
     }
     
     public void setAudioMetadata(Audio audio) {
+        audio.setId(file.getAbsolutePath().hashCode());
         audio.setName(file.getName());
         audio.setPath(file.getAbsolutePath());
         audio.setAlbum(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM));

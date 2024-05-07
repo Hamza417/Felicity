@@ -5,8 +5,8 @@ import android.provider.MediaStore
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import app.simple.felicity.database.instances.AudioDatabase
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
-import app.simple.felicity.loaders.MediaStoreLoader.loadAudios
 import app.simple.felicity.models.normal.Audio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,7 +27,8 @@ class SongsViewModel(application: Application) : WrappedViewModel(application) {
 
     private fun loadData() {
         viewModelScope.launch(Dispatchers.IO) {
-            songs.postValue(applicationContext().loadAudios(selection))
+            val audios = AudioDatabase.getInstance(applicationContext())?.audioDao()?.getAllAudio()
+            songs.postValue(audios as ArrayList<Audio>?)
         }
     }
 }

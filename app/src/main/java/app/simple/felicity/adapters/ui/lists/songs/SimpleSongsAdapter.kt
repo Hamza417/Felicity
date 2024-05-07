@@ -7,7 +7,9 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterSimpleSongsBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.glide.pathcover.Utils.loadFromPath
 import app.simple.felicity.models.normal.Audio
+import com.bumptech.glide.Glide
 
 class SimpleSongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Adapter<SimpleSongsAdapter.Holder>() {
 
@@ -25,6 +27,11 @@ class SimpleSongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Ada
         return audio.size
     }
 
+    override fun onViewRecycled(holder: Holder) {
+        super.onViewRecycled(holder)
+        Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
+    }
+
     inner class Holder(val binding: AdapterSimpleSongsBinding) : VerticalListViewHolder(binding.root) {
         fun bind(audio: Audio) {
             binding.apply {
@@ -33,7 +40,7 @@ class SimpleSongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Ada
                 artist.text = audio.artist ?: getString(R.string.unknown)
                 details.text = audio.album ?: getString(R.string.unknown)
 
-                // albumArt.loadFromUri(audio.artUri)
+                albumArt.loadFromPath(audio.path)
             }
 
             binding.root.setOnClickListener {
