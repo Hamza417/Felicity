@@ -25,7 +25,7 @@ public class HomeUtils {
     
     public static void loadHomeAlbumArt(Home home, ImageView imageView, int position) {
         if (home instanceof HomeAudio) {
-            AudioCoverUtil.INSTANCE.loadFromUri(imageView, Uri.parse(((HomeAudio) home).getAudios().get(position).getArtUri()));
+            // AudioCoverUtil.INSTANCE.loadFromUri(imageView, Uri.parse(((HomeAudio) home).getAudios().get(position).getArtUri()));
         } else if (home instanceof HomeAlbum) {
             AlbumCoverUtils.INSTANCE.loadAlbumCoverSquare(imageView, ((HomeAlbum) home).getAlbums().get(position).getAlbumId());
         } else if (home instanceof HomeGenre) {

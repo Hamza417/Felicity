@@ -2,6 +2,7 @@ package app.simple.felicity.viewmodels.data
 
 import android.app.Application
 import android.os.Environment
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
@@ -14,6 +15,7 @@ import app.simple.felicity.models.normal.Audio
 import app.simple.felicity.utils.SDCard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.jaudiotagger.audio.exceptions.CannotReadException
 import java.io.File
 
 class DataLoaderViewModel(application: Application) : WrappedViewModel(application) {
@@ -46,16 +48,19 @@ class DataLoaderViewModel(application: Application) : WrappedViewModel(applicati
             paths.forEach { file ->
                 file?.walkTopDown()?.forEach {
                     if (it.isFile) {
-                        if (it.isAudioFile()) {
-                            val audio = Audio()
-                            val retriever = MediaMetadataLoader(it)
+                        try {
+                            if (it.isAudioFile()) {
+                                val audio = Audio()
+                                val retriever = MediaMetadataLoader(it)
+                                retriever.setAudioMetadata(audio)
 
-                            retriever.setAudioMetadata(audio)
-                            retriever.close()
-
-                            audioDatabase?.audioDao()?.insert(audio)
-                            data.postValue(it)
-                            dataList.add(it)
+                                audioDatabase?.audioDao()?.insert(audio)
+                                data.postValue(it)
+                                dataList.add(it)
+                            }
+                        } catch (e: CannotReadException) {
+                            e.printStackTrace()
+                            Log.d(TAG, "loadData: Cannot read file: ${it.absolutePath}")
                         }
                     }
                 }

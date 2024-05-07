@@ -63,7 +63,7 @@ object MediaStoreLoader {
 
         if (cursor != null && cursor.moveToFirst()) {
             do {
-                audios.add(Audio(cursor))
+                // audios.add(Audio(cursor))
             } while (cursor.moveToNext())
 
             cursor.close()
@@ -101,7 +101,7 @@ object MediaStoreLoader {
 
         if (cursor != null && cursor.moveToFirst()) {
             do {
-                audios.add(Audio(cursor))
+                // audios.add(Audio(cursor))
             } while (cursor.moveToNext())
 
             cursor.close()
@@ -121,7 +121,7 @@ object MediaStoreLoader {
         if (cursor != null && cursor.moveToFirst()) {
             do {
                 val artist = Artist(cursor)
-                artist.artUri = audios.find { it.artist == artist.artistName }?.artUri
+                // artist.artUri = audios.find { it.artist == artist.artistName }?.artUri
                 artists.add(artist)
             } while (cursor.moveToNext())
 
@@ -162,7 +162,7 @@ object MediaStoreLoader {
 
         if (cursor != null && cursor.moveToFirst()) {
             do {
-                audios.add(Audio(cursor))
+                // audios.add(Audio(cursor))
             } while (cursor.moveToNext())
 
             cursor.close()
