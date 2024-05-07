@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:animateLayoutChanges="true"
     android:orientation="vertical">
 
     <app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
@@ -23,6 +24,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:layout_margin="@dimen/padding_15"
+        android:animateLayoutChanges="true"
         android:orientation="horizontal"
         android:padding="@dimen/padding_15">
 
@@ -43,7 +45,7 @@
             android:layout_marginHorizontal="@dimen/padding_15"
             android:layout_marginBottom="1dp"
             android:layout_weight="1"
-            android:text="@string/loading"
+            android:text="@string/collecting_files"
             android:textSize="@dimen/text_size_16"
             app:layout_constraintBottom_toTopOf="@+id/time_remaining"
             app:layout_constraintEnd_toStartOf="@+id/open_app_now"
@@ -58,6 +60,7 @@
             android:layout_marginHorizontal="@dimen/padding_15"
             android:layout_weight="1"
             android:textSize="@dimen/text_size_12"
+            android:visibility="gone"
             app:appFontStyle="regular"
             app:layout_constraintBottom_toBottomOf="@+id/loader"
             app:layout_constraintEnd_toStartOf="@+id/open_app_now"

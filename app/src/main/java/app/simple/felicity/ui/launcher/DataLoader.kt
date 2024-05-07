@@ -45,6 +45,7 @@ class DataLoader : ScopedFragment() {
         dataLoaderViewModel?.getData()?.observe(viewLifecycleOwner) { file ->
             adapterLoader?.updateFile(file)
             binding?.recyclerView?.smoothScrollToPosition(0)
+            binding?.loading?.setText(R.string.processing)
         }
 
         dataLoaderViewModel?.getLoaded()?.observe(viewLifecycleOwner) { loaded ->
@@ -58,6 +59,7 @@ class DataLoader : ScopedFragment() {
         }
 
         dataLoaderViewModel?.getTimeRemaining()?.observe(viewLifecycleOwner) { time ->
+            binding?.timeRemaining?.visible(false)
             binding?.timeRemaining?.text = getString(R.string.time_remaining, NumberUtils.getFormattedTime(time))
         }
 

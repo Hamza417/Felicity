@@ -22,4 +22,6 @@
     <string name="links">Links</string>
     <string name="bookmarks">Bookmarks</string>
     <string name="time_remaining">Time Remaining %1$s</string>
+    <string name="collecting_files">Collecting Files</string>
+    <string name="processing">Processing</string>
 </resources>
