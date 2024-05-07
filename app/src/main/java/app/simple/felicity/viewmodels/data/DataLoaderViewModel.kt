@@ -14,6 +14,7 @@ import app.simple.felicity.loaders.LoaderUtils.isAudioFile
 import app.simple.felicity.loaders.MediaMetadataLoader
 import app.simple.felicity.models.normal.Audio
 import app.simple.felicity.tools.MovingAverage
+import app.simple.felicity.utils.NumberUtils
 import app.simple.felicity.utils.SDCard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -24,7 +25,7 @@ import kotlin.system.measureTimeMillis
 class DataLoaderViewModel(application: Application) : WrappedViewModel(application) {
 
     private val dataList: ArrayList<File> = ArrayList()
-    private val averageTime = MovingAverage(MAX_AVG)
+    private val averageTime = MovingAverage(100)
 
     private val data: MutableLiveData<File> by lazy {
         MutableLiveData<File>().also {
@@ -61,15 +62,23 @@ class DataLoaderViewModel(application: Application) : WrappedViewModel(applicati
             val fileCount = files.size
             var count = 0
 
-            files.forEach { file ->
+            val startTime = System.currentTimeMillis()
+
+            files.parallelStream().forEach { file ->
                 count++
                 val remaining = fileCount - count
                 val processingTime = measureTimeMillis {
                     processFile(file, audioDatabase)
                 }
 
-                timeRemaining.postValue((averageTime.next(processingTime) * remaining).toLong())
+                synchronized(timeRemaining) {
+                    synchronized(averageTime) {
+                        timeRemaining.postValue((averageTime.next(processingTime) * remaining).toLong())
+                    }
+                }
             }
+
+            Log.d(TAG, "loadData: Time taken: ${NumberUtils.getFormattedTime(System.currentTimeMillis() - startTime)} s")
 
             loaded.postValue(true)
         }
