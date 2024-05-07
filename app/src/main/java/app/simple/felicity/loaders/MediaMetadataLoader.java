@@ -1,129 +1,58 @@
 package app.simple.felicity.loaders;
 
-import org.jaudiotagger.audio.AudioFile;
-import org.jaudiotagger.audio.AudioFileIO;
-import org.jaudiotagger.audio.exceptions.CannotReadException;
-import org.jaudiotagger.audio.exceptions.InvalidAudioFrameException;
-import org.jaudiotagger.audio.exceptions.ReadOnlyFileException;
-import org.jaudiotagger.tag.FieldKey;
-import org.jaudiotagger.tag.TagException;
+import android.media.MediaMetadataRetriever;
+import android.os.Build;
 
 import java.io.File;
-import java.io.IOException;
 
 import app.simple.felicity.models.normal.Audio;
 
 public class MediaMetadataLoader {
     
     private final File file;
-    private final AudioFile audioFile;
+    private final MediaMetadataRetriever retriever;
     
-    public MediaMetadataLoader(File file) throws CannotReadException, TagException, InvalidAudioFrameException, ReadOnlyFileException, IOException {
+    public MediaMetadataLoader(File file) {
         this.file = file;
-        this.audioFile = AudioFileIO.read(file);
+        this.retriever = new MediaMetadataRetriever();
+        this.retriever.setDataSource(file.getAbsolutePath());
     }
     
-    public MediaMetadataLoader(String path) throws CannotReadException, TagException, InvalidAudioFrameException, ReadOnlyFileException, IOException {
+    public MediaMetadataLoader(String path) {
         this(new File(path));
     }
     
     public void setAudioMetadata(Audio audio) {
         audio.setName(file.getName());
         audio.setPath(file.getAbsolutePath());
-        audio.setAlbum(getAlbum());
-        audio.setAlbumArtist(getAlbumArtist());
-        audio.setArtist(getArtist());
-        // audio.setAuthor(getAuthor());
-        audio.setBitrate(getBitrate());
-        audio.setCompilation(getCompilation());
-        audio.setComposer(getComposer());
-        audio.setDate(getDate());
-        audio.setDiscNumber(getDiscNumber());
-        audio.setDuration(getDuration());
-        audio.setGenre(getGenre());
-        audio.setMimeType(getMIMEType());
-        audio.setNumTracks(getNumTracks());
-        audio.setTitle(getTitle());
-        audio.setTrackNumber(getTrackNumber());
-        audio.setWriter(getWriter());
-        audio.setYear(getYear());
-        audio.setSamplingRate(getSamplingRate());
-        audio.setBitPerSample(getBitPerSample());
-    }
-    
-    private String getAudioFileTag(FieldKey tag) {
-        return audioFile.getTag().getFirst(tag);
-    }
-    
-    private String getTitle() {
-        return getAudioFileTag(FieldKey.TITLE);
-    }
-    
-    private String getArtist() {
-        return getAudioFileTag(FieldKey.ARTIST);
-    }
-    
-    private String getAlbum() {
-        return getAudioFileTag(FieldKey.ALBUM);
-    }
-    
-    private String getGenre() {
-        return getAudioFileTag(FieldKey.GENRE);
-    }
-    
-    private String getYear() {
-        return getAudioFileTag(FieldKey.YEAR);
-    }
-    
-    private String getComposer() {
-        return getAudioFileTag(FieldKey.COMPOSER);
-    }
-    
-    private String getAlbumArtist() {
-        return getAudioFileTag(FieldKey.ALBUM_ARTIST);
-    }
-    
-    private String getWriter() {
-        return getAudioFileTag(FieldKey.LYRICIST);
-    }
-    
-    private String getCompilation() {
-        return getAudioFileTag(FieldKey.IS_COMPILATION);
-    }
-    
-    private String getDate() {
-        return getAudioFileTag(FieldKey.YEAR);
-    }
-    
-    private long getBitrate() {
-        return audioFile.getAudioHeader().getBitRateAsNumber();
-    }
-    
-    private long getDuration() {
-        return audioFile.getAudioHeader().getTrackLength();
-    }
-    
-    private String getNumTracks() {
-        return getAudioFileTag(FieldKey.TRACK_TOTAL);
-    }
-    
-    private String getDiscNumber() {
-        return getAudioFileTag(FieldKey.DISC_NO);
-    }
-    
-    private String getTrackNumber() {
-        return getAudioFileTag(FieldKey.TRACK);
-    }
-    
-    private String getMIMEType() {
-        return audioFile.getExt();
-    }
-    
-    private long getSamplingRate() {
-        return audioFile.getAudioHeader().getSampleRateAsNumber();
-    }
-    
-    private long getBitPerSample() {
-        return audioFile.getAudioHeader().getBitsPerSample();
+        audio.setAlbum(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM));
+        audio.setArtist(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST));
+        audio.setGenre(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE));
+        audio.setYear(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR));
+        audio.setDuration(Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)));
+        audio.setTrackNumber(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER));
+        audio.setNumTracks(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_NUM_TRACKS));
+        audio.setComposer(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER));
+        audio.setMimeType(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE));
+        audio.setBitrate(Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)));
+        
+        // Additional fields
+        audio.setAlbumArtist(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST));
+        audio.setWriter(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_WRITER));
+        audio.setCompilation(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPILATION));
+        audio.setDate(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE));
+        audio.setDiscNumber(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            audio.setSamplingRate(Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)));
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                audio.setBitPerSample(Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITS_PER_SAMPLE)));
+            } catch (NumberFormatException e) {
+                audio.setBitPerSample(0);
+            }
+        } else {
+            audio.setBitPerSample(0);
+        }
     }
 }

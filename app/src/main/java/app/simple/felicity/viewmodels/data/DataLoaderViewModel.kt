@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import app.simple.felicity.database.instances.AudioDatabase
 import app.simple.felicity.extensions.livedata.SingleEventLiveData
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.loaders.JAudioMetadataLoader
 import app.simple.felicity.loaders.LoaderUtils.isAudioFile
 import app.simple.felicity.loaders.MediaMetadataLoader
 import app.simple.felicity.models.normal.Audio
@@ -51,7 +52,7 @@ class DataLoaderViewModel(application: Application) : WrappedViewModel(applicati
                         try {
                             if (it.isAudioFile()) {
                                 val audio = Audio()
-                                val retriever = MediaMetadataLoader(it)
+                                val retriever = JAudioMetadataLoader(it)
                                 retriever.setAudioMetadata(audio)
 
                                 audioDatabase?.audioDao()?.insert(audio)
@@ -61,6 +62,16 @@ class DataLoaderViewModel(application: Application) : WrappedViewModel(applicati
                         } catch (e: CannotReadException) {
                             e.printStackTrace()
                             Log.d(TAG, "loadData: Cannot read file: ${it.absolutePath}")
+
+                            val audio = Audio()
+                            val retriever = MediaMetadataLoader(it)
+                            retriever.setAudioMetadata(audio)
+
+                            audioDatabase?.audioDao()?.insert(audio)
+                            data.postValue(it)
+                            dataList.add(it)
+
+                            Log.d(TAG, "Successfully read file using MediaMetadataLoader: ${it.absolutePath}")
                         }
                     }
                 }

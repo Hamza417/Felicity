@@ -79,6 +79,7 @@ public class Audio implements Parcelable {
     @Nullable
     private String trackNumber;
     @ColumnInfo (name = "compilation")
+    @Nullable
     private String compilation;
     @ColumnInfo (name = "mimeType")
     private String mimeType;
@@ -89,6 +90,7 @@ public class Audio implements Parcelable {
     @ColumnInfo (name = "bit_per_sample")
     private long bitPerSample;
     @ColumnInfo (name = "writer")
+    @Nullable
     private String writer;
     
     public Audio() {
