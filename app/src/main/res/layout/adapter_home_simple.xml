@@ -6,7 +6,7 @@
     android:layout_margin="@dimen/padding_10"
     android:orientation="horizontal"
     android:id="@+id/container"
-    android:padding="@dimen/padding_15">
+    android:padding="@dimen/padding_20">
 
     <app.simple.felicity.decorations.theme.ThemeIcon
         android:id="@+id/icon"

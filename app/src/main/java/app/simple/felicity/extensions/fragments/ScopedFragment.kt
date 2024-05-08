@@ -237,6 +237,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                 this.startShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(AppearancePreferences.getCornerRadius())
                 this.endShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(0F)
                 setInterpolator(DecelerateInterpolator(INTERPOLATOR_TENSION_FACTOR))
+                setPathMotion(MaterialArcMotion())
                 //                setPathMotion(ArcMotion().apply {
                 //                    maximumAngle = this.maximumAngle
                 //                    minimumHorizontalAngle = this.minimumHorizontalAngle
@@ -252,6 +253,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                 this.startShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(0F)
                 this.endShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(AppearancePreferences.getCornerRadius())
                 setInterpolator(DecelerateInterpolator(INTERPOLATOR_TENSION_FACTOR))
+                setPathMotion(MaterialArcMotion())
                 //                setPathMotion(ArcMotion().apply {
                 //                    maximumAngle = this.maximumAngle
                 //                    minimumHorizontalAngle = this.minimumHorizontalAngle
