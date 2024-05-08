@@ -3,15 +3,25 @@ package app.simple.felicity.utils
 import android.graphics.Color
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
-import android.text.*
+import android.text.Html
+import android.text.Selection
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.TextPaint
+import android.text.TextWatcher
 import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
 import android.view.View
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatEditText
 import androidx.core.widget.addTextChangedListener
+import app.simple.felicity.R
 
 object TextViewUtils {
+
+    private val UNKNOWN_VALUES = arrayOf("unknown", "null", "", "0")
+
     fun TextView.makeLinks(vararg links: Pair<String, View.OnClickListener>) {
         val spannableString = SpannableString(this.text)
         var startIndexOfLink = -1
@@ -116,4 +126,16 @@ object TextViewUtils {
                     count: Int
             ) -> Unit
     ): TextWatcher = addTextChangedListener(onTextChanged = action)
+
+    fun TextView.setTextOrUnknown(text: String?) {
+        if (text.isNullOrBlank()) {
+            this.text = context.getString(R.string.unknown)
+        } else {
+            if (UNKNOWN_VALUES.contains(text.lowercase())) {
+                this.text = text
+            } else {
+                this.text = text
+            }
+        }
+    }
 }
