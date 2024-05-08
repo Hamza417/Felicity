@@ -23,6 +23,8 @@ import app.simple.felicity.utils.ViewUtils;
 
 public class DynamicRippleRelativeLayout extends RelativeLayout implements SharedPreferences.OnSharedPreferenceChangeListener, ThemeChangedListener {
     
+    private float radius = AppearancePreferences.INSTANCE.getCornerRadius();
+    
     public DynamicRippleRelativeLayout(Context context, AttributeSet attrs) {
         super(context, attrs);
         init();
@@ -39,7 +41,7 @@ public class DynamicRippleRelativeLayout extends RelativeLayout implements Share
         }
         setBackgroundColor(Color.TRANSPARENT);
         setBackground(null);
-        setBackground(Utils.getRippleDrawable(getBackground()));
+        setBackground(Utils.getRippleDrawable(getBackground(), radius));
     }
     
     private void setHighlightBackgroundColor() {
@@ -118,5 +120,13 @@ public class DynamicRippleRelativeLayout extends RelativeLayout implements Share
         ThemeChangedListener.super.onAccentChanged(accent);
         setHighlightBackgroundColor();
     }
+    
+    public float getRadius() {
+        return radius;
+    }
+    
+    public void setRadius(float radius) {
+        this.radius = radius;
+        init();
+    }
 }
-

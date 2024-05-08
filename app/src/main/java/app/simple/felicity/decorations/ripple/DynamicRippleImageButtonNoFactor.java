@@ -25,6 +25,8 @@ import app.simple.felicity.utils.ViewUtils;
 
 public class DynamicRippleImageButtonNoFactor extends ThemeButton {
     
+    private float radius = AppearancePreferences.INSTANCE.getCornerRadius();
+    
     public DynamicRippleImageButtonNoFactor(Context context, AttributeSet attrs) {
         super(context, attrs);
         setBackgroundColor(Color.TRANSPARENT);
@@ -113,7 +115,7 @@ public class DynamicRippleImageButtonNoFactor extends ThemeButton {
             setBackgroundTintList(ColorStateList.valueOf(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor()));
         } else {
             setBackground(null);
-            setBackground(Utils.getRippleDrawable(getBackground()));
+            setBackground(Utils.getRippleDrawable(getBackground(), radius));
         }
     }
     
@@ -136,5 +138,14 @@ public class DynamicRippleImageButtonNoFactor extends ThemeButton {
         clearAnimation();
         setScaleX(1);
         setScaleY(1);
+    }
+    
+    public float getRadius() {
+        return radius;
+    }
+    
+    public void setRadius(float radius) {
+        this.radius = radius;
+        setHighlightBackgroundColor();
     }
 }

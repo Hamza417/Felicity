@@ -11,11 +11,14 @@ import android.widget.FrameLayout;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import app.simple.felicity.interfaces.ThemeChangedListener;
+import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;
 import app.simple.felicity.utils.ViewUtils;
 
 public class DynamicRippleFrameLayout extends FrameLayout implements SharedPreferences.OnSharedPreferenceChangeListener, ThemeChangedListener {
+    
+    private float radius = AppearancePreferences.INSTANCE.getCornerRadius();
     
     public DynamicRippleFrameLayout(@NonNull Context context) {
         super(context);
@@ -40,7 +43,7 @@ public class DynamicRippleFrameLayout extends FrameLayout implements SharedPrefe
     private void init() {
         setBackgroundColor(Color.TRANSPARENT);
         setBackground(null);
-        setBackground(Utils.getRippleDrawable(getBackground()));
+        setBackground(Utils.getRippleDrawable(getBackground(), radius));
     }
     
     @Override
@@ -103,5 +106,14 @@ public class DynamicRippleFrameLayout extends FrameLayout implements SharedPrefe
     public boolean onGenericMotionEvent(MotionEvent event) {
         ViewUtils.INSTANCE.triggerHover(this, event);
         return super.onGenericMotionEvent(event);
+    }
+    
+    public float getRadius() {
+        return radius;
+    }
+    
+    public void setRadius(float radius) {
+        this.radius = radius;
+        init();
     }
 }

@@ -46,28 +46,11 @@ public class Utils {
         valueAnimator.start();
     }
     
-    static RippleDrawable getRippleDrawable(Drawable backgroundDrawable) {
+    static RippleDrawable getRippleDrawable(Drawable backgroundDrawable, float radius) {
         float[] outerRadii = new float[8];
         float[] innerRadii = new float[8];
-        Arrays.fill(outerRadii, AppearancePreferences.INSTANCE.getCornerRadius());
-        Arrays.fill(innerRadii, AppearancePreferences.INSTANCE.getCornerRadius());
-        
-        RoundRectShape shape = new RoundRectShape(outerRadii, null, innerRadii);
-        ShapeDrawable mask = new ShapeDrawable(shape);
-        
-        ColorStateList stateList = ColorStateList.valueOf(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
-        
-        RippleDrawable rippleDrawable = new RippleDrawable(stateList, backgroundDrawable, mask);
-        rippleDrawable.setAlpha(alpha);
-        
-        return rippleDrawable;
-    }
-    
-    static RippleDrawable getRippleDrawable(Drawable backgroundDrawable, float divisiveFactor) {
-        float[] outerRadii = new float[8];
-        float[] innerRadii = new float[8];
-        Arrays.fill(outerRadii, AppearancePreferences.INSTANCE.getCornerRadius() / divisiveFactor);
-        Arrays.fill(innerRadii, AppearancePreferences.INSTANCE.getCornerRadius() / divisiveFactor);
+        Arrays.fill(outerRadii, radius);
+        Arrays.fill(innerRadii, radius);
         
         RoundRectShape shape = new RoundRectShape(outerRadii, null, innerRadii);
         ShapeDrawable mask = new ShapeDrawable(shape);

@@ -41,6 +41,8 @@ class SimpleSongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Ada
                 details.text = audio.album ?: getString(R.string.unknown)
 
                 albumArt.loadFromPath(audio.path)
+
+                binding.container.radius = 0F
             }
 
             binding.root.setOnClickListener {
