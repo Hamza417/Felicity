@@ -3,7 +3,6 @@ package app.simple.felicity.glide.modules
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
-import app.simple.felicity.R
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverLoader
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverModel
 import app.simple.felicity.glide.transformation.BlurShadow
@@ -32,9 +31,7 @@ class AudioCoverModule : AppGlideModule() {
         val requestOptions = RequestOptions()
 
         requestOptions.format(DecodeFormat.PREFER_ARGB_8888)
-        requestOptions.diskCacheStrategy(DiskCacheStrategy.NONE)
-        requestOptions.fallback(R.drawable.ic_felicity)
-        requestOptions.error(R.drawable.ic_felicity)
+        requestOptions.diskCacheStrategy(DiskCacheStrategy.ALL)
 
         requestOptions.transform(
                 Padding(BlurShadow.MAX_BLUR_RADIUS.toInt()),
