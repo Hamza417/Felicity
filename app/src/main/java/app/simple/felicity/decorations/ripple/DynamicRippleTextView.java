@@ -151,7 +151,7 @@ public class DynamicRippleTextView extends TypeFaceTextView {
     
     @Override
     public void onSharedPreferenceChanged(@Nullable SharedPreferences sharedPreferences, @Nullable String key) {
-        if (Objects.equals(key, AppearancePreferences.accentColor)) {
+        if (Objects.equals(key, AppearancePreferences.ACCENT_COLOR)) {
             setHighlightBackgroundColor();
         }
     }

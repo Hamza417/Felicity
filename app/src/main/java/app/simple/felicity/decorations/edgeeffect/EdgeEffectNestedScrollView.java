@@ -7,13 +7,12 @@ import android.util.AttributeSet;
 import android.view.View;
 import android.widget.EdgeEffect;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.core.widget.NestedScrollView;
-
 import java.lang.reflect.Field;
 import java.util.Objects;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.widget.NestedScrollView;
 import app.simple.felicity.preferences.AppearancePreferences;
 
 public class EdgeEffectNestedScrollView extends NestedScrollView implements SharedPreferences.OnSharedPreferenceChangeListener {
@@ -76,7 +75,7 @@ public class EdgeEffectNestedScrollView extends NestedScrollView implements Shar
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        if (Objects.equals(key, AppearancePreferences.accentColor)) {
+        if (Objects.equals(key, AppearancePreferences.ACCENT_COLOR)) {
             setEdgeEffectColor();
         }
     }

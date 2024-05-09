@@ -7,12 +7,11 @@ import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.util.AttributeSet;
 
-import androidx.annotation.NonNull;
-
 import com.google.android.material.card.MaterialCardView;
 
 import java.util.Objects;
 
+import androidx.annotation.NonNull;
 import app.simple.felicity.interfaces.ThemeChangedListener;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.theme.managers.ThemeManager;
@@ -80,7 +79,7 @@ public class ThemeMaterialCardView extends MaterialCardView implements ThemeChan
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        if (Objects.equals(key, AppearancePreferences.accentColor)) {
+        if (Objects.equals(key, AppearancePreferences.ACCENT_COLOR)) {
             setRipple();
         }
     }
