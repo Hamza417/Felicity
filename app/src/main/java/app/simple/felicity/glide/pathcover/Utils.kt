@@ -11,6 +11,7 @@ object Utils {
             .asBitmap()
             .load(PathCoverModel(context, path))
             .dontTransform()
+            .centerCrop()
             .transition(BitmapTransitionOptions.withCrossFade())
             .into(this)
     }

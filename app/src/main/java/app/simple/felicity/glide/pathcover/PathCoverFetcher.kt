@@ -23,7 +23,9 @@ class PathCoverFetcher internal constructor(private val model: PathCoverModel) :
             //            retriever.setDataSource(model.path)
             //            val byteArray = retriever.embeddedPicture
             //            val bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray?.size!!)
-            callback.onDataReady(getAlbumArt(model.path))
+
+            val art = getAlbumArt(model.path)
+            callback.onDataReady(art ?: throw NullPointerException("No album art found for ${model.path}"))
         }.getOrElse {
             callback.onDataReady(R.drawable.ic_felicity.toBitmap(model.context, AppearancePreferences.getIconSize()))
         }
@@ -64,5 +66,9 @@ class PathCoverFetcher internal constructor(private val model: PathCoverModel) :
 
     override fun getDataSource(): DataSource {
         return DataSource.LOCAL
+    }
+
+    companion object {
+        private const val TAG = "PathCoverFetcher"
     }
 }
