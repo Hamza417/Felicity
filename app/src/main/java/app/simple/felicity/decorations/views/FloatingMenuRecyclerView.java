@@ -39,8 +39,8 @@ import kotlin.ranges.RangesKt;
 
 public class FloatingMenuRecyclerView extends CustomHorizontalRecyclerView {
     
-    public static final String ACTION_CLOSE_BOTTOM_MENU = "app.simple.inure.ACTION_CLOSE_BOTTOM_MENU";
-    public static final String ACTION_OPEN_BOTTOM_MENU = "app.simple.inure.ACTION_OPEN_BOTTOM_MENU";
+    public static final String ACTION_CLOSE_FLOATING_MENU = "ACTION_CLOSE_FLOATING_MENU";
+    public static final String ACTION_OPEN_FLOATING_MENU = "ACTION_OPEN_FLOATING_MENU";
     /**
      * @noinspection unused
      */
@@ -52,13 +52,13 @@ public class FloatingMenuRecyclerView extends CustomHorizontalRecyclerView {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction() != null) {
-                if (intent.getAction().equals(ACTION_CLOSE_BOTTOM_MENU)) {
+                if (intent.getAction().equals(ACTION_CLOSE_FLOATING_MENU)) {
                     animate()
                             .translationY(containerHeight)
                             .setDuration(250)
                             .setInterpolator(new AccelerateInterpolator())
                             .start();
-                } else if (intent.getAction().equals(ACTION_OPEN_BOTTOM_MENU)) {
+                } else if (intent.getAction().equals(ACTION_OPEN_FLOATING_MENU)) {
                     animate()
                             .translationY(0)
                             .setDuration(250)
@@ -95,8 +95,8 @@ public class FloatingMenuRecyclerView extends CustomHorizontalRecyclerView {
             setBackgroundTintList(ViewUtils.INSTANCE.toColorStateList(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor()));
         }
         
-        intentFilter.addAction(ACTION_CLOSE_BOTTOM_MENU);
-        intentFilter.addAction(ACTION_OPEN_BOTTOM_MENU);
+        intentFilter.addAction(ACTION_CLOSE_FLOATING_MENU);
+        intentFilter.addAction(ACTION_OPEN_FLOATING_MENU);
         
         LocalBroadcastManager.getInstance(getContext()).registerReceiver(broadcastReceiver, intentFilter);
     }
