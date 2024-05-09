@@ -3,10 +3,15 @@ package app.simple.felicity.utils
 import android.animation.Animator
 import android.animation.ValueAnimator
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.util.TypedValue
-import android.view.*
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
+import android.view.ViewTreeObserver
+import android.view.WindowManager
 import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.widget.LinearLayout
@@ -359,5 +364,12 @@ object ViewUtils {
                 }
             }
         }
+    }
+
+    /**
+     * Int color to color state list
+     */
+    fun Int.toColorStateList(): ColorStateList {
+        return ColorStateList.valueOf(this)
     }
 }

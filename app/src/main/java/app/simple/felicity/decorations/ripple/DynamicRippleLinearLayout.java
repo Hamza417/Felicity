@@ -21,6 +21,7 @@ import app.simple.felicity.utils.ViewUtils;
 public class DynamicRippleLinearLayout extends LinearLayout implements SharedPreferences.OnSharedPreferenceChangeListener, ThemeChangedListener {
     
     private float radius = AppearancePreferences.INSTANCE.getCornerRadius();
+    private float cornerFactor = 1;
     
     public DynamicRippleLinearLayout(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -33,7 +34,7 @@ public class DynamicRippleLinearLayout extends LinearLayout implements SharedPre
         }
         setBackgroundColor(Color.TRANSPARENT);
         setBackground(null);
-        setBackground(Utils.getRippleDrawable(getBackground(), radius));
+        setBackground(Utils.getRippleDrawable(getBackground(), radius / cornerFactor));
     }
     
     @Override
@@ -109,6 +110,15 @@ public class DynamicRippleLinearLayout extends LinearLayout implements SharedPre
     
     public void setRadius(float radius) {
         this.radius = radius;
+        init();
+    }
+    
+    public float getCornerFactor() {
+        return cornerFactor;
+    }
+    
+    public void setCornerFactor(float cornerFactor) {
+        this.cornerFactor = cornerFactor;
         init();
     }
 }

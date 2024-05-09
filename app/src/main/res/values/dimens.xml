@@ -54,4 +54,5 @@
     <dimen name="icon_size_40">40dp</dimen>
     <dimen name="icon_size_30">30dp</dimen>
     <dimen name="icon_size_50">50dp</dimen>
+    <dimen name="margin_1">1dp</dimen>
 </resources>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="@dimen/margin_1"
+    android:orientation="vertical"
+    android:padding="5dp">
+
+    <app.simple.felicity.decorations.theme.ThemeIcon
+        android:id="@+id/button"
+        android:layout_width="@dimen/button_size"
+        android:layout_height="@dimen/button_size"
+        android:layout_gravity="center"
+        android:scaleType="centerInside"
+        app:buttonTintType="regular" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center"
+        android:textSize="@dimen/desc_text_size"
+        app:appFontStyle="regular"
+        app:textColorStyle="primary" />
+
+</app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>
