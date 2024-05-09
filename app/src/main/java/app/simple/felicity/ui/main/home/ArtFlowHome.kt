@@ -46,7 +46,7 @@ class ArtFlowHome : ScopedFragment() {
                 override fun onClicked(view: View, position: Int) {
                     when (list[position].title) {
                         R.string.songs -> {
-                            openFragmentSlide(SimpleSongs.newInstance(), "songs")
+                            openFragmentSlide(SimpleSongs.newInstance(), SimpleSongs.TAG)
                         }
                     }
                 }

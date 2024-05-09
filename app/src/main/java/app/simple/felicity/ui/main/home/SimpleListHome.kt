@@ -43,7 +43,7 @@ class SimpleListHome : ScopedFragment() {
                 override fun onItemClicked(home: Home, position: Int, view: View) {
                     when (home.title) {
                         R.string.songs -> {
-                            openFragmentArc(SimpleSongs.newInstance(), view, TAG)
+                            openFragmentArc(SimpleSongs.newInstance(), view, SimpleSongs.TAG)
                         }
 
                         R.string.albums -> {

@@ -43,7 +43,6 @@ class SpannedHome : ScopedFragment() {
         override fun run() {
             try {
                 binding?.recyclerView?.randomViewHolder<AdapterGridHome.Holder> { holder ->
-                    Log.d(TAG, "run: Randomized")
                     holder.adapterGridHomeBinding?.artGrid?.animate()!!
                         .alpha(0F)
                         .setDuration(resources.getInteger(android.R.integer.config_longAnimTime).toLong())
