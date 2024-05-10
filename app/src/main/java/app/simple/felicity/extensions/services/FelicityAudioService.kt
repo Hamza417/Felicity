@@ -1,25 +1,28 @@
 package app.simple.felicity.extensions.services
 
-import android.app.Service
 import android.content.Intent
 import android.content.SharedPreferences
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.IBinder
+import androidx.media3.session.MediaSessionService
 
-class FelicityAudioService : Service(),
-                             AudioManager.OnAudioFocusChangeListener,
-                             MediaPlayer.OnCompletionListener,
-                             MediaPlayer.OnPreparedListener,
-                             MediaPlayer.OnErrorListener,
-                             MediaPlayer.OnBufferingUpdateListener,
-                             MediaPlayer.OnSeekCompleteListener,
-                             SharedPreferences.OnSharedPreferenceChangeListener {
+abstract class FelicityAudioService : MediaSessionService(),
+                                      AudioManager.OnAudioFocusChangeListener,
+                                      MediaPlayer.OnCompletionListener,
+                                      MediaPlayer.OnPreparedListener,
+                                      MediaPlayer.OnErrorListener,
+                                      MediaPlayer.OnBufferingUpdateListener,
+                                      MediaPlayer.OnSeekCompleteListener,
+                                      SharedPreferences.OnSharedPreferenceChangeListener {
+
     override fun onBind(intent: Intent?): IBinder? {
+        super.onBind(intent)
         return null
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
         return START_STICKY
     }
 
@@ -50,4 +53,14 @@ class FelicityAudioService : Service(),
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
 
     }
+
+    abstract fun onPlay()
+    abstract fun onPause()
+    abstract fun onStop()
+    abstract fun onSeekTo(position: Int)
+    abstract fun onSkipToNext()
+    abstract fun onSkipToPrevious()
+    abstract fun onFastForward()
+    abstract fun onRewind()
+    abstract fun onPrepare()
 }
