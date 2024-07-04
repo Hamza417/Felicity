@@ -28,7 +28,6 @@ public class JAudioMetadataLoader {
     }
     
     public void setAudioMetadata(Audio audio) {
-        audio.setId(generateId());
         audio.setName(file.getName());
         audio.setPath(file.getAbsolutePath());
         audio.setAlbum(getAlbum());
@@ -50,6 +49,7 @@ public class JAudioMetadataLoader {
         audio.setYear(getYear());
         audio.setSamplingRate(getSamplingRate());
         audio.setBitPerSample(getBitPerSample());
+        audio.setId(generateId(audio));
     }
     
     private String getAudioFileTag(FieldKey tag) {
@@ -128,7 +128,8 @@ public class JAudioMetadataLoader {
         return audioFile.getAudioHeader().getBitsPerSample();
     }
     
-    private int generateId() {
-        return file.getAbsolutePath().hashCode();
+    private int generateId(Audio audio) {
+        // Generate hashcode using title, artist, album, and duration
+        return (audio.getTitle() + audio.getArtist() + audio.getAlbum() + audio.getDuration()).hashCode();
     }
 }
