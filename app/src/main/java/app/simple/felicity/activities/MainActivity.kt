@@ -9,6 +9,8 @@ import app.simple.felicity.preferences.MainPreferences
 import app.simple.felicity.ui.launcher.DataLoader
 import app.simple.felicity.ui.main.home.SimpleListHome
 import app.simple.felicity.utils.ConditionUtils.isNull
+import com.bumptech.glide.Glide
+import kotlin.concurrent.thread
 
 class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -17,6 +19,9 @@ class MainActivity : BaseActivity() {
 
         // Keep screen on
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        thread {
+            Glide.get(this).clearDiskCache()
+        }
 
         if (savedInstanceState.isNull()) {
             if (MainPreferences.isDataLoaded()) {

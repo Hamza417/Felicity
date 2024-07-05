@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import app.simple.felicity.R
-import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.utils.BitmapHelper.toBitmap
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
@@ -14,6 +13,7 @@ import org.jaudiotagger.tag.images.Artwork
 import java.io.File
 
 class PathCoverFetcher internal constructor(private val model: PathCoverModel) : DataFetcher<Bitmap> {
+
     private var retriever = MediaMetadataRetriever()
 
     override fun loadData(priority: Priority, callback: DataFetcher.DataCallback<in Bitmap>) {
@@ -27,7 +27,8 @@ class PathCoverFetcher internal constructor(private val model: PathCoverModel) :
             val art = getAlbumArt(model.path)
             callback.onDataReady(art ?: throw NullPointerException("No album art found for ${model.path}"))
         }.getOrElse {
-            callback.onDataReady(R.drawable.ic_felicity.toBitmap(model.context, AppearancePreferences.getIconSize()))
+            val icon = R.drawable.ic_felicity.toBitmap(model.context, ICON_SIZE)
+            callback.onDataReady(icon)
         }
     }
 
@@ -69,6 +70,7 @@ class PathCoverFetcher internal constructor(private val model: PathCoverModel) :
     }
 
     companion object {
+        private const val ICON_SIZE = 512
         private const val TAG = "PathCoverFetcher"
     }
 }
