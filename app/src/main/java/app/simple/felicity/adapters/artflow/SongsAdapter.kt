@@ -9,6 +9,7 @@ import android.widget.ImageView
 import app.simple.felicity.R
 import app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
+import app.simple.felicity.glide.pathcover.Utils.loadFromPath
 import app.simple.felicity.models.normal.Audio
 
 class SongsAdapter(private val context: Context, private val audio: ArrayList<Audio>) : BaseAdapter() {
@@ -57,7 +58,7 @@ class SongsAdapter(private val context: Context, private val audio: ArrayList<Au
         holder.artist.text = audio.artist
         holder.details.text = audio.album
 
-        // holder.art.loadFromFileDescriptor(audio.fileUri.toUri())
+        holder.art.loadFromPath(audio.path)
 
         return view
     }

@@ -72,12 +72,12 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
      * Distance from center as fraction of half of widget size where covers start to rotate into center
      * 1 means rotation starts on edge of widget, 0 means only center rotated
      */
-    private float rotationThreshold = 0.3f;
+    private float rotationThreshold = 0.5f;
     /**
      * Distance from center as fraction of half of widget size where covers start to zoom in
      * 1 means scaling starts on edge of widget, 0 means only center scaled
      */
-    private float scalingThreshold = 1.3f;
+    private float scalingThreshold = 1f;
     /**
      * Distance from center as fraction of half of widget size,
      * where covers start enlarge their spacing to allow for smooth passing each other without jumping over each other
@@ -95,7 +95,7 @@ public class ArtFlowCarousel extends Carousel implements ViewTreeObserver.OnPreD
     /**
      * Scale factor of item in center
      */
-    private float maxScaleFactor = 2.0f;
+    private float maxScaleFactor = 1.75f;
     /**
      * Radius of circle path which covers follow. Range of screen is -1 to 1, minimal radius is therefore 1
      */

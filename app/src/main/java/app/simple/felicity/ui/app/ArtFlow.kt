@@ -38,6 +38,7 @@ class ArtFlow : ScopedFragment() {
             binding?.artflow?.setOnScrollPositionListener(object : ArtFlowCarousel.OnScrollPositionListener {
                 override fun onScrolledToPosition(position: Int) {
                     Log.d("ArtFlow", "Scrolled to position: $position")
+                    requireArguments().putInt(BundleConstants.position, position)
                 }
 
                 override fun onScrolling() {

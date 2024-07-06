@@ -38,6 +38,7 @@ internal class ProminentLayoutManager(
 
     private fun scaleChildren() {
         val containerCenter = width / 2f
+        val verticalCenter = height / 2f
 
         // Any view further than this threshold will be fully scaled down
         val scaleDistanceThreshold = minScaleDistanceFactor * containerCenter
@@ -53,9 +54,21 @@ internal class ProminentLayoutManager(
             child.isActivated = distanceToCenter < prominentThreshold
 
             val scaleDownAmount = (distanceToCenter / scaleDistanceThreshold).coerceAtMost(1f)
-            val rotationAmountFactor = 1.8f
-            val scaleAmountFactor = 1.2f
-            val minRotationAmount = 50F
+
+            /**
+             * Rotate the image as it moves away from the center.
+             */
+            val rotationAmountFactor = 1.5f
+
+            /**
+             * Scale the image as it moves away from the center.
+             */
+            val scaleAmountFactor = 0.3f
+
+            /**
+             * The minimum rotation amount.
+             */
+            val minRotationAmount = 75F
 
             /**
              * We'll need it to be rotate fast first but gradually slows down as it approaches the edge.
@@ -78,6 +91,13 @@ internal class ProminentLayoutManager(
             val translationDirection = if (childCenter > containerCenter) -1 else 1
             val translationXFromScale = translationDirection * child.width * (1 - scale) / 2f
             child.translationX = translationXFromScale + translationXForward
+
+            // Calculate the vertical offset for the child view
+            val childVerticalCenter = (child.top + child.bottom) / 2f
+            val verticalOffset = verticalCenter - childVerticalCenter
+
+            // Apply the vertical offset to the child view
+            child.translationY = verticalOffset
 
             /**
              * This will prevent the right items from overlapping the
