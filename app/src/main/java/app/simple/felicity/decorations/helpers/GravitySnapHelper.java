@@ -666,6 +666,10 @@ public class GravitySnapHelper extends LinearSnapHelper {
         }
     }
     
+    public void invalidateSnapPosition() {
+        dispatchSnapChangeWhenPositionIsUnknown();
+    }
+    
     private OrientationHelper getVerticalHelper(RecyclerView.LayoutManager layoutManager) {
         if (verticalHelper == null || verticalHelper.getLayoutManager() != layoutManager) {
             verticalHelper = OrientationHelper.createVerticalHelper(layoutManager);

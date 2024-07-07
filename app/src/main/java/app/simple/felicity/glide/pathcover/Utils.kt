@@ -5,6 +5,7 @@ import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.preferences.AppearancePreferences
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.resource.bitmap.BitmapTransitionOptions
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 
@@ -30,6 +31,7 @@ object Utils {
                            .setElevation(25F)
                            .setBlurRadius(BlurShadow.MAX_BLUR_RADIUS))
             .transition(BitmapTransitionOptions.withCrossFade())
+            .diskCacheStrategy(DiskCacheStrategy.ALL)
             .into(this)
     }
 }

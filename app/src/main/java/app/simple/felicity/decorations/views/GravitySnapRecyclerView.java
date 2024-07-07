@@ -27,6 +27,7 @@ import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 import app.simple.felicity.R;
 import app.simple.felicity.decorations.helpers.GravitySnapHelper;
+import app.simple.felicity.decorations.scrollers.DeceleratedSmoothScroller;
 
 /**
  * An {@link OrientationAwareRecyclerView} that uses a default {@link app.simple.felicity.decorations.helpers.GravitySnapHelper}
@@ -48,56 +49,61 @@ public class GravitySnapRecyclerView extends OrientationAwareRecyclerView {
     
     public GravitySnapRecyclerView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-    
-        try (TypedArray typedArray = context.obtainStyledAttributes(attrs, R.styleable.GravitySnapRecyclerView, defStyleAttr, 0)) {
-            int snapGravity = typedArray.getInt(
-                    R.styleable.GravitySnapRecyclerView_snapGravity, 0);
-            switch (snapGravity) {
-                case 0:
-                    snapHelper = new GravitySnapHelper(Gravity.START);
-                    break;
-                case 1:
-                    snapHelper = new GravitySnapHelper(Gravity.TOP);
-                    break;
-                case 2:
-                    snapHelper = new GravitySnapHelper(Gravity.END);
-                    break;
-                case 3:
-                    snapHelper = new GravitySnapHelper(Gravity.BOTTOM);
-                    break;
-                case 4:
-                    snapHelper = new GravitySnapHelper(Gravity.CENTER);
-                    break;
-                default:
-                    throw new IllegalArgumentException("Invalid gravity value. Use START " +
-                            "| END | BOTTOM | TOP | CENTER constants");
-            }
         
-            snapHelper.setSnapToPadding(typedArray.getBoolean(
-                    R.styleable.GravitySnapRecyclerView_snapToPadding, false));
+        TypedArray typedArray = context.obtainStyledAttributes(attrs, R.styleable.GravitySnapRecyclerView, defStyleAttr, 0);
         
-            snapHelper.setSnapLastItem(typedArray.getBoolean(
-                    R.styleable.GravitySnapRecyclerView_snapLastItem, false));
-        
-            snapHelper.setMaxFlingSizeFraction(typedArray.getFloat(
-                    R.styleable.GravitySnapRecyclerView_snapMaxFlingSizeFraction,
-                    GravitySnapHelper.FLING_SIZE_FRACTION_DISABLE));
-        
-            snapHelper.setScrollMsPerInch(typedArray.getFloat(
-                    R.styleable.GravitySnapRecyclerView_snapScrollMsPerInch, 100f));
-        
-            enableSnapping(typedArray.getBoolean(
-                    R.styleable.GravitySnapRecyclerView_snapEnabled, true));
-        
-            setClipChildren(false);
-            setClipToPadding(false);
+        int snapGravity = typedArray.getInt(
+                R.styleable.GravitySnapRecyclerView_snapGravity, 0);
+        switch (snapGravity) {
+            case 0:
+                snapHelper = new GravitySnapHelper(Gravity.START);
+                break;
+            case 1:
+                snapHelper = new GravitySnapHelper(Gravity.TOP);
+                break;
+            case 2:
+                snapHelper = new GravitySnapHelper(Gravity.END);
+                break;
+            case 3:
+                snapHelper = new GravitySnapHelper(Gravity.BOTTOM);
+                break;
+            case 4:
+                snapHelper = new GravitySnapHelper(Gravity.CENTER);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid gravity value. Use START " +
+                        "| END | BOTTOM | TOP | CENTER constants");
         }
+        
+        snapHelper.setSnapToPadding(typedArray.getBoolean(
+                R.styleable.GravitySnapRecyclerView_snapToPadding, false));
+        
+        snapHelper.setSnapLastItem(typedArray.getBoolean(
+                R.styleable.GravitySnapRecyclerView_snapLastItem, false));
+        
+        snapHelper.setMaxFlingSizeFraction(typedArray.getFloat(
+                R.styleable.GravitySnapRecyclerView_snapMaxFlingSizeFraction,
+                GravitySnapHelper.FLING_SIZE_FRACTION_DISABLE));
+        
+        snapHelper.setScrollMsPerInch(typedArray.getFloat(
+                R.styleable.GravitySnapRecyclerView_snapScrollMsPerInch, 100f));
+        
+        enableSnapping(typedArray.getBoolean(
+                R.styleable.GravitySnapRecyclerView_snapEnabled, true));
+        
+        setClipChildren(false);
+        setClipToPadding(false);
+        
+        typedArray.recycle();
     }
     
     @Override
     public void smoothScrollToPosition(int position) {
         if (!isSnappingEnabled || !snapHelper.smoothScrollToPosition(position)) {
-            super.smoothScrollToPosition(position);
+            // super.smoothScrollToPosition(position);
+            DeceleratedSmoothScroller scroller = new DeceleratedSmoothScroller(getContext());
+            scroller.setTargetPosition(position);
+            getLayoutManager().startSmoothScroll(scroller);
         }
     }
     

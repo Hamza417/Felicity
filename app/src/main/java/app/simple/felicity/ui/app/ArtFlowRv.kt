@@ -17,6 +17,7 @@ import app.simple.felicity.decorations.itemdecorations.BoundsOffsetDecoration
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.layoutmanager.ProminentLayoutManager
 import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.models.normal.Audio
 import app.simple.felicity.utils.ConditionUtils.isNotNull
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 
@@ -53,9 +54,7 @@ class ArtFlowRv : ScopedFragment() {
                 addItemDecoration(BoundsOffsetDecoration())
 
                 setSnapListener { position ->
-                    requireArguments().putInt(BundleConstants.position, position)
-                    binding.title.text = it[position].title
-                    binding.artist.text = it[position].artist
+                    updateInfo(position, it[position])
                 }
 
                 addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -75,6 +74,15 @@ class ArtFlowRv : ScopedFragment() {
                 if (savedInstanceState.isNotNull()) {
                     initRecyclerViewPosition(requireArguments().getInt(BundleConstants.position))
                 }
+
+                addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                        super.onScrollStateChanged(recyclerView, newState)
+                        if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                            snapHelper.invalidateSnapPosition() // Notify snap listeners about new position
+                        }
+                    }
+                })
             }
         }
 
@@ -104,6 +112,12 @@ class ArtFlowRv : ScopedFragment() {
         binding.artFlow.doOnPreDraw {
             binding.artFlow.snapToPosition(position)
         }
+    }
+
+    private fun updateInfo(position: Int, audio: Audio) {
+        requireArguments().putInt(BundleConstants.position, position)
+        binding.title.text = audio.title
+        binding.artist.text = audio.artist
     }
 
     companion object {

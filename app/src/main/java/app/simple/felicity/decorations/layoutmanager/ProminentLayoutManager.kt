@@ -61,9 +61,9 @@ internal class ProminentLayoutManager(
             val rotationAmountFactor = 1.75f
 
             /**
-             * Scale the image as it moves away from the center.
+             * Scale down the image as it moves away from the center.
              */
-            val scaleAmountFactor = 0.3f
+            val scaleAmountFactor = 0.75f
 
             /**
              * The minimum rotation amount.
