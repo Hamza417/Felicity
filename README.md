@@ -28,4 +28,5 @@ allowing complex UI manuevers, so I might stick to the direct storage.
 ![01](screenshots/01.png) ![01](/fastlane/metadata/android/en-US/images/phoneScreenshots/01.png)
 
 #### Felicity ArtFlow
-![02](screenshots/02.png)
+
+![02](/fastlane/metadata/android/en-US/images/phoneScreenshots/02.png)

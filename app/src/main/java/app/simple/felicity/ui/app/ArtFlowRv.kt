@@ -77,6 +77,22 @@ class ArtFlowRv : ScopedFragment() {
                 }
             }
         }
+
+        binding.arrowLeft.setOnClickListener {
+            try {
+                binding.artFlow.smoothScrollToPosition(binding.artFlow.currentSnappedPosition - 10)
+            } catch (e: IllegalArgumentException) {
+                binding.artFlow.smoothScrollToPosition(0)
+            }
+        }
+
+        binding.arrowRight.setOnClickListener {
+            try {
+                binding.artFlow.smoothScrollToPosition(binding.artFlow.currentSnappedPosition + 10)
+            } catch (e: IllegalArgumentException) {
+                binding.artFlow.smoothScrollToPosition(0)
+            }
+        }
     }
 
     private fun initRecyclerViewPosition(position: Int) {

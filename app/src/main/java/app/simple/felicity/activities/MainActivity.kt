@@ -6,7 +6,7 @@ import app.simple.felicity.R
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.preferences.MainPreferences
-import app.simple.felicity.ui.app.ArtFlow
+import app.simple.felicity.ui.app.ArtFlowRv
 import app.simple.felicity.ui.launcher.DataLoader
 import app.simple.felicity.utils.ConditionUtils.isNull
 
@@ -21,7 +21,7 @@ class MainActivity : BaseActivity() {
         if (savedInstanceState.isNull()) {
             if (MainPreferences.isDataLoaded()) {
                 supportFragmentManager.beginTransaction()
-                    .replace(R.id.app_container, ArtFlow.newInstance())
+                    .replace(R.id.app_container, ArtFlowRv.newInstance())
                     .commit()
             } else {
                 supportFragmentManager.beginTransaction()
