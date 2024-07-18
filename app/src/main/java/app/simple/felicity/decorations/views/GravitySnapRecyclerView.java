@@ -103,6 +103,7 @@ public class GravitySnapRecyclerView extends OrientationAwareRecyclerView {
             // super.smoothScrollToPosition(position);
             DeceleratedSmoothScroller scroller = new DeceleratedSmoothScroller(getContext());
             scroller.setTargetPosition(position);
+            //noinspection DataFlowIssue
             getLayoutManager().startSmoothScroll(scroller);
         }
     }
