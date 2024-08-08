@@ -118,6 +118,7 @@ internal class ProminentLayoutManager(
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun getExtraLayoutSpace(state: RecyclerView.State): Int {
         // Since we're scaling down items, we need to pre-load more of them offscreen.
         // The value is sort of empirical: the more we scale down, the more extra space we need.
