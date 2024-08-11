@@ -349,6 +349,13 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         }
     }
 
+    protected fun startPostViewTransition(view: View, onPreDraw: () -> Unit) {
+        (view.parent as? ViewGroup)?.doOnPreDraw {
+            startPostponedEnterTransition()
+            onPreDraw()
+        }
+    }
+
     protected fun postDelayed(delayMillis: Long, action: () -> Unit) {
         handler.postDelayed(action, delayMillis)
     }

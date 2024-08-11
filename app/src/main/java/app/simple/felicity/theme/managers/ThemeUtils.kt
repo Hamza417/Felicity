@@ -6,7 +6,7 @@ import android.view.Window
 import androidx.core.view.WindowInsetsControllerCompat
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.constants.ThemeConstants
-import java.util.*
+import java.util.Calendar
 
 object ThemeUtils {
 
@@ -88,5 +88,15 @@ object ThemeUtils {
         } else {
             lightBars(window)
         }
+    }
+
+    fun makeBarIconsWhite(window: Window) {
+        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = false
+        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightNavigationBars = false
+    }
+
+    fun makeBarIconsBlack(window: Window) {
+        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = true
+        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightNavigationBars = true
     }
 }

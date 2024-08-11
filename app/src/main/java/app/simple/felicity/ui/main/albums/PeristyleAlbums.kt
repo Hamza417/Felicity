@@ -1,5 +1,6 @@
 package app.simple.felicity.ui.main.albums
 
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -9,6 +10,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.adapters.ui.lists.albums.AdapterPeristyleAlbums
 import app.simple.felicity.databinding.FragmentAlbumsBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.theme.managers.ThemeUtils
 import app.simple.felicity.viewmodels.main.albums.AlbumsViewModel
 
 class PeristyleAlbums : ScopedFragment() {
@@ -29,6 +31,7 @@ class PeristyleAlbums : ScopedFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        binding?.recyclerView?.setBackgroundColor(Color.BLACK)
 
         albumsViewModel?.getAlbums()?.observe(viewLifecycleOwner) { albums ->
             adapter = AdapterPeristyleAlbums(albums)
@@ -42,8 +45,19 @@ class PeristyleAlbums : ScopedFragment() {
 
             binding?.recyclerView?.layoutManager = gridLayoutManager
             binding?.recyclerView?.adapter = adapter
-            startPostViewTransition(requireView())
+            binding?.recyclerView?.backgroundTintList = null
+
+            startPostViewTransition(requireView()) {
+                postDelayed(500) {
+                    ThemeUtils.makeBarIconsWhite(requireActivity().window)
+                }
+            }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        ThemeUtils.updateNavAndStatusColors(requireActivity().resources, requireActivity().window)
     }
 
     companion object {
