@@ -1,7 +1,6 @@
 package app.simple.felicity.viewmodels.main.songs
 
 import android.app.Application
-import android.provider.MediaStore
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
@@ -12,8 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class SongsViewModel(application: Application) : WrappedViewModel(application) {
-
-    private val selection = MediaStore.Audio.Media.IS_MUSIC + " != 0"
 
     private val songs: MutableLiveData<ArrayList<Audio>> by lazy {
         MutableLiveData<ArrayList<Audio>>().also {

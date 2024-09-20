@@ -5,6 +5,8 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.RawQuery
+import androidx.sqlite.db.SupportSQLiteQuery
 import app.simple.felicity.models.normal.Audio
 
 @Dao
@@ -27,6 +29,9 @@ interface AudioDao {
     // get all audio files by artist name in ascending order
     @Query("SELECT * FROM audio WHERE artist = :artist ORDER BY title COLLATE NOCASE ASC")
     suspend fun getAudioByArtist(artist: String): MutableList<Audio>
+
+    @RawQuery
+    suspend fun getQueriedData(query: SupportSQLiteQuery): MutableList<Audio>
 
     /**
      * Delete a [Audio] item
