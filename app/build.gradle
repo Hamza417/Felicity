@@ -67,6 +67,7 @@ dependencies {
     implementation project(':preferences')
     implementation project(':core')
     implementation project(':shared')
+    implementation project(':repository')
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
