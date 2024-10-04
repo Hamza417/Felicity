@@ -13,15 +13,10 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import app.simple.felicity.R
-import app.simple.felicity.preferences.SharedPreferences
-import app.simple.felicity.theme.accents.Felicity
-import app.simple.felicity.theme.managers.ThemeManager
-import app.simple.felicity.theme.managers.ThemeUtils
-import app.simple.felicity.theme.themes.LightTheme
 
 open class BaseActivity : AppCompatActivity() {
     override fun attachBaseContext(newBase: Context?) {
-        SharedPreferences.init(newBase!!)
+        app.simple.felicity.preferences.SharedPreferences.init(newBase!!)
         super.attachBaseContext(newBase)
     }
 
@@ -34,9 +29,9 @@ open class BaseActivity : AppCompatActivity() {
     }
 
     private fun initTheme() {
-        ThemeManager.theme = LightTheme()
-        ThemeManager.accent = Felicity()
-        ThemeUtils.updateNavAndStatusColors(resources, window)
+        app.simple.felicity.theme.managers.ThemeManager.theme = app.simple.felicity.theme.themes.LightTheme()
+        app.simple.felicity.theme.managers.ThemeManager.accent = app.simple.felicity.theme.accents.Felicity()
+        app.simple.felicity.theme.managers.ThemeUtils.updateNavAndStatusColors(resources, window)
     }
 
     private fun makeAppFullScreen() {

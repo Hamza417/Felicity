@@ -7,13 +7,12 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
+import app.simple.felicity.core.utils.BitmapHelper.addLinearGradient
+import app.simple.felicity.core.utils.BitmapHelper.toBitmapKeepingSize
 import app.simple.felicity.databinding.FragmentSplashScreenBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.extensions.viewmodels.DatabaseLoaderViewModel
-import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.main.home.SimpleListHome
-import app.simple.felicity.utils.BitmapHelper.addLinearGradient
-import app.simple.felicity.utils.BitmapHelper.toBitmapKeepingSize
 
 @SuppressLint("CustomSplashScreen")
 class SplashScreen : ScopedFragment() {
@@ -36,7 +35,7 @@ class SplashScreen : ScopedFragment() {
             .commitAllowingStateLoss()
 
         binding?.appIcon?.setImageBitmap(R.drawable.ic_felicity.toBitmapKeepingSize(requireContext(), 10)
-                                             .addLinearGradient(intArrayOf(ThemeManager.accent.primaryAccentColor, ThemeManager.accent.secondaryAccentColor)))
+                                             .addLinearGradient(intArrayOf(app.simple.felicity.theme.managers.ThemeManager.accent.primaryAccentColor, app.simple.felicity.theme.managers.ThemeManager.accent.secondaryAccentColor)))
     }
 
     companion object {

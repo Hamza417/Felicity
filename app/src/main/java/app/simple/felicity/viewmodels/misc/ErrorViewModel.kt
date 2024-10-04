@@ -11,7 +11,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import app.simple.felicity.theme.managers.ThemeManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.regex.Matcher
@@ -42,7 +41,7 @@ class ErrorViewModel(application: Application, private val error: String) : Andr
 
                 val matcher: Matcher = tags.matcher(error)
                 while (matcher.find()) {
-                    content.setSpan(ForegroundColorSpan(ThemeManager.accent.primaryAccentColor), matcher.start(),
+                    content.setSpan(ForegroundColorSpan(app.simple.felicity.theme.managers.ThemeManager.accent.primaryAccentColor), matcher.start(),
                                     matcher.end(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
                 }
 

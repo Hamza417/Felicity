@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import app.simple.felicity.database.dao.StackTraceDao
 import app.simple.felicity.models.normal.StackTrace
-import app.simple.felicity.utils.ConditionUtils.invert
+import app.simple.felicity.shared.utils.ConditionUtils.invert
 
 @Database(entities = [StackTrace::class], exportSchema = true, version = 1)
 abstract class StackTraceDatabase : RoomDatabase() {

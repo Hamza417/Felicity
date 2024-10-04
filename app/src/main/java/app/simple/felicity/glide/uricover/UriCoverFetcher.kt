@@ -3,9 +3,8 @@ package app.simple.inure.glide.uricover
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import app.simple.felicity.R
+import app.simple.felicity.core.utils.BitmapHelper.toBitmap
 import app.simple.felicity.glide.uricover.UriCoverModel
-import app.simple.felicity.preferences.AppearancePreferences
-import app.simple.felicity.utils.BitmapHelper.toBitmap
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.data.DataFetcher
@@ -19,7 +18,7 @@ class UriCoverFetcher internal constructor(private val uriCoverModel: UriCoverMo
             }
         } catch (_: IllegalArgumentException) {
         } catch (e: FileNotFoundException) {
-            callback.onDataReady(R.drawable.ic_felicity.toBitmap(uriCoverModel.context, AppearancePreferences.getIconSize()))
+            callback.onDataReady(R.drawable.ic_felicity.toBitmap(uriCoverModel.context, app.simple.felicity.preferences.AppearancePreferences.getIconSize()))
         }
     }
 

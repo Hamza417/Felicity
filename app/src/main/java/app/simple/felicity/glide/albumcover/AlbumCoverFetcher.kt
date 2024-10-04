@@ -4,8 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import app.simple.felicity.R
-import app.simple.felicity.preferences.AppearancePreferences
-import app.simple.felicity.utils.BitmapHelper.toBitmap
+import app.simple.felicity.core.utils.BitmapHelper.toBitmap
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.data.DataFetcher
@@ -21,7 +20,7 @@ class AlbumCoverFetcher internal constructor(private val albumCoverModel: AlbumC
             }
         } catch (_: IllegalArgumentException) {
         } catch (e: FileNotFoundException) {
-            callback.onDataReady(R.drawable.ic_felicity.toBitmap(albumCoverModel.context, AppearancePreferences.getIconSize()))
+            callback.onDataReady(R.drawable.ic_felicity.toBitmap(albumCoverModel.context, app.simple.felicity.preferences.AppearancePreferences.getIconSize()))
         }
     }
 

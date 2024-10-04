@@ -10,7 +10,6 @@ import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.adapters.ui.lists.albums.AdapterPeristyleAlbums
 import app.simple.felicity.databinding.FragmentAlbumsBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.theme.managers.ThemeUtils
 import app.simple.felicity.viewmodels.main.albums.AlbumsViewModel
 
 class PeristyleAlbums : ScopedFragment() {
@@ -49,7 +48,7 @@ class PeristyleAlbums : ScopedFragment() {
 
             startPostViewTransition(requireView()) {
                 postDelayed(500) {
-                    ThemeUtils.makeBarIconsWhite(requireActivity().window)
+                    app.simple.felicity.theme.managers.ThemeUtils.makeBarIconsWhite(requireActivity().window)
                 }
             }
         }
@@ -57,7 +56,7 @@ class PeristyleAlbums : ScopedFragment() {
 
     override fun onDestroy() {
         super.onDestroy()
-        ThemeUtils.updateNavAndStatusColors(requireActivity().resources, requireActivity().window)
+        app.simple.felicity.theme.managers.ThemeUtils.updateNavAndStatusColors(requireActivity().resources, requireActivity().window)
     }
 
     companion object {

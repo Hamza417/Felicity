@@ -6,9 +6,9 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterSimpleSongsBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.pathcover.Utils.loadFromPath
 import app.simple.felicity.models.normal.Audio
-import app.simple.felicity.utils.TextViewUtils.setTextOrUnknown
 import com.bumptech.glide.Glide
 
 class SimpleSongsAdapter(private val audio: ArrayList<Audio>) : RecyclerView.Adapter<SimpleSongsAdapter.Holder>() {

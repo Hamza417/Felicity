@@ -16,12 +16,10 @@ import android.widget.FrameLayout
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import app.simple.felicity.R
-import app.simple.felicity.constants.Misc
-import app.simple.felicity.preferences.BehaviourPreferences
+import app.simple.felicity.core.utils.BarHeight
+import app.simple.felicity.core.utils.ViewUtils
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
-import app.simple.felicity.utils.StatusBarHeight
-import app.simple.felicity.utils.ViewUtils
 
 open class ScopedDialogFragment : DialogFragment(), SharedPreferences.OnSharedPreferenceChangeListener {
 
@@ -51,23 +49,23 @@ open class ScopedDialogFragment : DialogFragment(), SharedPreferences.OnSharedPr
         @Suppress("deprecation")
         window.windowManager.defaultDisplay.getMetrics(displayMetrics)
 
-        if (BehaviourPreferences.isDimmingOn()) {
-            dialog?.window?.setDimAmount(ViewUtils.getDimValue(requireContext()))
+        if (app.simple.felicity.preferences.BehaviourPreferences.isDimmingOn()) {
+            dialog?.window?.setDimAmount(ViewUtils.dimAmount)
         } else {
             dialog?.window?.setDimAmount(0f)
         }
 
-        if (BehaviourPreferences.isBlurringOn()) {
+        if (app.simple.felicity.preferences.BehaviourPreferences.isBlurringOn()) {
             window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                window.attributes.blurBehindRadius = Misc.blurRadius.toInt()
+                window.attributes.blurBehindRadius = ViewUtils.blurRadius.toInt()
             }
         }
 
         window.attributes.gravity = Gravity.CENTER
 
         // TODO - fixe dialog height
-        if (StatusBarHeight.isLandscape(requireContext())) {
+        if (BarHeight.isLandscape(requireContext())) {
             window.attributes.width = (displayMetrics.widthPixels * 1f / 100f * 60f).toInt()
             // window.attributes.height = (displayMetrics.heightPixels * 1F / 100F * 90F).toInt()
         } else {

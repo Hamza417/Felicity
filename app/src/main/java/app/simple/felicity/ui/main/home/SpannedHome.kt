@@ -9,8 +9,8 @@ import androidx.lifecycle.ViewModelProvider
 import app.simple.felicity.adapters.home.main.AdapterGridHome
 import app.simple.felicity.adapters.home.sub.AdapterGridArt
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
+import app.simple.felicity.decorations.utils.RecyclerViewUtils.randomViewHolder
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.utils.RecyclerViewUtils.randomViewHolder
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 
 class SpannedHome : ScopedFragment() {

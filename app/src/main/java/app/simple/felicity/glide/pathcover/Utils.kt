@@ -3,7 +3,6 @@ package app.simple.felicity.glide.pathcover
 import android.widget.ImageView
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
-import app.simple.felicity.preferences.AppearancePreferences
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.resource.bitmap.BitmapTransitionOptions
@@ -25,7 +24,7 @@ object Utils {
         Glide.with(context)
             .asBitmap()
             .load(PathCoverModel(context, path))
-            .transform(RoundedCorners(AppearancePreferences.getCornerRadius().toInt().coerceAtLeast(1)),
+            .transform(RoundedCorners(app.simple.felicity.preferences.AppearancePreferences.getCornerRadius().toInt().coerceAtLeast(1)),
                        Padding(BlurShadow.MAX_BLUR_RADIUS.toInt()),
                        BlurShadow(context)
                            .setElevation(25F)

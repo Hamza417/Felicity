@@ -12,7 +12,6 @@ import android.util.Log
 import android.view.KeyEvent
 import androidx.core.content.ContextCompat
 import app.simple.felicity.BuildConfig
-import app.simple.felicity.constants.ServiceConstants
 import app.simple.felicity.services.AudioService
 import app.simple.felicity.utils.ParcelUtils.parcelable
 
@@ -48,7 +47,7 @@ class MediaButtonIntentReceiver : BroadcastReceiver() {
                         val clickCount: Int = msg.arg1
                         if (DEBUG) Log.v(tag, "Handling headset click, count = $clickCount")
                         val command: String? = when (clickCount) {
-                            1 -> ServiceConstants.actionTogglePause
+                            1 -> app.simple.felicity.shared.constants.ServiceConstants.actionTogglePause
                             else -> null
                         }
                         if (command != null) {
@@ -72,12 +71,12 @@ class MediaButtonIntentReceiver : BroadcastReceiver() {
                 // Fallback to system time if event time was not available.
                 var command: String? = null
                 when (keycode) {
-                    KeyEvent.KEYCODE_MEDIA_STOP -> command = ServiceConstants.actionStop
-                    KeyEvent.KEYCODE_HEADSETHOOK, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> command = ServiceConstants.actionTogglePause
-                    KeyEvent.KEYCODE_MEDIA_NEXT -> command = ServiceConstants.actionSkip
-                    KeyEvent.KEYCODE_MEDIA_PREVIOUS -> command = ServiceConstants.actionRewind
-                    KeyEvent.KEYCODE_MEDIA_PAUSE -> command = ServiceConstants.actionPause
-                    KeyEvent.KEYCODE_MEDIA_PLAY -> command = ServiceConstants.actionPlay
+                    KeyEvent.KEYCODE_MEDIA_STOP -> command = app.simple.felicity.shared.constants.ServiceConstants.actionStop
+                    KeyEvent.KEYCODE_HEADSETHOOK, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> command = app.simple.felicity.shared.constants.ServiceConstants.actionTogglePause
+                    KeyEvent.KEYCODE_MEDIA_NEXT -> command = app.simple.felicity.shared.constants.ServiceConstants.actionSkip
+                    KeyEvent.KEYCODE_MEDIA_PREVIOUS -> command = app.simple.felicity.shared.constants.ServiceConstants.actionRewind
+                    KeyEvent.KEYCODE_MEDIA_PAUSE -> command = app.simple.felicity.shared.constants.ServiceConstants.actionPause
+                    KeyEvent.KEYCODE_MEDIA_PLAY -> command = app.simple.felicity.shared.constants.ServiceConstants.actionPlay
                 }
                 if (command != null) {
                     if (action == KeyEvent.ACTION_DOWN) {

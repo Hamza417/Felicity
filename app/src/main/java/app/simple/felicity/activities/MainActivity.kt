@@ -5,10 +5,9 @@ import android.view.KeyEvent
 import app.simple.felicity.R
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.extensions.activities.BaseActivity
-import app.simple.felicity.preferences.MainPreferences
+import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.ui.launcher.DataLoader
 import app.simple.felicity.ui.main.home.SimpleListHome
-import app.simple.felicity.utils.ConditionUtils.isNull
 
 class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -19,7 +18,7 @@ class MainActivity : BaseActivity() {
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         if (savedInstanceState.isNull()) {
-            if (MainPreferences.isDataLoaded()) {
+            if (app.simple.felicity.preferences.MainPreferences.isDataLoaded()) {
                 supportFragmentManager.beginTransaction()
                     .replace(R.id.app_container, SimpleListHome.newInstance())
                     .commit()

@@ -19,17 +19,15 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.media.app.NotificationCompat.MediaStyle
 import app.simple.felicity.R
 import app.simple.felicity.activities.MainActivity
-import app.simple.felicity.constants.ServiceConstants
 import app.simple.felicity.exceptions.FelicityPlayerException
 import app.simple.felicity.loaders.MediaStoreLoader.loadAudios
 import app.simple.felicity.models.normal.Audio
-import app.simple.felicity.preferences.MusicPreferences
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.receivers.MediaButtonIntentReceiver
-import app.simple.felicity.utils.ConditionUtils.invert
-import app.simple.felicity.utils.ConditionUtils.isNotNull
-import app.simple.felicity.utils.ConditionUtils.isZero
+import app.simple.felicity.shared.utils.ConditionUtils.invert
+import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
+import app.simple.felicity.shared.utils.ConditionUtils.isZero
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -100,30 +98,30 @@ class AudioService : Service(),
             MediaButtonIntentReceiver.handleIntent(baseContext, intent!!)
 
             when (intent.action) {
-                ServiceConstants.actionPlay -> {
+                app.simple.felicity.shared.constants.ServiceConstants.actionPlay -> {
                     play()
                 }
 
-                ServiceConstants.actionPause -> {
+                app.simple.felicity.shared.constants.ServiceConstants.actionPause -> {
                     pause()
                 }
 
-                ServiceConstants.actionTogglePause -> {
+                app.simple.felicity.shared.constants.ServiceConstants.actionTogglePause -> {
                     changePlayerState()
                 }
 
-                ServiceConstants.actionNext -> {
+                app.simple.felicity.shared.constants.ServiceConstants.actionNext -> {
                     playNext()
                 }
 
-                ServiceConstants.actionPrevious -> {
+                app.simple.felicity.shared.constants.ServiceConstants.actionPrevious -> {
                     playPrevious()
                 }
 
-                ServiceConstants.actionQuitMusicService -> {
+                app.simple.felicity.shared.constants.ServiceConstants.actionQuitMusicService -> {
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
-                    LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ServiceConstants.actionQuitMusicService))
+                    LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(app.simple.felicity.shared.constants.ServiceConstants.actionQuitMusicService))
                 }
             }
         }
@@ -186,14 +184,14 @@ class AudioService : Service(),
     }
 
     override fun onCompletion(mp: MediaPlayer?) {
-        if (MusicPreferences.getMusicRepeat()) {
+        if (app.simple.felicity.preferences.MusicPreferences.getMusicRepeat()) {
             seek(0)
             play()
         } else {
             if (audioModels?.size!! > 1) {
                 playNext()
             } else {
-                LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ServiceConstants.actionQuitMusicService))
+                LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(app.simple.felicity.shared.constants.ServiceConstants.actionQuitMusicService))
                 stopSelf()
             }
         }
@@ -203,7 +201,7 @@ class AudioService : Service(),
         if (requestAudioFocus()) {
             mp?.start()
             play()
-            LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ServiceConstants.actionPrepared))
+            LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(app.simple.felicity.shared.constants.ServiceConstants.actionPrepared))
             setupMetadata()
         }
     }
@@ -212,15 +210,15 @@ class AudioService : Service(),
         kotlin.runCatching {
             when (what) {
                 MediaPlayer.MEDIA_ERROR_NOT_VALID_FOR_PROGRESSIVE_PLAYBACK -> {
-                    throw FelicityPlayerException("MEDIA_ERROR_NOT_VALID_FOR_PROGRESSIVE_PLAYBACK & extra ${ServiceConstants.getMediaErrorString(extra)}")
+                    throw FelicityPlayerException("MEDIA_ERROR_NOT_VALID_FOR_PROGRESSIVE_PLAYBACK & extra ${app.simple.felicity.shared.constants.ServiceConstants.getMediaErrorString(extra)}")
                 }
 
                 MediaPlayer.MEDIA_ERROR_SERVER_DIED -> {
-                    throw FelicityPlayerException("MEDIA_ERROR_SERVER_DIED & extra ${ServiceConstants.getMediaErrorString(extra)}")
+                    throw FelicityPlayerException("MEDIA_ERROR_SERVER_DIED & extra ${app.simple.felicity.shared.constants.ServiceConstants.getMediaErrorString(extra)}")
                 }
 
                 MediaPlayer.MEDIA_ERROR_UNKNOWN -> {
-                    throw FelicityPlayerException("MEDIA_ERROR_UNKNOWN & extra ${ServiceConstants.getMediaErrorString(extra)}")
+                    throw FelicityPlayerException("MEDIA_ERROR_UNKNOWN & extra ${app.simple.felicity.shared.constants.ServiceConstants.getMediaErrorString(extra)}")
                 }
 
                 else -> {
@@ -228,7 +226,7 @@ class AudioService : Service(),
                 }
             }
         }.onFailure {
-            LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ServiceConstants.actionQuitMusicService))
+            LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(app.simple.felicity.shared.constants.ServiceConstants.actionQuitMusicService))
         }
 
         return true
@@ -241,7 +239,7 @@ class AudioService : Service(),
             (mp.duration * (percent / 100F)).toInt()
         }
 
-        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ServiceConstants.actionBuffering))
+        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(app.simple.felicity.shared.constants.ServiceConstants.actionBuffering))
     }
 
     override fun onSeekComplete(mp: MediaPlayer?) {
@@ -326,13 +324,13 @@ class AudioService : Service(),
                     setupMediaSession()
                     mediaSessionCompat?.setMetadata(mediaMetadataCompat)
                     createNotificationChannel()
-                    showNotification(generateAction(R.drawable.ic_pause, "pause", ServiceConstants.actionPause))
+                    showNotification(generateAction(R.drawable.ic_pause, "pause", app.simple.felicity.shared.constants.ServiceConstants.actionPause))
                     setPlaybackState(PlaybackStateCompat.STATE_PLAYING)
-                    LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ServiceConstants.actionMetaData))
+                    LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(app.simple.felicity.shared.constants.ServiceConstants.actionMetaData))
                 }
             }
         }.getOrElse {
-            LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ServiceConstants.actionQuitMusicService))
+            LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(app.simple.felicity.shared.constants.ServiceConstants.actionQuitMusicService))
         }
     }
 
@@ -356,12 +354,12 @@ class AudioService : Service(),
             mediaPlayer.setOnBufferingUpdateListener(this)
             mediaPlayer.setDataSource(audioModels!![currentPosition].path)
             mediaPlayer.prepareAsync()
-            MusicPreferences.setLastMusicId(audioModels!![currentPosition].id)
+            app.simple.felicity.preferences.MusicPreferences.setLastMusicId(audioModels!![currentPosition].id)
             Log.d("AudioServicePager", "initAudioPlayer: ${audioModels!![currentPosition].path}")
         } catch (e: IllegalStateException) {
             // Unknown error maybe?
             e.printStackTrace()
-            LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ServiceConstants.actionQuitMusicService))
+            LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(app.simple.felicity.shared.constants.ServiceConstants.actionQuitMusicService))
             playNext()
         }
     }
@@ -371,7 +369,7 @@ class AudioService : Service(),
             audioModels = applicationContext.loadAudios()
 
             withContext(Dispatchers.Main) {
-                if (this@AudioService.currentPosition != currentPosition || audioModels!![currentPosition].id != MusicPreferences.getLastMusicId()) {
+                if (this@AudioService.currentPosition != currentPosition || audioModels!![currentPosition].id != app.simple.felicity.preferences.MusicPreferences.getLastMusicId()) {
                     this@AudioService.currentPosition = currentPosition
                     initAudioPlayer()
                 } else {
@@ -388,9 +386,9 @@ class AudioService : Service(),
             currentPosition++
         }
 
-        MusicPreferences.setMusicPosition(currentPosition)
+        app.simple.felicity.preferences.MusicPreferences.setMusicPosition(currentPosition)
         initAudioPlayer()
-        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ServiceConstants.actionNext))
+        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(app.simple.felicity.shared.constants.ServiceConstants.actionNext))
     }
 
     fun playPrevious() {
@@ -400,8 +398,8 @@ class AudioService : Service(),
             currentPosition--
         }
 
-        MusicPreferences.setMusicPosition(currentPosition)
-        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ServiceConstants.actionPrevious))
+        app.simple.felicity.preferences.MusicPreferences.setMusicPosition(currentPosition)
+        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(app.simple.felicity.shared.constants.ServiceConstants.actionPrevious))
         initAudioPlayer()
     }
 
@@ -443,7 +441,7 @@ class AudioService : Service(),
     }
 
     private fun pause() {
-        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ServiceConstants.actionPause))
+        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(app.simple.felicity.shared.constants.ServiceConstants.actionPause))
 
         if (timerTask != null && timer != null) {
             timer!!.cancel()
@@ -470,7 +468,7 @@ class AudioService : Service(),
                             mediaPlayer.pause()
                             setPlaybackState(PlaybackStateCompat.STATE_PAUSED)
                             kotlin.runCatching {
-                                showNotification(generateAction(R.drawable.ic_play, "play", ServiceConstants.actionPlay))
+                                showNotification(generateAction(R.drawable.ic_play, "play", app.simple.felicity.shared.constants.ServiceConstants.actionPlay))
                                 //                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                                 //                                    stopForeground(STOP_FOREGROUND_DETACH)
                                 //                                } else {
@@ -515,9 +513,9 @@ class AudioService : Service(),
                 mediaPlayer.start()
                 setPlaybackState(PlaybackStateCompat.STATE_PLAYING)
                 kotlin.runCatching {
-                    showNotification(generateAction(R.drawable.ic_pause, "pause", ServiceConstants.actionPause))
+                    showNotification(generateAction(R.drawable.ic_pause, "pause", app.simple.felicity.shared.constants.ServiceConstants.actionPause))
                 }
-                LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(ServiceConstants.actionPlay))
+                LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(Intent(app.simple.felicity.shared.constants.ServiceConstants.actionPlay))
             }
         }
 
@@ -585,9 +583,9 @@ class AudioService : Service(),
             PendingIntent.getActivity(applicationContext, 111, this, PendingIntent.FLAG_IMMUTABLE)
         }
 
-        val close = generateAction(R.drawable.ic_close, "Close", ServiceConstants.actionQuitMusicService)
-        val previous = generateAction(R.drawable.ic_skip_previous, "Previous", ServiceConstants.actionPrevious)
-        val next = generateAction(R.drawable.ic_skip_next, "Next", ServiceConstants.actionNext)
+        val close = generateAction(R.drawable.ic_close, "Close", app.simple.felicity.shared.constants.ServiceConstants.actionQuitMusicService)
+        val previous = generateAction(R.drawable.ic_skip_previous, "Previous", app.simple.felicity.shared.constants.ServiceConstants.actionPrevious)
+        val next = generateAction(R.drawable.ic_skip_next, "Next", app.simple.felicity.shared.constants.ServiceConstants.actionNext)
 
         builder = NotificationCompat.Builder(applicationContext, channelId)
             .setSmallIcon(R.drawable.ic_felicity)

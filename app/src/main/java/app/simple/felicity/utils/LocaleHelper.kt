@@ -3,7 +3,6 @@ package app.simple.felicity.utils
 import android.content.res.Resources
 import android.view.View
 import app.simple.felicity.models.normal.Locales
-import app.simple.felicity.preferences.ConfigurationPreferences
 import java.util.Locale
 
 object LocaleHelper {
@@ -75,6 +74,6 @@ object LocaleHelper {
     }
 
     fun isAppRussianLocale(): Boolean {
-        return ConfigurationPreferences.getAppLanguage() == russianLocale
+        return app.simple.felicity.preferences.ConfigurationPreferences.getAppLanguage() == russianLocale
     }
 }

@@ -3,8 +3,7 @@ package app.simple.felicity.glide.artistcover
 import android.graphics.Bitmap
 import android.net.Uri
 import app.simple.felicity.R
-import app.simple.felicity.preferences.AppearancePreferences
-import app.simple.felicity.utils.BitmapHelper.toBitmap
+import app.simple.felicity.core.utils.BitmapHelper.toBitmap
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.data.DataFetcher
@@ -21,7 +20,7 @@ class ArtistCoverFetcher internal constructor(private val artistCoverModel: Arti
 
         } catch (_: IllegalArgumentException) {
         } catch (e: FileNotFoundException) {
-            callback.onDataReady(R.drawable.ic_felicity.toBitmap(artistCoverModel.context, AppearancePreferences.getIconSize()))
+            callback.onDataReady(R.drawable.ic_felicity.toBitmap(artistCoverModel.context, app.simple.felicity.preferences.AppearancePreferences.getIconSize()))
         }
     }
 

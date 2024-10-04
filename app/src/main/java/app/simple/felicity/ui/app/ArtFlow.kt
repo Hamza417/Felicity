@@ -8,7 +8,6 @@ import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
 import app.simple.felicity.R
 import app.simple.felicity.adapters.artflow.SongsAdapter
-import app.simple.felicity.constants.BundleConstants
 import app.simple.felicity.databinding.FragmentArtflowBinding
 import app.simple.felicity.decorations.carousel.ArtFlowCarousel
 import app.simple.felicity.extensions.fragments.ScopedFragment
@@ -38,7 +37,7 @@ class ArtFlow : ScopedFragment() {
             binding?.artflow?.setOnScrollPositionListener(object : ArtFlowCarousel.OnScrollPositionListener {
                 override fun onScrolledToPosition(position: Int) {
                     Log.d("ArtFlow", "Scrolled to position: $position")
-                    requireArguments().putInt(BundleConstants.position, position)
+                    requireArguments().putInt(app.simple.felicity.shared.constants.BundleConstants.position, position)
                 }
 
                 override fun onScrolling() {
@@ -48,13 +47,13 @@ class ArtFlow : ScopedFragment() {
 
             binding?.artflow?.setOnItemSelectedListener { child, position ->
                 Log.d("ArtFlow", "Selected item: $position")
-                requireArguments().putInt(BundleConstants.position, position)
+                requireArguments().putInt(app.simple.felicity.shared.constants.BundleConstants.position, position)
 
                 binding?.title?.text = it[position].title
                 binding?.artist?.text = it[position].artist
             }
 
-            binding?.artflow?.scrollToPosition(requireArguments().getInt(BundleConstants.position, 0))
+            binding?.artflow?.scrollToPosition(requireArguments().getInt(app.simple.felicity.shared.constants.BundleConstants.position, 0))
         }
     }
 

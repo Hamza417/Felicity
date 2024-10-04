@@ -8,12 +8,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.loader.AdapterLoader
+import app.simple.felicity.core.utils.ViewUtils.visible
 import app.simple.felicity.databinding.FragmentLoaderBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.preferences.MainPreferences
 import app.simple.felicity.ui.main.home.SimpleListHome
 import app.simple.felicity.utils.NumberUtils
-import app.simple.felicity.utils.ViewUtils.visible
 import app.simple.felicity.viewmodels.data.DataLoaderViewModel
 
 class DataLoader : ScopedFragment() {
@@ -54,7 +53,7 @@ class DataLoader : ScopedFragment() {
                 binding?.loader?.loaded()
                 binding?.openAppNow?.isClickable = true
                 binding?.openAppNow?.visible(true)
-                MainPreferences.setDataLoaded(true)
+                app.simple.felicity.preferences.MainPreferences.setDataLoaded(true)
             }
         }
 

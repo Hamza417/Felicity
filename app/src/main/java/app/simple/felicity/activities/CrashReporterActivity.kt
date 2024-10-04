@@ -12,8 +12,7 @@ import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.factories.misc.ErrorViewModelFactory
 import app.simple.felicity.models.normal.StackTrace
-import app.simple.felicity.preferences.CrashPreferences
-import app.simple.felicity.utils.ConditionUtils.invert
+import app.simple.felicity.shared.utils.ConditionUtils.invert
 import app.simple.felicity.utils.DateUtils.toDate
 import app.simple.felicity.utils.ProcessUtils
 import app.simple.felicity.viewmodels.misc.ErrorViewModel
@@ -48,9 +47,9 @@ class CrashReporterActivity : BaseActivity() {
 
         intent.getStringExtra(MODE_NORMAL)?.let { crash ->
             warning.setText(R.string.the_app_has_crashed)
-            timestamp.text = CrashPreferences.getCrashLog().toDate()
-            cause.text = CrashPreferences.getCause() ?: getString(R.string.not_available)
-            message.text = CrashPreferences.getMessage() ?: getString(R.string.desc_not_available)
+            timestamp.text = app.simple.felicity.preferences.CrashPreferences.getCrashLog().toDate()
+            cause.text = app.simple.felicity.preferences.CrashPreferences.getCause() ?: getString(R.string.not_available)
+            message.text = app.simple.felicity.preferences.CrashPreferences.getMessage() ?: getString(R.string.desc_not_available)
             showTrace(crash)
             saveTraceToDataBase(crash)
             isPreview = false
@@ -106,10 +105,10 @@ class CrashReporterActivity : BaseActivity() {
 
     private fun close() {
         if (isPreview.invert()) {
-            if (CrashPreferences.getCrashLog() != CrashPreferences.crashTimestampEmptyDefault) {
-                CrashPreferences.saveCrashLog(CrashPreferences.crashTimestampEmptyDefault)
-                CrashPreferences.saveMessage(null)
-                CrashPreferences.saveCause(null)
+            if (app.simple.felicity.preferences.CrashPreferences.getCrashLog() != app.simple.felicity.preferences.CrashPreferences.crashTimestampEmptyDefault) {
+                app.simple.felicity.preferences.CrashPreferences.saveCrashLog(app.simple.felicity.preferences.CrashPreferences.crashTimestampEmptyDefault)
+                app.simple.felicity.preferences.CrashPreferences.saveMessage(null)
+                app.simple.felicity.preferences.CrashPreferences.saveCause(null)
             }
         }
         finish()
@@ -121,8 +120,8 @@ class CrashReporterActivity : BaseActivity() {
                 kotlin.runCatching {
                     val stackTrace = StackTrace(
                             trace,
-                            CrashPreferences.getMessage() ?: getString(R.string.desc_not_available),
-                            CrashPreferences.getCause() ?: getString(R.string.not_available),
+                            app.simple.felicity.preferences.CrashPreferences.getMessage() ?: getString(R.string.desc_not_available),
+                            app.simple.felicity.preferences.CrashPreferences.getCause() ?: getString(R.string.not_available),
                             System.currentTimeMillis())
                     val stackTraceDatabase = StackTraceDatabase.getInstance(applicationContext)
                     stackTraceDatabase!!.stackTraceDao()!!.insertTrace(stackTrace)

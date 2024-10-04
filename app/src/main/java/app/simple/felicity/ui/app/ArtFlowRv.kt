@@ -11,14 +11,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.artflow.ArtFlowRvAdapter
-import app.simple.felicity.constants.BundleConstants
 import app.simple.felicity.databinding.FragmentArtflowRvBinding
 import app.simple.felicity.decorations.itemdecorations.BoundsOffsetDecoration
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.layoutmanager.ProminentLayoutManager
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.models.normal.Audio
-import app.simple.felicity.utils.ConditionUtils.isNotNull
+import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 
 class ArtFlowRv : ScopedFragment() {
@@ -72,7 +71,7 @@ class ArtFlowRv : ScopedFragment() {
                 snapHelper.attachToRecyclerView(this)
 
                 if (savedInstanceState.isNotNull()) {
-                    initRecyclerViewPosition(requireArguments().getInt(BundleConstants.position))
+                    initRecyclerViewPosition(requireArguments().getInt(app.simple.felicity.shared.constants.BundleConstants.position))
                 }
 
                 addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -115,7 +114,7 @@ class ArtFlowRv : ScopedFragment() {
     }
 
     private fun updateInfo(position: Int, audio: Audio) {
-        requireArguments().putInt(BundleConstants.position, position)
+        requireArguments().putInt(app.simple.felicity.shared.constants.BundleConstants.position, position)
         binding.title.text = audio.title
         binding.artist.text = audio.artist
     }

@@ -13,7 +13,6 @@ import androidx.annotation.ColorInt
 import androidx.annotation.ColorRes
 import androidx.annotation.IntDef
 import androidx.core.content.ContextCompat
-import app.simple.felicity.preferences.AppearancePreferences
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import com.bumptech.glide.util.Util
@@ -152,7 +151,7 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
 
         //Create Shadow Paint
         val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            colorFilter = if (AppearancePreferences.getColoredIconShadows()) {
+            colorFilter = if (app.simple.felicity.preferences.AppearancePreferences.getColoredIconShadows()) {
                 ColorMatrixColorFilter(ColorMatrix().apply {
                     setScale(SHADOW_SCALE_RGB, SHADOW_SCALE_RGB, SHADOW_SCALE_RGB, SHADOW_SCALE_ALPHA)
                 })
@@ -164,7 +163,7 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
 
         if (blurRadius <= MAX_BLUR_RADIUS) {
             //Apply Blur
-            shadow = if (AppearancePreferences.isIconShadowsOn()) {
+            shadow = if (app.simple.felicity.preferences.AppearancePreferences.isIconShadowsOn()) {
                 Toolkit.blur(source, blurRadius.toInt())
             } else {
                 Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
@@ -183,7 +182,7 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
             val scaled = Bitmap.createScaledBitmap(source, source.width, source.height, true)
 
             //Apply Blur
-            shadow = if (AppearancePreferences.isIconShadowsOn()) {
+            shadow = if (app.simple.felicity.preferences.AppearancePreferences.isIconShadowsOn()) {
                 Toolkit.blur(scaled, MAX_BLUR_RADIUS.toInt())
             } else {
                 Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)

@@ -13,12 +13,9 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import app.simple.felicity.R
 import app.simple.felicity.adapters.player.DefaultPlayerAdapter
-import app.simple.felicity.constants.BundleConstants
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
 import app.simple.felicity.extensions.fragments.PlayerFragment
-import app.simple.felicity.preferences.MusicPreferences
 import app.simple.felicity.utils.NumberUtils
-import app.simple.felicity.utils.ViewUtils
 import app.simple.felicity.viewmodels.main.player.PlayerViewModel
 
 class DefaultPlayer : PlayerFragment() {
@@ -39,7 +36,7 @@ class DefaultPlayer : PlayerFragment() {
             override fun onMapSharedElements(names: List<String>, sharedElements: MutableMap<String, View>) {
                 // Locate the ViewHolder for the clicked position.
                 val selectedViewHolder = (binding.artSlider[0] as RecyclerView)
-                    .findViewHolderForAdapterPosition(MusicPreferences.getMusicPosition())
+                    .findViewHolderForAdapterPosition(app.simple.felicity.preferences.MusicPreferences.getMusicPosition())
                 if (selectedViewHolder is DefaultPlayerAdapter.Holder) {
                     // Map the first shared element name to the child ImageView.
                     sharedElements[names[0]] = selectedViewHolder.binding.art
@@ -52,7 +49,7 @@ class DefaultPlayer : PlayerFragment() {
         playerViewModel.getSongs().observe(viewLifecycleOwner) { list ->
             setList(list)
             binding.artSlider.adapter = DefaultPlayerAdapter(list)
-            binding.artSlider.setCurrentItem(MusicPreferences.getMusicPosition(), false)
+            binding.artSlider.setCurrentItem(app.simple.felicity.preferences.MusicPreferences.getMusicPosition(), false)
 
             /**
              * This will break the transition for some reason, start the animation without
@@ -72,11 +69,11 @@ class DefaultPlayer : PlayerFragment() {
                 override fun onPageScrollStateChanged(state: Int) {
                     super.onPageScrollStateChanged(state)
                     if (state == ViewPager2.SCROLL_STATE_IDLE) {
-                        if (binding.artSlider.currentItem != MusicPreferences.getMusicPosition()) {
+                        if (binding.artSlider.currentItem != app.simple.felicity.preferences.MusicPreferences.getMusicPosition()) {
                             handler.removeCallbacks(progressRunnable)
                             currentSeekPosition = 0
-                            MusicPreferences.setMusicPosition(binding.artSlider.currentItem)
-                            MusicPreferences.setLastMusicId(list[binding.artSlider.currentItem].id)
+                            app.simple.felicity.preferences.MusicPreferences.setMusicPosition(binding.artSlider.currentItem)
+                            app.simple.felicity.preferences.MusicPreferences.setLastMusicId(list[binding.artSlider.currentItem].id)
                             audioService?.setCurrentPosition(binding.artSlider.currentItem)
                             setMetaData(binding.artSlider.currentItem)
                         }
@@ -206,26 +203,26 @@ class DefaultPlayer : PlayerFragment() {
     }
 
     private fun setMetaData(position: Int) {
-        if (requireArguments().getInt(BundleConstants.position) < position) {
-            binding.title.setTextWithSlideAnimation(getAudios()[position].title ?: "", 250L, ViewUtils.LEFT, 0L)
-            binding.artist.setTextWithSlideAnimation(getAudios()[position].artist ?: "", 250L, ViewUtils.LEFT, 50L)
-            binding.album.setTextWithSlideAnimation(getAudios()[position].album ?: "", 250L, ViewUtils.LEFT, 100L)
+        if (requireArguments().getInt(app.simple.felicity.shared.constants.BundleConstants.position) < position) {
+            binding.title.setTextWithSlideAnimation(getAudios()[position].title ?: "", 250L, app.simple.felicity.core.utils.ViewUtils.LEFT, 0L)
+            binding.artist.setTextWithSlideAnimation(getAudios()[position].artist ?: "", 250L, app.simple.felicity.core.utils.ViewUtils.LEFT, 50L)
+            binding.album.setTextWithSlideAnimation(getAudios()[position].album ?: "", 250L, app.simple.felicity.core.utils.ViewUtils.LEFT, 100L)
             binding.info.setTextWithSlideAnimation(buildString {
                 append(".")
                 append(getAudios()[position].path?.substringAfterLast("."))
                 append(", ")
                 append(getAudios()[position].bitrate)
-            }, 250L, ViewUtils.LEFT, 150L)
+            }, 250L, app.simple.felicity.core.utils.ViewUtils.LEFT, 150L)
         } else {
-            binding.title.setTextWithSlideAnimation(getAudios()[position].title ?: "", 250L, ViewUtils.RIGHT, 0L)
-            binding.artist.setTextWithSlideAnimation(getAudios()[position].artist ?: "", 250L, ViewUtils.RIGHT, 50L)
-            binding.album.setTextWithSlideAnimation(getAudios()[position].album ?: "", 250L, ViewUtils.RIGHT, 100L)
+            binding.title.setTextWithSlideAnimation(getAudios()[position].title ?: "", 250L, app.simple.felicity.core.utils.ViewUtils.RIGHT, 0L)
+            binding.artist.setTextWithSlideAnimation(getAudios()[position].artist ?: "", 250L, app.simple.felicity.core.utils.ViewUtils.RIGHT, 50L)
+            binding.album.setTextWithSlideAnimation(getAudios()[position].album ?: "", 250L, app.simple.felicity.core.utils.ViewUtils.RIGHT, 100L)
             binding.info.setTextWithSlideAnimation(buildString {
                 append(".")
                 append(getAudios()[position].path?.substringAfterLast("."))
                 append(", ")
                 append(getAudios()[position].bitrate)
-            }, 250L, ViewUtils.RIGHT, 150L)
+            }, 250L, app.simple.felicity.core.utils.ViewUtils.RIGHT, 150L)
         }
 
         binding.number.text = buildString {
@@ -234,7 +231,7 @@ class DefaultPlayer : PlayerFragment() {
             append(getAudios().size)
         }
 
-        requireArguments().putInt(BundleConstants.position, position)
+        requireArguments().putInt(app.simple.felicity.shared.constants.BundleConstants.position, position)
     }
 
     companion object {

@@ -13,10 +13,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import app.simple.felicity.constants.ServiceConstants
 import app.simple.felicity.helpers.IntentHelper
 import app.simple.felicity.models.normal.Audio
-import app.simple.felicity.preferences.MusicPreferences
 import app.simple.felicity.services.AudioService
 import kotlinx.coroutines.launch
 
@@ -32,45 +30,53 @@ abstract class PlayerFragment : ScopedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        audioIntentFilter.addAction(ServiceConstants.actionPrepared)
-        audioIntentFilter.addAction(ServiceConstants.actionQuitMusicService)
-        audioIntentFilter.addAction(ServiceConstants.actionMetaData)
-        audioIntentFilter.addAction(ServiceConstants.actionPause)
-        audioIntentFilter.addAction(ServiceConstants.actionPlay)
-        audioIntentFilter.addAction(ServiceConstants.actionBuffering)
-        audioIntentFilter.addAction(ServiceConstants.actionNext)
-        audioIntentFilter.addAction(ServiceConstants.actionPrevious)
-        audioIntentFilter.addAction(ServiceConstants.actionMediaError)
+        audioIntentFilter.addAction(app.simple.felicity.shared.constants.ServiceConstants.actionPrepared)
+        audioIntentFilter.addAction(app.simple.felicity.shared.constants.ServiceConstants.actionQuitMusicService)
+        audioIntentFilter.addAction(app.simple.felicity.shared.constants.ServiceConstants.actionMetaData)
+        audioIntentFilter.addAction(app.simple.felicity.shared.constants.ServiceConstants.actionPause)
+        audioIntentFilter.addAction(app.simple.felicity.shared.constants.ServiceConstants.actionPlay)
+        audioIntentFilter.addAction(app.simple.felicity.shared.constants.ServiceConstants.actionBuffering)
+        audioIntentFilter.addAction(app.simple.felicity.shared.constants.ServiceConstants.actionNext)
+        audioIntentFilter.addAction(app.simple.felicity.shared.constants.ServiceConstants.actionPrevious)
+        audioIntentFilter.addAction(app.simple.felicity.shared.constants.ServiceConstants.actionMediaError)
 
         audioBroadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 when (intent?.action) {
-                    ServiceConstants.actionPrepared -> {
+                    app.simple.felicity.shared.constants.ServiceConstants.actionPrepared -> {
                         onPrepared()
                     }
-                    ServiceConstants.actionMetaData -> {
+
+                    app.simple.felicity.shared.constants.ServiceConstants.actionMetaData -> {
                         onMetaData()
                         handler.post(progressRunnable)
                     }
-                    ServiceConstants.actionQuitMusicService -> {
+
+                    app.simple.felicity.shared.constants.ServiceConstants.actionQuitMusicService -> {
                         onQuitMusicService()
                     }
-                    ServiceConstants.actionPlay -> {
+
+                    app.simple.felicity.shared.constants.ServiceConstants.actionPlay -> {
                         onStateChanged(true)
                     }
-                    ServiceConstants.actionPause -> {
+
+                    app.simple.felicity.shared.constants.ServiceConstants.actionPause -> {
                         onStateChanged(false)
                     }
-                    ServiceConstants.actionNext -> {
+
+                    app.simple.felicity.shared.constants.ServiceConstants.actionNext -> {
                         onNext()
                     }
-                    ServiceConstants.actionPrevious -> {
+
+                    app.simple.felicity.shared.constants.ServiceConstants.actionPrevious -> {
                         onPrevious()
                     }
-                    ServiceConstants.actionBuffering -> {
+
+                    app.simple.felicity.shared.constants.ServiceConstants.actionBuffering -> {
                         onBuffering(intent.extras?.getInt(IntentHelper.INT_EXTRA)!!)
                     }
-                    ServiceConstants.actionMediaError -> {
+
+                    app.simple.felicity.shared.constants.ServiceConstants.actionMediaError -> {
                         onMediaError(intent.extras?.getString("stringExtra", "unknown_media_playback_error")!!)
                     }
                 }
@@ -80,7 +86,7 @@ abstract class PlayerFragment : ScopedFragment() {
         serviceConnection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 audioService = (service as AudioService.AudioBinder).getService()
-                audioService?.setCurrentPosition(MusicPreferences.getMusicPosition())
+                audioService?.setCurrentPosition(app.simple.felicity.preferences.MusicPreferences.getMusicPosition())
                 onServiceConnected()
             }
 

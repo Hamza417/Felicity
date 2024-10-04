@@ -15,3 +15,8 @@ dependencyResolutionManagement {
 }
 rootProject.name = "Felicity"
 include ':app'
+include ':theme'
+include ':decorations'
+include ':preferences'
+include ':shared'
+include ':core'

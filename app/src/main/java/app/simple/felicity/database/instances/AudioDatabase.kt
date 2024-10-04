@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import app.simple.felicity.database.dao.AudioDao
 import app.simple.felicity.models.normal.Audio
-import app.simple.felicity.utils.ConditionUtils.invert
+import app.simple.felicity.shared.utils.ConditionUtils.invert
 
 @Database(entities = [Audio::class], exportSchema = true, version = 1)
 abstract class AudioDatabase : RoomDatabase() {

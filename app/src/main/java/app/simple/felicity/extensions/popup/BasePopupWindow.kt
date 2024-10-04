@@ -7,8 +7,8 @@ import android.view.ViewGroup
 import android.widget.PopupWindow
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import app.simple.felicity.R
-import app.simple.felicity.utils.ViewUtils
-import app.simple.felicity.utils.ViewUtils.dimBehind
+import app.simple.felicity.core.utils.ViewUtils.dimBehind
+import app.simple.felicity.preferences.BehaviourPreferences
 
 /**
  * A customised version of popup menu that uses [PopupWindow]
@@ -50,7 +50,7 @@ open class BasePopupWindow : PopupWindow() {
         isFocusable = true
         elevation = 40F
 
-        ViewUtils.addShadow(contentView)
+        app.simple.felicity.core.utils.ViewUtils.addShadow(contentView)
 
         overlapAnchor = true
 
@@ -63,13 +63,13 @@ open class BasePopupWindow : PopupWindow() {
     override fun showAsDropDown(anchor: View?, xoff: Int, yoff: Int, gravity: Int) {
         super.showAsDropDown(anchor, xoff, yoff, gravity)
         valueAnimator = animateElevation(50F)
-        dimBehind(contentView)
+        dimBehind(contentView, BehaviourPreferences.isDimmingOn(), BehaviourPreferences.isBlurringOn())
     }
 
     override fun showAsDropDown(anchor: View?) {
         super.showAsDropDown(anchor)
         valueAnimator = animateElevation(50F)
-        dimBehind(contentView)
+        dimBehind(contentView, BehaviourPreferences.isDimmingOn(), BehaviourPreferences.isBlurringOn())
     }
 
     override fun dismiss() {
