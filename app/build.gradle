@@ -5,6 +5,14 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        debug {
+            storeFile file('F:\\App Assets\\Key\\MyKey.jks')
+            storePassword '232111'
+            keyAlias 'key0'
+            keyPassword '232111'
+        }
+    }
     namespace 'app.simple.felicity'
     compileSdk 35
 
@@ -56,6 +64,11 @@ android {
 
     kotlinOptions {
         jvmTarget = JavaVersion.current().toString()
+    }
+
+    dependenciesInfo {
+        includeInApk false
+        includeInBundle false
     }
 }
 
