@@ -1,6 +1,7 @@
 package app.simple.felicity.ui.main.songs
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -34,6 +35,7 @@ class SimpleSongs : ScopedFragment() {
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) {
             binding.recyclerView.adapter = SimpleSongsAdapter(it)
+            Log.i("Music", "Songs: ${it.size}")
 
             (binding.recyclerView.adapter as SimpleSongsAdapter).onItemClickListener = { _, position, view ->
                 app.simple.felicity.preferences.MusicPreferences.setMusicPosition(position)

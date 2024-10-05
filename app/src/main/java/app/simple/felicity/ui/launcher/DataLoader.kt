@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
-import androidx.recyclerview.widget.LinearLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.loader.AdapterLoader
 import app.simple.felicity.core.utils.ViewUtils.visible
@@ -35,16 +34,9 @@ class DataLoader : ScopedFragment() {
 
         binding?.openAppNow?.isClickable = false
 
-        adapterLoader = AdapterLoader()
-        (binding?.recyclerView?.layoutManager as LinearLayoutManager).reverseLayout = true
-        (binding?.recyclerView?.layoutManager as LinearLayoutManager).stackFromEnd = true
-        binding?.recyclerView?.itemAnimator = null
-        binding?.recyclerView?.adapter = adapterLoader
-
         dataLoaderViewModel?.getData()?.observe(viewLifecycleOwner) { file ->
-            adapterLoader?.updateFile(file)
-            binding?.recyclerView?.smoothScrollToPosition(0)
-            binding?.loading?.setText(R.string.processing)
+            binding?.data?.append("\n" + file.name)
+            binding?.scroll?.fullScroll(View.FOCUS_DOWN)
         }
 
         dataLoaderViewModel?.getLoaded()?.observe(viewLifecycleOwner) { loaded ->
@@ -59,7 +51,8 @@ class DataLoader : ScopedFragment() {
 
         dataLoaderViewModel?.getTimeRemaining()?.observe(viewLifecycleOwner) { time ->
             binding?.timeRemaining?.visible(false)
-            binding?.timeRemaining?.text = getString(R.string.time_remaining, NumberUtils.getFormattedTime(time))
+            binding?.timeRemaining?.text = getString(R.string.time_remaining, NumberUtils.getFormattedTime(time.first))
+            binding?.loading?.text = time.second
         }
 
         binding?.openAppNow?.setOnClickListener {

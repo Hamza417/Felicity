@@ -33,8 +33,8 @@ class DataLoaderViewModel(application: Application) : WrappedViewModel(applicati
         }
     }
 
-    private val timeRemaining: MutableLiveData<Long> by lazy {
-        MutableLiveData<Long>()
+    private val timeRemaining: MutableLiveData<Pair<Long, String>> by lazy {
+        MutableLiveData<Pair<Long, String>>()
     }
 
     private val loaded: SingleEventLiveData<Boolean> by lazy {
@@ -49,7 +49,7 @@ class DataLoaderViewModel(application: Application) : WrappedViewModel(applicati
         return loaded
     }
 
-    fun getTimeRemaining(): LiveData<Long> {
+    fun getTimeRemaining(): LiveData<Pair<Long, String>> {
         return timeRemaining
     }
 
@@ -73,7 +73,7 @@ class DataLoaderViewModel(application: Application) : WrappedViewModel(applicati
 
                 synchronized(timeRemaining) {
                     synchronized(averageTime) {
-                        timeRemaining.postValue((averageTime.next(processingTime) * remaining).toLong())
+                        timeRemaining.postValue(Pair((averageTime.next(processingTime) * remaining).toLong(), "$count/$fileCount"))
                     }
                 }
             }
