@@ -100,6 +100,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:padding="@dimen/padding_15"
+            android:layout_marginStart="@dimen/padding_15"
             android:text="@string/open_app_now"
             android:textSize="@dimen/text_size_16"
             android:visibility="invisible"
