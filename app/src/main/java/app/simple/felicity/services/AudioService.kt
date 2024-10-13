@@ -21,10 +21,10 @@ import app.simple.felicity.R
 import app.simple.felicity.activities.MainActivity
 import app.simple.felicity.exceptions.FelicityPlayerException
 import app.simple.felicity.loaders.MediaStoreLoader.loadAudios
-import app.simple.felicity.models.normal.Audio
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.receivers.MediaButtonIntentReceiver
+import app.simple.felicity.repository.models.normal.Audio
 import app.simple.felicity.shared.utils.ConditionUtils.invert
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isZero

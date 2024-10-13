@@ -5,8 +5,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterGridImageBinding
-import app.simple.felicity.models.home.Home
-import app.simple.felicity.models.home.HomeUtils
+import app.simple.felicity.repository.models.home.Home
+import app.simple.felicity.repository.models.home.HomeUtils
 
 class AdapterGridArt(private val data: Home) :
         RecyclerView.Adapter<AdapterGridArt.Holder>() {

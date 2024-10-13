@@ -3,10 +3,10 @@ package app.simple.felicity.loaders
 import android.annotation.SuppressLint
 import android.content.Context
 import android.provider.MediaStore
-import app.simple.felicity.models.normal.Album
-import app.simple.felicity.models.normal.Artist
-import app.simple.felicity.models.normal.Audio
-import app.simple.felicity.models.normal.Genre
+import app.simple.felicity.repository.models.normal.Album
+import app.simple.felicity.repository.models.normal.Artist
+import app.simple.felicity.repository.models.normal.Audio
+import app.simple.felicity.repository.models.normal.Genre
 
 object MediaStoreLoader {
 

@@ -11,7 +11,7 @@ import org.jaudiotagger.tag.TagException;
 import java.io.File;
 import java.io.IOException;
 
-import app.simple.felicity.models.normal.Audio;
+import app.simple.felicity.repository.models.normal.Audio;
 
 public class JAudioMetadataLoader {
     

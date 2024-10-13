@@ -5,7 +5,7 @@ import android.os.Build;
 
 import java.io.File;
 
-import app.simple.felicity.models.normal.Audio;
+import app.simple.felicity.repository.models.normal.Audio;
 
 public class MediaMetadataLoader {
     

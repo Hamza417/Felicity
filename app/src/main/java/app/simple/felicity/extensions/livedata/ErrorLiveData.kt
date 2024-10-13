@@ -3,9 +3,9 @@ package app.simple.felicity.extensions.livedata
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.MutableLiveData
-import app.simple.felicity.crash.Utils
-import app.simple.felicity.database.instances.StackTraceDatabase
-import app.simple.felicity.models.normal.StackTrace
+import app.simple.felicity.core.utils.StackTraceUtils
+import app.simple.felicity.repository.database.instances.StackTraceDatabase
+import app.simple.felicity.repository.models.normal.StackTrace
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -34,10 +34,13 @@ open class ErrorLiveData : MutableLiveData<Throwable>() {
             throwable.printStackTrace()
             StackTraceDatabase.getInstance(applicationContext)
                 ?.stackTraceDao()?.insertTrace(
-                        StackTrace(stacktrace.toString(),
-                                   throwable.localizedMessage ?: throwable.toString(),
-                                   Utils.getCause(throwable).toString(),
-                                   System.currentTimeMillis()))
+                    StackTrace(
+                        stacktrace.toString(),
+                        throwable.localizedMessage ?: throwable.toString(),
+                        StackTraceUtils.getCause(throwable).toString(),
+                        System.currentTimeMillis()
+                    )
+                )
         }
     }
 }

@@ -3,8 +3,8 @@ package app.simple.felicity.extensions.viewmodels
 import android.app.Application
 import app.simple.felicity.loaders.MediaStoreLoader.loadAlbums
 import app.simple.felicity.loaders.MediaStoreLoader.loadAudios
-import app.simple.felicity.models.normal.Album
-import app.simple.felicity.models.normal.Audio
+import app.simple.felicity.repository.models.normal.Album
+import app.simple.felicity.repository.models.normal.Audio
 
 open class DatabaseLoaderViewModel(application: Application) : WrappedViewModel(application) {
 

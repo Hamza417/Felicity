@@ -6,13 +6,13 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import app.simple.felicity.database.instances.AudioDatabase
 import app.simple.felicity.extensions.livedata.SingleEventLiveData
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.loaders.JAudioMetadataLoader
 import app.simple.felicity.loaders.LoaderUtils.isAudioFile
 import app.simple.felicity.loaders.MediaMetadataLoader
-import app.simple.felicity.models.normal.Audio
+import app.simple.felicity.repository.database.instances.AudioDatabase
+import app.simple.felicity.repository.models.normal.Audio
 import app.simple.felicity.tools.MovingAverage
 import app.simple.felicity.utils.NumberUtils
 import app.simple.felicity.utils.SDCard

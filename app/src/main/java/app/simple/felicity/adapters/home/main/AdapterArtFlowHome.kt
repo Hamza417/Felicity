@@ -10,7 +10,7 @@ import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.theme.ThemeFrameLayout
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.views.FelicityImageSlider
-import app.simple.felicity.models.home.Home
+import app.simple.felicity.repository.models.home.Home
 
 class AdapterArtFlowHome(private val data: ArrayList<Home>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 

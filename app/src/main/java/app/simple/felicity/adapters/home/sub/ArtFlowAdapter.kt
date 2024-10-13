@@ -6,8 +6,8 @@ import android.view.ViewGroup
 import app.simple.felicity.R
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.views.SquareImageView
-import app.simple.felicity.models.home.Home
-import app.simple.felicity.models.home.HomeUtils
+import app.simple.felicity.repository.models.home.Home
+import app.simple.felicity.repository.models.home.HomeUtils
 import com.smarteist.autoimageslider.SliderViewAdapter
 
 class ArtFlowAdapter(private val data: Home) : SliderViewAdapter<ArtFlowAdapter.ArtFlowViewHolder>() {

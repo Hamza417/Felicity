@@ -1,5 +1,6 @@
 package app.simple.felicity.glide.pathcover
 
+import android.annotation.SuppressLint
 import android.widget.ImageView
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
@@ -10,14 +11,19 @@ import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 
 object Utils {
 
-    fun ImageView.loadFromPath(path: String) {
-        Glide.with(context)
+    @SuppressLint("CheckResult")
+    fun ImageView.loadFromPath(path: String, applyTransform: Boolean = true) {
+        val request = Glide.with(context)
             .asBitmap()
             .load(PathCoverModel(context, path))
-            .dontTransform()
             .centerCrop()
             .transition(BitmapTransitionOptions.withCrossFade())
-            .into(this)
+
+        if (applyTransform.not()) {
+            request.dontTransform()
+        }
+
+        request.into(this)
     }
 
     fun ImageView.loadFromPathForCarousel(path: String) {

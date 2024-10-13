@@ -16,7 +16,7 @@ import app.simple.felicity.decorations.itemdecorations.BoundsOffsetDecoration
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.layoutmanager.ProminentLayoutManager
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.models.normal.Audio
+import app.simple.felicity.repository.models.normal.Audio
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 

@@ -2,7 +2,7 @@ package app.simple.felicity.utils
 
 import android.content.res.Resources
 import android.view.View
-import app.simple.felicity.models.normal.Locales
+import app.simple.felicity.models.Locales
 import java.util.Locale
 
 object LocaleHelper {

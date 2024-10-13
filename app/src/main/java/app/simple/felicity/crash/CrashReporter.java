@@ -4,17 +4,19 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Objects;
 
-import androidx.annotation.NonNull;
 import app.simple.felicity.activities.CrashReporterActivity;
-import app.simple.felicity.database.instances.StackTraceDatabase;
-import app.simple.felicity.models.normal.StackTrace;
+import app.simple.felicity.core.utils.StackTraceUtils;
 import app.simple.felicity.preferences.CrashPreferences;
+import app.simple.felicity.repository.database.instances.StackTraceDatabase;
+import app.simple.felicity.repository.models.normal.StackTrace;
 
 /*
  * Ref: https://stackoverflow.com/questions/601503/how-do-i-obtain-crash-data-from-my-android-application
@@ -39,10 +41,10 @@ public class CrashReporter implements Thread.UncaughtExceptionHandler {
         String stacktrace = result.toString();
         printWriter.close();
 
-        Utils.create(stacktrace, new File(context.getExternalFilesDir("logs"), "crashLog_" + crashTimeStamp));
+        StackTraceUtils.create(stacktrace, new File(context.getExternalFilesDir("logs"), "crashLog_" + crashTimeStamp));
         CrashPreferences.INSTANCE.saveCrashLog(crashTimeStamp);
         CrashPreferences.INSTANCE.saveMessage(throwable.toString());
-        CrashPreferences.INSTANCE.saveCause(Utils.getCause(throwable).toString());
+        CrashPreferences.INSTANCE.saveCause(StackTraceUtils.getCause(throwable).toString());
 
         Intent intent = new Intent(context, CrashReporterActivity.class);
         intent.putExtra(CrashReporterActivity.MODE_NORMAL, stacktrace);
@@ -55,7 +57,7 @@ public class CrashReporter implements Thread.UncaughtExceptionHandler {
         long timeStamp = CrashPreferences.INSTANCE.getCrashLog();
 
         if (timeStamp != CrashPreferences.crashTimestampEmptyDefault) {
-            String stack = Utils.read(new File(context.getExternalFilesDir("logs"), "crashLog_" + timeStamp));
+            String stack = StackTraceUtils.read(new File(context.getExternalFilesDir("logs"), "crashLog_" + timeStamp));
             Intent intent = new Intent(context, CrashReporterActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.putExtra(CrashReporterActivity.MODE_NORMAL, stack);

@@ -9,7 +9,7 @@ import android.webkit.MimeTypeMap
 import android.webkit.URLUtil
 import androidx.documentfile.provider.DocumentFile
 import app.simple.felicity.R
-import app.simple.felicity.models.normal.AudioMetaData
+import app.simple.felicity.repository.models.normal.AudioMetaData
 import app.simple.felicity.utils.AudioUtils
 import app.simple.felicity.utils.AudioUtils.toBitrate
 import java.io.ByteArrayInputStream

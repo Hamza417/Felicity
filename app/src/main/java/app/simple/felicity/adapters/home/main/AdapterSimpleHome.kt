@@ -9,7 +9,7 @@ import app.simple.felicity.databinding.AdapterHeaderHomeBinding
 import app.simple.felicity.databinding.AdapterHomeSimpleBinding
 import app.simple.felicity.decorations.overscroll.RecyclerViewUtils
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.models.home.Home
+import app.simple.felicity.repository.models.home.Home
 
 class AdapterSimpleHome(private val data: ArrayList<Home>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 

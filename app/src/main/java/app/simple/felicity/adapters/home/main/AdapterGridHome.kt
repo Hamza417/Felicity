@@ -11,7 +11,7 @@ import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
 import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
-import app.simple.felicity.models.home.Home
+import app.simple.felicity.repository.models.home.Home
 import app.simple.felicity.utils.ArrayUtils.getTwoRandomIndices
 
 class AdapterGridHome(private val data: ArrayList<Home>) : RecyclerView.Adapter<VerticalListViewHolder>() {
