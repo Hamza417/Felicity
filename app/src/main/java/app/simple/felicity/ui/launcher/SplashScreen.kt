@@ -7,8 +7,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
-import app.simple.felicity.core.utils.BitmapHelper.addLinearGradient
-import app.simple.felicity.core.utils.BitmapHelper.toBitmapKeepingSize
+import app.simple.felicity.core.utils.BitmapUtils.addLinearGradient
+import app.simple.felicity.core.utils.BitmapUtils.toBitmapKeepingSize
 import app.simple.felicity.databinding.FragmentSplashScreenBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.extensions.viewmodels.DatabaseLoaderViewModel

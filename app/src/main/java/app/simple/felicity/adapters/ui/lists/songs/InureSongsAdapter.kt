@@ -48,7 +48,7 @@ class InureSongsAdapter(private val audio: ArrayList<Audio>) :
                 artists.setTextOrUnknown(audio.artist)
                 album.setTextOrUnknown(audio.album)
 
-                albumArt.loadFromPath(audio.path)
+                albumArt.loadFromPath(audio.path, applyTransform = true)
                 albumArt.transitionName = audio.path
 
                 binding.container.radius = 0F

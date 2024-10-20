@@ -14,7 +14,6 @@
         android:id="@+id/album_art"
         android:layout_width="@dimen/album_art_dimen"
         android:layout_height="@dimen/album_art_dimen"
-        android:padding="2dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -25,7 +24,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="10dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:ellipsize="end"
         android:maxLines="1"
         android:textSize="@dimen/text_size_16"
@@ -34,7 +33,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/album_art"
         app:layout_constraintTop_toTopOf="@+id/album_art"
-        app:layout_constraintVertical_bias="0.0"
         app:textColorStyle="primary" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -58,6 +56,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="10dp"
+        android:layout_marginBottom="8dp"
         android:ellipsize="end"
         android:fontFamily="@font/lato_regular"
         android:maxLines="1"
@@ -66,7 +65,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/album_art"
-        app:layout_constraintTop_toBottomOf="@+id/title"
+        app:layout_constraintTop_toBottomOf="@+id/artists"
         app:textColorStyle="secondary" />
 
 </app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout>

@@ -20,7 +20,7 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.PictureDrawable
 import androidx.core.content.ContextCompat
 
-object BitmapHelper {
+object BitmapUtils {
     private const val shadowColor = -4671304
 
     /**
@@ -65,14 +65,19 @@ object BitmapHelper {
     //Convert Picture to Bitmap
     fun Picture.toBitmap(): Bitmap {
         val pd = PictureDrawable(this)
-        val bitmap = Bitmap.createBitmap(pd.intrinsicWidth, pd.intrinsicHeight, Bitmap.Config.ARGB_8888)
+        val bitmap =
+            Bitmap.createBitmap(pd.intrinsicWidth, pd.intrinsicHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawPicture(pd.picture)
         return bitmap
     }
 
     fun getBitmapFromDrawable(drawable: Drawable): Bitmap {
-        val bmp = Bitmap.createBitmap(drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+        val bmp = Bitmap.createBitmap(
+                drawable.intrinsicWidth,
+                drawable.intrinsicHeight,
+                Bitmap.Config.ARGB_8888
+        )
         val canvas = Canvas(bmp)
         drawable.setBounds(0, 0, canvas.width, canvas.height)
         drawable.draw(canvas)
@@ -114,7 +119,8 @@ object BitmapHelper {
         val canvas = Canvas(updatedBitmap)
         canvas.drawBitmap(this, 0f, 0f, null)
         val paint = Paint()
-        val shader = LinearGradient(0f, 0f, 0f, height.toFloat(), array[0], array[1], Shader.TileMode.CLAMP)
+        val shader =
+            LinearGradient(0f, 0f, 0f, height.toFloat(), array[0], array[1], Shader.TileMode.CLAMP)
         paint.shader = shader
         paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
@@ -136,5 +142,23 @@ object BitmapHelper {
         paint.colorFilter = f
         canvas.drawBitmap(this, 0F, 0F, paint)
         return bmpGrayscale
+    }
+
+    fun Bitmap.resizeToMaxSize(maxSize: Int = 1000): Bitmap {
+        val width = this.width
+        val height = this.height
+
+        return if (width == height) {
+            Bitmap.createScaledBitmap(this, maxSize, maxSize, true)
+        } else {
+            val aspectRatio = width.toFloat() / height.toFloat()
+            if (width > height) {
+                val newHeight = (maxSize / aspectRatio).toInt()
+                Bitmap.createScaledBitmap(this, maxSize, newHeight, true)
+            } else {
+                val newWidth = (maxSize * aspectRatio).toInt()
+                Bitmap.createScaledBitmap(this, newWidth, maxSize, true)
+            }
+        }
     }
 }

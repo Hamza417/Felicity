@@ -3,12 +3,16 @@ package app.simple.felicity.helpers
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
+import app.simple.felicity.core.utils.BitmapUtils.resizeToMaxSize
 import app.simple.felicity.preferences.ConfigurationPreferences
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.images.Artwork
 import java.io.File
 
 object AlbumArtHelper {
+
+    private const val MAX_SIZE = 500
+
     fun File.getAlbumArt(): Bitmap? {
         when (ConfigurationPreferences.getAlbumArtLoaderSource()) {
             ConfigurationPreferences.JAUDIO_TAG -> {
@@ -19,6 +23,7 @@ object AlbumArtHelper {
                 return if (artwork != null) {
                     val imageData = artwork.binaryData
                     BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
+                            .resizeToMaxSize(MAX_SIZE)
                 } else {
                     null
                 }

@@ -3,7 +3,7 @@ package app.simple.inure.glide.uricover
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import app.simple.felicity.R
-import app.simple.felicity.core.utils.BitmapHelper.toBitmap
+import app.simple.felicity.core.utils.BitmapUtils.toBitmap
 import app.simple.felicity.glide.uricover.UriCoverModel
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource

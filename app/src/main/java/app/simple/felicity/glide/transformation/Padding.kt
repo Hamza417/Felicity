@@ -1,7 +1,11 @@
 package app.simple.felicity.glide.transformation
 
 import android.content.Context
-import android.graphics.*
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
 import androidx.annotation.ColorInt
 import androidx.annotation.ColorRes
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool
@@ -22,14 +26,8 @@ class Padding : BitmapTransformation {
     private var paddingTop: Int
     private var paddingBottom: Int
     private var colour: Int = Color.argb(0, 0, 0, 0)
+    private var paddingRatio: Float? = null
 
-    /**
-     * Default constructor.
-     * The padding is transparent by default.
-     *
-     * @param  padding  thickness of padding in pixels
-     * @return      returns self
-     */
     constructor(padding: Int) {
         paddingLeft = padding
         paddingRight = padding
@@ -37,13 +35,19 @@ class Padding : BitmapTransformation {
         paddingBottom = padding
     }
 
-    /**
-     * Constructor.
-     * The padding is transparent and zero by default.
-     *
-     * @return      returns self
-     */
     constructor() {
+        paddingLeft = 0
+        paddingRight = 0
+        paddingTop = 0
+        paddingBottom = 0
+    }
+
+    /**
+     * Padding ration should be from 0 to 100 divided by 100.
+     * Higher values will make the image disappear
+     */
+    constructor(paddingRatio: Float) {
+        this.paddingRatio = paddingRatio
         paddingLeft = 0
         paddingRight = 0
         paddingTop = 0
@@ -58,42 +62,34 @@ class Padding : BitmapTransformation {
         return this
     }
 
-    /**
-     * Sets the colour of the padding.
-     * The padding is transparent by default.
-     *
-     * @param  colour  the colour as a @ColorInt
-     * @return      returns self
-     */
     fun setColour(@ColorInt colour: Int): Padding {
         this.colour = colour
         return this
     }
 
-    /**
-     * Sets the colour of the padding by resource.
-     * The padding is transparent by default.
-     *
-     * @param  res  the colour as a @ColorRes
-     * @return      returns self
-     */
     fun setColourRes(@ColorRes res: Int, context: Context): Padding {
         colour = context.resources.getColor(res, null)
         return this
     }
 
     override fun transform(pool: BitmapPool, source: Bitmap, outWidth: Int, outHeight: Int): Bitmap {
-        //Size Image
+        if (paddingRatio != null) {
+            paddingLeft = (source.width * paddingRatio!!).toInt()
+            paddingRight = paddingLeft
+            paddingTop = (source.height * paddingRatio!!).toInt()
+            paddingBottom = paddingTop
+        }
+
         val paddedWidth = 0.coerceAtLeast(source.width - (paddingLeft + paddingRight))
         val paddedHeight = 0.coerceAtLeast(source.height - (paddingTop + paddingBottom))
         val bitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
         val bitmapBounds = Rect(paddingLeft, paddingTop, paddedWidth + paddingLeft, paddedHeight + paddingTop)
-        //Create Image Paint
+
         val paint = Paint()
         paint.isAntiAlias = true
         paint.isFilterBitmap = true
         paint.isDither = true
-        //Draw to Canvas
+
         val canvas = Canvas(bitmap)
         canvas.drawColor(colour)
         canvas.drawBitmap(source, null, bitmapBounds, paint)
