@@ -12,6 +12,7 @@ import app.simple.felicity.adapters.ui.lists.songs.InureSongsAdapter
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.preferences.MusicPreferences
+import app.simple.felicity.repository.manager.AudioDataManager
 import app.simple.felicity.shared.utils.ConditionUtils.invert
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
@@ -36,10 +37,8 @@ class InureSongs : ScopedFragment() {
         songsViewModel.getSongs().observe(viewLifecycleOwner) {
             binding.recyclerView.adapter = InureSongsAdapter(it)
 
-            (binding.recyclerView.adapter as InureSongsAdapter).onItemClickListener =
-                { _, position, view ->
-                    MusicPreferences.setMusicPosition(position)
-
+            (binding.recyclerView.adapter as InureSongsAdapter).onItemClickListener = { _, position, view ->
+                AudioDataManager.getInstance().setAudioDataAndPlay(it, position)
                 openFragmentArc(DefaultPlayer.newInstance(), view, "audio_player_pager")
                 requireArguments().putInt(app.simple.felicity.shared.constants.BundleConstants.position, position)
             }
@@ -61,8 +60,8 @@ class InureSongs : ScopedFragment() {
                             binding.recyclerView.post {
                                 // Log.d("Music", displayHeight.toString())
                                 (binding.recyclerView.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(
-                                    MusicPreferences.getMusicPosition(),
-                                    400
+                                        MusicPreferences.getMusicPosition(),
+                                        400
                                 )
 
                                 (view.parent as? ViewGroup)?.doOnPreDraw {
@@ -86,9 +85,9 @@ class InureSongs : ScopedFragment() {
             })
 
             if (requireArguments().getInt(
-                    app.simple.felicity.shared.constants.BundleConstants.position,
-                    MusicPreferences.getMusicPosition()
-                ) == MusicPreferences.getMusicPosition()
+                            app.simple.felicity.shared.constants.BundleConstants.position,
+                            MusicPreferences.getMusicPosition()
+                    ) == MusicPreferences.getMusicPosition()
             ) {
                 (view.parent as? ViewGroup)?.doOnPreDraw {
                     startPostponedEnterTransition()
@@ -100,7 +99,7 @@ class InureSongs : ScopedFragment() {
             override fun onMapSharedElements(names: MutableList<String>, sharedElements: MutableMap<String, View>) {
                 // Locate the ViewHolder for the clicked position.
                 val selectedViewHolder = binding.recyclerView.findViewHolderForAdapterPosition(
-                    MusicPreferences.getMusicPosition().plus(1)
+                        MusicPreferences.getMusicPosition().plus(1)
                 )
                 if (selectedViewHolder is InureSongsAdapter.Holder) {
                     // Map the first shared element name to the child ImageView.

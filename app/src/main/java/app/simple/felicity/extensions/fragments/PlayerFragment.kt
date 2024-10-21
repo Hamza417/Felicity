@@ -14,13 +14,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import app.simple.felicity.helpers.IntentHelper
-import app.simple.felicity.repository.models.normal.Audio
-import app.simple.felicity.services.AudioService
+import app.simple.felicity.services.FelicityPlayerService
 import kotlinx.coroutines.launch
 
 abstract class PlayerFragment : ScopedFragment() {
 
-    protected var audioService: AudioService? = null
+    protected var audioService: FelicityPlayerService? = null
     private var serviceConnection: ServiceConnection? = null
     private var audioBroadcastReceiver: BroadcastReceiver? = null
     private val audioIntentFilter = IntentFilter()
@@ -85,8 +84,7 @@ abstract class PlayerFragment : ScopedFragment() {
 
         serviceConnection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                audioService = (service as AudioService.AudioBinder).getService()
-                audioService?.setCurrentPosition(app.simple.felicity.preferences.MusicPreferences.getMusicPosition())
+                audioService = (service as FelicityPlayerService.FelicityPlayerServiceBinder).getService()
                 onServiceConnected()
             }
 
@@ -106,7 +104,7 @@ abstract class PlayerFragment : ScopedFragment() {
     private fun startService() {
         LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(audioBroadcastReceiver!!) // Just to be safe
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(audioBroadcastReceiver!!, audioIntentFilter)
-        val intent = AudioService.getIntent(requireActivity()) // Activity context will keep the foreground service alive
+        val intent = FelicityPlayerService.getIntent(requireActivity()) // Activity context will keep the foreground service alive
         requireContext().startService(intent)
         serviceConnection?.let { requireContext().bindService(intent, it, Context.BIND_AUTO_CREATE) }
     }
@@ -114,7 +112,7 @@ abstract class PlayerFragment : ScopedFragment() {
     protected fun stopService() {
         kotlin.runCatching {
             requireContext().unbindService(serviceConnection!!)
-            requireContext().stopService(AudioService.getIntent(requireActivity().applicationContext))
+            requireContext().stopService(FelicityPlayerService.getIntent(requireActivity().applicationContext))
             goBack()
         }
     }
@@ -143,14 +141,6 @@ abstract class PlayerFragment : ScopedFragment() {
 
         LocalBroadcastManager.getInstance(requireContext())
             .unregisterReceiver(audioBroadcastReceiver!!)
-    }
-
-    protected fun setList(list: List<Audio>) {
-        audioService?.setList(list)
-    }
-
-    protected fun getAudios(): List<Audio> {
-        return audioService?.getList() ?: emptyList()
     }
 
     abstract fun onServiceConnected()
