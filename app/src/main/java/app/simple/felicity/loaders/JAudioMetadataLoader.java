@@ -53,7 +53,11 @@ public class JAudioMetadataLoader {
     }
     
     private String getAudioFileTag(FieldKey tag) {
-        return audioFile.getTag().getFirst(tag);
+        try {
+            return audioFile.getTag().getFirst(tag);
+        } catch (Exception e) {
+            return "";
+        }
     }
     
     private String getTitle() {

@@ -47,7 +47,6 @@ class DefaultPlayer : PlayerFragment() {
         postponeEnterTransition()
 
         playerViewModel.getSongs().observe(viewLifecycleOwner) { list ->
-            setList(list)
             binding.artSlider.adapter = DefaultPlayerAdapter(list)
             binding.artSlider.setCurrentItem(app.simple.felicity.preferences.MusicPreferences.getMusicPosition(), false)
 
@@ -74,7 +73,6 @@ class DefaultPlayer : PlayerFragment() {
                             currentSeekPosition = 0
                             app.simple.felicity.preferences.MusicPreferences.setMusicPosition(binding.artSlider.currentItem)
                             app.simple.felicity.preferences.MusicPreferences.setLastMusicId(list[binding.artSlider.currentItem].id)
-                            audioService?.setCurrentPosition(binding.artSlider.currentItem)
                             setMetaData(binding.artSlider.currentItem)
                         }
                     }
@@ -84,16 +82,14 @@ class DefaultPlayer : PlayerFragment() {
 
         binding.nextButton.setOnClickListener {
             handler.removeCallbacks(progressRunnable)
-            audioService?.playNext()
         }
 
         binding.previousButton.setOnClickListener {
             handler.removeCallbacks(progressRunnable)
-            audioService?.playPrevious()
         }
 
         binding.playButton.setOnClickListener {
-            audioService?.changePlayerState()
+
         }
 
         binding.closeButton.setOnClickListener {
@@ -118,7 +114,6 @@ class DefaultPlayer : PlayerFragment() {
             }
 
             override fun onStopTrackingTouch(seekBar: SeekBar) {
-                audioService?.seek(seekBar.progress)
                 handler.post(progressRunnable)
             }
         })
@@ -134,11 +129,7 @@ class DefaultPlayer : PlayerFragment() {
 
     override fun onPrepared() {
         audioService?.let {
-            if (it.isPlaying()) {
-                onStateChanged(true)
-            } else {
-                onStateChanged(false)
-            }
+
         }
     }
 
@@ -161,23 +152,11 @@ class DefaultPlayer : PlayerFragment() {
 
     override fun onNext() {
         currentSeekPosition = 0
-        if (binding.artSlider.currentItem < getAudios().size - 1) {
-            binding.artSlider.setCurrentItem(binding.artSlider.currentItem + 1, true)
-        } else {
-            binding.artSlider.setCurrentItem(0, true)
-        }
-
         setMetaData(binding.artSlider.currentItem)
     }
 
     override fun onPrevious() {
         currentSeekPosition = 0
-        if (binding.artSlider.currentItem > 0) {
-            binding.artSlider.setCurrentItem(binding.artSlider.currentItem - 1, true)
-        } else {
-            binding.artSlider.setCurrentItem(getAudios().size - 1, true)
-        }
-
         setMetaData(binding.artSlider.currentItem)
     }
 
@@ -203,35 +182,7 @@ class DefaultPlayer : PlayerFragment() {
     }
 
     private fun setMetaData(position: Int) {
-        if (requireArguments().getInt(app.simple.felicity.shared.constants.BundleConstants.position) < position) {
-            binding.title.setTextWithSlideAnimation(getAudios()[position].title ?: "", 250L, app.simple.felicity.core.utils.ViewUtils.LEFT, 0L)
-            binding.artist.setTextWithSlideAnimation(getAudios()[position].artist ?: "", 250L, app.simple.felicity.core.utils.ViewUtils.LEFT, 50L)
-            binding.album.setTextWithSlideAnimation(getAudios()[position].album ?: "", 250L, app.simple.felicity.core.utils.ViewUtils.LEFT, 100L)
-            binding.info.setTextWithSlideAnimation(buildString {
-                append(".")
-                append(getAudios()[position].path?.substringAfterLast("."))
-                append(", ")
-                append(getAudios()[position].bitrate)
-            }, 250L, app.simple.felicity.core.utils.ViewUtils.LEFT, 150L)
-        } else {
-            binding.title.setTextWithSlideAnimation(getAudios()[position].title ?: "", 250L, app.simple.felicity.core.utils.ViewUtils.RIGHT, 0L)
-            binding.artist.setTextWithSlideAnimation(getAudios()[position].artist ?: "", 250L, app.simple.felicity.core.utils.ViewUtils.RIGHT, 50L)
-            binding.album.setTextWithSlideAnimation(getAudios()[position].album ?: "", 250L, app.simple.felicity.core.utils.ViewUtils.RIGHT, 100L)
-            binding.info.setTextWithSlideAnimation(buildString {
-                append(".")
-                append(getAudios()[position].path?.substringAfterLast("."))
-                append(", ")
-                append(getAudios()[position].bitrate)
-            }, 250L, app.simple.felicity.core.utils.ViewUtils.RIGHT, 150L)
-        }
 
-        binding.number.text = buildString {
-            append(position + 1)
-            append("/")
-            append(getAudios().size)
-        }
-
-        requireArguments().putInt(app.simple.felicity.shared.constants.BundleConstants.position, position)
     }
 
     companion object {
