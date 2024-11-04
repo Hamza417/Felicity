@@ -4,10 +4,10 @@ plugins {
     id 'com.google.devtools.ksp'
 }
 
-android {
+apply from: rootProject.file('common.gradle')
 
+android {
     namespace 'app.simple.felicity'
-    compileSdk 35
 
     buildFeatures {
         viewBinding true
@@ -16,16 +16,9 @@ android {
 
     defaultConfig {
         applicationId "app.simple.felicity"
-        minSdk 26
-        targetSdk 35
+
         versionCode 1
         versionName "1.0"
-
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-        ksp {
-            arg("room.schemaLocation", "$projectDir/schemas")
-        }
     }
 
     // Create flavor dimensions
@@ -48,15 +41,6 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
-    }
-
-    compileOptions {
-        sourceCompatibility JavaVersion.current()
-        targetCompatibility JavaVersion.current()
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.current().toString()
     }
 
     dependenciesInfo {
@@ -82,15 +66,13 @@ dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.2'
 
     // AndroidX
-    implementation 'androidx.core:core-ktx:1.13.1'
-    implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
-    implementation 'androidx.fragment:fragment-ktx:1.8.4'
+    implementation 'androidx.legacy:legacy-support-v4:1.0.0' // TODO Remove
+    implementation 'androidx.fragment:fragment-ktx:1.8.5'
     implementation 'androidx.activity:activity-ktx:1.9.3'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.8.6'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.6'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.6'
-    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.8.6'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.8.7'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.8.7'
     implementation 'androidx.documentfile:documentfile:1.0.1'
     implementation 'androidx.media:media:1.7.0'
     implementation "androidx.security:security-crypto:1.1.0-alpha06"
@@ -103,7 +85,6 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
 
     // Google
-    implementation 'com.google.android.material:material:1.12.0'
     implementation 'com.google.android.flexbox:flexbox:3.0.0'
 
     // Third party
