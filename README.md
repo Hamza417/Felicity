@@ -16,4 +16,4 @@ development process.
 
 ## License
 
-This project is source-available but not licensed for redistribution, modification, or commercial use. All rights reserved by the author.
+This project is source-available but not licensed for redistribution, modification, or commercial use. All rights reserved by the author. I'll update the licence once the project is substatially developed.
