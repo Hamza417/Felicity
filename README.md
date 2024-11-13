@@ -8,6 +8,8 @@ The development of the app has started and if you've used the first two apps you
 the [Telegram Channel](https://t.me/felicity_music_player) and become the part of the whole initial
 development process.
 
+I am taking my time developing it because I want it to exceed my own expectations. I hope you are patient enough until the first few results :)
+
 ## Status
 
 [![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FHamza417%2FFelicity&count_bg=%233DA0C8&title_bg=%23555555&icon=strapi.svg&icon_color=%23E7E7E7&title=Total+Hits&edge_flat=false)](https://hits.seeyoufarm.com)
