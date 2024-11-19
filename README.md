@@ -8,7 +8,7 @@ The development of the app has started and if you've used the first two apps you
 the [Telegram Channel](https://t.me/felicity_music_player) and become the part of the whole initial
 development process.
 
-I am taking my time developing it because I want it to exceed my own expectations. I hope you are patient enough until the first few results :)
+I am taking my time developing it because I want it to exceed my own expectations and by that I mean the quality of the software. I hope you are patient enough until the first few results :)
 
 ## Status
 
