@@ -1,4 +1,4 @@
-package app.simple.felicity.utils
+package app.simple.felicity.core.utils
 
 import java.util.concurrent.TimeUnit
 import kotlin.math.pow

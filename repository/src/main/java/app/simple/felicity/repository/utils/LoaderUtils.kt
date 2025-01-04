@@ -1,4 +1,4 @@
-package app.simple.felicity.loaders
+package app.simple.felicity.repository.utils
 
 import java.io.File
 

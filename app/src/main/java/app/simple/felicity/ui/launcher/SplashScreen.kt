@@ -35,7 +35,9 @@ class SplashScreen : ScopedFragment() {
             .commitAllowingStateLoss()
 
         binding?.appIcon?.setImageBitmap(R.drawable.ic_felicity.toBitmapKeepingSize(requireContext(), 10)
-                                             .addLinearGradient(intArrayOf(app.simple.felicity.theme.managers.ThemeManager.accent.primaryAccentColor, app.simple.felicity.theme.managers.ThemeManager.accent.secondaryAccentColor)))
+                                             .addLinearGradient(
+                                                     intArrayOf(app.simple.felicity.theme.managers.ThemeManager.accent.primaryAccentColor,
+                                                                app.simple.felicity.theme.managers.ThemeManager.accent.secondaryAccentColor)))
     }
 
     companion object {

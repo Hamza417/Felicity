@@ -1,4 +1,4 @@
-package app.simple.felicity.helpers
+package app.simple.felicity.repository.helpers
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory

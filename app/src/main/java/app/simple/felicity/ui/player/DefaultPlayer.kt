@@ -13,9 +13,9 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import app.simple.felicity.R
 import app.simple.felicity.adapters.player.DefaultPlayerAdapter
+import app.simple.felicity.core.utils.NumberUtils
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
 import app.simple.felicity.extensions.fragments.PlayerFragment
-import app.simple.felicity.utils.NumberUtils
 import app.simple.felicity.viewmodels.main.player.PlayerViewModel
 
 class DefaultPlayer : PlayerFragment() {

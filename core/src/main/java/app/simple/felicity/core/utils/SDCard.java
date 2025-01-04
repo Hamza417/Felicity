@@ -1,4 +1,4 @@
-package app.simple.felicity.utils;
+package app.simple.felicity.core.utils;
 
 import android.annotation.SuppressLint;
 import android.content.Context;

@@ -90,7 +90,6 @@ dependencies {
     // Third party
     implementation 'com.anggrayudi:storage:1.5.5'
     implementation 'com.caverock:androidsvg-aar:1.4'
-    implementation 'net.jthink:jaudiotagger:3.0.1'
 
     // Toolkit
     implementation 'com.github.android:renderscript-intrinsics-replacement-toolkit:b6363490c3'

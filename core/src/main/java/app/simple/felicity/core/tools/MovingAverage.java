@@ -1,4 +1,4 @@
-package app.simple.felicity.tools;
+package app.simple.felicity.core.tools;
 
 import java.util.LinkedList;
 import java.util.Queue;

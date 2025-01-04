@@ -1,4 +1,4 @@
-package app.simple.felicity.loaders
+package app.simple.felicity.repository.loaders
 
 import android.annotation.SuppressLint
 import android.content.Context
