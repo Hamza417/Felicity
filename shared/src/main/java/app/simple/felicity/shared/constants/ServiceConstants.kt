@@ -4,25 +4,27 @@ import android.media.MediaPlayer
 
 object ServiceConstants {
 
-    private const val appPackageName = "app.simple.felicity"
+    private const val APP_PACKAGE_NAME = "app.simple.felicity"
+
+    const val ACTION_CANCEL = "$APP_PACKAGE_NAME.cancel"
 
     // Audio
-    const val actionPrepared = "$appPackageName.prepared"
-    const val actionTogglePause = "$appPackageName.toggle_pause"
-    const val actionPlay = "$appPackageName.play"
-    const val actionPause = "$appPackageName.pause"
-    const val actionStop = "$appPackageName.stop"
-    const val actionSkip = "$appPackageName.skip"
-    const val actionRewind = "$appPackageName.rewind"
-    const val actionQuitMusicService = "$appPackageName.quit.music.service"
-    const val actionPendingQuitService = "$appPackageName.pending_quit_service"
-    const val shuffleMode = "$appPackageName.shuffle_mode"
-    const val actionNext = "$appPackageName.action_next"
-    const val actionPrevious = "$appPackageName.action_previous"
-    const val actionOpen = "$appPackageName.action_open"
-    const val actionMetaData = "$appPackageName.metadata"
-    const val actionBuffering = "$appPackageName.media.buffering"
-    const val actionMediaError = "$appPackageName.media.error"
+    const val actionPrepared = "$APP_PACKAGE_NAME.prepared"
+    const val actionTogglePause = "$APP_PACKAGE_NAME.toggle_pause"
+    const val actionPlay = "$APP_PACKAGE_NAME.play"
+    const val actionPause = "$APP_PACKAGE_NAME.pause"
+    const val actionStop = "$APP_PACKAGE_NAME.stop"
+    const val actionSkip = "$APP_PACKAGE_NAME.skip"
+    const val actionRewind = "$APP_PACKAGE_NAME.rewind"
+    const val actionQuitMusicService = "$APP_PACKAGE_NAME.quit.music.service"
+    const val actionPendingQuitService = "$APP_PACKAGE_NAME.pending_quit_service"
+    const val shuffleMode = "$APP_PACKAGE_NAME.shuffle_mode"
+    const val actionNext = "$APP_PACKAGE_NAME.action_next"
+    const val actionPrevious = "$APP_PACKAGE_NAME.action_previous"
+    const val actionOpen = "$APP_PACKAGE_NAME.action_open"
+    const val actionMetaData = "$APP_PACKAGE_NAME.metadata"
+    const val actionBuffering = "$APP_PACKAGE_NAME.media.buffering"
+    const val actionMediaError = "$APP_PACKAGE_NAME.media.error"
 
     fun getMediaErrorString(extra: Int): String {
         return when (extra) {

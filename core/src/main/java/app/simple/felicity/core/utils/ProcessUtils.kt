@@ -1,6 +1,9 @@
-package app.simple.felicity.utils
+package app.simple.felicity.core.utils
 
+import android.os.Handler
 import android.os.Looper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 object ProcessUtils {
     inline fun <T> ensureNotOnMainThread(block: () -> T): T {
@@ -21,9 +24,15 @@ object ProcessUtils {
 
     inline fun <T> withDelay(delay: Long, crossinline block: () -> T) {
         ensureOnMainThread {
-            android.os.Handler(Looper.getMainLooper()).postDelayed({
+            Handler(Looper.getMainLooper()).postDelayed({
                                                                        block()
                                                                    }, delay)
+        }
+    }
+
+    suspend inline fun <T> mainThread(crossinline block: () -> T) {
+        withContext(Dispatchers.Main) {
+            block()
         }
     }
 }

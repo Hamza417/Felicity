@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sync">Sync</string>
+    <string name="scanning">Scanning</string>
+    <string name="sync_completed">Sync Completed</string>
+</resources>

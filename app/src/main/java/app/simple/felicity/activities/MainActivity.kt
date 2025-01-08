@@ -6,7 +6,7 @@ import app.simple.felicity.R
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
-import app.simple.felicity.ui.main.home.SimpleListHome
+import app.simple.felicity.ui.launcher.DataLoader
 
 class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -18,7 +18,7 @@ class MainActivity : BaseActivity() {
 
         if (savedInstanceState.isNull()) {
             supportFragmentManager.beginTransaction()
-                .replace(R.id.app_container, SimpleListHome.newInstance())
+                .replace(R.id.app_container, DataLoader.newInstance())
                 .commit()
         }
     }
