@@ -12,7 +12,7 @@ I am taking my time developing it because I want it to exceed my own expectation
 
 ## Update
 
-10 Jan 2024: I have managed to make the file processing insanely fast and solved the file reading issues that I was facing. Here is the final log of the file processing:
+10 Jan 2025: I have managed to make the file processing insanely fast and solved the file reading issues that I was facing. Here is the final log of the file processing:
 
 ```java
 2025-01-10 15:05:38.128  5420-5577  StandaloneCoroutine     app.simple.felicity.dev              D  loadData: Time taken: 00:06 for 1606 files
