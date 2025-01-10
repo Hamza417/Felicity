@@ -4,16 +4,16 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.pm.ServiceInfo
 import android.os.Binder
-import android.os.Build
 import android.os.Environment
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
+import app.simple.felicity.core.logger.Debug.logDebug
 import app.simple.felicity.core.tools.MovingAverage
 import app.simple.felicity.core.utils.NumberUtils
 import app.simple.felicity.core.utils.ProcessUtils.mainThread
@@ -42,20 +42,20 @@ import kotlinx.coroutines.sync.withPermit
 import org.jaudiotagger.audio.exceptions.CannotReadException
 import java.io.File
 import kotlin.system.measureTimeMillis
-import app.simple.felicity.shared.R as SharedR
 
 class SynchronizerService : Service() {
 
     private val semaphore = Semaphore(SEMAPHORE_PERMITS)
-    private val filesLoaderJobs = mutableListOf<Job>()
-    private val timeRemaining = MutableStateFlow(Pair(0L, ""))
+    private val filesLoaderJobs = mutableSetOf<Job>()
     private val averageTime = MovingAverage(100)
+
+    private val timeRemaining = MutableStateFlow(Pair(0L, ""))
+    private val isCompleted = MutableStateFlow(false)
+    private val currentFileName = MutableStateFlow("")
 
     private lateinit var notificationManager: NotificationManager
     private lateinit var notificationBuilder: NotificationCompat.Builder
     private lateinit var notification: Notification
-
-    val timeRemainingFlow: StateFlow<Pair<Long, String>> = timeRemaining
 
     inner class SynchronizerBinder : Binder() {
         fun getService(): SynchronizerService {
@@ -63,7 +63,15 @@ class SynchronizerService : Service() {
         }
 
         fun getTimeRemaining(): StateFlow<Pair<Long, String>> {
-            return timeRemainingFlow
+            return timeRemaining
+        }
+
+        fun isCompleted(): StateFlow<Boolean> {
+            return isCompleted
+        }
+
+        fun getCurrentFileName(): StateFlow<String> {
+            return currentFileName
         }
     }
 
@@ -76,6 +84,11 @@ class SynchronizerService : Service() {
         SharedPreferences.init(applicationContext)
         notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationBuilder = NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANNEL_ID)
+        initDataLoader()
+    }
+
+    fun initDataLoader() {
+        logDebug("initDataLoader")
         loadData()
     }
 
@@ -96,9 +109,9 @@ class SynchronizerService : Service() {
                 }?.toList() ?: listOf()
             }
             val fileCount = files.size
-            notificationBuilder.setProgress(fileCount, 0, false)
             var count = 0
             val startTime = System.currentTimeMillis()
+            postProgressNotification(fileCount, count)
 
             ensureActive()
 
@@ -112,14 +125,16 @@ class SynchronizerService : Service() {
                         val remaining = fileCount - count
                         val processingTime = measureTimeMillis {
                             processFile(file, audioDatabase)
+                            currentFileName.value = file.name
                         }
 
                         ensureActive()
 
                         synchronized(timeRemaining) {
                             synchronized(averageTime) {
-                                timeRemaining.value = Pair((averageTime.next(processingTime) * remaining).toLong(), "$count/$fileCount")
-                                notificationBuilder
+                                timeRemaining.value =
+                                    Pair((averageTime.next(processingTime) * remaining).toLong(), "$count/$fileCount")
+                                postProgressNotification(fileCount, count)
                             }
                         }
                     }
@@ -128,10 +143,24 @@ class SynchronizerService : Service() {
 
             deferredResults.awaitAll()
 
-            Log.d(TAG, "loadData: Time taken: ${NumberUtils.getFormattedTime(System.currentTimeMillis() - startTime)} s")
+            logDebug("loadData: Time taken: " +
+                    "${NumberUtils.getFormattedTime(System.currentTimeMillis() - startTime)} for $fileCount files")
+
+            postSyncCompletedNotification()
         }
 
         filesLoaderJobs.add(job)
+    }
+
+    private fun postProgressNotification(max: Int, progress: Int) {
+        notificationBuilder.setProgress(max, progress, false)
+        notificationBuilder.setContentText("$progress/$max")
+        if (ActivityCompat.checkSelfPermission(
+                        applicationContext, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            notificationManager.notify(NOTIFICATION_ID, notificationBuilder.build())
+        } else {
+            throw IllegalStateException("Permission denied")
+        }
     }
 
     private suspend fun processFile(file: File, audioDatabase: AudioDatabase?) = coroutineScope {
@@ -157,17 +186,17 @@ class SynchronizerService : Service() {
     }
 
     private fun createNotification() {
-        createNotificationChannel(NOTIFICATION_CHANNEL_ID, getString(R.string.sync))
+        applicationContext.createNotificationChannel(NOTIFICATION_CHANNEL_ID, applicationContext.getString(R.string.sync))
 
-        notificationBuilder.setContentTitle(getString(R.string.scanning))
+        notificationBuilder.setContentTitle(applicationContext.getString(R.string.scanning))
             .setSmallIcon(R.drawable.ic_sync)
             .setCategory(Notification.CATEGORY_SERVICE)
             .setShowWhen(true)
             .setSilent(true)
             .setOngoing(true)
             .addAction(applicationContext.createNotificationAction(
-                    SharedR.drawable.ic_cancel,
-                    getString(R.string.close),
+                    app.simple.felicity.shared.R.drawable.ic_cancel,
+                    applicationContext.getString(R.string.close),
                     ServiceConstants.ACTION_CANCEL,
                     SynchronizerService::class.java))
             .setProgress(100, 0, false)
@@ -176,29 +205,53 @@ class SynchronizerService : Service() {
         notification.flags = notification.flags or Notification.FLAG_ONGOING_EVENT
 
         if (ActivityCompat.checkSelfPermission(
-                        this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                        applicationContext, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             return
         }
 
         notificationManager.notify(NOTIFICATION_ID, notification)
+    }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+    private fun postSyncCompletedNotification() {
+        isCompleted.value = true
+        notificationManager.cancel(NOTIFICATION_ID)
+        notificationBuilder.setContentTitle(applicationContext.getString(R.string.sync_completed))
+            .setSmallIcon(R.drawable.ic_sync)
+            .setCategory(Notification.CATEGORY_SERVICE)
+            .setShowWhen(true)
+            .setSilent(true)
+            .setOngoing(false)
+            .setProgress(0, 0, false)
+            .setAutoCancel(true)
+
+        notification = notificationBuilder.build()
+        notification.flags = notification.flags and Notification.FLAG_ONGOING_EVENT.inv()
+
+        if (ActivityCompat.checkSelfPermission(
+                        applicationContext, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            return
         }
+
+        notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        filesLoaderJobs.forEach { it.cancel() }
+        filesLoaderJobs.forEach { it.cancel() }.also {
+            filesLoaderJobs.clear()
+        }
     }
 
     companion object {
-        private const val TAG = "SynchronizerService"
+        const val TAG = "SynchronizerService"
 
         private const val SEMAPHORE_PERMITS = 25
         private const val NOTIFICATION_ID = 1
         private const val NOTIFICATION_CHANNEL_ID = "synchronizer_channel"
+
+        fun getSyncServiceIntent(context: Context): Intent {
+            return Intent(context, SynchronizerService::class.java)
+        }
     }
 }
