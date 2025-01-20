@@ -5,14 +5,13 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.util.Objects;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-
-import java.util.Objects;
-
 import app.simple.felicity.extensions.livedata.ErrorLiveData;
 import app.simple.felicity.preferences.ConfigurationPreferences;
 import app.simple.felicity.repository.database.instances.StackTraceDatabase;

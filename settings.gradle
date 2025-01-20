@@ -14,7 +14,7 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "Felicity"
-include ':app'
+include ':music'
 include ':theme'
 include ':decorations'
 include ':preferences'

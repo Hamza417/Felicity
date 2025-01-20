@@ -10,9 +10,9 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/core" />
             <option value="$PROJECT_DIR$/decorations" />
+            <option value="$PROJECT_DIR$/music" />
             <option value="$PROJECT_DIR$/preferences" />
             <option value="$PROJECT_DIR$/repository" />
             <option value="$PROJECT_DIR$/shared" />
