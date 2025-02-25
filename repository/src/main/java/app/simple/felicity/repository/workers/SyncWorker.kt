@@ -16,11 +16,11 @@ import app.simple.felicity.core.utils.NumberUtils
 import app.simple.felicity.core.utils.ProcessUtils.mainThread
 import app.simple.felicity.core.utils.SDCard
 import app.simple.felicity.repository.R
-import app.simple.felicity.repository.SynchronizerService
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.loaders.JAudioMetadataLoader
 import app.simple.felicity.repository.loaders.MediaMetadataLoader
 import app.simple.felicity.repository.models.normal.Audio
+import app.simple.felicity.repository.services.AudioSynchronizerService
 import app.simple.felicity.repository.utils.LoaderUtils.isAudioFile
 import app.simple.felicity.shared.constants.ServiceConstants
 import app.simple.felicity.shared.utils.ServiceUtils.createNotificationAction
@@ -164,7 +164,7 @@ class SyncWorker(context: Context, workerParams: WorkerParameters) : CoroutineWo
                     app.simple.felicity.shared.R.drawable.ic_cancel,
                     applicationContext.getString(R.string.close),
                     ServiceConstants.ACTION_CANCEL,
-                    SynchronizerService::class.java))
+                    AudioSynchronizerService::class.java))
             .setProgress(100, 0, false)
 
         notification = notificationBuilder.build()

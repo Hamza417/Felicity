@@ -1,4 +1,4 @@
-package app.simple.felicity.repository
+package app.simple.felicity.repository.services
 
 import android.Manifest
 import android.app.Notification
@@ -19,6 +19,7 @@ import app.simple.felicity.core.utils.NumberUtils
 import app.simple.felicity.core.utils.ProcessUtils.mainThread
 import app.simple.felicity.core.utils.SDCard
 import app.simple.felicity.preferences.SharedPreferences
+import app.simple.felicity.repository.R
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.loaders.JAudioMetadataLoader
 import app.simple.felicity.repository.loaders.MediaMetadataLoader
@@ -43,7 +44,7 @@ import org.jaudiotagger.audio.exceptions.CannotReadException
 import java.io.File
 import kotlin.system.measureTimeMillis
 
-class SynchronizerService : Service() {
+class AudioSynchronizerService : Service() {
 
     private val semaphore = Semaphore(SEMAPHORE_PERMITS)
     private val filesLoaderJobs = mutableSetOf<Job>()
@@ -58,8 +59,8 @@ class SynchronizerService : Service() {
     private lateinit var notification: Notification
 
     inner class SynchronizerBinder : Binder() {
-        fun getService(): SynchronizerService {
-            return this@SynchronizerService
+        fun getService(): AudioSynchronizerService {
+            return this@AudioSynchronizerService
         }
 
         fun getTimeRemaining(): StateFlow<Pair<Long, String>> {
@@ -198,7 +199,7 @@ class SynchronizerService : Service() {
                     app.simple.felicity.shared.R.drawable.ic_cancel,
                     applicationContext.getString(R.string.close),
                     ServiceConstants.ACTION_CANCEL,
-                    SynchronizerService::class.java))
+                    AudioSynchronizerService::class.java))
             .setProgress(100, 0, false)
 
         notification = notificationBuilder.build()
@@ -251,7 +252,7 @@ class SynchronizerService : Service() {
         private const val NOTIFICATION_CHANNEL_ID = "synchronizer_channel"
 
         fun getSyncServiceIntent(context: Context): Intent {
-            return Intent(context, SynchronizerService::class.java)
+            return Intent(context, AudioSynchronizerService::class.java)
         }
     }
 }

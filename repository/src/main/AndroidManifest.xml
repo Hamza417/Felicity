@@ -3,7 +3,7 @@
 
     <application>
         <service
-            android:name=".SynchronizerService"
+            android:name=".services.AudioSynchronizerService"
             android:exported="true"
             android:permission="android.permission.BIND_JOB_SERVICE" />
     </application>
