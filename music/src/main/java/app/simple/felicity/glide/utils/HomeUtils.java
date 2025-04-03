@@ -1,8 +1,14 @@
-package app.simple.felicity.repository.models.home;
+package app.simple.felicity.glide.utils;
 
 import android.widget.ImageView;
 
 import java.util.Collections;
+
+import app.simple.felicity.repository.models.home.Home;
+import app.simple.felicity.repository.models.home.HomeAlbum;
+import app.simple.felicity.repository.models.home.HomeArtist;
+import app.simple.felicity.repository.models.home.HomeAudio;
+import app.simple.felicity.repository.models.home.HomeGenre;
 
 public class HomeUtils {
     public static int getHomeDataSize(Home home) {
@@ -21,9 +27,9 @@ public class HomeUtils {
 
     public static void loadHomeAlbumArt(Home home, ImageView imageView, int position) {
         if (home instanceof HomeAudio) {
-            // AudioCoverUtil.INSTANCE.loadFromUri(imageView, Uri.parse(((HomeAudio) home).getAudios().get(position).getArtUri()));
+            AudioCoverUtil.INSTANCE.loadFromPath(imageView, ((HomeAudio) home).getAudios().get(position).getPath());
         } else if (home instanceof HomeAlbum) {
-            // AlbumCoverUtils.INSTANCE.loadAlbumCoverSquare(imageView, ((HomeAlbum) home).getAlbums().get(position).getAlbumId());
+        
         } else if (home instanceof HomeGenre) {
 
         } else if (home instanceof HomeArtist) {

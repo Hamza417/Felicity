@@ -7,6 +7,7 @@ import android.widget.ImageView
 import androidx.core.net.toUri
 import app.simple.felicity.R
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverModel
+import app.simple.felicity.glide.pathcover.PathCoverModel
 import app.simple.felicity.glide.transformation.Blur
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Greyscale
@@ -131,6 +132,13 @@ object AudioCoverUtil {
 
     fun ImageView.loadFromUri(uri: String) {
         loadFromUri(uri.toUri())
+    }
+
+    fun ImageView.loadFromPath(path: String) {
+        Glide.with(this)
+            .asBitmap()
+            .load(PathCoverModel(this.context, path))
+            .into(this)
     }
 
     fun ImageView.loadFromUriWithAnimation(uri: Uri) {
