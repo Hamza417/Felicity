@@ -14,7 +14,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import app.simple.felicity.helpers.IntentHelper
-import app.simple.felicity.services.FelicityPlayerService
 import kotlinx.coroutines.launch
 
 abstract class PlayerFragment : ScopedFragment() {

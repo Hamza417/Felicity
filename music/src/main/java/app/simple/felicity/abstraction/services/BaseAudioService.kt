@@ -1,9 +1,8 @@
-package app.simple.felicity.extensions.services
+package app.simple.felicity.abstraction.services
 
 import android.content.Intent
 import android.content.SharedPreferences
 import android.media.AudioManager
-import android.media.MediaPlayer
 import android.os.IBinder
 import androidx.media3.session.MediaSessionService
 import app.simple.felicity.repository.interfaces.AudioStateCallbacks
@@ -12,11 +11,6 @@ import app.simple.felicity.repository.models.normal.Audio
 
 abstract class BaseAudioService : MediaSessionService(),
                                   AudioManager.OnAudioFocusChangeListener,
-                                  MediaPlayer.OnCompletionListener,
-                                  MediaPlayer.OnPreparedListener,
-                                  MediaPlayer.OnErrorListener,
-                                  MediaPlayer.OnBufferingUpdateListener,
-                                  MediaPlayer.OnSeekCompleteListener,
                                   SharedPreferences.OnSharedPreferenceChangeListener,
                                   AudioStateCallbacks {
 
@@ -36,26 +30,6 @@ abstract class BaseAudioService : MediaSessionService(),
     }
 
     override fun onAudioFocusChange(focusChange: Int) {
-
-    }
-
-    override fun onCompletion(mp: MediaPlayer?) {
-
-    }
-
-    override fun onPrepared(mp: MediaPlayer?) {
-
-    }
-
-    override fun onError(mp: MediaPlayer?, what: Int, extra: Int): Boolean {
-        return false
-    }
-
-    override fun onBufferingUpdate(mp: MediaPlayer?, percent: Int) {
-
-    }
-
-    override fun onSeekComplete(mp: MediaPlayer?) {
 
     }
 
