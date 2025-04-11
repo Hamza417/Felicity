@@ -22,13 +22,13 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool;
-import com.google.android.renderscript.Toolkit;
 
 import java.security.MessageDigest;
 
 import androidx.annotation.NonNull;
 import app.simple.felicity.BuildConfig;
 import app.simple.felicity.glide.internals.FastBlur;
+import app.simple.felicity.toolkit.Toolkit;
 
 public class Blur extends BitmapTransformation {
     

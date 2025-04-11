@@ -58,6 +58,7 @@ dependencies {
     implementation project(':core')
     implementation project(':shared')
     implementation project(':repository')
+    implementation project(':toolkit')
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
@@ -74,7 +75,7 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.8.7'
     implementation 'androidx.documentfile:documentfile:1.0.1'
     implementation 'androidx.media:media:1.7.0'
-    implementation "androidx.security:security-crypto:1.1.0-alpha06"
+    implementation "androidx.security:security-crypto:1.1.0-alpha07"
     implementation "androidx.media3:media3-exoplayer:1.6.0"
     implementation "androidx.media3:media3-ui:1.6.0"
     implementation "androidx.media3:media3-common:1.6.0"
@@ -91,16 +92,13 @@ dependencies {
     implementation 'com.anggrayudi:storage:1.5.5'
     implementation 'com.caverock:androidsvg-aar:1.4'
 
-    // Toolkit
-    implementation 'com.github.android:renderscript-intrinsics-replacement-toolkit:b6363490c3'
-
     // Glide
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     implementation 'com.github.bumptech.glide:okhttp3-integration:4.16.0'
     ksp 'com.github.bumptech.glide:ksp:4.16.0'
 
     // Room
-    implementation "androidx.room:room-ktx:2.6.1"
-    ksp "androidx.room:room-compiler:2.6.1"
-    androidTestImplementation "androidx.room:room-testing:2.6.1"
+    implementation "androidx.room:room-ktx:2.7.0"
+    ksp "androidx.room:room-compiler:2.7.0"
+    androidTestImplementation "androidx.room:room-testing:2.7.0"
 }
