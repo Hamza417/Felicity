@@ -17,9 +17,9 @@
             <option value="$PROJECT_DIR$/repository" />
             <option value="$PROJECT_DIR$/shared" />
             <option value="$PROJECT_DIR$/theme" />
+            <option value="$PROJECT_DIR$/toolkit" />
           </set>
         </option>
-        <option name="resolveExternalAnnotations" value="false" />
       </GradleProjectSettings>
     </option>
   </component>

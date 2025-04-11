@@ -15,5 +15,4 @@
 local.properties
 /app/release/
 /.idea/other.xml
-/.kotlin/sessions/kotlin-compiler-15725687320733259471.salive
-/.kotlin/sessions/kotlin-compiler-16615792401630465137.salive
+/.kotlin/sessions/

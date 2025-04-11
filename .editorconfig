@@ -1,0 +1,3 @@
+# Exclude .S files from formatting
+[*.S]
+indent_style = ignore

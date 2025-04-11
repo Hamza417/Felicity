@@ -105,9 +105,6 @@ class DefaultPlayer : PlayerFragment() {
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar) {
-                if (seekBar.max != audioService?.getDuration()!!) {
-                    seekBar.max = audioService?.getDuration()!!
-                }
 
                 binding.seekbar.clearAnimation()
                 handler.removeCallbacks(progressRunnable)
@@ -128,18 +125,11 @@ class DefaultPlayer : PlayerFragment() {
     }
 
     override fun onPrepared() {
-        audioService?.let {
 
-        }
     }
 
     override fun onMetaData() {
-        audioService?.let {
-            handler.removeCallbacks(progressRunnable)
-            binding.seekbar.max = it.getDuration()
-            binding.currentDuration.text = NumberUtils.getFormattedTime(it.getDuration().toLong())
-            handler.post(progressRunnable)
-        }
+
     }
 
     override fun onQuitMusicService() {

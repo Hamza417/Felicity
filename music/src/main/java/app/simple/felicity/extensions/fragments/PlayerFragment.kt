@@ -18,7 +18,6 @@ import kotlinx.coroutines.launch
 
 abstract class PlayerFragment : ScopedFragment() {
 
-    protected var audioService: FelicityPlayerService? = null
     private var serviceConnection: ServiceConnection? = null
     private var audioBroadcastReceiver: BroadcastReceiver? = null
     private val audioIntentFilter = IntentFilter()
@@ -83,12 +82,12 @@ abstract class PlayerFragment : ScopedFragment() {
 
         serviceConnection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                audioService = (service as FelicityPlayerService.FelicityPlayerServiceBinder).getService()
+
                 onServiceConnected()
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
-                audioService = null
+
                 onServiceDisconnected()
             }
         }
@@ -101,28 +100,17 @@ abstract class PlayerFragment : ScopedFragment() {
     }
 
     private fun startService() {
-        LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(audioBroadcastReceiver!!) // Just to be safe
-        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(audioBroadcastReceiver!!, audioIntentFilter)
-        val intent = FelicityPlayerService.getIntent(requireActivity()) // Activity context will keep the foreground service alive
-        requireContext().startService(intent)
-        serviceConnection?.let { requireContext().bindService(intent, it, Context.BIND_AUTO_CREATE) }
+
     }
 
     protected fun stopService() {
         kotlin.runCatching {
-            requireContext().unbindService(serviceConnection!!)
-            requireContext().stopService(FelicityPlayerService.getIntent(requireActivity().applicationContext))
             goBack()
         }
     }
 
     protected val progressRunnable: Runnable = object : Runnable {
         override fun run() {
-            if (audioService != null) {
-                val progress = audioService!!.getProgress()
-                val duration = audioService!!.getDuration()
-                onProgress(progress, duration)
-            }
 
             handler.postDelayed(this, 1000L)
         }

@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.KeyEvent
 import androidx.core.content.ContextCompat
 import app.simple.felicity.BuildConfig
+import app.simple.felicity.services.MediaPlayerService
 import app.simple.felicity.utils.ParcelUtils.parcelable
 
 /**
@@ -114,7 +115,7 @@ class MediaButtonIntentReceiver : BroadcastReceiver() {
         }
 
         private fun startService(context: Context, command: String) {
-            val intent = Intent(context, FelicityPlayerService::class.java)
+            val intent = Intent(context, MediaPlayerService::class.java)
             intent.action = command
             try {
                 // IMPORTANT NOTE: (kind of a hack)
