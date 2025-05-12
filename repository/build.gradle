@@ -11,11 +11,11 @@ dependencies {
     implementation project(':shared')
 
     // Room
-    implementation "androidx.room:room-ktx:2.6.1"
-    ksp "androidx.room:room-compiler:2.6.1"
-    androidTestImplementation "androidx.room:room-testing:2.6.1"
+    implementation "androidx.room:room-ktx:2.7.1"
+    ksp "androidx.room:room-compiler:2.7.1"
+    androidTestImplementation "androidx.room:room-testing:2.7.1"
 
     implementation 'net.jthink:jaudiotagger:3.0.1'
 
-    implementation "androidx.work:work-runtime-ktx:2.10.0"
+    implementation "androidx.work:work-runtime-ktx:2.10.1"
 }
