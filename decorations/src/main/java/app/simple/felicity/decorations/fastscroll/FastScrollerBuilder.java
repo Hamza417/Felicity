@@ -21,7 +21,6 @@ import android.content.res.ColorStateList;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.view.ViewGroup;
-import android.webkit.WebView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -31,7 +30,6 @@ import androidx.core.content.res.ResourcesCompat;
 import androidx.core.util.Consumer;
 import androidx.core.widget.NestedScrollView;
 import androidx.recyclerview.widget.RecyclerView;
-
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.theme.managers.ThemeManager;
 
@@ -157,10 +155,6 @@ public class FastScrollerBuilder {
             throw new UnsupportedOperationException("Please use "
                     + FastScrollScrollView.class.getSimpleName() + " instead of "
                     + ScrollView.class.getSimpleName() + "for fast scroll");
-        } else if (view instanceof WebView) {
-            throw new UnsupportedOperationException("Please use "
-                    + FastScrollWebView.class.getSimpleName() + " instead of "
-                    + WebView.class.getSimpleName() + "for fast scroll");
         } else {
             throw new UnsupportedOperationException(view.getClass().getSimpleName()
                     + " is not supported for fast scroll");

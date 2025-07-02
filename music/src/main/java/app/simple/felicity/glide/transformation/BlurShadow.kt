@@ -13,10 +13,10 @@ import androidx.annotation.ColorInt
 import androidx.annotation.ColorRes
 import androidx.annotation.IntDef
 import androidx.core.content.ContextCompat
-import app.simple.felicity.toolkit.Toolkit
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import com.bumptech.glide.util.Util
+import com.google.android.renderscript.Toolkit
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import kotlin.math.cos
