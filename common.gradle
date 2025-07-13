@@ -32,6 +32,7 @@ android {
     }
 
     compileOptions {
+        coreLibraryDesugaringEnabled = true
         sourceCompatibility JavaVersion.current()
         targetCompatibility JavaVersion.current()
     }
@@ -42,6 +43,9 @@ android {
 }
 
 dependencies {
+    // Android Tools
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+
     implementation 'androidx.core:core-ktx:1.16.0'
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.12.0'
