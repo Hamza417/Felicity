@@ -5,16 +5,11 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
-import app.simple.felicity.R
-import app.simple.felicity.adapters.home.main.AdapterArtFlowHome
 import app.simple.felicity.databinding.FragmentHomeArtflowBinding
-import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolder
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.ui.main.songs.InureSongs
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 
 class ArtFlowHome : ScopedFragment() {
@@ -37,33 +32,33 @@ class ArtFlowHome : ScopedFragment() {
         binding?.recyclerView?.setHasFixedSize(true)
         binding?.recyclerView?.backgroundTintList = ColorStateList(arrayOf(intArrayOf()), intArrayOf(Color.BLACK))
 
-        homeViewModel?.getHomeData()?.observe(viewLifecycleOwner) { list ->
-            val adapter = AdapterArtFlowHome(list)
-            binding?.recyclerView?.adapter = adapter
-            binding?.recyclerView?.scheduleLayoutAnimation()
-
-            adapter.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
-                override fun onClicked(view: View, position: Int) {
-                    when (list[position].title) {
-                        R.string.songs -> {
-                            openFragmentSlide(InureSongs.newInstance(), InureSongs.TAG)
-                        }
-                    }
-                }
-            })
-
-            binding?.recyclerView?.setOnTouchListener { _, event ->
-                when (event.action) {
-                    MotionEvent.ACTION_UP -> {
-                        binding?.recyclerView?.forEachViewHolder<AdapterArtFlowHome.Holder> {
-                            it.sliderView.restartCycle()
-                        }
-                    }
-                }
-
-                false
-            }
-        }
+        //        homeViewModel?.getHomeData()?.observe(viewLifecycleOwner) { list ->
+        //            val adapter = AdapterArtFlowHome(list)
+        //            binding?.recyclerView?.adapter = adapter
+        //            binding?.recyclerView?.scheduleLayoutAnimation()
+        //
+        //            adapter.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
+        //                override fun onClicked(view: View, position: Int) {
+        //                    when (list[position].title) {
+        //                        R.string.songs -> {
+        //                            openFragmentSlide(InureSongs.newInstance(), InureSongs.TAG)
+        //                        }
+        //                    }
+        //                }
+        //            })
+        //
+        //            binding?.recyclerView?.setOnTouchListener { _, event ->
+        //                when (event.action) {
+        //                    MotionEvent.ACTION_UP -> {
+        //                        binding?.recyclerView?.forEachViewHolder<AdapterArtFlowHome.Holder> {
+        //                            it.sliderView.restartCycle()
+        //                        }
+        //                    }
+        //                }
+        //
+        //                false
+        //            }
+        //        }
     }
 
     override fun onDestroyView() {

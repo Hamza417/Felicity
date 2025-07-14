@@ -24,6 +24,7 @@ import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.loaders.JAudioMetadataLoader
 import app.simple.felicity.repository.loaders.MediaMetadataLoader
 import app.simple.felicity.repository.models.normal.Audio
+import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.utils.LoaderUtils.isAudioFile
 import app.simple.felicity.shared.constants.ServiceConstants
 import app.simple.felicity.shared.utils.ServiceUtils.createNotificationAction
@@ -57,6 +58,7 @@ class AudioSynchronizerService : Service() {
     private lateinit var notificationManager: NotificationManager
     private lateinit var notificationBuilder: NotificationCompat.Builder
     private lateinit var notification: Notification
+    private var audioRepository: AudioRepository? = null
 
     inner class SynchronizerBinder : Binder() {
         fun getService(): AudioSynchronizerService {
@@ -85,6 +87,7 @@ class AudioSynchronizerService : Service() {
         SharedPreferences.init(applicationContext)
         notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationBuilder = NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANNEL_ID)
+        audioRepository = AudioRepository(AudioDatabase.getInstance(applicationContext)?.audioDao()!!)
         initDataLoader()
     }
 
@@ -96,7 +99,6 @@ class AudioSynchronizerService : Service() {
     private fun loadData() {
         val job = CoroutineScope(Dispatchers.IO).launch {
             val paths = arrayListOf(Environment.getExternalStorageDirectory(), SDCard.findSdCardPath(applicationContext))
-            val audioDatabase = AudioDatabase.getInstance(applicationContext)
 
             mainThread {
                 createNotification()
@@ -125,7 +127,7 @@ class AudioSynchronizerService : Service() {
                         count++
                         val remaining = fileCount - count
                         val processingTime = measureTimeMillis {
-                            processFile(file, audioDatabase)
+                            processFile(file, audioRepository!!)
                             currentFileName.value = file.name
                         }
 
@@ -145,7 +147,7 @@ class AudioSynchronizerService : Service() {
             deferredResults.awaitAll()
 
             logDebug("loadData: Time taken: " +
-                    "${NumberUtils.getFormattedTime(System.currentTimeMillis() - startTime)} for $fileCount files")
+                             "${NumberUtils.getFormattedTime(System.currentTimeMillis() - startTime)} for $fileCount files")
 
             postSyncCompletedNotification()
         }
@@ -164,13 +166,13 @@ class AudioSynchronizerService : Service() {
         }
     }
 
-    private suspend fun processFile(file: File, audioDatabase: AudioDatabase?) = coroutineScope {
+    private suspend fun processFile(file: File, audioRepository: AudioRepository) = coroutineScope {
         try {
             ensureActive()
             val audio = Audio()
             val retriever = JAudioMetadataLoader(file)
             retriever.setAudioMetadata(audio)
-            audioDatabase?.audioDao()?.insert(audio)
+            audioRepository.insertAudio(audio)
             Log.d(TAG, "Successfully read file using JAudioMetadataLoader: ${file.absolutePath}")
         } catch (e: CannotReadException) {
             e.printStackTrace()
@@ -181,7 +183,7 @@ class AudioSynchronizerService : Service() {
             val retriever = MediaMetadataLoader(file)
             retriever.setAudioMetadata(audio)
 
-            audioDatabase?.audioDao()?.insert(audio)
+            audioRepository.insertAudio(audio)
             Log.d(TAG, "Successfully read file using MediaMetadataLoader: ${file.absolutePath}")
         }
     }

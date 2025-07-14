@@ -31,12 +31,12 @@ class SpannedHome : ScopedFragment() {
         startPostponedEnterTransition()
         binding?.recyclerView?.setHasFixedSize(false)
 
-        homeViewModel?.getHomeData()?.observe(viewLifecycleOwner) {
-            binding?.recyclerView?.adapter = AdapterGridHome(it)
-            binding?.recyclerView?.scheduleLayoutAnimation()
-            // Disable item animations
-            binding?.recyclerView?.itemAnimator = null
-        }
+        //        homeViewModel?.getHomeData()?.observe(viewLifecycleOwner) {
+        //            binding?.recyclerView?.adapter = AdapterGridHome(it)
+        //            binding?.recyclerView?.scheduleLayoutAnimation()
+        //            // Disable item animations
+        //            binding?.recyclerView?.itemAnimator = null
+        //        }
     }
 
     private val randomizer: Runnable = object : Runnable {

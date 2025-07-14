@@ -8,37 +8,38 @@ import androidx.room.Query
 import androidx.room.RawQuery
 import androidx.sqlite.db.SupportSQLiteQuery
 import app.simple.felicity.repository.models.normal.Audio
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AudioDao {
     @Query("SELECT * FROM audio ORDER BY title COLLATE NOCASE ASC")
-    suspend fun getAllAudio(): MutableList<Audio>
+    fun getAllAudio(): Flow<MutableList<Audio>>
 
     // Get unique artists
     @Query("SELECT * FROM audio GROUP BY artist ORDER BY artist COLLATE NOCASE ASC")
-    suspend fun getAllArtists(): MutableList<Audio>
+    fun getAllArtists(): Flow<MutableList<Audio>>
 
     // Get unique albums
     @Query("SELECT * FROM audio GROUP BY album ORDER BY album COLLATE NOCASE ASC")
-    suspend fun getAllAlbums(): MutableList<Audio>
+    fun getAllAlbums(): Flow<MutableList<Audio>>
 
     // Get recent audio
     @Query("SELECT * FROM audio ORDER BY date_added DESC LIMIT 25")
-    suspend fun getRecentAudio(): MutableList<Audio>
+    fun getRecentAudio(): Flow<MutableList<Audio>>
 
     // get all audio files by artist name in ascending order
     @Query("SELECT * FROM audio WHERE artist = :artist ORDER BY title COLLATE NOCASE ASC")
-    suspend fun getAudioByArtist(artist: String): MutableList<Audio>
+    fun getAudioByArtist(artist: String): Flow<MutableList<Audio>>
 
     @RawQuery
-    suspend fun getQueriedData(query: SupportSQLiteQuery): MutableList<Audio>
+    fun getQueriedData(query: SupportSQLiteQuery): MutableList<Audio>
 
     /**
      * Delete a [Audio] item
      * from the table
      */
     @Delete
-    suspend fun deleteAudio(audio: Audio)
+    suspend fun delete(audio: Audio)
 
     /**
      * Insert [Audio] item
