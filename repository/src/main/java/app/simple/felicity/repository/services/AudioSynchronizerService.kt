@@ -13,7 +13,6 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
-import app.simple.felicity.core.logger.Debug.logDebug
 import app.simple.felicity.core.tools.MovingAverage
 import app.simple.felicity.core.utils.NumberUtils
 import app.simple.felicity.core.utils.ProcessUtils.mainThread
@@ -92,7 +91,7 @@ class AudioSynchronizerService : Service() {
     }
 
     fun initDataLoader() {
-        logDebug("initDataLoader")
+        Log.i(TAG, "initDataLoader: Initializing data loader")
         loadData()
     }
 
@@ -146,8 +145,8 @@ class AudioSynchronizerService : Service() {
 
             deferredResults.awaitAll()
 
-            logDebug("loadData: Time taken: " +
-                             "${NumberUtils.getFormattedTime(System.currentTimeMillis() - startTime)} for $fileCount files")
+            Log.v(TAG, "Time taken: " +
+                    "${NumberUtils.getFormattedTime(System.currentTimeMillis() - startTime)} for $fileCount files")
 
             postSyncCompletedNotification()
         }
