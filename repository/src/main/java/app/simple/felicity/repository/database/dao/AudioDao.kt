@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.RawQuery
 import androidx.sqlite.db.SupportSQLiteQuery
+import app.simple.felicity.repository.models.IdPath
 import app.simple.felicity.repository.models.normal.Audio
 import kotlinx.coroutines.flow.Flow
 
@@ -31,6 +32,12 @@ interface AudioDao {
     @Query("SELECT * FROM audio WHERE artist = :artist ORDER BY title COLLATE NOCASE ASC")
     fun getAudioByArtist(artist: String): Flow<MutableList<Audio>>
 
+    @Query("SELECT id FROM audio WHERE path = :path")
+    fun getAudioIdByPath(path: String): Long
+
+    @Query("SELECT id, path FROM audio")
+    fun getIdAndPath(): MutableList<IdPath>
+
     @RawQuery
     fun getQueriedData(query: SupportSQLiteQuery): MutableList<Audio>
 
@@ -45,7 +52,7 @@ interface AudioDao {
      * Insert [Audio] item
      * into the table
      */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(audio: Audio)
 
     /**

@@ -50,7 +50,7 @@ public class JAudioMetadataLoader {
         audio.setYear(getYear());
         audio.setSamplingRate(getSamplingRate());
         audio.setBitPerSample(getBitPerSample());
-        audio.setId(generateId(audio));
+        audio.setId(generateId());
     }
     
     private String getAudioFileTag(FieldKey tag) {
@@ -133,7 +133,7 @@ public class JAudioMetadataLoader {
         return audioFile.getAudioHeader().getBitsPerSample();
     }
     
-    private long generateId(Audio audio) {
-        return FileUtils.INSTANCE.generateXXHash64(new File(audio.getPath()), Integer.MAX_VALUE);
+    private long generateId() {
+        return FileUtils.INSTANCE.generateXXHash64(file, Integer.MAX_VALUE);
     }
 }

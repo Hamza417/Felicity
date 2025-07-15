@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.exceptions.CannotReadException
 import java.io.File
 import kotlin.system.measureTimeMillis
@@ -97,61 +98,69 @@ class AudioSynchronizerService : Service() {
 
     private fun loadData() {
         val job = CoroutineScope(Dispatchers.IO).launch {
-            val paths = arrayListOf(Environment.getExternalStorageDirectory(), SDCard.findSdCardPath(applicationContext))
-
-            mainThread {
-                createNotification()
-            }
-
-            ensureActive()
-
-            val files = paths.flatMap {
-                it?.walkTopDown()?.filter { file ->
-                    file.isFile && file.isAudioFile()
-                }?.toList() ?: listOf()
-            }
-            val fileCount = files.size
-            var count = 0
             val startTime = System.currentTimeMillis()
-            postProgressNotification(fileCount, count)
 
+            // Step 1: Prepare paths and load existing audio map
+            val paths = listOfNotNull(
+                    Environment.getExternalStorageDirectory(),
+                    SDCard.findSdCardPath(applicationContext)
+            )
+            val hashMap = audioRepository?.getHashMapForIDByPath() ?: HashMap()
+
+            mainThread { createNotification() }
             ensureActive()
 
-            val deferredResults = files.map { file ->
+            // Step 2: Collect all audio files
+            val files = withContext(Dispatchers.IO) {
+                paths.flatMap { dir ->
+                    dir.walkTopDown()
+                        .filter { it.isFile && it.isAudioFile() }
+                        .toList()
+                }
+            }
+
+            // Step 3: Filter files that need processing
+            val filesToProcess = files.filter { file ->
+                !hashMap.containsKey(file.absolutePath)
+            }
+
+            val fileCount = filesToProcess.size
+            var count = 0
+            postProgressNotification(fileCount, count)
+            ensureActive()
+
+            // Step 4: Process files concurrently with semaphore
+            val deferredResults = filesToProcess.map { file ->
                 async {
                     ensureActive()
-
                     semaphore.withPermit {
                         ensureActive()
-                        count++
-                        val remaining = fileCount - count
                         val processingTime = measureTimeMillis {
                             processFile(file, audioRepository!!)
                             currentFileName.value = file.name
                         }
-
-                        ensureActive()
-
-                        synchronized(timeRemaining) {
-                            synchronized(averageTime) {
-                                timeRemaining.value =
-                                    Pair((averageTime.next(processingTime) * remaining).toLong(), "$count/$fileCount")
-                                postProgressNotification(fileCount, count)
-                            }
-                        }
+                        count++
+                        updateProgress(count, fileCount, processingTime)
                     }
                 }
             }
-
             deferredResults.awaitAll()
 
-            Log.v(TAG, "Time taken: " +
-                    "${NumberUtils.getFormattedTime(System.currentTimeMillis() - startTime)} for $fileCount files")
-
+            Log.v(TAG, "Time taken: ${NumberUtils.getFormattedTime(System.currentTimeMillis() - startTime)} for $fileCount files")
             postSyncCompletedNotification()
         }
 
         filesLoaderJobs.add(job)
+    }
+
+    private fun updateProgress(count: Int, total: Int, lastTime: Long) {
+        val remaining = total - count
+        synchronized(timeRemaining) {
+            synchronized(averageTime) {
+                timeRemaining.value = Pair((averageTime.next(lastTime) * remaining).toLong(), "$count/$total")
+                postProgressNotification(total, count)
+            }
+        }
     }
 
     private fun postProgressNotification(max: Int, progress: Int) {
