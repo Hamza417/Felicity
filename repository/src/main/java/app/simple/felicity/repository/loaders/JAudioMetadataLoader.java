@@ -11,6 +11,7 @@ import org.jaudiotagger.tag.TagException;
 import java.io.File;
 import java.io.IOException;
 
+import app.simple.felicity.core.utils.FileUtils;
 import app.simple.felicity.repository.models.normal.Audio;
 
 public class JAudioMetadataLoader {
@@ -132,8 +133,7 @@ public class JAudioMetadataLoader {
         return audioFile.getAudioHeader().getBitsPerSample();
     }
     
-    private int generateId(Audio audio) {
-        // Generate hashcode using title, artist, album, and duration
-        return (audio.getTitle() + audio.getArtist() + audio.getAlbum() + audio.getDuration()).hashCode();
+    private long generateId(Audio audio) {
+        return FileUtils.INSTANCE.generateXXHash64(new File(audio.getPath()), Integer.MAX_VALUE);
     }
 }

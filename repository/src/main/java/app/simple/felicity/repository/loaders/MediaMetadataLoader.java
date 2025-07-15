@@ -5,6 +5,7 @@ import android.os.Build;
 
 import java.io.File;
 
+import app.simple.felicity.core.utils.FileUtils;
 import app.simple.felicity.repository.models.normal.Audio;
 
 public class MediaMetadataLoader {
@@ -22,6 +23,9 @@ public class MediaMetadataLoader {
         this(new File(path));
     }
     
+    /**
+     * @noinspection DataFlowIssue
+     */
     public void setAudioMetadata(Audio audio) {
         audio.setName(file.getName());
         audio.setPath(file.getAbsolutePath());
@@ -58,8 +62,7 @@ public class MediaMetadataLoader {
         audio.setId(generateId(audio));
     }
     
-    private int generateId(Audio audio) {
-        // Generate hashcode using title, artist, album, and duration
-        return (audio.getTitle() + audio.getArtist() + audio.getAlbum() + audio.getDuration()).hashCode();
+    private long generateId(Audio audio) {
+        return FileUtils.INSTANCE.generateXXHash64(new File(audio.getPath()), Integer.MAX_VALUE);
     }
 }

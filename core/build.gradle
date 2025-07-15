@@ -5,3 +5,7 @@ apply from: rootProject.file('common.gradle')
 android {
     namespace 'app.simple.felicity.core'
 }
+
+dependencies {
+    implementation 'net.jpountz.lz4:lz4:1.3.0'
+}
