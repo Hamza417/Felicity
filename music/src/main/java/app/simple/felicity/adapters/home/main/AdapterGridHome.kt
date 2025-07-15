@@ -14,7 +14,9 @@ import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.repository.models.home.Home
 import app.simple.felicity.utils.ArrayUtils.getTwoRandomIndices
 
-class AdapterGridHome(private val data: ArrayList<Home>) : RecyclerView.Adapter<VerticalListViewHolder>() {
+class AdapterGridHome() : RecyclerView.Adapter<VerticalListViewHolder>() {
+
+    private val data: ArrayList<Home> = arrayListOf()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
@@ -83,6 +85,15 @@ class AdapterGridHome(private val data: ArrayList<Home>) : RecyclerView.Adapter<
                 adapterGridHomeBinding.artGrid.requestLayout()
             }
         }
+    }
+
+    fun insertData(home: Home) {
+        data.removeIf {
+            it.title == home.title
+        }
+
+        data.add(home)
+        notifyDataSetChanged()
     }
 
     inner class Header(itemView: View) : VerticalListViewHolder(itemView)

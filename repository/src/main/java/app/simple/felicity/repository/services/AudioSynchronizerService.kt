@@ -121,6 +121,7 @@ class AudioSynchronizerService : Service() {
 
             // Step 3: Filter files that need processing
             val filesToProcess = files.filter { file ->
+                // TODO - find why 14 songs keep skipping here
                 !hashMap.containsKey(file.absolutePath)
             }
 

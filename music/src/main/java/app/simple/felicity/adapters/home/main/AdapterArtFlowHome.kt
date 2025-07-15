@@ -12,8 +12,9 @@ import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.views.FelicityImageSlider
 import app.simple.felicity.repository.models.home.Home
 
-class AdapterArtFlowHome(private val data: ArrayList<Home>) : RecyclerView.Adapter<VerticalListViewHolder>() {
+class AdapterArtFlowHome() : RecyclerView.Adapter<VerticalListViewHolder>() {
 
+    private val data = arrayListOf<Home>()
     private var adapterArtFlowHomeCallbacks: AdapterArtFlowHomeCallbacks? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
@@ -55,6 +56,15 @@ class AdapterArtFlowHome(private val data: ArrayList<Home>) : RecyclerView.Adapt
 
     fun setAdapterArtFlowHomeCallbacks(adapterArtFlowHomeCallbacks: AdapterArtFlowHomeCallbacks) {
         this.adapterArtFlowHomeCallbacks = adapterArtFlowHomeCallbacks
+    }
+
+    fun insertData(home: Home) {
+        data.removeIf {
+            it.title == home.title
+        }
+
+        data.add(home)
+        notifyDataSetChanged()
     }
 
     companion object {

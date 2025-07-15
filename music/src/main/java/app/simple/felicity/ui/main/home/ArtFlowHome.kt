@@ -5,12 +5,22 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import app.simple.felicity.adapters.home.main.AdapterArtFlowHome
 import app.simple.felicity.databinding.FragmentHomeArtflowBinding
+import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolder
 import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.ui.main.songs.InureSongs
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.launch
 
 class ArtFlowHome : ScopedFragment() {
 
@@ -25,40 +35,58 @@ class ArtFlowHome : ScopedFragment() {
         return binding?.root
     }
 
+    @OptIn(FlowPreview::class)
     @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         startPostponedEnterTransition()
+        val adapter = AdapterArtFlowHome()
+        binding?.recyclerView?.adapter = adapter
         binding?.recyclerView?.setHasFixedSize(true)
         binding?.recyclerView?.backgroundTintList = ColorStateList(arrayOf(intArrayOf()), intArrayOf(Color.BLACK))
 
-        //        homeViewModel?.getHomeData()?.observe(viewLifecycleOwner) { list ->
-        //            val adapter = AdapterArtFlowHome(list)
-        //            binding?.recyclerView?.adapter = adapter
-        //            binding?.recyclerView?.scheduleLayoutAnimation()
-        //
-        //            adapter.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
-        //                override fun onClicked(view: View, position: Int) {
-        //                    when (list[position].title) {
-        //                        R.string.songs -> {
-        //                            openFragmentSlide(InureSongs.newInstance(), InureSongs.TAG)
-        //                        }
-        //                    }
-        //                }
-        //            })
-        //
-        //            binding?.recyclerView?.setOnTouchListener { _, event ->
-        //                when (event.action) {
-        //                    MotionEvent.ACTION_UP -> {
-        //                        binding?.recyclerView?.forEachViewHolder<AdapterArtFlowHome.Holder> {
-        //                            it.sliderView.restartCycle()
-        //                        }
-        //                    }
-        //                }
-        //
-        //                false
-        //            }
-        //        }
+        adapter.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
+            override fun onClicked(view: View, position: Int) {
+                openFragmentSlide(InureSongs.newInstance(), InureSongs.TAG)
+            }
+        })
+
+        binding?.recyclerView?.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_UP -> {
+                    binding?.recyclerView?.forEachViewHolder<AdapterArtFlowHome.Holder> {
+                        it.sliderView.restartCycle()
+                    }
+                }
+            }
+
+            false
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    homeViewModel?.songs?.sample(1000L)?.collect {
+                        adapter.insertData(it)
+                    }
+                }
+                launch {
+                    homeViewModel?.artists?.sample(1000L)?.collect {
+                        adapter.insertData(it)
+                    }
+                }
+                launch {
+                    homeViewModel?.albums?.sample(1000L)?.collect {
+                        adapter.insertData(it)
+                    }
+                }
+                launch {
+                    homeViewModel?.recentlyAdded?.sample(1000L)?.collect {
+                        adapter.insertData(it)
+                    }
+                }
+            }
+        }
     }
 
     override fun onDestroyView() {

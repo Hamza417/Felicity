@@ -5,13 +5,19 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.adapters.home.main.AdapterGridHome
 import app.simple.felicity.adapters.home.sub.AdapterGridArt
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.randomViewHolder
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.launch
 
 class SpannedHome : ScopedFragment() {
 
@@ -26,17 +32,41 @@ class SpannedHome : ScopedFragment() {
         return binding?.root
     }
 
+    @OptIn(FlowPreview::class)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         startPostponedEnterTransition()
+        val adapter = AdapterGridHome()
         binding?.recyclerView?.setHasFixedSize(false)
+        binding?.recyclerView?.adapter = adapter
+        binding?.recyclerView?.scheduleLayoutAnimation()
+        // Disable item animations
+        binding?.recyclerView?.itemAnimator = null
 
-        //        homeViewModel?.getHomeData()?.observe(viewLifecycleOwner) {
-        //            binding?.recyclerView?.adapter = AdapterGridHome(it)
-        //            binding?.recyclerView?.scheduleLayoutAnimation()
-        //            // Disable item animations
-        //            binding?.recyclerView?.itemAnimator = null
-        //        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    homeViewModel?.songs?.sample(1000L)?.collect {
+                        adapter.insertData(it)
+                    }
+                }
+                launch {
+                    homeViewModel?.artists?.sample(1000L)?.collect {
+                        adapter.insertData(it)
+                    }
+                }
+                launch {
+                    homeViewModel?.albums?.sample(1000L)?.collect {
+                        adapter.insertData(it)
+                    }
+                }
+                launch {
+                    homeViewModel?.recentlyAdded?.sample(1000L)?.collect {
+                        adapter.insertData(it)
+                    }
+                }
+            }
+        }
     }
 
     private val randomizer: Runnable = object : Runnable {

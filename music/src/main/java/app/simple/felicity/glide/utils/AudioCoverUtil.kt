@@ -138,6 +138,8 @@ object AudioCoverUtil {
         Glide.with(this)
             .asBitmap()
             .load(PathCoverModel(this.context, path))
+            .dontTransform()
+            .centerCrop()
             .into(this)
     }
 
