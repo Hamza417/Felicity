@@ -1,0 +1,12 @@
+apply plugin: 'com.android.library'
+apply from: rootProject.file('common.gradle')
+
+android {
+    namespace 'app.simple.felicity.engine'
+}
+
+dependencies {
+    implementation project(':shared')
+    implementation project(':core')
+    implementation project(':preferences')
+}
