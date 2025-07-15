@@ -19,7 +19,6 @@ import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.ui.main.songs.InureSongs
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 
 class ArtFlowHome : ScopedFragment() {
@@ -66,22 +65,22 @@ class ArtFlowHome : ScopedFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    homeViewModel?.songs?.sample(1000L)?.collect {
+                    homeViewModel?.songs?.collect {
                         adapter.insertData(it)
                     }
                 }
                 launch {
-                    homeViewModel?.artists?.sample(1000L)?.collect {
+                    homeViewModel?.artists?.collect {
                         adapter.insertData(it)
                     }
                 }
                 launch {
-                    homeViewModel?.albums?.sample(1000L)?.collect {
+                    homeViewModel?.albums?.collect {
                         adapter.insertData(it)
                     }
                 }
                 launch {
-                    homeViewModel?.recentlyAdded?.sample(1000L)?.collect {
+                    homeViewModel?.recentlyAdded?.collect {
                         adapter.insertData(it)
                     }
                 }
