@@ -12,7 +12,7 @@ import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.glide.pathcover.Utils.loadFromPath
 import app.simple.felicity.repository.models.normal.Audio
 
-class SongsAdapter(private val context: Context, private val audio: ArrayList<Audio>) : BaseAdapter() {
+class SongsAdapter(private val context: Context, private val audio: MutableList<Audio>) : BaseAdapter() {
 
     class Holder {
         lateinit var art: ImageView

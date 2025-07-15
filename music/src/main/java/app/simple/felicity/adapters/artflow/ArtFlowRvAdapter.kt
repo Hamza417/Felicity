@@ -11,7 +11,7 @@ import app.simple.felicity.glide.pathcover.Utils.loadFromPathForCarousel
 import app.simple.felicity.repository.models.normal.Audio
 import com.bumptech.glide.Glide
 
-class ArtFlowRvAdapter(private val data: ArrayList<Audio>) : RecyclerView.Adapter<ArtFlowRvAdapter.Holder>() {
+class ArtFlowRvAdapter(private val data: MutableList<Audio>) : RecyclerView.Adapter<ArtFlowRvAdapter.Holder>() {
 
     inner class Holder(itemView: View) : HorizontalListViewHolder(itemView) {
         val art: ImageView = itemView.findViewById(R.id.art)

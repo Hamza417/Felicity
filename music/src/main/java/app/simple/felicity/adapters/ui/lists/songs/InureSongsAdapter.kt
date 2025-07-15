@@ -11,7 +11,7 @@ import app.simple.felicity.glide.pathcover.Utils.loadFromPath
 import app.simple.felicity.repository.models.normal.Audio
 import com.bumptech.glide.Glide
 
-class InureSongsAdapter(private val audio: ArrayList<Audio>) :
+class InureSongsAdapter(private val audio: MutableList<Audio>) :
     RecyclerView.Adapter<InureSongsAdapter.Holder>() {
 
     var onItemClickListener: ((Audio, Int, View) -> Unit)? = null

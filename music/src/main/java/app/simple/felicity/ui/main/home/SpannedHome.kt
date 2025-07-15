@@ -40,7 +40,6 @@ class SpannedHome : ScopedFragment() {
         binding?.recyclerView?.setHasFixedSize(false)
         binding?.recyclerView?.adapter = adapter
         binding?.recyclerView?.scheduleLayoutAnimation()
-        // Disable item animations
         binding?.recyclerView?.itemAnimator = null
 
         viewLifecycleOwner.lifecycleScope.launch {

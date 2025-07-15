@@ -7,7 +7,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.doOnPreDraw
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.artflow.ArtFlowRvAdapter
@@ -19,6 +22,7 @@ import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.repository.models.normal.Audio
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
+import kotlinx.coroutines.launch
 
 class ArtFlowRv : ScopedFragment() {
 
@@ -39,49 +43,53 @@ class ArtFlowRv : ScopedFragment() {
         super.onViewCreated(view, savedInstanceState)
         startPostponedEnterTransition()
 
-        songsViewModel.getSongs().observe(viewLifecycleOwner) {
-            layoutManager = ProminentLayoutManager(requireContext(), 2.5F, 0.8F)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                songsViewModel.songs.collect {
+                    layoutManager = ProminentLayoutManager(requireContext(), 2.5F, 0.8F)
 
-            with(binding.artFlow) {
-                // setItemViewCacheSize(20)
-                backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
-                adapter = ArtFlowRvAdapter(it)
-                layoutManager = this@ArtFlowRv.layoutManager
+                    with(binding.artFlow) {
+                        // setItemViewCacheSize(20)
+                        backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
+                        adapter = ArtFlowRvAdapter(it)
+                        layoutManager = this@ArtFlowRv.layoutManager
 
-                val spacing = resources.getDimensionPixelSize(R.dimen.carousel_spacing)
-                addItemDecoration(LinearHorizontalSpacingDecoration(spacing))
-                addItemDecoration(BoundsOffsetDecoration())
+                        val spacing = resources.getDimensionPixelSize(R.dimen.carousel_spacing)
+                        addItemDecoration(LinearHorizontalSpacingDecoration(spacing))
+                        addItemDecoration(BoundsOffsetDecoration())
 
-                setSnapListener { position ->
-                    updateInfo(position, it[position])
-                }
-
-                addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                        if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                            binding.title.visibility = View.VISIBLE
-                            binding.artist.visibility = View.VISIBLE
-                        } else {
-                            binding.title.visibility = View.INVISIBLE
-                            binding.artist.visibility = View.INVISIBLE
+                        setSnapListener { position ->
+                            updateInfo(position, it[position])
                         }
-                    }
-                })
 
-                snapHelper.attachToRecyclerView(this)
+                        addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                                    binding.title.visibility = View.VISIBLE
+                                    binding.artist.visibility = View.VISIBLE
+                                } else {
+                                    binding.title.visibility = View.INVISIBLE
+                                    binding.artist.visibility = View.INVISIBLE
+                                }
+                            }
+                        })
 
-                if (savedInstanceState.isNotNull()) {
-                    initRecyclerViewPosition(requireArguments().getInt(app.simple.felicity.shared.constants.BundleConstants.position))
-                }
+                        snapHelper.attachToRecyclerView(this)
 
-                addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                        super.onScrollStateChanged(recyclerView, newState)
-                        if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                            snapHelper.invalidateSnapPosition() // Notify snap listeners about new position
+                        if (savedInstanceState.isNotNull()) {
+                            initRecyclerViewPosition(requireArguments().getInt(app.simple.felicity.shared.constants.BundleConstants.position))
                         }
+
+                        addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                                super.onScrollStateChanged(recyclerView, newState)
+                                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                                    snapHelper.invalidateSnapPosition() // Notify snap listeners about new position
+                                }
+                            }
+                        })
                     }
-                })
+                }
             }
         }
 
