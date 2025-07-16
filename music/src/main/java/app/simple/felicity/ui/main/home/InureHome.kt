@@ -10,7 +10,7 @@ import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 
-class SimpleListHome : ScopedFragment() {
+class InureHome : ScopedFragment() {
 
     private lateinit var recyclerView: CustomVerticalRecyclerView
 
@@ -57,13 +57,13 @@ class SimpleListHome : ScopedFragment() {
     }
 
     companion object {
-        fun newInstance(): SimpleListHome {
+        fun newInstance(): InureHome {
             val args = Bundle()
-            val fragment = SimpleListHome()
+            val fragment = InureHome()
             fragment.arguments = args
             return fragment
         }
 
-        private const val TAG = "SimpleListHome"
+        private const val TAG = "Inure_Home"
     }
 }

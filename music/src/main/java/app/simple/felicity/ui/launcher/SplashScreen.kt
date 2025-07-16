@@ -12,7 +12,7 @@ import app.simple.felicity.core.utils.BitmapUtils.toBitmapKeepingSize
 import app.simple.felicity.databinding.FragmentSplashScreenBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.extensions.viewmodels.DatabaseLoaderViewModel
-import app.simple.felicity.ui.main.home.SimpleListHome
+import app.simple.felicity.ui.main.home.InureHome
 
 @SuppressLint("CustomSplashScreen")
 class SplashScreen : ScopedFragment() {
@@ -31,7 +31,7 @@ class SplashScreen : ScopedFragment() {
 
         parentFragmentManager.beginTransaction()
             .setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left, R.anim.enter_from_left, R.anim.exit_to_right)
-            .replace(R.id.app_container, SimpleListHome.newInstance())
+            .replace(R.id.app_container, InureHome.newInstance())
             .commitAllowingStateLoss()
 
         binding?.appIcon?.setImageBitmap(R.drawable.ic_felicity.toBitmapKeepingSize(requireContext(), 10)
