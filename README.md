@@ -18,6 +18,8 @@ I am taking my time developing it because I want it to exceed my own expectation
 2025-01-10 15:05:38.128  5420-5577  StandaloneCoroutine     app.simple.felicity.dev              D  loadData: Time taken: 00:06 for 1606 files
 ```
 
+16 July 2025: I have finalized the repository module and now beginning to work on engine and hopefully finish working on it before the end of this week (< 23 July 2025)
+
 ## License
 
 This project is source-available but not licensed for redistribution, modification, or commercial use. All rights reserved by the author. I'll update the licence once the project is substatially developed.
