@@ -10,4 +10,9 @@ dependencies {
     implementation project(':core')
     implementation project(':preferences')
     implementation project(':repository')
+
+    implementation "androidx.media3:media3-exoplayer:1.7.1"
+    implementation "androidx.media3:media3-ui:1.7.1"
+    implementation "androidx.media3:media3-common:1.7.1"
+    implementation "androidx.media3:media3-session:1.7.1"
 }

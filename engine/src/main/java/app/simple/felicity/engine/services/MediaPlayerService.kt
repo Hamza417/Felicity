@@ -1,8 +1,8 @@
-package app.simple.felicity.services
+package app.simple.felicity.engine.services
 
 import android.media.MediaPlayer
 import androidx.media3.session.MediaSession
-import app.simple.felicity.abstraction.services.BaseAudioService
+import app.simple.felicity.engine.abstraction.services.BaseAudioService
 
 class MediaPlayerService : BaseAudioService(),
                            MediaPlayer.OnPreparedListener,
