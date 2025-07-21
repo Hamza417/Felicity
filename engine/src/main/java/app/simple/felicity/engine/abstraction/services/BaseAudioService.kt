@@ -15,7 +15,7 @@ abstract class BaseAudioService : MediaSessionService(),
                                   AudioStateCallbacks {
 
     override fun onBind(intent: Intent?): IBinder? {
-        super.onBind(intent)
+        super.onBind(intent) // Make sure to override this to avoid multiple calls
         return null
     }
 
@@ -62,11 +62,7 @@ abstract class BaseAudioService : MediaSessionService(),
     abstract fun onRewind()
     abstract fun onPrepare()
 
-    fun getDuration(): Int {
-        return 0
-    }
+    abstract fun getDuration(): Int
 
-    fun getProgress(): Int {
-        return 0
-    }
+    abstract fun getCurrentPosition(): Int
 }

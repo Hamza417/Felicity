@@ -46,6 +46,14 @@ class MediaPlayerService : BaseAudioService(),
         TODO("Not yet implemented")
     }
 
+    override fun getDuration(): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun getCurrentPosition(): Int {
+        TODO("Not yet implemented")
+    }
+
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
         TODO("Not yet implemented")
     }
@@ -65,5 +73,4 @@ class MediaPlayerService : BaseAudioService(),
     override fun onError(mp: MediaPlayer?, what: Int, extra: Int): Boolean {
         TODO("Not yet implemented")
     }
-
 }
