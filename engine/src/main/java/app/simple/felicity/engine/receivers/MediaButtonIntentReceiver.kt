@@ -1,4 +1,4 @@
-package app.simple.felicity.receivers
+package app.simple.felicity.engine.receivers
 
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
@@ -11,9 +11,10 @@ import android.os.PowerManager
 import android.util.Log
 import android.view.KeyEvent
 import androidx.core.content.ContextCompat
-import app.simple.felicity.BuildConfig
-import app.simple.felicity.services.MediaPlayerService
-import app.simple.felicity.utils.ParcelUtils.parcelable
+import androidx.core.content.IntentCompat
+import app.simple.felicity.engine.BuildConfig
+import app.simple.felicity.engine.services.MediaPlayerService
+import app.simple.felicity.shared.constants.ServiceConstants
 
 /**
  * Used to control headset playback.
@@ -47,7 +48,7 @@ class MediaButtonIntentReceiver : BroadcastReceiver() {
                         val clickCount: Int = msg.arg1
                         if (DEBUG) Log.v(tag, "Handling headset click, count = $clickCount")
                         val command: String? = when (clickCount) {
-                            1 -> app.simple.felicity.shared.constants.ServiceConstants.actionTogglePause
+                            1 -> ServiceConstants.actionTogglePause
                             else -> null
                         }
                         if (command != null) {
@@ -63,20 +64,19 @@ class MediaButtonIntentReceiver : BroadcastReceiver() {
         fun handleIntent(context: Context, intent: Intent): Boolean {
             val intentAction = intent.action
             if (Intent.ACTION_MEDIA_BUTTON == intentAction) {
-                val event: KeyEvent = intent.parcelable(Intent.EXTRA_KEY_EVENT)
-                    ?: return false
+                val event: KeyEvent = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_KEY_EVENT, KeyEvent::class.java) ?: return false
                 val keycode: Int = event.keyCode
                 val action: Int = event.action
                 val eventTime = if (event.eventTime != 0L) event.eventTime else System.currentTimeMillis()
                 // Fallback to system time if event time was not available.
                 var command: String? = null
                 when (keycode) {
-                    KeyEvent.KEYCODE_MEDIA_STOP -> command = app.simple.felicity.shared.constants.ServiceConstants.actionStop
-                    KeyEvent.KEYCODE_HEADSETHOOK, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> command = app.simple.felicity.shared.constants.ServiceConstants.actionTogglePause
-                    KeyEvent.KEYCODE_MEDIA_NEXT -> command = app.simple.felicity.shared.constants.ServiceConstants.actionSkip
-                    KeyEvent.KEYCODE_MEDIA_PREVIOUS -> command = app.simple.felicity.shared.constants.ServiceConstants.actionRewind
-                    KeyEvent.KEYCODE_MEDIA_PAUSE -> command = app.simple.felicity.shared.constants.ServiceConstants.actionPause
-                    KeyEvent.KEYCODE_MEDIA_PLAY -> command = app.simple.felicity.shared.constants.ServiceConstants.actionPlay
+                    KeyEvent.KEYCODE_MEDIA_STOP -> command = ServiceConstants.actionStop
+                    KeyEvent.KEYCODE_HEADSETHOOK, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> command = ServiceConstants.actionTogglePause
+                    KeyEvent.KEYCODE_MEDIA_NEXT -> command = ServiceConstants.actionSkip
+                    KeyEvent.KEYCODE_MEDIA_PREVIOUS -> command = ServiceConstants.actionRewind
+                    KeyEvent.KEYCODE_MEDIA_PAUSE -> command = ServiceConstants.actionPause
+                    KeyEvent.KEYCODE_MEDIA_PLAY -> command = ServiceConstants.actionPlay
                 }
                 if (command != null) {
                     if (action == KeyEvent.ACTION_DOWN) {
@@ -125,7 +125,7 @@ class MediaButtonIntentReceiver : BroadcastReceiver() {
                 // if no notification is displayed via startForeground()
                 // according to Play analytics this happens a lot, I suppose for example if command = PAUSE
                 context.startService(intent)
-            } catch (ignored: IllegalStateException) {
+            } catch (_: IllegalStateException) {
                 ContextCompat.startForegroundService(context, intent)
             }
         }

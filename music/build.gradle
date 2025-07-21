@@ -58,6 +58,7 @@ dependencies {
     implementation project(':core')
     implementation project(':shared')
     implementation project(':repository')
+    implementation project(':engine')
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'

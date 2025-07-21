@@ -3,6 +3,10 @@ apply from: rootProject.file('common.gradle')
 
 android {
     namespace 'app.simple.felicity.engine'
+
+    buildFeatures {
+        buildConfig true
+    }
 }
 
 dependencies {
