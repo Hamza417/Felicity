@@ -44,4 +44,8 @@ object FileUtils {
 
         return hasher.value
     }
+
+    fun String.toFile(): File {
+        return File(this)
+    }
 }

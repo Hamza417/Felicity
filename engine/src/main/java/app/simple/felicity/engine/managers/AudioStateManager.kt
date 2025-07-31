@@ -67,6 +67,10 @@ object AudioStateManager {
         )
     }
 
+    fun isPlaying(): Boolean {
+        return _audioState.value.playbackState == PlaybackState.PLAYING
+    }
+
     fun setPlaylist(playlist: MutableList<Audio>, startIndex: Int = 0) {
         Log.d(TAG, "Setting playlist with ${playlist.size} items starting at index $startIndex")
         _audioState.value = _audioState.value.copy(

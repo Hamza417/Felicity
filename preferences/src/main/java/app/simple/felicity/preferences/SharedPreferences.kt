@@ -2,6 +2,7 @@ package app.simple.felicity.preferences
 
 import android.content.Context
 import android.content.SharedPreferences
+import app.simple.felicity.preferences.SharedPreferences.init
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 
 object SharedPreferences {
@@ -13,6 +14,17 @@ object SharedPreferences {
         if (sharedPreferences.isNull()) {
             sharedPreferences = context.getSharedPreferences(preferences, Context.MODE_PRIVATE)
         }
+    }
+
+    fun Context.initSharedPreferences() {
+        if (sharedPreferences.isNull()) {
+            sharedPreferences = getSharedPreferences(preferences, Context.MODE_PRIVATE)
+        }
+    }
+
+    fun SharedPreferences.OnSharedPreferenceChangeListener.initRegisterSharedPreferenceChangeListener(context: Context) {
+        init(context)
+        registerSharedPreferenceChangeListener()
     }
 
     /**
