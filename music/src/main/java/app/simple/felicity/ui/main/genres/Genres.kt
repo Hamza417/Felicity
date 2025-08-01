@@ -5,7 +5,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.view.doOnPreDraw
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
@@ -13,6 +12,7 @@ import app.simple.felicity.adapters.ui.lists.genres.AdapterGenres
 import app.simple.felicity.databinding.FragmentGenresBinding
 import app.simple.felicity.decorations.itemdecorations.GridSpacingItemDecoration
 import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.viewmodels.main.genres.GenresViewModel
 
 class Genres : ScopedFragment() {
@@ -36,6 +36,7 @@ class Genres : ScopedFragment() {
 
         genresViewModel!!.getGenresData().observe(viewLifecycleOwner) { genres ->
             Log.d(TAG, "onViewCreated: Genres: ${genres.size}")
+            val adapter = AdapterGenres(genres)
 
             binding.recyclerView.layoutManager = GridLayoutManager(requireContext(), 2)
             binding.recyclerView.addItemDecoration(
@@ -45,11 +46,15 @@ class Genres : ScopedFragment() {
                      true,
                      0))
             binding.recyclerView.setHasFixedSize(true)
-            binding.recyclerView.adapter = AdapterGenres(genres)
+            binding.recyclerView.adapter = adapter
 
-            (view.parent as? ViewGroup)?.doOnPreDraw {
-                startPostponedEnterTransition()
-            }
+            adapter.setGenreClickListener(object : AdapterGenres.Companion.GenreClickListener {
+                override fun onGenreClicked(genre: Genre, view: View) {
+                    openFragmentArc(GenreSongs.newInstance(genre), view, GenreSongs.TAG)
+                }
+            })
+
+            view.startTransitionOnPreDraw()
         }
     }
 

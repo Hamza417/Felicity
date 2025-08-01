@@ -14,7 +14,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsAnimation
-import android.view.animation.DecelerateInterpolator
 import androidx.annotation.IntegerRes
 import androidx.annotation.RequiresApi
 import androidx.core.view.doOnPreDraw
@@ -28,8 +27,6 @@ import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenc
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.ui.main.songs.Songs.Companion.TAG
-import com.google.android.material.shape.ShapeAppearanceModel
-import com.google.android.material.transition.MaterialArcMotion
 import com.google.android.material.transition.MaterialContainerTransform
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
@@ -247,15 +244,6 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                 scrimColor = Color.TRANSPARENT
                 this.startElevation = 0F
                 this.endElevation = 50F
-                this.startShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(app.simple.felicity.preferences.AppearancePreferences.getCornerRadius())
-                this.endShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(0F)
-                setInterpolator(DecelerateInterpolator(INTERPOLATOR_TENSION_FACTOR))
-                setPathMotion(MaterialArcMotion())
-                //                setPathMotion(ArcMotion().apply {
-                //                    maximumAngle = this.maximumAngle
-                //                    minimumHorizontalAngle = this.minimumHorizontalAngle
-                //                    minimumVerticalAngle = this.minimumVerticalAngle
-                //                })
             }
             sharedElementReturnTransition = MaterialContainerTransform().apply {
                 setDuration(duration)
@@ -263,15 +251,6 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                 scrimColor = Color.TRANSPARENT
                 this.startElevation = 50F
                 this.endElevation = -50F
-                this.startShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(0F)
-                this.endShapeAppearanceModel = ShapeAppearanceModel().withCornerSize(app.simple.felicity.preferences.AppearancePreferences.getCornerRadius())
-                setInterpolator(DecelerateInterpolator(INTERPOLATOR_TENSION_FACTOR))
-                setPathMotion(MaterialArcMotion())
-                //                setPathMotion(ArcMotion().apply {
-                //                    maximumAngle = this.maximumAngle
-                //                    minimumHorizontalAngle = this.minimumHorizontalAngle
-                //                    minimumVerticalAngle = this.minimumVerticalAngle
-                //                })
             }
         }
     }
@@ -379,6 +358,19 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
 
     protected fun popBackStack() {
         requireActivity().supportFragmentManager.popBackStack()
+    }
+
+    protected fun startTransitionOnPreDraw(view: View, onPreDraw: () -> Unit) {
+        (view.parent as? ViewGroup)?.doOnPreDraw {
+            startPostponedEnterTransition()
+            onPreDraw()
+        }
+    }
+
+    protected fun View.startTransitionOnPreDraw() {
+        (parent as? ViewGroup)?.doOnPreDraw {
+            startPostponedEnterTransition()
+        }
     }
 
     companion object {

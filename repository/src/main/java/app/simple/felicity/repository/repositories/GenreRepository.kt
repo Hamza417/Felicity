@@ -49,6 +49,94 @@ class GenreRepository(private val context: Context) {
         return genres
     }
 
+    fun fetchGenreSongs(genreId: Long): List<Song> {
+        val songs = mutableListOf<Song>()
+        val projection = arrayOf(
+                MediaStore.Audio.Media._ID,
+                MediaStore.Audio.Media.TITLE,
+                MediaStore.Audio.Media.ARTIST,
+                MediaStore.Audio.Media.ALBUM,
+                MediaStore.Audio.Media.ALBUM_ID,
+                MediaStore.Audio.Media.ARTIST_ID,
+                MediaStore.Audio.Media.DATA,
+                MediaStore.Audio.Media.DURATION,
+                MediaStore.Audio.Media.SIZE,
+                MediaStore.Audio.Media.DATE_ADDED,
+                MediaStore.Audio.Media.DATE_MODIFIED
+        )
+
+        val genreUri = MediaStore.Audio.Genres.Members.getContentUri("external", genreId)
+
+        val cursor = context.contentResolver.query(
+                genreUri,
+                projection,
+                null,
+                null,
+                null
+        )
+
+        cursor?.use {
+            val idCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+            val titleCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+            val artistCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+            val albumCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
+            val albumIdCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
+            val artistIdCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST_ID)
+            val dataCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            val durationCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+            val sizeCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
+            val dateAddedCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
+            val dateModifiedCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
+
+            while (it.moveToNext()) {
+                val songId = it.getLong(idCol)
+                val albumId = it.getLong(albumIdCol)
+                val path = it.getString(dataCol)
+                val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId)
+
+                // Get artworkUri
+                val artworkUri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    uri
+                } else {
+                    var artPath: String? = null
+                    val albumCursor = context.contentResolver.query(
+                            MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
+                            arrayOf(MediaStore.Audio.Albums.ALBUM_ART),
+                            "${MediaStore.Audio.Albums._ID}=?",
+                            arrayOf(albumId.toString()),
+                            null
+                    )
+                    albumCursor?.use { ac ->
+                        if (ac.moveToFirst()) {
+                            artPath = ac.getString(0)
+                        }
+                    }
+                    artPath?.let { p -> p.toUri() }
+                }
+
+                songs.add(
+                        Song(
+                                id = songId,
+                                title = it.getString(titleCol),
+                                artist = it.getString(artistCol),
+                                album = it.getString(albumCol),
+                                albumId = albumId,
+                                artistId = it.getLong(artistIdCol),
+                                uri = uri,
+                                path = path,
+                                duration = it.getLong(durationCol),
+                                size = it.getLong(sizeCol),
+                                dateAdded = it.getLong(dateAddedCol),
+                                dateModified = it.getLong(dateModifiedCol),
+                                artworkUri = artworkUri
+                        )
+                )
+            }
+        }
+
+        return songs
+    }
+
     // Fetch songs for a specific genreId and only those with album art
     fun fetchSongsWithGenreAndAlbumArt(genreId: Long): List<Song> {
         val songs = mutableListOf<Song>()
