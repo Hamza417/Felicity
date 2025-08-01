@@ -4,7 +4,6 @@ import android.content.ComponentName
 import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
-import android.util.Log
 import android.view.KeyEvent
 import app.simple.felicity.R
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
@@ -17,7 +16,6 @@ import app.simple.felicity.ui.main.home.InureHome
 class MainActivity : BaseActivity() {
 
     private var syncServiceConnection: ServiceConnection? = null
-    private var playerServiceConnection: ServiceConnection? = null
 
     private var audioSynchronizerService: AudioSynchronizerService? = null
     private var exoPlayerService: ExoPlayerService? = null
@@ -45,18 +43,6 @@ class MainActivity : BaseActivity() {
 
             override fun onServiceDisconnected(name: ComponentName?) {
                 // Do nothing
-            }
-        }
-
-        playerServiceConnection = object : ServiceConnection {
-            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                Log.d(TAG, "onServiceConnected: ExoPlayerService connected")
-                exoPlayerService = (service as ExoPlayerService.ExoPlayerBinder).getService()
-                isAudioServiceBound = true
-            }
-
-            override fun onServiceDisconnected(name: ComponentName?) {
-                isAudioServiceBound = false
             }
         }
     }
@@ -101,10 +87,6 @@ class MainActivity : BaseActivity() {
         super.onDestroy()
         if (isSynchronizerServiceBound) {
             syncServiceConnection?.let { unbindService(it) }
-        }
-
-        if (isAudioServiceBound) {
-            playerServiceConnection?.let { unbindService(it) }
         }
 
         audioSynchronizerService = null

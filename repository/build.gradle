@@ -18,4 +18,5 @@ dependencies {
     implementation 'net.jthink:jaudiotagger:3.0.1'
 
     implementation "androidx.work:work-runtime-ktx:2.10.3"
+    implementation "androidx.media3:media3-common:1.8.0"
 }

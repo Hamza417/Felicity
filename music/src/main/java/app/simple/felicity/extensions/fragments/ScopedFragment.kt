@@ -1,15 +1,15 @@
 package app.simple.felicity.extensions.fragments
 
 import android.app.Application
+import android.content.ComponentName
 import android.content.SharedPreferences
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -19,13 +19,20 @@ import androidx.annotation.IntegerRes
 import androidx.annotation.RequiresApi
 import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import androidx.transition.Fade
 import app.simple.felicity.R
+import app.simple.felicity.engine.services.ExoPlayerService
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
+import app.simple.felicity.ui.main.songs.InureSongs.Companion.TAG
 import com.google.android.material.shape.ShapeAppearanceModel
-import com.google.android.material.transition.*
+import com.google.android.material.transition.MaterialArcMotion
+import com.google.android.material.transition.MaterialContainerTransform
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -43,18 +50,13 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
     private val minimumHorizontalAngle = 80
     private val minimumVerticalAngle = 15
 
+    protected var mediaController: MediaController? = null
+    private var controllerFuture: ListenableFuture<MediaController>? = null
+
     /**
      * [ScopedFragment]'s own [Handler] instance
      */
     val handler = Handler(Looper.getMainLooper())
-
-    /**
-     * [ScopedFragment]'s own [ApplicationInfo] instance, needs
-     * to be initialized before use
-     *
-     * @throws UninitializedPropertyAccessException
-     */
-    lateinit var packageInfo: PackageInfo
 
     /**
      * [postponeEnterTransition] here and initialize all the
@@ -63,6 +65,18 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         postponeEnterTransition()
+
+        val sessionToken =
+            SessionToken(requireActivity(), ComponentName(requireActivity(), ExoPlayerService::class.java))
+
+        Log.d(TAG, "onViewCreated: SessionToken: $sessionToken")
+        controllerFuture =
+            MediaController.Builder(requireActivity(), sessionToken).buildAsync()
+
+        controllerFuture?.addListener({
+                                          Log.d(TAG, "onViewCreated: MediaController created successfully")
+                                          mediaController = controllerFuture?.get()
+                                      }, MoreExecutors.directExecutor())
     }
 
     override fun onResume() {
@@ -74,6 +88,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         super.onDestroy()
         handler.removeCallbacksAndMessages(null)
         unregisterSharedPreferenceChangeListener()
+        MediaController.releaseFuture(controllerFuture!!)
     }
 
     /**

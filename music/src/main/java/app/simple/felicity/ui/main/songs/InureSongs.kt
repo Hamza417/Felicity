@@ -1,8 +1,6 @@
 package app.simple.felicity.ui.main.songs
 
-import android.content.ComponentName
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,25 +12,19 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.simple.felicity.adapters.ui.lists.songs.InureSongsAdapter
 import app.simple.felicity.databinding.FragmentSongsBinding
-import app.simple.felicity.engine.services.ExoPlayerService
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.preferences.MusicPreferences
 import app.simple.felicity.shared.constants.BundleConstants
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
-import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.launch
 
 class InureSongs : ScopedFragment() {
 
     private lateinit var binding: FragmentSongsBinding
     private lateinit var songsViewModel: SongsViewModel
-
-    private var mediaController: MediaController? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
 
@@ -45,18 +37,6 @@ class InureSongs : ScopedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         postponeEnterTransition()
-
-        val sessionToken =
-            SessionToken(requireActivity(), ComponentName(requireActivity(), ExoPlayerService::class.java))
-        Log.d(TAG, "onViewCreated: SessionToken: $sessionToken")
-        val controllerFuture =
-            MediaController.Builder(requireActivity(), sessionToken).buildAsync()
-
-        controllerFuture.addListener({
-                                         Log.d(TAG, "onViewCreated: MediaController created successfully")
-                                         mediaController = controllerFuture.get()
-                                     }, MoreExecutors.directExecutor())
-
 
         lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -71,17 +51,19 @@ class InureSongs : ScopedFragment() {
                         // AudioStateManager.setPlaylist(it, position)
 
                         mediaController?.let { controller ->
-                            controller.setMediaItem(MediaItem.Builder()
-                                                        .setMediaId(it[position].id.toString())
-                                                        .setUri(it[position].uri)
-                                                        .setMediaMetadata(
-                                                                MediaMetadata.Builder()
-                                                                    .setArtist(it[position].artist)
-                                                                    .setTitle(it[position].title)
-                                                                    .build()
-                                                        )
-                                                        .build()
-                            )
+                            val mediaItems = it.map { song ->
+                                MediaItem.Builder()
+                                    .setMediaId(song.id.toString())
+                                    .setUri(song.uri)
+                                    .setMediaMetadata(
+                                            MediaMetadata.Builder()
+                                                .setArtist(song.artist)
+                                                .setTitle(song.title)
+                                                .build()
+                                    )
+                                    .build()
+                            }
+                            controller.setMediaItems(mediaItems, position, 0L)
                             controller.prepare()
                             controller.play()
                         }
