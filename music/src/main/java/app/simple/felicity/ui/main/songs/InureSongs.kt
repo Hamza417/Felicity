@@ -1,6 +1,8 @@
 package app.simple.felicity.ui.main.songs
 
+import android.content.ComponentName
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,20 +12,27 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.simple.felicity.adapters.ui.lists.songs.InureSongsAdapter
 import app.simple.felicity.databinding.FragmentSongsBinding
-import app.simple.felicity.engine.managers.AudioStateManager
+import app.simple.felicity.engine.services.ExoPlayerService
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.preferences.MusicPreferences
 import app.simple.felicity.shared.constants.BundleConstants
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
+import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.launch
 
 class InureSongs : ScopedFragment() {
 
     private lateinit var binding: FragmentSongsBinding
     private lateinit var songsViewModel: SongsViewModel
+
+    private var mediaController: MediaController? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
 
@@ -37,6 +46,18 @@ class InureSongs : ScopedFragment() {
         super.onViewCreated(view, savedInstanceState)
         postponeEnterTransition()
 
+        val sessionToken =
+            SessionToken(requireActivity(), ComponentName(requireActivity(), ExoPlayerService::class.java))
+        Log.d(TAG, "onViewCreated: SessionToken: $sessionToken")
+        val controllerFuture =
+            MediaController.Builder(requireActivity(), sessionToken).buildAsync()
+
+        controllerFuture.addListener({
+                                         Log.d(TAG, "onViewCreated: MediaController created successfully")
+                                         mediaController = controllerFuture.get()
+                                     }, MoreExecutors.directExecutor())
+
+
         lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 songsViewModel.songs.collect {
@@ -47,7 +68,23 @@ class InureSongs : ScopedFragment() {
                     }
 
                     (binding.recyclerView.adapter as InureSongsAdapter).onItemClickListener = { _, position, view ->
-                        AudioStateManager.setPlaylist(it, position)
+                        // AudioStateManager.setPlaylist(it, position)
+
+                        mediaController?.let { controller ->
+                            controller.setMediaItem(MediaItem.Builder()
+                                                        .setMediaId(it[position].id.toString())
+                                                        .setUri(it[position].uri)
+                                                        .setMediaMetadata(
+                                                                MediaMetadata.Builder()
+                                                                    .setArtist(it[position].artist)
+                                                                    .setTitle(it[position].title)
+                                                                    .build()
+                                                        )
+                                                        .build()
+                            )
+                            controller.prepare()
+                            controller.play()
+                        }
                     }
 
                     binding.recyclerView.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {

@@ -1,14 +1,17 @@
-package app.simple.felicity.engine.abstraction.services
+package app.simple.felicity.engine.services
 
-import android.app.NotificationManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.os.Binder
+import android.os.IBinder
 import android.util.Log
-import androidx.core.app.NotificationCompat
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import app.simple.felicity.engine.managers.AudioStateManager
@@ -19,77 +22,45 @@ import app.simple.felicity.repository.models.normal.Audio
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
-abstract class BaseAudioService : MediaSessionService(),
-                                  AudioManager.OnAudioFocusChangeListener,
-                                  SharedPreferences.OnSharedPreferenceChangeListener,
-                                  AudioStateCallbacks {
+class ExoPlayerService : MediaSessionService(),
+                         AudioManager.OnAudioFocusChangeListener,
+                         SharedPreferences.OnSharedPreferenceChangeListener,
+                         AudioStateCallbacks {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    private val becomingNoisyReceiver = object : android.content.BroadcastReceiver() {
-        override fun onReceive(context: android.content.Context?, intent: Intent?) {
+    private val becomingNoisyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
                 if (AudioStateManager.isPlaying()) {
-                    onPause()
+                    Log.d("BaseAudioService", "Audio becoming noisy, pausing playback")
+                    mediaSession?.player?.pause()
+                    AudioStateManager.updatePlaybackState(PlaybackState.PAUSED)
+                } else {
+                    Log.d("BaseAudioService", "Audio is not playing, no action taken")
                 }
             }
         }
     }
+
     private val audioBecomingNoisyFilter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
     private var focusRequest: AudioFocusRequest? = null
-    private var notificationManager: NotificationManager? = null
-    private var builder: NotificationCompat.Builder? = null
     private var mediaSession: MediaSession? = null
 
     private var wasPlaying = false
 
+    override fun onBind(intent: Intent?): IBinder? {
+        return super.onBind(intent)
+    }
+
     override fun onCreate() {
         super.onCreate()
+        Log.i(TAG, "onCreate: ExoPlayerService created")
         initRegisterSharedPreferenceChangeListener(applicationContext)
 
-
-        serviceScope.launch {
-            AudioStateManager.audioState.collect {
-                when (it.playbackState) {
-                    PlaybackState.IDLE -> {
-                        Log.d("BaseAudioService", "Playback is idle")
-                    }
-                    PlaybackState.PLAYING -> {
-                        if (AudioStateManager.isPlaying()) {
-                            if (focusRequest != null) {
-                                val audioFocusResult = (getSystemService(AUDIO_SERVICE) as AudioManager).requestAudioFocus(focusRequest!!)
-                                if (audioFocusResult == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-                                    onPlay()
-                                } else {
-                                    Log.e("BaseAudioService", "Failed to gain audio focus")
-                                }
-                            } else {
-                                Log.e("BaseAudioService", "Focus request is null")
-                            }
-                        }
-                    }
-                    PlaybackState.PAUSED -> {
-                        if (AudioStateManager.isPlaying()) {
-                            onPause()
-                        } else {
-                            Log.d("BaseAudioService", "Playback is already paused")
-                        }
-                    }
-                    PlaybackState.STOPPED -> {
-                        if (AudioStateManager.isPlaying()) {
-                            onStop()
-                        } else {
-                            Log.d("BaseAudioService", "Playback is already stopped")
-                        }
-                    }
-                    PlaybackState.BUFFERING -> {
-                        Log.d("BaseAudioService", "Playback is buffering")
-                    }
-                }
-            }
-        }
+        val player = ExoPlayer.Builder(this).build()
+        mediaSession = MediaSession.Builder(this, player).build()
 
         focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
             .setAudioAttributes(AudioAttributes.Builder()
@@ -102,6 +73,19 @@ abstract class BaseAudioService : MediaSessionService(),
         registerReceiver(becomingNoisyReceiver, audioBecomingNoisyFilter)
     }
 
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
+        if (mediaSession == null) {
+            Log.d(TAG, "onGetSession: Creating new MediaSession")
+            mediaSession = MediaSession.Builder(this, ExoPlayer.Builder(this).build())
+                .setId("ExoPlayerServiceSession")
+                .build()
+        }
+
+        Log.d(TAG, "onGetSession: Returning MediaSession")
+
+        return mediaSession
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
         return START_STICKY
@@ -112,7 +96,7 @@ abstract class BaseAudioService : MediaSessionService(),
             AudioManager.AUDIOFOCUS_GAIN -> {
                 if (AudioStateManager.isPlaying()) {
                     if (wasPlaying) {
-                        onPlay()
+                        mediaSession?.player?.play()
                     }
                 }
             }
@@ -129,15 +113,19 @@ abstract class BaseAudioService : MediaSessionService(),
                  * is likely to resume
                  */
                 if (AudioStateManager.isPlaying()) {
-                    onPause()
+                    mediaSession?.player?.pause()
                 } else {
-                    onStop()
+                    mediaSession?.player?.stop()
                 }
             }
             AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK -> {
                 if (AudioStateManager.isPlaying()) {
                     wasPlaying = true
-                    onVolume(0.5f) // Reduce volume to 50% when ducking
+                    mediaSession?.player?.deviceVolume?.let { volume ->
+                        if (volume > 0) {
+                            mediaSession?.player?.setVolume(volume * 0.5f) // Reduce volume by 50%
+                        }
+                    }
                 } else {
                     wasPlaying = false
                 }
@@ -160,28 +148,19 @@ abstract class BaseAudioService : MediaSessionService(),
     }
 
     override fun onDestroy() {
+        mediaSession?.run {
+            player.release()
+            release()
+            mediaSession = null
+        }
         super.onDestroy()
     }
 
-    abstract fun onPlay()
-    abstract fun onPause()
-    abstract fun onStop()
-    abstract fun onSeekTo(position: Int)
-    abstract fun onSkipToNext()
-    abstract fun onSkipToPrevious()
-    abstract fun onFastForward()
-    abstract fun onRewind()
-    abstract fun onPrepare()
-
-    abstract fun getDuration(): Int
-
-    abstract fun getCurrentPosition(): Int
-    abstract fun onVolume(volume: Float)
-
-    companion object {
-        const val NOTIFICATION_CHANNEL_ID = "audio_service_channel"
-        const val NOTIFICATION_ID = 1
+    inner class ExoPlayerBinder : Binder() {
+        fun getService(): ExoPlayerService = this@ExoPlayerService
     }
 
-    abstract fun onSetAudio(audio: Audio)
+    companion object {
+        private const val TAG = "ExoPlayerService"
+    }
 }

@@ -8,10 +8,10 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.decorations.overscroll.HorizontalListViewHolder
 import app.simple.felicity.glide.pathcover.Utils.loadFromPathForCarousel
-import app.simple.felicity.repository.models.normal.Audio
+import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
 
-class ArtFlowRvAdapter(private val data: MutableList<Audio>) : RecyclerView.Adapter<ArtFlowRvAdapter.Holder>() {
+class ArtFlowRvAdapter(private val data: List<Song>) : RecyclerView.Adapter<ArtFlowRvAdapter.Holder>() {
 
     inner class Holder(itemView: View) : HorizontalListViewHolder(itemView) {
         val art: ImageView = itemView.findViewById(R.id.art)

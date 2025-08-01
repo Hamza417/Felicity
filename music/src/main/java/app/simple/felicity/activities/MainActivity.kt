@@ -1,14 +1,14 @@
 package app.simple.felicity.activities
 
 import android.content.ComponentName
-import android.content.Context
 import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
+import android.util.Log
 import android.view.KeyEvent
 import app.simple.felicity.R
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
-import app.simple.felicity.engine.services.MediaPlayerService
+import app.simple.felicity.engine.services.ExoPlayerService
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.repository.services.AudioSynchronizerService
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
@@ -20,7 +20,7 @@ class MainActivity : BaseActivity() {
     private var playerServiceConnection: ServiceConnection? = null
 
     private var audioSynchronizerService: AudioSynchronizerService? = null
-    private var mediaPlayerService: MediaPlayerService? = null
+    private var exoPlayerService: ExoPlayerService? = null
 
     private var isSynchronizerServiceBound = false
     private var isAudioServiceBound = false
@@ -50,7 +50,8 @@ class MainActivity : BaseActivity() {
 
         playerServiceConnection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                mediaPlayerService = (service as MediaPlayerService.PlayerBinder).getService()
+                Log.d(TAG, "onServiceConnected: ExoPlayerService connected")
+                exoPlayerService = (service as ExoPlayerService.ExoPlayerBinder).getService()
                 isAudioServiceBound = true
             }
 
@@ -92,13 +93,7 @@ class MainActivity : BaseActivity() {
         val intent = AudioSynchronizerService.getSyncServiceIntent(baseContext)
         startService(intent)
         syncServiceConnection?.let {
-            bindService(intent, it, Context.BIND_AUTO_CREATE)
-        }
-
-        val playerIntent = MediaPlayerService.getMediaPlayerServiceIntent(baseContext)
-        startService(playerIntent)
-        playerServiceConnection?.let {
-            bindService(playerIntent, it, Context.BIND_AUTO_CREATE)
+            bindService(intent, it, BIND_AUTO_CREATE)
         }
     }
 
@@ -113,7 +108,7 @@ class MainActivity : BaseActivity() {
         }
 
         audioSynchronizerService = null
-        mediaPlayerService = null
+        exoPlayerService = null
         isSynchronizerServiceBound = false
         isAudioServiceBound = false
     }

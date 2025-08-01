@@ -10,9 +10,9 @@ import app.simple.felicity.R
 import app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.glide.pathcover.Utils.loadFromPath
-import app.simple.felicity.repository.models.normal.Audio
+import app.simple.felicity.repository.models.Song
 
-class SongsAdapter(private val context: Context, private val audio: MutableList<Audio>) : BaseAdapter() {
+class SongsAdapter(private val context: Context, private val audio: List<Song>) : BaseAdapter() {
 
     class Holder {
         lateinit var art: ImageView
@@ -26,7 +26,7 @@ class SongsAdapter(private val context: Context, private val audio: MutableList<
         return audio.size
     }
 
-    override fun getItem(position: Int): Audio {
+    override fun getItem(position: Int): Song {
         return audio[position]
     }
 
@@ -52,13 +52,13 @@ class SongsAdapter(private val context: Context, private val audio: MutableList<
             holder = convertView.tag as Holder
         }
 
-        val audio = getItem(position)
+        val song = getItem(position)
 
-        holder.title.text = audio.title
-        holder.artist.text = audio.artist
-        holder.details.text = audio.album
+        holder.title.text = song.title
+        holder.artist.text = song.artist
+        holder.details.text = song.album
 
-        holder.art.loadFromPath(audio.path)
+        holder.art.loadFromPath(song.path)
 
         return view
     }

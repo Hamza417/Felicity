@@ -8,13 +8,13 @@ import app.simple.felicity.databinding.AdapterInureSongsBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.pathcover.Utils.loadFromPath
-import app.simple.felicity.repository.models.normal.Audio
+import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
 
-class InureSongsAdapter(private val audio: MutableList<Audio>) :
+class InureSongsAdapter(private val audio: List<Song>) :
     RecyclerView.Adapter<InureSongsAdapter.Holder>() {
 
-    var onItemClickListener: ((Audio, Int, View) -> Unit)? = null
+    var onItemClickListener: ((Song, Int, View) -> Unit)? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         return Holder(
@@ -41,21 +41,21 @@ class InureSongsAdapter(private val audio: MutableList<Audio>) :
 
     inner class Holder(val binding: AdapterInureSongsBinding) :
         VerticalListViewHolder(binding.root) {
-        fun bind(audio: Audio) {
+        fun bind(song: Song) {
             binding.apply {
                 // albumArt.transitionName = audio.fileUri
-                title.setTextOrUnknown(audio.title)
-                artists.setTextOrUnknown(audio.artist)
-                album.setTextOrUnknown(audio.album)
+                title.setTextOrUnknown(song.title)
+                artists.setTextOrUnknown(song.artist)
+                album.setTextOrUnknown(song.album)
 
-                albumArt.loadFromPath(audio.path, applyTransform = true)
-                albumArt.transitionName = audio.path
+                albumArt.loadFromPath(song.path, applyTransform = true)
+                albumArt.transitionName = song.path
 
                 binding.container.radius = 0F
             }
 
             binding.root.setOnClickListener {
-                onItemClickListener?.invoke(audio, bindingAdapterPosition, binding.albumArt)
+                onItemClickListener?.invoke(song, bindingAdapterPosition, binding.albumArt)
             }
         }
     }
