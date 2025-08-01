@@ -14,7 +14,7 @@ import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.models.Element
 import app.simple.felicity.ui.main.albums.PeristyleAlbums
 import app.simple.felicity.ui.main.artists.PeristyleArtists
-import app.simple.felicity.ui.main.songs.InureSongs
+import app.simple.felicity.ui.main.songs.Songs
 import app.simple.felicity.viewmodels.main.home.InureHomeViewModel
 
 class InureHome : ScopedFragment() {
@@ -43,7 +43,7 @@ class InureHome : ScopedFragment() {
                 override fun onItemClicked(element: Element, position: Int, view: View) {
                     when (element.title) {
                         R.string.songs -> {
-                            openFragmentArc(InureSongs.newInstance(), view, InureSongs.TAG)
+                            openFragmentArc(Songs.newInstance(), view, Songs.TAG)
                         }
 
                         R.string.albums -> {

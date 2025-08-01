@@ -16,7 +16,7 @@ import app.simple.felicity.adapters.home.main.AdapterArtFlowHome
 import app.simple.felicity.databinding.FragmentHomeArtflowBinding
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolder
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.ui.main.songs.InureSongs
+import app.simple.felicity.ui.main.songs.Songs
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
@@ -46,7 +46,7 @@ class ArtFlowHome : ScopedFragment() {
 
         adapter.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
             override fun onClicked(view: View, position: Int) {
-                openFragmentSlide(InureSongs.newInstance(), InureSongs.TAG)
+                openFragmentSlide(Songs.newInstance(), Songs.TAG)
             }
         })
 

@@ -27,7 +27,7 @@ import app.simple.felicity.engine.services.ExoPlayerService
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
-import app.simple.felicity.ui.main.songs.InureSongs.Companion.TAG
+import app.simple.felicity.ui.main.songs.Songs.Companion.TAG
 import com.google.android.material.shape.ShapeAppearanceModel
 import com.google.android.material.transition.MaterialArcMotion
 import com.google.android.material.transition.MaterialContainerTransform

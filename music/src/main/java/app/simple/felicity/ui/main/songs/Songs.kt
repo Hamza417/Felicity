@@ -13,7 +13,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.recyclerview.widget.LinearLayoutManager
-import app.simple.felicity.adapters.ui.lists.songs.InureSongsAdapter
+import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.preferences.MusicPreferences
@@ -21,7 +21,7 @@ import app.simple.felicity.shared.constants.BundleConstants
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 import kotlinx.coroutines.launch
 
-class InureSongs : ScopedFragment() {
+class Songs : ScopedFragment() {
 
     private lateinit var binding: FragmentSongsBinding
     private lateinit var songsViewModel: SongsViewModel
@@ -41,13 +41,13 @@ class InureSongs : ScopedFragment() {
         lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 songsViewModel.songs.collect {
-                    binding.recyclerView.adapter = InureSongsAdapter(it)
+                    binding.recyclerView.adapter = SongsAdapter(it)
 
                     (view.parent as? ViewGroup)?.doOnPreDraw {
                         startPostponedEnterTransition()
                     }
 
-                    (binding.recyclerView.adapter as InureSongsAdapter).onItemClickListener = { _, position, view ->
+                    (binding.recyclerView.adapter as SongsAdapter).onItemClickListener = { _, position, view ->
                         // AudioStateManager.setPlaylist(it, position)
 
                         mediaController?.let { controller ->
@@ -125,7 +125,7 @@ class InureSongs : ScopedFragment() {
                 val selectedViewHolder = binding.recyclerView.findViewHolderForAdapterPosition(
                         MusicPreferences.getMusicPosition().plus(1)
                 )
-                if (selectedViewHolder is InureSongsAdapter.Holder) {
+                if (selectedViewHolder is SongsAdapter.Holder) {
                     // Map the first shared element name to the child ImageView.
                     sharedElements[names[0]] = selectedViewHolder.binding.albumArt
                 }
@@ -134,9 +134,9 @@ class InureSongs : ScopedFragment() {
     }
 
     companion object {
-        fun newInstance(): InureSongs {
+        fun newInstance(): Songs {
             val args = Bundle()
-            val fragment = InureSongs()
+            val fragment = Songs()
             fragment.arguments = args
             return fragment
         }

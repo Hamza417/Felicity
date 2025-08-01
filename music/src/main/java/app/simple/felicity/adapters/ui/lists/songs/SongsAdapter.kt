@@ -4,25 +4,25 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import app.simple.felicity.databinding.AdapterInureSongsBinding
+import app.simple.felicity.databinding.AdapterSongsBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.pathcover.Utils.loadFromPath
 import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
 
-class InureSongsAdapter(private val audio: List<Song>) :
-    RecyclerView.Adapter<InureSongsAdapter.Holder>() {
+class SongsAdapter(private val audio: List<Song>) :
+        RecyclerView.Adapter<SongsAdapter.Holder>() {
 
     var onItemClickListener: ((Song, Int, View) -> Unit)? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         return Holder(
-            AdapterInureSongsBinding.inflate(
-                LayoutInflater.from(parent.context),
-                parent,
-                false
-            )
+                AdapterSongsBinding.inflate(
+                        LayoutInflater.from(parent.context),
+                        parent,
+                        false
+                )
         )
     }
 
@@ -39,8 +39,8 @@ class InureSongsAdapter(private val audio: List<Song>) :
         Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
     }
 
-    inner class Holder(val binding: AdapterInureSongsBinding) :
-        VerticalListViewHolder(binding.root) {
+    inner class Holder(val binding: AdapterSongsBinding) :
+            VerticalListViewHolder(binding.root) {
         fun bind(song: Song) {
             binding.apply {
                 // albumArt.transitionName = audio.fileUri
