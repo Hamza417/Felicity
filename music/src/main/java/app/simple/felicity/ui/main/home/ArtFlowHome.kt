@@ -64,26 +64,7 @@ class ArtFlowHome : ScopedFragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    homeViewModel?.songs?.collect {
-                        adapter.insertData(it)
-                    }
-                }
-                launch {
-                    homeViewModel?.artists?.collect {
-                        adapter.insertData(it)
-                    }
-                }
-                launch {
-                    homeViewModel?.albums?.collect {
-                        adapter.insertData(it)
-                    }
-                }
-                launch {
-                    homeViewModel?.recentlyAdded?.collect {
-                        adapter.insertData(it)
-                    }
-                }
+
             }
         }
     }

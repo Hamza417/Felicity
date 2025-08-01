@@ -42,7 +42,7 @@ class ExoPlayerService : MediaLibraryService(),
     private var wasPlaying = false
 
     var callback: MediaLibrarySession.Callback = object : MediaLibrarySession.Callback {
-
+        // will attempt to handle media library requests
     }
 
     override fun onBind(intent: Intent?): IBinder? {

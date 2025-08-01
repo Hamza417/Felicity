@@ -7,10 +7,7 @@ import android.view.ViewGroup
 import app.simple.felicity.R
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.views.SquareImageView
-import app.simple.felicity.glide.pathcover.PathCoverModel
-import app.simple.felicity.glide.utils.HomeUtils
 import app.simple.felicity.repository.models.home.Home
-import app.simple.felicity.repository.models.home.HomeAudio
 import com.bumptech.glide.Glide
 import com.smarteist.autoimageslider.SliderViewAdapter
 
@@ -27,7 +24,7 @@ class ArtFlowAdapter(private val data: Home) : SliderViewAdapter<ArtFlowAdapter.
     }
 
     override fun getCount(): Int {
-        return HomeUtils.getHomeDataSize(data).coerceAtMost(25)
+        return 0
     }
 
     override fun onCreateViewHolder(parent: ViewGroup?): ArtFlowViewHolder {
@@ -37,7 +34,7 @@ class ArtFlowAdapter(private val data: Home) : SliderViewAdapter<ArtFlowAdapter.
     override fun onBindViewHolder(viewHolder: ArtFlowViewHolder, position: Int) {
         Glide.with(viewHolder.art)
             .asBitmap()
-            .load(PathCoverModel(viewHolder.getContext(), (data as HomeAudio).audios[position].path))
+            .load("")
             .dontTransform()
             .dontAnimate()
             .into(viewHolder.art)

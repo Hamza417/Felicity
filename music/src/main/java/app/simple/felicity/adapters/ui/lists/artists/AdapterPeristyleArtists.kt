@@ -6,9 +6,9 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterArtistsPeristyleBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.repository.models.normal.Artist
+import app.simple.felicity.repository.models.Artist
 
-class AdapterPeristyleArtists(private val artists: ArrayList<Artist>) : RecyclerView.Adapter<AdapterPeristyleArtists.Holder>() {
+class AdapterPeristyleArtists(private val artists: List<Artist>) : RecyclerView.Adapter<AdapterPeristyleArtists.Holder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         val binding = AdapterArtistsPeristyleBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -28,7 +28,6 @@ class AdapterPeristyleArtists(private val artists: ArrayList<Artist>) : Recycler
 
         fun bind(binding: AdapterArtistsPeristyleBinding) {
             this.binding = binding
-            // binding.albumArt.loadAlbumCoverSquare(artists[bindingAdapterPosition].albumId)
             binding.title.text = artists[bindingAdapterPosition].artistName
         }
     }

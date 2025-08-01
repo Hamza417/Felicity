@@ -5,7 +5,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterGridImageBinding
-import app.simple.felicity.glide.utils.HomeUtils
 import app.simple.felicity.repository.models.home.Home
 
 class AdapterGridArt(private val data: Home) :
@@ -36,14 +35,10 @@ class AdapterGridArt(private val data: Home) :
 
         fun bind(adapterGridImageBinding: AdapterGridImageBinding) {
             this.adapterGridImageBinding = adapterGridImageBinding
-
-            HomeUtils.loadHomeAlbumArt(data, adapterGridImageBinding.art, bindingAdapterPosition)
         }
     }
 
     fun randomize() {
-        HomeUtils.randomizeHomeData(data)
-
         for (i in 0 until itemCount) {
             // Notify position change
             notifyItemChanged(i)

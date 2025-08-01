@@ -16,7 +16,6 @@ import app.simple.felicity.decorations.utils.RecyclerViewUtils.randomViewHolder
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 
 class SpannedHome : ScopedFragment() {
@@ -44,26 +43,7 @@ class SpannedHome : ScopedFragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    homeViewModel?.songs?.sample(1000L)?.collect {
-                        adapter.insertData(it)
-                    }
-                }
-                launch {
-                    homeViewModel?.artists?.sample(1000L)?.collect {
-                        adapter.insertData(it)
-                    }
-                }
-                launch {
-                    homeViewModel?.albums?.sample(1000L)?.collect {
-                        adapter.insertData(it)
-                    }
-                }
-                launch {
-                    homeViewModel?.recentlyAdded?.sample(1000L)?.collect {
-                        adapter.insertData(it)
-                    }
-                }
+
             }
         }
     }

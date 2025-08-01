@@ -5,19 +5,15 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.core.utils.BitmapUtils.addLinearGradient
 import app.simple.felicity.core.utils.BitmapUtils.toBitmapKeepingSize
 import app.simple.felicity.databinding.FragmentSplashScreenBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.extensions.viewmodels.DatabaseLoaderViewModel
 import app.simple.felicity.ui.main.home.InureHome
 
 @SuppressLint("CustomSplashScreen")
 class SplashScreen : ScopedFragment() {
-
-    private val databaseLoaderViewModels: DatabaseLoaderViewModel by viewModels()
     private var binding: FragmentSplashScreenBinding? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
