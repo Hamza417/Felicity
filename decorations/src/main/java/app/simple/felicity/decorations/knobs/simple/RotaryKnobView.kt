@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.TransitionDrawable
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.AttributeSet
@@ -12,8 +14,9 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageView
 import android.widget.RelativeLayout
+import androidx.dynamicanimation.animation.SpringAnimation
+import androidx.dynamicanimation.animation.SpringForce
 import app.simple.felicity.core.helpers.ImageHelper.toBitmapDrawable
-import app.simple.felicity.core.maths.Angle.normalizeEulerAngle
 import app.simple.felicity.decoration.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,16 +30,20 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
 
     private var vibration: Vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
+    private var lastMoveAngle = 0F
     private var lastDialAngle = 0F
     private var startAngle = 0F
     private var lastAngle = 0F
 
     private var knobImageView: ImageView
     var knobDrawable: TransitionDrawable
+    private var springAnimation: SpringAnimation? = null
+    private val debounceHandler = Handler(Looper.getMainLooper())
+    private var debounceRunnable: Runnable? = null
+
+    private var pendingVolume: Float = 0f
     var value = 130
-
     private var haptic = false
-
     private var listener: RotaryKnobListener? = null
 
     init {
@@ -76,8 +83,9 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     knobDrawable.startTransition(500)
+                    lastMoveAngle = calculateAngle(event.x, event.y)
                     lastDialAngle = knobImageView.rotation
-                    startAngle = calculateAngle(event.x, event.y)
+                    startAngle = lastMoveAngle
                     feedback()
                     return true
                 }
@@ -86,36 +94,21 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
                     requestDisallowInterceptTouchEvent(true)
 
                     val currentAngle = calculateAngle(event.x, event.y)
-                    val angleDifference = currentAngle - startAngle
-                    var finalAngle = (lastDialAngle + angleDifference).normalizeEulerAngle(false)
-                    val lockedAngle: Float
+                    var angleDelta = currentAngle - lastMoveAngle
 
-                    // Normalize to -180 to 180 range
-                    if (finalAngle > 180) finalAngle -= 360
+                    // Handle wrap-around (e.g., from 179 to -179 degrees)
+                    if (angleDelta > 180) angleDelta -= 360
+                    if (angleDelta < -180) angleDelta += 360
 
-                    // Log.d(TAG, "Rotation: ${knobImageView.rotation} Angle: $currentAngle Final Angle: $finalAngle")
+                    var newAngle = knobImageView.rotation + angleDelta
+                    newAngle = newAngle.coerceIn(START, END)
 
-                    // Check if final angle is within -150 to 150 range
-                    when {
-                        finalAngle in START..END -> {
-                            setKnobPosition(finalAngle)
-                            lastAngle = finalAngle
-                        }
+                    knobImageView.rotation = newAngle
+                    lastAngle = newAngle
+                    lastMoveAngle = currentAngle
 
-                        finalAngle > END -> {
-                            setKnobPosition(END)
-                            lastAngle = END
-                        }
-
-                        finalAngle < START -> {
-                            setKnobPosition(START)
-                            lastAngle = START
-                        }
-                    }
-
-                    listener?.onRotate(finalAngle)
-                    listener?.onIncrement(abs(lastAngle - finalAngle))
-
+                    listener?.onRotate(angleToValue(newAngle))
+                    listener?.onIncrement(abs(angleDelta))
                     return true
                 }
 
@@ -164,12 +157,39 @@ class RotaryKnobView @JvmOverloads constructor(context: Context, attrs: Attribut
         return angle
     }
 
-    fun setKnobPosition(deg: Float) {
-        knobImageView.rotation = deg
+    fun setKnobPosition(volume: Float, animate: Boolean = true) {
+        if (animate) {
+            pendingVolume = volume
+            debounceRunnable?.let { debounceHandler.removeCallbacks(it) }
+            debounceRunnable = Runnable {
+                animateRotation(valueToAngle(pendingVolume))
+            }
+            debounceHandler.postDelayed(debounceRunnable!!, 100) // 100ms debounce
+        } else {
+            knobImageView.rotation = valueToAngle(volume)
+        }
+    }
+
+    private fun animateRotation(toAngle: Float) {
+        springAnimation?.cancel()
+        springAnimation = SpringAnimation(knobImageView, SpringAnimation.ROTATION, toAngle).apply {
+            spring.stiffness = SpringForce.STIFFNESS_LOW
+            spring.dampingRatio = SpringForce.DAMPING_RATIO_MEDIUM_BOUNCY
+            start()
+        }
     }
 
     fun setListener(rotaryKnobListener: RotaryKnobListener) {
         this.listener = rotaryKnobListener
+    }
+
+    private fun angleToValue(angle: Float): Float {
+        val normalized = (angle - START) / (END - START)
+        return (normalized * 100).coerceIn(0F, 100F)
+    }
+
+    private fun valueToAngle(volume: Float): Float {
+        return START + (volume / 100f) * (END - START)
     }
 
     private fun feedback() {

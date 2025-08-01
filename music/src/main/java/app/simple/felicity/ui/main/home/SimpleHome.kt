@@ -15,19 +15,19 @@ import app.simple.felicity.models.Element
 import app.simple.felicity.ui.main.albums.PeristyleAlbums
 import app.simple.felicity.ui.main.artists.PeristyleArtists
 import app.simple.felicity.ui.main.songs.Songs
-import app.simple.felicity.viewmodels.main.home.InureHomeViewModel
+import app.simple.felicity.viewmodels.main.home.SimpleHomeViewModel
 
-class InureHome : ScopedFragment() {
+class SimpleHome : ScopedFragment() {
 
     private lateinit var recyclerView: CustomVerticalRecyclerView
 
-    private var homeViewModel: InureHomeViewModel? = null
+    private var homeViewModel: SimpleHomeViewModel? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val binding = FragmentHomeSimpleBinding.inflate(inflater, container, false)
 
         recyclerView = binding.recyclerView
-        homeViewModel = ViewModelProvider(requireActivity())[InureHomeViewModel::class.java]
+        homeViewModel = ViewModelProvider(requireActivity())[SimpleHomeViewModel::class.java]
 
         return binding.root
     }
@@ -64,9 +64,9 @@ class InureHome : ScopedFragment() {
     }
 
     companion object {
-        fun newInstance(): InureHome {
+        fun newInstance(): SimpleHome {
             val args = Bundle()
-            val fragment = InureHome()
+            val fragment = SimpleHome()
             fragment.arguments = args
             return fragment
         }

@@ -10,7 +10,7 @@ import app.simple.felicity.models.Element
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class InureHomeViewModel(application: Application) : WrappedViewModel(application) {
+class SimpleHomeViewModel(application: Application) : WrappedViewModel(application) {
 
     private val homeData: MutableLiveData<List<Element>> by lazy {
         MutableLiveData<List<Element>>().apply {

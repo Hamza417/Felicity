@@ -10,7 +10,7 @@ import app.simple.felicity.core.utils.BitmapUtils.addLinearGradient
 import app.simple.felicity.core.utils.BitmapUtils.toBitmapKeepingSize
 import app.simple.felicity.databinding.FragmentSplashScreenBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.ui.main.home.InureHome
+import app.simple.felicity.ui.main.home.SimpleHome
 
 @SuppressLint("CustomSplashScreen")
 class SplashScreen : ScopedFragment() {
@@ -27,7 +27,7 @@ class SplashScreen : ScopedFragment() {
 
         parentFragmentManager.beginTransaction()
             .setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left, R.anim.enter_from_left, R.anim.exit_to_right)
-            .replace(R.id.app_container, InureHome.newInstance())
+            .replace(R.id.app_container, SimpleHome.newInstance())
             .commitAllowingStateLoss()
 
         binding?.appIcon?.setImageBitmap(R.drawable.ic_felicity.toBitmapKeepingSize(requireContext(), 10)
