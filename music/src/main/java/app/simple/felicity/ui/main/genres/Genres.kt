@@ -8,8 +8,10 @@ import android.view.ViewGroup
 import androidx.core.view.doOnPreDraw
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
+import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.genres.AdapterGenres
 import app.simple.felicity.databinding.FragmentGenresBinding
+import app.simple.felicity.decorations.itemdecorations.GridSpacingItemDecoration
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.viewmodels.main.genres.GenresViewModel
 
@@ -36,6 +38,12 @@ class Genres : ScopedFragment() {
             Log.d(TAG, "onViewCreated: Genres: ${genres.size}")
 
             binding.recyclerView.layoutManager = GridLayoutManager(requireContext(), 2)
+            binding.recyclerView.addItemDecoration(
+                    GridSpacingItemDecoration
+                    ((binding.recyclerView.layoutManager as GridLayoutManager).spanCount,
+                     resources.getDimensionPixelOffset(R.dimen.padding_15),
+                     true,
+                     0))
             binding.recyclerView.setHasFixedSize(true)
             binding.recyclerView.adapter = AdapterGenres(genres)
 
