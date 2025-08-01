@@ -24,7 +24,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <TextView
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
             android:id="@+id/name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -32,14 +32,15 @@
             android:padding="@dimen/padding_15"
             android:textSize="@dimen/text_size_36"
             android:maxLines="2"
-            android:fontFamily="@font/sedwick"
             android:gravity="center"
             android:textColor="@android:color/white"
+            app:appFontStyle="bold"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintWidth_percent="0.85" />
+            app:layout_constraintWidth_percent="0.85"
+            app:textColorStyle="white" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

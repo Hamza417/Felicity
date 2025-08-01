@@ -1,39 +1,9 @@
-package app.simple.felicity.theme.utils
+package app.simple.felicity.decorations.utils
 
 import android.content.Context
 import android.graphics.Typeface
 import androidx.core.content.res.ResourcesCompat
-import app.simple.felicity.core.constants.TypeFaceConstants.AUDREY
-import app.simple.felicity.core.constants.TypeFaceConstants.AUTO
-import app.simple.felicity.core.constants.TypeFaceConstants.BONNY
-import app.simple.felicity.core.constants.TypeFaceConstants.CHILLAX
-import app.simple.felicity.core.constants.TypeFaceConstants.COMFORTAA
-import app.simple.felicity.core.constants.TypeFaceConstants.EPILOGUE
-import app.simple.felicity.core.constants.TypeFaceConstants.FREDOKA
-import app.simple.felicity.core.constants.TypeFaceConstants.HEEBO
-import app.simple.felicity.core.constants.TypeFaceConstants.INTER
-import app.simple.felicity.core.constants.TypeFaceConstants.JETBRAINS_MONO
-import app.simple.felicity.core.constants.TypeFaceConstants.JOSEFIN
-import app.simple.felicity.core.constants.TypeFaceConstants.JOST
-import app.simple.felicity.core.constants.TypeFaceConstants.LATO
-import app.simple.felicity.core.constants.TypeFaceConstants.MALI
-import app.simple.felicity.core.constants.TypeFaceConstants.MANROPE
-import app.simple.felicity.core.constants.TypeFaceConstants.MOHAVE
-import app.simple.felicity.core.constants.TypeFaceConstants.MULISH
-import app.simple.felicity.core.constants.TypeFaceConstants.NUNITO
-import app.simple.felicity.core.constants.TypeFaceConstants.OSWALD
-import app.simple.felicity.core.constants.TypeFaceConstants.OVERPASS
-import app.simple.felicity.core.constants.TypeFaceConstants.PLUS_JAKARTA
-import app.simple.felicity.core.constants.TypeFaceConstants.POPPINS
-import app.simple.felicity.core.constants.TypeFaceConstants.RAJDHANI
-import app.simple.felicity.core.constants.TypeFaceConstants.REFORMA
-import app.simple.felicity.core.constants.TypeFaceConstants.ROBOTO
-import app.simple.felicity.core.constants.TypeFaceConstants.SOURCE_CODE_PRO
-import app.simple.felicity.core.constants.TypeFaceConstants.SUBJECTIVITY
-import app.simple.felicity.core.constants.TypeFaceConstants.TypefaceStyle
-import app.simple.felicity.core.constants.TypeFaceConstants.UBUNTU
-import app.simple.felicity.core.constants.TypeFaceConstants.URBANIST
-import app.simple.felicity.core.constants.TypeFaceConstants.YESSICA
+import app.simple.felicity.core.constants.TypeFaceConstants
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.R
 
@@ -43,7 +13,7 @@ object TypeFace {
         var typeface: Typeface? = null
 
         when (appFont) {
-            AUTO -> {
+            TypeFaceConstants.AUTO -> {
                 when (style) {
                     0, 1 -> {
                         typeface = Typeface.DEFAULT
@@ -55,7 +25,7 @@ object TypeFace {
                 }
             }
 
-            LATO -> {
+            TypeFaceConstants.LATO -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.lato_light)
@@ -75,7 +45,7 @@ object TypeFace {
                 }
             }
 
-            PLUS_JAKARTA -> {
+            TypeFaceConstants.PLUS_JAKARTA -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.plus_jakarta_light)
@@ -95,7 +65,7 @@ object TypeFace {
                 }
             }
 
-            MULISH -> {
+            TypeFaceConstants.MULISH -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.mulish_light)
@@ -115,7 +85,7 @@ object TypeFace {
                 }
             }
 
-            JOST -> {
+            TypeFaceConstants.JOST -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.jost_light)
@@ -135,7 +105,7 @@ object TypeFace {
                 }
             }
 
-            EPILOGUE -> {
+            TypeFaceConstants.EPILOGUE -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.epilogue_light)
@@ -155,7 +125,7 @@ object TypeFace {
                 }
             }
 
-            UBUNTU -> {
+            TypeFaceConstants.UBUNTU -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.ubuntu_light)
@@ -175,7 +145,7 @@ object TypeFace {
                 }
             }
 
-            POPPINS -> {
+            TypeFaceConstants.POPPINS -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.poppins_light)
@@ -195,7 +165,7 @@ object TypeFace {
                 }
             }
 
-            MANROPE -> {
+            TypeFaceConstants.MANROPE -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.manrope_light)
@@ -215,7 +185,7 @@ object TypeFace {
                 }
             }
 
-            INTER -> {
+            TypeFaceConstants.INTER -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.inter_light)
@@ -235,7 +205,7 @@ object TypeFace {
                 }
             }
 
-            OVERPASS -> {
+            TypeFaceConstants.OVERPASS -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.overpass_light)
@@ -255,7 +225,7 @@ object TypeFace {
                 }
             }
 
-            URBANIST -> {
+            TypeFaceConstants.URBANIST -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.urbanist_light)
@@ -275,7 +245,7 @@ object TypeFace {
                 }
             }
 
-            NUNITO -> {
+            TypeFaceConstants.NUNITO -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.nunito_light)
@@ -295,7 +265,7 @@ object TypeFace {
                 }
             }
 
-            OSWALD -> {
+            TypeFaceConstants.OSWALD -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.oswald_light)
@@ -315,7 +285,7 @@ object TypeFace {
                 }
             }
 
-            ROBOTO -> {
+            TypeFaceConstants.ROBOTO -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.roboto_light)
@@ -335,11 +305,11 @@ object TypeFace {
                 }
             }
 
-            REFORMA -> {
+            TypeFaceConstants.REFORMA -> {
                 when (style) {
                     0,
                     1,
-                    -> {
+                        -> {
                         typeface = ResourcesCompat.getFont(context, R.font.reforma_blanca)
                     }
 
@@ -353,7 +323,7 @@ object TypeFace {
                 }
             }
 
-            SUBJECTIVITY -> {
+            TypeFaceConstants.SUBJECTIVITY -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.subjectivity_light)
@@ -373,7 +343,7 @@ object TypeFace {
                 }
             }
 
-            MOHAVE -> {
+            TypeFaceConstants.MOHAVE -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.mohave_light)
@@ -393,7 +363,7 @@ object TypeFace {
                 }
             }
 
-            YESSICA -> {
+            TypeFaceConstants.YESSICA -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.yessica_light)
@@ -413,7 +383,7 @@ object TypeFace {
                 }
             }
 
-            AUDREY -> {
+            TypeFaceConstants.AUDREY -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.audrey_regular)
@@ -433,7 +403,7 @@ object TypeFace {
                 }
             }
 
-            JOSEFIN -> {
+            TypeFaceConstants.JOSEFIN -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.josefin_sans_light)
@@ -453,7 +423,7 @@ object TypeFace {
                 }
             }
 
-            COMFORTAA -> {
+            TypeFaceConstants.COMFORTAA -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.comfortaa_light)
@@ -473,7 +443,7 @@ object TypeFace {
                 }
             }
 
-            CHILLAX -> {
+            TypeFaceConstants.CHILLAX -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.chillax_light)
@@ -493,7 +463,7 @@ object TypeFace {
                 }
             }
 
-            BONNY -> {
+            TypeFaceConstants.BONNY -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.bonny_light)
@@ -513,7 +483,7 @@ object TypeFace {
                 }
             }
 
-            SOURCE_CODE_PRO -> {
+            TypeFaceConstants.SOURCE_CODE_PRO -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.source_code_pro_light)
@@ -533,7 +503,7 @@ object TypeFace {
                 }
             }
 
-            FREDOKA -> {
+            TypeFaceConstants.FREDOKA -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.fredoka_light)
@@ -553,7 +523,7 @@ object TypeFace {
                 }
             }
 
-            HEEBO -> {
+            TypeFaceConstants.HEEBO -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.heebo_light)
@@ -573,7 +543,7 @@ object TypeFace {
                 }
             }
 
-            MALI -> {
+            TypeFaceConstants.MALI -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.mali_light)
@@ -593,7 +563,7 @@ object TypeFace {
                 }
             }
 
-            RAJDHANI -> {
+            TypeFaceConstants.RAJDHANI -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.rajdhani_light)
@@ -613,7 +583,7 @@ object TypeFace {
                 }
             }
 
-            JETBRAINS_MONO -> {
+            TypeFaceConstants.JETBRAINS_MONO -> {
                 when (style) {
                     0 -> {
                         typeface = ResourcesCompat.getFont(context, R.font.jetbrains_mono_light)
@@ -650,60 +620,60 @@ object TypeFace {
     }
 
     fun getBoldTypeFace(context: Context): Typeface? {
-        return getTypeFace(AppearancePreferences.getAppFont(), TypefaceStyle.BOLD.style, context)
+        return getTypeFace(AppearancePreferences.getAppFont(), TypeFaceConstants.TypefaceStyle.BOLD.style, context)
     }
 
     fun getRegularTypeFace(context: Context): Typeface? {
-        return getTypeFace(AppearancePreferences.getAppFont(), TypefaceStyle.REGULAR.style, context)
+        return getTypeFace(AppearancePreferences.getAppFont(), TypeFaceConstants.TypefaceStyle.REGULAR.style, context)
     }
 
     fun getMediumTypeFace(context: Context): Typeface? {
-        return getTypeFace(AppearancePreferences.getAppFont(), TypefaceStyle.MEDIUM.style, context)
+        return getTypeFace(AppearancePreferences.getAppFont(), TypeFaceConstants.TypefaceStyle.MEDIUM.style, context)
     }
 
     fun getLightTypeFace(context: Context): Typeface? {
-        return getTypeFace(AppearancePreferences.getAppFont(), TypefaceStyle.LIGHT.style, context)
+        return getTypeFace(AppearancePreferences.getAppFont(), TypeFaceConstants.TypefaceStyle.LIGHT.style, context)
     }
 
     /**
      * List of all typefaces with their code names and red IDs
      */
     val list: ArrayList<TypeFaceModel> = arrayListOf(
-            TypeFaceModel("Auto (System Default)", 0, AUTO),
-            TypeFaceModel("Lato", R.font.lato_bold, LATO),
-            TypeFaceModel("Plus Jakarta Sans", R.font.plus_jakarta_bold, PLUS_JAKARTA),
-            TypeFaceModel("Mulish", R.font.mulish_bold, MULISH),
-            TypeFaceModel("Jost", R.font.jost_bold, JOST),
-            TypeFaceModel("Epilogue", R.font.epilogue_bold, EPILOGUE),
-            TypeFaceModel("Ubuntu", R.font.ubuntu_bold, UBUNTU),
-            TypeFaceModel("Poppins", R.font.poppins_bold, POPPINS),
-            TypeFaceModel("Manrope", R.font.manrope_bold, MANROPE),
-            TypeFaceModel("Inter", R.font.inter_bold, INTER),
-            TypeFaceModel("Overpass", R.font.overpass_bold, OVERPASS),
-            TypeFaceModel("Urbanist", R.font.urbanist_bold, URBANIST),
-            TypeFaceModel("Nunito", R.font.nunito_bold, NUNITO),
-            TypeFaceModel("Oswald", R.font.oswald_bold, OSWALD),
-            TypeFaceModel("Roboto", R.font.roboto_bold, ROBOTO),
-            TypeFaceModel("Reforma", R.font.reforma_negra, REFORMA),
-            TypeFaceModel("Subjectivity", R.font.subjectivity_bold, SUBJECTIVITY),
-            TypeFaceModel("Mohave", R.font.mohave_bold, MOHAVE),
-            TypeFaceModel("Yessica", R.font.yessica_bold, YESSICA),
-            TypeFaceModel("Audrey", R.font.audrey_bold, AUDREY),
-            TypeFaceModel("Josefin Sans", R.font.josefin_sans_bold, JOSEFIN),
-            TypeFaceModel("Comfortaa", R.font.comfortaa_bold, COMFORTAA),
-            TypeFaceModel("Chillax", R.font.chillax_semi_bold, CHILLAX),
-            TypeFaceModel("Bonny", R.font.bonny_bold, BONNY),
-            TypeFaceModel("Source Code Pro", R.font.source_code_pro_bold, SOURCE_CODE_PRO),
-            TypeFaceModel("Fredoka", R.font.fredoka_bold, FREDOKA),
-            TypeFaceModel("Heebo", R.font.heebo_bold, HEEBO),
-            TypeFaceModel("Mali", R.font.mali_bold, MALI),
-            TypeFaceModel("Rajdhani", R.font.rajdhani_bold, RAJDHANI),
-            TypeFaceModel("JetBrains Mono", R.font.jetbrains_mono_bold, JETBRAINS_MONO)
+            TypeFaceModel("Auto (System Default)", 0, TypeFaceConstants.AUTO),
+            TypeFaceModel("Lato", R.font.lato_bold, TypeFaceConstants.LATO),
+            TypeFaceModel("Plus Jakarta Sans", R.font.plus_jakarta_bold, TypeFaceConstants.PLUS_JAKARTA),
+            TypeFaceModel("Mulish", R.font.mulish_bold, TypeFaceConstants.MULISH),
+            TypeFaceModel("Jost", R.font.jost_bold, TypeFaceConstants.JOST),
+            TypeFaceModel("Epilogue", R.font.epilogue_bold, TypeFaceConstants.EPILOGUE),
+            TypeFaceModel("Ubuntu", R.font.ubuntu_bold, TypeFaceConstants.UBUNTU),
+            TypeFaceModel("Poppins", R.font.poppins_bold, TypeFaceConstants.POPPINS),
+            TypeFaceModel("Manrope", R.font.manrope_bold, TypeFaceConstants.MANROPE),
+            TypeFaceModel("Inter", R.font.inter_bold, TypeFaceConstants.INTER),
+            TypeFaceModel("Overpass", R.font.overpass_bold, TypeFaceConstants.OVERPASS),
+            TypeFaceModel("Urbanist", R.font.urbanist_bold, TypeFaceConstants.URBANIST),
+            TypeFaceModel("Nunito", R.font.nunito_bold, TypeFaceConstants.NUNITO),
+            TypeFaceModel("Oswald", R.font.oswald_bold, TypeFaceConstants.OSWALD),
+            TypeFaceModel("Roboto", R.font.roboto_bold, TypeFaceConstants.ROBOTO),
+            TypeFaceModel("Reforma", R.font.reforma_negra, TypeFaceConstants.REFORMA),
+            TypeFaceModel("Subjectivity", R.font.subjectivity_bold, TypeFaceConstants.SUBJECTIVITY),
+            TypeFaceModel("Mohave", R.font.mohave_bold, TypeFaceConstants.MOHAVE),
+            TypeFaceModel("Yessica", R.font.yessica_bold, TypeFaceConstants.YESSICA),
+            TypeFaceModel("Audrey", R.font.audrey_bold, TypeFaceConstants.AUDREY),
+            TypeFaceModel("Josefin Sans", R.font.josefin_sans_bold, TypeFaceConstants.JOSEFIN),
+            TypeFaceModel("Comfortaa", R.font.comfortaa_bold, TypeFaceConstants.COMFORTAA),
+            TypeFaceModel("Chillax", R.font.chillax_semi_bold, TypeFaceConstants.CHILLAX),
+            TypeFaceModel("Bonny", R.font.bonny_bold, TypeFaceConstants.BONNY),
+            TypeFaceModel("Source Code Pro", R.font.source_code_pro_bold, TypeFaceConstants.SOURCE_CODE_PRO),
+            TypeFaceModel("Fredoka", R.font.fredoka_bold, TypeFaceConstants.FREDOKA),
+            TypeFaceModel("Heebo", R.font.heebo_bold, TypeFaceConstants.HEEBO),
+            TypeFaceModel("Mali", R.font.mali_bold, TypeFaceConstants.MALI),
+            TypeFaceModel("Rajdhani", R.font.rajdhani_bold, TypeFaceConstants.RAJDHANI),
+            TypeFaceModel("JetBrains Mono", R.font.jetbrains_mono_bold, TypeFaceConstants.JETBRAINS_MONO)
     )
 
     class TypeFaceModel(
             /**
-             * Proper name of the typeface such as [ROBOTO]
+             * Proper name of the typeface such as [TypeFaceConstants.ROBOTO]
              */
             val typefaceName: String,
 

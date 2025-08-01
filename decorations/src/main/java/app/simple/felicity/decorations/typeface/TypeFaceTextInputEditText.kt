@@ -4,8 +4,8 @@ import android.content.Context
 import android.util.AttributeSet
 import android.view.inputmethod.InputMethodManager
 import app.simple.felicity.decoration.R
+import app.simple.felicity.decorations.utils.TypeFace
 import app.simple.felicity.preferences.AppearancePreferences
-import app.simple.felicity.theme.utils.TypeFace
 import com.google.android.material.textfield.TextInputEditText
 
 class TypeFaceTextInputEditText : TextInputEditText {

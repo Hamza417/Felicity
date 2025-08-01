@@ -10,14 +10,13 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.core.util.Consumer;
-import app.simple.felicity.core.constants.TypeFaceConstants;
 import app.simple.felicity.core.constants.TypeFaceConstants.TypefaceStyle;
 import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.decorations.fastscroll.backgrounds.CircularBackground;
+import app.simple.felicity.decorations.utils.TypeFace;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.theme.managers.ThemeManager;
-import app.simple.felicity.theme.utils.TypeFace;
 
 public class PopupStyles {
     

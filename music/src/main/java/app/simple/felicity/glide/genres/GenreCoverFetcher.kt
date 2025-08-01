@@ -6,6 +6,7 @@ import app.simple.felicity.repository.maps.GenreMap
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.data.DataFetcher
+import java.util.Locale
 
 class GenreCoverFetcher internal constructor(private val model: GenreCoverModel) : DataFetcher<Bitmap> {
     override fun loadData(priority: Priority, callback: DataFetcher.DataCallback<in Bitmap>) {
@@ -63,7 +64,9 @@ class GenreCoverFetcher internal constructor(private val model: GenreCoverModel)
         //        tintPaint.alpha = 255.times(0.5f).toInt()
         //        canvas.drawRect(0f, 0f, canvasWidth.toFloat(), canvasHeight.toFloat(), tintPaint)
 
-        callback.onDataReady(BitmapFactory.decodeResource(context.resources, GenreMap.getGenreImage(genre = model.genreName)))
+        callback.onDataReady(BitmapFactory.decodeResource(
+                context.resources,
+                GenreMap.getGenreImage(genre = model.genreName.lowercase(Locale.getDefault()))))
     }
 
     override fun cleanup() {}
