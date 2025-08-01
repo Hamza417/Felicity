@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.theme.ThemeMaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="@dimen/padding_10"
+    app:cardCornerRadius="@dimen/padding_25"
+    app:cardElevation="@dimen/padding_15">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <app.simple.felicity.decorations.views.SquareImageView
+            android:id="@+id/cover"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/name"
+            android:layout_width="match_parent"
+            android:layout_margin="@dimen/padding_20"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:textSize="@dimen/text_size_22"
+            app:appFontStyle="bold"
+            app:textColorStyle="white" />
+
+    </FrameLayout>
+
+</app.simple.felicity.decorations.theme.ThemeMaterialCardView>

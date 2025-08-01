@@ -7,7 +7,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterSongsBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
-import app.simple.felicity.glide.pathcover.Utils.loadFromPath
+import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromUri
 import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
 
@@ -48,7 +48,7 @@ class SongsAdapter(private val audio: List<Song>) :
                 artists.setTextOrUnknown(song.artist)
                 album.setTextOrUnknown(song.album)
 
-                albumArt.loadFromPath(song.path, applyTransform = true)
+                albumArt.loadFromUri(song.artworkUri!!)
                 albumArt.transitionName = song.path
 
                 binding.container.radius = 0F

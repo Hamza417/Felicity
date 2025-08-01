@@ -1,6 +1,8 @@
 // repository/models/normal/Song.kt
 package app.simple.felicity.repository.models
 
+import android.net.Uri
+
 data class Song(
         val id: Long,
         val title: String?,
@@ -8,11 +10,11 @@ data class Song(
         val album: String?,
         val albumId: Long,
         val artistId: Long,
-        val uri: String?,
+        val uri: Uri?,
         val path: String,
         val duration: Long,
         val size: Long,
         val dateAdded: Long,
         val dateModified: Long,
-        val artworkUri: String?? = null
+        val artworkUri: Uri?? = null
 )

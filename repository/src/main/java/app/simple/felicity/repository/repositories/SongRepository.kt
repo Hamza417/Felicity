@@ -1,8 +1,12 @@
+@file:Suppress("DEPRECATION")
+
 package app.simple.felicity.repository.repositories
 
 import android.content.ContentUris
 import android.content.Context
+import android.net.Uri
 import android.provider.MediaStore
+import androidx.core.net.toUri
 import app.simple.felicity.repository.models.Song
 
 class SongRepository(private val context: Context) {
@@ -45,29 +49,46 @@ class SongRepository(private val context: Context) {
             val dateModifiedCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
 
             while (it.moveToNext()) {
+                val songId = it.getLong(idCol)
                 val albumId = it.getLong(albumIdCol)
+                val trackUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId)
 
-                val albumUri = ContentUris.withAppendedId(
+                val artworkUri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    trackUri
+                } else {
+                    // For below Android 10, query ALBUM_ART column
+                    var artPath: Uri? = null
+                    val albumCursor = context.contentResolver.query(
                         MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
-                        albumId
-                )
+                        arrayOf(MediaStore.Audio.Albums.ALBUM_ART),
+                        MediaStore.Audio.Albums._ID + "=?",
+                        arrayOf(albumId.toString()),
+                        null
+                    )
+                    albumCursor?.use { ac ->
+                        if (ac.moveToFirst()) {
+                            artPath = ac.getString(0).toUri()
+                        }
+                    }
+
+                    artPath
+                }
 
                 songs.add(
                         Song(
-                                id = it.getLong(idCol),
+                                id = songId,
                                 title = it.getString(titleCol),
                                 artist = it.getString(artistCol),
                                 album = it.getString(albumCol),
                                 albumId = albumId,
                                 artistId = it.getLong(artistIdCol),
-                                uri = "content://media/external/audio/media/${it.getLong(idCol)}",
+                                uri = trackUri,
                                 path = it.getString(dataCol),
                                 duration = it.getLong(durationCol),
                                 size = it.getLong(sizeCol),
                                 dateAdded = it.getLong(dateAddedCol),
                                 dateModified = it.getLong(dateModifiedCol),
-                                artworkUri = albumUri.toString(
-                                )
+                                artworkUri = artworkUri
                         )
                 )
             }
