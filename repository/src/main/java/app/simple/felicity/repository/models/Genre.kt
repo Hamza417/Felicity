@@ -7,4 +7,8 @@ import kotlinx.parcelize.Parcelize
 data class Genre(
         val id: Long,
         val name: String?
-) : Parcelable
+) : Parcelable {
+    override fun toString(): String {
+        return "Genre(id=\$id, name=\$name)"
+    }
+}

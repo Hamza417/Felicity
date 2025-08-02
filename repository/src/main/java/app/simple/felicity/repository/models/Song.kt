@@ -2,7 +2,10 @@
 package app.simple.felicity.repository.models
 
 import android.net.Uri
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
+@Parcelize
 data class Song(
         val id: Long,
         val title: String?,
@@ -17,4 +20,20 @@ data class Song(
         val dateAdded: Long,
         val dateModified: Long,
         val artworkUri: Uri?? = null
-)
+) : Parcelable {
+    override fun toString(): String {
+        return "Song(id=$id, " +
+                "title=$title, " +
+                "artist=$artist, " +
+                "album=$album, " +
+                "albumId=$albumId, " +
+                "artistId=$artistId, " +
+                "uri=$uri, " +
+                "path='$path', " +
+                "duration=$duration, " +
+                "size=$size, " +
+                "dateAdded=$dateAdded, " +
+                "dateModified=$dateModified, " +
+                "artworkUri=$artworkUri)"
+    }
+}

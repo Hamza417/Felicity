@@ -39,7 +39,7 @@ class GenreSongs : MediaFragment() {
 
         val factory = GenreViewerViewModelFactory(genre)
         genreViewerViewModel = ViewModelProvider(this, factory)[GenreViewerViewModel::class.java]
-        binding.container.transitionName = genre.name ?: getString(app.simple.felicity.R.string.unknown)
+        binding.container.transitionName = genre.toString()
 
         return binding.root
     }

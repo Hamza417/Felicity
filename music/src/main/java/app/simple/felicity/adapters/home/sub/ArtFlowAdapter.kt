@@ -31,17 +31,22 @@ class ArtFlowAdapter(private val data: ArtFlowData<Any>) : SliderViewAdapter<Art
 
     override fun onBindViewHolder(viewHolder: ArtFlowViewHolder, position: Int) {
         if (data.items.isNotEmpty()) {
-            when (data.items[0]) {
+            val item = data.items[position]
+
+            when (item) {
                 is Song -> {
                     Glide.with(viewHolder.binding.art)
                         .asBitmap()
                         .load(UriCoverModel(
                                 viewHolder.getContext(),
-                                (data.items[position] as Song).artworkUri!!
+                                item.artworkUri!!
                         ))
                         .dontTransform()
                         .dontAnimate()
                         .into(viewHolder.binding.art)
+
+                    viewHolder.binding.title.text = item.title ?: viewHolder.getContext().getString(R.string.unknown)
+                    viewHolder.binding.artist.text = item.artist ?: viewHolder.getContext().getString(R.string.unknown)
                 }
                 is Album -> {
                     Glide.with(viewHolder.binding.art)
@@ -53,6 +58,9 @@ class ArtFlowAdapter(private val data: ArtFlowData<Any>) : SliderViewAdapter<Art
                         .dontTransform()
                         .dontAnimate()
                         .into(viewHolder.binding.art)
+
+                    viewHolder.binding.title.text = item.name ?: viewHolder.getContext().getString(R.string.unknown)
+                    viewHolder.binding.artist.text = item.artist ?: viewHolder.getContext().getString(R.string.unknown)
                 }
                 is Genre -> {
                     Glide.with(viewHolder.binding.art)
@@ -66,6 +74,8 @@ class ArtFlowAdapter(private val data: ArtFlowData<Any>) : SliderViewAdapter<Art
                         .transform(CenterCrop())
                         .dontAnimate()
                         .into(viewHolder.binding.art)
+
+                    viewHolder.binding.title.text = item.name ?: viewHolder.getContext().getString(R.string.unknown)
                 }
             }
         }

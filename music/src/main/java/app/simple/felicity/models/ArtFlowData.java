@@ -10,6 +10,7 @@ public class ArtFlowData <T> {
     private int title;
     
     private List <T> items;
+    private int position = -1;
     
     public ArtFlowData(int title, List <T> items) {
         this.title = title;
@@ -30,5 +31,13 @@ public class ArtFlowData <T> {
     
     public void setItems(List <T> items) {
         this.items = items;
+    }
+    
+    public int getPosition() {
+        return position;
+    }
+    
+    public void setPosition(int position) {
+        this.position = position;
     }
 }

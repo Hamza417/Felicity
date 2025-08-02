@@ -60,8 +60,8 @@ class ArtFlowHome : MediaFragment() {
                                     setMediaItems(data[position].items.filterIsInstance<Song>(), itemPosition)
                                 }
                                 is Genre -> {
-                                    view.transitionName = data[position].items.filterIsInstance<Genre>()[itemPosition].name ?: getString(app.simple.felicity.R.string.unknown)
-                                    openFragmentArc(GenreSongs.newInstance(data[position].items.filterIsInstance<Genre>()[itemPosition]), view, GenreSongs.TAG)
+                                    openFragmentArc(GenreSongs.newInstance(
+                                            data[position].items.filterIsInstance<Genre>()[itemPosition]), view, GenreSongs.TAG)
                                 }
                                 else -> {
                                     Log.w(TAG, "Unsupported item type clicked at position: $position")
