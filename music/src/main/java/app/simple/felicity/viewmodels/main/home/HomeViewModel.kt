@@ -24,7 +24,7 @@ class HomeViewModel @Inject constructor(
         private val albumRepository: AlbumRepository,
         private val genreRepository: GenreRepository) : WrappedViewModel(application) {
 
-    private val _data: MutableSharedFlow<List<ArtFlowData<Any>>> = MutableSharedFlow()
+    private val _data: MutableSharedFlow<List<ArtFlowData<Any>>> = MutableSharedFlow(replay = 1)
     val data: SharedFlow<List<ArtFlowData<Any>>> = _data.asSharedFlow()
 
     init {

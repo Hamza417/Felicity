@@ -10,8 +10,9 @@
         android:id="@+id/poster_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:translationZ="5dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHeight_percent="0.6"
+        app:layout_constraintHeight_percent="0.45"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -43,6 +44,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:navigationPaddingRequired="true"
-        app:statusPaddingRequired="false" />
+        app:statusPaddingRequired="true" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

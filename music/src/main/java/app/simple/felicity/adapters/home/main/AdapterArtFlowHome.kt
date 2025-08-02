@@ -24,21 +24,11 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
         holder.binding.title.text = holder.binding.title.context.getString(item.title)
         holder.binding.imageSlider.setSliderAdapter(ArtFlowAdapter(item))
 
-        if (position == 0) {
-            val params = holder.binding.title.layoutParams as ViewGroup.MarginLayoutParams
-            // params.topMargin = StatusBarHeight.getStatusBarHeight(holder.binding.title.context.resources)
-            holder.binding.title.layoutParams = params
-        } else {
-            holder.binding.title.setPadding(
-                    holder.binding.title.paddingLeft,
-                    holder.binding.title.paddingTop,
-                    holder.binding.title.paddingRight,
-                    holder.binding.title.paddingBottom
-            )
-        }
-
-        holder.binding.container.setOnClickListener {
-            adapterArtFlowHomeCallbacks?.onClicked(it, position)
+        holder.binding.title.setOnClickListener {
+            adapterArtFlowHomeCallbacks?.onClicked(
+                    holder.binding.container,
+                    position,
+                    holder.binding.imageSlider.currentPagePosition)
         }
     }
 
@@ -50,7 +40,7 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
 
     companion object {
         interface AdapterArtFlowHomeCallbacks {
-            fun onClicked(view: View, position: Int)
+            fun onClicked(view: View, position: Int, itemPosition: Int)
         }
     }
 }

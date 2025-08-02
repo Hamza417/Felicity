@@ -8,13 +8,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
 import app.simple.felicity.databinding.FragmentViewerGenresBinding
-import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
+import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.factories.genres.GenreViewerViewModelFactory
 import app.simple.felicity.glide.genres.GenreCoverModel
-import app.simple.felicity.glide.transformation.BottomAlphaGradient
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.utils.ParcelUtils.parcelable
@@ -23,7 +24,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.BitmapTransitionOptions
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 
-class GenreSongs : ScopedFragment() {
+class GenreSongs : MediaFragment() {
 
     private lateinit var binding: FragmentViewerGenresBinding
     private lateinit var genreViewerViewModel: GenreViewerViewModel
@@ -53,7 +54,7 @@ class GenreSongs : ScopedFragment() {
                 binding.recyclerView.let {
                     it.setPadding(
                             it.paddingLeft,
-                            it.paddingTop + binding.posterContainer.height,
+                            binding.posterContainer.height,
                             it.paddingRight,
                             it.paddingBottom
                     )
@@ -61,12 +62,30 @@ class GenreSongs : ScopedFragment() {
             }
         }
 
+        binding.recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                val offset = recyclerView.computeVerticalScrollOffset()
+                val fadeSpeed = 0.5f // 0.5 = twice as fast, 0.25 = four times as fast, etc.
+                val maxOffset = (binding.posterContainer.height * fadeSpeed).coerceAtLeast(1f)
+                val alpha = 1f - (offset / maxOffset).coerceIn(0f, 1f)
+                binding.posterContainer.alpha = alpha
+            }
+        })
+
         binding.poster.createGenreCover(genre)
         binding.name.text = genre.name ?: getString(R.string.unknown)
 
         genreViewerViewModel.getSongs().observe(viewLifecycleOwner) { songs ->
             Log.i(TAG, "onViewCreated: Received songs for genre: ${genre.name}, count: ${songs.size}")
-            binding.recyclerView.adapter = SongsAdapter(songs)
+            val adapter = SongsAdapter(songs)
+            binding.recyclerView.addItemDecoration(SpacingItemDecoration(48, true))
+            binding.recyclerView.adapter = adapter
+
+            adapter.onItemClickListener = { song, position, view ->
+                // Handle song click
+                Log.i(TAG, "Song clicked: ${song.title} by ${song.artist}")
+                setMediaItems(songs, position)
+            }
 
             view.startTransitionOnPreDraw()
         }
@@ -76,7 +95,7 @@ class GenreSongs : ScopedFragment() {
         Glide.with(context)
             .asBitmap()
             .load(GenreCoverModel(context, genre.id, genreName = genre.name ?: context.getString(R.string.unknown)))
-            .transform(CenterCrop(), BottomAlphaGradient())
+            .transform(CenterCrop())
             .transition(BitmapTransitionOptions.withCrossFade())
             .into(this)
     }

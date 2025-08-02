@@ -13,6 +13,7 @@ import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Greyscale
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.uricover.UriCoverModel
+import app.simple.felicity.preferences.AppearancePreferences
 import com.bumptech.glide.GenericTransitionOptions
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
@@ -121,11 +122,11 @@ object AudioCoverUtil {
             .asBitmap()
             .dontTransform()
             .dontAnimate()
-            //            .transform(RoundedCorners(AppearancePreferences.getCornerRadius().toInt().times(2)),
-            //                       Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()),
-            //                       BlurShadow(this.context)
-            //                           .setElevation(25F)
-            //                           .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE))
+            .transform(RoundedCorners(AppearancePreferences.getCornerRadius().toInt().times(2)),
+                       Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()),
+                       BlurShadow(this.context)
+                           .setElevation(25F)
+                           .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE))
             .load(UriCoverModel(this.context, uri))
             .into(this)
     }
