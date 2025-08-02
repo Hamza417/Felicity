@@ -50,7 +50,8 @@ class ArtFlowHome : MediaFragment() {
 
                     binding?.recyclerView?.adapter = adapter
                     binding?.recyclerView?.setHasFixedSize(true)
-                    binding?.recyclerView?.backgroundTintList = ColorStateList(arrayOf(intArrayOf()), intArrayOf(Color.BLACK))
+                    binding?.recyclerView?.backgroundTintList =
+                        ColorStateList(arrayOf(intArrayOf()), intArrayOf(Color.BLACK))
 
                     adapter.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
                         override fun onClicked(view: View, position: Int, itemPosition: Int) {
@@ -79,6 +80,9 @@ class ArtFlowHome : MediaFragment() {
                                 binding?.recyclerView?.forEachViewHolder<AdapterArtFlowHome.Holder> {
                                     it.binding.imageSlider.restartCycle()
                                 }
+                            }
+                            MotionEvent.ACTION_DOWN -> {
+
                             }
                         }
 

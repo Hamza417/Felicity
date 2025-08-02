@@ -1,6 +1,7 @@
 package app.simple.felicity.adapters.home.sub
 
 import android.content.Context
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import app.simple.felicity.R
@@ -16,6 +17,8 @@ import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.smarteist.autoimageslider.SliderViewAdapter
 
 class ArtFlowAdapter(private val data: ArtFlowData<Any>) : SliderViewAdapter<ArtFlowAdapter.ArtFlowViewHolder>() {
+
+    private var artFlowAdapterCallbacks: ArtFlowAdapterCallbacks? = null
 
     inner class ArtFlowViewHolder(val binding: AdapterArtFlowBinding) : ViewHolder(binding.root) {
         fun getContext(): Context = binding.root.context
@@ -78,6 +81,23 @@ class ArtFlowAdapter(private val data: ArtFlowData<Any>) : SliderViewAdapter<Art
                     viewHolder.binding.title.text = item.name ?: viewHolder.getContext().getString(R.string.unknown)
                 }
             }
+
+            viewHolder.binding.container.setOnClickListener {
+                Log.d("ArtFlowAdapter", "Item clicked at position: $position")
+                artFlowAdapterCallbacks?.onClicked()
+            }
+        }
+    }
+
+    fun setArtFlowAdapterCallbacks(callbacks: ArtFlowAdapterCallbacks) {
+        this.artFlowAdapterCallbacks = callbacks
+    }
+
+    companion object {
+        private const val TAG = "ArtFlowAdapter"
+
+        interface ArtFlowAdapterCallbacks {
+            fun onClicked()
         }
     }
 }
