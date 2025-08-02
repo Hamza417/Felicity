@@ -2,6 +2,7 @@ package app.simple.felicity.hilt
 
 import android.content.Context
 import app.simple.felicity.repository.repositories.AlbumRepository
+import app.simple.felicity.repository.repositories.ArtistRepository
 import app.simple.felicity.repository.repositories.GenreRepository
 import app.simple.felicity.repository.repositories.SongRepository
 import dagger.Module
@@ -30,5 +31,11 @@ object AppModule {
     @Singleton
     fun provideGenreRepository(@ApplicationContext context: Context): GenreRepository {
         return GenreRepository(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideArtistRepository(@ApplicationContext context: Context): ArtistRepository {
+        return ArtistRepository(context)
     }
 }

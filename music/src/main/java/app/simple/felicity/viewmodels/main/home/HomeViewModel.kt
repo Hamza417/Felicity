@@ -7,6 +7,7 @@ import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.repositories.AlbumRepository
+import app.simple.felicity.repository.repositories.ArtistRepository
 import app.simple.felicity.repository.repositories.GenreRepository
 import app.simple.felicity.repository.repositories.SongRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,7 +23,8 @@ class HomeViewModel @Inject constructor(
         application: Application,
         private val songRepository: SongRepository,
         private val albumRepository: AlbumRepository,
-        private val genreRepository: GenreRepository) : WrappedViewModel(application) {
+        private val genreRepository: GenreRepository,
+        private val artistRepository: ArtistRepository) : WrappedViewModel(application) {
 
     private val _data: MutableSharedFlow<List<ArtFlowData<Any>>> = MutableSharedFlow(replay = 1)
     val data: SharedFlow<List<ArtFlowData<Any>>> = _data.asSharedFlow()
@@ -38,6 +40,7 @@ class HomeViewModel @Inject constructor(
 
             val songs = songRepository.fetchSongs().shuffled().take(TAKE_COUNT)
             val albums = albumRepository.fetchAlbums().shuffled().take(TAKE_COUNT)
+            val artists = artistRepository.fetchArtists().shuffled().take(TAKE_COUNT)
             val genres = genreRepository.fetchGenres().shuffled().take(TAKE_COUNT)
             val recentlyAdded = songRepository.fetchRecentSongs(TAKE_COUNT)
 
@@ -46,6 +49,7 @@ class HomeViewModel @Inject constructor(
             val artFlowData = mutableListOf<ArtFlowData<Any>>()
             artFlowData.add(ArtFlowData(R.string.songs, songs))
             artFlowData.add(ArtFlowData(R.string.albums, albums))
+            artFlowData.add(ArtFlowData(R.string.artists, artists))
             artFlowData.add(ArtFlowData(R.string.genres, genres))
             if (recentlyAdded.isNotEmpty()) {
                 artFlowData.add(ArtFlowData(R.string.recently_added, recentlyAdded))

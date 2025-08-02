@@ -1,6 +1,7 @@
 package app.simple.felicity.adapters.home.sub
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -10,6 +11,7 @@ import app.simple.felicity.glide.genres.GenreCoverModel
 import app.simple.felicity.glide.uricover.UriCoverModel
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Album
+import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
@@ -64,6 +66,18 @@ class ArtFlowAdapter(private val data: ArtFlowData<Any>) : SliderViewAdapter<Art
 
                     viewHolder.binding.title.text = item.name ?: viewHolder.getContext().getString(R.string.unknown)
                     viewHolder.binding.artist.text = item.artist ?: viewHolder.getContext().getString(R.string.unknown)
+                }
+                is Artist -> {
+                    Glide.with(viewHolder.binding.art)
+                        .asBitmap()
+                        .load(UriCoverModel(
+                                viewHolder.getContext(),
+                                item.artworkUri ?: Uri.EMPTY)
+                        )
+                        .dontAnimate()
+                        .into(viewHolder.binding.art)
+
+                    viewHolder.binding.title.text = item.artistName ?: viewHolder.getContext().getString(R.string.unknown)
                 }
                 is Genre -> {
                     Glide.with(viewHolder.binding.art)
