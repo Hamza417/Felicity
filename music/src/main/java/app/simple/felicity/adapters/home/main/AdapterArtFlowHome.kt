@@ -29,13 +29,9 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
             holder.binding.container.transitionName = item.items[item.position].toString()
         }
 
-        holder.binding.imageSlider.setCurrentPageListener {
-            holder.binding.container.transitionName = item.items[it].toString()
-            item.position = it
-        }
-
         holder.binding.title.setOnClickListener {
             holder.binding.container.transitionName = item.items[holder.binding.imageSlider.currentPagePosition].toString()
+            item.position = holder.binding.imageSlider.currentPagePosition
 
             adapterArtFlowHomeCallbacks?.onClicked(
                     holder.binding.container,

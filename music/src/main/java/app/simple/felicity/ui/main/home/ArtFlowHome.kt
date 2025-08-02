@@ -61,7 +61,8 @@ class ArtFlowHome : MediaFragment() {
                                 }
                                 is Genre -> {
                                     openFragmentArc(GenreSongs.newInstance(
-                                            data[position].items.filterIsInstance<Genre>()[itemPosition]), view, GenreSongs.TAG)
+                                            data[position].items.filterIsInstance<Genre>()[itemPosition]),
+                                                    view, GenreSongs.TAG)
                                 }
                                 else -> {
                                     Log.w(TAG, "Unsupported item type clicked at position: $position")
