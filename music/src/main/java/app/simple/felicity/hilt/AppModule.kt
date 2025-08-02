@@ -1,0 +1,34 @@
+package app.simple.felicity.hilt
+
+import android.content.Context
+import app.simple.felicity.repository.repositories.AlbumRepository
+import app.simple.felicity.repository.repositories.GenreRepository
+import app.simple.felicity.repository.repositories.SongRepository
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+object AppModule {
+    @Provides
+    @Singleton
+    fun provideSongRepository(@ApplicationContext context: Context): SongRepository {
+        return SongRepository(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAlbumRepository(@ApplicationContext context: Context): AlbumRepository {
+        return AlbumRepository(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGenreRepository(@ApplicationContext context: Context): GenreRepository {
+        return GenreRepository(context)
+    }
+}

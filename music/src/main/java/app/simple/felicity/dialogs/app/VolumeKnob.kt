@@ -51,15 +51,21 @@ class VolumeKnob : ScopedBottomSheetFragment() {
             when (keyCode) {
                 KeyEvent.KEYCODE_VOLUME_UP -> {
                     Log.d(TAG, "Volume key pressed: $keyCode")
-                    audioManager?.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_VIBRATE);
+                    audioManager?.adjustStreamVolume(
+                            AudioManager.STREAM_MUSIC,
+                            AudioManager.ADJUST_RAISE,
+                            AudioManager.FLAG_VIBRATE);
                     setKnobPosition()
-                    false
+                    true
                 }
                 KeyEvent.KEYCODE_VOLUME_DOWN -> {
                     Log.d(TAG, "Volume key pressed: $keyCode")
-                    audioManager?.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, AudioManager.FLAG_VIBRATE);
+                    audioManager?.adjustStreamVolume(
+                            AudioManager.STREAM_MUSIC,
+                            AudioManager.ADJUST_LOWER,
+                            AudioManager.FLAG_VIBRATE);
                     setKnobPosition()
-                    false
+                    true
                 }
                 else -> false
             }

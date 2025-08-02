@@ -4,32 +4,32 @@ import android.annotation.SuppressLint
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.adapters.home.main.AdapterArtFlowHome
 import app.simple.felicity.databinding.FragmentHomeArtflowBinding
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolder
-import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.ui.main.songs.Songs
+import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.repository.models.Song
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 
-class ArtFlowHome : ScopedFragment() {
+class ArtFlowHome : MediaFragment() {
 
     private var binding: FragmentHomeArtflowBinding? = null
-    private var homeViewModel: HomeViewModel? = null
+    private val homeViewModel: HomeViewModel by viewModels({ requireActivity() })
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
 
         binding = FragmentHomeArtflowBinding.inflate(inflater, container, false)
-        homeViewModel = ViewModelProvider(requireActivity())[HomeViewModel::class.java]
 
         return binding?.root
     }
@@ -39,32 +39,43 @@ class ArtFlowHome : ScopedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         startPostponedEnterTransition()
-        val adapter = AdapterArtFlowHome()
-        binding?.recyclerView?.adapter = adapter
-        binding?.recyclerView?.setHasFixedSize(true)
-        binding?.recyclerView?.backgroundTintList = ColorStateList(arrayOf(intArrayOf()), intArrayOf(Color.BLACK))
-
-        adapter.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
-            override fun onClicked(view: View, position: Int) {
-                openFragmentSlide(Songs.newInstance(), Songs.TAG)
-            }
-        })
-
-        binding?.recyclerView?.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_UP -> {
-                    binding?.recyclerView?.forEachViewHolder<AdapterArtFlowHome.Holder> {
-                        it.sliderView.restartCycle()
-                    }
-                }
-            }
-
-            false
-        }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                homeViewModel.data.collect { data ->
+                    Log.d(TAG, "Data received: ${data.size} items")
+                    val adapter = AdapterArtFlowHome(data)
 
+                    binding?.recyclerView?.adapter = adapter
+                    binding?.recyclerView?.setHasFixedSize(true)
+                    binding?.recyclerView?.backgroundTintList = ColorStateList(arrayOf(intArrayOf()), intArrayOf(Color.BLACK))
+
+                    adapter.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
+                        override fun onClicked(view: View, position: Int) {
+                            Log.d(TAG, "Item clicked at position: $position")
+                            when (data[position].items[0]) {
+                                is Song -> {
+                                    setMediaItems(data[position].items.filterIsInstance<Song>(), 0)
+                                }
+                                else -> {
+                                    Log.w(TAG, "Unsupported item type clicked at position: $position")
+                                }
+                            }
+                        }
+                    })
+
+                    binding?.recyclerView?.setOnTouchListener { _, event ->
+                        when (event.action) {
+                            MotionEvent.ACTION_UP -> {
+                                binding?.recyclerView?.forEachViewHolder<AdapterArtFlowHome.Holder> {
+                                    it.binding.imageSlider.restartCycle()
+                                }
+                            }
+                        }
+
+                        false
+                    }
+                }
             }
         }
     }

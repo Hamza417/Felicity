@@ -9,8 +9,9 @@ import android.util.Log
 import androidx.core.net.toUri
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
+import javax.inject.Inject
 
-class GenreRepository(private val context: Context) {
+public class GenreRepository @Inject constructor(private val context: Context) {
 
     companion object {
         private const val TAG = "GenreRepository"

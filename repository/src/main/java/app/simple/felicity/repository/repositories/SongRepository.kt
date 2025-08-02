@@ -1,5 +1,3 @@
-@file:Suppress("DEPRECATION")
-
 package app.simple.felicity.repository.repositories
 
 import android.content.ContentUris
@@ -8,8 +6,10 @@ import android.net.Uri
 import android.provider.MediaStore
 import androidx.core.net.toUri
 import app.simple.felicity.repository.models.Song
+import javax.inject.Inject
 
-class SongRepository(private val context: Context) {
+@Suppress("DEPRECATION")
+class SongRepository @Inject constructor(private val context: Context) {
 
     fun fetchSongs(): List<Song> {
         val songs = mutableListOf<Song>()
@@ -59,11 +59,11 @@ class SongRepository(private val context: Context) {
                     // For below Android 10, query ALBUM_ART column
                     var artPath: Uri? = null
                     val albumCursor = context.contentResolver.query(
-                        MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
-                        arrayOf(MediaStore.Audio.Albums.ALBUM_ART),
-                        MediaStore.Audio.Albums._ID + "=?",
-                        arrayOf(albumId.toString()),
-                        null
+                            MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
+                            arrayOf(MediaStore.Audio.Albums.ALBUM_ART),
+                            MediaStore.Audio.Albums._ID + "=?",
+                            arrayOf(albumId.toString()),
+                            null
                     )
                     albumCursor?.use { ac ->
                         if (ac.moveToFirst()) {
@@ -95,5 +95,9 @@ class SongRepository(private val context: Context) {
         }
 
         return songs
+    }
+
+    fun fetchRecentSongs(limit: Int): List<Song> {
+        return fetchSongs().sortedByDescending { it.dateAdded }.take(limit)
     }
 }

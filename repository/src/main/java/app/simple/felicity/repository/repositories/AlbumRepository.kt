@@ -5,8 +5,9 @@ import android.content.ContentUris
 import android.content.Context
 import android.provider.MediaStore
 import app.simple.felicity.repository.models.Album
+import javax.inject.Inject
 
-class AlbumRepository(private val context: Context) {
+class AlbumRepository @Inject constructor(private val context: Context) {
 
     @SuppressLint("InlinedApi")
     fun fetchAlbums(): List<Album> {
@@ -41,7 +42,7 @@ class AlbumRepository(private val context: Context) {
                 val artworkUri = ContentUris.withAppendedId(
                         MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
                         albumId
-                ).toString()
+                )
 
                 albums.add(
                         Album(

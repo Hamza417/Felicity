@@ -1,6 +1,7 @@
-<app.simple.felicity.decorations.theme.ThemeFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.corners.DynamicCornerMaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/container"
+    android:layout_margin="@dimen/padding_10"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
@@ -15,7 +16,7 @@
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
         android:id="@+id/title"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
         android:layout_marginHorizontal="@dimen/padding_15"
@@ -24,4 +25,4 @@
         app:appFontStyle="bold"
         app:textColorStyle="white" />
 
-</app.simple.felicity.decorations.theme.ThemeFrameLayout>
+</app.simple.felicity.decorations.corners.DynamicCornerMaterialCardView>

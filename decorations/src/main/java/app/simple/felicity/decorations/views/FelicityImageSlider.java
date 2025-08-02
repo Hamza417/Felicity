@@ -3,12 +3,12 @@ package app.simple.felicity.decorations.views;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.view.Gravity;
-import android.view.animation.AccelerateDecelerateInterpolator;
 
 import com.smarteist.autoimageslider.IndicatorView.animation.type.IndicatorAnimationType;
 import com.smarteist.autoimageslider.SliderAnimations;
 import com.smarteist.autoimageslider.SliderView;
 
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.theme.managers.ThemeManager;
 
@@ -33,7 +33,7 @@ public class FelicityImageSlider extends SliderView {
             return;
         }
         
-        setSliderAnimationDuration(getResources().getInteger(R.integer.art_flow_anim_duration), new AccelerateDecelerateInterpolator());
+        setSliderAnimationDuration(getResources().getInteger(R.integer.art_flow_anim_duration), new FastOutSlowInInterpolator());
         setSliderTransformAnimation(SliderAnimations.SIMPLETRANSFORMATION);
         setScrollTimeInSec(3);
         setAutoCycleDirection(SliderView.AUTO_CYCLE_DIRECTION_RIGHT);

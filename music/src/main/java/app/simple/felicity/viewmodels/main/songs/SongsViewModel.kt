@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.repository.repositories.SongRepository
-import app.simple.felicity.viewmodels.main.home.HomeViewModel.Companion.TAG
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
@@ -36,5 +35,9 @@ class SongsViewModel(application: Application) : WrappedViewModel(application) {
                 _songs.emit(emptyList())
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "SongsViewModel"
     }
 }

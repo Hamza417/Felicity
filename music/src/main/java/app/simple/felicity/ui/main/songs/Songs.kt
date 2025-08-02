@@ -10,18 +10,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
 import app.simple.felicity.databinding.FragmentSongsBinding
-import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.MusicPreferences
 import app.simple.felicity.shared.constants.BundleConstants
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 import kotlinx.coroutines.launch
 
-class Songs : ScopedFragment() {
+class Songs : MediaFragment() {
 
     private lateinit var binding: FragmentSongsBinding
     private lateinit var songsViewModel: SongsViewModel
@@ -48,25 +46,7 @@ class Songs : ScopedFragment() {
                     }
 
                     (binding.recyclerView.adapter as SongsAdapter).onItemClickListener = { _, position, view ->
-                        // AudioStateManager.setPlaylist(it, position)
-
-                        mediaController?.let { controller ->
-                            val mediaItems = it.map { song ->
-                                MediaItem.Builder()
-                                    .setMediaId(song.id.toString())
-                                    .setUri(song.uri)
-                                    .setMediaMetadata(
-                                            MediaMetadata.Builder()
-                                                .setArtist(song.artist)
-                                                .setTitle(song.title)
-                                                .build()
-                                    )
-                                    .build()
-                            }
-                            controller.setMediaItems(mediaItems, position, 0L)
-                            controller.prepare()
-                            controller.play()
-                        }
+                        setMediaItems(it, position)
                     }
 
                     binding.recyclerView.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {

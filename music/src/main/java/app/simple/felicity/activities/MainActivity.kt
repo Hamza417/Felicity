@@ -6,8 +6,10 @@ import app.simple.felicity.R
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
-import app.simple.felicity.ui.main.home.SimpleHome
+import app.simple.felicity.ui.main.home.ArtFlowHome
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -19,7 +21,7 @@ class MainActivity : BaseActivity() {
 
         if (savedInstanceState.isNull()) {
             supportFragmentManager.beginTransaction()
-                .replace(R.id.app_container, SimpleHome.newInstance())
+                .replace(R.id.app_container, ArtFlowHome.newInstance())
                 .commit()
         }
     }
