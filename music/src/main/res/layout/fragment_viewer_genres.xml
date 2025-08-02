@@ -26,11 +26,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
-            android:layout_margin="@dimen/padding_25"
+            android:paddingHorizontal="@dimen/padding_25"
+            android:paddingTop="100dp"
+            android:paddingBottom="@dimen/padding_25"
             android:text="@string/genres"
-            android:textSize="@dimen/text_size_36"
+            android:alpha="0"
+            android:textSize="@dimen/text_size_48"
             app:appFontStyle="bold"
-            app:textColorStyle="white" />
+            app:textColorStyle="primary" />
 
     </FrameLayout>
 

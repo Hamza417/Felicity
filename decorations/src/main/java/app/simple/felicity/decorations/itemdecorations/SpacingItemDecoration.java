@@ -19,7 +19,6 @@ public class SpacingItemDecoration extends RecyclerView.ItemDecoration {
     @Override
     public void getItemOffsets(@NotNull Rect outRect, @NotNull View view, RecyclerView parent, @NotNull RecyclerView.State state) {
         int position = parent.getChildAdapterPosition(view);
-        int itemCount = state.getItemCount();
         
         if (includeEdge) {
             outRect.left = spacing;

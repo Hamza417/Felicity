@@ -78,7 +78,9 @@ class ArtFlowHome : MediaFragment() {
                         when (event.action) {
                             MotionEvent.ACTION_UP -> {
                                 binding?.recyclerView?.forEachViewHolder<AdapterArtFlowHome.Holder> {
-                                    it.binding.imageSlider.restartCycle()
+                                    postDelayed(1_000L) {
+                                        it.binding.imageSlider.restartCycle()
+                                    }
                                 }
                             }
                             MotionEvent.ACTION_DOWN -> {

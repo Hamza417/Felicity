@@ -74,6 +74,7 @@ class ArtFlowAdapter(private val data: ArtFlowData<Any>) : SliderViewAdapter<Art
                                 viewHolder.getContext(),
                                 item.artworkUri ?: Uri.EMPTY)
                         )
+                        .dontTransform()
                         .dontAnimate()
                         .into(viewHolder.binding.art)
 

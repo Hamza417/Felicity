@@ -24,6 +24,7 @@ public class DynamicCornerMaterialCardView extends ThemeMaterialCardView {
             return;
         }
         
+        setElevation(48F);
         setRadius(Math.min(AppearancePreferences.INSTANCE.getCornerRadius(), 75F));
         ViewUtils.INSTANCE.addShadow(this, ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
     }

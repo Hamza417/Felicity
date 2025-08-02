@@ -25,7 +25,7 @@ import kotlin.math.pow
  * Custom recycler view with nice layout animation and
  * smooth overscroll effect and various states retention
  */
-open class CustomHorizontalRecyclerView(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : ThemeRecyclerView(context, attrs, defStyleAttr) {
+open class CustomHorizontalRecyclerView(context: Context, attrs: AttributeSet?, defStyleAttr: Int = 0) : ThemeRecyclerView(context, attrs, defStyleAttr) {
 
     // Change pow to control speed.
     // Bigger = faster. RecyclerView default is 5.

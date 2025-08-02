@@ -6,7 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.adapters.home.sub.ArtFlowAdapter
-import app.simple.felicity.databinding.AdapterHomeBinding
+import app.simple.felicity.databinding.AdapterHomeArtflowBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.models.ArtFlowData
 
@@ -14,7 +14,7 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
     private var adapterArtFlowHomeCallbacks: AdapterArtFlowHomeCallbacks? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-        val binding = AdapterHomeBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val binding = AdapterHomeArtflowBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return Holder(binding)
     }
 
@@ -54,7 +54,7 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
         }
     }
 
-    inner class Holder(val binding: AdapterHomeBinding) : VerticalListViewHolder(binding.root)
+    inner class Holder(val binding: AdapterHomeArtflowBinding) : VerticalListViewHolder(binding.root)
 
     fun setAdapterArtFlowHomeCallbacks(adapterArtFlowHomeCallbacks: AdapterArtFlowHomeCallbacks) {
         this.adapterArtFlowHomeCallbacks = adapterArtFlowHomeCallbacks

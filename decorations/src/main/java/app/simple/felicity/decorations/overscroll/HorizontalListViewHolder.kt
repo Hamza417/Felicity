@@ -14,6 +14,8 @@ open class HorizontalListViewHolder(itemView: View) : RecyclerView.ViewHolder(it
         return ContextCompat.getDrawable(itemView.context, resID)!!
     }
 
+    fun getContext() = itemView.context
+
     var currentVelocity = 0f
 
     /**

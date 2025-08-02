@@ -4,6 +4,7 @@ import android.animation.Animator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.content.res.ColorStateList
+import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.view.MotionEvent
@@ -365,5 +366,12 @@ object ViewUtils {
      */
     fun Int.toColorStateList(): ColorStateList {
         return ColorStateList.valueOf(this)
+    }
+
+    fun View.drawBottomToTopFadeBackground(color: Int = Color.TRANSPARENT) {
+        background = GradientDrawable(
+                GradientDrawable.Orientation.BOTTOM_TOP,
+                intArrayOf(color, Color.TRANSPARENT)
+        )
     }
 }

@@ -11,6 +11,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
+import app.simple.felicity.core.utils.ViewUtils.drawBottomToTopFadeBackground
 import app.simple.felicity.databinding.FragmentViewerGenresBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -18,6 +19,7 @@ import app.simple.felicity.factories.genres.GenreViewerViewModelFactory
 import app.simple.felicity.glide.genres.GenreCoverModel
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.main.genres.GenreViewerViewModel
 import com.bumptech.glide.Glide
@@ -74,6 +76,12 @@ class GenreSongs : MediaFragment() {
 
         binding.poster.createGenreCover(genre)
         binding.name.text = genre.name ?: getString(R.string.unknown)
+        binding.name.drawBottomToTopFadeBackground(ThemeManager.theme.viewGroupTheme.backgroundColor)
+        binding.name.animate()
+            .alpha(1F)
+            .setStartDelay(500)
+            .setDuration(300)
+            .start()
 
         genreViewerViewModel.getSongs().observe(viewLifecycleOwner) { songs ->
             Log.i(TAG, "onViewCreated: Received songs for genre: ${genre.name}, count: ${songs.size}")

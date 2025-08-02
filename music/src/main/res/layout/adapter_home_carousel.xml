@@ -1,0 +1,29 @@
+<app.simple.felicity.decorations.corners.DynamicCornerMaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_margin="@dimen/padding_10"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/text_size_22"
+            android:padding="@dimen/padding_10"
+            app:appFontStyle="bold"
+            app:textColorStyle="primary" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+    </LinearLayout>
+
+</app.simple.felicity.decorations.corners.DynamicCornerMaterialCardView>
