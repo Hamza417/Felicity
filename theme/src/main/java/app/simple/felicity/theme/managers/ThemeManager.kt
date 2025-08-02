@@ -2,12 +2,13 @@ package app.simple.felicity.theme.managers
 
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.models.Accent
-import app.simple.felicity.theme.themes.LightTheme
+import app.simple.felicity.theme.themes.Theme
+import app.simple.felicity.theme.themes.light.LightTheme
 
 object ThemeManager {
     private val listeners = mutableSetOf<ThemeChangedListener>()
 
-    var theme = LightTheme()
+    var theme: Theme = LightTheme()
         set(value) {
             val bool = field != value
             field = value

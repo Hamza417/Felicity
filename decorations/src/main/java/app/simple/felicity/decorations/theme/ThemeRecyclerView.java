@@ -4,7 +4,6 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.util.AttributeSet;
 
 import androidx.annotation.NonNull;
@@ -34,7 +33,6 @@ public class ThemeRecyclerView extends InsetRecyclerView implements ThemeChanged
     }
     
     private void init() {
-        setBackgroundColor(Color.WHITE);
         setBackground(false);
     }
     
