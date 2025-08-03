@@ -6,7 +6,7 @@
     android:orientation="horizontal"
     android:padding="@dimen/padding_20">
 
-    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
         android:id="@+id/app_icon"
         android:layout_width="@dimen/icon_size_50"
         android:layout_height="@dimen/icon_size_50"
@@ -32,7 +32,7 @@
         app:appFontStyle="light"
         app:textColorStyle="heading" />
 
-    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
         android:id="@+id/search"
         android:layout_width="@dimen/button_size"
         android:layout_height="@dimen/button_size"
@@ -43,7 +43,7 @@
         android:transitionName="@string/search"
         app:buttonTintType="regular" />
 
-    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
         android:id="@+id/settings"
         android:layout_width="@dimen/button_size"
         android:layout_height="@dimen/button_size"

@@ -2,4 +2,5 @@
 <resources>
     <string name="playlists">Playlists</string>
     <string name="genres">Genres</string>
+    <string name="songs_size">%1$d Songs</string>
 </resources>

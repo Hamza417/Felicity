@@ -13,22 +13,21 @@ import java.util.Objects;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator;
-
 import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.decorations.corners.LayoutBackground;
-import app.simple.felicity.decorations.theme.ThemeButton;
+import app.simple.felicity.decorations.theme.ThemeImageButton;
 import app.simple.felicity.preferences.AccessibilityPreferences;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;
 import app.simple.felicity.theme.themes.Theme;
 
-public class DynamicRippleImageButtonNoFactor extends ThemeButton {
+public class DynamicRippleImageImageButtonNoFactor extends ThemeImageButton {
     
     private float radius = AppearancePreferences.INSTANCE.getCornerRadius();
     
-    public DynamicRippleImageButtonNoFactor(Context context, AttributeSet attrs) {
+    public DynamicRippleImageImageButtonNoFactor(Context context, AttributeSet attrs) {
         super(context, attrs);
         setBackgroundColor(Color.TRANSPARENT);
     }

@@ -6,25 +6,19 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
-import app.simple.felicity.core.utils.ViewUtils.drawBottomToTopFadeBackground
 import app.simple.felicity.databinding.FragmentViewerGenresBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.factories.genres.GenreViewerViewModelFactory
-import app.simple.felicity.glide.genres.GenreCoverModel
+import app.simple.felicity.glide.genres.GenreCoverUtils.loadGenreCover
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Genre
-import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.main.genres.GenreViewerViewModel
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.resource.bitmap.BitmapTransitionOptions
-import com.bumptech.glide.load.resource.bitmap.CenterCrop
 
 class GenrePage : MediaFragment() {
 
@@ -51,11 +45,17 @@ class GenrePage : MediaFragment() {
 
         binding.posterContainer.post {
             binding.recyclerView.post {
+                binding.posterContainer.setPadding(
+                        binding.posterContainer.paddingLeft,
+                        binding.recyclerView.paddingTop + binding.posterContainer.paddingTop,
+                        binding.posterContainer.paddingRight,
+                        binding.posterContainer.paddingBottom
+                )
                 binding.recyclerView.setBackgroundColor(Color.TRANSPARENT)
                 binding.recyclerView.let {
                     it.setPadding(
                             it.paddingLeft,
-                            binding.posterContainer.height,
+                            binding.posterContainer.height + it.paddingTop,
                             it.paddingRight,
                             it.paddingBottom
                     )
@@ -73,36 +73,31 @@ class GenrePage : MediaFragment() {
             }
         })
 
-        binding.poster.createGenreCover(genre)
+        binding.poster.loadGenreCover(genre)
         binding.name.text = genre.name ?: getString(R.string.unknown)
-        binding.name.drawBottomToTopFadeBackground(ThemeManager.theme.viewGroupTheme.backgroundColor)
-        binding.name.animate()
-            .alpha(1F)
-            .setStartDelay(500)
-            .setDuration(300)
-            .start()
 
         genreViewerViewModel.getSongs().observe(viewLifecycleOwner) { songs ->
             Log.i(TAG, "onViewCreated: Received songs for genre: ${genre.name}, count: ${songs.size}")
             val adapter = SongsAdapter(songs)
             binding.recyclerView.addItemDecoration(SpacingItemDecoration(48, true))
             binding.recyclerView.adapter = adapter
+            binding.info.text = getString(R.string.songs_size, songs.size)
 
             adapter.onItemClickListener = { song, position, view ->
-                // Handle song click
                 Log.i(TAG, "Song clicked: ${song.title} by ${song.artist}")
                 setMediaItems(songs, position)
             }
-        }
-    }
 
-    fun ImageView.createGenreCover(genre: Genre) {
-        Glide.with(context)
-            .asBitmap()
-            .load(GenreCoverModel(context, genre.id, genreName = genre.name ?: context.getString(R.string.unknown)))
-            .transform(CenterCrop())
-            .transition(BitmapTransitionOptions.withCrossFade())
-            .into(this)
+            binding.play.setOnClickListener {
+                Log.i(TAG, "Play button clicked for genre: ${genre.name}")
+                setMediaItems(songs, 0)
+            }
+
+            binding.shuffle.setOnClickListener {
+                Log.i(TAG, "Shuffle button clicked for genre: ${genre.name}")
+                setMediaItems(songs.shuffled(), 0)
+            }
+        }
     }
 
     companion object {

@@ -15,16 +15,16 @@ import app.simple.felicity.core.helpers.ImageHelper;
 import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.decorations.corners.LayoutBackground;
-import app.simple.felicity.decorations.theme.ThemeButton;
+import app.simple.felicity.decorations.theme.ThemeImageButton;
 import app.simple.felicity.preferences.AccessibilityPreferences;
 import app.simple.felicity.shared.constants.Misc;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;
 import app.simple.felicity.theme.themes.Theme;
 
-public class DynamicRippleImageButton extends ThemeButton {
+public class DynamicRippleImageImageButton extends ThemeImageButton {
     
-    public DynamicRippleImageButton(Context context, AttributeSet attrs) {
+    public DynamicRippleImageImageButton(Context context, AttributeSet attrs) {
         super(context, attrs);
         setBackgroundColor(Color.TRANSPARENT);
     }

@@ -6,12 +6,13 @@
     android:layout_height="match_parent"
     android:clipToPadding="false">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/poster_container"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_height="wrap_content"
         android:translationZ="5dp"
-        android:orientation="vertical"
+        android:orientation="horizontal"
+        android:padding="@dimen/padding_20"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHeight_percent="0.45"
         app:layout_constraintStart_toStartOf="parent"
@@ -19,24 +20,62 @@
 
         <ImageView
             android:id="@+id/poster"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_width="128dp"
+            android:layout_height="128dp"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
             android:id="@+id/name"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:paddingHorizontal="@dimen/padding_25"
-            android:paddingTop="100dp"
-            android:paddingBottom="@dimen/padding_25"
             android:text="@string/genres"
-            android:alpha="0"
-            android:textSize="@dimen/text_size_48"
-            app:appFontStyle="bold"
+            android:textSize="@dimen/text_size_22"
+            android:layout_marginStart="@dimen/padding_20"
+            app:appFontStyle="medium"
+            app:layout_constraintBottom_toBottomOf="@+id/poster"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/poster"
+            app:layout_constraintTop_toTopOf="@+id/poster"
             app:textColorStyle="primary" />
 
-    </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="@dimen/padding_20"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/poster">
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:id="@+id/info"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_gravity="center"
+                android:layout_height="wrap_content"
+                android:textSize="@dimen/text_size_14"
+                app:appFontStyle="regular"
+                app:textColorStyle="secondary" />
+
+            <app.simple.felicity.decorations.circular.CircularImageImageButton
+                android:id="@+id/play"
+                android:layout_width="@dimen/button_size"
+                android:layout_height="@dimen/button_size"
+                android:src="@drawable/ic_shuffle" />
+
+            <app.simple.felicity.decorations.circular.CircularImageImageButton
+                android:id="@+id/shuffle"
+                android:layout_width="@dimen/button_size"
+                android:layout_height="@dimen/button_size"
+                android:layout_marginStart="@dimen/padding_10"
+                android:src="@drawable/ic_play" />
+
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
         android:id="@+id/recycler_view"

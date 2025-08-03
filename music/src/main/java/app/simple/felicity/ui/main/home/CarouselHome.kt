@@ -10,6 +10,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import app.simple.felicity.adapters.home.main.AdapterCarouselHome
 import app.simple.felicity.databinding.FragmentHomeCarouselBinding
+import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
@@ -28,11 +29,11 @@ class CarouselHome : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        postponeEnterTransition()
 
         viewLifecycleOwner.lifecycleScope.launch {
             homeViewModel.data.collect { data ->
                 val adapter = AdapterCarouselHome(data)
+                binding?.recyclerView?.addItemDecoration(SpacingItemDecoration(48, true))
                 binding?.recyclerView?.adapter = adapter
                 binding?.recyclerView?.setHasFixedSize(true)
 
@@ -69,8 +70,6 @@ class CarouselHome : MediaFragment() {
                         }
                     }
                 })
-
-                view.startTransitionOnPreDraw()
             }
         }
     }

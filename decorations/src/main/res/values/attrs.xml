@@ -46,7 +46,7 @@
         </attr>
     </declare-styleable>
 
-    <declare-styleable name="ThemeButton">
+    <declare-styleable name="ThemeImageButton">
         <attr name="buttonTintType" format="string">
             <flag name="regular" value="0" />
             <flag name="secondary" value="1" />

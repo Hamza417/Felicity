@@ -20,7 +20,7 @@ import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.themes.Theme;
 
-public class ThemeButton extends AppCompatImageButton implements ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
+public class ThemeImageButton extends AppCompatImageButton implements ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
     
     private final int REGULAR = 0;
     private final int SECONDARY = 1;
@@ -32,12 +32,12 @@ public class ThemeButton extends AppCompatImageButton implements ThemeChangedLis
     protected int tintMode;
     private ValueAnimator valueAnimator;
     
-    public ThemeButton(@NonNull Context context, @Nullable AttributeSet attrs) {
+    public ThemeImageButton(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         init(attrs);
     }
     
-    public ThemeButton(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+    public ThemeImageButton(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init(attrs);
     }
@@ -48,13 +48,13 @@ public class ThemeButton extends AppCompatImageButton implements ThemeChangedLis
         }
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            try (TypedArray typedArray = getContext().obtainStyledAttributes(attrs, R.styleable.ThemeButton)) {
-                tintMode = typedArray.getInteger(R.styleable.ThemeButton_buttonTintType, 0);
+            try (TypedArray typedArray = getContext().obtainStyledAttributes(attrs, R.styleable.ThemeImageButton)) {
+                tintMode = typedArray.getInteger(R.styleable.ThemeImageButton_buttonTintType, 0);
                 setTint(getTintColor(tintMode), false);
             }
         } else {
-            TypedArray typedArray = getContext().obtainStyledAttributes(attrs, R.styleable.ThemeButton);
-            tintMode = typedArray.getInteger(R.styleable.ThemeButton_buttonTintType, 0);
+            TypedArray typedArray = getContext().obtainStyledAttributes(attrs, R.styleable.ThemeImageButton);
+            tintMode = typedArray.getInteger(R.styleable.ThemeImageButton_buttonTintType, 0);
             setTint(getTintColor(tintMode), false);
             typedArray.recycle();
         }

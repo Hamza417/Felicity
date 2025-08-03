@@ -21,7 +21,7 @@
         android:layout_margin="@dimen/padding_25"
         android:orientation="vertical">
 
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
             android:id="@+id/arrow_left"
             android:layout_width="@dimen/icon_size_50"
             android:layout_height="@dimen/icon_size_50"
@@ -60,7 +60,7 @@
             app:layout_constraintTop_toBottomOf="@+id/title"
             app:textColorStyle="white" />
 
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
             android:id="@+id/arrow_right"
             android:layout_width="@dimen/icon_size_50"
             android:layout_height="@dimen/icon_size_50"
