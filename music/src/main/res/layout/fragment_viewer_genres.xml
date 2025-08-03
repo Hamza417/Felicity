@@ -6,11 +6,12 @@
     android:layout_height="match_parent"
     android:clipToPadding="false">
 
-    <FrameLayout
+    <LinearLayout
         android:id="@+id/poster_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:translationZ="5dp"
+        android:orientation="vertical"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHeight_percent="0.45"
         app:layout_constraintStart_toStartOf="parent"
@@ -35,7 +36,7 @@
             app:appFontStyle="bold"
             app:textColorStyle="primary" />
 
-    </FrameLayout>
+    </LinearLayout>
 
     <app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
         android:id="@+id/recycler_view"
@@ -44,8 +45,10 @@
         android:clipToPadding="false"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0"
         app:navigationPaddingRequired="true"
         app:statusPaddingRequired="true" />
 

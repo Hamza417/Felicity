@@ -19,7 +19,6 @@ import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolder
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
-import app.simple.felicity.ui.main.genres.GenreSongs
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
@@ -61,9 +60,7 @@ class ArtFlowHome : MediaFragment() {
                                     setMediaItems(data[position].items.filterIsInstance<Song>(), itemPosition)
                                 }
                                 is Genre -> {
-                                    openFragmentArc(GenreSongs.newInstance(
-                                            data[position].items.filterIsInstance<Genre>()[itemPosition]),
-                                                    view, GenreSongs.TAG)
+
                                 }
                                 else -> {
                                     Log.w(TAG, "Unsupported item type clicked at position: $position")

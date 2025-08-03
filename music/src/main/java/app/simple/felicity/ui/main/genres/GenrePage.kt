@@ -26,7 +26,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.BitmapTransitionOptions
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 
-class GenreSongs : MediaFragment() {
+class GenrePage : MediaFragment() {
 
     private lateinit var binding: FragmentViewerGenresBinding
     private lateinit var genreViewerViewModel: GenreViewerViewModel
@@ -48,7 +48,6 @@ class GenreSongs : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        postponeEnterTransition()
 
         binding.posterContainer.post {
             binding.recyclerView.post {
@@ -94,8 +93,6 @@ class GenreSongs : MediaFragment() {
                 Log.i(TAG, "Song clicked: ${song.title} by ${song.artist}")
                 setMediaItems(songs, position)
             }
-
-            view.startTransitionOnPreDraw()
         }
     }
 
@@ -109,10 +106,10 @@ class GenreSongs : MediaFragment() {
     }
 
     companion object {
-        fun newInstance(genre: Genre): GenreSongs {
+        fun newInstance(genre: Genre): GenrePage {
             val args = Bundle()
             args.putParcelable(BundleConstants.GENRE, genre)
-            val fragment = GenreSongs()
+            val fragment = GenrePage()
             fragment.arguments = args
             return fragment
         }

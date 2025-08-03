@@ -7,14 +7,12 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import app.simple.felicity.adapters.home.main.AdapterCarouselHome
 import app.simple.felicity.databinding.FragmentHomeCarouselBinding
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
-import app.simple.felicity.ui.main.genres.GenreSongs
-import app.simple.felicity.ui.main.genres.Genres
-import app.simple.felicity.ui.main.songs.Songs
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 import kotlinx.coroutines.launch
 
@@ -46,9 +44,9 @@ class CarouselHome : MediaFragment() {
                                 setMediaItems(data[position].items.filterIsInstance<Song>(), itemPosition)
                             }
                             is Genre -> {
-                                openFragmentArc(GenreSongs.newInstance(
-                                        data[position].items.filterIsInstance<Genre>()[itemPosition]),
-                                                view, GenreSongs.TAG)
+                                val genre = data[position].items.filterIsInstance<Genre>()[itemPosition]
+                                val action = CarouselHomeDirections.actionGenresToPage(genre)
+                                findNavController().navigate(action)
                             }
                             else -> {
                                 Log.w(TAG, "Unsupported item type clicked at position: $position")
@@ -60,10 +58,10 @@ class CarouselHome : MediaFragment() {
                         Log.d(TAG, "Carousel clicked at position: $position")
                         when (data[position].items[0]) {
                             is Song -> {
-                                openFragmentArc(Songs.newInstance(), view, Songs.TAG)
+                                findNavController().navigate(CarouselHomeDirections.actionHomeToSongs())
                             }
                             is Genre -> {
-                                openFragmentArc(Genres.newInstance(), view, Genres.TAG)
+                                findNavController().navigate(CarouselHomeDirections.actionHomeToGenres())
                             }
                             else -> {
                                 Log.w(TAG, "Unsupported item type clicked at position: $position")

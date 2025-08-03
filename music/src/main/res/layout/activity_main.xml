@@ -10,17 +10,19 @@
 -->
 
 <merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".activities.MainActivity"
     tools:parentTag="android.widget.FrameLayout">
 
-    <androidx.coordinatorlayout.widget.CoordinatorLayout
-        android:id="@+id/app_container"
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/nav_host_fragment"
+        android:name="androidx.navigation.fragment.NavHostFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:clipChildren="false"
-        android:clipToPadding="false" />
+        app:defaultNavHost="true"
+        app:navGraph="@navigation/nav_graph" />
 
 </merge>

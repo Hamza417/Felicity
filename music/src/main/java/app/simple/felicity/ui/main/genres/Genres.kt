@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.genres.AdapterGenres
@@ -31,8 +32,6 @@ class Genres : ScopedFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        postponeEnterTransition()
-        Log.d(TAG, "onViewCreated: Genres Fragment")
 
         genresViewModel!!.getGenresData().observe(viewLifecycleOwner) { genres ->
             Log.d(TAG, "onViewCreated: Genres: ${genres.size}")
@@ -50,11 +49,9 @@ class Genres : ScopedFragment() {
 
             adapter.setGenreClickListener(object : AdapterGenres.Companion.GenreClickListener {
                 override fun onGenreClicked(genre: Genre, view: View) {
-                    openFragmentArc(GenreSongs.newInstance(genre), view, GenreSongs.TAG)
+                    findNavController().navigate(GenresDirections.actionGenresToPage(genre))
                 }
             })
-
-            view.startTransitionOnPreDraw()
         }
     }
 

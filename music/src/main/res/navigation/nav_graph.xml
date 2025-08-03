@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    app:startDestination="@id/home">
+
+    <fragment
+        android:id="@+id/home"
+        android:name="app.simple.felicity.ui.main.home.CarouselHome"
+        android:label="Home">
+        <action
+            android:id="@+id/action_genres_to_page"
+            app:destination="@id/genres_page" />
+        <action
+            android:id="@+id/action_home_to_songs"
+            app:destination="@id/songs" />
+        <action
+            android:id="@+id/action_home_to_genres"
+            app:destination="@id/genres" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/genres"
+        android:name="app.simple.felicity.ui.main.genres.Genres"
+        android:label="Genres">
+        <action
+            android:id="@+id/action_genres_to_page"
+            app:destination="@id/genres_page" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/genres_page"
+        android:name="app.simple.felicity.ui.main.genres.GenrePage"
+        android:label="Genre Page">
+        <argument
+            android:name="genre"
+            app:argType="app.simple.felicity.repository.models.Genre" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/songs"
+        android:name="app.simple.felicity.ui.main.songs.Songs"
+        android:label="Songs"></fragment>
+
+</navigation>
