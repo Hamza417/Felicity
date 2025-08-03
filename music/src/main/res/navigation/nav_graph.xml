@@ -1,12 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    app:startDestination="@id/home">
+    app:startDestination="@id/carousel_home">
 
     <fragment
-        android:id="@+id/home"
+        android:id="@+id/carousel_home"
         android:name="app.simple.felicity.ui.main.home.CarouselHome"
         android:label="Home">
+        <action
+            android:id="@+id/action_genres_to_page"
+            app:destination="@id/genres_page" />
+        <action
+            android:id="@+id/action_home_to_songs"
+            app:destination="@id/songs" />
+        <action
+            android:id="@+id/action_home_to_genres"
+            app:destination="@id/genres" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/flow_home"
+        android:name="app.simple.felicity.ui.main.home.ArtFlowHome"
+        android:label="ArtFlow Home">
+        <action
+            android:id="@+id/action_genres_to_page"
+            app:destination="@id/genres_page" />
+        <action
+            android:id="@+id/action_home_to_songs"
+            app:destination="@id/songs" />
+        <action
+            android:id="@+id/action_home_to_genres"
+            app:destination="@id/genres" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/simple_home"
+        android:name="app.simple.felicity.ui.main.home.SimpleHome"
+        android:label="Simple Home">
         <action
             android:id="@+id/action_genres_to_page"
             app:destination="@id/genres_page" />
@@ -39,6 +69,8 @@
     <fragment
         android:id="@+id/songs"
         android:name="app.simple.felicity.ui.main.songs.Songs"
-        android:label="Songs"></fragment>
+        android:label="Songs">
+
+    </fragment>
 
 </navigation>

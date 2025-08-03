@@ -44,13 +44,19 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
         }
 
         holder.binding.title.setOnClickListener {
-            holder.binding.container.transitionName = item.items[holder.binding.imageSlider.currentPagePosition].toString()
             item.position = holder.binding.imageSlider.currentPagePosition
 
             adapterArtFlowHomeCallbacks?.onClicked(
                     holder.binding.container,
                     position,
                     holder.binding.imageSlider.currentPagePosition)
+        }
+
+        holder.binding.container.setOnClickListener {
+            holder.binding.container.transitionName = item.items[holder.binding.imageSlider.currentPagePosition].toString()
+            item.position = holder.binding.imageSlider.currentPagePosition
+
+            adapterArtFlowHomeCallbacks?.onClicked(holder.binding.container, position)
         }
     }
 
@@ -63,6 +69,7 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
     companion object {
         interface AdapterArtFlowHomeCallbacks {
             fun onClicked(view: View, position: Int, itemPosition: Int)
+            fun onClicked(view: View, position: Int)
         }
     }
 }
