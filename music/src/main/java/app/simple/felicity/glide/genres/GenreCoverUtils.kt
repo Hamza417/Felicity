@@ -8,6 +8,7 @@ import app.simple.felicity.repository.models.Genre
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.resource.bitmap.BitmapTransitionOptions
+import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 
 object GenreCoverUtils {
@@ -16,7 +17,8 @@ object GenreCoverUtils {
             .asBitmap()
             .load(GenreCoverModel(this.context, genre.id, genre.name ?: ""))
             .transform(
-                    RoundedCorners(AppearancePreferences.getCornerRadius().toInt().times(2)),
+                    CenterCrop(),
+                    RoundedCorners(AppearancePreferences.getCornerRadius().toInt()),
                     Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()),
                     BlurShadow(this.context)
                         .setElevation(25F)

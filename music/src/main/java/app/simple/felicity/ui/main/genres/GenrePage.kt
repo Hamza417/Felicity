@@ -6,7 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
-import app.simple.felicity.adapters.ui.lists.genres.GenreSongsAdapter
+import app.simple.felicity.adapters.ui.lists.genres.GenreDetailsAdapter
 import app.simple.felicity.databinding.FragmentViewerGenresBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -41,11 +41,11 @@ class GenrePage : MediaFragment() {
 
         genreViewerViewModel.getData().observe(viewLifecycleOwner) { data ->
             Log.i(TAG, "onViewCreated: Received songs for genre: ${genre.name}, count: ${data.songs}")
-            val adapter = GenreSongsAdapter(data, genre)
+            val adapter = GenreDetailsAdapter(data, genre)
             binding.recyclerView.addItemDecoration(SpacingItemDecoration(48, true))
             binding.recyclerView.adapter = adapter
 
-            adapter.setGenreSongsAdapterListener(object : GenreSongsAdapter.Companion.GenreSongsAdapterListener {
+            adapter.setGenreSongsAdapterListener(object : GenreDetailsAdapter.Companion.GenreSongsAdapterListener {
                 override fun onSongClick(song: Song, position: Int, view: View) {
                     Log.i(TAG, "onSongClick: Song clicked in genre: ${genre.name}, position: $position")
                     setMediaItems(listOf(song), position)

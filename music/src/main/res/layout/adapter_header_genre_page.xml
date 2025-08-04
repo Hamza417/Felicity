@@ -3,35 +3,47 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/poster_container"
     android:layout_width="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:layout_height="wrap_content">
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Sample"
+        android:textSize="@dimen/text_size_36"
+        android:padding="@dimen/padding_10"
+        android:maxLines="1"
+        android:ellipsize="marquee"
+        android:singleLine="true"
+        android:marqueeRepeatLimit="marquee_forever"
+        app:appFontStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:textColorStyle="primary"
+        tools:ignore="HardcodedText" />
 
     <app.simple.felicity.decorations.views.SquareImageView
         android:id="@+id/poster"
-        android:layout_width="165dp"
+        android:layout_width="148dp"
         android:layout_height="match_parent"
         android:importantForAccessibility="no"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@+id/name" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_marginHorizontal="@dimen/padding_10"
+        android:layout_marginHorizontal="@dimen/padding_15"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         app:layout_constraintBottom_toBottomOf="@+id/poster"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/poster"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <app.simple.felicity.decorations.typeface.TypeFaceTextView
-            android:id="@+id/name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Sample"
-            android:textSize="@dimen/text_size_36"
-            app:appFontStyle="bold"
-            app:textColorStyle="primary"
-            tools:ignore="HardcodedText" />
+        app:layout_constraintTop_toTopOf="@+id/poster">
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
             android:id="@+id/songs"
@@ -100,7 +112,7 @@
         android:src="@drawable/ic_search"
         android:layout_width="@dimen/button_size"
         android:layout_height="@dimen/button_size"
-        android:layout_marginStart="@dimen/padding_10"
+        android:layout_marginStart="@dimen/padding_5"
         app:buttonTintType="regular"
         app:layout_constraintBottom_toBottomOf="@+id/shuffle"
         app:layout_constraintStart_toStartOf="parent"

@@ -24,7 +24,7 @@ import app.simple.felicity.viewmodels.main.genres.GenreViewerViewModel.Companion
 import com.bumptech.glide.Glide
 import com.google.android.material.carousel.CarouselLayoutManager
 
-class GenreSongsAdapter(private val data: GenreData, private val genre: Genre) :
+class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre) :
         RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var genreSongsAdapterListener: GenreSongsAdapterListener? = null

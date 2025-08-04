@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatTextView;
 import androidx.core.widget.TextViewCompat;
+import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.decorations.utils.TypeFace;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
@@ -53,6 +54,8 @@ public class CircularTextButton extends AppCompatTextView implements ThemeChange
         setPaddingRelative(padding, padding, padding + padding, padding);
         setCompoundDrawablePadding(padding);
         setTypeface(TypeFace.INSTANCE.getBoldTypeFace(getContext()));
+        setElevation(36F);
+        ViewUtils.INSTANCE.addShadow(this, ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
     }
     
     @Override
