@@ -10,6 +10,7 @@ import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
 import app.simple.felicity.databinding.AdapterHeaderGenrePageBinding
 import app.simple.felicity.databinding.AdapterSongsBinding
+import app.simple.felicity.decorations.itemdecorations.CarouselSpacingDecoration
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
@@ -142,7 +143,7 @@ class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre)
             if (data.artists.isNotEmpty()) {
                 binding.recyclerView.setHasFixedSize(true)
                 binding.recyclerView.layoutManager = CarouselLayoutManager()
-                binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
+                binding.recyclerView.addItemDecoration(CarouselSpacingDecoration(24, 0))
                 val adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, data.artists))
                 adapter.stateRestorationPolicy = StateRestorationPolicy.ALLOW
                 binding.title.text = binding.title.context.getString(R.string.artists_in_genre, genre.name ?: context.getString(R.string.unknown))

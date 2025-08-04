@@ -59,7 +59,8 @@ class CarouselHome : MediaFragment() {
                         Log.d(TAG, "Carousel clicked at position: $position")
                         when (data[position].items[0]) {
                             is Song -> {
-                                findNavController().navigate(CarouselHomeDirections.actionHomeToSongs())
+                                // findNavController().navigate(CarouselHomeDirections.actionHomeToSongs())
+                                findNavController().navigate(CarouselHomeDirections.actionHomeToCarouselFlow())
                             }
                             is Genre -> {
                                 findNavController().navigate(CarouselHomeDirections.actionHomeToGenres())

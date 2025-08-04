@@ -20,10 +20,10 @@ class ProminentLayoutManager(
          * - <1f is before their center reaches the start/end of the RecyclerView
          * - >1f is outside the bounds of the RecyclerView
          * */
-        private val minScaleDistanceFactor: Float = 1.5f,
+        private val minScaleDistanceFactor: Float = 2.5f,
 
         /** The final (minimum) scale for non-prominent items is 1-[scaleDownBy] */
-        private val scaleDownBy: Float = 0.5f
+        private val scaleDownBy: Float = 0.8f
 
 ) : LinearLayoutManager(context, HORIZONTAL, false) {
 
@@ -45,6 +45,21 @@ class ProminentLayoutManager(
 
         var translationXForward = 0f
 
+        /**
+         * Rotate the image as it moves away from the center.
+         */
+        val rotationAmountFactor = 2f
+
+        /**
+         * Scale down the image as it moves away from the center.
+         */
+        val scaleAmountFactor = 0.75f
+
+        /**
+         * The minimum rotation amount.
+         */
+        val minRotationAmount = 75F
+
         for (i in 0 until childCount) {
             val child = getChildAt(i)!!
 
@@ -53,22 +68,7 @@ class ProminentLayoutManager(
 
             child.isActivated = distanceToCenter < prominentThreshold
 
-            val scaleDownAmount = (distanceToCenter / scaleDistanceThreshold).coerceAtMost(1f)
-
-            /**
-             * Rotate the image as it moves away from the center.
-             */
-            val rotationAmountFactor = 1.75f
-
-            /**
-             * Scale down the image as it moves away from the center.
-             */
-            val scaleAmountFactor = 0.75f
-
-            /**
-             * The minimum rotation amount.
-             */
-            val minRotationAmount = 75F
+            val scaleDownAmount = (distanceToCenter / scaleDistanceThreshold).coerceAtMost(0.7f)
 
             /**
              * We'll need it to be rotate fast first but gradually slows down as it approaches the edge.

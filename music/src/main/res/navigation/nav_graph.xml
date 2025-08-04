@@ -16,6 +16,9 @@
         <action
             android:id="@+id/action_home_to_genres"
             app:destination="@id/genres" />
+        <action
+            android:id="@+id/action_home_to_carousel_flow"
+            app:destination="@id/carousel_flow" />
     </fragment>
 
     <fragment
@@ -73,4 +76,10 @@
 
     </fragment>
 
+    <fragment
+        android:id="@+id/carousel_flow"
+        android:name="app.simple.felicity.ui.app.ArtFlowRv"
+        android:label="Songs">
+
+    </fragment>
 </navigation>
