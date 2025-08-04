@@ -71,6 +71,10 @@ class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre)
             }
             is Holder -> {
                 holder.bind(data.songs[position - 1]) // Adjust for header
+
+                holder.binding.container.setOnClickListener {
+                    genreSongsAdapterListener?.onSongClick(data.songs, position - SONGS_POSITION, holder.binding.albumArt)
+                }
             }
         }
     }
@@ -112,12 +116,6 @@ class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre)
 
                 albumArt.loadFromUri(song.artworkUri!!)
                 albumArt.transitionName = song.path
-
-                binding.container.radius = 0F
-            }
-
-            binding.root.setOnClickListener {
-                genreSongsAdapterListener?.onSongClick(song, bindingAdapterPosition - 1, binding.albumArt)
             }
         }
     }
@@ -174,9 +172,10 @@ class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre)
     companion object {
         private const val TAG = "GenreSongsAdapter"
         private const val EXTRA_ROWS = 3 // Header, Albums, Artists
+        private const val SONGS_POSITION = 1 // Position of songs in the adapter
 
         interface GenreSongsAdapterListener {
-            fun onSongClick(song: Song, position: Int, view: View)
+            fun onSongClick(song: List<Song>, position: Int, view: View)
             fun onPlayClick(songs: List<Song>, position: Int = 0)
             fun onShuffleClick(songs: List<Song>, position: Int = 0)
         }

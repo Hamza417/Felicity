@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 
@@ -38,8 +37,6 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
     private void init() {
         if (!isInEditMode()) {
             radius = AppearancePreferences.INSTANCE.getCornerRadius();
-            setBackground(Utils.getRippleDrawable(getBackground(), radius));
-            setBackgroundColor(Color.TRANSPARENT);
             setDefaultBackground(false);
         }
     }

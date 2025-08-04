@@ -50,8 +50,6 @@ class SongsAdapter(private val audio: List<Song>) :
 
                 albumArt.loadFromUri(song.artworkUri!!)
                 albumArt.transitionName = song.path
-
-                binding.container.radius = 0F
             }
 
             binding.root.setOnClickListener {

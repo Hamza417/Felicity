@@ -46,9 +46,9 @@ class GenrePage : MediaFragment() {
             binding.recyclerView.adapter = adapter
 
             adapter.setGenreSongsAdapterListener(object : GenreDetailsAdapter.Companion.GenreSongsAdapterListener {
-                override fun onSongClick(song: Song, position: Int, view: View) {
+                override fun onSongClick(songs: List<Song>, position: Int, view: View) {
                     Log.i(TAG, "onSongClick: Song clicked in genre: ${genre.name}, position: $position")
-                    setMediaItems(listOf(song), position)
+                    setMediaItems(songs, position)
                 }
 
                 override fun onPlayClick(songs: List<Song>, position: Int) {

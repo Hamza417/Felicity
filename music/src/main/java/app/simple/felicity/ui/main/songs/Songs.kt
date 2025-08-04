@@ -114,13 +114,6 @@ class Songs : MediaFragment() {
     }
 
     companion object {
-        fun newInstance(): Songs {
-            val args = Bundle()
-            val fragment = Songs()
-            fragment.arguments = args
-            return fragment
-        }
-
         const val TAG = "Songs"
     }
 }

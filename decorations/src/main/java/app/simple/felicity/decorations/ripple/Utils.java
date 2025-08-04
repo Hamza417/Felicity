@@ -49,6 +49,7 @@ public class Utils {
     static RippleDrawable getRippleDrawable(Drawable backgroundDrawable, float radius) {
         float[] outerRadii = new float[8];
         float[] innerRadii = new float[8];
+        
         Arrays.fill(outerRadii, radius);
         Arrays.fill(innerRadii, radius);
         
