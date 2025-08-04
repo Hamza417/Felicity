@@ -10,6 +10,7 @@ object RecyclerViewUtils {
     const val TYPE_HEADER = 0
     const val TYPE_ITEM = 1
     const val TYPE_DIVIDER = 2
+    const val TYPE_ALBUMS = 3
 
     private const val value = 1.0f
     const val flingTranslationMagnitude = value

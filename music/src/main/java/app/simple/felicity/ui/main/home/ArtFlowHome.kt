@@ -70,6 +70,10 @@ class ArtFlowHome : MediaFragment() {
                                 }
                             }
                         }
+
+                        override fun onClicked(view: View, position: Int) {
+
+                        }
                     })
 
                     view.startTransitionOnPreDraw()

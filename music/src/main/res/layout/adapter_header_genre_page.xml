@@ -1,0 +1,137 @@
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/poster_container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <app.simple.felicity.decorations.views.SquareImageView
+        android:id="@+id/poster"
+        android:layout_width="165dp"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginHorizontal="@dimen/padding_10"
+        app:layout_constraintBottom_toBottomOf="@+id/poster"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/poster"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sample"
+            android:textSize="@dimen/text_size_36"
+            app:appFontStyle="bold"
+            app:textColorStyle="primary"
+            tools:ignore="HardcodedText" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/songs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sample"
+            android:textSize="@dimen/text_size_14"
+            android:layout_marginTop="@dimen/padding_5"
+            android:gravity="center_vertical"
+            android:drawableStart="@drawable/ic_song_16dp"
+            android:drawablePadding="@dimen/padding_5"
+            app:appFontStyle="regular"
+            app:drawableTintStyle="secondary"
+            app:textColorStyle="primary"
+            tools:ignore="HardcodedText" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/artists"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sample"
+            android:layout_marginTop="@dimen/padding_5"
+            android:textSize="@dimen/text_size_14"
+            android:gravity="center_vertical"
+            android:drawableStart="@drawable/ic_artist_16dp"
+            android:drawablePadding="@dimen/padding_5"
+            app:appFontStyle="regular"
+            app:drawableTintStyle="secondary"
+            app:textColorStyle="primary"
+            tools:ignore="HardcodedText" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/albums"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sample"
+            android:layout_marginTop="@dimen/padding_5"
+            android:textSize="@dimen/text_size_14"
+            android:gravity="center_vertical"
+            android:drawableStart="@drawable/ic_album_16dp"
+            android:drawablePadding="@dimen/padding_5"
+            app:appFontStyle="regular"
+            app:drawableTintStyle="secondary"
+            app:textColorStyle="primary"
+            tools:ignore="HardcodedText" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/total_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sample"
+            android:textSize="@dimen/text_size_14"
+            android:layout_marginTop="@dimen/padding_5"
+            android:gravity="center_vertical"
+            android:drawableStart="@drawable/ic_hourglass_16dp"
+            android:drawablePadding="@dimen/padding_5"
+            app:appFontStyle="regular"
+            app:drawableTintStyle="secondary"
+            app:textColorStyle="primary"
+            tools:ignore="HardcodedText" />
+
+    </LinearLayout>
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+        android:id="@+id/search"
+        android:src="@drawable/ic_search"
+        android:layout_width="@dimen/button_size"
+        android:layout_height="@dimen/button_size"
+        android:layout_marginStart="@dimen/padding_10"
+        app:buttonTintType="regular"
+        app:layout_constraintBottom_toBottomOf="@+id/shuffle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/shuffle" />
+
+    <app.simple.felicity.decorations.circular.CircularTextButton
+        android:id="@+id/shuffle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/shuffle"
+        android:textSize="@dimen/text_size_14"
+        android:drawableStart="@drawable/ic_shuffle_16dp"
+        android:paddingEnd="@dimen/padding_10"
+        android:src="@drawable/ic_shuffle"
+        android:layout_marginEnd="@dimen/padding_10"
+        app:layout_constraintBottom_toBottomOf="@+id/play"
+        app:layout_constraintEnd_toStartOf="@+id/play"
+        app:layout_constraintTop_toTopOf="@+id/play"
+        tools:ignore="RtlSymmetry" />
+
+    <app.simple.felicity.decorations.circular.CircularTextButton
+        android:id="@+id/play"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/Play"
+        android:textSize="@dimen/text_size_14"
+        android:drawableStart="@drawable/ic_play_16dp"
+        android:layout_marginTop="16dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/poster" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

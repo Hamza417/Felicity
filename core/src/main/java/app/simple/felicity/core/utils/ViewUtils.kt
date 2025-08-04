@@ -371,7 +371,7 @@ object ViewUtils {
     fun View.drawBottomToTopFadeBackground(color: Int = Color.TRANSPARENT) {
         background = GradientDrawable(
                 GradientDrawable.Orientation.BOTTOM_TOP,
-                intArrayOf(color, Color.TRANSPARENT)
+                intArrayOf(color, ColorUtils.changeAlpha(color, 128))
         )
     }
 }

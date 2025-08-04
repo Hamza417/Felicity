@@ -47,6 +47,10 @@ object ColorUtils {
         return color
     }
 
+    /**
+     * Changes the alpha of the given color to the user input alpha value.
+     * alpha value should be between 0 and 255.
+     */
     fun changeAlpha(origColor: Int, userInputAlpha: Int): Int {
         return origColor and 0x00ffffff or (userInputAlpha shl 24)
     }

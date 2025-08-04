@@ -7,6 +7,7 @@ import android.content.Context
 import android.provider.MediaStore
 import android.util.Log
 import androidx.core.net.toUri
+import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import javax.inject.Inject
@@ -256,5 +257,65 @@ public class GenreRepository @Inject constructor(private val context: Context) {
 
         Log.d("GenreRepository", "fetchAlbumArtUrisForGenre: Fetched ${albumArtUris.size} album art URIs for genre ID $genreId")
         return albumArtUris
+    }
+
+    fun fetchAlbumsInGenre(genreId: Long): List<Album> {
+        val albums = mutableListOf<Album>()
+        val albumIds = mutableSetOf<Long>()
+        val albumIdToArtistId = mutableMapOf<Long, Long>()
+
+        // Step 1: Get unique album IDs and their artist IDs from songs in the genre
+        val songCursor = context.contentResolver.query(
+                MediaStore.Audio.Genres.Members.getContentUri("external", genreId),
+                arrayOf(MediaStore.Audio.Media.ALBUM_ID, MediaStore.Audio.Media.ARTIST_ID),
+                null,
+                null,
+                null
+        )
+        songCursor?.use {
+            val albumIdCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
+            val artistIdCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST_ID)
+            while (it.moveToNext()) {
+                val albumId = it.getLong(albumIdCol)
+                val artistId = it.getLong(artistIdCol)
+                albumIds.add(albumId)
+                albumIdToArtistId[albumId] = artistId
+            }
+        }
+
+        // Step 2: Query albums table for those IDs
+        for (albumId in albumIds) {
+            val albumCursor = context.contentResolver.query(
+                    MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
+                    arrayOf(
+                            MediaStore.Audio.Albums._ID,
+                            MediaStore.Audio.Albums.ALBUM,
+                            MediaStore.Audio.Albums.ARTIST
+                    ),
+                    "${MediaStore.Audio.Albums._ID}=?",
+                    arrayOf(albumId.toString()),
+                    null
+            )
+            albumCursor?.use {
+                if (it.moveToFirst()) {
+                    albums.add(
+                            Album(
+                                    id = it.getLong(it.getColumnIndexOrThrow(MediaStore.Audio.Albums._ID)),
+                                    name = it.getString(it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ALBUM)),
+                                    artist = it.getString(it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ARTIST)),
+                                    artistId = albumIdToArtistId[albumId] ?: 0L,
+                                    artworkUri = ContentUris.withAppendedId(
+                                            MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
+                                            albumId
+                                    ),
+                                    songCount = 0 // You can fill this if needed
+                            )
+                    )
+                }
+            }
+        }
+
+        Log.d(TAG, "fetchAlbumsInGenre: Fetched ${albums.size} albums for genre ID $genreId")
+        return albums
     }
 }

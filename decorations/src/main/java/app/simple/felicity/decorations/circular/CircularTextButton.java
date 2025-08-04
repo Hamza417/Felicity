@@ -10,23 +10,31 @@ import android.util.AttributeSet;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.AppCompatImageButton;
+import androidx.appcompat.widget.AppCompatTextView;
+import androidx.core.widget.TextViewCompat;
+import app.simple.felicity.decoration.R;
+import app.simple.felicity.decorations.utils.TypeFace;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;
 
-public class CircularImageImageButton extends AppCompatImageButton implements ThemeChangedListener {
+public class CircularTextButton extends AppCompatTextView implements ThemeChangedListener {
     
     private ShapeDrawable backgroundDrawable;
     private RippleDrawable rippleDrawable;
     private ValueAnimator valueAnimator;
     
-    public CircularImageImageButton(@NonNull Context context, @Nullable AttributeSet attrs) {
+    public CircularTextButton(@NonNull Context context) {
+        super(context);
+        init();
+    }
+    
+    public CircularTextButton(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         init();
     }
     
-    public CircularImageImageButton(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+    public CircularTextButton(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init();
     }
@@ -36,9 +44,15 @@ public class CircularImageImageButton extends AppCompatImageButton implements Th
         rippleDrawable = Utils.getRippleDrawable(ThemeManager.INSTANCE.getAccent().getSecondaryAccentColor());
         backgroundDrawable.getPaint().setColor(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
         setBackground(backgroundDrawable);
-        setScaleType(ScaleType.FIT_CENTER);
-        setImageTintList(ColorStateList.valueOf(Color.WHITE));
+        setTextColor(Color.WHITE);
         setForeground(rippleDrawable);
+        TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(Color.WHITE));
+        setAllCaps(false);
+        
+        int padding = getResources().getDimensionPixelSize(R.dimen.padding_10);
+        setPaddingRelative(padding, padding, padding + padding, padding);
+        setCompoundDrawablePadding(padding);
+        setTypeface(TypeFace.INSTANCE.getBoldTypeFace(getContext()));
     }
     
     @Override
