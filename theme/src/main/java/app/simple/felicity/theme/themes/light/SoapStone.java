@@ -27,7 +27,8 @@ public class SoapStone extends Theme {
                 Color.parseColor("#fbfdf8"), // Background
                 Color.parseColor("#F6F6F6"), // Highlight Background
                 Color.parseColor("#F1F1F1"), // Selected Background
-                Color.parseColor("#767873")  // Divider Background
+                Color.parseColor("#767873"),  // Divider Background
+                Color.parseColor("#D4D4D4")   // Spot Background
         ));
         
         setIconTheme(new IconTheme(

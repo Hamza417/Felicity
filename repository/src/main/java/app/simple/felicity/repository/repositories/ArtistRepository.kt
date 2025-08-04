@@ -74,4 +74,56 @@ class ArtistRepository @Inject constructor(private val context: Context) {
 
         return artists
     }
+
+    fun fetchArtistDetails(artistId: Long): Artist? {
+        val projection = arrayOf(
+                MediaStore.Audio.Artists._ID,
+                MediaStore.Audio.Artists.ARTIST,
+                MediaStore.Audio.Artists.NUMBER_OF_ALBUMS,
+                MediaStore.Audio.Artists.NUMBER_OF_TRACKS
+        )
+
+        val selection = "${MediaStore.Audio.Artists._ID} = ?"
+        val selectionArgs = arrayOf(artistId.toString())
+
+        context.contentResolver.query(
+                MediaStore.Audio.Artists.EXTERNAL_CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Artists._ID)
+                val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Artists.ARTIST)
+                val albumCountCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Artists.NUMBER_OF_ALBUMS)
+                val trackCountCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Artists.NUMBER_OF_TRACKS)
+
+                // Fetch first albumId for this artist
+                val albumCursor = context.contentResolver.query(
+                        MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
+                        arrayOf(MediaStore.Audio.Albums._ID),
+                        "${MediaStore.Audio.Albums.ARTIST_ID} = ?",
+                        arrayOf(artistId.toString()),
+                        null
+                )
+                val artworkUri = albumCursor?.use { ac ->
+                    if (ac.moveToFirst()) {
+                        val albumId = ac.getLong(ac.getColumnIndexOrThrow(MediaStore.Audio.Albums._ID))
+                        ContentUris.withAppendedId(MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI, albumId)
+                    } else null
+                }
+
+                return Artist(
+                        id = cursor.getLong(idCol),
+                        artistName = cursor.getString(artistCol),
+                        albumCount = cursor.getInt(albumCountCol),
+                        trackCount = cursor.getInt(trackCountCol),
+                        artworkUri = artworkUri
+                )
+            }
+        }
+
+        return null
+    }
 }

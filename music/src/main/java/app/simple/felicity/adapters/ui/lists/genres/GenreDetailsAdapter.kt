@@ -39,6 +39,10 @@ class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre)
                 Albums(AdapterGenreAlbumsBinding.inflate(
                         LayoutInflater.from(parent.context), parent, false))
             }
+            RecyclerViewUtils.TYPE_ARTISTS -> {
+                Artists(AdapterGenreAlbumsBinding.inflate(
+                        LayoutInflater.from(parent.context), parent, false))
+            }
             else -> {
                 Holder(AdapterSongsBinding.inflate(
                         LayoutInflater.from(parent.context), parent, false))
@@ -53,6 +57,7 @@ class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre)
                     name.text = genre.name ?: holder.context.getString(R.string.unknown)
                     songs.text = holder.context.getString(R.string.songs, data.songs.size)
                     albums.text = holder.context.getString(R.string.albums, data.albums.size)
+                    artists.text = holder.context.getString(R.string.artists, data.artists.size)
                     totalTime.text = data.songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
                     poster.loadGenreCover(genre)
 
@@ -71,7 +76,7 @@ class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre)
     }
 
     override fun getItemCount(): Int {
-        return data.songs.size.plus(2)
+        return data.songs.size.plus(EXTRA_ROWS)
     }
 
     override fun onViewRecycled(holder: VerticalListViewHolder) {
@@ -88,6 +93,9 @@ class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre)
             }
             data.songs.size.plus(1) -> {
                 RecyclerViewUtils.TYPE_ALBUMS
+            }
+            data.songs.size.plus(2) -> {
+                RecyclerViewUtils.TYPE_ARTISTS
             }
             else -> {
                 RecyclerViewUtils.TYPE_ITEM
@@ -131,6 +139,23 @@ class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre)
         }
     }
 
+    inner class Artists(val binding: AdapterGenreAlbumsBinding) : VerticalListViewHolder(binding.root) {
+        init {
+            if (data.artists.isNotEmpty()) {
+                binding.recyclerView.setHasFixedSize(true)
+                binding.recyclerView.layoutManager = CarouselLayoutManager()
+                binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
+                val adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, data.artists))
+                adapter.stateRestorationPolicy = StateRestorationPolicy.ALLOW
+                binding.title.text = binding.title.context.getString(R.string.artists_in_genre, genre.name ?: context.getString(R.string.unknown))
+                binding.recyclerView.adapter = adapter
+            } else {
+                binding.title.visibility = View.GONE
+                binding.recyclerView.visibility = View.GONE
+            }
+        }
+    }
+
     inner class Header(val binding: AdapterHeaderGenrePageBinding) : VerticalListViewHolder(binding.root) {
         init {
             binding.play.setOnClickListener {
@@ -148,6 +173,7 @@ class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre)
 
     companion object {
         private const val TAG = "GenreSongsAdapter"
+        private const val EXTRA_ROWS = 3 // Header, Albums, Artists
 
         interface GenreSongsAdapterListener {
             fun onSongClick(song: Song, position: Int, view: View)

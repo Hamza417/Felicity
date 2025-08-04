@@ -1,11 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <attr name="buttonTintType" format="enum">
+        <enum name="regular" value="0" />
+        <enum name="secondary" value="1" />
+        <enum name="accent" value="2" />
+        <enum name="white" value="3" />
+        <enum name="custom" value="-1" />
+    </attr>
+
     <declare-styleable name="DynamicCornerLayout">
         <!-- At least one of them needs to be true else roundness will be applies to all corners
                 default is false for both of them -->
         <attr name="roundTopCorners" format="boolean" />
         <attr name="roundBottomCorners" format="boolean" />
         <attr name="roundAllCorners" format="boolean" />
+    </declare-styleable>
+
+    <declare-styleable name="CircularImageImageButton">
+        <attr name="buttonBackgroundType" format="string">
+            <flag name="regular" value="0" />
+            <flag name="secondary" value="1" />
+            <flag name="accent" value="2" />
+            <flag name="custom" value="-1" />
+        </attr>
+
+        <attr name="buttonTintType" />
     </declare-styleable>
 
     <!-- Type Face Text View -->
@@ -47,13 +66,7 @@
     </declare-styleable>
 
     <declare-styleable name="ThemeImageButton">
-        <attr name="buttonTintType" format="string">
-            <flag name="regular" value="0" />
-            <flag name="secondary" value="1" />
-            <flag name="accent" value="2" />
-            <flag name="white" value="3" />
-            <flag name="custom" value="-1" />
-        </attr>
+        <attr name="buttonTintType" />
     </declare-styleable>
 
     <declare-styleable name="LrcView">

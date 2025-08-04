@@ -23,7 +23,8 @@ public class HighContrastDark extends Theme {
                 Color.parseColor("#000000"), // Background
                 Color.parseColor("#404040"), // Highlight Background
                 Color.parseColor("#242424"), // Selected Background
-                Color.parseColor("#ffffff")  // Divider Background
+                Color.parseColor("#ffffff"),  // Divider Background
+                Color.parseColor("#FFFFFF")   // Spot Background
         ));
         
         setSwitchTheme(new SwitchTheme(

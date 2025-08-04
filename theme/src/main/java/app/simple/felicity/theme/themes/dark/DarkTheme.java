@@ -27,7 +27,8 @@ public class DarkTheme extends Theme {
                 Color.parseColor("#171717"), // Background Color
                 Color.parseColor("#404040"), // Highlight Color
                 Color.parseColor("#242424"), // Selected Color
-                Color.parseColor("#666666")  // Divider Color
+                Color.parseColor("#666666"),  // Divider Color
+                Color.parseColor("#1A1A1A")   // Spot Color
         ));
 
         setIconTheme(new IconTheme(

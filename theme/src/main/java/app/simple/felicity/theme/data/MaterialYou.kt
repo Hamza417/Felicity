@@ -21,6 +21,7 @@ object MaterialYou {
     var highlightBackground = 0
     var selectedBackground = 0
     var dividerBackground = 0
+    var spotColor = 0
     var switchOffColor = 0
     var regularIconColor = 0
     var secondaryIconColor = 0
@@ -35,6 +36,7 @@ object MaterialYou {
     var highlightBackgroundDark = 0
     var selectedBackgroundDark = 0
     var dividerBackgroundDark = 0
+    var spotColorDark = 0
     var switchOffColorDark = 0
     var regularIconColorDark = 0
     var secondaryIconColorDark = 0
@@ -58,6 +60,7 @@ object MaterialYou {
         highlightBackground = ContextCompat.getColor(this, android.R.color.system_accent2_100)
         selectedBackground = ContextCompat.getColor(this, android.R.color.system_accent2_100)
         dividerBackground = ContextCompat.getColor(this, android.R.color.system_accent3_300)
+        spotColor = ContextCompat.getColor(this, android.R.color.system_accent1_600)
 
         switchOffColor = ContextCompat.getColor(this, android.R.color.system_neutral1_100)
 
@@ -78,6 +81,7 @@ object MaterialYou {
         highlightBackgroundDark = ContextCompat.getColor(this, android.R.color.system_accent1_700)
         selectedBackgroundDark = ContextCompat.getColor(this, android.R.color.system_accent2_600)
         dividerBackgroundDark = ContextCompat.getColor(this, android.R.color.system_accent3_200)
+        spotColorDark = ContextCompat.getColor(this, android.R.color.system_accent1_500)
 
         switchOffColorDark = ContextCompat.getColor(this, android.R.color.system_neutral1_800)
 

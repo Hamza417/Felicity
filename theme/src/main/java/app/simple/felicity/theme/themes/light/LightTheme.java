@@ -27,7 +27,8 @@ public class LightTheme extends Theme {
                 Color.parseColor("#ffffff"), // Background Color
                 Color.parseColor("#F6F6F6"), // Highlight Color
                 Color.parseColor("#F1F1F1"), // Selected Color
-                Color.parseColor("#DDDDDD")  // Divider Color
+                Color.parseColor("#DDDDDD"),  // Divider Color
+                Color.parseColor("#D4D4D4")   // Spot Color
         ));
 
         setIconTheme(new IconTheme(

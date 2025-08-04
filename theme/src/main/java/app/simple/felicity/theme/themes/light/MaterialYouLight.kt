@@ -21,7 +21,8 @@ class MaterialYouLight : Theme() {
                 MaterialYou.background,
                 MaterialYou.highlightBackground,
                 MaterialYou.selectedBackground,
-                MaterialYou.dividerBackground
+                MaterialYou.dividerBackground,
+                MaterialYou.spotColor
         )
 
         switchTheme = SwitchTheme(

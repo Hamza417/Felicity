@@ -51,7 +51,6 @@
             android:layout_height="wrap_content"
             android:text="Sample"
             android:textSize="@dimen/text_size_14"
-            android:layout_marginTop="@dimen/padding_5"
             android:gravity="center_vertical"
             android:drawableStart="@drawable/ic_song_16dp"
             android:drawablePadding="@dimen/padding_5"
@@ -107,12 +106,12 @@
 
     </LinearLayout>
 
-    <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+    <app.simple.felicity.decorations.circular.CircularImageImageButton
         android:id="@+id/search"
         android:src="@drawable/ic_search"
         android:layout_width="@dimen/button_size"
         android:layout_height="@dimen/button_size"
-        android:layout_marginStart="@dimen/padding_5"
+        app:buttonBackgroundType="regular"
         app:buttonTintType="regular"
         app:layout_constraintBottom_toBottomOf="@+id/shuffle"
         app:layout_constraintStart_toStartOf="parent"

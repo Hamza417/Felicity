@@ -54,7 +54,7 @@ public class CircularTextButton extends AppCompatTextView implements ThemeChange
         setPaddingRelative(padding, padding, padding + padding, padding);
         setCompoundDrawablePadding(padding);
         setTypeface(TypeFace.INSTANCE.getBoldTypeFace(getContext()));
-        setElevation(36F);
+        setElevation(12F);
         ViewUtils.INSTANCE.addShadow(this, ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
     }
     

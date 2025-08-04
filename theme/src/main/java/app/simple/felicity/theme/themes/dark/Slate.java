@@ -23,7 +23,8 @@ public class Slate extends Theme {
                 Color.parseColor("#20272e"), // Background
                 Color.parseColor("#223343"), // Highlight Background
                 Color.parseColor("#273f58"), // Selected Background
-                Color.parseColor("#666666")  // Divider Background
+                Color.parseColor("#666666"),  // Divider Background
+                Color.parseColor("#1A1A1A")   // Spot Background
         ));
         
         setSwitchTheme(new SwitchTheme(

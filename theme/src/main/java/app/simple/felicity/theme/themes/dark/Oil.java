@@ -23,7 +23,8 @@ public class Oil extends Theme {
                 Color.parseColor("#1A1C1B"), // Background
                 Color.parseColor("#2a332e"), // Highlight Background
                 Color.parseColor("#232e28"), // Selected Background
-                Color.parseColor("#304539")  // Divider Background
+                Color.parseColor("#304539"),  // Divider Background
+                Color.parseColor("#1d2621")   // Spot Background
         ));
         
         setSwitchTheme(new SwitchTheme(

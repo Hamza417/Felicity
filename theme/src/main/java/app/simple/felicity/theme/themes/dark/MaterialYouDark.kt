@@ -21,7 +21,8 @@ class MaterialYouDark : Theme() {
                 MaterialYou.backgroundDark,
                 MaterialYou.highlightBackgroundDark,
                 MaterialYou.selectedBackgroundDark,
-                MaterialYou.dividerBackgroundDark
+                MaterialYou.dividerBackgroundDark,
+                MaterialYou.spotColorDark,
         ))
 
         setSwitchTheme(SwitchTheme(
