@@ -17,3 +17,7 @@ local.properties
 /.idea/other.xml
 /.kotlin/sessions/
 /.idea/deviceManager.xml
+/music/production/release/baselineProfiles/0/music-production-release.dm
+/music/production/release/baselineProfiles/1/music-production-release.dm
+/music/production/release/music-production-release.apk
+/music/production/release/output-metadata.json
