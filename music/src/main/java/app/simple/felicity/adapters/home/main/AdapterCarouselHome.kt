@@ -9,6 +9,7 @@ import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
 import app.simple.felicity.databinding.AdapterHomeCarouselBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.decorations.singletons.CarouselScrollStateStore
 import app.simple.felicity.models.ArtFlowData
 import com.google.android.material.carousel.CarouselLayoutManager
 
@@ -27,17 +28,17 @@ class AdapterCarouselHome(private val data: List<ArtFlowData<Any>>) : RecyclerVi
         val item = data[position]
         val adapter = AdapterCarouselItems(item)
         adapter.stateRestorationPolicy = StateRestorationPolicy.ALLOW
+        holder.binding.recyclerView.setUniqueKey(holder.binding.title.context.getString(item.title))
         holder.binding.title.text = holder.binding.title.context.getString(item.title)
         holder.binding.recyclerView.setHasFixedSize(true)
         holder.binding.recyclerView.layoutManager = CarouselLayoutManager()
-        //        val snapHelper = CarouselSnapHelper()
-        //        snapHelper.attachToRecyclerView(holder.binding.recyclerView)
         holder.binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
         holder.binding.recyclerView.adapter = adapter
         holder.binding.container.transitionName = holder.binding.title.context.getString(item.title)
 
         adapter.setAdapterCarouselCallbacks(object : AdapterCarouselItems.Companion.AdapterCarouselCallbacks {
             override fun onClicked(view: View, position: Int) {
+                CarouselScrollStateStore.savePosition(holder.binding.title.context.getString(item.title), position)
                 adapterCarouselCallbacks?.onSubItemClicked(view, holder.bindingAdapterPosition, position)
             }
         })
