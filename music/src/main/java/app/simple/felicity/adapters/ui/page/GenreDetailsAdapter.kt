@@ -1,4 +1,4 @@
-package app.simple.felicity.adapters.ui.lists.genres
+package app.simple.felicity.adapters.ui.page
 
 import android.view.LayoutInflater
 import android.view.View
@@ -10,7 +10,6 @@ import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
 import app.simple.felicity.databinding.AdapterHeaderGenrePageBinding
 import app.simple.felicity.databinding.AdapterSongsBinding
-import app.simple.felicity.decorations.itemdecorations.CarouselSpacingDecoration
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
@@ -18,14 +17,14 @@ import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.genres.GenreCoverUtils.loadGenreCover
 import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromUri
 import app.simple.felicity.models.ArtFlowData
+import app.simple.felicity.models.CollectionPageData
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
-import app.simple.felicity.viewmodels.main.genres.GenreViewerViewModel.Companion.GenreData
 import com.bumptech.glide.Glide
 import com.google.android.material.carousel.CarouselLayoutManager
 
-class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre) :
+class GenreDetailsAdapter(private val data: CollectionPageData, private val genre: Genre) :
         RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var genreSongsAdapterListener: GenreSongsAdapterListener? = null
@@ -143,7 +142,7 @@ class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre)
             if (data.artists.isNotEmpty()) {
                 binding.recyclerView.setHasFixedSize(true)
                 binding.recyclerView.layoutManager = CarouselLayoutManager()
-                binding.recyclerView.addItemDecoration(CarouselSpacingDecoration(24, 0))
+                binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
                 val adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, data.artists))
                 adapter.stateRestorationPolicy = StateRestorationPolicy.ALLOW
                 binding.title.text = binding.title.context.getString(R.string.artists_in_genre, genre.name ?: context.getString(R.string.unknown))

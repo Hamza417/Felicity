@@ -342,4 +342,36 @@ public class GenreRepository @Inject constructor(private val context: Context) {
 
         return artists.toList()
     }
+
+    fun fetchGenreByArtist(id: Long): List<Genre> {
+        val genres = mutableListOf<Genre>()
+        val projection = arrayOf(
+                MediaStore.Audio.Genres._ID,
+                MediaStore.Audio.Genres.NAME
+        )
+
+        val cursor = context.contentResolver.query(
+                MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
+                projection,
+                null,
+                null,
+                null
+        )
+
+        cursor?.use {
+            val idCol = it.getColumnIndexOrThrow(MediaStore.Audio.Genres._ID)
+            val nameCol = it.getColumnIndexOrThrow(MediaStore.Audio.Genres.NAME)
+
+            while (it.moveToNext()) {
+                genres.add(
+                        Genre(
+                                id = it.getLong(idCol),
+                                name = it.getString(nameCol)
+                        )
+                )
+            }
+        }
+
+        return genres
+    }
 }

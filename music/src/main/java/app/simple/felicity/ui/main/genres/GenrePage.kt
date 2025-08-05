@@ -6,7 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
-import app.simple.felicity.adapters.ui.lists.genres.GenreDetailsAdapter
+import app.simple.felicity.adapters.ui.page.GenreDetailsAdapter
 import app.simple.felicity.databinding.FragmentViewerGenresBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment

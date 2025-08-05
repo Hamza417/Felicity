@@ -7,6 +7,8 @@ import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageView;
 
+import com.google.android.material.carousel.MaskableFrameLayout;
+
 import androidx.annotation.NonNull;
 import androidx.transition.TransitionValues;
 import androidx.transition.Visibility;
@@ -32,7 +34,9 @@ public class SeekableSharedAxisZTransition extends Visibility {
     private Animator createAnimator(final View view, final float startScale, final float endScale,
             final float startAlpha, final float endAlpha) {
         if (view instanceof ImageView) {
-            return null;
+            if (view.getParent() instanceof MaskableFrameLayout) {
+                return null;
+            }
         }
         
         ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);

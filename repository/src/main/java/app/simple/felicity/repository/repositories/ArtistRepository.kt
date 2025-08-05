@@ -63,7 +63,7 @@ class ArtistRepository @Inject constructor(private val context: Context) {
                 artists.add(
                         Artist(
                                 id = artistId,
-                                artistName = it.getString(artistCol),
+                                name = it.getString(artistCol),
                                 albumCount = it.getInt(albumCountCol),
                                 trackCount = it.getInt(trackCountCol),
                                 artworkUri = artworkUri
@@ -116,7 +116,7 @@ class ArtistRepository @Inject constructor(private val context: Context) {
 
                 return Artist(
                         id = cursor.getLong(idCol),
-                        artistName = cursor.getString(artistCol),
+                        name = cursor.getString(artistCol),
                         albumCount = cursor.getInt(albumCountCol),
                         trackCount = cursor.getInt(trackCountCol),
                         artworkUri = artworkUri
@@ -125,5 +125,48 @@ class ArtistRepository @Inject constructor(private val context: Context) {
         }
 
         return null
+    }
+
+    fun fetchOtherArtistsForCollaboration(currentArtist: Artist): List<Artist> {
+        val name = currentArtist.name ?: return emptyList()
+        val delimiters = arrayOf("&", "ft.", "feat.", ",", "and")
+        val regex = delimiters.joinToString("|") { Regex.escape(it) }.toRegex(RegexOption.IGNORE_CASE)
+
+        val currentArtistNames = name.split(regex).map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        val collaboratorNames = mutableSetOf<String>()
+        val projection = arrayOf(MediaStore.Audio.Media.ARTIST)
+        val selection = "${MediaStore.Audio.Media.ARTIST} LIKE ?"
+        val selectionArgs = arrayOf("%${name}%")
+
+        context.contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                null
+        )?.use { cursor ->
+            val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+            while (cursor.moveToNext()) {
+                val artistField = cursor.getString(artistCol) ?: continue
+                val names = artistField.split(regex).map { it.trim() }.filter { it.isNotEmpty() }
+                if (names.size > 1 && names.any { currentArtistNames.contains(it) }) {
+                    names.filter { !currentArtistNames.contains(it) }
+                        .forEach { collaboratorNames.add(it) }
+                }
+            }
+        }
+
+        val allArtists = fetchArtists()
+
+        return allArtists.filter { artist ->
+            val artistParts = artist.name?.split(regex)?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
+            // Check if any part of artistParts matches any part of any collaborator name
+            artistParts.any { part ->
+                collaboratorNames.any { collaborator ->
+                    val collaboratorParts = collaborator.split(regex).map { it.trim() }.filter { it.isNotEmpty() }
+                    collaboratorParts.any { it.equals(part, ignoreCase = true) }
+                }
+            }
+        }
     }
 }

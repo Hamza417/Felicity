@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
     app:startDestination="@id/carousel_home">
 
     <fragment
@@ -22,6 +23,9 @@
         <action
             android:id="@+id/action_home_to_peristyle_artists"
             app:destination="@id/peristyle_artists" />
+        <action
+            android:id="@+id/action_home_to_artist_page"
+            app:destination="@id/artist_page" />
     </fragment>
 
     <fragment
@@ -90,4 +94,16 @@
         android:id="@+id/peristyle_artists"
         android:name="app.simple.felicity.ui.main.artists.PeristyleArtists"
         android:label="Artists"></fragment>
+
+    <fragment
+        android:id="@+id/artist_page"
+        android:name="app.simple.felicity.ui.main.artists.ArtistPage"
+        android:label="Artist Page">
+        <argument
+            android:name="artist"
+            app:argType="app.simple.felicity.repository.models.Artist" />
+        <action
+            android:id="@+id/action_artist_page_to_genres_page"
+            app:destination="@id/genres_page" />
+    </fragment>
 </navigation>

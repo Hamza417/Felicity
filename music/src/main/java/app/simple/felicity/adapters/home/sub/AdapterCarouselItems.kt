@@ -80,7 +80,7 @@ class AdapterCarouselItems(private val data: ArtFlowData<Any>) : RecyclerView.Ad
                         .dontAnimate()
                         .into(holder.binding.art)
 
-                    holder.binding.title.text = item.artistName ?: holder.getContext().getString(R.string.unknown)
+                    holder.binding.title.text = item.name ?: holder.getContext().getString(R.string.unknown)
                 }
                 is Genre -> {
                     Glide.with(holder.binding.art)

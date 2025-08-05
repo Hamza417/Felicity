@@ -29,7 +29,7 @@ class AdapterPeristyleArtists(private val artists: List<Artist>) : RecyclerView.
 
         fun bind(binding: AdapterArtistsPeristyleBinding) {
             this.binding = binding
-            binding.title.text = artists[bindingAdapterPosition].artistName
+            binding.title.text = artists[bindingAdapterPosition].name
             binding.artistArt.loadPeristyleArtistCover(artists[bindingAdapterPosition])
         }
     }

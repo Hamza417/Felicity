@@ -78,7 +78,7 @@ class ArtFlowAdapter(private val data: ArtFlowData<Any>) : SliderViewAdapter<Art
                         .dontAnimate()
                         .into(viewHolder.binding.art)
 
-                    viewHolder.binding.title.text = item.artistName ?: viewHolder.getContext().getString(R.string.unknown)
+                    viewHolder.binding.title.text = item.name ?: viewHolder.getContext().getString(R.string.unknown)
                 }
                 is Genre -> {
                     Glide.with(viewHolder.binding.art)

@@ -47,6 +47,11 @@ class CarouselHome : MediaFragment() {
                             val action = CarouselHomeDirections.actionGenresToPage(genre)
                             findNavController().navigate(action)
                         }
+                        is Artist -> {
+                            val artist = data[position].items.filterIsInstance<Artist>()[itemPosition]
+                            val action = CarouselHomeDirections.actionHomeToArtistPage(artist)
+                            findNavController().navigate(action)
+                        }
                         else -> {
                             Log.w(TAG, "Unsupported item type clicked at position: $position")
                         }
