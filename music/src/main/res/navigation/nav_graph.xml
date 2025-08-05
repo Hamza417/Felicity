@@ -74,6 +74,9 @@
         <argument
             android:name="genre"
             app:argType="app.simple.felicity.repository.models.Genre" />
+        <action
+            android:id="@+id/action_genres_to_artists"
+            app:destination="@id/artist_page" />
     </fragment>
 
     <fragment

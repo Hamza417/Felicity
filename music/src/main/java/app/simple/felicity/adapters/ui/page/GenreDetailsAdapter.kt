@@ -18,6 +18,7 @@ import app.simple.felicity.glide.genres.GenreCoverUtils.loadGenreCover
 import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromUri
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.CollectionPageData
+import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
@@ -147,6 +148,12 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
                 adapter.stateRestorationPolicy = StateRestorationPolicy.ALLOW
                 binding.title.text = binding.title.context.getString(R.string.artists_in_genre, genre.name ?: context.getString(R.string.unknown))
                 binding.recyclerView.adapter = adapter
+
+                adapter.setAdapterCarouselCallbacks(object : AdapterCarouselItems.Companion.AdapterCarouselCallbacks {
+                    override fun onClicked(view: View, position: Int) {
+                        genreSongsAdapterListener?.onArtistClicked(data.artists[position])
+                    }
+                })
             } else {
                 binding.title.visibility = View.GONE
                 binding.recyclerView.visibility = View.GONE
@@ -178,6 +185,7 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
             fun onSongClick(songs: List<Song>, position: Int, view: View)
             fun onPlayClick(songs: List<Song>, position: Int = 0)
             fun onShuffleClick(songs: List<Song>, position: Int = 0)
+            fun onArtistClicked(artist: Artist)
         }
     }
 }

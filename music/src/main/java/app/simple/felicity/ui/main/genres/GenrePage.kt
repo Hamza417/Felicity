@@ -6,12 +6,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import app.simple.felicity.adapters.ui.page.GenreDetailsAdapter
 import app.simple.felicity.databinding.FragmentViewerGenresBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.factories.genres.GenreViewerViewModelFactory
 import app.simple.felicity.repository.constants.BundleConstants
+import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.utils.ParcelUtils.parcelable
@@ -59,6 +61,11 @@ class GenrePage : MediaFragment() {
                 override fun onShuffleClick(songs: List<Song>, position: Int) {
                     Log.i(TAG, "onShuffleClick: Shuffle button clicked for genre: ${genre.name}, position: $position")
                     setMediaItems(songs.shuffled(), position)
+                }
+
+                override fun onArtistClicked(artist: Artist) {
+                    Log.i(TAG, "onArtistClicked: Artist clicked in genre: ${genre.name}, artist: ${artist.name}")
+                    findNavController().navigate(GenrePageDirections.actionGenresToArtists(artist))
                 }
             })
         }
