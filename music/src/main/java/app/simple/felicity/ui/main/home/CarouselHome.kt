@@ -12,6 +12,7 @@ import app.simple.felicity.adapters.home.main.AdapterCarouselHome
 import app.simple.felicity.databinding.FragmentHomeCarouselBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
@@ -64,6 +65,9 @@ class CarouselHome : MediaFragment() {
                             }
                             is Genre -> {
                                 findNavController().navigate(CarouselHomeDirections.actionHomeToGenres())
+                            }
+                            is Artist -> {
+                                findNavController().navigate(CarouselHomeDirections.actionHomeToPeristyleArtists())
                             }
                             else -> {
                                 Log.w(TAG, "Unsupported item type clicked at position: $position")

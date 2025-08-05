@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.adapters.ui.lists.artists.AdapterPeristyleArtists
 import app.simple.felicity.databinding.FragmentAlbumsBinding
@@ -14,17 +14,13 @@ import app.simple.felicity.viewmodels.main.artists.ArtistsViewModel
 class PeristyleArtists : ScopedFragment() {
 
     private var binding: FragmentAlbumsBinding? = null
-    private var albumsViewModel: ArtistsViewModel? = null
+    private val albumsViewModel: ArtistsViewModel? by viewModels({ requireActivity() })
     private var adapter: AdapterPeristyleArtists? = null
     private var gridLayoutManager: GridLayoutManager? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        val fragmentBinding = FragmentAlbumsBinding.inflate(inflater, container, false)
-
-        binding = fragmentBinding
-        albumsViewModel = ViewModelProvider(requireActivity())[ArtistsViewModel::class.java]
-
-        return fragmentBinding.root
+        binding = FragmentAlbumsBinding.inflate(inflater, container, false)
+        return binding!!.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

@@ -19,6 +19,9 @@
         <action
             android:id="@+id/action_home_to_carousel_flow"
             app:destination="@id/carousel_flow" />
+        <action
+            android:id="@+id/action_home_to_peristyle_artists"
+            app:destination="@id/peristyle_artists" />
     </fragment>
 
     <fragment
@@ -82,4 +85,9 @@
         android:label="Songs">
 
     </fragment>
+
+    <fragment
+        android:id="@+id/peristyle_artists"
+        android:name="app.simple.felicity.ui.main.artists.PeristyleArtists"
+        android:label="Artists"></fragment>
 </navigation>

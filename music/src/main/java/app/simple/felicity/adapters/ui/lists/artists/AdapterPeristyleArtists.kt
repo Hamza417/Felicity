@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterArtistsPeristyleBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.glide.artistcover.ArtistCoverUtils.loadPeristyleArtistCover
 import app.simple.felicity.repository.models.Artist
 
 class AdapterPeristyleArtists(private val artists: List<Artist>) : RecyclerView.Adapter<AdapterPeristyleArtists.Holder>() {
@@ -29,6 +30,7 @@ class AdapterPeristyleArtists(private val artists: List<Artist>) : RecyclerView.
         fun bind(binding: AdapterArtistsPeristyleBinding) {
             this.binding = binding
             binding.title.text = artists[bindingAdapterPosition].artistName
+            binding.artistArt.loadPeristyleArtistCover(artists[bindingAdapterPosition])
         }
     }
 }

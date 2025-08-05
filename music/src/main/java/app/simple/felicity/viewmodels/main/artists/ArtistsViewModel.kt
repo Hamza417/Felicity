@@ -7,14 +7,15 @@ import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.repositories.ArtistRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class ArtistsViewModel(application: Application) : WrappedViewModel(application) {
-
-    private val artistRepository: ArtistRepository by lazy {
-        ArtistRepository(application.applicationContext)
-    }
+@HiltViewModel
+class ArtistsViewModel @Inject constructor(
+        application: Application,
+        private val artistRepository: ArtistRepository) : WrappedViewModel(application) {
 
     private val albums: MutableLiveData<List<Artist>> by lazy {
         MutableLiveData<List<Artist>>().also {
