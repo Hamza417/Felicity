@@ -48,7 +48,7 @@ class ProminentLayoutManager(
         /**
          * Rotate the image as it moves away from the center.
          */
-        val rotationAmountFactor = 2f
+        val rotationAmountFactor = 3f
 
         /**
          * Scale down the image as it moves away from the center.
@@ -60,6 +60,8 @@ class ProminentLayoutManager(
          */
         val minRotationAmount = 75F
 
+        val maxPossibleRotation = 90F
+
         for (i in 0 until childCount) {
             val child = getChildAt(i)!!
 
@@ -68,25 +70,21 @@ class ProminentLayoutManager(
 
             child.isActivated = distanceToCenter < prominentThreshold
 
-            val scaleDownAmount = (distanceToCenter / scaleDistanceThreshold).coerceAtMost(0.7f)
+            val scaleDownAmount = (distanceToCenter / scaleDistanceThreshold).coerceAtMost(1f)
 
             /**
              * We'll need it to be rotate fast first but gradually slows down as it approaches the edge.
              */
             val rotationAmount = (distanceToCenter / scaleDistanceThreshold).coerceAtMost(1f)
             val scale = 1f - (scaleDownBy * scaleAmountFactor) * scaleDownAmount
-            val rotation = 90f * (rotationAmount * rotationAmountFactor)
+            val rotation = maxPossibleRotation * (rotationAmount * rotationAmountFactor)
 
             child.scaleX = scale
             child.scaleY = scale
 
-            if (childCenter > containerCenter) {
-                // Rotate clockwise because it's on the right side
-                child.rotationY = if (-rotation < -minRotationAmount) -minRotationAmount else (-rotation * 1.2f).coerceAtLeast(-minRotationAmount)
-            } else {
-                // Rotate counter-clockwise because it's on the left side
-                child.rotationY = if (rotation > minRotationAmount) minRotationAmount else (rotation * 1.2f).coerceAtMost(minRotationAmount)
-            }
+            val direction = if (childCenter > containerCenter) -1 else 1
+            val rawRotation = rotation * direction
+            child.rotationY = rawRotation.coerceIn(-minRotationAmount, minRotationAmount)
 
             val translationDirection = if (childCenter > containerCenter) -1 else 1
             val translationXFromScale = translationDirection * child.width * (1 - scale) / 2f
@@ -103,17 +101,17 @@ class ProminentLayoutManager(
              * This will prevent the right items from overlapping the
              * item in the center.
              */
-            child.translationZ = -abs(translationXFromScale * 2)
+            child.translationZ = -abs(translationXFromScale)
 
             translationXForward = 0f
 
             if (translationXFromScale > 0 && i >= 1) {
                 // Edit previous child
-                getChildAt(i - 1)!!.translationX += 1 * translationXFromScale
+                getChildAt(i - 1)!!.translationX += abs(translationXFromScale)
 
             } else if (translationXFromScale < 0) {
                 // Pass on to next child
-                translationXForward = 1 * translationXFromScale
+                translationXForward = abs(translationXFromScale)
             }
         }
     }

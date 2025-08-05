@@ -37,10 +37,10 @@ class ArtFlowRv : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        startPostponedEnterTransition()
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) {
             layoutManager = ProminentLayoutManager(requireContext())
+            binding.reflectionView.reflectionOffsetY = 20
 
             with(binding.artFlow) {
                 backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
@@ -60,10 +60,17 @@ class ArtFlowRv : MediaFragment() {
                         if (newState == RecyclerView.SCROLL_STATE_IDLE) {
                             binding.title.visibility = View.VISIBLE
                             binding.artist.visibility = View.VISIBLE
+                            snapHelper.invalidateSnapPosition() // Notify snap listeners about new position
                         } else {
                             binding.title.visibility = View.INVISIBLE
                             binding.artist.visibility = View.INVISIBLE
                         }
+                    }
+
+                    override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                        super.onScrolled(recyclerView, dx, dy)
+                        // This is needed to update the reflection view when scrolling
+                        binding.reflectionView.invalidate()
                     }
                 })
 
@@ -81,14 +88,7 @@ class ArtFlowRv : MediaFragment() {
                     initRecyclerViewPosition(requireArguments().getInt(BundleConstants.position))
                 }
 
-                addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                        super.onScrollStateChanged(recyclerView, newState)
-                        if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                            snapHelper.invalidateSnapPosition() // Notify snap listeners about new position
-                        }
-                    }
-                })
+                binding.reflectionView.sourceView = this
             }
         }
 
