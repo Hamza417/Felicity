@@ -112,5 +112,8 @@
         <action
             android:id="@+id/action_artist_page_to_genres_page"
             app:destination="@id/genres_page" />
+        <action
+            android:id="@+id/action_artist_page_to_artist_page"
+            app:destination="@id/artist_page" />
     </fragment>
 </navigation>

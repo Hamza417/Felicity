@@ -3,13 +3,12 @@
     android:id="@+id/container"
     android:layout_width="175dp"
     android:layout_height="wrap_content"
-    android:foreground="?attr/selectableItemBackground"
-    app:shapeAppearance="?attr/shapeAppearanceCornerExtraLarge">
+    android:foreground="?attr/selectableItemBackground">
 
     <app.simple.felicity.decorations.views.SquareImageView
         android:id="@+id/art"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_width="175dp"
+        android:layout_height="175dp"
         android:scaleType="centerCrop" />
 
     <LinearLayout

@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import app.simple.felicity.adapters.ui.page.ArtistDetailsAdapter
 import app.simple.felicity.databinding.FragmentPageArtistBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
@@ -44,7 +45,7 @@ class ArtistPage : MediaFragment() {
             binding.recyclerView.addItemDecoration(SpacingItemDecoration(48, true))
             binding.recyclerView.adapter = adapter
 
-            adapter.setGenreSongsAdapterListener(object : ArtistDetailsAdapter.Companion.ArtistSongsAdapterListener {
+            adapter.setArtistAdapterListener(object : ArtistDetailsAdapter.Companion.ArtistSongsAdapterListener {
                 override fun onSongClick(songs: List<Song>, position: Int, view: View) {
                     Log.i(TAG, "onSongClick: Song clicked in artist: ${artist.name}, position: $position")
                     setMediaItems(songs, position)
@@ -58,6 +59,11 @@ class ArtistPage : MediaFragment() {
                 override fun onShuffleClick(songs: List<Song>, position: Int) {
                     Log.i(TAG, "onShuffleClick: Shuffle button clicked for artist: ${artist.name}, position: $position")
                     setMediaItems(songs.shuffled(), position)
+                }
+
+                override fun onArtistClicked(artist: Artist) {
+                    Log.i(TAG, "onArtistClicked: Artist clicked: ${artist.name}")
+                    findNavController().navigate(ArtistPageDirections.actionArtistPageToArtistPage(artist))
                 }
             })
         }

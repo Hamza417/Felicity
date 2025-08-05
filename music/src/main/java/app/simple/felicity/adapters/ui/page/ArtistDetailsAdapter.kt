@@ -147,6 +147,12 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
                 adapter.stateRestorationPolicy = StateRestorationPolicy.ALLOW
                 binding.title.text = binding.title.context.getString(R.string.with_other_artists, artist.name ?: context.getString(R.string.unknown))
                 binding.recyclerView.adapter = adapter
+
+                adapter.setAdapterCarouselCallbacks(object : AdapterCarouselItems.Companion.AdapterCarouselCallbacks {
+                    override fun onClicked(view: View, position: Int) {
+                        listener?.onArtistClicked(data.artists[position])
+                    }
+                })
             } else {
                 binding.title.visibility = View.GONE
                 binding.recyclerView.visibility = View.GONE
@@ -165,8 +171,8 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
         }
     }
 
-    fun setGenreSongsAdapterListener(listener: ArtistSongsAdapterListener) {
-        this@ArtistDetailsAdapter.listener = listener
+    fun setArtistAdapterListener(listener: ArtistSongsAdapterListener) {
+        this.listener = listener
     }
 
     companion object {
@@ -178,6 +184,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
             fun onSongClick(songs: List<Song>, position: Int, view: View)
             fun onPlayClick(songs: List<Song>, position: Int = 0)
             fun onShuffleClick(songs: List<Song>, position: Int = 0)
+            fun onArtistClicked(artist: Artist)
         }
     }
 }
