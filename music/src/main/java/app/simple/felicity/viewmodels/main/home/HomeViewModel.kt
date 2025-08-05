@@ -2,6 +2,8 @@ package app.simple.felicity.viewmodels.main.home
 
 import android.app.Application
 import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
@@ -12,9 +14,6 @@ import app.simple.felicity.repository.repositories.GenreRepository
 import app.simple.felicity.repository.repositories.SongRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -26,12 +25,15 @@ class HomeViewModel @Inject constructor(
         private val genreRepository: GenreRepository,
         private val artistRepository: ArtistRepository) : WrappedViewModel(application) {
 
-    private val _data: MutableSharedFlow<List<ArtFlowData<Any>>> = MutableSharedFlow(replay = 1)
-    val data: SharedFlow<List<ArtFlowData<Any>>> = _data.asSharedFlow()
+    private val data: MutableLiveData<List<ArtFlowData<Any>>> by lazy {
+        MutableLiveData<List<ArtFlowData<Any>>>().also {
+            Log.d(TAG, "LiveData initialized")
+            loadData()
+        }
+    }
 
-    init {
-        Log.d(TAG, "HomeViewModel initialized")
-        loadData()
+    fun getData(): LiveData<List<ArtFlowData<Any>>> {
+        return data
     }
 
     private fun loadData() {
@@ -55,7 +57,8 @@ class HomeViewModel @Inject constructor(
                 artFlowData.add(ArtFlowData(R.string.recently_added, recentlyAdded))
             }
 
-            _data.emit(artFlowData)
+            Log.d(TAG, "Data loaded successfully")
+            data.postValue(artFlowData)
         }
     }
 

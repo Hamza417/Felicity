@@ -10,9 +10,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import app.simple.felicity.adapters.home.main.AdapterArtFlowHome
 import app.simple.felicity.databinding.FragmentHomeArtflowBinding
@@ -22,7 +19,6 @@ import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.launch
 
 class ArtFlowHome : MediaFragment() {
 
@@ -42,59 +38,55 @@ class ArtFlowHome : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
         postponeEnterTransition()
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                homeViewModel.data.collect { data ->
-                    Log.d(TAG, "Data received: ${data.size} items")
-                    val adapter = AdapterArtFlowHome(data)
+        homeViewModel.getData().observe(viewLifecycleOwner) { data ->
+            Log.d(TAG, "Data received: ${data.size} items")
+            val adapter = AdapterArtFlowHome(data)
 
-                    binding?.recyclerView?.adapter = adapter
-                    binding?.recyclerView?.setHasFixedSize(true)
-                    binding?.recyclerView?.backgroundTintList =
-                        ColorStateList(arrayOf(intArrayOf()), intArrayOf(Color.BLACK))
+            binding?.recyclerView?.adapter = adapter
+            binding?.recyclerView?.setHasFixedSize(true)
+            binding?.recyclerView?.backgroundTintList =
+                ColorStateList(arrayOf(intArrayOf()), intArrayOf(Color.BLACK))
 
-                    adapter.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
-                        override fun onClicked(view: View, position: Int, itemPosition: Int) {
-                            Log.d(TAG, "Item clicked at position: $position")
-                            when (data[position].items[0]) {
-                                is Song -> {
-                                    setMediaItems(data[position].items.filterIsInstance<Song>(), itemPosition)
-                                }
-                                is Genre -> {
-                                    val genre = data[position].items.filterIsInstance<Genre>()[itemPosition]
-                                    val action = ArtFlowHomeDirections.actionGenresToPage(genre)
-                                    findNavController().navigate(action)
-                                }
-                                else -> {
-                                    Log.w(TAG, "Unsupported item type clicked at position: $position")
-                                }
-                            }
+            adapter.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
+                override fun onClicked(view: View, position: Int, itemPosition: Int) {
+                    Log.d(TAG, "Item clicked at position: $position")
+                    when (data[position].items[0]) {
+                        is Song -> {
+                            setMediaItems(data[position].items.filterIsInstance<Song>(), itemPosition)
                         }
-
-                        override fun onClicked(view: View, position: Int) {
-
+                        is Genre -> {
+                            val genre = data[position].items.filterIsInstance<Genre>()[itemPosition]
+                            val action = ArtFlowHomeDirections.actionGenresToPage(genre)
+                            findNavController().navigate(action)
                         }
-                    })
-
-                    view.startTransitionOnPreDraw()
-
-                    binding?.recyclerView?.setOnTouchListener { _, event ->
-                        when (event.action) {
-                            MotionEvent.ACTION_UP -> {
-                                binding?.recyclerView?.forEachViewHolder<AdapterArtFlowHome.Holder> {
-                                    postDelayed(1_000L) {
-                                        it.binding.imageSlider.restartCycle()
-                                    }
-                                }
-                            }
-                            MotionEvent.ACTION_DOWN -> {
-
-                            }
+                        else -> {
+                            Log.w(TAG, "Unsupported item type clicked at position: $position")
                         }
-
-                        false
                     }
                 }
+
+                override fun onClicked(view: View, position: Int) {
+
+                }
+            })
+
+            view.startTransitionOnPreDraw()
+
+            binding?.recyclerView?.setOnTouchListener { _, event ->
+                when (event.action) {
+                    MotionEvent.ACTION_UP -> {
+                        binding?.recyclerView?.forEachViewHolder<AdapterArtFlowHome.Holder> {
+                            postDelayed(1_000L) {
+                                it.binding.imageSlider.restartCycle()
+                            }
+                        }
+                    }
+                    MotionEvent.ACTION_DOWN -> {
+
+                    }
+                }
+
+                false
             }
         }
     }

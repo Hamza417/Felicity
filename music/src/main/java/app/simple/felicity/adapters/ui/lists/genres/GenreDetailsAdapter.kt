@@ -56,9 +56,9 @@ class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre)
             is Header -> {
                 holder.binding.apply {
                     name.text = genre.name ?: holder.context.getString(R.string.unknown)
-                    songs.text = holder.context.getString(R.string.songs, data.songs.size)
-                    albums.text = holder.context.getString(R.string.albums, data.albums.size)
-                    artists.text = holder.context.getString(R.string.artists, data.artists.size)
+                    songs.text = holder.context.getString(R.string.x_songs, data.songs.size)
+                    albums.text = holder.context.getString(R.string.x_albums, data.albums.size)
+                    artists.text = holder.context.getString(R.string.x_artists, data.artists.size)
                     totalTime.text = data.songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
                     poster.loadGenreCover(genre)
 
@@ -176,7 +176,7 @@ class GenreDetailsAdapter(private val data: GenreData, private val genre: Genre)
         private const val SONGS_POSITION = 1 // Position of songs in the adapter
 
         interface GenreSongsAdapterListener {
-            fun onSongClick(song: List<Song>, position: Int, view: View)
+            fun onSongClick(songs: List<Song>, position: Int, view: View)
             fun onPlayClick(songs: List<Song>, position: Int = 0)
             fun onShuffleClick(songs: List<Song>, position: Int = 0)
         }

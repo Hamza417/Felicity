@@ -1,8 +1,6 @@
 package app.simple.felicity.extensions.fragments
 
-import android.app.Application
 import android.content.SharedPreferences
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -15,9 +13,9 @@ import androidx.annotation.IntegerRes
 import androidx.annotation.RequiresApi
 import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
+import app.simple.felicity.decorations.transitions.SeekableSharedAxisZTransition
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
-import com.google.android.material.transition.MaterialSharedAxis
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -30,10 +28,6 @@ import kotlinx.coroutines.CoroutineScope
  * its purpose and importance
  */
 abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreferenceChangeListener {
-
-    private val maximumAngle = 90
-    private val minimumHorizontalAngle = 80
-    private val minimumVerticalAngle = 15
 
     /**
      * [ScopedFragment]'s own [Handler] instance
@@ -100,29 +94,10 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
      * Used with shared elements
      */
     open fun setTransitions() {
-        allowEnterTransitionOverlap = true
-        allowReturnTransitionOverlap = true
-
-        /**
-         * Animations are expensive, every time a view is added into the
-         * animating view transaction time will increase a little
-         * making the interaction a little bit slow.
-         */
-        enterTransition = MaterialSharedAxis(MaterialSharedAxis.Z, true)
-        exitTransition = MaterialSharedAxis(MaterialSharedAxis.Z, true)
-        reenterTransition = MaterialSharedAxis(MaterialSharedAxis.Z, false)
-        returnTransition = MaterialSharedAxis(MaterialSharedAxis.Z, false)
-    }
-
-    /**
-     * Return the {@link Application} this fragment is currently associated with.
-     */
-    protected fun requireApplication(): Application {
-        return requireActivity().application
-    }
-
-    protected fun requirePackageManager(): PackageManager {
-        return requireActivity().packageManager
+        enterTransition = SeekableSharedAxisZTransition(true)
+        exitTransition = SeekableSharedAxisZTransition(true)
+        reenterTransition = SeekableSharedAxisZTransition(false)
+        returnTransition = SeekableSharedAxisZTransition(false)
     }
 
     protected fun getInteger(@IntegerRes resId: Int): Int {
