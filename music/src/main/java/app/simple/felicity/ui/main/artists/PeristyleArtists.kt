@@ -5,10 +5,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.adapters.ui.lists.artists.AdapterPeristyleArtists
+import app.simple.felicity.adapters.ui.lists.artists.AdapterPeristyleArtists.Companion.AdapterPeristyleArtistsListener
 import app.simple.felicity.databinding.FragmentAlbumsBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.viewmodels.main.artists.ArtistsViewModel
 
 class PeristyleArtists : ScopedFragment() {
@@ -38,7 +41,12 @@ class PeristyleArtists : ScopedFragment() {
 
             binding?.recyclerView?.layoutManager = gridLayoutManager
             binding?.recyclerView?.adapter = adapter
-            startPostViewTransition(requireView())
+
+            adapter?.setAdapterPeristyleArtistsListener(object : AdapterPeristyleArtistsListener {
+                override fun onArtistClick(artist: Artist, view: View) {
+                    findNavController().navigate(PeristyleArtistsDirections.actionPeristyleArtistsToArtistPage(artist))
+                }
+            })
         }
     }
 

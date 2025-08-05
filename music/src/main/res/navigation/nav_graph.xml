@@ -96,7 +96,11 @@
     <fragment
         android:id="@+id/peristyle_artists"
         android:name="app.simple.felicity.ui.main.artists.PeristyleArtists"
-        android:label="Artists"></fragment>
+        android:label="Artists">
+        <action
+            android:id="@+id/action_peristyle_artists_to_artist_page"
+            app:destination="@id/artist_page" />
+    </fragment>
 
     <fragment
         android:id="@+id/artist_page"

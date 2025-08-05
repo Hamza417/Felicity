@@ -11,6 +11,8 @@ import app.simple.felicity.repository.models.Artist
 
 class AdapterPeristyleArtists(private val artists: List<Artist>) : RecyclerView.Adapter<AdapterPeristyleArtists.Holder>() {
 
+    private var listener: AdapterPeristyleArtistsListener? = null
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         val binding = AdapterArtistsPeristyleBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return Holder(binding.root)
@@ -31,6 +33,22 @@ class AdapterPeristyleArtists(private val artists: List<Artist>) : RecyclerView.
             this.binding = binding
             binding.title.text = artists[bindingAdapterPosition].name
             binding.artistArt.loadPeristyleArtistCover(artists[bindingAdapterPosition])
+
+            binding.container.setOnClickListener {
+                listener?.onArtistClick(artists[bindingAdapterPosition], it)
+            }
+        }
+    }
+
+    fun setAdapterPeristyleArtistsListener(listener: AdapterPeristyleArtistsListener) {
+        this.listener = listener
+    }
+
+    companion object {
+        const val TAG = "AdapterPeristyleArtists"
+
+        interface AdapterPeristyleArtistsListener {
+            fun onArtistClick(artist: Artist, view: View)
         }
     }
 }
