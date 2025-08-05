@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.core.maths.Lerp.lerp
+import app.simple.felicity.core.utils.ViewUtils.gone
 import app.simple.felicity.databinding.AdapterCarouselBinding
 import app.simple.felicity.decorations.overscroll.HorizontalListViewHolder
 import app.simple.felicity.glide.genres.GenreCoverModel
@@ -81,6 +82,7 @@ class AdapterCarouselItems(private val data: ArtFlowData<Any>) : RecyclerView.Ad
                         .into(holder.binding.art)
 
                     holder.binding.title.text = item.name ?: holder.getContext().getString(R.string.unknown)
+                    holder.binding.artist.gone()
                 }
                 is Genre -> {
                     Glide.with(holder.binding.art)

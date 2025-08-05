@@ -45,7 +45,7 @@ class ArtistViewerViewModel @Inject constructor(
             val songs = songRepository.fetchSongByArtist(artist.id)
             val albums = albumRepository.fetchAlbumsFromArtist(artist.id)
             val genres = genreRepository.fetchGenreByArtist(artist.id)
-            val artists = artistRepository.fetchOtherArtistsForCollaboration(artist)
+            val artists = artistRepository.fetchCollaboratorArtists(artist)
 
             data.postValue(CollectionPageData(
                     songs = songs,
