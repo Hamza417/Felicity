@@ -1,14 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="playlists">Playlists</string>
-    <string name="genres">Genres</string>
-    <string name="info">%1$d Songs • %2$s</string>
-    <string name="shuffle">Shuffle</string>
-    <string name="Play">Play</string>
-    <string name="albums">%1$d Albums</string>
-    <string name="songs">%1$d Songs</string>
-    <string name="artists">%1$d Artists</string>
-    <string name="no_songs">No Songs</string>
-    <string name="albums_in_genre">Albums in %1$s</string>
-    <string name="artists_in_genre">Artists in %1$s</string>
+
 </resources>
