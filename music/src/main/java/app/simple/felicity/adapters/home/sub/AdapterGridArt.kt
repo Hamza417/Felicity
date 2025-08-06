@@ -6,7 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterGridImageBinding
 import app.simple.felicity.glide.genres.GenreCoverUtils.loadGenreCover
-import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromUri
+import app.simple.felicity.glide.uricover.UriCoverUtils.loadFromUri
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
@@ -27,16 +27,32 @@ class AdapterGridArt(private val data: ArtFlowData<Any>) :
 
             when (item) {
                 is Song -> {
-                    holder.binding.art.loadFromUri(item.artworkUri ?: Uri.EMPTY)
+                    holder.binding.art.loadFromUri(
+                            uri = item.artworkUri ?: Uri.EMPTY,
+                            blur = false,
+                            roundedCorners = false,
+                            skipCache = true)
                 }
                 is Album -> {
-                    holder.binding.art.loadFromUri(item.artworkUri ?: Uri.EMPTY)
+                    holder.binding.art.loadFromUri(
+                            uri = item.artworkUri ?: Uri.EMPTY,
+                            blur = false,
+                            roundedCorners = false,
+                            skipCache = true)
                 }
                 is Artist -> {
-                    holder.binding.art.loadFromUri(item.artworkUri ?: Uri.EMPTY)
+                    holder.binding.art.loadFromUri(
+                            uri = item.artworkUri ?: Uri.EMPTY,
+                            blur = false,
+                            roundedCorners = false,
+                            skipCache = true)
                 }
                 is Genre -> {
-                    holder.binding.art.loadGenreCover(item)
+                    holder.binding.art.loadGenreCover(
+                            item,
+                            blur = false,
+                            roundedCorners = false,
+                            skipCache = true)
                 }
             }
         }

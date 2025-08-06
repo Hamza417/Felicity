@@ -34,12 +34,15 @@ class CarouselHome : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        postponeEnterTransition()
 
         homeViewModel.getData().observe(viewLifecycleOwner) { data ->
             val adapter = AdapterCarouselHome(data)
             binding?.recyclerView?.addItemDecoration(SpacingItemDecoration(48, true))
             binding?.recyclerView?.adapter = adapter
             binding?.recyclerView?.setHasFixedSize(true)
+
+            view.startTransitionOnPreDraw()
 
             adapter.setAdapterCarouselHomeCallbacks(object : AdapterCarouselHome.Companion.AdapterCarouselCallbacks {
                 override fun onSubItemClicked(view: View, position: Int, itemPosition: Int) {

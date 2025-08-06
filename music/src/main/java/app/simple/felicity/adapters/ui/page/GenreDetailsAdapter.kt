@@ -15,7 +15,7 @@ import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.genres.GenreCoverUtils.loadGenreCover
-import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromUri
+import app.simple.felicity.glide.uricover.UriCoverUtils.loadFromUri
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.CollectionPageData
 import app.simple.felicity.repository.models.Artist
