@@ -5,46 +5,34 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
+import androidx.fragment.app.viewModels
 import app.simple.felicity.adapters.home.main.AdapterGridHome
 import app.simple.felicity.adapters.home.sub.AdapterGridArt
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.randomViewHolder
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
-import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.launch
 
 class SpannedHome : ScopedFragment() {
 
     private var binding: FragmentHomeSpannedBinding? = null
-    private var homeViewModel: HomeViewModel? = null
+    private val homeViewModel: HomeViewModel by viewModels({ requireActivity() })
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = FragmentHomeSpannedBinding.inflate(inflater, container, false)
-
-        homeViewModel = ViewModelProvider(requireActivity())[HomeViewModel::class.java]
-
         return binding?.root
     }
 
-    @OptIn(FlowPreview::class)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        startPostponedEnterTransition()
-        val adapter = AdapterGridHome()
-        binding?.recyclerView?.setHasFixedSize(false)
-        binding?.recyclerView?.adapter = adapter
-        binding?.recyclerView?.scheduleLayoutAnimation()
-        binding?.recyclerView?.itemAnimator = null
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-
-            }
+        homeViewModel.getData().observe(viewLifecycleOwner) {
+            val adapter = AdapterGridHome(it)
+            binding?.recyclerView?.setHasFixedSize(false)
+            binding?.recyclerView?.adapter = adapter
+            binding?.recyclerView?.scheduleLayoutAnimation()
+            binding?.recyclerView?.itemAnimator = null
+            binding?.recyclerView?.scheduleLayoutAnimation()
         }
     }
 

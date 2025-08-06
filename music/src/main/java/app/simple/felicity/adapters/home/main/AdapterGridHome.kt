@@ -11,12 +11,10 @@ import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
 import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
-import app.simple.felicity.repository.models.home.Home
+import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.utils.ArrayUtils.getTwoRandomIndices
 
-class AdapterGridHome() : RecyclerView.Adapter<VerticalListViewHolder>() {
-
-    private val data: ArrayList<Home> = arrayListOf()
+class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
@@ -25,7 +23,6 @@ class AdapterGridHome() : RecyclerView.Adapter<VerticalListViewHolder>() {
             }
 
             RecyclerViewUtils.TYPE_ITEM -> {
-
                 Holder(AdapterGridHomeBinding.inflate(LayoutInflater.from(parent.context), parent, false).root)
             }
 
@@ -42,7 +39,7 @@ class AdapterGridHome() : RecyclerView.Adapter<VerticalListViewHolder>() {
     }
 
     override fun getItemCount(): Int {
-        return data.size.plus(1)
+        return data.size
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -85,15 +82,6 @@ class AdapterGridHome() : RecyclerView.Adapter<VerticalListViewHolder>() {
                 adapterGridHomeBinding.artGrid.requestLayout()
             }
         }
-    }
-
-    fun insertData(home: Home) {
-        data.removeIf {
-            it.title == home.title
-        }
-
-        data.add(home)
-        notifyDataSetChanged()
     }
 
     inner class Header(itemView: View) : VerticalListViewHolder(itemView)

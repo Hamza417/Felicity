@@ -14,6 +14,7 @@ import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
+import app.simple.felicity.ui.main.artists.ArtistPage
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.main.genres.GenreViewerViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -69,7 +70,7 @@ class GenrePage : MediaFragment() {
 
                 override fun onArtistClicked(artist: Artist) {
                     Log.i(TAG, "onArtistClicked: Artist clicked in genre: ${genre.name}, artist: ${artist.name}")
-
+                    openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
                 }
             })
         }

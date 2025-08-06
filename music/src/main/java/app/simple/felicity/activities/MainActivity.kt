@@ -7,6 +7,7 @@ import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.ui.main.home.CarouselHome
+import app.simple.felicity.ui.main.home.SpannedHome
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -20,7 +21,7 @@ class MainActivity : BaseActivity() {
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         if (savedInstanceState.isNull()) {
-            val fragment = CarouselHome.newInstance()
+            val fragment = SpannedHome.newInstance()
             fragment.setTransitions()
             supportFragmentManager.beginTransaction()
                 .replace(R.id.app_container, fragment, CarouselHome.TAG)
