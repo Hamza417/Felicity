@@ -48,7 +48,8 @@ class Genres : ScopedFragment() {
 
             adapter.setGenreClickListener(object : AdapterGenres.Companion.GenreClickListener {
                 override fun onGenreClicked(genre: Genre, view: View) {
-
+                    Log.d(TAG, "onGenreClicked: Genre: ${genre.name}")
+                    openFragment(GenrePage.newInstance(genre), GenrePage.TAG)
                 }
             })
         }
