@@ -15,8 +15,8 @@ import androidx.transition.Visibility;
 
 public class SeekableSharedAxisZTransition extends Visibility {
     public static final int DECELERATE_FACTOR = 3;
-    private static final float SCALE_IN_FROM = 0.9f;
-    private static final float SCALE_OUT_TO = 1.1f;
+    private static final float SCALE_IN_FROM = 0.5f;
+    private static final float SCALE_OUT_TO = 1.5f;
     private static final long DEFAULT_DURATION = 500L;
     private final boolean forward;
     

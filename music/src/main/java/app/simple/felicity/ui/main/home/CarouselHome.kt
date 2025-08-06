@@ -6,7 +6,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import androidx.navigation.fragment.findNavController
 import app.simple.felicity.adapters.home.main.AdapterCarouselHome
 import app.simple.felicity.databinding.FragmentHomeCarouselBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
@@ -14,6 +13,9 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
+import app.simple.felicity.ui.app.ArtFlowRv
+import app.simple.felicity.ui.main.artists.PeristyleArtists
+import app.simple.felicity.ui.main.genres.Genres
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 
 class CarouselHome : MediaFragment() {
@@ -43,14 +45,10 @@ class CarouselHome : MediaFragment() {
                             setMediaItems(data[position].items.filterIsInstance<Song>(), itemPosition)
                         }
                         is Genre -> {
-                            val genre = data[position].items.filterIsInstance<Genre>()[itemPosition]
-                            val action = CarouselHomeDirections.actionGenresToPage(genre)
-                            findNavController().navigate(action)
+
                         }
                         is Artist -> {
-                            val artist = data[position].items.filterIsInstance<Artist>()[itemPosition]
-                            val action = CarouselHomeDirections.actionHomeToArtistPage(artist)
-                            findNavController().navigate(action)
+
                         }
                         else -> {
                             Log.w(TAG, "Unsupported item type clicked at position: $position")
@@ -62,14 +60,13 @@ class CarouselHome : MediaFragment() {
                     Log.d(TAG, "Carousel clicked at position: $position")
                     when (data[position].items[0]) {
                         is Song -> {
-                            // findNavController().navigate(CarouselHomeDirections.actionHomeToSongs())
-                            findNavController().navigate(CarouselHomeDirections.actionHomeToCarouselFlow())
+                            openFragment(ArtFlowRv.newInstance(), ArtFlowRv.TAG)
                         }
                         is Genre -> {
-                            findNavController().navigate(CarouselHomeDirections.actionHomeToGenres())
+                            openFragment(Genres.newInstance(), Genres.TAG)
                         }
                         is Artist -> {
-                            findNavController().navigate(CarouselHomeDirections.actionHomeToPeristyleArtists())
+                            openFragment(PeristyleArtists.newInstance(), PeristyleArtists.TAG)
                         }
                         else -> {
                             Log.w(TAG, "Unsupported item type clicked at position: $position")

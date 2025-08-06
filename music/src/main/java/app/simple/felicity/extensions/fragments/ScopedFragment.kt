@@ -13,9 +13,11 @@ import androidx.annotation.IntegerRes
 import androidx.annotation.RequiresApi
 import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
+import app.simple.felicity.R
 import app.simple.felicity.decorations.transitions.SeekableSharedAxisZTransition
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -63,6 +65,73 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
 
+        }
+    }
+
+    /**
+     * Open fragment using slide animation
+     *
+     * If the fragment does not need to be pushed into backstack
+     * leave the [tag] unattended
+     *
+     * @param fragment [Fragment]
+     * @param tag back stack tag for fragment
+     */
+    protected fun openFragmentSlide(fragment: ScopedFragment, tag: String? = null) {
+        clearTransitions()
+
+        try {
+            val transaction = requireActivity().supportFragmentManager.beginTransaction()
+            transaction.setReorderingAllowed(true)
+            transaction.setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left, R.anim.enter_from_left, R.anim.exit_to_right)
+            transaction.replace(R.id.app_container, fragment, tag)
+            if (tag.isNotNull()) {
+                transaction.addToBackStack(tag)
+            }
+
+            transaction.commit()
+        } catch (_: IllegalStateException) {
+            val transaction = requireActivity().supportFragmentManager.beginTransaction()
+            transaction.setReorderingAllowed(true)
+            transaction.setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left, R.anim.enter_from_left, R.anim.exit_to_right)
+            transaction.replace(R.id.app_container, fragment, tag)
+            if (tag.isNotNull()) {
+                transaction.addToBackStack(tag)
+            }
+
+            transaction.commitAllowingStateLoss()
+        }
+    }
+
+    /**
+     * Open fragment using linear animation for shared element
+     *
+     * If the fragment does not need to be pushed into backstack
+     * leave the [tag] unattended
+     *
+     * @param fragment [Fragment]
+     * @param view [View] that needs to be animated
+     * @param tag back stack tag for fragment
+     */
+    fun openFragment(fragment: ScopedFragment, tag: String? = null) {
+        setTransitions()
+
+        try {
+            val transaction = requireActivity().supportFragmentManager.beginTransaction()
+            transaction.setReorderingAllowed(true)
+            transaction.replace(R.id.app_container, fragment, tag)
+            if (tag.isNotNull()) {
+                transaction.addToBackStack(tag)
+            }
+            transaction.commit()
+        } catch (e: IllegalStateException) {
+            val transaction = requireActivity().supportFragmentManager.beginTransaction()
+            transaction.setReorderingAllowed(true)
+            transaction.replace(R.id.app_container, fragment, tag)
+            if (tag.isNotNull()) {
+                transaction.addToBackStack(tag)
+            }
+            transaction.commitAllowingStateLoss()
         }
     }
 

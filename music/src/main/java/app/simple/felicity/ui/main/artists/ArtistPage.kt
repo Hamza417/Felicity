@@ -6,7 +6,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import androidx.navigation.fragment.findNavController
 import app.simple.felicity.adapters.ui.page.ArtistDetailsAdapter
 import app.simple.felicity.databinding.FragmentPageArtistBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
@@ -63,7 +62,7 @@ class ArtistPage : MediaFragment() {
 
                 override fun onArtistClicked(artist: Artist) {
                     Log.i(TAG, "onArtistClicked: Artist clicked: ${artist.name}")
-                    findNavController().navigate(ArtistPageDirections.actionArtistPageToArtistPage(artist))
+
                 }
             })
         }
@@ -71,5 +70,12 @@ class ArtistPage : MediaFragment() {
 
     companion object {
         const val TAG = "ArtistPage"
+
+        fun newInstance(artist: Artist): ArtistPage {
+            val args = Bundle()
+            val fragment = ArtistPage()
+            fragment.arguments = args
+            return fragment
+        }
     }
 }

@@ -127,6 +127,13 @@ class ArtFlowRv : MediaFragment() {
     }
 
     companion object {
+        fun newInstance(): ArtFlowRv {
+            val args = Bundle()
+            val fragment = ArtFlowRv()
+            fragment.arguments = args
+            return fragment
+        }
 
+        const val TAG = "ArtFlowRv"
     }
 }

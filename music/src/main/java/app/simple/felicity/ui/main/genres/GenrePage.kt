@@ -6,7 +6,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.fragment.findNavController
 import app.simple.felicity.adapters.ui.page.GenreDetailsAdapter
 import app.simple.felicity.databinding.FragmentViewerGenresBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
@@ -65,7 +64,7 @@ class GenrePage : MediaFragment() {
 
                 override fun onArtistClicked(artist: Artist) {
                     Log.i(TAG, "onArtistClicked: Artist clicked in genre: ${genre.name}, artist: ${artist.name}")
-                    findNavController().navigate(GenrePageDirections.actionGenresToArtists(artist))
+
                 }
             })
         }

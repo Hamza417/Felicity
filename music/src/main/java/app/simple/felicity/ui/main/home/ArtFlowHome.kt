@@ -10,7 +10,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import androidx.navigation.fragment.findNavController
 import app.simple.felicity.adapters.home.main.AdapterArtFlowHome
 import app.simple.felicity.databinding.FragmentHomeArtflowBinding
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolder
@@ -55,9 +54,7 @@ class ArtFlowHome : MediaFragment() {
                             setMediaItems(data[position].items.filterIsInstance<Song>(), itemPosition)
                         }
                         is Genre -> {
-                            val genre = data[position].items.filterIsInstance<Genre>()[itemPosition]
-                            val action = ArtFlowHomeDirections.actionGenresToPage(genre)
-                            findNavController().navigate(action)
+
                         }
                         else -> {
                             Log.w(TAG, "Unsupported item type clicked at position: $position")
