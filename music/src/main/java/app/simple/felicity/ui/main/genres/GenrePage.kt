@@ -5,35 +5,40 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.viewModels
 import app.simple.felicity.adapters.ui.page.GenreDetailsAdapter
 import app.simple.felicity.databinding.FragmentViewerGenresBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
-import app.simple.felicity.factories.genres.GenreViewerViewModelFactory
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.main.genres.GenreViewerViewModel
+import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.lifecycle.withCreationCallback
 
+@AndroidEntryPoint
 class GenrePage : MediaFragment() {
 
     private lateinit var binding: FragmentViewerGenresBinding
-    private lateinit var genreViewerViewModel: GenreViewerViewModel
 
     private val genre: Genre by lazy {
         requireArguments().parcelable(BundleConstants.GENRE)
             ?: throw IllegalArgumentException("Genre is required")
     }
 
+    private val genreViewerViewModel by viewModels<GenreViewerViewModel>(
+            extrasProducer = {
+                defaultViewModelCreationExtras.withCreationCallback<GenreViewerViewModel.Factory> {
+                    it.create(genre = genre)
+                }
+            }
+    )
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = FragmentViewerGenresBinding.inflate(inflater, container, false)
-
-        val factory = GenreViewerViewModelFactory(genre)
-        genreViewerViewModel = ViewModelProvider(this, factory)[GenreViewerViewModel::class.java]
-
         return binding.root
     }
 

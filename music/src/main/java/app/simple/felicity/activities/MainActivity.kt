@@ -20,8 +20,10 @@ class MainActivity : BaseActivity() {
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         if (savedInstanceState.isNull()) {
+            val fragment = CarouselHome.newInstance()
+            fragment.setTransitions()
             supportFragmentManager.beginTransaction()
-                .replace(R.id.app_container, CarouselHome.newInstance(), CarouselHome.TAG)
+                .replace(R.id.app_container, fragment, CarouselHome.TAG)
                 .commit()
         }
     }

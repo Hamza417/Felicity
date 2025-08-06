@@ -10,11 +10,15 @@ import app.simple.felicity.adapters.home.main.AdapterCarouselHome
 import app.simple.felicity.databinding.FragmentHomeCarouselBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.ui.app.ArtFlowRv
+import app.simple.felicity.ui.main.albums.PeristyleAlbums
+import app.simple.felicity.ui.main.artists.ArtistPage
 import app.simple.felicity.ui.main.artists.PeristyleArtists
+import app.simple.felicity.ui.main.genres.GenrePage
 import app.simple.felicity.ui.main.genres.Genres
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 
@@ -45,10 +49,12 @@ class CarouselHome : MediaFragment() {
                             setMediaItems(data[position].items.filterIsInstance<Song>(), itemPosition)
                         }
                         is Genre -> {
-
+                            val genre = data[position].items.filterIsInstance<Genre>()[itemPosition]
+                            openFragment(GenrePage.newInstance(genre), GenrePage.TAG)
                         }
                         is Artist -> {
-
+                            val artist = data[position].items.filterIsInstance<Artist>()[itemPosition]
+                            openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
                         }
                         else -> {
                             Log.w(TAG, "Unsupported item type clicked at position: $position")
@@ -67,6 +73,9 @@ class CarouselHome : MediaFragment() {
                         }
                         is Artist -> {
                             openFragment(PeristyleArtists.newInstance(), PeristyleArtists.TAG)
+                        }
+                        is Album -> {
+                            openFragment(PeristyleAlbums.newInstance(), PeristyleAlbums.TAG)
                         }
                         else -> {
                             Log.w(TAG, "Unsupported item type clicked at position: $position")

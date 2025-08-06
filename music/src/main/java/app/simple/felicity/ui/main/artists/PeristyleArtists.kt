@@ -43,7 +43,7 @@ class PeristyleArtists : ScopedFragment() {
 
             adapter?.setAdapterPeristyleArtistsListener(object : AdapterPeristyleArtistsListener {
                 override fun onArtistClick(artist: Artist, view: View) {
-
+                    openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
                 }
             })
         }

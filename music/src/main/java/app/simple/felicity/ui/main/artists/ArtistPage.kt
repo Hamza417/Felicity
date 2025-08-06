@@ -16,12 +16,21 @@ import app.simple.felicity.repository.models.Song
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.main.artists.ArtistViewerViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.lifecycle.withCreationCallback
 
 @AndroidEntryPoint
 class ArtistPage : MediaFragment() {
 
     private lateinit var binding: FragmentPageArtistBinding
-    private val artistViewerViewModel: ArtistViewerViewModel by viewModels({ this })
+
+    private val artistViewerViewModel: ArtistViewerViewModel by viewModels(
+            ownerProducer = { this },
+            extrasProducer = {
+                defaultViewModelCreationExtras.withCreationCallback<ArtistViewerViewModel.Factory>() {
+                    it.create(artist = artist)
+                }
+            }
+    )
 
     private val artist: Artist by lazy {
         requireArguments().parcelable(BundleConstants.ARTIST)
@@ -73,6 +82,7 @@ class ArtistPage : MediaFragment() {
 
         fun newInstance(artist: Artist): ArtistPage {
             val args = Bundle()
+            args.putParcelable(BundleConstants.ARTIST, artist)
             val fragment = ArtistPage()
             fragment.arguments = args
             return fragment
