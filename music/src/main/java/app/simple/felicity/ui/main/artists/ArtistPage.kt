@@ -71,7 +71,7 @@ class ArtistPage : MediaFragment() {
 
                 override fun onArtistClicked(artist: Artist) {
                     Log.i(TAG, "onArtistClicked: Artist clicked: ${artist.name}")
-
+                    openFragment(newInstance(artist), TAG)
                 }
             })
         }

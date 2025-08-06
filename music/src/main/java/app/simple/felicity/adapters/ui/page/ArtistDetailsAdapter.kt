@@ -1,5 +1,6 @@
 package app.simple.felicity.adapters.ui.page
 
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,13 +9,12 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
 import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
-import app.simple.felicity.databinding.AdapterHeaderGenrePageBinding
+import app.simple.felicity.databinding.AdapterHeaderGenrePageOneBinding
 import app.simple.felicity.databinding.AdapterSongsBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
-import app.simple.felicity.glide.artistcover.ArtistCoverUtils.loadPeristyleArtistCover
 import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromUri
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.CollectionPageData
@@ -22,7 +22,6 @@ import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
 import com.bumptech.glide.Glide
-import com.google.android.material.carousel.CarouselLayoutManager
 
 class ArtistDetailsAdapter(private val data: CollectionPageData, private val artist: Artist) :
         RecyclerView.Adapter<VerticalListViewHolder>() {
@@ -32,7 +31,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
             RecyclerViewUtils.TYPE_HEADER -> {
-                Header(AdapterHeaderGenrePageBinding.inflate(
+                Header(AdapterHeaderGenrePageOneBinding.inflate(
                         LayoutInflater.from(parent.context), parent, false))
             }
             RecyclerViewUtils.TYPE_ALBUMS -> {
@@ -55,13 +54,13 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
             is Header -> {
                 holder.binding.apply {
                     name.text = artist.name ?: holder.context.getString(R.string.unknown)
-                    songs.text = holder.context.getString(R.string.x_songs, data.songs.size)
-                    albums.text = holder.context.getString(R.string.x_albums, data.albums.size)
-                    artists.text = holder.context.getString(R.string.x_artists, data.artists.size)
+                    songs.text = data.songs.size.toString()
+                    albums.text = data.albums.size.toString()
+                    artists.text = data.artists.size.toString()
                     totalTime.text = data.songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
-                    poster.loadPeristyleArtistCover(artist)
+                    poster.loadFromUri(artist.artworkUri ?: Uri.EMPTY)
 
-                    search.setOnClickListener {
+                    menu.setOnClickListener {
                         // Navigate to genre search
                     }
                 }
@@ -124,10 +123,8 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
         init {
             if (data.albums.isNotEmpty()) {
                 binding.recyclerView.setHasFixedSize(true)
-                binding.recyclerView.layoutManager = CarouselLayoutManager()
                 binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
                 val adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, data.albums))
-                adapter.stateRestorationPolicy = StateRestorationPolicy.ALLOW
                 binding.title.text = binding.title.context.getString(R.string.albums_from_artist, artist.name ?: context.getString(R.string.unknown))
                 binding.recyclerView.adapter = adapter
             } else {
@@ -141,10 +138,8 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
         init {
             if (data.artists.isNotEmpty()) {
                 binding.recyclerView.setHasFixedSize(true)
-                binding.recyclerView.layoutManager = CarouselLayoutManager()
                 binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
                 val adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, data.artists))
-                adapter.stateRestorationPolicy = StateRestorationPolicy.ALLOW
                 binding.title.text = binding.title.context.getString(R.string.with_other_artists, artist.name ?: context.getString(R.string.unknown))
                 binding.recyclerView.adapter = adapter
 
@@ -160,7 +155,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
         }
     }
 
-    inner class Header(val binding: AdapterHeaderGenrePageBinding) : VerticalListViewHolder(binding.root) {
+    inner class Header(val binding: AdapterHeaderGenrePageOneBinding) : VerticalListViewHolder(binding.root) {
         init {
             binding.play.setOnClickListener {
                 listener?.onPlayClick(data.songs, bindingAdapterPosition)

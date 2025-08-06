@@ -69,8 +69,6 @@ class ArtFlowHome : MediaFragment() {
                 }
             })
 
-            view.startTransitionOnPreDraw()
-
             binding?.recyclerView?.setOnTouchListener { _, event ->
                 when (event.action) {
                     MotionEvent.ACTION_UP -> {
