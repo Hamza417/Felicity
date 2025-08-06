@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
 import app.simple.felicity.databinding.AdapterHomeCarouselBinding
@@ -11,7 +12,6 @@ import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDe
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.singletons.CarouselScrollStateStore
 import app.simple.felicity.models.ArtFlowData
-import com.google.android.material.carousel.CarouselLayoutManager
 
 class AdapterCarouselHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.Adapter<AdapterCarouselHome.Holder>() {
 
@@ -31,7 +31,7 @@ class AdapterCarouselHome(private val data: List<ArtFlowData<Any>>) : RecyclerVi
         holder.binding.recyclerView.setUniqueKey(holder.binding.title.context.getString(item.title))
         holder.binding.title.text = holder.binding.title.context.getString(item.title)
         holder.binding.recyclerView.setHasFixedSize(true)
-        holder.binding.recyclerView.layoutManager = CarouselLayoutManager()
+        holder.binding.recyclerView.layoutManager = LinearLayoutManager(holder.binding.title.context, RecyclerView.HORIZONTAL, false)
         holder.binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
         holder.binding.recyclerView.adapter = adapter
         holder.binding.container.transitionName = holder.binding.title.context.getString(item.title)

@@ -6,22 +6,16 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
-import app.simple.felicity.core.maths.Lerp.lerp
 import app.simple.felicity.core.utils.ViewUtils.gone
 import app.simple.felicity.databinding.AdapterCarouselBinding
 import app.simple.felicity.decorations.overscroll.HorizontalListViewHolder
-import app.simple.felicity.glide.genres.GenreCoverModel
-import app.simple.felicity.glide.uricover.UriCoverModel
+import app.simple.felicity.glide.genres.GenreCoverUtils.loadGenreCover
+import app.simple.felicity.glide.utils.AudioCoverUtil.loadFromUri
 import app.simple.felicity.models.ArtFlowData
-import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.resource.bitmap.CenterCrop
-import com.google.android.material.shape.CornerFamily
-import com.google.android.material.shape.ShapeAppearanceModel
 
 class AdapterCarouselItems(private val data: ArtFlowData<Any>) : RecyclerView.Adapter<AdapterCarouselItems.Holder>() {
 
@@ -43,61 +37,24 @@ class AdapterCarouselItems(private val data: ArtFlowData<Any>) : RecyclerView.Ad
 
             when (item) {
                 is Song -> {
-                    Glide.with(holder.binding.art)
-                        .asBitmap()
-                        .load(UriCoverModel(
-                                holder.getContext(),
-                                item.artworkUri!!
-                        ))
-                        .dontTransform()
-                        .dontAnimate()
-                        .into(holder.binding.art)
-
+                    holder.binding.art.loadFromUri(item.artworkUri ?: Uri.EMPTY)
                     holder.binding.title.text = item.title ?: holder.getContext().getString(R.string.unknown)
                     holder.binding.artist.text = item.artist ?: holder.getContext().getString(R.string.unknown)
                 }
                 is Album -> {
-                    Glide.with(holder.binding.art)
-                        .asBitmap()
-                        .load(UriCoverModel(
-                                holder.getContext(),
-                                (data.items[position] as Album).artworkUri!!
-                        ))
-                        .dontTransform()
-                        .dontAnimate()
-                        .into(holder.binding.art)
-
+                    holder.binding.art.loadFromUri(item.artworkUri ?: Uri.EMPTY)
                     holder.binding.title.text = item.name ?: holder.getContext().getString(R.string.unknown)
                     holder.binding.artist.text = item.artist ?: holder.getContext().getString(R.string.unknown)
                 }
                 is Artist -> {
-                    Glide.with(holder.binding.art)
-                        .asBitmap()
-                        .load(UriCoverModel(
-                                holder.getContext(),
-                                item.artworkUri ?: Uri.EMPTY)
-                        )
-                        .dontTransform()
-                        .dontAnimate()
-                        .into(holder.binding.art)
-
+                    holder.binding.art.loadFromUri(item.artworkUri ?: Uri.EMPTY)
                     holder.binding.title.text = item.name ?: holder.getContext().getString(R.string.unknown)
                     holder.binding.artist.gone()
                 }
                 is Genre -> {
-                    Glide.with(holder.binding.art)
-                        .asBitmap()
-                        .load(GenreCoverModel(
-                                holder.getContext(),
-                                (data.items[position] as Genre).id,
-                                (data.items[position] as Genre).name
-                                    ?: holder.getContext().getString(R.string.unknown)
-                        ))
-                        .transform(CenterCrop())
-                        .dontAnimate()
-                        .into(holder.binding.art)
-
+                    holder.binding.art.loadGenreCover(item)
                     holder.binding.title.text = item.name ?: holder.getContext().getString(R.string.unknown)
+                    holder.binding.artist.gone()
                     holder.binding.container.transitionName = item.toString()
                 }
             }
@@ -112,20 +69,7 @@ class AdapterCarouselItems(private val data: ArtFlowData<Any>) : RecyclerView.Ad
         this.adapterCarouselCallbacks = callbacks
     }
 
-    inner class Holder(val binding: AdapterCarouselBinding) : HorizontalListViewHolder(binding.root) {
-        init {
-            binding.container.setOnMaskChangedListener { maskRect ->
-                binding.title.translationX = maskRect.left
-                binding.title.setAlpha(lerp(1F, 0F, 0F, 80F, maskRect.left))
-                binding.artist.translationX = maskRect.left
-                binding.artist.setAlpha(lerp(1F, 0F, 0F, 80F, maskRect.left))
-            }
-
-            binding.container.shapeAppearanceModel = ShapeAppearanceModel.builder()
-                .setAllCorners(CornerFamily.ROUNDED, AppearancePreferences.getCornerRadius())
-                .build()
-        }
-    }
+    inner class Holder(val binding: AdapterCarouselBinding) : HorizontalListViewHolder(binding.root)
 
     companion object {
         interface AdapterCarouselCallbacks {

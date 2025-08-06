@@ -15,6 +15,7 @@ import java.util.Objects;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatImageButton;
+import app.simple.felicity.core.utils.ColorUtils;
 import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
@@ -30,7 +31,8 @@ public class CircularImageImageButton extends AppCompatImageButton implements Th
     private final byte BACKGROUND_REGULAR = 0;
     private final byte BACKGROUND_SECONDARY = 1;
     private final byte BACKGROUND_ACCENT = 2;
-    private final byte BACKGROUND_CUSTOM = 3;
+    private final byte BACKGROUND_SEMI_TRANSPARENT = 3;
+    private final byte BACKGROUND_CUSTOM = -1;
     private final int REGULAR = 0;
     private final int SECONDARY = 1;
     private final int ACCENT = 2;
@@ -114,6 +116,9 @@ public class CircularImageImageButton extends AppCompatImageButton implements Th
                 break;
             case BACKGROUND_CUSTOM:
                 // Assuming a custom color is set in the attributes
+                break;
+            case BACKGROUND_SEMI_TRANSPARENT:
+                backgroundDrawable.getPaint().setColor(ColorUtils.INSTANCE.changeAlpha(Color.BLACK, 128));
                 break;
             default:
                 backgroundDrawable.getPaint().setColor(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());

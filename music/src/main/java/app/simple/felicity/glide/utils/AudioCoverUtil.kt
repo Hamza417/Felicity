@@ -120,14 +120,13 @@ object AudioCoverUtil {
     fun ImageView.loadFromUri(uri: Uri) {
         Glide.with(this)
             .asBitmap()
-            .dontTransform()
-            .dontAnimate()
-            .transform(RoundedCorners(AppearancePreferences.getCornerRadius().toInt().times(2)),
+            .transform(RoundedCorners(AppearancePreferences.getCornerRadius().toInt()),
                        Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()),
                        BlurShadow(this.context)
                            .setElevation(25F)
                            .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE))
             .load(UriCoverModel(this.context, uri))
+            .error(R.drawable.ic_felicity)
             .into(this)
     }
 

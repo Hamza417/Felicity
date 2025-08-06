@@ -3,8 +3,6 @@ package app.simple.inure.glide.uricover
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
-import app.simple.felicity.R
-import app.simple.felicity.core.utils.BitmapUtils.toBitmap
 import app.simple.felicity.glide.uricover.UriCoverModel
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
@@ -13,20 +11,15 @@ import java.io.FileNotFoundException
 
 class UriCoverFetcher internal constructor(private val uriCoverModel: UriCoverModel) : DataFetcher<Bitmap> {
     override fun loadData(priority: Priority, callback: DataFetcher.DataCallback<in Bitmap>) {
-        try {
-            val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                uriCoverModel.context.contentResolver.loadThumbnail(uriCoverModel.artUri, android.util.Size(512, 512), null)
-            } else {
-                uriCoverModel.context.contentResolver.openFileDescriptor(uriCoverModel.artUri, "r")?.use { pfd ->
-                    BitmapFactory.decodeFileDescriptor(pfd.fileDescriptor)
-                } ?: throw FileNotFoundException("Could not open file descriptor for URI: ${uriCoverModel.artUri}")
-            }
-
-            callback.onDataReady(bitmap)
-        } catch (_: IllegalArgumentException) {
-        } catch (e: FileNotFoundException) {
-            callback.onDataReady(R.drawable.ic_felicity.toBitmap(uriCoverModel.context, app.simple.felicity.preferences.AppearancePreferences.getIconSize()))
+        val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            uriCoverModel.context.contentResolver.loadThumbnail(uriCoverModel.artUri, android.util.Size(512, 512), null)
+        } else {
+            uriCoverModel.context.contentResolver.openFileDescriptor(uriCoverModel.artUri, "r")?.use { pfd ->
+                BitmapFactory.decodeFileDescriptor(pfd.fileDescriptor)
+            } ?: throw FileNotFoundException("Could not open file descriptor for URI: ${uriCoverModel.artUri}")
         }
+
+        callback.onDataReady(bitmap)
     }
 
     override fun cleanup() {

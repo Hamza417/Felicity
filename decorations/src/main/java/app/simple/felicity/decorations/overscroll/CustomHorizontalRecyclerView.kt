@@ -25,17 +25,17 @@ import kotlin.math.pow
  * Custom recycler view with nice layout animation and
  * smooth overscroll effect and various states retention
  */
-open class CustomHorizontalRecyclerView(context: Context, attrs: AttributeSet?, defStyleAttr: Int = 0) : ThemeRecyclerView(context, attrs, defStyleAttr) {
+open class CustomHorizontalRecyclerView : ThemeRecyclerView {
 
-    // Change pow to control speed.
-    // Bigger = faster. RecyclerView default is 5.
-    private val POW = 1.0
-    private var isLandscape = false
-    private var interpolator: Interpolator? = null
-    private var statusBarPaddingRequired = true
-    private var navigationBarPaddingRequired = true
+    constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int = 0) : super(context, attrs, defStyleAttr) {
+        init(attrs, defStyleAttr)
+    }
 
-    init {
+    constructor(context: Context, attrs: AttributeSet? = null) : super(context, attrs) {
+        init(attrs, 0)
+    }
+
+    private fun init(attrs: AttributeSet?, defStyleAttr: Int) {
         context.theme.obtainStyledAttributes(attrs, R.styleable.RecyclerView, defStyleAttr, 0).apply {
             try {
                 statusBarPaddingRequired = getBoolean(R.styleable.RecyclerView_statusPaddingRequired, true)
@@ -54,15 +54,12 @@ open class CustomHorizontalRecyclerView(context: Context, attrs: AttributeSet?, 
                 recycle()
             }
         }
-
         layoutManager = object : LinearLayoutManager(context, HORIZONTAL, false) {
             override fun canScrollVertically(): Boolean {
                 return false
             }
         }
-
         setHasFixedSize(true)
-
         if (isInEditMode.invert()) {
             if (AccessibilityPreferences.isDividerEnabled()) {
                 val divider = DividerItemDecoration(context, DividerItemDecoration.HORIZONTAL)
@@ -75,7 +72,6 @@ open class CustomHorizontalRecyclerView(context: Context, attrs: AttributeSet?, 
                 addItemDecoration(divider)
             }
         }
-
         if (isInEditMode.invert()) {
             this.edgeEffectFactory = object : EdgeEffectFactory() {
                 override fun createEdgeEffect(recyclerView: RecyclerView, direction: Int): EdgeEffect {
@@ -145,13 +141,20 @@ open class CustomHorizontalRecyclerView(context: Context, attrs: AttributeSet?, 
                 }
             }
         }
-
         interpolator = Interpolator { t ->
             var t = t
             t = abs(t - 1.0f)
             (1.0f - t.toDouble().pow(POW)).toFloat()
         }
     }
+
+    // Change pow to control speed.
+    // Bigger = faster. RecyclerView default is 5.
+    private val POW = 1.0
+    private var isLandscape = false
+    private var interpolator: Interpolator? = null
+    private var statusBarPaddingRequired = true
+    private var navigationBarPaddingRequired = true
 
     override fun smoothScrollBy(dx: Int, dy: Int) {
         super.smoothScrollBy(dx, dy, DecelerateInterpolator(1.5F))

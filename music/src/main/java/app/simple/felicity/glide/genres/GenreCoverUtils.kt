@@ -1,7 +1,9 @@
 package app.simple.felicity.glide.genres
 
 import android.widget.ImageView
+import app.simple.felicity.glide.transformation.Blur
 import app.simple.felicity.glide.transformation.BlurShadow
+import app.simple.felicity.glide.transformation.Greyscale
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.repository.models.Genre
@@ -23,6 +25,18 @@ object GenreCoverUtils {
                     BlurShadow(this.context)
                         .setElevation(25F)
                         .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE)
+            )
+            .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+            .transition(BitmapTransitionOptions.withCrossFade())
+            .into(this)
+    }
+
+    fun ImageView.loadGenreBackdrop(genre: Genre) {
+        Glide.with(this)
+            .asBitmap()
+            .load(GenreCoverModel(this.context, genre.id, genre.name ?: ""))
+            .transform(
+                    CenterCrop(), Greyscale(), Blur(24)
             )
             .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
             .transition(BitmapTransitionOptions.withCrossFade())

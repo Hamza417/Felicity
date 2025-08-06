@@ -8,7 +8,7 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
 import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
-import app.simple.felicity.databinding.AdapterHeaderGenrePageBinding
+import app.simple.felicity.databinding.AdapterHeaderGenrePageOneBinding
 import app.simple.felicity.databinding.AdapterSongsBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -23,7 +23,6 @@ import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
 import com.bumptech.glide.Glide
-import com.google.android.material.carousel.CarouselLayoutManager
 
 class GenreDetailsAdapter(private val data: CollectionPageData, private val genre: Genre) :
         RecyclerView.Adapter<VerticalListViewHolder>() {
@@ -33,7 +32,7 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
             RecyclerViewUtils.TYPE_HEADER -> {
-                Header(AdapterHeaderGenrePageBinding.inflate(
+                Header(AdapterHeaderGenrePageOneBinding.inflate(
                         LayoutInflater.from(parent.context), parent, false))
             }
             RecyclerViewUtils.TYPE_ALBUMS -> {
@@ -56,13 +55,16 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
             is Header -> {
                 holder.binding.apply {
                     name.text = genre.name ?: holder.context.getString(R.string.unknown)
-                    songs.text = holder.context.getString(R.string.x_songs, data.songs.size)
-                    albums.text = holder.context.getString(R.string.x_albums, data.albums.size)
-                    artists.text = holder.context.getString(R.string.x_artists, data.artists.size)
+                    //                    songs.text = holder.context.getString(R.string.x_songs, data.songs.size)
+                    //                    albums.text = holder.context.getString(R.string.x_albums, data.albums.size)
+                    //                    artists.text = holder.context.getString(R.string.x_artists, data.artists.size)
+                    songs.text = data.songs.size.toString()
+                    artists.text = data.artists.size.toString()
+                    albums.text = data.albums.size.toString()
                     totalTime.text = data.songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
                     poster.loadGenreCover(genre)
 
-                    search.setOnClickListener {
+                    menu.setOnClickListener {
                         // Navigate to genre search
                     }
                 }
@@ -124,11 +126,8 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
     inner class Albums(val binding: AdapterGenreAlbumsBinding) : VerticalListViewHolder(binding.root) {
         init {
             if (data.albums.isNotEmpty()) {
-                binding.recyclerView.setHasFixedSize(true)
-                binding.recyclerView.layoutManager = CarouselLayoutManager()
                 binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
                 val adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, data.albums))
-                adapter.stateRestorationPolicy = StateRestorationPolicy.ALLOW
                 binding.title.text = binding.title.context.getString(R.string.albums_in_genre, genre.name ?: context.getString(R.string.unknown))
                 binding.recyclerView.adapter = adapter
             } else {
@@ -141,11 +140,8 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
     inner class Artists(val binding: AdapterGenreAlbumsBinding) : VerticalListViewHolder(binding.root) {
         init {
             if (data.artists.isNotEmpty()) {
-                binding.recyclerView.setHasFixedSize(true)
-                binding.recyclerView.layoutManager = CarouselLayoutManager()
                 binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
                 val adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, data.artists))
-                adapter.stateRestorationPolicy = StateRestorationPolicy.ALLOW
                 binding.title.text = binding.title.context.getString(R.string.artists_in_genre, genre.name ?: context.getString(R.string.unknown))
                 binding.recyclerView.adapter = adapter
 
@@ -161,7 +157,7 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
         }
     }
 
-    inner class Header(val binding: AdapterHeaderGenrePageBinding) : VerticalListViewHolder(binding.root) {
+    inner class Header(val binding: AdapterHeaderGenrePageOneBinding) : VerticalListViewHolder(binding.root) {
         init {
             binding.play.setOnClickListener {
                 genreSongsAdapterListener?.onPlayClick(data.songs, bindingAdapterPosition)
