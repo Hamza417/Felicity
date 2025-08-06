@@ -51,6 +51,23 @@ public class SeekableSharedAxisZTransition extends Visibility {
             view.setAlpha(alpha);
         });
         
+        // Reset properties when transition ends or is cancelled
+        animator.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                view.setScaleX(1f);
+                view.setScaleY(1f);
+                view.setAlpha(1f);
+            }
+            
+            @Override
+            public void onAnimationCancel(android.animation.Animator animation) {
+                view.setScaleX(1f);
+                view.setScaleY(1f);
+                view.setAlpha(1f);
+            }
+        });
+        
         return animator;
     }
     
