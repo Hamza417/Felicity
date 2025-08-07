@@ -22,7 +22,9 @@ class AdapterCarouselHome(private val data: List<ArtFlowData<Any>>) : RecyclerVi
         return Holder(binding)
     }
 
-    override fun getItemCount(): Int = data.size
+    override fun getItemCount(): Int {
+        return data.size
+    }
 
     override fun onBindViewHolder(holder: Holder, @SuppressLint("RecyclerView") position: Int) {
         val item = data[position]

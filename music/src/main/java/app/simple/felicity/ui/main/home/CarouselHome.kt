@@ -47,41 +47,45 @@ class CarouselHome : MediaFragment() {
             adapter.setAdapterCarouselHomeCallbacks(object : AdapterCarouselHome.Companion.AdapterCarouselCallbacks {
                 override fun onSubItemClicked(view: View, position: Int, itemPosition: Int) {
                     Log.d(TAG, "Item clicked at position: $position")
-                    when (data[position].items[0]) {
-                        is Song -> {
-                            setMediaItems(data[position].items.filterIsInstance<Song>(), itemPosition)
-                        }
-                        is Genre -> {
-                            val genre = data[position].items.filterIsInstance<Genre>()[itemPosition]
-                            openFragment(GenrePage.newInstance(genre), GenrePage.TAG)
-                        }
-                        is Artist -> {
-                            val artist = data[position].items.filterIsInstance<Artist>()[itemPosition]
-                            openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
-                        }
-                        else -> {
-                            Log.w(TAG, "Unsupported item type clicked at position: $position")
+                    if (data[position].items.isNotEmpty()) {
+                        when (data[position].items[0]) {
+                            is Song -> {
+                                setMediaItems(data[position].items.filterIsInstance<Song>(), itemPosition)
+                            }
+                            is Genre -> {
+                                val genre = data[position].items.filterIsInstance<Genre>()[itemPosition]
+                                openFragment(GenrePage.newInstance(genre), GenrePage.TAG)
+                            }
+                            is Artist -> {
+                                val artist = data[position].items.filterIsInstance<Artist>()[itemPosition]
+                                openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
+                            }
+                            else -> {
+                                Log.w(TAG, "Unsupported item type clicked at position: $position")
+                            }
                         }
                     }
                 }
 
                 override fun onClicked(view: View, position: Int) {
                     Log.d(TAG, "Carousel clicked at position: $position")
-                    when (data[position].items[0]) {
-                        is Song -> {
-                            openFragment(ArtFlowRv.newInstance(), ArtFlowRv.TAG)
-                        }
-                        is Genre -> {
-                            openFragment(Genres.newInstance(), Genres.TAG)
-                        }
-                        is Artist -> {
-                            openFragment(PeristyleArtists.newInstance(), PeristyleArtists.TAG)
-                        }
-                        is Album -> {
-                            openFragment(PeristyleAlbums.newInstance(), PeristyleAlbums.TAG)
-                        }
-                        else -> {
-                            Log.w(TAG, "Unsupported item type clicked at position: $position")
+                    if (data[position].items.isNotEmpty()) {
+                        when (data[position].items[0]) {
+                            is Song -> {
+                                openFragment(ArtFlowRv.newInstance(), ArtFlowRv.TAG)
+                            }
+                            is Genre -> {
+                                openFragment(Genres.newInstance(), Genres.TAG)
+                            }
+                            is Artist -> {
+                                openFragment(PeristyleArtists.newInstance(), PeristyleArtists.TAG)
+                            }
+                            is Album -> {
+                                openFragment(PeristyleAlbums.newInstance(), PeristyleAlbums.TAG)
+                            }
+                            else -> {
+                                Log.w(TAG, "Unsupported item type clicked at position: $position")
+                            }
                         }
                     }
                 }

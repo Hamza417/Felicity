@@ -64,8 +64,9 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
                     totalTime.text = data.songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
                     poster.loadGenreCover(genre)
 
+                    menu.transitionName = "popup_shared_element"
                     menu.setOnClickListener {
-                        // Navigate to genre search
+                        genreSongsAdapterListener?.onMenuClicked(it)
                     }
                 }
             }
@@ -182,6 +183,7 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
             fun onPlayClick(songs: List<Song>, position: Int = 0)
             fun onShuffleClick(songs: List<Song>, position: Int = 0)
             fun onArtistClicked(artist: Artist)
+            fun onMenuClicked(view: View)
         }
     }
 }
