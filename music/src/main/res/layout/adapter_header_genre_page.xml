@@ -136,7 +136,7 @@
         android:id="@+id/play"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/Play"
+        android:text="@string/play"
         android:textSize="@dimen/text_size_14"
         android:drawableStart="@drawable/ic_play_16dp"
         android:layout_marginTop="16dp"

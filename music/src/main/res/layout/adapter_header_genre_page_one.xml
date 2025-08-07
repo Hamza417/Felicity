@@ -69,7 +69,7 @@
             android:id="@+id/play"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/Play"
+            android:text="@string/play"
             android:textSize="@dimen/text_size_16"
             android:padding="@dimen/padding_10"
             android:drawablePadding="@dimen/padding_5"
