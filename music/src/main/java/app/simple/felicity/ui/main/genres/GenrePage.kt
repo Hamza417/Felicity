@@ -8,6 +8,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.core.view.ViewCompat
@@ -105,6 +106,18 @@ class GenrePage : MediaFragment() {
         val transitionName = "popup_shared_element"
         ViewCompat.setTransitionName(anchorView, transitionName)
 
+        val scrimView = View(anchorView.context).apply {
+            setBackgroundColor(Color.parseColor("#80000000")) // semi-transparent black
+            layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            isClickable = true // intercept clicks to dismiss
+        }
+
+        // Add scrim to root view
+        rootView.addView(scrimView)
+
         // Create popup container centered on screen, no margins based on anchor location
         val popupContainer = FrameLayout(anchorView.context).apply {
             setBackgroundColor(Color.WHITE)
@@ -120,7 +133,7 @@ class GenrePage : MediaFragment() {
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
-                gravity = Gravity.CENTER
+                gravity = Gravity.CENTER_VERTICAL
                 // No margins to force top position
             }
         }
@@ -130,6 +143,7 @@ class GenrePage : MediaFragment() {
         // Add popup but keep it initially invisible (so we can morph it in)
         popupContainer.visibility = View.INVISIBLE
         rootView.addView(popupContainer)
+        rootView.invalidate()
 
         // Hide the anchorView during popup visibility
         anchorView.visibility = View.INVISIBLE
@@ -194,6 +208,20 @@ class GenrePage : MediaFragment() {
             dismissPopup()
         }
 
+        popupContainer.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                popupContainer.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                val parentHeight = rootView.height
+                val popupHeight = popupContainer.height
+                val topMargin = (parentHeight - popupHeight) / 2
+
+                val params = popupContainer.layoutParams as ViewGroup.MarginLayoutParams
+                params.topMargin = topMargin
+                params.bottomMargin = 0
+                popupContainer.layoutParams = params
+            }
+        })
+
         // Add options as TextViews to the popupContainer
         options.forEach { option ->
             val optionView = TextView(anchorView.context).apply {
@@ -214,8 +242,15 @@ class GenrePage : MediaFragment() {
             val optionView = popupContainer.getChildAt(idx) as TextView
             optionView.setOnClickListener {
                 onOptionClick(option)
+                rootView.removeView(scrimView)
                 dismissPopup()
             }
+        }
+
+        scrimView.setOnClickListener {
+            // Dismiss on scrim click
+            rootView.removeView(scrimView)
+            dismissPopup()
         }
     }
 
