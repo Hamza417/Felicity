@@ -31,6 +31,7 @@ open class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
         private const val TRANSITION_NAME = "shared_element_popup_transition"
         private const val DURATION = 350L
         private const val END_ELEVATION = 0f
+        private const val MARGIN = 16 // in dp
         private val INTERPOLATOR = DecelerateInterpolator(1.5F)
     }
 
@@ -56,6 +57,7 @@ open class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
         val containerLocation = IntArray(2)
         container.getLocationInWindow(containerLocation)
 
+        val marginPx = (MARGIN * container.resources.displayMetrics.density).toInt()
         val anchorX = anchorLocation[0] - containerLocation[0]
         val anchorY = anchorLocation[1] - containerLocation[1]
         val anchorWidth = anchorView.width
@@ -71,9 +73,9 @@ open class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
         var leftMargin = anchorX + anchorWidth.half() - popupWidth.half()
         var topMargin = anchorY + anchorHeight.half() - popupHeight.half()
 
-        // Clamp margins to keep popup inside container
-        leftMargin = max(0, min(leftMargin, container.width - popupWidth))
-        topMargin = max(0, min(topMargin, container.height - popupHeight))
+        // Clamp margins with extra space from edges
+        leftMargin = max(marginPx, min(leftMargin, container.width - popupWidth - marginPx))
+        topMargin = max(marginPx, min(topMargin, container.height - popupHeight - marginPx))
 
         popupContainer = FrameLayout(container.context).apply {
             setBackgroundColor(Color.TRANSPARENT)
