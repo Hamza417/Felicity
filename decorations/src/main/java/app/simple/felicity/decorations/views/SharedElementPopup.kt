@@ -1,5 +1,4 @@
 import android.graphics.Color
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,10 +7,12 @@ import android.widget.FrameLayout
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
-import androidx.core.view.setPadding
 import androidx.transition.TransitionManager
 import androidx.viewbinding.ViewBinding
+import app.simple.felicity.core.maths.Number.half
 import com.google.android.material.transition.MaterialContainerTransform
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToLong
 
 open class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
@@ -28,7 +29,6 @@ open class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
 
     companion object {
         private const val TRANSITION_NAME = "shared_element_popup_transition"
-        private const val POPUP_WIDTH = 0.75F
         private const val DURATION = 350L
         private const val END_ELEVATION = 0f
         private val INTERPOLATOR = DecelerateInterpolator(1.5F)
@@ -46,10 +46,34 @@ open class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
             isClickable = true
             setOnClickListener { dismiss() }
             alpha = 0f
-            animate().alpha(1f).setDuration(200).start()
+            animate().alpha(1f).setDuration(DURATION).start()
         }
 
         container.addView(scrimView)
+
+        val anchorLocation = IntArray(2)
+        anchorView.getLocationInWindow(anchorLocation)
+        val containerLocation = IntArray(2)
+        container.getLocationInWindow(containerLocation)
+
+        val anchorX = anchorLocation[0] - containerLocation[0]
+        val anchorY = anchorLocation[1] - containerLocation[1]
+        val anchorWidth = anchorView.width
+        val anchorHeight = anchorView.height
+
+        binding.root.measure(
+                View.MeasureSpec.makeMeasureSpec(container.width, View.MeasureSpec.AT_MOST),
+                View.MeasureSpec.UNSPECIFIED
+        )
+        val popupWidth = binding.root.measuredWidth
+        val popupHeight = binding.root.measuredHeight
+
+        var leftMargin = anchorX + anchorWidth.half() - popupWidth.half()
+        var topMargin = anchorY + anchorHeight.half() - popupHeight.half()
+
+        // Clamp margins to keep popup inside container
+        leftMargin = max(0, min(leftMargin, container.width - popupWidth))
+        topMargin = max(0, min(topMargin, container.height - popupHeight))
 
         popupContainer = FrameLayout(container.context).apply {
             setBackgroundColor(Color.TRANSPARENT)
@@ -57,12 +81,12 @@ open class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
             elevation = END_ELEVATION
             ViewCompat.setTransitionName(this, TRANSITION_NAME)
             layoutParams = CoordinatorLayout.LayoutParams(
-                    (container.width * POPUP_WIDTH).toInt(),
+                    popupWidth,
                     CoordinatorLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                gravity = Gravity.CENTER
+                this.leftMargin = leftMargin
+                this.topMargin = topMargin
             }
-            setPadding(resources.getDimensionPixelSize(app.simple.felicity.decoration.R.dimen.padding_15))
             clipChildren = false
             clipToPadding = false
 

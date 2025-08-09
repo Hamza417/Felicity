@@ -13,34 +13,32 @@
         android:orientation="vertical">
 
         <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/play"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/play"
-            android:padding="@dimen/padding_10"
+            android:padding="@dimen/padding_15"
+            android:textSize="@dimen/text_size_16"
             app:appFontStyle="bold"
             app:textColorStyle="primary" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/add_to_queue"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/shuffle"
-            android:padding="@dimen/padding_10"
+            android:textSize="@dimen/text_size_16"
+            android:text="@string/add_to_queue"
+            android:padding="@dimen/padding_15"
             app:appFontStyle="bold"
             app:textColorStyle="primary" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/add_to_playlist"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/search"
-            android:padding="@dimen/padding_10"
-            app:appFontStyle="bold"
-            app:textColorStyle="primary" />
-
-        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/play"
-            android:padding="@dimen/padding_10"
+            android:text="@string/add_to_playlist"
+            android:textSize="@dimen/text_size_16"
+            android:padding="@dimen/padding_15"
             app:appFontStyle="bold"
             app:textColorStyle="primary" />
 
