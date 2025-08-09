@@ -1,5 +1,3 @@
-package app.simple.felicity.decorations.views
-
 import android.graphics.Color
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -12,26 +10,21 @@ import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
 import androidx.core.view.setPadding
 import androidx.transition.TransitionManager
-import app.simple.felicity.decoration.R
+import androidx.viewbinding.ViewBinding
 import com.google.android.material.transition.MaterialContainerTransform
 import kotlin.math.roundToLong
 
-/**
- * Reusable shared element popup with morph animation.
- *
- * Inflate custom content layout inside this popup.
- * Extend this class to customize behavior or UI.
- */
-open class SharedElementPopup @JvmOverloads constructor(
+open class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
         private val container: ViewGroup,
         private val anchorView: View,
-        private val layoutResId: Int,
-        private val onPopupInflated: (View) -> Unit = {},
+        private val inflateBinding: (LayoutInflater, ViewGroup?, Boolean) -> VB,
+        private val onPopupInflated: (VB) -> Unit = {},
         private val onDismiss: (() -> Unit)? = null
 ) {
 
     private lateinit var scrimView: View
     private lateinit var popupContainer: FrameLayout
+    private lateinit var binding: VB
 
     companion object {
         private const val TRANSITION_NAME = "shared_element_popup_transition"
@@ -42,10 +35,8 @@ open class SharedElementPopup @JvmOverloads constructor(
     }
 
     fun show() {
-        val customView = LayoutInflater.from(container.context)
-            .inflate(layoutResId, null, false)
+        binding = inflateBinding(LayoutInflater.from(container.context), null, false)
 
-        // Setup scrim
         scrimView = View(container.context).apply {
             setBackgroundColor("#80000000".toColorInt())
             layoutParams = ViewGroup.LayoutParams(
@@ -60,7 +51,6 @@ open class SharedElementPopup @JvmOverloads constructor(
 
         container.addView(scrimView)
 
-        // Popup container
         popupContainer = FrameLayout(container.context).apply {
             setBackgroundColor(Color.TRANSPARENT)
             background = null
@@ -72,17 +62,16 @@ open class SharedElementPopup @JvmOverloads constructor(
             ).apply {
                 gravity = Gravity.CENTER
             }
-            setPadding(resources.getDimensionPixelSize(R.dimen.padding_15))
+            setPadding(resources.getDimensionPixelSize(app.simple.felicity.decoration.R.dimen.padding_15))
             clipChildren = false
             clipToPadding = false
 
             visibility = View.INVISIBLE
-            addView(customView)
+            addView(binding.root)
         }
 
         container.addView(popupContainer)
 
-        // Animate morph
         ViewCompat.setTransitionName(anchorView, TRANSITION_NAME)
         anchorView.visibility = View.INVISIBLE
 
@@ -104,7 +93,7 @@ open class SharedElementPopup @JvmOverloads constructor(
             TransitionManager.beginDelayedTransition(container, transform)
         }
 
-        onPopupInflated(customView)
+        onPopupInflated(binding)
     }
 
     fun dismiss() {
@@ -148,4 +137,3 @@ open class SharedElementPopup @JvmOverloads constructor(
         popupContainer.visibility = View.INVISIBLE
     }
 }
-

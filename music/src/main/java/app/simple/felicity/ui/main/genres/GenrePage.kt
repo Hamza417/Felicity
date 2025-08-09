@@ -9,6 +9,7 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.page.GenreDetailsAdapter
 import app.simple.felicity.databinding.FragmentViewerGenresBinding
+import app.simple.felicity.databinding.PopupGenreMenuBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.popups.PopupGenreMenu
@@ -80,7 +81,7 @@ class GenrePage : MediaFragment() {
                     PopupGenreMenu(
                             container = requireActivity().findViewById(R.id.app_container),
                             anchorView = view,
-                            layoutResId = R.layout.popup_genre_menu,
+                            inflateBinding = PopupGenreMenuBinding::inflate,
                             onPopupInflated = { popupView ->
 
                             },

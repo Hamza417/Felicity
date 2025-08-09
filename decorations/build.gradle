@@ -17,4 +17,5 @@ dependencies {
 
     implementation 'com.github.duanhong169:drawabletoolbox:1.0.7'
     api 'com.github.smarteist:Android-Image-Slider:1.4.0'
+    implementation 'androidx.databinding:viewbinding:8.12.0'
 }

@@ -64,7 +64,6 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
                     totalTime.text = data.songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
                     poster.loadGenreCover(genre)
 
-                    menu.transitionName = "popup_shared_element"
                     menu.setOnClickListener {
                         genreSongsAdapterListener?.onMenuClicked(it)
                     }
