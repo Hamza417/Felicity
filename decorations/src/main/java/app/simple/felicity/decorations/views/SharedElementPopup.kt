@@ -6,6 +6,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
+import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AppCompatActivity
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
@@ -28,6 +30,7 @@ abstract class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
 
     private lateinit var scrimView: View
     private lateinit var popupContainer: FrameLayout
+    private var backCallback: OnBackPressedCallback? = null
     private lateinit var binding: VB
     private var isDismissing = false
 
@@ -130,11 +133,15 @@ abstract class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
         }
 
         onViewCreated(binding)
+
+        setupBackPressListener()
     }
 
     fun dismiss() {
         if (isDismissing) return
         isDismissing = true
+        backCallback?.remove()
+        backCallback = null
 
         val reverseTransform = MaterialContainerTransform().apply {
             startView = popupContainer
@@ -184,6 +191,18 @@ abstract class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
 
         TransitionManager.beginDelayedTransition(container, reverseTransform)
         popupContainer.visibility = View.INVISIBLE
+    }
+
+    fun setupBackPressListener() {
+        val activity = container.context as? AppCompatActivity ?: return
+        backCallback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (!isDismissing) {
+                    dismiss()
+                }
+            }
+        }
+        activity.onBackPressedDispatcher.addCallback(backCallback!!)
     }
 
     abstract fun onViewCreated(binding: VB)
