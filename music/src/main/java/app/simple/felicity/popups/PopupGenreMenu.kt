@@ -1,6 +1,13 @@
 package app.simple.felicity.popups
 
-import android.content.Context
+import android.view.View
+import android.view.ViewGroup
 import app.simple.felicity.decorations.views.SharedElementPopup
 
-class PopupGenreMenu(context: Context) : SharedElementPopup(context)
+class PopupGenreMenu(
+        container: ViewGroup,
+        anchorView: View,
+        layoutResId: Int,
+        onPopupInflated: (View) -> Unit = {},
+        onDismiss: (() -> Unit)? = null)
+    : SharedElementPopup(container, anchorView, layoutResId, onPopupInflated, onDismiss)

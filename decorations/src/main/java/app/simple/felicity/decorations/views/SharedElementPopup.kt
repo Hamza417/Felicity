@@ -1,17 +1,17 @@
 package app.simple.felicity.decorations.views
 
-import android.content.Context
 import android.graphics.Color
-import android.graphics.drawable.ShapeDrawable
-import android.util.AttributeSet
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import androidx.coordinatorlayout.widget.CoordinatorLayout
+import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
+import androidx.core.view.setPadding
 import androidx.transition.TransitionManager
+import app.simple.felicity.decoration.R
 import com.google.android.material.transition.MaterialContainerTransform
 
 /**
@@ -21,153 +21,123 @@ import com.google.android.material.transition.MaterialContainerTransform
  * Extend this class to customize behavior or UI.
  */
 open class SharedElementPopup @JvmOverloads constructor(
-        context: Context,
-        attrs: AttributeSet? = null,
-        defStyleAttr: Int = 0
-) : CoordinatorLayout(context, attrs, defStyleAttr) {
+        private val container: ViewGroup,
+        private val anchorView: View,
+        private val layoutResId: Int,
+        private val onPopupInflated: (View) -> Unit = {},
+        private val onDismiss: (() -> Unit)? = null
+) {
 
     private lateinit var scrimView: View
     private lateinit var popupContainer: FrameLayout
 
-    private var onDismissListener: (() -> Unit)? = null
-
     companion object {
         private const val TRANSITION_NAME = "shared_element_popup_transition"
         private const val POPUP_WIDTH = 0.75F
+        private const val DURATION = 350L
+        private const val END_ELEVATION = 0f
     }
 
-    /**
-     * Show popup inflating the given layout resource.
-     */
-    fun show(
-            container: ViewGroup,
-            sharedView: View,
-            layoutResId: Int,
-            onPopupInflated: (View) -> Unit = {},
-            onDismiss: (() -> Unit)? = null
-    ) {
-        val inflatedView = LayoutInflater.from(context).inflate(layoutResId, null, false)
-        show(container, sharedView, inflatedView, onDismiss)
-        onPopupInflated(inflatedView)
-    }
+    fun show() {
+        val customView = LayoutInflater.from(container.context)
+            .inflate(layoutResId, null, false)
 
-    /**
-     * Show popup using the provided custom inflated View.
-     */
-    fun show(
-            container: ViewGroup,
-            sharedView: View,
-            customView: View,
-            onDismiss: (() -> Unit)? = null
-    ) {
-        // Setup scrim view
-        scrimView = View(context).apply {
-            setBackgroundColor(Color.parseColor("#80000000")) // Dim background
-            layoutParams = LayoutParams(
+        // Setup scrim
+        scrimView = View(container.context).apply {
+            setBackgroundColor("#80000000".toColorInt())
+            layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
             )
-            isClickable = true // intercept taps
-            setOnClickListener {
-                dismiss()
-            }
+            isClickable = true
+            setOnClickListener { dismiss() }
+            alpha = 0f
+            animate().alpha(1f).setDuration(200).start()
         }
+
         container.addView(scrimView)
 
-        // Setup popup container FrameLayout
-        popupContainer = FrameLayout(context).apply {
+        // Popup container
+        popupContainer = FrameLayout(container.context).apply {
             setBackgroundColor(Color.TRANSPARENT)
-            elevation = 24f
+            background = null
+            elevation = END_ELEVATION
             ViewCompat.setTransitionName(this, TRANSITION_NAME)
-            background = ShapeDrawable().apply {
-                paint.color = Color.WHITE
-                paint.isAntiAlias = true
+            layoutParams = CoordinatorLayout.LayoutParams(
+                    (container.width * POPUP_WIDTH).toInt(),
+                    CoordinatorLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.CENTER
             }
-            // Set popup size to 80% width by default, height wrap_content
-            layoutParams = LayoutParams((container.width * POPUP_WIDTH).toInt(), LayoutParams.WRAP_CONTENT)
-            visibility = INVISIBLE
-            addView(customView)  // Add your custom inflated view here
+            setPadding(resources.getDimensionPixelSize(R.dimen.padding_15))
+            clipChildren = false
+            clipToPadding = false
+
+            visibility = View.INVISIBLE
+            addView(customView)
         }
+
         container.addView(popupContainer)
 
-        // Position popup vertically centered after layout
-        popupContainer.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
-            override fun onGlobalLayout() {
-                popupContainer.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                val parentHeight = container.height
-                val popupHeight = popupContainer.height
-                val topMargin = (parentHeight - popupHeight) / 2
-                val params = popupContainer.layoutParams as LayoutParams
-                params.topMargin = topMargin
-                popupContainer.layoutParams = params
-            }
-        })
+        // Animate morph
+        ViewCompat.setTransitionName(anchorView, TRANSITION_NAME)
+        anchorView.visibility = View.INVISIBLE
 
-        // Set transition names and hide anchor view
-        ViewCompat.setTransitionName(sharedView, TRANSITION_NAME)
-        sharedView.visibility = View.INVISIBLE
-
-        // Start the morph animation
         val transform = MaterialContainerTransform().apply {
-            startView = sharedView
+            startView = anchorView
             endView = popupContainer
             addTarget(popupContainer)
-            duration = 350L
-            scrimColor = Color.argb(100, 0, 0, 0)
+            duration = DURATION
+            scrimColor = Color.TRANSPARENT
+            containerColor = Color.TRANSPARENT
             fadeMode = MaterialContainerTransform.FADE_MODE_CROSS
-            containerColor = Color.WHITE
-            startElevation = sharedView.elevation
-            endElevation = 24f
-            fitMode = MaterialContainerTransform.FIT_MODE_AUTO
+            startElevation = anchorView.elevation
+            endElevation = END_ELEVATION
         }
 
         popupContainer.post {
-            popupContainer.visibility = VISIBLE
+            popupContainer.visibility = View.VISIBLE
             TransitionManager.beginDelayedTransition(container, transform)
         }
 
-        // Setup dismiss listener
-        onDismissListener = {
-            sharedView.visibility = VISIBLE
-            container.removeView(popupContainer)
-            container.removeView(scrimView)
-            onDismiss?.invoke()
-        }
+        onPopupInflated(customView)
     }
 
     fun dismiss() {
-        val parent = parent as? ViewGroup ?: return
-
-        val anchorView = parent.findViewWithTag(TRANSITION_NAME)
-            ?: parent.findViewWithTag<View>(TRANSITION_NAME)
-
         val reverseTransform = MaterialContainerTransform().apply {
             startView = popupContainer
-            endView = anchorView ?: return
+            endView = anchorView
             addTarget(popupContainer)
-            duration = 350L
+            duration = DURATION
             scrimColor = Color.TRANSPARENT
+            containerColor = Color.TRANSPARENT
             fadeMode = MaterialContainerTransform.FADE_MODE_CROSS
-            containerColor = Color.WHITE
-            startElevation = 24f
+            startElevation = END_ELEVATION
             endElevation = anchorView.elevation
-            fitMode = MaterialContainerTransform.FIT_MODE_AUTO
         }
 
-        TransitionManager.beginDelayedTransition(parent, reverseTransform)
-
         reverseTransform.addListener(object : androidx.transition.Transition.TransitionListener {
-            override fun onTransitionStart(transition: androidx.transition.Transition) {}
             override fun onTransitionEnd(transition: androidx.transition.Transition) {
-                onDismissListener?.invoke()
+                anchorView.visibility = View.VISIBLE
+                container.removeView(popupContainer)
+                scrimView.clearAnimation()
+                container.removeView(scrimView)
+                onDismiss?.invoke()
                 reverseTransform.removeListener(this)
             }
 
-            override fun onTransitionCancel(transition: androidx.transition.Transition) {}
-            override fun onTransitionPause(transition: androidx.transition.Transition) {}
-            override fun onTransitionResume(transition: androidx.transition.Transition) {}
+            override fun onTransitionStart(t: androidx.transition.Transition) {
+                scrimView.alpha = 1f
+                scrimView.animate().alpha(0f).setDuration(200).start()
+            }
+
+            override fun onTransitionCancel(t: androidx.transition.Transition) {}
+            override fun onTransitionPause(t: androidx.transition.Transition) {}
+            override fun onTransitionResume(t: androidx.transition.Transition) {}
         })
 
-        popupContainer.visibility = INVISIBLE
+        TransitionManager.beginDelayedTransition(container, reverseTransform)
+        popupContainer.visibility = View.INVISIBLE
     }
 }
+

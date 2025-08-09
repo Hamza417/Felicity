@@ -77,9 +77,9 @@ class GenrePage : MediaFragment() {
 
                 override fun onMenuClicked(view: View) {
                     Log.i(TAG, "onMenuClicked: Menu clicked in genre: ${genre.name}")
-                    PopupGenreMenu(requireContext()).show(
+                    PopupGenreMenu(
                             container = requireActivity().findViewById(R.id.app_container),
-                            sharedView = view,
+                            anchorView = view,
                             layoutResId = R.layout.popup_genre_menu,
                             onPopupInflated = { popupView ->
 
@@ -87,7 +87,7 @@ class GenrePage : MediaFragment() {
                             onDismiss = {
                                 Log.i(TAG, "onMenuClicked: Popup dismissed for genre: ${genre.name}")
                             }
-                    )
+                    ).show()
                 }
             })
         }
