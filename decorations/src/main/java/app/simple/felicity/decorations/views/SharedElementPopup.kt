@@ -5,6 +5,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.graphics.toColorInt
@@ -13,6 +14,7 @@ import androidx.core.view.setPadding
 import androidx.transition.TransitionManager
 import app.simple.felicity.decoration.R
 import com.google.android.material.transition.MaterialContainerTransform
+import kotlin.math.roundToLong
 
 /**
  * Reusable shared element popup with morph animation.
@@ -36,6 +38,7 @@ open class SharedElementPopup @JvmOverloads constructor(
         private const val POPUP_WIDTH = 0.75F
         private const val DURATION = 350L
         private const val END_ELEVATION = 0f
+        private val INTERPOLATOR = DecelerateInterpolator(1.5F)
     }
 
     fun show() {
@@ -91,8 +94,9 @@ open class SharedElementPopup @JvmOverloads constructor(
             scrimColor = Color.TRANSPARENT
             containerColor = Color.TRANSPARENT
             fadeMode = MaterialContainerTransform.FADE_MODE_CROSS
-            startElevation = anchorView.elevation
+            startElevation = END_ELEVATION
             endElevation = END_ELEVATION
+            interpolator = INTERPOLATOR
         }
 
         popupContainer.post {
@@ -113,7 +117,8 @@ open class SharedElementPopup @JvmOverloads constructor(
             containerColor = Color.TRANSPARENT
             fadeMode = MaterialContainerTransform.FADE_MODE_CROSS
             startElevation = END_ELEVATION
-            endElevation = anchorView.elevation
+            endElevation = END_ELEVATION
+            interpolator = INTERPOLATOR
         }
 
         reverseTransform.addListener(object : androidx.transition.Transition.TransitionListener {
@@ -128,7 +133,10 @@ open class SharedElementPopup @JvmOverloads constructor(
 
             override fun onTransitionStart(t: androidx.transition.Transition) {
                 scrimView.alpha = 1f
-                scrimView.animate().alpha(0f).setDuration(200).start()
+                scrimView.animate()
+                    .alpha(0f)
+                    .setDuration(DURATION.div(1.5F).roundToLong())
+                    .start()
             }
 
             override fun onTransitionCancel(t: androidx.transition.Transition) {}
