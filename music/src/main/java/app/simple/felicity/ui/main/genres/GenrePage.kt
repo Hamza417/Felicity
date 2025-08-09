@@ -82,8 +82,12 @@ class GenrePage : MediaFragment() {
                             container = requireActivity().findViewById(R.id.app_container),
                             anchorView = view,
                             inflateBinding = PopupGenreMenuBinding::inflate,
-                            onPopupInflated = { popupView ->
-
+                            onPopupInflated = { genreMenuBinding, dismiss ->
+                                genreMenuBinding.play.setOnClickListener {
+                                    Log.i(TAG, "onMenuClicked: Play clicked for genre: ${genre.name}")
+                                    setMediaItems(genreViewerViewModel.getData().value?.songs ?: emptyList(), 0)
+                                    dismiss()
+                                }
                             },
                             onDismiss = {
                                 Log.i(TAG, "onMenuClicked: Popup dismissed for genre: ${genre.name}")

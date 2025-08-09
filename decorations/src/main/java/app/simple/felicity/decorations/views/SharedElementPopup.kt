@@ -1,3 +1,5 @@
+package app.simple.felicity.decorations.views
+
 import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
@@ -7,6 +9,7 @@ import android.widget.FrameLayout
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
+import androidx.transition.Transition
 import androidx.transition.TransitionManager
 import androidx.viewbinding.ViewBinding
 import app.simple.felicity.core.maths.Number.half
@@ -15,17 +18,18 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToLong
 
-open class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
+abstract class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
         private val container: ViewGroup,
         private val anchorView: View,
         private val inflateBinding: (LayoutInflater, ViewGroup?, Boolean) -> VB,
-        private val onPopupInflated: (VB) -> Unit = {},
+        private val onPopupInflated: (VB, () -> Unit) -> Unit = { _, _ -> },
         private val onDismiss: (() -> Unit)? = null
 ) {
 
     private lateinit var scrimView: View
     private lateinit var popupContainer: FrameLayout
     private lateinit var binding: VB
+    private var isDismissing = false
 
     companion object {
         private const val TRANSITION_NAME = "shared_element_popup_transition"
@@ -47,7 +51,11 @@ open class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
             isClickable = true
             setOnClickListener { dismiss() }
             alpha = 0f
-            animate().alpha(1f).setDuration(DURATION).start()
+            animate()
+                .alpha(1f)
+                .setInterpolator(INTERPOLATOR)
+                .setDuration(DURATION)
+                .start()
         }
 
         container.addView(scrimView)
@@ -63,13 +71,11 @@ open class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
         val anchorWidth = anchorView.width
         val anchorHeight = anchorView.height
 
-        binding.root.measure(
-                View.MeasureSpec.makeMeasureSpec(container.width, View.MeasureSpec.AT_MOST),
-                View.MeasureSpec.UNSPECIFIED
-        )
+        binding.root.measure(/* widthMeasureSpec = */ View.MeasureSpec.makeMeasureSpec(container.width, View.MeasureSpec.AT_MOST),
+                             /* heightMeasureSpec = */ View.MeasureSpec.UNSPECIFIED)
+
         val popupWidth = binding.root.measuredWidth
         val popupHeight = binding.root.measuredHeight
-
         var leftMargin = anchorX + anchorWidth.half() - popupWidth.half()
         var topMargin = anchorY + anchorHeight.half() - popupHeight.half()
 
@@ -119,10 +125,17 @@ open class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
             TransitionManager.beginDelayedTransition(container, transform)
         }
 
-        onPopupInflated(binding)
+        onPopupInflated(binding) {
+            dismiss()
+        }
+
+        onViewCreated(binding)
     }
 
     fun dismiss() {
+        if (isDismissing) return
+        isDismissing = true
+
         val reverseTransform = MaterialContainerTransform().apply {
             startView = popupContainer
             endView = anchorView
@@ -136,17 +149,18 @@ open class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
             interpolator = INTERPOLATOR
         }
 
-        reverseTransform.addListener(object : androidx.transition.Transition.TransitionListener {
-            override fun onTransitionEnd(transition: androidx.transition.Transition) {
+        reverseTransform.addListener(object : Transition.TransitionListener {
+            override fun onTransitionEnd(transition: Transition) {
                 anchorView.visibility = View.VISIBLE
                 container.removeView(popupContainer)
                 scrimView.clearAnimation()
                 container.removeView(scrimView)
                 onDismiss?.invoke()
                 reverseTransform.removeListener(this)
+                isDismissing = false
             }
 
-            override fun onTransitionStart(t: androidx.transition.Transition) {
+            override fun onTransitionStart(t: Transition) {
                 scrimView.alpha = 1f
                 scrimView.animate()
                     .alpha(0f)
@@ -154,12 +168,23 @@ open class SharedElementPopup<VB : ViewBinding> @JvmOverloads constructor(
                     .start()
             }
 
-            override fun onTransitionCancel(t: androidx.transition.Transition) {}
-            override fun onTransitionPause(t: androidx.transition.Transition) {}
-            override fun onTransitionResume(t: androidx.transition.Transition) {}
+            override fun onTransitionCancel(t: Transition) {
+                anchorView.visibility = View.VISIBLE
+                container.removeView(popupContainer)
+                scrimView.clearAnimation()
+                container.removeView(scrimView)
+                onDismiss?.invoke()
+                reverseTransform.removeListener(this)
+                isDismissing = false
+            }
+
+            override fun onTransitionPause(t: Transition) {}
+            override fun onTransitionResume(t: Transition) {}
         })
 
         TransitionManager.beginDelayedTransition(container, reverseTransform)
         popupContainer.visibility = View.INVISIBLE
     }
+
+    abstract fun onViewCreated(binding: VB)
 }
