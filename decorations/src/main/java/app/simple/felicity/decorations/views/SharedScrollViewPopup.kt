@@ -15,6 +15,7 @@ import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
 import androidx.core.view.setPadding
 import androidx.core.widget.NestedScrollView
+import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
 import androidx.transition.Transition
@@ -80,11 +81,6 @@ abstract class SharedScrollViewPopup @JvmOverloads constructor(
             visibility = View.INVISIBLE
             setPadding(resources.getDimensionPixelSize(R.dimen.padding_10))
 
-            fun easeOutDecay(normalized: Float): Float {
-                // Cubic decay example
-                return 1f - (1f - normalized).pow(5)
-            }
-
             setOnTouchListener { v, event ->
                 when (event.action) {
                     MotionEvent.ACTION_MOVE -> {
@@ -92,6 +88,11 @@ abstract class SharedScrollViewPopup @JvmOverloads constructor(
                             initialX = event.rawX
                             initialY = event.rawY
                             isInitialTouch = false
+
+                            translationXAnimation?.cancel()
+                            translationYAnimation?.cancel()
+                            scaleXAnimation?.cancel()
+                            scaleYAnimation?.cancel()
                         }
 
                         val dx = event.rawX - initialX
@@ -123,7 +124,7 @@ abstract class SharedScrollViewPopup @JvmOverloads constructor(
 
                         // Map intensity 0..1 to scale range using easing (can reuse easeOutDecay)
                         // When intensity is 0, scale = 1f (normal), when 1 -> scale near minScale or maxScale
-                        val scaleRange = maxScale - minScale
+                        // val scaleRange = maxScale - minScale
 
                         // Example: scale varies between 1 and minScale (a squeeze)
                         val easedScaleFactor = 1f - (easeOutDecay(intensity) * (1f - minScale))
@@ -135,42 +136,10 @@ abstract class SharedScrollViewPopup @JvmOverloads constructor(
                     }
 
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        translationXAnimation?.cancel()
-                        translationYAnimation?.cancel()
-                        scaleXAnimation?.cancel()
-                        scaleYAnimation?.cancel()
-
-                        translationXAnimation = SpringAnimation(v, SpringAnimation.TRANSLATION_X)
-                        translationXAnimation?.spring = SpringForce(0f).apply {
-                            stiffness = SpringForce.STIFFNESS_LOW
-                            dampingRatio = SpringForce.DAMPING_RATIO_LOW_BOUNCY
-                        }
-                        translationXAnimation?.setStartValue(v.translationX)
-                        translationXAnimation?.start()
-
-                        translationYAnimation = SpringAnimation(v, SpringAnimation.TRANSLATION_Y)
-                        translationYAnimation?.spring = SpringForce(0f).apply {
-                            stiffness = SpringForce.STIFFNESS_LOW
-                            dampingRatio = SpringForce.DAMPING_RATIO_LOW_BOUNCY
-                        }
-                        translationYAnimation?.setStartValue(v.translationY)
-                        translationYAnimation?.start()
-
-                        scaleXAnimation = SpringAnimation(v, SpringAnimation.SCALE_X)
-                        scaleXAnimation?.spring = SpringForce(1f).apply {
-                            stiffness = SpringForce.STIFFNESS_LOW
-                            dampingRatio = SpringForce.DAMPING_RATIO_LOW_BOUNCY
-                        }
-                        scaleXAnimation?.setStartValue(v.scaleX)
-                        scaleXAnimation?.start()
-
-                        scaleYAnimation = SpringAnimation(v, SpringAnimation.SCALE_Y)
-                        scaleYAnimation?.spring = SpringForce(1f).apply {
-                            stiffness = SpringForce.STIFFNESS_LOW
-                            dampingRatio = SpringForce.DAMPING_RATIO_LOW_BOUNCY
-                        }
-                        scaleYAnimation?.setStartValue(v.scaleY)
-                        scaleYAnimation?.start()
+                        translationXAnimation = startSpringAnimation(v, SpringAnimation.TRANSLATION_X, 0f, v.translationX)
+                        translationYAnimation = startSpringAnimation(v, SpringAnimation.TRANSLATION_Y, 0f, v.translationY)
+                        scaleXAnimation = startSpringAnimation(v, SpringAnimation.SCALE_X, 1f, v.scaleX)
+                        scaleYAnimation = startSpringAnimation(v, SpringAnimation.SCALE_Y, 1f, v.scaleY)
 
                         isInitialTouch = true
                     }
@@ -368,6 +337,26 @@ abstract class SharedScrollViewPopup @JvmOverloads constructor(
             }
         }
         activity.onBackPressedDispatcher.addCallback(backCallback!!)
+    }
+
+    private fun startSpringAnimation(
+            view: View,
+            property: FloatPropertyCompat<View>,
+            finalPosition: Float,
+            startValue: Float
+    ): SpringAnimation {
+        return SpringAnimation(view, property).apply {
+            spring = SpringForce(finalPosition).apply {
+                stiffness = SpringForce.STIFFNESS_VERY_LOW
+                dampingRatio = SpringForce.DAMPING_RATIO_LOW_BOUNCY
+            }
+            setStartValue(startValue)
+            start()
+        }
+    }
+
+    fun easeOutDecay(normalized: Float): Float {
+        return 1f - (1f - normalized).pow(5)
     }
 
     // Optional hook
