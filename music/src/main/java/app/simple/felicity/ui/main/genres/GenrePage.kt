@@ -9,7 +9,6 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.page.GenreDetailsAdapter
 import app.simple.felicity.databinding.FragmentViewerGenresBinding
-import app.simple.felicity.databinding.PopupGenreMenuBinding
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.popups.PopupGenreMenu
 import app.simple.felicity.repository.constants.BundleConstants
@@ -80,18 +79,17 @@ class GenrePage : MediaFragment() {
                     PopupGenreMenu(
                             container = requireActivity().findViewById(R.id.app_container),
                             anchorView = view,
-                            inflateBinding = PopupGenreMenuBinding::inflate,
-                            onPopupInflated = { genreMenuBinding, dismiss ->
-                                genreMenuBinding.play.setOnClickListener {
-                                    Log.i(TAG, "onMenuClicked: Play clicked for genre: ${genre.name}")
-                                    setMediaItems(genreViewerViewModel.getData().value?.songs ?: emptyList(), 0)
-                                    dismiss()
+                            menuItems = listOf(R.string.play, R.string.shuffle, R.string.add_to_queue, R.string.add_to_playlist),
+                            onMenuItemClick = {
+                                when (it) {
+
                                 }
                             },
                             onDismiss = {
                                 Log.i(TAG, "onMenuClicked: Popup dismissed for genre: ${genre.name}")
                             }
                     ).show()
+
                 }
             })
         }

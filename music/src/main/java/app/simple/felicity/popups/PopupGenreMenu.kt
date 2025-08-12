@@ -1,19 +1,19 @@
 package app.simple.felicity.popups
 
-import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import app.simple.felicity.databinding.PopupGenreMenuBinding
-import app.simple.felicity.decorations.views.SharedElementPopup
+import android.widget.LinearLayout
+import androidx.core.widget.NestedScrollView
+import app.simple.felicity.decorations.views.SharedScrollViewPopup
 
 class PopupGenreMenu(
         container: ViewGroup,
         anchorView: View,
-        inflateBinding: (LayoutInflater, ViewGroup?, Boolean) -> PopupGenreMenuBinding,
-        onPopupInflated: (PopupGenreMenuBinding, () -> Unit) -> Unit = { _, _ -> },
+        menuItems: List<Int>, // List of String resource IDs
+        onMenuItemClick: (itemResId: Int) -> Unit,
         onDismiss: (() -> Unit)? = null
-) : SharedElementPopup<PopupGenreMenuBinding>(container, anchorView, inflateBinding, onPopupInflated, onDismiss) {
-    override fun onViewCreated(binding: PopupGenreMenuBinding) {
+) : SharedScrollViewPopup(container, anchorView, menuItems, onMenuItemClick, onDismiss) {
+    override fun onPopupCreated(scrollView: NestedScrollView, contentLayout: LinearLayout) {
 
     }
 }

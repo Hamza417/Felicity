@@ -10,6 +10,11 @@ import app.simple.felicity.decorations.theme.ThemeNestedScrollView;
 import app.simple.felicity.theme.managers.ThemeManager;
 
 public class DynamicCornersNestedScrollView extends ThemeNestedScrollView {
+    public DynamicCornersNestedScrollView(@NonNull Context context) {
+        super(context);
+        init(null);
+    }
+    
     public DynamicCornersNestedScrollView(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         init(attrs);
