@@ -10,13 +10,17 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textSize="@dimen/text_size_16"
-        android:padding="@dimen/padding_10"
+        android:paddingVertical="@dimen/padding_10"
+        android:paddingHorizontal="@dimen/padding_20"
         app:appFontStyle="medium"
         app:textColorStyle="primary" />
 
     <app.simple.felicity.decorations.overscroll.CustomHorizontalRecyclerView
         android:id="@+id/recycler_view"
         android:layout_width="match_parent"
+        android:paddingHorizontal="@dimen/padding_15"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:layout_height="wrap_content" />
 
 </LinearLayout>

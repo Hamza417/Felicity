@@ -8,7 +8,7 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
 import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
-import app.simple.felicity.databinding.AdapterHeaderGenrePageOneBinding
+import app.simple.felicity.databinding.AdapterHeaderGenrePageBinding
 import app.simple.felicity.databinding.AdapterSongsBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -32,7 +32,7 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
             RecyclerViewUtils.TYPE_HEADER -> {
-                Header(AdapterHeaderGenrePageOneBinding.inflate(
+                Header(AdapterHeaderGenrePageBinding.inflate(
                         LayoutInflater.from(parent.context), parent, false))
             }
             RecyclerViewUtils.TYPE_ALBUMS -> {
@@ -157,7 +157,7 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
         }
     }
 
-    inner class Header(val binding: AdapterHeaderGenrePageOneBinding) : VerticalListViewHolder(binding.root) {
+    inner class Header(val binding: AdapterHeaderGenrePageBinding) : VerticalListViewHolder(binding.root) {
         init {
             binding.play.setOnClickListener {
                 genreSongsAdapterListener?.onPlayClick(data.songs, bindingAdapterPosition)

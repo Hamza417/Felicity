@@ -7,6 +7,9 @@
     android:layout_height="wrap_content"
     android:clipChildren="false"
     android:clipToPadding="false"
+    android:padding="@dimen/padding_5"
+    android:layout_marginHorizontal="@dimen/padding_10"
+    android:layout_marginVertical="@dimen/padding_5"
     android:orientation="horizontal">
 
     <ImageView

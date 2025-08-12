@@ -10,7 +10,6 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.page.GenreDetailsAdapter
 import app.simple.felicity.databinding.FragmentViewerGenresBinding
 import app.simple.felicity.databinding.PopupGenreMenuBinding
-import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.popups.PopupGenreMenu
 import app.simple.felicity.repository.constants.BundleConstants
@@ -52,7 +51,7 @@ class GenrePage : MediaFragment() {
         genreViewerViewModel.getData().observe(viewLifecycleOwner) { data ->
             Log.i(TAG, "onViewCreated: Received songs for genre: ${genre.name}, count: ${data.songs}")
             val adapter = GenreDetailsAdapter(data, genre)
-            binding.recyclerView.addItemDecoration(SpacingItemDecoration(48, true))
+            // binding.recyclerView.addItemDecoration(SpacingItemDecoration(12, false))
             binding.recyclerView.adapter = adapter
 
             adapter.setGenreSongsAdapterListener(object : GenreDetailsAdapter.Companion.GenreSongsAdapterListener {
