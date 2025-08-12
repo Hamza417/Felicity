@@ -16,7 +16,6 @@ import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decorations.corners.LayoutBackground;
 import app.simple.felicity.preferences.AccessibilityPreferences;
 import app.simple.felicity.preferences.AppearancePreferences;
-import app.simple.felicity.shared.constants.Misc;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;
@@ -46,11 +45,11 @@ public class DynamicRippleRelativeLayout extends RelativeLayout implements Share
     
     private void setHighlightBackgroundColor() {
         if (AccessibilityPreferences.INSTANCE.isHighlightMode()) {
-            LayoutBackground.setBackground(getContext(), this, null, Misc.roundedCornerFactor);
+            LayoutBackground.setBackground(getContext(), this, null, AppearancePreferences.INSTANCE.getCornerRadius());
             setBackgroundTintList(ColorStateList.valueOf(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor()));
         } else {
             setBackground(null);
-            setBackground(Utils.getRippleDrawable(getBackground(), Misc.roundedCornerFactor));
+            setBackground(Utils.getRippleDrawable(getBackground(), AppearancePreferences.INSTANCE.getCornerRadius()));
         }
     }
     

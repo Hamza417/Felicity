@@ -19,7 +19,6 @@ import app.simple.felicity.decorations.corners.LayoutBackground;
 import app.simple.felicity.decorations.typeface.TypeFaceTextView;
 import app.simple.felicity.preferences.AccessibilityPreferences;
 import app.simple.felicity.preferences.AppearancePreferences;
-import app.simple.felicity.shared.constants.Misc;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.themes.Theme;
 
@@ -53,7 +52,7 @@ public class DynamicRippleTextView extends TypeFaceTextView {
     @Override
     public void setSelected(boolean selected) {
         super.setSelected(selected);
-        setBackground(Utils.getRoundedBackground(Misc.roundedCornerFactor));
+        setBackground(Utils.getRoundedBackground(AppearancePreferences.INSTANCE.getCornerRadius()));
         setClickable(false);
         setSelectedBackgroundColor();
     }
@@ -141,11 +140,11 @@ public class DynamicRippleTextView extends TypeFaceTextView {
     
     private void setHighlightBackgroundColor() {
         if (AccessibilityPreferences.INSTANCE.isHighlightMode()) {
-            LayoutBackground.setBackground(getContext(), this, null, Misc.roundedCornerFactor);
+            LayoutBackground.setBackground(getContext(), this, null);
             setBackgroundTintList(ColorStateList.valueOf(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor()));
         } else {
             setBackground(null);
-            setBackground(Utils.getRippleDrawable(getBackground(), Misc.roundedCornerFactor));
+            setBackground(Utils.getRippleDrawable(getBackground(), AppearancePreferences.INSTANCE.getCornerRadius()));
         }
     }
     
