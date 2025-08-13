@@ -1,27 +1,31 @@
 package app.simple.felicity.glide.artistcover
 
+import android.content.Context
 import android.graphics.Bitmap
-import android.net.Uri
-import app.simple.felicity.R
-import app.simple.felicity.core.utils.BitmapUtils.toBitmap
+import android.graphics.BitmapFactory
+import android.os.Build
+import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.utils.ArtistUtils
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.data.DataFetcher
-import java.io.BufferedReader
 import java.io.FileNotFoundException
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 
-class ArtistCoverFetcher internal constructor(private val artistCoverModel: ArtistCoverModel) : DataFetcher<Bitmap> {
+class ArtistCoverFetcher internal constructor(private val context: Context, private val artist: Artist) : DataFetcher<Bitmap> {
 
     override fun loadData(priority: Priority, callback: DataFetcher.DataCallback<in Bitmap>) {
-        try {
+        val uri = ArtistUtils.getArtistArtworkUri(context, artist.id)
+            ?: throw FileNotFoundException("Could not find artwork URI for artist: $artist")
 
-        } catch (_: IllegalArgumentException) {
-        } catch (e: FileNotFoundException) {
-            callback.onDataReady(R.drawable.ic_felicity.toBitmap(artistCoverModel.context, app.simple.felicity.preferences.AppearancePreferences.getIconSize()))
+        val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            context.contentResolver.loadThumbnail(uri, android.util.Size(1000, 1000), null)
+        } else {
+            context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                BitmapFactory.decodeFileDescriptor(pfd.fileDescriptor)
+            } ?: throw FileNotFoundException("Could not open file descriptor for URI: $uri")
         }
+
+        callback.onDataReady(bitmap)
     }
 
     override fun cleanup() {
@@ -38,26 +42,5 @@ class ArtistCoverFetcher internal constructor(private val artistCoverModel: Arti
 
     override fun getDataSource(): DataSource {
         return DataSource.LOCAL
-    }
-
-    fun fetchArtistImageFromMusicBrainz(artistId: String): String {
-        val url = URL("http://musicbrainz.org/ws/2/artist/$artistId?inc=url-rels&fmt=json")
-
-        with(url.openConnection() as HttpURLConnection) {
-            requestMethod = "GET"  // optional default is GET
-
-            println("\nSent 'GET' request to URL : $url; Response Code : $responseCode")
-
-            BufferedReader(InputStreamReader(inputStream)).use {
-                val response = it.readText()
-                it.close()
-                return response
-            }
-        }
-    }
-
-    companion object {
-        private const val TAG = "AlbumCoverFetcher"
-        private val ALBUM_ART_URI = Uri.parse("content://media/external/audio/albumart")
     }
 }
