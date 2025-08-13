@@ -96,26 +96,6 @@ public class GenreRepository @Inject constructor(private val context: Context) {
                 val path = it.getString(dataCol)
                 val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId)
 
-                // Get artworkUri
-                val artworkUri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    uri
-                } else {
-                    var artPath: String? = null
-                    val albumCursor = context.contentResolver.query(
-                            MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
-                            arrayOf(MediaStore.Audio.Albums.ALBUM_ART),
-                            "${MediaStore.Audio.Albums._ID}=?",
-                            arrayOf(albumId.toString()),
-                            null
-                    )
-                    albumCursor?.use { ac ->
-                        if (ac.moveToFirst()) {
-                            artPath = ac.getString(0)
-                        }
-                    }
-                    artPath?.let { p -> p.toUri() }
-                }
-
                 songs.add(
                         Song(
                                 id = songId,
@@ -129,8 +109,7 @@ public class GenreRepository @Inject constructor(private val context: Context) {
                                 duration = it.getLong(durationCol),
                                 size = it.getLong(sizeCol),
                                 dateAdded = it.getLong(dateAddedCol),
-                                dateModified = it.getLong(dateModifiedCol),
-                                artworkUri = artworkUri
+                                dateModified = it.getLong(dateModifiedCol)
                         )
                 )
             }

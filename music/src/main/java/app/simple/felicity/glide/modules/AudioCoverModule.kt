@@ -3,10 +3,22 @@ package app.simple.felicity.glide.modules
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
+import app.simple.felicity.glide.albumcover.AlbumCoverLoader
+import app.simple.felicity.glide.albumcover.AlbumCoverModel
+import app.simple.felicity.glide.artistcover.ArtistCoverLoader
+import app.simple.felicity.glide.artistcover.ArtistCoverModel
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverLoader
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverModel
+import app.simple.felicity.glide.genres.GenreCoverLoader
+import app.simple.felicity.glide.genres.GenreCoverModel
+import app.simple.felicity.glide.pathcover.PathCoverLoader
+import app.simple.felicity.glide.pathcover.PathCoverModel
+import app.simple.felicity.glide.songcover.SongCoverLoader
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
+import app.simple.felicity.glide.uricover.UriCoverLoader
+import app.simple.felicity.glide.uricover.UriCoverModel
+import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
 import com.bumptech.glide.GlideBuilder
 import com.bumptech.glide.Registry
@@ -44,5 +56,11 @@ class AudioCoverModule : AppGlideModule() {
 
     override fun registerComponents(context: Context, glide: Glide, registry: Registry) {
         registry.append(DescriptorCoverModel::class.java, InputStream::class.java, DescriptorCoverLoader.Factory())
+        registry.append(Song::class.java, Bitmap::class.java, SongCoverLoader.Factory(context))
+        registry.append(UriCoverModel::class.java, Bitmap::class.java, UriCoverLoader.Factory())
+        registry.append(AlbumCoverModel::class.java, Bitmap::class.java, AlbumCoverLoader.Factory())
+        registry.append(ArtistCoverModel::class.java, Bitmap::class.java, ArtistCoverLoader.Factory())
+        registry.append(GenreCoverModel::class.java, Bitmap::class.java, GenreCoverLoader.Factory())
+        registry.append(PathCoverModel::class.java, Bitmap::class.java, PathCoverLoader.Factory())
     }
 }

@@ -17,7 +17,7 @@ import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDe
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
-import app.simple.felicity.glide.uricover.UriCoverUtils.loadFromUri
+import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.CollectionPageData
 import app.simple.felicity.repository.models.Artist
@@ -114,7 +114,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
                 artists.setTextOrUnknown(song.artist)
                 album.setTextOrUnknown(song.album)
 
-                albumArt.loadFromUri(song.artworkUri!!)
+                albumArt.loadSongCover(song)
                 albumArt.transitionName = song.path
             }
         }

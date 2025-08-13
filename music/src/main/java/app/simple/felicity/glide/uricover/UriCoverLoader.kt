@@ -1,7 +1,7 @@
-package app.simple.inure.glide.uricover
+package app.simple.felicity.glide.uricover
 
 import android.graphics.Bitmap
-import app.simple.felicity.glide.uricover.UriCoverModel
+import app.simple.inure.glide.uricover.UriCoverFetcher
 import com.bumptech.glide.load.Options
 import com.bumptech.glide.load.data.DataFetcher
 import com.bumptech.glide.load.model.ModelLoader

@@ -19,7 +19,6 @@ data class Song(
         val size: Long,
         val dateAdded: Long,
         val dateModified: Long,
-        val artworkUri: Uri?? = null
 ) : Parcelable {
     override fun toString(): String {
         return "Song(id=$id, " +
@@ -33,7 +32,6 @@ data class Song(
                 "duration=$duration, " +
                 "size=$size, " +
                 "dateAdded=$dateAdded, " +
-                "dateModified=$dateModified, " +
-                "artworkUri=$artworkUri)"
+                "dateModified=$dateModified"
     }
 }

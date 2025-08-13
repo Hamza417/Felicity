@@ -2,9 +2,7 @@ package app.simple.felicity.repository.repositories
 
 import android.content.ContentUris
 import android.content.Context
-import android.net.Uri
 import android.provider.MediaStore
-import androidx.core.net.toUri
 import app.simple.felicity.repository.models.Song
 import javax.inject.Inject
 
@@ -53,27 +51,6 @@ class SongRepository @Inject constructor(private val context: Context) {
                 val albumId = it.getLong(albumIdCol)
                 val trackUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId)
 
-                val artworkUri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    trackUri
-                } else {
-                    // For below Android 10, query ALBUM_ART column
-                    var artPath: Uri? = null
-                    val albumCursor = context.contentResolver.query(
-                            MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
-                            arrayOf(MediaStore.Audio.Albums.ALBUM_ART),
-                            MediaStore.Audio.Albums._ID + "=?",
-                            arrayOf(albumId.toString()),
-                            null
-                    )
-                    albumCursor?.use { ac ->
-                        if (ac.moveToFirst()) {
-                            artPath = ac.getString(0).toUri()
-                        }
-                    }
-
-                    artPath
-                }
-
                 songs.add(
                         Song(
                                 id = songId,
@@ -87,8 +64,7 @@ class SongRepository @Inject constructor(private val context: Context) {
                                 duration = it.getLong(durationCol),
                                 size = it.getLong(sizeCol),
                                 dateAdded = it.getLong(dateAddedCol),
-                                dateModified = it.getLong(dateModifiedCol),
-                                artworkUri = artworkUri
+                                dateModified = it.getLong(dateModifiedCol)
                         )
                 )
             }
@@ -142,27 +118,6 @@ class SongRepository @Inject constructor(private val context: Context) {
                 val albumId = it.getLong(albumIdCol)
                 val trackUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId)
 
-                val artworkUri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    trackUri
-                } else {
-                    // For below Android 10, query ALBUM_ART column
-                    var artPath: Uri? = null
-                    val albumCursor = context.contentResolver.query(
-                            MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
-                            arrayOf(MediaStore.Audio.Albums.ALBUM_ART),
-                            MediaStore.Audio.Albums._ID + "=?",
-                            arrayOf(albumId.toString()),
-                            null
-                    )
-                    albumCursor?.use { ac ->
-                        if (ac.moveToFirst()) {
-                            artPath = ac.getString(0).toUri()
-                        }
-                    }
-
-                    artPath
-                }
-
                 songs.add(
                         Song(
                                 id = songId,
@@ -176,8 +131,7 @@ class SongRepository @Inject constructor(private val context: Context) {
                                 duration = it.getLong(durationCol),
                                 size = it.getLong(sizeCol),
                                 dateAdded = it.getLong(dateAddedCol),
-                                dateModified = it.getLong(dateModifiedCol),
-                                artworkUri = artworkUri
+                                dateModified = it.getLong(dateModifiedCol)
                         )
                 )
             }

@@ -10,6 +10,7 @@ import app.simple.felicity.core.utils.ViewUtils.gone
 import app.simple.felicity.databinding.AdapterCarouselBinding
 import app.simple.felicity.decorations.overscroll.HorizontalListViewHolder
 import app.simple.felicity.glide.genres.GenreCoverUtils.loadGenreCover
+import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
 import app.simple.felicity.glide.uricover.UriCoverUtils.loadFromUri
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Album
@@ -37,7 +38,7 @@ class AdapterCarouselItems(private val data: ArtFlowData<Any>) : RecyclerView.Ad
 
             when (item) {
                 is Song -> {
-                    holder.binding.art.loadFromUri(item.artworkUri ?: Uri.EMPTY)
+                    holder.binding.art.loadSongCover(item)
                     holder.binding.title.text = item.title ?: holder.getContext().getString(R.string.unknown)
                     holder.binding.artist.text = item.artist ?: holder.getContext().getString(R.string.unknown)
                 }
