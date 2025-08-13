@@ -40,7 +40,7 @@ object GenreCoverUtils {
             .asBitmap()
             .dontTransform()
             .transform(*transformations.toTypedArray())
-            .load(GenreCoverModel(this.context, genre.id, genre.name ?: ""))
+            .load(genre)
             .error(R.drawable.ic_felicity)
             .transition(BitmapTransitionOptions.withCrossFade())
 

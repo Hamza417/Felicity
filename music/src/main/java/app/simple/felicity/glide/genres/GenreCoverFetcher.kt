@@ -1,16 +1,17 @@
 package app.simple.felicity.glide.genres
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import app.simple.felicity.repository.maps.GenreMap
+import app.simple.felicity.repository.models.Genre
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.data.DataFetcher
 import java.util.Locale
 
-class GenreCoverFetcher internal constructor(private val model: GenreCoverModel) : DataFetcher<Bitmap> {
+class GenreCoverFetcher internal constructor(private val context: Context, private val genre: Genre) : DataFetcher<Bitmap> {
     override fun loadData(priority: Priority, callback: DataFetcher.DataCallback<in Bitmap>) {
-        val context = model.context
         //        val albumArts = GenreRepository(context).fetchAlbumArtUrisForGenre(model.genreId, count = 12)
         //        val bitmaps = mutableListOf<Bitmap>()
         //
@@ -66,7 +67,7 @@ class GenreCoverFetcher internal constructor(private val model: GenreCoverModel)
 
         callback.onDataReady(BitmapFactory.decodeResource(
                 context.resources,
-                GenreMap.getGenreImage(genre = model.genreName.lowercase(Locale.getDefault()))))
+                GenreMap.getGenreImage(genre = (genre.name ?: "").lowercase(Locale.getDefault()))))
     }
 
     override fun cleanup() {}

@@ -9,7 +9,6 @@ import app.simple.felicity.glide.artistcover.ArtistCoverLoader
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverLoader
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverModel
 import app.simple.felicity.glide.genres.GenreCoverLoader
-import app.simple.felicity.glide.genres.GenreCoverModel
 import app.simple.felicity.glide.pathcover.PathCoverLoader
 import app.simple.felicity.glide.pathcover.PathCoverModel
 import app.simple.felicity.glide.songcover.SongCoverLoader
@@ -18,6 +17,7 @@ import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.uricover.UriCoverLoader
 import app.simple.felicity.glide.uricover.UriCoverModel
 import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
 import com.bumptech.glide.GlideBuilder
@@ -60,7 +60,7 @@ class AudioCoverModule : AppGlideModule() {
         registry.append(UriCoverModel::class.java, Bitmap::class.java, UriCoverLoader.Factory())
         registry.append(AlbumCoverModel::class.java, Bitmap::class.java, AlbumCoverLoader.Factory())
         registry.append(Artist::class.java, Bitmap::class.java, ArtistCoverLoader.Factory(context))
-        registry.append(GenreCoverModel::class.java, Bitmap::class.java, GenreCoverLoader.Factory())
+        registry.append(Genre::class.java, Bitmap::class.java, GenreCoverLoader.Factory(context))
         registry.append(PathCoverModel::class.java, Bitmap::class.java, PathCoverLoader.Factory())
     }
 }
