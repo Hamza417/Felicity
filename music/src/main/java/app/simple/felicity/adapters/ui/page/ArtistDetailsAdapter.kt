@@ -15,6 +15,7 @@ import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDe
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
+import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverUtils.loadFromDescriptor
 import app.simple.felicity.glide.uricover.UriCoverUtils.loadFromUri
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.CollectionPageData
@@ -58,7 +59,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
                     albums.text = data.albums.size.toString()
                     artists.text = data.artists.size.toString()
                     totalTime.text = data.songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
-                    poster.loadFromUri(artist.artworkUri ?: Uri.EMPTY)
+                    poster.loadFromDescriptor(data.songs.first().uri ?: Uri.EMPTY, roundedCorners = false, blur = false, skipCache = true)
 
                     menu.setOnClickListener {
                         // Navigate to genre search

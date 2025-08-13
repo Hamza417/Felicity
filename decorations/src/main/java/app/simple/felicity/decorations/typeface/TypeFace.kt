@@ -87,7 +87,7 @@ object TypeFace {
 
     class TypeFaceModel(
             /**
-             * Proper name of the typeface such as [TypeFaceConstants.ROBOTO]
+             * Proper name of the typeface such as [TypeFaceConstants.NOTOSANS]
              */
             val typefaceName: String,
 

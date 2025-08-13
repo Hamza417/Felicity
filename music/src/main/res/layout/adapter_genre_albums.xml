@@ -5,6 +5,10 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
+    <app.simple.felicity.decorations.theme.ThemeDivider
+        android:layout_width="match_parent"
+        android:layout_height="1px" />
+
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
         android:id="@+id/title"
         android:layout_width="match_parent"
@@ -12,7 +16,7 @@
         android:textSize="@dimen/text_size_16"
         android:paddingVertical="@dimen/padding_10"
         android:paddingHorizontal="@dimen/padding_20"
-        app:appFontStyle="medium"
+        app:appFontStyle="bold"
         app:textColorStyle="primary" />
 
     <app.simple.felicity.decorations.overscroll.CustomHorizontalRecyclerView
@@ -21,6 +25,9 @@
         android:paddingHorizontal="@dimen/padding_15"
         android:clipChildren="false"
         android:clipToPadding="false"
-        android:layout_height="wrap_content" />
+        android:paddingBottom="@dimen/padding_10"
+        android:layout_height="wrap_content"
+        app:navigationPaddingRequired="false"
+        app:statusPaddingRequired="false" />
 
 </LinearLayout>

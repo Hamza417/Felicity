@@ -219,10 +219,12 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
     }
 
     companion object {
+        const val EXTRALIGHT = -1
         const val LIGHT = 0
         const val REGULAR = 1
         const val MEDIUM = 2
         const val BOLD = 3
+        const val BLACK = 4
 
         const val HEADER = 0
         const val PRIMARY = 1

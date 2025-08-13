@@ -16,7 +16,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="@dimen/padding_5"
+        android:paddingHorizontal="@dimen/padding_10"
+        android:paddingVertical="@dimen/padding_5"
         android:layout_gravity="bottom">
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -24,10 +25,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
-            android:textSize="@dimen/text_size_16"
+            android:textSize="@dimen/text_size_14"
             android:maxLines="1"
             android:ellipsize="end"
-            app:appFontStyle="medium"
+            app:appFontStyle="bold"
             app:textColorStyle="primary" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -35,7 +36,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
-            android:textSize="@dimen/text_size_14"
+            android:textSize="@dimen/text_size_12"
             android:maxLines="1"
             android:ellipsize="end"
             app:appFontStyle="regular"

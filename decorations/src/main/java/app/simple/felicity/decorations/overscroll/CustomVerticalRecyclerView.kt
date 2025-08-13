@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
 import app.simple.felicity.core.utils.BarHeight
+import app.simple.felicity.core.utils.WindowUtil
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.fastscroll.FastScrollerBuilder
 import app.simple.felicity.decorations.itemdecorations.DividerItemDecoration
@@ -58,7 +59,18 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
 
                     statusBarPaddingRequired = getBoolean(R.styleable.RecyclerView_statusPaddingRequired, true)
                     navigationBarPaddingRequired = getBoolean(R.styleable.RecyclerView_navigationPaddingRequired, true)
-                    fitsSystemWindows = statusBarPaddingRequired || navigationBarPaddingRequired
+
+                    if (statusBarPaddingRequired) {
+                        WindowUtil.getStatusBarHeightWhenAvailable(this@CustomVerticalRecyclerView) { height ->
+                            setPadding(paddingLeft, height + paddingTop, paddingRight, paddingBottom)
+                        }
+                    }
+
+                    if (navigationBarPaddingRequired) {
+                        WindowUtil.getNavigationBarHeightWhenAvailable(this@CustomVerticalRecyclerView) { height ->
+                            setPadding(paddingLeft, paddingTop, paddingRight, height + paddingBottom)
+                        }
+                    }
 
                     if (AccessibilityPreferences.isAnimationReduced()) {
                         layoutAnimation = null
