@@ -8,13 +8,21 @@
     android:orientation="vertical"
     android:layout_height="wrap_content">
 
-    <app.simple.felicity.decorations.views.SquareImageView
-        android:id="@+id/poster"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:importantForAccessibility="no"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:layout_height="wrap_content">
+
+        <app.simple.felicity.decorations.views.SquareView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <app.simple.felicity.decorations.views.FelicityImageSlider
+            android:id="@+id/art_flow"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </FrameLayout>
 
     <LinearLayout
         android:layout_width="match_parent"

@@ -80,6 +80,7 @@ class GenrePage : MediaFragment() {
                             container = requireActivity().findViewById(R.id.app_container),
                             anchorView = view,
                             menuItems = listOf(R.string.play, R.string.shuffle, R.string.add_to_queue, R.string.add_to_playlist),
+                            menuIcons = listOf(R.drawable.ic_play, R.drawable.ic_shuffle, R.drawable.ic_add_to_queue, R.drawable.ic_add_to_playlist),
                             onMenuItemClick = {
                                 when (it) {
 

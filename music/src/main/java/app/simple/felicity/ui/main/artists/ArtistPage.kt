@@ -47,6 +47,7 @@ class ArtistPage : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        postponeEnterTransition()
 
         Log.d(TAG, "onViewCreated: ArtistPage for artist: ${artist.name}")
 
@@ -115,6 +116,8 @@ class ArtistPage : MediaFragment() {
                     ).show()
                 }
             })
+
+            requireView().startTransitionOnPreDraw()
         }
     }
 
