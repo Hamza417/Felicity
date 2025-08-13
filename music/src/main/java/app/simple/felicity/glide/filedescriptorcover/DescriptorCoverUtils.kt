@@ -9,6 +9,7 @@ import app.simple.felicity.preferences.AppearancePreferences
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.Transformation
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 
 object DescriptorCoverUtils {
@@ -20,9 +21,14 @@ object DescriptorCoverUtils {
             uri: Uri?,
             roundedCorners: Boolean = true,
             blur: Boolean = true,
+            crop: Boolean = false,
             skipCache: Boolean = false
     ) {
         val transformations = mutableListOf<Transformation<android.graphics.Bitmap>>()
+
+        if (crop) {
+            transformations.add(CenterCrop())
+        }
 
         if (roundedCorners) {
             transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt()))

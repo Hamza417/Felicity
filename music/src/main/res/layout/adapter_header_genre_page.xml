@@ -66,8 +66,8 @@
                 android:gravity="center_vertical"
                 android:drawableStart="@drawable/ic_song_16dp"
                 android:drawablePadding="@dimen/padding_5"
-                android:layout_marginEnd="@dimen/padding_10"
-                app:appFontStyle="medium"
+                android:layout_marginEnd="@dimen/padding_15"
+                app:appFontStyle="bold"
                 app:drawableTintStyle="secondary"
                 app:textColorStyle="primary"
                 tools:ignore="HardcodedText" />
@@ -81,8 +81,8 @@
                 android:gravity="center_vertical"
                 android:drawableStart="@drawable/ic_artist_16dp"
                 android:drawablePadding="@dimen/padding_5"
-                android:layout_marginEnd="@dimen/padding_10"
-                app:appFontStyle="medium"
+                android:layout_marginEnd="@dimen/padding_15"
+                app:appFontStyle="bold"
                 app:drawableTintStyle="secondary"
                 app:textColorStyle="primary"
                 tools:ignore="HardcodedText" />
@@ -96,8 +96,8 @@
                 android:gravity="center_vertical"
                 android:drawableStart="@drawable/ic_album_16dp"
                 android:drawablePadding="@dimen/padding_5"
-                android:layout_marginEnd="@dimen/padding_10"
-                app:appFontStyle="medium"
+                android:layout_marginEnd="@dimen/padding_15"
+                app:appFontStyle="bold"
                 app:drawableTintStyle="secondary"
                 app:textColorStyle="primary"
                 tools:ignore="HardcodedText" />
@@ -111,7 +111,7 @@
                 android:gravity="center_vertical"
                 android:drawableStart="@drawable/ic_hourglass_16dp"
                 android:drawablePadding="@dimen/padding_5"
-                app:appFontStyle="medium"
+                app:appFontStyle="bold"
                 app:drawableTintStyle="secondary"
                 app:textColorStyle="primary"
                 tools:ignore="HardcodedText" />

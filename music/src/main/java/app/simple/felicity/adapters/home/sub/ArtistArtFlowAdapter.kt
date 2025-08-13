@@ -32,7 +32,7 @@ class ArtistArtFlowAdapter(private val data: ArtFlowData<Any>, private val metad
 
             when (item) {
                 is Song -> {
-                    holder.binding.art.loadFromDescriptor(item.uri, roundedCorners = false, blur = false, skipCache = false)
+                    holder.binding.art.loadFromDescriptor(item.uri, roundedCorners = false, blur = false, skipCache = false, crop = true)
                 }
                 is Album -> {
                     holder.binding.art.loadFromUri(item.artworkUri, roundedCorners = false, blur = false, skipCache = false)
