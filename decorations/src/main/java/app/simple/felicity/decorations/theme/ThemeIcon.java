@@ -13,12 +13,11 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatImageView;
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator;
-
 import app.simple.felicity.core.helpers.ImageHelper;
 import app.simple.felicity.decoration.R;
-import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.preferences.AccessibilityPreferences;
 import app.simple.felicity.preferences.AppearancePreferences;
+import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.themes.Theme;
 
@@ -26,6 +25,11 @@ public class ThemeIcon extends AppCompatImageView implements ThemeChangedListene
     
     private ValueAnimator valueAnimator;
     private int tintMode;
+    
+    public ThemeIcon(@NonNull Context context) {
+        super(context);
+        init(null);
+    }
     
     public ThemeIcon(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);

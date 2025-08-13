@@ -110,6 +110,7 @@ class ArtistPage : MediaFragment() {
                                     }
                                 }
                             },
+                            menuIcons = listOf(R.drawable.ic_play, R.drawable.ic_shuffle, R.drawable.ic_send),
                             onDismiss = { Log.d(TAG, "PopupArtistMenu dismissed") }
                     ).show()
                 }

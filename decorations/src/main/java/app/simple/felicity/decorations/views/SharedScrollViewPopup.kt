@@ -3,6 +3,7 @@ package app.simple.felicity.decorations.views
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.util.TypedValue
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +12,7 @@ import android.widget.LinearLayout
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.coordinatorlayout.widget.CoordinatorLayout
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
 import androidx.core.view.setPadding
@@ -24,6 +26,9 @@ import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.behaviors.OverScrollBehavior
 import app.simple.felicity.decorations.corners.DynamicCornersNestedScrollView
 import app.simple.felicity.decorations.ripple.DynamicRippleTextView
+import app.simple.felicity.decorations.typeface.TypeFaceTextView
+import app.simple.felicity.decorations.typeface.TypefaceStyle
+import app.simple.felicity.theme.managers.ThemeManager
 import com.google.android.material.transition.MaterialContainerTransform
 import kotlin.math.abs
 import kotlin.math.max
@@ -36,6 +41,7 @@ abstract class SharedScrollViewPopup @JvmOverloads constructor(
         private val container: ViewGroup,
         private val anchorView: View,
         private val menuItems: List<Int>, // String resource IDs
+        private val menuIcons: List<Int>? = null, // Optional icons
         private val onMenuItemClick: (itemResId: Int) -> Unit, // Callback
         private val onDismiss: (() -> Unit)? = null
 ) {
@@ -161,12 +167,23 @@ abstract class SharedScrollViewPopup @JvmOverloads constructor(
         // Create menu items dynamically
         menuItems.forEach { resId ->
             val tv = DynamicRippleTextView(container.context).apply {
-                val padding = (16 * resources.displayMetrics.density).toInt()
-                setPadding(padding, padding, padding, padding)
+                val horizontalPadding = (8 * resources.displayMetrics.density).toInt()
+                val verticalPadding = (12 * resources.displayMetrics.density).toInt()
+
+                setPadding(
+                        /* left = */ horizontalPadding,
+                        /* top = */ verticalPadding,
+                        /* right = */ horizontalPadding + horizontalPadding,
+                        /* bottom = */ verticalPadding)
+
                 layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
                 )
+                setTypeFaceStyle(TypefaceStyle.BOLD.style)
+                gravity = Gravity.CENTER_VERTICAL
+                compoundDrawablePadding = (16 * resources.displayMetrics.density).toInt()
+                setTextColor(ThemeManager.theme.textViewTheme.primaryTextColor)
                 setText(resId)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                 isClickable = true
@@ -175,7 +192,19 @@ abstract class SharedScrollViewPopup @JvmOverloads constructor(
                     onMenuItemClick(resId)
                     dismiss()
                 }
+
+                val textSizePx = textSize.times(1.3F)
+                val drawableResId = menuIcons?.getOrNull(menuItems.indexOf(resId)) ?: 0
+                val drawable = if (drawableResId != 0) {
+                    ContextCompat.getDrawable(context, drawableResId)?.apply {
+                        setBounds(0, 0, textSizePx.toInt(), textSizePx.toInt())
+                    }
+                } else null
+
+                setCompoundDrawables(drawable, null, null, null)
+                setDrawableTineMode(TypeFaceTextView.DRAWABLE_ACCENT)
             }
+
             linearLayout.addView(tv)
         }
 

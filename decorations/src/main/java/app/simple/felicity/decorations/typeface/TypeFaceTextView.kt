@@ -209,6 +209,16 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
         }
     }
 
+    fun setDrawableTineMode(drawableTintMode: Int) {
+        this.drawableTintMode = drawableTintMode
+        setDrawableTint(animate = false)
+    }
+
+    fun setTypeFaceStyle(fontStyle: Int) {
+        this.fontStyle = fontStyle
+        typeface = TypeFace.getTypeFace(AppearancePreferences.getAppFont(), fontStyle, context)
+    }
+
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
             AppearancePreferences.ACCENT_COLOR -> {

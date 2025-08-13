@@ -12,7 +12,7 @@ class PopupGenreMenu(
         menuItems: List<Int>, // List of String resource IDs
         onMenuItemClick: (itemResId: Int) -> Unit,
         onDismiss: (() -> Unit)? = null
-) : SharedScrollViewPopup(container, anchorView, menuItems, onMenuItemClick, onDismiss) {
+) : SharedScrollViewPopup(container, anchorView, menuItems, null, onMenuItemClick, onDismiss) {
     override fun onPopupCreated(scrollView: NestedScrollView, contentLayout: LinearLayout) {
 
     }
