@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
 import app.simple.felicity.adapters.home.sub.ArtistArtFlowAdapter
+import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.core.utils.ViewUtils.visible
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
@@ -27,7 +28,7 @@ import com.bumptech.glide.Glide
 class ArtistDetailsAdapter(private val data: CollectionPageData, private val artist: Artist) :
         RecyclerView.Adapter<VerticalListViewHolder>() {
 
-    private var listener: ArtistSongsAdapterListener? = null
+    private var listener: GeneralAdapterCallbacks? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
@@ -63,10 +64,6 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
 
                     artFlow.visible(false)
                     artFlow.setSliderAdapter(ArtistArtFlowAdapter(ArtFlowData(R.string.songs, data.songs)))
-
-                    menu.setOnClickListener {
-                        // Navigate to genre search
-                    }
                 }
             }
             is Albums -> {
@@ -76,7 +73,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
                 holder.bind(data.songs[position - 1]) // Adjust for header
 
                 holder.binding.container.setOnClickListener {
-                    listener?.onSongClick(data.songs, position - SONGS_POSITION, holder.binding.albumArt)
+                    listener?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.albumArt)
                 }
             }
         }
@@ -162,15 +159,18 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
     inner class Header(val binding: AdapterHeaderGenrePageBinding) : VerticalListViewHolder(binding.root) {
         init {
             binding.play.setOnClickListener {
-                listener?.onPlayClick(data.songs, bindingAdapterPosition)
+                listener?.onPlayClicked(data.songs, bindingAdapterPosition)
             }
             binding.shuffle.setOnClickListener {
-                listener?.onShuffleClick(data.songs, bindingAdapterPosition)
+                listener?.onShuffleClicked(data.songs, bindingAdapterPosition)
+            }
+            binding.menu.setOnClickListener {
+                listener?.onMenuClicked(it)
             }
         }
     }
 
-    fun setArtistAdapterListener(listener: ArtistSongsAdapterListener) {
+    fun setArtistAdapterListener(listener: GeneralAdapterCallbacks) {
         this.listener = listener
     }
 
@@ -178,12 +178,5 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
         private const val TAG = "GenreSongsAdapter"
         private const val EXTRA_ROWS = 3 // Header, Albums, Artists
         private const val SONGS_POSITION = 1 // Position of songs in the adapter
-
-        interface ArtistSongsAdapterListener {
-            fun onSongClick(songs: List<Song>, position: Int, view: View)
-            fun onPlayClick(songs: List<Song>, position: Int = 0)
-            fun onShuffleClick(songs: List<Song>, position: Int = 0)
-            fun onArtistClicked(artist: Artist)
-        }
     }
 }

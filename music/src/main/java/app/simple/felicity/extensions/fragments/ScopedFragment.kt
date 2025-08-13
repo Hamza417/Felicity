@@ -257,6 +257,10 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         }
     }
 
+    protected fun requireContainerView(): ViewGroup {
+        return requireActivity().findViewById(R.id.app_container)
+    }
+
     companion object {
         private const val INTERPOLATOR_TENSION_FACTOR = 1.5F
         private const val TAG = "ScopedFragment"

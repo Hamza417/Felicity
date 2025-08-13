@@ -1,0 +1,35 @@
+package app.simple.felicity.callbacks;
+
+import android.view.View;
+
+import java.util.List;
+
+import androidx.annotation.NonNull;
+import app.simple.felicity.repository.models.Artist;
+import app.simple.felicity.repository.models.Song;
+
+public interface GeneralAdapterCallbacks {
+    default void onSongClicked(List <Song> songs, int position, View view) {
+    
+    }
+    
+    default void onSongLongClicked(List <Song> songs, int position, View view) {
+    
+    }
+    
+    default void onPlayClicked(List <Song> songs, int position) {
+    
+    }
+    
+    default void onShuffleClicked(List <Song> songs, int position) {
+    
+    }
+    
+    default void onArtistClicked(Artist artist) {
+    
+    }
+    
+    default void onMenuClicked(@NonNull View view) {
+    
+    }
+}

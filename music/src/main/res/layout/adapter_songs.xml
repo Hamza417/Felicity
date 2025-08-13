@@ -9,7 +9,6 @@
     android:clipToPadding="false"
     android:padding="@dimen/padding_5"
     android:layout_marginHorizontal="@dimen/padding_10"
-    android:layout_marginVertical="@dimen/padding_5"
     android:orientation="horizontal">
 
     <ImageView
@@ -26,7 +25,6 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="10dp"
-        android:layout_marginTop="16dp"
         android:ellipsize="end"
         android:maxLines="1"
         android:textSize="@dimen/text_size_16"
@@ -34,7 +32,6 @@
         app:layout_constraintBottom_toTopOf="@+id/artists"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/album_art"
-        app:layout_constraintTop_toTopOf="@+id/album_art"
         app:textColorStyle="primary" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -46,10 +43,10 @@
         android:maxLines="1"
         android:textSize="@dimen/desc_text_size"
         app:appFontStyle="regular"
-        app:layout_constraintBottom_toTopOf="@+id/album"
+        app:layout_constraintBottom_toBottomOf="@+id/album_art"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/album_art"
-        app:layout_constraintTop_toBottomOf="@id/title"
+        app:layout_constraintStart_toEndOf="@id/album_art"
+        app:layout_constraintTop_toTopOf="@+id/album_art"
         app:textColorStyle="accent" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -57,14 +54,12 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="10dp"
-        android:layout_marginBottom="16dp"
         android:ellipsize="end"
         android:maxLines="1"
         android:textSize="@dimen/desc_text_size"
         app:appFontStyle="regular"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/album_art"
+        app:layout_constraintStart_toEndOf="@id/album_art"
         app:layout_constraintTop_toBottomOf="@+id/artists"
         app:textColorStyle="secondary" />
 
