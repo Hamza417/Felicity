@@ -37,6 +37,7 @@ class GenreViewerViewModel @AssistedInject constructor(
         return data
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun loadGenreSongs() {
         viewModelScope.launch(Dispatchers.IO) {
             val start = System.currentTimeMillis()

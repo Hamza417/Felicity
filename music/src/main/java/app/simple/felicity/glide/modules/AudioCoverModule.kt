@@ -13,8 +13,6 @@ import app.simple.felicity.glide.pathcover.PathCoverModel
 import app.simple.felicity.glide.songcover.SongCoverLoader
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
-import app.simple.felicity.glide.uricover.UriCoverLoader
-import app.simple.felicity.glide.uricover.UriCoverModel
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
@@ -57,7 +55,6 @@ class AudioCoverModule : AppGlideModule() {
     override fun registerComponents(context: Context, glide: Glide, registry: Registry) {
         registry.append(DescriptorCoverModel::class.java, InputStream::class.java, DescriptorCoverLoader.Factory())
         registry.append(Song::class.java, Bitmap::class.java, SongCoverLoader.Factory(context))
-        registry.append(UriCoverModel::class.java, Bitmap::class.java, UriCoverLoader.Factory())
         registry.append(Album::class.java, Bitmap::class.java, AlbumCoverLoader.Factory(context))
         registry.append(Artist::class.java, Bitmap::class.java, ArtistCoverLoader.Factory(context))
         registry.append(Genre::class.java, Bitmap::class.java, GenreCoverLoader.Factory(context))
