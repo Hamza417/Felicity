@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.util.Size
+import app.simple.felicity.glide.artistcover.Constants
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.repository.utils.SongUtils
 import com.bumptech.glide.Priority
@@ -17,7 +19,7 @@ class SongCoverFetcher internal constructor(private val context: Context, privat
             ?: throw FileNotFoundException("Could not find artwork URI for song: $song")
 
         val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            context.contentResolver.loadThumbnail(uri, android.util.Size(1000, 1000), null)
+            context.contentResolver.loadThumbnail(uri, Size(Constants.ART_SIZE, Constants.ART_SIZE), null)
         } else {
             context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
                 BitmapFactory.decodeFileDescriptor(pfd.fileDescriptor)

@@ -5,12 +5,12 @@ import android.widget.ImageView
 import app.simple.felicity.R
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
+import app.simple.felicity.glide.transformation.RoundedCorners
 import app.simple.felicity.preferences.AppearancePreferences
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.Transformation
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
-import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 
 object DescriptorCoverUtils {
 
@@ -31,7 +31,7 @@ object DescriptorCoverUtils {
         }
 
         if (roundedCorners) {
-            transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt()))
+            transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt(), 0))
         }
 
         if (blur) {
