@@ -1,14 +1,13 @@
 package app.simple.felicity.adapters.home.sub
 
-import android.net.Uri
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterGridImageBinding
+import app.simple.felicity.glide.albumcover.AlbumCoverUtils.loadAlbumCover
 import app.simple.felicity.glide.artistcover.ArtistCoverUtils.loadArtistCover
 import app.simple.felicity.glide.genres.GenreCoverUtils.loadGenreCover
 import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
-import app.simple.felicity.glide.uricover.UriCoverUtils.loadFromUri
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
@@ -36,8 +35,8 @@ class AdapterGridArt(private val data: ArtFlowData<Any>) :
                             skipCache = true)
                 }
                 is Album -> {
-                    holder.binding.art.loadFromUri(
-                            uri = item.artworkUri ?: Uri.EMPTY,
+                    holder.binding.art.loadAlbumCover(
+                            album = item,
                             blur = false,
                             roundedCorners = false,
                             skipCache = true)

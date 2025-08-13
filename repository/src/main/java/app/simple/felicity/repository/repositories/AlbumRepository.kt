@@ -1,7 +1,6 @@
 package app.simple.felicity.repository.repositories
 
 import android.annotation.SuppressLint
-import android.content.ContentUris
 import android.content.Context
 import android.provider.MediaStore
 import app.simple.felicity.repository.models.Album
@@ -34,23 +33,16 @@ class AlbumRepository @Inject constructor(private val context: Context) {
             val albumCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ALBUM)
             val artistCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ARTIST)
             val artistIdCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ARTIST_ID)
-            val albumArtCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ALBUM_ART)
             val songCountCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.NUMBER_OF_SONGS)
 
             while (it.moveToNext()) {
                 val albumId = it.getLong(idCol)
-                val artworkUri = ContentUris.withAppendedId(
-                        MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
-                        albumId
-                )
-
                 albums.add(
                         Album(
                                 id = albumId,
                                 name = it.getString(albumCol),
                                 artist = it.getString(artistCol),
                                 artistId = it.getLong(artistIdCol),
-                                artworkUri = artworkUri,
                                 songCount = it.getInt(songCountCol)
                         )
                 )
@@ -88,23 +80,16 @@ class AlbumRepository @Inject constructor(private val context: Context) {
             val albumCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ALBUM)
             val artistCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ARTIST)
             val artistIdCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ARTIST_ID)
-            val albumArtCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ALBUM_ART)
             val songCountCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.NUMBER_OF_SONGS)
 
             while (it.moveToNext()) {
                 val albumId = it.getLong(idCol)
-                val artworkUri = ContentUris.withAppendedId(
-                        MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
-                        albumId
-                )
-
                 albums.add(
                         Album(
                                 id = albumId,
                                 name = it.getString(albumCol),
                                 artist = it.getString(artistCol),
                                 artistId = it.getLong(artistIdCol),
-                                artworkUri = artworkUri,
                                 songCount = it.getInt(songCountCol)
                         )
                 )

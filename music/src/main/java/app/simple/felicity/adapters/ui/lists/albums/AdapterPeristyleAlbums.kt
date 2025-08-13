@@ -6,7 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterAlbumsPeristyleBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.glide.albumcover.AlbumCoverUtils.loadAlbumCoverSquare
+import app.simple.felicity.glide.albumcover.AlbumCoverUtils.loadAlbumCover
 import app.simple.felicity.repository.models.Album
 
 class AdapterPeristyleAlbums(private val albums: List<Album>) : RecyclerView.Adapter<AdapterPeristyleAlbums.Holder>() {
@@ -29,7 +29,7 @@ class AdapterPeristyleAlbums(private val albums: List<Album>) : RecyclerView.Ada
 
         fun bind(binding: AdapterAlbumsPeristyleBinding) {
             this.binding = binding
-            binding.albumArt.loadAlbumCoverSquare(albums[bindingAdapterPosition].id)
+            binding.albumArt.loadAlbumCover(albums[bindingAdapterPosition], crop = true, roundedCorners = false, blur = false, skipCache = false)
             binding.title.text = albums[bindingAdapterPosition].name
         }
     }

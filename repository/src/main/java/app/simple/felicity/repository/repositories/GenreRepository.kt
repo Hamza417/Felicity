@@ -251,6 +251,7 @@ public class GenreRepository @Inject constructor(private val context: Context) {
                 null,
                 null
         )
+
         songCursor?.use {
             val albumIdCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
             val artistIdCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST_ID)
@@ -283,10 +284,6 @@ public class GenreRepository @Inject constructor(private val context: Context) {
                                     name = it.getString(it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ALBUM)),
                                     artist = it.getString(it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ARTIST)),
                                     artistId = albumIdToArtistId[albumId] ?: 0L,
-                                    artworkUri = ContentUris.withAppendedId(
-                                            MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
-                                            albumId
-                                    ),
                                     songCount = 0 // You can fill this if needed
                             )
                     )

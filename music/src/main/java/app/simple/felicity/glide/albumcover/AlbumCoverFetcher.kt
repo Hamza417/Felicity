@@ -1,27 +1,31 @@
 package app.simple.felicity.glide.albumcover
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
-import app.simple.felicity.R
-import app.simple.felicity.core.utils.BitmapUtils.toBitmap
+import android.os.Build
+import app.simple.felicity.repository.models.Album
+import app.simple.felicity.repository.utils.AlbumUtils
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.data.DataFetcher
 import java.io.FileNotFoundException
 
-class AlbumCoverFetcher internal constructor(private val albumCoverModel: AlbumCoverModel) : DataFetcher<Bitmap> {
+class AlbumCoverFetcher internal constructor(private val context: Context, private val album: Album) : DataFetcher<Bitmap> {
 
     override fun loadData(priority: Priority, callback: DataFetcher.DataCallback<in Bitmap>) {
-        try {
-            val artUri = Uri.withAppendedPath(ALBUM_ART_URI, albumCoverModel.albumId.toString())
-            albumCoverModel.context.contentResolver.openInputStream(artUri).use {
-                callback.onDataReady(BitmapFactory.decodeStream(it))
-            }
-        } catch (_: IllegalArgumentException) {
-        } catch (e: FileNotFoundException) {
-            callback.onDataReady(R.drawable.ic_felicity.toBitmap(albumCoverModel.context, app.simple.felicity.preferences.AppearancePreferences.getIconSize()))
+        val uri = AlbumUtils.getAlbumCover(context, album.id)
+            ?: throw FileNotFoundException("Could not find artwork URI for album: $album")
+
+        val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            context.contentResolver.loadThumbnail(uri, android.util.Size(1000, 1000), null)
+        } else {
+            context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                BitmapFactory.decodeFileDescriptor(pfd.fileDescriptor)
+            } ?: throw FileNotFoundException("Could not open file descriptor for URI: $uri")
         }
+
+        callback.onDataReady(bitmap)
     }
 
     override fun cleanup() {
@@ -38,10 +42,5 @@ class AlbumCoverFetcher internal constructor(private val albumCoverModel: AlbumC
 
     override fun getDataSource(): DataSource {
         return DataSource.LOCAL
-    }
-
-    companion object {
-        private const val TAG = "AlbumCoverFetcher"
-        private val ALBUM_ART_URI = Uri.parse("content://media/external/audio/albumart")
     }
 }
