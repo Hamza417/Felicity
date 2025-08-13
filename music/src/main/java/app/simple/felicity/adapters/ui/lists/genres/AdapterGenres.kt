@@ -1,16 +1,12 @@
 package app.simple.felicity.adapters.ui.lists.genres
 
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterGenresBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.glide.genres.GenreCoverUtils.loadGenreCover
 import app.simple.felicity.repository.models.Genre
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.resource.bitmap.CenterCrop
 
 class AdapterGenres(private val list: List<Genre>) : androidx.recyclerview.widget.RecyclerView.Adapter<AdapterGenres.Holder>() {
 
@@ -35,12 +31,9 @@ class AdapterGenres(private val list: List<Genre>) : androidx.recyclerview.widge
 
     inner class Holder(private val binding: AdapterGenresBinding) : VerticalListViewHolder(binding.root) {
         fun bind(genre: Genre) {
-            binding.container.transitionName = genre.name ?: binding.root.context.getString(R.string.unknown)
             binding.name.text = genre.name
-            Log.i(TAG, "bind: ${genre.name}")
-            binding.cover.createGenreCover(genre)
+            binding.cover.loadGenreCover(genre)
 
-            // Set click listener if needed
             binding.container.setOnClickListener {
                 genreClickListener?.onGenreClicked(genre, it)
             }
@@ -52,14 +45,6 @@ class AdapterGenres(private val list: List<Genre>) : androidx.recyclerview.widge
     }
 
     companion object {
-        fun ImageView.createGenreCover(genre: Genre, corner: Int = 48) {
-            Glide.with(context)
-                .asBitmap()
-                .load(genre)
-                .transform(CenterCrop())
-                .into(this)
-        }
-
         interface GenreClickListener {
             fun onGenreClicked(genre: Genre, view: View)
         }
