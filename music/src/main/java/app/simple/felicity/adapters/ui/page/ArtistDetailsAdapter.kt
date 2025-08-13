@@ -45,7 +45,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
                         LayoutInflater.from(parent.context), parent, false))
             }
             else -> {
-                Holder(AdapterSongsBinding.inflate(
+                Songs(AdapterSongsBinding.inflate(
                         LayoutInflater.from(parent.context), parent, false))
             }
         }
@@ -69,7 +69,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
             is Albums -> {
                 /* no-op */
             }
-            is Holder -> {
+            is Songs -> {
                 holder.bind(data.songs[position - 1]) // Adjust for header
 
                 holder.binding.container.setOnClickListener {
@@ -85,7 +85,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
 
     override fun onViewRecycled(holder: VerticalListViewHolder) {
         super.onViewRecycled(holder)
-        if (holder is Holder) {
+        if (holder is Songs) {
             Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
         }
     }
@@ -107,7 +107,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
         }
     }
 
-    inner class Holder(val binding: AdapterSongsBinding) : VerticalListViewHolder(binding.root) {
+    inner class Songs(val binding: AdapterSongsBinding) : VerticalListViewHolder(binding.root) {
         fun bind(song: Song) {
             binding.apply {
                 title.setTextOrUnknown(song.title)
