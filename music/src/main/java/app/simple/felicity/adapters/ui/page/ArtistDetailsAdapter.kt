@@ -1,13 +1,14 @@
 package app.simple.felicity.adapters.ui.page
 
-import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
+import app.simple.felicity.adapters.home.sub.ArtistArtFlowAdapter
 import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
+import app.simple.felicity.core.utils.ViewUtils.visible
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
 import app.simple.felicity.databinding.AdapterHeaderGenrePageBinding
 import app.simple.felicity.databinding.AdapterSongsBinding
@@ -15,7 +16,6 @@ import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDe
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
-import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverUtils.loadFromDescriptor
 import app.simple.felicity.glide.uricover.UriCoverUtils.loadFromUri
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.CollectionPageData
@@ -59,7 +59,10 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
                     albums.text = data.albums.size.toString()
                     artists.text = data.artists.size.toString()
                     totalTime.text = data.songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
-                    poster.loadFromDescriptor(data.songs.first().uri ?: Uri.EMPTY, roundedCorners = false, blur = false, skipCache = true)
+                    // poster.loadFromDescriptor(data.songs.first().uri, roundedCorners = false, blur = false, skipCache = true)
+
+                    artFlow.visible(false)
+                    artFlow.setSliderAdapter(ArtistArtFlowAdapter(ArtFlowData(R.string.songs, data.songs)))
 
                     menu.setOnClickListener {
                         // Navigate to genre search

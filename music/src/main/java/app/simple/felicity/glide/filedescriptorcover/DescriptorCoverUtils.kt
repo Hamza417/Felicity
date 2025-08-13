@@ -17,7 +17,7 @@ object DescriptorCoverUtils {
      * Load original artwork directly from file using file descriptor.
      */
     fun ImageView.loadFromDescriptor(
-            uri: Uri,
+            uri: Uri?,
             roundedCorners: Boolean = true,
             blur: Boolean = true,
             skipCache: Boolean = false
@@ -42,7 +42,7 @@ object DescriptorCoverUtils {
             .asBitmap()
             .dontTransform() // This way we can apply our own transformations and skip the module specific ones
             .transform(*transformations.toTypedArray())
-            .load(DescriptorCoverModel(this.context, uri))
+            .load(DescriptorCoverModel(this.context, uri ?: Uri.EMPTY))
             .error(R.drawable.ic_felicity)
 
         if (skipCache) {

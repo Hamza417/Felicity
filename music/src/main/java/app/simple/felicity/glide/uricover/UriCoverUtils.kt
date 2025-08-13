@@ -15,7 +15,7 @@ import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 
 object UriCoverUtils {
     fun ImageView.loadFromUri(
-            uri: Uri,
+            uri: Uri?,
             roundedCorners: Boolean = true,
             blur: Boolean = true,
             skipCache: Boolean = false
@@ -40,7 +40,7 @@ object UriCoverUtils {
             .asBitmap()
             .dontTransform() // This way we can apply our own transformations and skip the module specific ones
             .transform(*transformations.toTypedArray())
-            .load(UriCoverModel(this.context, uri))
+            .load(UriCoverModel(this.context, uri ?: Uri.EMPTY))
             .error(R.drawable.ic_felicity)
 
         if (skipCache) {
