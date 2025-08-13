@@ -4,7 +4,6 @@ import android.os.Build
 import androidx.annotation.ColorInt
 import androidx.annotation.RequiresApi
 import app.simple.felicity.core.constants.ThemeConstants
-import app.simple.felicity.core.constants.TypeFaceConstants
 import app.simple.felicity.core.utils.ColorUtils
 import app.simple.felicity.preferences.SharedPreferences.getSharedPreferences
 
@@ -109,7 +108,7 @@ object AppearancePreferences {
     }
 
     fun getAppFont(): String {
-        return getSharedPreferences().getString(APP_FONT, TypeFaceConstants.AUTO)!!
+        return getSharedPreferences().getString(APP_FONT, "notosans")!!
     }
 
     // ---------------------------------------------------------------------------------------------------------- //

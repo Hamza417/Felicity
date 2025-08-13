@@ -14,7 +14,7 @@ import androidx.appcompat.widget.AppCompatTextView;
 import androidx.core.widget.TextViewCompat;
 import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decoration.R;
-import app.simple.felicity.decorations.utils.TypeFace;
+import app.simple.felicity.decorations.typeface.TypeFace;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;

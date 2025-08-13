@@ -12,9 +12,9 @@ import android.widget.TextView;
 import androidx.core.util.Consumer;
 import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decoration.R;
-import app.simple.felicity.decorations.constants.TypeFaceConstants.TypefaceStyle;
 import app.simple.felicity.decorations.fastscroll.backgrounds.CircularBackground;
-import app.simple.felicity.decorations.utils.TypeFace;
+import app.simple.felicity.decorations.typeface.TypeFace;
+import app.simple.felicity.decorations.typeface.TypefaceStyle;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.theme.managers.ThemeManager;
 

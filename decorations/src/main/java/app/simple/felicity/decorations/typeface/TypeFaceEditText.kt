@@ -17,7 +17,6 @@ import app.simple.felicity.core.utils.ColorUtils
 import app.simple.felicity.core.utils.ColorUtils.animateColorChange
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.utils.TextViewUtils.setDrawableTint
-import app.simple.felicity.decorations.utils.TypeFace
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.shared.utils.ConditionUtils.invert
 import app.simple.felicity.theme.interfaces.ThemeChangedListener

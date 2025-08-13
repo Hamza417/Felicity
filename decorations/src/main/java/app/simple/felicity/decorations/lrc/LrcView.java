@@ -30,7 +30,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.view.ViewCompat;
 import app.simple.felicity.decoration.R;
-import app.simple.felicity.decorations.utils.TypeFace;
+import app.simple.felicity.decorations.typeface.TypeFace;
 import app.simple.felicity.theme.managers.ThemeManager;
 
 public class LrcView extends View {
