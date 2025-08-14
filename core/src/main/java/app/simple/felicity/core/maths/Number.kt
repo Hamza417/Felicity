@@ -9,7 +9,15 @@ object Number {
         return this / 2
     }
 
+    fun Long.half(): Long {
+        return this / 2
+    }
+
     fun Int.fourth(): Int {
+        return this / 4
+    }
+
+    fun Long.fourth(): Long {
         return this / 4
     }
 

@@ -2,6 +2,7 @@ package app.simple.felicity.decorations.views
 
 import android.annotation.SuppressLint
 import android.graphics.Color
+import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
@@ -14,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.children
 import androidx.core.view.setPadding
 import androidx.core.widget.NestedScrollView
 import androidx.dynamicanimation.animation.FloatPropertyCompat
@@ -25,6 +27,9 @@ import app.simple.felicity.core.maths.Number.half
 import app.simple.felicity.core.maths.Number.twice
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.behaviors.OverScrollBehavior
+import app.simple.felicity.decorations.corners.DynamicCornerCoordinatorLayout
+import app.simple.felicity.decorations.corners.DynamicCornerFrameLayout
+import app.simple.felicity.decorations.corners.DynamicCornerLinearLayout
 import app.simple.felicity.decorations.corners.DynamicCornersNestedScrollView
 import app.simple.felicity.decorations.ripple.DynamicRippleTextView
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -63,6 +68,19 @@ abstract class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
         private const val MAX_WIGGLE_THRESHOLD = 72F
         private const val MAX_FINGER_DISTANCE = 0.05f
         private val INTERPOLATOR = DecelerateInterpolator(1.5F)
+        private const val PARENT_DIALOG_CONTAINER_VISIBLE_ALPHA = 0.9f
+        private const val PARENT_DIALOG_CONTAINER_RESET_ALPHA = 1f
+    }
+
+    private fun findParentDialogContainer(): ViewGroup {
+        container.children.forEach {
+            Log.d("SharedScrollViewPopup", "Child: ${it.javaClass.simpleName} - ${it.id}")
+            if (it is DynamicCornerFrameLayout || it is DynamicCornerCoordinatorLayout || it is DynamicCornerLinearLayout) {
+                return it as ViewGroup
+            }
+        }
+
+        throw IllegalStateException("No suitable dialog container found in popup view hierarchy")
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -204,6 +222,18 @@ abstract class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
             TransitionManager.beginDelayedTransition(container, transform)
         }
 
+        findParentDialogContainer().animate()
+            .alpha(PARENT_DIALOG_CONTAINER_VISIBLE_ALPHA)
+            .setDuration(DURATION)
+            .setInterpolator(INTERPOLATOR)
+            .start()
+
+        findParentDialogContainer().setOnClickListener {
+            if (!isDismissing) {
+                dismiss()
+            }
+        }
+
         // Callback after popup creation for any additional setup
         onPopupCreated(popupScrollView, linearLayout)
 
@@ -285,6 +315,14 @@ abstract class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
             }
 
             override fun onTransitionStart(t: Transition) {
+                findParentDialogContainer()
+                    .animate()
+                    .alpha(PARENT_DIALOG_CONTAINER_RESET_ALPHA)
+                    .setDuration(DURATION.half())
+                    .setInterpolator(INTERPOLATOR)
+                    .start()
+
+                findParentDialogContainer().setOnClickListener(null)
             }
 
             override fun onTransitionCancel(t: Transition) {
