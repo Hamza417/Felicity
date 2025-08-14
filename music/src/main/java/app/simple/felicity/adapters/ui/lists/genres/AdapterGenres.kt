@@ -46,6 +46,14 @@ class AdapterGenres(private val list: List<Genre>) : androidx.recyclerview.widge
         }
     }
 
+    override fun getItemId(position: Int): Long {
+        return if (position == 0) {
+            RecyclerViewUtils.TYPE_HEADER.toLong()
+        } else {
+            list[position - 1].id // Adjust for header
+        }
+    }
+
     override fun getItemCount(): Int {
         return list.size.plus(1)
     }

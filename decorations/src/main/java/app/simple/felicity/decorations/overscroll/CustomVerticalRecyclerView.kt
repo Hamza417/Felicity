@@ -30,6 +30,10 @@ import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : ThemeRecyclerView(context, attrs),
                                                                                 DynamicAnimation.OnAnimationUpdateListener {
 
+    constructor(context: Context) : this(context, null)
+
+    constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : this(context, attrs)
+
     private var manuallyAnimated = false
     private var fastScroll = true
     private var isEdgeColorRequired = true
