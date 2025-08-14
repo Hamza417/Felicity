@@ -60,16 +60,21 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
                     statusBarPaddingRequired = getBoolean(R.styleable.RecyclerView_statusPaddingRequired, true)
                     navigationBarPaddingRequired = getBoolean(R.styleable.RecyclerView_navigationPaddingRequired, true)
 
-                    if (statusBarPaddingRequired) {
-                        WindowUtil.getStatusBarHeightWhenAvailable(this@CustomVerticalRecyclerView) { height ->
-                            setPadding(paddingLeft, height + paddingTop, paddingRight, paddingBottom)
+                    if (statusBarPaddingRequired && navigationBarPaddingRequired) {
+                        fitsSystemWindows = true
+                    } else {
+                        if (statusBarPaddingRequired) {
+                            WindowUtil.getStatusBarHeightWhenAvailable(this@CustomVerticalRecyclerView) { height ->
+                                setPadding(paddingLeft, height + paddingTop, paddingRight, paddingBottom)
+                            }
                         }
-                    }
 
-                    if (navigationBarPaddingRequired) {
-                        WindowUtil.getNavigationBarHeightWhenAvailable(this@CustomVerticalRecyclerView) { height ->
-                            setPadding(paddingLeft, paddingTop, paddingRight, height + paddingBottom)
+                        if (navigationBarPaddingRequired) {
+                            WindowUtil.getNavigationBarHeightWhenAvailable(this@CustomVerticalRecyclerView) { height ->
+                                setPadding(paddingLeft, paddingTop, paddingRight, height + paddingBottom)
+                            }
                         }
+
                     }
 
                     if (AccessibilityPreferences.isAnimationReduced()) {

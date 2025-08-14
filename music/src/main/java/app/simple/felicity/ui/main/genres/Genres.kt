@@ -35,14 +35,22 @@ class Genres : ScopedFragment() {
         genresViewModel!!.getGenresData().observe(viewLifecycleOwner) { genres ->
             Log.d(TAG, "onViewCreated: Genres: ${genres.size}")
             val adapter = AdapterGenres(genres)
+            val gridLayoutManager = GridLayoutManager(requireContext(), 2)
+            binding.recyclerView.layoutManager = gridLayoutManager
 
-            binding.recyclerView.layoutManager = GridLayoutManager(requireContext(), 2)
-            binding.recyclerView.addItemDecoration(
-                    GridSpacingItemDecoration
-                    ((binding.recyclerView.layoutManager as GridLayoutManager).spanCount,
-                     resources.getDimensionPixelOffset(R.dimen.padding_15),
-                     true,
-                     0))
+            gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                override fun getSpanSize(position: Int): Int {
+                    return if (position == 0) {
+                        // Header occupies full width
+                        gridLayoutManager.spanCount
+                    } else {
+                        // Regular items occupy one span
+                        1
+                    }
+                }
+            }
+
+            binding.recyclerView.addItemDecoration(GridSpacingItemDecoration(gridLayoutManager.spanCount, resources.getDimensionPixelOffset(R.dimen.padding_15), true, 1))
             binding.recyclerView.setHasFixedSize(true)
             binding.recyclerView.adapter = adapter
 
