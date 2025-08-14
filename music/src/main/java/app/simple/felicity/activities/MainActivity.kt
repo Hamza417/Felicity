@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.KeyEvent
 import app.simple.felicity.R
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
+import app.simple.felicity.dialogs.genres.DialogGenreMenu.Companion.showGenreMenu
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.ui.main.home.CarouselHome
@@ -25,6 +26,8 @@ class MainActivity : BaseActivity() {
             supportFragmentManager.beginTransaction()
                 .replace(R.id.app_container, fragment, CarouselHome.TAG)
                 .commit()
+
+            supportFragmentManager.showGenreMenu()
         }
     }
 

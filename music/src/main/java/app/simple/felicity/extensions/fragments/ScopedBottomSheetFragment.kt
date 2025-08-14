@@ -2,8 +2,10 @@ package app.simple.felicity.extensions.fragments
 
 import android.app.Application
 import android.content.SharedPreferences
-import android.content.pm.PackageInfo
-import android.os.*
+import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
@@ -20,14 +22,6 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
                                            SharedPreferences.OnSharedPreferenceChangeListener {
-
-    /**
-     * [ScopedBottomSheetFragment]'s own [PackageInfo] instance, needs
-     * to be initialized before use
-     *
-     * @throws UninitializedPropertyAccessException
-     */
-    lateinit var packageInfo: PackageInfo
 
     open val handler = Handler(Looper.getMainLooper())
 

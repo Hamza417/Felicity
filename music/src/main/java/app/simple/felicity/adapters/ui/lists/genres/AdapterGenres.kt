@@ -1,8 +1,8 @@
 package app.simple.felicity.adapters.ui.lists.genres
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
+import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterGenresBinding
 import app.simple.felicity.databinding.AdapterHeaderGenresBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -12,7 +12,7 @@ import app.simple.felicity.repository.models.Genre
 
 class AdapterGenres(private val list: List<Genre>) : androidx.recyclerview.widget.RecyclerView.Adapter<VerticalListViewHolder>() {
 
-    private var genreClickListener: GenreClickListener? = null
+    private var callbacks: GeneralAdapterCallbacks? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
@@ -58,7 +58,13 @@ class AdapterGenres(private val list: List<Genre>) : androidx.recyclerview.widge
         }
     }
 
-    inner class Header(private val binding: AdapterHeaderGenresBinding) : VerticalListViewHolder(binding.root)
+    inner class Header(private val binding: AdapterHeaderGenresBinding) : VerticalListViewHolder(binding.root) {
+        init {
+            binding.menu.setOnClickListener {
+                callbacks?.onMenuClicked(it)
+            }
+        }
+    }
 
     inner class Holder(private val binding: AdapterGenresBinding) : VerticalListViewHolder(binding.root) {
         fun bind(genre: Genre) {
@@ -66,20 +72,12 @@ class AdapterGenres(private val list: List<Genre>) : androidx.recyclerview.widge
             binding.cover.loadGenreCover(genre)
 
             binding.container.setOnClickListener {
-                genreClickListener?.onGenreClicked(genre, it)
+                callbacks?.onGenreClicked(genre, it)
             }
         }
     }
 
-    fun setGenreClickListener(listener: GenreClickListener) {
-        this.genreClickListener = listener
-    }
-
-    companion object {
-        interface GenreClickListener {
-            fun onGenreClicked(genre: Genre, view: View)
-        }
-
-        private const val TAG = "AdapterGenres"
+    fun setCallbackListener(listener: GeneralAdapterCallbacks) {
+        this.callbacks = listener
     }
 }

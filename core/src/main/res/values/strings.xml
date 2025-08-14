@@ -38,4 +38,13 @@
     <string name="artists_in_genre">Artists in %1$s</string>
     <string name="albums_from_artist">Albums from %1$s</string>
     <string name="with_other_artists">%1$s Collaborated With</string>
+    <string name="add_to_queue">Add to Queue</string>
+    <string name="add_to_playlist">Add to Playlist</string>
+    <string name="grid_size">Grid Size</string>
+    <string name="one">One</string>
+    <string name="two">Two</string>
+    <string name="three">Three</string>
+    <string name="four">Four</string>
+    <string name="five">Five</string>
+    <string name="six">Six</string>
 </resources>

@@ -9,8 +9,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.genres.AdapterGenres
+import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentGenresBinding
 import app.simple.felicity.decorations.itemdecorations.GridSpacingItemDecoration
+import app.simple.felicity.dialogs.genres.DialogGenreMenu.Companion.showGenreMenu
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.viewmodels.main.genres.GenresViewModel
@@ -54,7 +56,11 @@ class Genres : ScopedFragment() {
             binding.recyclerView.setHasFixedSize(true)
             binding.recyclerView.adapter = adapter
 
-            adapter.setGenreClickListener(object : AdapterGenres.Companion.GenreClickListener {
+            adapter.setCallbackListener(object : GeneralAdapterCallbacks {
+                override fun onMenuClicked(view: View) {
+                    childFragmentManager.showGenreMenu()
+                }
+
                 override fun onGenreClicked(genre: Genre, view: View) {
                     Log.d(TAG, "onGenreClicked: Genre: ${genre.name}")
                     openFragment(GenrePage.newInstance(genre), GenrePage.TAG)

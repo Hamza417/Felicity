@@ -34,7 +34,7 @@ object ViewUtils {
     const val hoverAnimationAlpha = 0.8F
 
     const val blurRadius = 16F
-    const val dimAmount = 0.75F
+    const val dimAmount = 0.35F
 
     /**
      * Dim the background when PopupWindow shows

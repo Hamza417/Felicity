@@ -8,4 +8,12 @@ object Number {
     fun Int.half(): Int {
         return this / 2
     }
+
+    fun Int.fourth(): Int {
+        return this / 4
+    }
+
+    fun Int.twice(): Int {
+        return this * 2
+    }
 }

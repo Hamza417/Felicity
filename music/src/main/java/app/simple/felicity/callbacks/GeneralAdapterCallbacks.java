@@ -6,6 +6,7 @@ import java.util.List;
 
 import androidx.annotation.NonNull;
 import app.simple.felicity.repository.models.Artist;
+import app.simple.felicity.repository.models.Genre;
 import app.simple.felicity.repository.models.Song;
 
 public interface GeneralAdapterCallbacks {
@@ -30,6 +31,14 @@ public interface GeneralAdapterCallbacks {
     }
     
     default void onMenuClicked(@NonNull View view) {
+    
+    }
+    
+    default void onSearchClicked(@NonNull View view) {
+    
+    }
+    
+    default void onGenreClicked(@NonNull Genre genre, @NonNull View view) {
     
     }
 }
