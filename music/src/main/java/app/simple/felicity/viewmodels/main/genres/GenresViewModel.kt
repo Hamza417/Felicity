@@ -32,6 +32,13 @@ class GenresViewModel(application: Application) : WrappedViewModel(application) 
         }
     }
 
+    fun refreshGenresData() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val updatedGenres = genreRepository.fetchGenres()
+            genres.postValue(updatedGenres)
+        }
+    }
+
     companion object {
         private const val TAG = "GenresViewModel"
     }

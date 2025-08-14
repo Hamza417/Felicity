@@ -24,6 +24,8 @@ class DialogGenreMenu : ScopedBottomSheetFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        setGridSizeValue()
+
         binding.gridSize.setOnClickListener { it ->
             PopupGenreGridSizeMenu(
                     container = binding.container,
