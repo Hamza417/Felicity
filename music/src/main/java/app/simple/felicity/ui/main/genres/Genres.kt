@@ -16,7 +16,6 @@ import app.simple.felicity.adapters.ui.lists.genres.AdapterGenres
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentGenresBinding
 import app.simple.felicity.decorations.itemdecorations.GridSpacingItemDecoration
-import app.simple.felicity.decorations.pinch.ZoomItemAnimator
 import app.simple.felicity.dialogs.genres.DialogGenreMenu.Companion.showGenreMenu
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.preferences.GenresPreferences
@@ -49,7 +48,6 @@ class Genres : ScopedFragment() {
 
             gridLayoutManager = GridLayoutManager(requireContext(), GenresPreferences.getGridSize())
             binding.recyclerView.layoutManager = gridLayoutManager
-            ZoomItemAnimator().setup(binding.recyclerView)
 
             gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
                 override fun getSpanSize(position: Int): Int {

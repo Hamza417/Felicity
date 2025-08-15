@@ -21,7 +21,6 @@ import app.simple.felicity.decorations.utils.RecyclerViewUtils.overScrollTransla
 import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.shared.utils.ConditionUtils.invert
-import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 
 /**
  * Custom recycler view with nice layout animation and
@@ -231,24 +230,12 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
             e.printStackTrace()
         }
 
-        if (this.adapter.isNotNull()) {
-            layoutAnimation = null
-        }
-
         super.setAdapter(adapter)
 
         if (!manuallyAnimated && isInEditMode.invert()) {
             if (!AccessibilityPreferences.isAnimationReduced()) {
                 scheduleLayoutAnimation()
             }
-        }
-
-        /**
-         * Setup fast scroller only when adapter is large enough
-         * to require a fast scroller
-         */
-        if (adapter!!.itemCount > 25 && fastScroll && !isFastScrollerAdded) {
-            setupFastScroller()
         }
     }
 
@@ -274,15 +261,6 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
 
     override fun getBottomFadingEdgeStrength(): Float {
         return super.getBottomFadingEdgeStrength()
-    }
-
-    /**
-     * Setup fast scroller if needed
-     */
-    private fun setupFastScroller() {
-        fastScrollerBuilder = FastScrollerBuilder(this)
-        fastScrollerBuilder?.build()
-        isFastScrollerAdded = true
     }
 
     private inline fun <reified T : VerticalListViewHolder> RecyclerView.forEachVisibleHolder(action: (T) -> Unit) {
