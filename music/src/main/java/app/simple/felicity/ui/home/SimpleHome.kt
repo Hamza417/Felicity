@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.simple.felicity.compose.commons.AnimatedItem
 import app.simple.felicity.compose.components.Header
 import app.simple.felicity.compose.nav.LocalAppNavController
 import app.simple.felicity.compose.nav.Routes
@@ -70,31 +71,33 @@ fun SimpleHome() {
             )
         }
         items(options.size) { index ->
-            Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            when (options[index]) {
-                                R.string.genres -> {
-                                    navController.navigate(Routes.GENRE)
-                                }
-                            }
-                        },
-                    verticalAlignment = Alignment.CenterVertically
-            ) {
-                ThemedIcon(
-                        imageVector = icons[index],
-                        contentDescription = stringResource(id = options[index]),
-                        modifier = Modifier.padding(16.dp),
-                )
-                TypeFaceText(
-                        resId = options[index],
+            AnimatedItem(index = index) {
+                Row(
                         modifier = Modifier
-                            .padding(24.dp),
-                        typeface = TypefaceStyle.Bold,
-                        color = TextColor.Primary,
-                        style = MaterialTheme.typography.headlineSmall
-                )
+                            .fillMaxWidth()
+                            .clickable {
+                                when (options[index]) {
+                                    R.string.genres -> {
+                                        navController.navigate(Routes.GENRE)
+                                    }
+                                }
+                            },
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ThemedIcon(
+                            imageVector = icons[index],
+                            contentDescription = stringResource(id = options[index]),
+                            modifier = Modifier.padding(16.dp),
+                    )
+                    TypeFaceText(
+                            resId = options[index],
+                            modifier = Modifier
+                                .padding(24.dp),
+                            typeface = TypefaceStyle.Bold,
+                            color = TextColor.Primary,
+                            style = MaterialTheme.typography.headlineSmall
+                    )
+                }
             }
         }
     }

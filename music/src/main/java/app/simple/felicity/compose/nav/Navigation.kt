@@ -107,7 +107,7 @@ fun FelicityNavigation(context: Context) {
 
 fun scaleIntoContainer(
         direction: ScaleTransitionDirection = ScaleTransitionDirection.INWARDS,
-        initialScale: Float = if (direction == ScaleTransitionDirection.OUTWARDS) 0.9f else 1.1f
+        initialScale: Float = if (direction == ScaleTransitionDirection.OUTWARDS) 0.8f else 1.5f
 ): EnterTransition {
     return scaleIn(
             animationSpec = tween(ANIMATION_DURATION, delayMillis = DELAY),
@@ -117,7 +117,7 @@ fun scaleIntoContainer(
 
 fun scaleOutOfContainer(
         direction: ScaleTransitionDirection = ScaleTransitionDirection.OUTWARDS,
-        targetScale: Float = if (direction == ScaleTransitionDirection.INWARDS) 0.9f else 1.1f
+        targetScale: Float = if (direction == ScaleTransitionDirection.INWARDS) 0.8f else 1.5f
 ): ExitTransition {
     return scaleOut(
             animationSpec = tween(
