@@ -5,6 +5,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import app.simple.felicity.core.R
 
+enum class TypefaceStyle {
+    Black, Bold, Medium, Regular, Light, ExtraLight
+}
+
 data class FelicityTypography(
         val name: String, // e.g., "Roboto", "Montserrat"
         val black: FontFamily,
@@ -39,3 +43,4 @@ val fontCollection = listOf(
         NotoSansDefault,
         NotoSansCondensed
 )
+

@@ -66,3 +66,11 @@ val lightThemes = listOf(
 val darkThemes = listOf(
         DarkThemeColors
 )
+
+enum class TextColor {
+    Header, Primary, Secondary, Tertiary, Quaternary
+}
+
+enum class TextSize {
+    Small, Medium, Large, ExtraLarge
+}

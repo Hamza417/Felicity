@@ -14,6 +14,7 @@ open class BaseActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setStrictModePolicy()
+        actionBar?.hide()
     }
 
     private fun setStrictModePolicy() {

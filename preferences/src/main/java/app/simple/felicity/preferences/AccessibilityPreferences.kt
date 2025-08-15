@@ -1,5 +1,6 @@
 package app.simple.felicity.preferences
 
+import androidx.core.content.edit
 import app.simple.felicity.shared.constants.Colors
 
 object AccessibilityPreferences {
@@ -8,15 +9,16 @@ object AccessibilityPreferences {
     const val IS_HIGHLIGHT_STROKE = "is_highlight_stroke_enabled"
     const val BOTTOM_MENU_CONTEXT = "bottom_menu_context"
     const val COLORFUL_ICONS_PALETTE = "colorful_icons_palette"
+    const val PREDICTIVE_BACK = "predictive_back"
 
     private const val IS_DIVIDER_ENABLED = "is_divider_enabled"
-    private const val REDUCE_ANIMATIONS = "reduce_animations"
+    const val REDUCE_ANIMATIONS = "reduce_animations"
     private const val IS_COLORFUL_ICONS = "is_colorful_icons"
 
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setHighlightMode(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(IS_HIGHLIGHT_MODE, boolean).apply()
+        SharedPreferences.getSharedPreferences().edit { putBoolean(IS_HIGHLIGHT_MODE, boolean) }
     }
 
     fun isHighlightMode(): Boolean {
@@ -26,7 +28,7 @@ object AccessibilityPreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setHighlightStroke(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(IS_HIGHLIGHT_STROKE, boolean).apply()
+        SharedPreferences.getSharedPreferences().edit { putBoolean(IS_HIGHLIGHT_STROKE, boolean) }
     }
 
     fun isHighlightStroke(): Boolean {
@@ -36,7 +38,7 @@ object AccessibilityPreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setDivider(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(IS_DIVIDER_ENABLED, boolean).apply()
+        SharedPreferences.getSharedPreferences().edit { putBoolean(IS_DIVIDER_ENABLED, boolean) }
     }
 
     fun isDividerEnabled(): Boolean {
@@ -46,7 +48,7 @@ object AccessibilityPreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setReduceAnimations(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(REDUCE_ANIMATIONS, boolean).apply()
+        SharedPreferences.getSharedPreferences().edit { putBoolean(REDUCE_ANIMATIONS, boolean) }
     }
 
     fun isAnimationReduced(): Boolean {
@@ -56,7 +58,7 @@ object AccessibilityPreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setAppElementsContext(value: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(BOTTOM_MENU_CONTEXT, value).apply()
+        SharedPreferences.getSharedPreferences().edit { putBoolean(BOTTOM_MENU_CONTEXT, value) }
     }
 
     fun isAppElementsContext(): Boolean {
@@ -66,7 +68,7 @@ object AccessibilityPreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setColorfulIcons(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(IS_COLORFUL_ICONS, boolean).apply()
+        SharedPreferences.getSharedPreferences().edit { putBoolean(IS_COLORFUL_ICONS, boolean) }
     }
 
     fun isColorfulIcons(): Boolean {
@@ -76,10 +78,20 @@ object AccessibilityPreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setColorfulIconsPalette(palette: Int) {
-        SharedPreferences.getSharedPreferences().edit().putInt(COLORFUL_ICONS_PALETTE, palette).apply()
+        SharedPreferences.getSharedPreferences().edit { putInt(COLORFUL_ICONS_PALETTE, palette) }
     }
 
     fun getColorfulIconsPalette(): Int {
         return SharedPreferences.getSharedPreferences().getInt(COLORFUL_ICONS_PALETTE, Colors.PASTEL)
+    }
+
+    // ---------------------------------------------------------------------------------------------------------- //
+
+    fun isPredictiveBack(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(PREDICTIVE_BACK, true)
+    }
+
+    fun setPredictiveBack(value: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(PREDICTIVE_BACK, value) }
     }
 }
