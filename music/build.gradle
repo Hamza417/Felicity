@@ -12,7 +12,7 @@ android {
     namespace 'app.simple.felicity'
 
     buildFeatures {
-        viewBinding true
+        viewBinding false
         buildConfig true
         compose true
     }
@@ -77,6 +77,7 @@ dependencies {
     implementation 'androidx.compose.material:material-icons-extended:1.7.8'
     implementation 'androidx.compose.ui:ui:1.9.0'
     implementation 'androidx.navigation:navigation-compose:2.9.3'
+    implementation 'androidx.hilt:hilt-navigation-compose:1.2.0'
     implementation 'androidx.activity:activity-compose:1.10.1'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2'
     implementation 'androidx.compose.runtime:runtime-livedata:1.9.0'
@@ -105,10 +106,14 @@ dependencies {
     // Glide
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     implementation 'com.github.bumptech.glide:okhttp3-integration:4.16.0'
+    implementation "com.github.bumptech.glide:compose:1.0.0-beta01"
     ksp 'com.github.bumptech.glide:ksp:4.16.0'
 
     // Room
     implementation "androidx.room:room-ktx:2.7.2"
     ksp "androidx.room:room-compiler:2.7.2"
     androidTestImplementation "androidx.room:room-testing:2.7.2"
+
+    // Third Party
+    implementation 'io.github.dokar3:pinchzoomgrid:0.0.5'
 }

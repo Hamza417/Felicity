@@ -13,20 +13,28 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.SharedPreferences
+import app.simple.felicity.ui.genre.Genre
 import app.simple.felicity.ui.home.SimpleHome
 
 private const val ANIMATION_DURATION = 400
 private const val DELAY = 100
 
 private var predictiveBackCallback: OnBackInvokedCallback? = null
+
+val LocalAppNavController = compositionLocalOf<NavHostController> {
+    error("No NavController provided")
+}
 
 @Composable
 fun FelicityNavigation(context: Context) {
@@ -77,16 +85,22 @@ fun FelicityNavigation(context: Context) {
         }
     }
 
-    NavHost(
-            navController = navController,
-            startDestination = startDestination,
-            enterTransition = { if (disableAnimations.value) EnterTransition.None else scaleIntoContainer() },
-            exitTransition = { if (disableAnimations.value) ExitTransition.None else scaleOutOfContainer(direction = ScaleTransitionDirection.INWARDS) },
-            popEnterTransition = { if (disableAnimations.value) EnterTransition.None else scaleIntoContainer(direction = ScaleTransitionDirection.OUTWARDS) },
-            popExitTransition = { if (disableAnimations.value) ExitTransition.None else scaleOutOfContainer() },
-    ) {
-        composable(route = Routes.HOME) {
-            SimpleHome()
+    CompositionLocalProvider(LocalAppNavController provides navController) {
+        NavHost(
+                navController = navController,
+                startDestination = startDestination,
+                enterTransition = { if (disableAnimations.value) EnterTransition.None else scaleIntoContainer() },
+                exitTransition = { if (disableAnimations.value) ExitTransition.None else scaleOutOfContainer(direction = ScaleTransitionDirection.INWARDS) },
+                popEnterTransition = { if (disableAnimations.value) EnterTransition.None else scaleIntoContainer(direction = ScaleTransitionDirection.OUTWARDS) },
+                popExitTransition = { if (disableAnimations.value) ExitTransition.None else scaleOutOfContainer() },
+        ) {
+            composable(route = Routes.HOME) {
+                SimpleHome()
+            }
+
+            composable(route = Routes.GENRE) {
+                Genre()
+            }
         }
     }
 }

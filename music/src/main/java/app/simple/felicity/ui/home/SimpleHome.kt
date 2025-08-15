@@ -1,6 +1,5 @@
 package app.simple.felicity.ui.home
 
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.simple.felicity.compose.components.Header
+import app.simple.felicity.compose.nav.LocalAppNavController
+import app.simple.felicity.compose.nav.Routes
 import app.simple.felicity.compose.primitives.IconColor
 import app.simple.felicity.compose.primitives.ThemedIcon
 import app.simple.felicity.compose.primitives.TypeFaceText
@@ -31,6 +32,7 @@ import app.simple.felicity.core.R
 
 @Composable
 fun SimpleHome() {
+    val navController = LocalAppNavController.current
 
     val options = listOf(
             R.string.songs,
@@ -70,7 +72,14 @@ fun SimpleHome() {
         items(options.size) { index ->
             Row(
                     modifier = Modifier
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .clickable {
+                            when (options[index]) {
+                                R.string.genres -> {
+                                    navController.navigate(Routes.GENRE)
+                                }
+                            }
+                        },
                     verticalAlignment = Alignment.CenterVertically
             ) {
                 ThemedIcon(
@@ -81,10 +90,7 @@ fun SimpleHome() {
                 TypeFaceText(
                         resId = options[index],
                         modifier = Modifier
-                            .padding(24.dp)
-                            .clickable {
-                                Log.d("SimpleHome", "Clicked on: ${options[index]}")
-                            },
+                            .padding(24.dp),
                         typeface = TypefaceStyle.Bold,
                         color = TextColor.Primary,
                         style = MaterialTheme.typography.headlineSmall
