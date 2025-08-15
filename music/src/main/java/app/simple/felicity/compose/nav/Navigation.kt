@@ -17,9 +17,11 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.SharedPreferences
+import app.simple.felicity.ui.home.SimpleHome
 
 private const val ANIMATION_DURATION = 400
 private const val DELAY = 100
@@ -83,7 +85,9 @@ fun FelicityNavigation(context: Context) {
             popEnterTransition = { if (disableAnimations.value) EnterTransition.None else scaleIntoContainer(direction = ScaleTransitionDirection.OUTWARDS) },
             popExitTransition = { if (disableAnimations.value) ExitTransition.None else scaleOutOfContainer() },
     ) {
-
+        composable(route = Routes.HOME) {
+            SimpleHome()
+        }
     }
 }
 

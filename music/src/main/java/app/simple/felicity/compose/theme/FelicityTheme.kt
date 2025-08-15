@@ -2,6 +2,8 @@ package app.simple.felicity.compose.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
@@ -10,6 +12,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
@@ -19,6 +22,10 @@ import androidx.core.view.WindowInsetsCompat
 
 val LocalFelicityColors = staticCompositionLocalOf<FelicityColors> {
     error("No AppColors provided")
+}
+
+val LocalFelicityAccentColors = staticCompositionLocalOf<FelicityAccent> {
+    error("No AppAccentColors provided!")
 }
 
 val LocalFelicityTypography = staticCompositionLocalOf<FelicityTypography> {
@@ -32,7 +39,8 @@ val LocalBarsSize = staticCompositionLocalOf<BarSize> {
 @Composable
 fun FelicityTheme(
         darkTheme: Boolean = isSystemInDarkTheme(),
-        colors: FelicityColors = LightThemeColors,
+        colors: FelicityColors = if (darkTheme) DarkThemeColors else LightThemeColors,
+        accent: FelicityAccent = DefaultAccentColors,
         typography: FelicityTypography = NotoSansDefault,
         content: @Composable () -> Unit
 ) {
@@ -52,21 +60,26 @@ fun FelicityTheme(
     val barSize = BarSize(statusBarHeightDp, navigationBarHeightDp)
 
     val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            WindowCompat.setDecorFitsSystemWindows(window, false)
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme.not()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = darkTheme.not()
-        }
+
+    SideEffect {
+        val window = (view.context as Activity).window
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme.not()
+        WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = darkTheme.not()
     }
 
     CompositionLocalProvider(
             LocalFelicityColors provides colors,
             LocalFelicityTypography provides typography,
-            LocalBarsSize provides barSize
+            LocalBarsSize provides barSize,
+            LocalFelicityAccentColors provides accent
     ) {
-        content()
+        Surface(
+                color = colors.backgroundColor,
+                modifier = Modifier.fillMaxSize()
+        ) {
+            content()
+        }
     }
 }
 
