@@ -28,7 +28,7 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
             val elements = listOf(
                     Element(R.string.songs, R.drawable.ic_music),
                     Element(R.string.albums, R.drawable.ic_album),
-                    Element(R.string.artists, R.drawable.ic_artist),
+                    // Element(R.string.artists, R.drawable.ic_artist),
                     Element(R.string.genres, R.drawable.ic_piano),
                     Element(R.string.playlists, R.drawable.ic_list),
             )

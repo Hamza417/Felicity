@@ -2,11 +2,9 @@ package app.simple.felicity.activities
 
 import android.os.Bundle
 import android.view.KeyEvent
-import app.simple.felicity.R
-import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
+import androidx.activity.compose.setContent
+import app.simple.felicity.compose.theme.FelicityTheme
 import app.simple.felicity.extensions.activities.BaseActivity
-import app.simple.felicity.shared.utils.ConditionUtils.isNull
-import app.simple.felicity.ui.main.home.CarouselHome
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -14,29 +12,26 @@ class MainActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
         // Keep screen on
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        if (savedInstanceState.isNull()) {
-            val fragment = CarouselHome.newInstance()
-            fragment.setTransitions()
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.app_container, fragment, CarouselHome.TAG)
-                .commit()
+        setContent {
+            FelicityTheme {
+
+            }
         }
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> {
-                showVolumeKnob()
+                // showVolumeKnob()
                 true
             }
 
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                showVolumeKnob()
+                // showVolumeKnob()
                 true
             }
 

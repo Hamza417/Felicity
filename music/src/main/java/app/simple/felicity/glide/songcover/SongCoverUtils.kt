@@ -1,7 +1,6 @@
 package app.simple.felicity.glide.songcover
 
 import android.widget.ImageView
-import app.simple.felicity.R
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.transformation.RoundedCorners
@@ -39,7 +38,6 @@ object SongCoverUtils {
             .dontTransform() // This way we can apply our own transformations and skip the module specific ones
             .transform(*transformations.toTypedArray())
             .load(song)
-            .error(R.drawable.ic_felicity)
 
         if (skipCache) {
             glideRequest = glideRequest

@@ -2,7 +2,6 @@ package app.simple.felicity.glide.filedescriptorcover
 
 import android.net.Uri
 import android.widget.ImageView
-import app.simple.felicity.R
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.transformation.RoundedCorners
@@ -49,7 +48,6 @@ object DescriptorCoverUtils {
             .dontTransform() // This way we can apply our own transformations and skip the module specific ones
             .transform(*transformations.toTypedArray())
             .load(DescriptorCoverModel(this.context, uri ?: Uri.EMPTY))
-            .error(R.drawable.ic_felicity)
 
         if (skipCache) {
             glideRequest = glideRequest

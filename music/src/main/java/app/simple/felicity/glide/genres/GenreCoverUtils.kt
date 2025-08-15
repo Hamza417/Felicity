@@ -1,7 +1,6 @@
 package app.simple.felicity.glide.genres
 
 import android.widget.ImageView
-import app.simple.felicity.R
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.transformation.RoundedCorners
@@ -41,7 +40,6 @@ object GenreCoverUtils {
             .dontTransform()
             .transform(*transformations.toTypedArray())
             .load(genre)
-            .error(R.drawable.ic_felicity)
             .transition(BitmapTransitionOptions.withCrossFade())
 
         if (skipCache) {
