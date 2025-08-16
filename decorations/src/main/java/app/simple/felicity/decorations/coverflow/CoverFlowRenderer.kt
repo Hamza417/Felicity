@@ -45,9 +45,12 @@ class CoverFlowRenderer(
     private val maxRotation = 55f
     private val sideScale = 0.75f
     private val zSpread = 0.35f
-
-    // Added: toggle to disable depth parallax if needed
     private var depthParallaxEnabled = true
+
+    // Reflection parameters
+    private val reflectionGap = 0.04f          // vertical gap below main cover
+    private val reflectionScale = 0.85f        // relative height of reflection
+    private val reflectionStrength = 0.55f     // max brightness/alpha of reflection
 
     // New: base scale to enlarge items (center item ~1.0 * baseScale)
     private val baseScale = 1.4f
@@ -67,6 +70,8 @@ class CoverFlowRenderer(
     private var uMVP = 0
     private var uAlpha = 0
     private var uTex = 0
+    private var uReflection = 0
+    private var uReflectStrength = 0
 
     // Geometry
     private lateinit var quadVB: FloatBuffer
@@ -135,6 +140,8 @@ class CoverFlowRenderer(
     override fun onSurfaceCreated(unused: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
+        GLES20.glEnable(GLES20.GL_BLEND)
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
         setupBuffers()
         buildProgram()
         Matrix.setLookAtM(view, 0, 0f, 0f, 2.1f, 0f, 0f, 0f, 0f, 1f, 0f)
@@ -222,10 +229,9 @@ class CoverFlowRenderer(
 
     // ----- Drawing -----
     private fun drawItem(tex: Int, offsetFromCenter: Float) {
-        // Continuous transforms (no near-center snap) to avoid wiggle
         val x = offsetFromCenter * spacing
         val absOff = abs(offsetFromCenter)
-        val rotEase = smoothstep(0f, 0.18f, absOff) // gentle ramp in first ~0.18 item offset
+        val rotEase = smoothstep(0f, 0.18f, absOff)
         val rotY = (-offsetFromCenter * maxRotation * rotEase).coerceIn(-maxRotation, maxRotation)
         val depthFactor = if (depthParallaxEnabled) -absOff * zSpread * rotEase else 0f
         val z = depthFactor
@@ -233,27 +239,43 @@ class CoverFlowRenderer(
         val scale = baseScale * sideFactor
         val brightness = 1f
 
+        // Main cover
         Matrix.setIdentityM(model, 0)
         Matrix.translateM(model, 0, x, 0f, z)
         if (rotEase > 0f) Matrix.rotateM(model, 0, rotY, 0f, 1f, 0f)
         Matrix.scaleM(model, 0, scale, scale, 1f)
-
         Matrix.multiplyMM(mvp, 0, view, 0, model, 0)
         Matrix.multiplyMM(mvp, 0, proj, 0, mvp, 0)
-
         GLES20.glUseProgram(program)
         GLES20.glUniformMatrix4fv(uMVP, 1, false, mvp, 0)
         GLES20.glUniform1f(uAlpha, brightness)
-
+        GLES20.glUniform1f(uReflection, 0f)
+        GLES20.glUniform1f(uReflectStrength, reflectionStrength)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex)
         GLES20.glUniform1i(uTex, 0)
-
         GLES20.glEnableVertexAttribArray(aPos)
         GLES20.glEnableVertexAttribArray(aUV)
         GLES20.glVertexAttribPointer(aPos, 3, GLES20.GL_FLOAT, false, 0, quadVB)
         GLES20.glVertexAttribPointer(aUV, 2, GLES20.GL_FLOAT, false, 0, quadTB)
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, quadIB)
+
+        // Reflection pass (draw after main)
+        Matrix.setIdentityM(model, 0)
+        // move down by cover height * scale + gap * scale
+        val down = scale + reflectionGap
+        Matrix.translateM(model, 0, x, -down, z)
+        if (rotEase > 0f) Matrix.rotateM(model, 0, rotY, 0f, 1f, 0f)
+        // mirror by negative Y scale and shrink
+        Matrix.scaleM(model, 0, scale, -scale * reflectionScale, 1f)
+        Matrix.multiplyMM(mvp, 0, view, 0, model, 0)
+        Matrix.multiplyMM(mvp, 0, proj, 0, mvp, 0)
+        GLES20.glUniformMatrix4fv(uMVP, 1, false, mvp, 0)
+        GLES20.glUniform1f(uAlpha, brightness)
+        GLES20.glUniform1f(uReflection, 1f)
+        GLES20.glUniform1f(uReflectStrength, reflectionStrength)
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, quadIB)
+
         GLES20.glDisableVertexAttribArray(aPos)
         GLES20.glDisableVertexAttribArray(aUV)
     }
@@ -298,16 +320,25 @@ class CoverFlowRenderer(
             precision mediump float; 
             varying vec2 vUV; 
             uniform sampler2D uTex; 
-            uniform float uAlpha; // used as brightness scale now
+            uniform float uAlpha; 
+            uniform float uReflection; // 0 = main, 1 = reflection
+            uniform float uReflectStrength; 
             void main(){
                 vec4 c = texture2D(uTex, vUV);
-                // Apply vignette to RGB only
+                // optional vignette (retain subtle shading)
                 vec2 uv = vUV - 0.5; 
                 float vignette = 1.0 - dot(uv, uv)*0.65; 
                 c.rgb *= clamp(vignette, 0.5, 1.0);
-                // Side fade: modulate brightness, keep alpha = 1 for opaque output
-                c.rgb *= uAlpha;
-                gl_FragColor = vec4(c.rgb, 1.0);
+                if (uReflection > 0.5) {
+                    // reflection fade: seam (top after mirror) has vUV.y ~1
+                    float fade = vUV.y; // 1 at seam, 0 at bottom
+                    c.rgb *= fade * uReflectStrength * uAlpha;
+                    c.a = fade * uReflectStrength;
+                } else {
+                    c.rgb *= uAlpha;
+                    c.a = 1.0;
+                }
+                gl_FragColor = c;
             }
         """
         val vsId = compileShader(GLES20.GL_VERTEX_SHADER, vs)
@@ -318,6 +349,8 @@ class CoverFlowRenderer(
         uMVP = GLES20.glGetUniformLocation(program, "uMVP")
         uAlpha = GLES20.glGetUniformLocation(program, "uAlpha")
         uTex = GLES20.glGetUniformLocation(program, "uTex")
+        uReflection = GLES20.glGetUniformLocation(program, "uReflection")
+        uReflectStrength = GLES20.glGetUniformLocation(program, "uReflectStrength")
     }
 
     private fun compileShader(type: Int, src: String): Int {
@@ -451,5 +484,9 @@ class CoverFlowRenderer(
     private inline fun queueGL(crossinline block: () -> Unit) {
         glView.queueEvent { block() }
         glView.requestRender()
+    }
+
+    fun setDepthParallaxEnabled(enabled: Boolean) {
+        depthParallaxEnabled = enabled
     }
 }
