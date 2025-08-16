@@ -77,8 +77,11 @@ fun SimpleHome() {
                             .fillMaxWidth()
                             .clickable {
                                 when (options[index]) {
+                                    R.string.songs -> {
+                                        navController.navigate(Routes.SONGS)
+                                    }
                                     R.string.genres -> {
-                                        navController.navigate(Routes.GENRE)
+                                        navController.navigate(Routes.GENRES)
                                     }
                                 }
                             },

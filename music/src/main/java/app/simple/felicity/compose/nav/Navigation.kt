@@ -26,6 +26,7 @@ import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.SharedPreferences
 import app.simple.felicity.ui.genre.Genre
 import app.simple.felicity.ui.home.SimpleHome
+import app.simple.felicity.ui.songs.Songs
 
 private const val ANIMATION_DURATION = 400
 private const val DELAY = 100
@@ -98,8 +99,12 @@ fun FelicityNavigation(context: Context) {
                 SimpleHome()
             }
 
-            composable(route = Routes.GENRE) {
+            composable(route = Routes.GENRES) {
                 Genre()
+            }
+
+            composable(route = Routes.SONGS) {
+                Songs()
             }
         }
     }
