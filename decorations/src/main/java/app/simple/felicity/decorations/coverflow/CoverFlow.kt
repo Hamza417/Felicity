@@ -8,6 +8,7 @@ import android.view.Choreographer
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.widget.OverScroller
+import app.simple.felicity.decorations.coverflow.CoverFlowRenderer.ScrollListener
 
 class CoverFlow @JvmOverloads constructor(
         context: Context,
@@ -74,15 +75,41 @@ class CoverFlow @JvmOverloads constructor(
         requestRender()
     }
 
-    fun setPrefetchRadius(radius: Int) {
-        renderer.setPrefetchRadius(radius)
+    fun reloadTextures() {
+        queueEvent { renderer.forceReloadAll() }
+        requestRender()
     }
 
-    fun setKeepRadius(radius: Int) {
-        renderer.setKeepRadius(radius)
+    // Programmatic scroll APIs
+    fun setScrollOffset(offset: Float, smooth: Boolean = false) {
+        queueEvent { renderer.setScrollOffset(offset, smooth) }
+        requestRender()
     }
 
+    fun scrollToIndex(index: Int, smooth: Boolean = true) {
+        setScrollOffset(index.toFloat(), smooth)
+    }
+
+    fun snapToNearest() {
+        queueEvent { renderer.snapToNearest() }
+        requestRender()
+    }
+
+    fun getScrollOffset(): Float = renderer.scrollOffset
     fun getCenteredIndex(): Int = renderer.centeredIndex()
+
+    // Listener pass-through
+    fun addScrollListener(listener: ScrollListener) {
+        renderer.addScrollListener(listener)
+    }
+
+    fun removeScrollListener(listener: ScrollListener) {
+        renderer.removeScrollListener(listener)
+    }
+
+    fun clearScrollListeners() {
+        renderer.clearScrollListeners()
+    }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()

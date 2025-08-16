@@ -8,6 +8,8 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.GLUtils
 import android.opengl.Matrix
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.util.Size
 import java.nio.ByteBuffer
@@ -15,6 +17,7 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.nio.ShortBuffer
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -96,12 +99,14 @@ class CoverFlowRenderer(
 
     // Texture cache by index
     private val textures = ConcurrentHashMap<Int, Int>() // index -> GL texId
+    private var glGeneration = 0
 
     // ----- Public API -----
     fun setUris(list: List<Uri>) {
         uris.clear()
         uris.addAll(list)
         queueGL { deleteAllTextures() }
+        notifyScrollChanged(force = true)
         requestPrefetch(scrollOffset)
     }
 
@@ -115,7 +120,10 @@ class CoverFlowRenderer(
 
     // Request a snap (does not jump immediately; animated in onDrawFrame)
     fun snapToNearest() {
-        snapTarget = scrollOffset.roundToInt().coerceIn(0, max(0, uris.size - 1)).toFloat()
+        if (uris.isEmpty()) return
+        val tgt = scrollOffset.roundToInt().coerceIn(0, max(0, uris.size - 1)).toFloat()
+        snapTarget = tgt
+        snappingNotified = false
     }
 
     fun scrollBy(dxItems: Float) {
@@ -137,7 +145,7 @@ class CoverFlowRenderer(
     }
 
     // ----- GLSurfaceView.Renderer -----
-    override fun onSurfaceCreated(unused: GL10?, config: EGLConfig?) {
+    override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         GLES20.glEnable(GLES20.GL_BLEND)
@@ -145,10 +153,18 @@ class CoverFlowRenderer(
         setupBuffers()
         buildProgram()
         Matrix.setLookAtM(view, 0, 0f, 0f, 2.1f, 0f, 0f, 0f, 0f, 1f, 0f)
+        // GL context likely recreated: purge stale texture IDs so they reload
+        glGeneration++
+        textures.clear()
+        inFlight.clear()
+        placeholderTex = 0
         ensurePlaceholderTexture()
+        // Re-request current window so covers appear immediately
+        requestPrefetch(scrollOffset)
+        notifyScrollChanged(force = true)
     }
 
-    override fun onSurfaceChanged(unused: GL10?, width: Int, height: Int) {
+    override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         GLES20.glViewport(0, 0, width, height)
         val aspect = width.toFloat() / height
         Matrix.frustumM(proj, 0, -aspect, aspect, -1f, 1f, 2f, 10f)
@@ -157,75 +173,11 @@ class CoverFlowRenderer(
     private var lastFrameNanos = 0L
     private val snapLambda = 10f // higher -> faster snap (per second rate)
 
-    override fun onDrawFrame(unused: GL10?) {
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
-        if (uris.isEmpty()) return
-
-        // Time step for frame-rate independent easing
-        val now = System.nanoTime()
-        if (lastFrameNanos == 0L) lastFrameNanos = now
-        val dt = ((now - lastFrameNanos).coerceAtMost(100_000_000L)) / 1_000_000_000f // clamp dt to 0.1s
-        lastFrameNanos = now
-
-        // Step snap animation if active using exponential approach to target
-        snapTarget?.let { target ->
-            val delta = target - scrollOffset
-            val ad = abs(delta)
-            if (ad < 0.00008f) {
-                scrollOffset = target
-                snapTarget = null
-            } else {
-                // frame-rate independent exponential smoothing: x += delta * (1 - e^{-lambda*dt})
-                val factor = 1f - exp(-snapLambda * dt)
-                scrollOffset += delta * factor
-            }
-        }
-
-        val centerF = scrollOffset
-
-        // Prefetch scheduling (prioritize closest missing within prefetchRadius)
-        schedulePrefetch(centerF)
-
-        val lastIndex = uris.lastIndex
-        val visStart = max(0, floor(centerF - visibleRadius).toInt())
-        val visEnd = min(lastIndex, ceil(centerF + visibleRadius).toInt())
-
-        for (i in visStart..visEnd) {
-            val centerIdx = centerF.roundToInt()
-            if (abs(i - centerIdx) <= prefetchRadius && !textures.containsKey(i) && !inFlight.containsKey(i)) {
-                enqueueLoad(i)
-            }
-            val tex = textures[i] ?: placeholderTex
-            val offset = i - centerF
-            drawItem(tex, offset)
-        }
-
-        // Recycle only those well beyond keepRadius from FLOAT center (not rounded) to avoid premature drops
-        queueGL { recycleFarTexturesFloat(centerF) }
-    }
-
-    private fun schedulePrefetch(centerF: Float) {
-        if (uris.isEmpty()) return
-        val lastIndex = uris.lastIndex
-        val preStart = max(0, floor(centerF - prefetchRadius).toInt())
-        val preEnd = min(lastIndex, ceil(centerF + prefetchRadius).toInt())
-        if (preEnd < preStart) return
-        // Build ordered list by distance from center
-        val toLoad = mutableListOf<Int>()
-        for (i in preStart..preEnd) if (!textures.containsKey(i) && !inFlight.containsKey(i)) toLoad.add(i)
-        toLoad.sortBy { abs(it - centerF) }
-        toLoad.forEach { enqueueLoad(it) }
-    }
-
-    // Add back legacy API setters for compatibility
-    fun setPrefetchRadius(radius: Int) {
-        prefetchRadius = max(visibleRadius, radius)
-        keepRadius = max(keepRadius, prefetchRadius + 2)
-    }
-
-    fun setKeepRadius(radius: Int) {
-        keepRadius = max(prefetchRadius, radius)
-    }
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val scrollListeners = CopyOnWriteArrayList<ScrollListener>()
+    private var lastNotifiedOffset = Float.NaN
+    private var lastNotifiedCenteredIndex = -1
+    private var snappingNotified = false
 
     // ----- Drawing -----
     private fun drawItem(tex: Int, offsetFromCenter: Float) {
@@ -488,5 +440,147 @@ class CoverFlowRenderer(
 
     fun setDepthParallaxEnabled(enabled: Boolean) {
         depthParallaxEnabled = enabled
+    }
+
+    interface ScrollListener {
+        fun onScrollOffsetChanged(offset: Float) {}
+        fun onCenteredIndexChanged(index: Int) {}
+        fun onSnapStarted(targetIndex: Int) {}
+        fun onSnapFinished(finalIndex: Int) {}
+    }
+
+    fun addScrollListener(listener: ScrollListener) {
+        scrollListeners.add(listener)
+        // send initial
+        mainHandler.post {
+            listener.onScrollOffsetChanged(scrollOffset)
+            listener.onCenteredIndexChanged(centeredIndex())
+        }
+    }
+
+    fun removeScrollListener(listener: ScrollListener) {
+        scrollListeners.remove(listener)
+    }
+
+    fun clearScrollListeners() {
+        scrollListeners.clear()
+    }
+
+    // Programmatic setters
+    fun setScrollOffset(offset: Float, smooth: Boolean = false) {
+        if (uris.isEmpty()) return
+        val clamped = offset.coerceIn(0f, (uris.size - 1).toFloat())
+        if (smooth) {
+            snapTarget = clamped
+            snappingNotified = false
+            notifyScrollChanged(force = true)
+        } else {
+            snapTarget = null
+            if (scrollOffset != clamped) {
+                scrollOffset = clamped
+                notifyScrollChanged(force = true)
+            }
+        }
+        requestPrefetch(clamped)
+    }
+
+    fun scrollToIndex(index: Int, smooth: Boolean = true) = setScrollOffset(index.toFloat(), smooth)
+
+    private fun notifyScrollChanged(force: Boolean = false) {
+        val off = scrollOffset
+        if (force || off.isNaN().not() && (lastNotifiedOffset.isNaN() || kotlin.math.abs(off - lastNotifiedOffset) > 0.0005f)) {
+            lastNotifiedOffset = off
+            mainHandler.post {
+                for (l in scrollListeners) l.onScrollOffsetChanged(off)
+            }
+        }
+        val centered = centeredIndex()
+        if (force || centered != lastNotifiedCenteredIndex) {
+            lastNotifiedCenteredIndex = centered
+            mainHandler.post {
+                for (l in scrollListeners) l.onCenteredIndexChanged(centered)
+            }
+        }
+    }
+
+    private fun notifySnapLifecycle(started: Boolean, finished: Boolean) {
+        if (started && !snappingNotified) {
+            val targetIdx = snapTarget?.roundToInt() ?: return
+            snappingNotified = true
+            mainHandler.post { scrollListeners.forEach { it.onSnapStarted(targetIdx) } }
+        }
+        if (finished) {
+            val idx = centeredIndex()
+            mainHandler.post { scrollListeners.forEach { it.onSnapFinished(idx) } }
+        }
+    }
+
+    // ----- GLSurfaceView.Renderer -----
+    override fun onDrawFrame(unused: GL10?) {
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+        if (uris.isEmpty()) return
+
+        val prevOffset = scrollOffset
+        val hadSnapTarget = snapTarget != null
+        // Time step for frame-rate independent easing
+        val now = System.nanoTime()
+        if (lastFrameNanos == 0L) lastFrameNanos = now
+        val dt = ((now - lastFrameNanos).coerceAtMost(100_000_000L)) / 1_000_000_000f
+        lastFrameNanos = now
+        snapTarget?.let { target ->
+            val delta = target - scrollOffset
+            val ad = abs(delta)
+            if (ad < 0.00008f) {
+                scrollOffset = target
+                snapTarget = null
+                notifySnapLifecycle(started = false, finished = true)
+            } else {
+                val factor = 1f - exp(-snapLambda * dt)
+                scrollOffset += delta * factor
+                notifySnapLifecycle(started = hadSnapTarget, finished = false)
+            }
+        }
+
+        if (scrollOffset != prevOffset) notifyScrollChanged()
+
+        val centerF = scrollOffset
+
+        // Prefetch scheduling (prioritize closest missing within prefetchRadius)
+        schedulePrefetch(centerF)
+        val lastIndex = uris.lastIndex
+        val visStart = max(0, floor(centerF - visibleRadius).toInt())
+        val visEnd = min(lastIndex, ceil(centerF + visibleRadius).toInt())
+        for (i in visStart..visEnd) {
+            val centerIdx = centerF.roundToInt()
+            if (abs(i - centerIdx) <= prefetchRadius && !textures.containsKey(i) && !inFlight.containsKey(i)) enqueueLoad(i)
+            val tex = textures[i] ?: placeholderTex
+            val offset = i - centerF
+            drawItem(tex, offset)
+        }
+        queueGL { recycleFarTexturesFloat(centerF) }
+    }
+
+    private fun schedulePrefetch(centerF: Float) {
+        if (uris.isEmpty()) return
+        val lastIndex = uris.lastIndex
+        val preStart = max(0, floor(centerF - prefetchRadius).toInt())
+        val preEnd = min(lastIndex, ceil(centerF + prefetchRadius).toInt())
+        if (preEnd < preStart) return
+        val toLoad = mutableListOf<Int>()
+        for (i in preStart..preEnd) if (!textures.containsKey(i) && !inFlight.containsKey(i)) toLoad.add(i)
+        toLoad.sortBy { abs(it - centerF) }
+        toLoad.forEach { enqueueLoad(it) }
+    }
+
+    // Force reload API (optional external call)
+    fun forceReloadAll() {
+        queueGL {
+            textures.clear()
+            inFlight.clear()
+            placeholderTex = 0
+            ensurePlaceholderTexture()
+            requestPrefetch(scrollOffset)
+            notifyScrollChanged(force = true)
+        }
     }
 }

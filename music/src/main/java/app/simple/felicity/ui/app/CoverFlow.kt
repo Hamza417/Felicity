@@ -5,14 +5,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.databinding.FragmentCoverflowBinding
+import app.simple.felicity.decorations.coverflow.CoverFlowRenderer
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.repository.utils.SongUtils
+import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class CoverFlow : ScopedFragment() {
 
@@ -27,14 +24,31 @@ class CoverFlow : ScopedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        songsViewModel.getSongs().observe(viewLifecycleOwner) { songs ->
-            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Default) {
-                val uris = songs.mapNotNull { SongUtils.getArtworkUri(requireContext(), it.albumId, it.id) }
-
-                withContext(Dispatchers.Main) {
-                    binding.coverFlow.setUris(uris)
+        songsViewModel.getSongAndArt().observe(viewLifecycleOwner) { songs ->
+            binding.coverFlow.setUris(songs.keys.toList())
+            binding.coverFlow.scrollToIndex(songsViewModel.getCarouselPosition()).also {
+                if (songsViewModel.getCarouselPosition().isNotZero()) {
+                    binding.coverFlow.reloadTextures()
                 }
             }
+
+            binding.coverFlow.addScrollListener(object : CoverFlowRenderer.ScrollListener {
+                override fun onCenteredIndexChanged(index: Int) {
+                    songsViewModel.setCarouselPosition(index)
+                }
+
+                override fun onScrollOffsetChanged(offset: Float) {
+
+                }
+
+                override fun onSnapFinished(finalIndex: Int) {
+
+                }
+
+                override fun onSnapStarted(targetIndex: Int) {
+
+                }
+            })
         }
     }
 
