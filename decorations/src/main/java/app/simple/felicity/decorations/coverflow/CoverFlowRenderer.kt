@@ -39,25 +39,63 @@ class CoverFlowRenderer(
     var scrollOffset = 0f
         private set
 
+    // Orientation
+    @Volatile
+    private var verticalOrientation = false
+
+    // Camera distances
+    private val cameraZLandscape = 2.1f
+    private val cameraZPortrait = 2.1f
+
+    // Scaling variants
+    private var baseScaleLandscape = 1.4f
+    private var baseScalePortrait = 0.8f // reduced further so portrait items look smaller
+    private var currentBaseScale = baseScaleLandscape
+
+    // Reflection enable flag (disabled in portrait)
+    @Volatile
+    private var reflectionEnabled = true
+
+    private fun updateCamera() {
+        val z = if (verticalOrientation) cameraZPortrait else cameraZLandscape
+        // eye at (0,0,z) looking at origin
+        Matrix.setLookAtM(view, 0, 0f, 0f, z, 0f, 0f, 0f, 0f, 1f, 0f)
+    }
+
+    fun setVerticalOrientation(vertical: Boolean) {
+        if (verticalOrientation != vertical) {
+            verticalOrientation = vertical
+            if (verticalOrientation) {
+                currentBaseScale = baseScalePortrait
+                currentSpacing = spacingPortrait
+                reflectionEnabled = false
+            } else {
+                currentBaseScale = baseScaleLandscape
+                currentSpacing = spacingLandscape
+                reflectionEnabled = true
+            }
+            updateCamera()
+        }
+    }
+
     // New snap state
     @Volatile
     private var snapTarget: Float? = null
 
     // Layout knobs
-    private val spacing = 1.2f
+    private val spacingLandscape = 1.2f
+    private val spacingPortrait = 0.65f // tighter spacing in portrait
+    private var currentSpacing = spacingLandscape
     private val maxRotation = 55f
     private val sideScale = 0.75f
     private val zSpread = 0.35f
     private var depthParallaxEnabled = true
 
     // Reflection parameters
-    private val reflectionGap = 0.04f          // vertical gap below main cover
+    private val reflectionGap = 0.00f          // vertical gap below main cover
     private val reflectionScale = 0.85f        // relative height of reflection
     private val reflectionStrength = 0.55f     // max brightness/alpha of reflection
     private var reflectionBlur = 0.006f // default subtle reflection blur
-
-    // New: base scale to enlarge items (center item ~1.0 * baseScale)
-    private val baseScale = 1.4f
 
     // Texture management
     private val targetMaxDim = 512 // px max dimension for covers
@@ -87,10 +125,11 @@ class CoverFlowRenderer(
     private val uris = mutableListOf<Uri>()
 
     // Picking structures
-    private data class CoverPick(val index: Int, val minX: Float, val maxX: Float)
+    private data class CoverPick(val index: Int, val minX: Float, val maxX: Float, val minY: Float, val maxY: Float)
 
     private val framePicks = ArrayList<CoverPick>()
     private var viewWidth = 0
+    private var viewHeight = 0
 
     // Matrices
     private val proj = FloatArray(16)
@@ -159,7 +198,7 @@ class CoverFlowRenderer(
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
         setupBuffers()
         buildProgram()
-        Matrix.setLookAtM(view, 0, 0f, 0f, 2.1f, 0f, 0f, 0f, 0f, 1f, 0f)
+        updateCamera()
         // GL context likely recreated: purge stale texture IDs so they reload
         glGeneration++
         textures.clear()
@@ -174,6 +213,7 @@ class CoverFlowRenderer(
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         GLES20.glViewport(0, 0, width, height)
         viewWidth = width
+        viewHeight = height
         val aspect = width.toFloat() / height
         Matrix.frustumM(proj, 0, -aspect, aspect, -1f, 1f, 2f, 10f)
     }
@@ -219,22 +259,27 @@ class CoverFlowRenderer(
 
     // ----- Drawing -----
     private fun drawItem(tex: Int, offsetFromCenter: Float) {
-        val x = offsetFromCenter * spacing
         val absOff = abs(offsetFromCenter)
         val rotEase = smoothstep(0f, 0.18f, absOff)
-        val rotY = (-offsetFromCenter * maxRotation * rotEase).coerceIn(-maxRotation, maxRotation)
         val depthFactor = if (depthParallaxEnabled) -absOff * zSpread * rotEase else 0f
-        val z = depthFactor
         val sideFactor = (1f - (1f - sideScale) * min(1f, absOff))
-        val scale = baseScale * sideFactor
+        val scale = currentBaseScale * sideFactor
         val brightness = 1f
 
-        // Main cover with global vertical drag offset & pitch (pitch about X-axis)
         Matrix.setIdentityM(model, 0)
-        // Apply pitch first so translation moves in pitched space consistently
         if (currentDragPitch != 0f) Matrix.rotateM(model, 0, currentDragPitch, 1f, 0f, 0f)
-        Matrix.translateM(model, 0, x, currentDragYOffset, z)
-        if (rotEase > 0f) Matrix.rotateM(model, 0, rotY, 0f, 1f, 0f)
+
+        if (verticalOrientation) {
+            val y = offsetFromCenter * currentSpacing
+            val rotX = (offsetFromCenter * maxRotation * rotEase).coerceIn(-maxRotation, maxRotation)
+            Matrix.translateM(model, 0, 0f, currentDragYOffset + y, depthFactor)
+            if (rotEase > 0f) Matrix.rotateM(model, 0, rotX, 1f, 0f, 0f)
+        } else {
+            val x = offsetFromCenter * currentSpacing
+            val rotY = (-offsetFromCenter * maxRotation * rotEase).coerceIn(-maxRotation, maxRotation)
+            Matrix.translateM(model, 0, x, currentDragYOffset, depthFactor)
+            if (rotEase > 0f) Matrix.rotateM(model, 0, rotY, 0f, 1f, 0f)
+        }
         Matrix.scaleM(model, 0, scale, scale, 1f)
         Matrix.multiplyMM(mvp, 0, view, 0, model, 0)
         Matrix.multiplyMM(mvp, 0, proj, 0, mvp, 0)
@@ -253,24 +298,30 @@ class CoverFlowRenderer(
         GLES20.glVertexAttribPointer(aUV, 2, GLES20.GL_FLOAT, false, 0, quadTB)
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, quadIB)
 
-        // Capture pick bounds for main cover (after main cover draw, before changing model)
         capturePickBoundsForIndex((scrollOffset + offsetFromCenter).roundToInt())
 
-        // Reflection pass (reuse same global transforms)
-        Matrix.setIdentityM(model, 0)
-        if (currentDragPitch != 0f) Matrix.rotateM(model, 0, currentDragPitch, 1f, 0f, 0f)
-        val down = scale + reflectionGap
-        Matrix.translateM(model, 0, x, currentDragYOffset - down, z)
-        if (rotEase > 0f) Matrix.rotateM(model, 0, rotY, 0f, 1f, 0f)
-        Matrix.scaleM(model, 0, scale, -scale * reflectionScale, 1f)
-        Matrix.multiplyMM(mvp, 0, view, 0, model, 0)
-        Matrix.multiplyMM(mvp, 0, proj, 0, mvp, 0)
-        GLES20.glUniformMatrix4fv(uMVP, 1, false, mvp, 0)
-        GLES20.glUniform1f(uAlpha, brightness)
-        GLES20.glUniform1f(uReflection, 1f)
-        GLES20.glUniform1f(uReflectStrength, reflectionStrength)
-        GLES20.glUniform1f(uReflectBlur, reflectionBlur)
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, quadIB)
+        if (reflectionEnabled) {
+            Matrix.setIdentityM(model, 0)
+            if (currentDragPitch != 0f) Matrix.rotateM(model, 0, currentDragPitch, 1f, 0f, 0f)
+            val down = scale + reflectionGap
+            if (verticalOrientation) {
+                // Skip drawing reflection in portrait (reflectionEnabled should be false anyway)
+            } else {
+                val x = offsetFromCenter * currentSpacing
+                val rotY = (-offsetFromCenter * maxRotation * rotEase).coerceIn(-maxRotation, maxRotation)
+                Matrix.translateM(model, 0, x, currentDragYOffset - down, depthFactor)
+                if (rotEase > 0f) Matrix.rotateM(model, 0, rotY, 0f, 1f, 0f)
+                Matrix.scaleM(model, 0, scale, -scale * reflectionScale, 1f)
+                Matrix.multiplyMM(mvp, 0, view, 0, model, 0)
+                Matrix.multiplyMM(mvp, 0, proj, 0, mvp, 0)
+                GLES20.glUniformMatrix4fv(uMVP, 1, false, mvp, 0)
+                GLES20.glUniform1f(uAlpha, brightness)
+                GLES20.glUniform1f(uReflection, 1f)
+                GLES20.glUniform1f(uReflectStrength, reflectionStrength)
+                GLES20.glUniform1f(uReflectBlur, reflectionBlur)
+                GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, quadIB)
+            }
+        }
 
         GLES20.glDisableVertexAttribArray(aPos)
         GLES20.glDisableVertexAttribArray(aUV)
@@ -653,6 +704,8 @@ class CoverFlowRenderer(
         )
         var minX = 10f
         var maxX = -10f
+        var minY = 10f
+        var maxY = -10f
         for (i in 0 until 4) {
             val bi = i * 4
             val x = corners[bi]
@@ -660,17 +713,22 @@ class CoverFlowRenderer(
             val z = corners[bi + 2]
             val w = corners[bi + 3]
             val vx = mvp[0] * x + mvp[4] * y + mvp[8] * z + mvp[12] * w
+            val vy = mvp[1] * x + mvp[5] * y + mvp[9] * z + mvp[13] * w
             val vw = mvp[3] * x + mvp[7] * y + mvp[11] * z + mvp[15] * w
             if (vw != 0f) {
                 val ndcX = vx / vw
+                val ndcY = vy / vw
                 if (ndcX < minX) minX = ndcX
                 if (ndcX > maxX) maxX = ndcX
+                if (ndcY < minY) minY = ndcY
+                if (ndcY > maxY) maxY = ndcY
             }
         }
-        if (minX <= maxX) synchronized(framePicks) { framePicks.add(CoverPick(index, minX, maxX)) }
+        if (minX <= maxX && minY <= maxY) synchronized(framePicks) { framePicks.add(CoverPick(index, minX, maxX, minY, maxY)) }
     }
 
     fun getUriAt(index: Int): Uri? = if (index in uris.indices) uris[index] else null
+
     fun pickIndexAtScreenX(x: Float): Int? {
         if (viewWidth == 0) return null
         val nx = (x / viewWidth.toFloat()) * 2f - 1f
@@ -678,7 +736,21 @@ class CoverFlowRenderer(
         synchronized(framePicks) {
             for (p in framePicks) {
                 if (nx >= p.minX && nx <= p.maxX) {
-                    if (best == null || (p.maxX - p.minX) < (best.maxX - best.minX)) best = p
+                    if (best == null || (p.maxX - p.minX) < (best!!.maxX - best!!.minX)) best = p
+                }
+            }
+        }
+        return best?.index
+    }
+
+    fun pickIndexAtScreenY(y: Float): Int? {
+        if (viewHeight == 0) return null
+        val ny = 1f - (y / viewHeight.toFloat()) * 2f
+        var best: CoverPick? = null
+        synchronized(framePicks) {
+            for (p in framePicks) {
+                if (ny >= p.minY && ny <= p.maxY) {
+                    if (best == null || (p.maxY - p.minY) < (best!!.maxY - best!!.minY)) best = p
                 }
             }
         }

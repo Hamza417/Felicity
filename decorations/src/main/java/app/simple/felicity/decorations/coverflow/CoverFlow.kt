@@ -22,9 +22,10 @@ class CoverFlow @JvmOverloads constructor(
     private val choreographer = Choreographer.getInstance()
 
     private var animating = false
-    private var lastFlingX = 0
+    private var lastFlingCoord = 0 // generic axis (always X of scroller)
     private var downY = 0f
     private var coverClickListener: OnCoverClickListener? = null
+    private var verticalMode = false
 
     interface OnCoverClickListener {
         fun onCenteredCoverClick(index: Int, uri: Uri?) {}
@@ -46,26 +47,27 @@ class CoverFlow @JvmOverloads constructor(
         gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
             override fun onDown(e: MotionEvent): Boolean {
                 if (!scroller.isFinished) scroller.abortAnimation()
-                lastFlingX = (renderer.scrollOffset * 1000).toInt()
+                lastFlingCoord = (renderer.scrollOffset * 1000).toInt()
                 downY = e.y
                 ensureAnimating()
                 return true
             }
 
             override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-                renderer.scrollBy(distanceX / (width * 0.3f))
-                //                // Vertical drag normalized [-1,1]
-                //                if (height > 0 && e1 != null) {
-                //                    val dy = (e2.y - downY) / height
-                //                    queueEvent { renderer.setDragVertical(dy.times(2)) }
-                //                }
+                val dim = if (verticalMode) height else width
+                if (dim > 0) {
+                    val dist = if (verticalMode) -distanceY else distanceX // invert vertical for natural feel
+                    renderer.scrollBy(dist / (dim * 0.3f))
+                }
                 requestRender()
                 return true
             }
 
             override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
-                // Fix: use proper horizontal velocity scaling
-                val velocityItemsPerSec = velocityX / (width * 0.5f)
+                val dim = if (verticalMode) height else width
+                if (dim <= 0) return true
+                val velAxis = if (verticalMode) -velocityY else velocityX // invert vertical fling
+                val velocityItemsPerSec = velAxis / (dim * 0.5f)
                 val start = (renderer.scrollOffset * 1000).toInt()
                 val vel = (velocityItemsPerSec * 1000).toInt()
                 scroller.fling(
@@ -74,20 +76,18 @@ class CoverFlow @JvmOverloads constructor(
                         Int.MIN_VALUE / 4, Int.MAX_VALUE / 4,
                         0, 0
                 )
-                lastFlingX = start
+                lastFlingCoord = start
                 ensureAnimating()
                 return true
             }
 
             override fun onSingleTapUp(e: MotionEvent): Boolean {
-                // Use renderer picking to determine which cover was tapped
-                val tapped = renderer.pickIndexAtScreenX(e.x)
+                val tapped = if (verticalMode) renderer.pickIndexAtScreenY(e.y) else renderer.pickIndexAtScreenX(e.x)
                 if (tapped != null) {
                     val centered = renderer.centeredIndex()
                     if (tapped == centered) {
                         coverClickListener?.onCenteredCoverClick(tapped, renderer.getUriAt(tapped))
                     } else {
-                        // Move tapped side cover to center
                         queueEvent { renderer.scrollToIndex(tapped, smooth = true) }
                         coverClickListener?.onSideCoverSelected(tapped, renderer.getUriAt(tapped))
                     }
@@ -99,6 +99,15 @@ class CoverFlow @JvmOverloads constructor(
                 return true
             }
         })
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        val newVertical = h > w
+        if (newVertical != verticalMode) {
+            verticalMode = newVertical
+            queueEvent { renderer.setVerticalOrientation(verticalMode) }
+        }
     }
 
     fun setUris(uris: List<Uri>) {
@@ -176,9 +185,9 @@ class CoverFlow @JvmOverloads constructor(
     override fun doFrame(frameTimeNanos: Long) {
         if (!scroller.isFinished) {
             scroller.computeScrollOffset()
-            val curr = scroller.currX
-            val dx = (curr - lastFlingX) / 1000f
-            lastFlingX = curr
+            val curr = scroller.currX // we use X channel generically
+            val dx = (curr - lastFlingCoord) / 1000f
+            lastFlingCoord = curr
             renderer.scrollBy(dx)
             requestRender()
             choreographer.postFrameCallback(this)
