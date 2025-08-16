@@ -7,4 +7,8 @@ object Lerp {
         val fraction = (value - startValue) / (endValue - startValue)
         return start + fraction * (end - start)
     }
+
+    fun lerp(start: Float, stop: Float, fraction: Float): Float {
+        return (start * (1 - fraction)) + (stop * fraction)
+    }
 }

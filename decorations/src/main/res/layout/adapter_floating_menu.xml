@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/button"
-    android:layout_width="@dimen/button_size"
-    android:layout_height="@dimen/button_size"
-    android:layout_margin="5dp"
-    app:buttonTintType="regular" />
