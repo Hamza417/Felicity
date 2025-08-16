@@ -83,6 +83,61 @@ class ArtistRepository @Inject constructor(private val context: Context) {
         return null
     }
 
+    fun fetchAlbumArtists(albumId: Long): List<Artist> {
+        val artists = mutableListOf<Artist>()
+        val albumProjection = arrayOf(MediaStore.Audio.Albums.ARTIST_ID)
+        val albumSelection = "${MediaStore.Audio.Albums._ID} = ?"
+        val albumSelectionArgs = arrayOf(albumId.toString())
+
+        // Get artist ID from album
+        val artistId = context.contentResolver.query(
+                MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
+                albumProjection,
+                albumSelection,
+                albumSelectionArgs,
+                null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Albums.ARTIST_ID))
+            else null
+        } ?: return artists
+
+        // Query artist details by ID
+        val artistProjection = arrayOf(
+                MediaStore.Audio.Artists._ID,
+                MediaStore.Audio.Artists.ARTIST,
+                MediaStore.Audio.Artists.NUMBER_OF_ALBUMS,
+                MediaStore.Audio.Artists.NUMBER_OF_TRACKS
+        )
+        val artistSelection = "${MediaStore.Audio.Artists._ID} = ?"
+        val artistSelectionArgs = arrayOf(artistId.toString())
+
+        context.contentResolver.query(
+                MediaStore.Audio.Artists.EXTERNAL_CONTENT_URI,
+                artistProjection,
+                artistSelection,
+                artistSelectionArgs,
+                null
+        )?.use { cursor ->
+            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Artists._ID)
+            val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Artists.ARTIST)
+            val albumCountCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Artists.NUMBER_OF_ALBUMS)
+            val trackCountCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Artists.NUMBER_OF_TRACKS)
+
+            while (cursor.moveToNext()) {
+                artists.add(
+                        Artist(
+                                id = cursor.getLong(idCol),
+                                name = cursor.getString(nameCol),
+                                albumCount = cursor.getInt(albumCountCol),
+                                trackCount = cursor.getInt(trackCountCol)
+                        )
+                )
+            }
+        }
+
+        return artists
+    }
+
     fun fetchCollaboratorArtists(currentArtist: Artist): List<Artist> {
         val name = currentArtist.name ?: return emptyList()
         val delimiters = arrayOf("&", "ft.", "feat.", ",", "and")

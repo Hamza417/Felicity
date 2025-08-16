@@ -20,15 +20,16 @@ import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.CollectionPageData
-import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
 import com.bumptech.glide.Glide
 
-class ArtistDetailsAdapter(private val data: CollectionPageData, private val artist: Artist) :
+class AlbumDetailsAdapter(private val data: CollectionPageData, private val album: Album) :
         RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var listener: GeneralAdapterCallbacks? = null
+    private var extraPositions = EXTRA_ROWS
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
@@ -44,6 +45,10 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
                 Artists(AdapterGenreAlbumsBinding.inflate(
                         LayoutInflater.from(parent.context), parent, false))
             }
+            RecyclerViewUtils.TYPE_GENRES -> {
+                Genre(AdapterGenreAlbumsBinding.inflate(
+                        LayoutInflater.from(parent.context), parent, false))
+            }
             else -> {
                 Songs(AdapterSongsBinding.inflate(
                         LayoutInflater.from(parent.context), parent, false))
@@ -55,25 +60,16 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
         when (holder) {
             is Header -> {
                 holder.binding.apply {
-                    name.text = artist.name ?: holder.context.getString(R.string.unknown)
+                    name.text = album.name ?: holder.context.getString(R.string.unknown)
                     songs.text = data.songs.size.toString()
                     albums.text = data.albums.size.toString()
                     artists.text = data.artists.size.toString()
                     totalTime.text = data.songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
+                    // poster.loadFromDescriptor(data.songs.first().uri, roundedCorners = false, blur = false, skipCache = true)
 
                     artFlow.visible(false)
-
-                    if (data.songs.isNotEmpty()) {
-                        artFlow.setSliderAdapter(ArtistArtFlowAdapter(ArtFlowData(R.string.songs, data.songs)))
-                    } else if (data.albums.isNotEmpty()) {
-                        artFlow.setSliderAdapter(ArtistArtFlowAdapter(ArtFlowData(R.string.albums, data.albums)))
-                    } else if (data.artists.isNotEmpty()) {
-                        artFlow.setSliderAdapter(ArtistArtFlowAdapter(ArtFlowData(R.string.artists, data.artists)))
-                    }
+                    artFlow.setSliderAdapter(ArtistArtFlowAdapter(ArtFlowData(R.string.songs, data.songs)))
                 }
-            }
-            is Albums -> {
-                /* no-op */
             }
             is Songs -> {
                 holder.bind(data.songs[position - 1]) // Adjust for header
@@ -107,6 +103,9 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
             data.songs.size.plus(2) -> {
                 RecyclerViewUtils.TYPE_ARTISTS
             }
+            data.songs.size.plus(3) -> {
+                RecyclerViewUtils.TYPE_GENRES
+            }
             else -> {
                 RecyclerViewUtils.TYPE_ITEM
             }
@@ -132,7 +131,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
                 binding.recyclerView.setHasFixedSize(true)
                 binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
                 val adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, data.albums))
-                binding.title.text = binding.title.context.getString(R.string.albums_from_artist, artist.name ?: context.getString(R.string.unknown))
+                binding.title.text = binding.title.context.getString(R.string.albums_from_artist, album.name ?: context.getString(R.string.unknown))
                 binding.recyclerView.adapter = adapter
             } else {
                 binding.title.visibility = View.GONE
@@ -147,12 +146,33 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
                 binding.recyclerView.setHasFixedSize(true)
                 binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
                 val adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, data.artists))
-                binding.title.text = binding.title.context.getString(R.string.with_other_artists, artist.name ?: context.getString(R.string.unknown))
+                binding.title.text = binding.title.context.getString(R.string.album_artists)
                 binding.recyclerView.adapter = adapter
 
                 adapter.setAdapterCarouselCallbacks(object : AdapterCarouselItems.Companion.AdapterCarouselCallbacks {
                     override fun onClicked(view: View, position: Int) {
                         listener?.onArtistClicked(data.artists[position])
+                    }
+                })
+            } else {
+                binding.title.visibility = View.GONE
+                binding.recyclerView.visibility = View.GONE
+            }
+        }
+    }
+
+    inner class Genre(val binding: AdapterGenreAlbumsBinding) : VerticalListViewHolder(binding.root) {
+        init {
+            if (data.genres.isNotEmpty()) {
+                binding.recyclerView.setHasFixedSize(true)
+                binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
+                val adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, data.genres))
+                binding.title.text = binding.title.context.getString(R.string.album_genres)
+                binding.recyclerView.adapter = adapter
+
+                adapter.setAdapterCarouselCallbacks(object : AdapterCarouselItems.Companion.AdapterCarouselCallbacks {
+                    override fun onClicked(view: View, position: Int) {
+                        listener?.onGenreClicked(data.genres[position], view)
                     }
                 })
             } else {
@@ -182,7 +202,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
 
     companion object {
         private const val TAG = "GenreSongsAdapter"
-        private const val EXTRA_ROWS = 3 // Header, Albums, Artists
+        private const val EXTRA_ROWS = 4 // Header, Albums, Artists, Genres
         private const val SONGS_POSITION = 1 // Position of songs in the adapter
     }
 }

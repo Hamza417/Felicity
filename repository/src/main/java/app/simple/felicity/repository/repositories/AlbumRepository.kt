@@ -16,7 +16,6 @@ class AlbumRepository @Inject constructor(private val context: Context) {
                 MediaStore.Audio.Albums.ALBUM,
                 MediaStore.Audio.Albums.ARTIST,
                 MediaStore.Audio.Albums.ARTIST_ID,
-                MediaStore.Audio.Albums.ALBUM_ART,
                 MediaStore.Audio.Albums.NUMBER_OF_SONGS
         )
 
@@ -58,7 +57,6 @@ class AlbumRepository @Inject constructor(private val context: Context) {
                 MediaStore.Audio.Albums.ALBUM,
                 MediaStore.Audio.Albums.ARTIST,
                 MediaStore.Audio.Albums.ARTIST_ID,
-                MediaStore.Audio.Albums.ALBUM_ART,
                 MediaStore.Audio.Albums.NUMBER_OF_SONGS
         )
 

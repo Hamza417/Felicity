@@ -356,4 +356,61 @@ public class GenreRepository @Inject constructor(private val context: Context) {
 
         return genres
     }
+
+    fun fetchGenresForAlbum(albumId: Long): List<Genre> {
+        val genres = mutableListOf<Genre>()
+        val songIds = mutableListOf<Long>()
+
+        // Get all song IDs for the album
+        val songCursor = context.contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.Audio.Media._ID),
+                "${MediaStore.Audio.Media.ALBUM_ID}=?",
+                arrayOf(albumId.toString()),
+                null
+        )
+
+        songCursor?.use {
+            val idCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+            while (it.moveToNext()) {
+                songIds.add(it.getLong(idCol))
+            }
+        }
+
+        if (songIds.isEmpty()) return genres
+
+        // Get all genres
+        val genreCursor = context.contentResolver.query(
+                MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME),
+                null,
+                null,
+                null
+        )
+
+        genreCursor?.use {
+            val genreIdCol = it.getColumnIndexOrThrow(MediaStore.Audio.Genres._ID)
+            val genreNameCol = it.getColumnIndexOrThrow(MediaStore.Audio.Genres.NAME)
+            while (it.moveToNext()) {
+                val genreId = it.getLong(genreIdCol)
+                val genreName = it.getString(genreNameCol)
+                // Query all song IDs at once for this genre
+                val selection = "${MediaStore.Audio.Media._ID} IN (${songIds.joinToString(",")})"
+                val memberCursor = context.contentResolver.query(
+                        MediaStore.Audio.Genres.Members.getContentUri("external", genreId),
+                        arrayOf(MediaStore.Audio.Media._ID),
+                        selection,
+                        null,
+                        null
+                )
+                memberCursor?.use { mc ->
+                    if (mc.moveToFirst()) {
+                        genres.add(Genre(id = genreId, name = genreName))
+                    }
+                }
+            }
+        }
+
+        return genres
+    }
 }

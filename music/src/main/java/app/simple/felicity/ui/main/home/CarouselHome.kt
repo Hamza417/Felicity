@@ -15,6 +15,7 @@ import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.ui.app.ArtFlowRv
+import app.simple.felicity.ui.main.albums.AlbumPage
 import app.simple.felicity.ui.main.albums.PeristyleAlbums
 import app.simple.felicity.ui.main.artists.ArtistPage
 import app.simple.felicity.ui.main.artists.PeristyleArtists
@@ -55,6 +56,10 @@ class CarouselHome : MediaFragment() {
                             is Genre -> {
                                 val genre = data[position].items.filterIsInstance<Genre>()[itemPosition]
                                 openFragment(GenrePage.newInstance(genre), GenrePage.TAG)
+                            }
+                            is Album -> {
+                                val album = data[position].items.filterIsInstance<Album>()[itemPosition]
+                                openFragment(AlbumPage.newInstance(album), AlbumPage.TAG)
                             }
                             is Artist -> {
                                 val artist = data[position].items.filterIsInstance<Artist>()[itemPosition]

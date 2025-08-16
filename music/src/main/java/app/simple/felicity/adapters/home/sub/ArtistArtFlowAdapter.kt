@@ -14,7 +14,7 @@ import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import com.smarteist.autoimageslider.SliderViewAdapter
 
-class ArtistArtFlowAdapter(private val data: ArtFlowData<Any>, private val metadata: Boolean = true)
+class ArtistArtFlowAdapter(private val data: ArtFlowData<Any>)
     : SliderViewAdapter<ArtistArtFlowAdapter.Holder>() {
 
     inner class Holder(val binding: AdapterArtistArtFlowBinding) : ViewHolder(binding.root)
