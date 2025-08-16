@@ -24,4 +24,11 @@ object Number {
     fun Int.twice(): Int {
         return this * 2
     }
+
+    fun Int.wrapToRange(min: Int, max: Int): Int {
+        val range = max - min + 1
+        var wrapped = (this - min) % range
+        if (wrapped < 0) wrapped += range
+        return wrapped + min
+    }
 }

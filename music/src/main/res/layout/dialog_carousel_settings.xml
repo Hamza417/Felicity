@@ -25,8 +25,9 @@
             android:id="@+id/camera_y_seekbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:felicityAnimateInitial="true"
+            app:felicityAnimateInitial="false"
             app:felicityMax="200"
+            app:felicityProgress="100"
             app:felicityThumbRadius="@dimen/padding_15"
             app:felicityThumbRingWidth="@dimen/padding_10"
             app:felicityTrackHeight="@dimen/padding_15" />
