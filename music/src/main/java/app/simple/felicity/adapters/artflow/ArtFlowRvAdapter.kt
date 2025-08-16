@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterCarouselFlowBinding
 import app.simple.felicity.decorations.overscroll.HorizontalListViewHolder
 import app.simple.felicity.glide.pathcover.Utils.loadFromPathForCarousel
+import app.simple.felicity.glide.pathcover.Utils.loadReflection
 import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
 
@@ -23,6 +24,7 @@ class ArtFlowRvAdapter(private val data: List<Song>) : RecyclerView.Adapter<ArtF
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
         holder.binding.art.loadFromPathForCarousel(data[position].path)
+        holder.binding.reflection.loadReflection(data[position].path)
     }
 
     override fun onViewRecycled(holder: Holder) {

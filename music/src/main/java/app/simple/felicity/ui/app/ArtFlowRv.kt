@@ -40,7 +40,6 @@ class ArtFlowRv : MediaFragment() {
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) {
             layoutManager = ProminentLayoutManager(requireContext())
-            binding.reflectionView.reflectionOffsetY = 20
 
             with(binding.artFlow) {
                 backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
@@ -66,12 +65,6 @@ class ArtFlowRv : MediaFragment() {
                             binding.artist.visibility = View.INVISIBLE
                         }
                     }
-
-                    override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                        super.onScrolled(recyclerView, dx, dy)
-                        // This is needed to update the reflection view when scrolling
-                        binding.reflectionView.invalidate()
-                    }
                 })
 
                 (adapter as ArtFlowRvAdapter).setOnCarouselFlowCallbackListener(object : ArtFlowRvAdapter.Companion.AdapterCarouselFlowCallback {
@@ -87,8 +80,6 @@ class ArtFlowRv : MediaFragment() {
                 if (savedInstanceState.isNotNull()) {
                     initRecyclerViewPosition(requireArguments().getInt(BundleConstants.position))
                 }
-
-                binding.reflectionView.sourceView = this
             }
         }
 

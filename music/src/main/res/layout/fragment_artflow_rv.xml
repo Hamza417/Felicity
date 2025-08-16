@@ -14,12 +14,6 @@
         app:snapGravity="center"
         app:snapScrollMsPerInch="20" />
 
-    <app.simple.felicity.decorations.views.ReflectionView
-        android:id="@+id/reflectionView"
-        android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:layout_gravity="bottom" />
-
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

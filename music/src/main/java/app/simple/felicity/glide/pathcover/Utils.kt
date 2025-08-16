@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.widget.ImageView
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
+import app.simple.felicity.glide.transformation.ReflectionDarkenTransformation
 import app.simple.felicity.preferences.AppearancePreferences
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
@@ -17,12 +18,12 @@ object Utils {
         val request = Glide.with(context)
             .asBitmap()
             .load(PathCoverModel(context, path))
-                .transform(
-                        RoundedCorners(AppearancePreferences.getCornerRadius().toInt().coerceAtLeast(1)),
-                        Padding(paddingRatio = 0.075F),
-                        BlurShadow(context)
-                                .setElevation(25F)
-                                .setBlurRadius(BlurShadow.MAX_BLUR_RADIUS))
+            .transform(
+                    RoundedCorners(AppearancePreferences.getCornerRadius().toInt().coerceAtLeast(1)),
+                    Padding(paddingRatio = 0.075F),
+                    BlurShadow(context)
+                        .setElevation(25F)
+                        .setBlurRadius(BlurShadow.MAX_BLUR_RADIUS))
             .transition(BitmapTransitionOptions.withCrossFade())
 
         if (applyTransform.not()) {
@@ -36,11 +37,30 @@ object Utils {
         Glide.with(context)
             .asBitmap()
             .load(PathCoverModel(context, path))
-                .transform(RoundedCorners(AppearancePreferences.getCornerRadius().toInt().coerceAtLeast(1)),
-                       Padding(BlurShadow.MAX_BLUR_RADIUS.toInt()),
-                       BlurShadow(context)
-                           .setElevation(25F)
-                           .setBlurRadius(BlurShadow.MAX_BLUR_RADIUS))
+            .transform(
+                    RoundedCorners(AppearancePreferences.getCornerRadius().toInt().coerceAtLeast(1)),
+                    Padding(BlurShadow.MAX_BLUR_RADIUS.toInt()),
+                    BlurShadow(context)
+                        .setElevation(25F)
+                        .setBlurRadius(BlurShadow.MAX_BLUR_RADIUS),
+            )
+            .transition(BitmapTransitionOptions.withCrossFade())
+            .diskCacheStrategy(DiskCacheStrategy.ALL)
+            .into(this)
+    }
+
+    fun ImageView.loadReflection(path: String) {
+        Glide.with(context)
+            .asBitmap()
+            .load(PathCoverModel(context, path))
+            .transform(
+                    RoundedCorners(AppearancePreferences.getCornerRadius().toInt().coerceAtLeast(1)),
+                    Padding(BlurShadow.MAX_BLUR_RADIUS.toInt()),
+                    BlurShadow(context)
+                        .setElevation(25F)
+                        .setBlurRadius(BlurShadow.MAX_BLUR_RADIUS),
+                    ReflectionDarkenTransformation()
+            )
             .transition(BitmapTransitionOptions.withCrossFade())
             .diskCacheStrategy(DiskCacheStrategy.ALL)
             .into(this)
