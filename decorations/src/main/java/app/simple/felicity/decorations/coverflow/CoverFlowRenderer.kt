@@ -19,10 +19,11 @@ import java.util.concurrent.Executors
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.exp
+import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.pow
 import kotlin.math.roundToInt
 
 class CoverFlowRenderer(
@@ -44,15 +45,20 @@ class CoverFlowRenderer(
     private val maxRotation = 55f
     private val sideScale = 0.75f
     private val zSpread = 0.35f
-    private val fadeSide = 0.35f
+
+    // Added: toggle to disable depth parallax if needed
+    private var depthParallaxEnabled = true
 
     // New: base scale to enlarge items (center item ~1.0 * baseScale)
     private val baseScale = 1.4f
 
     // Texture management
     private val targetMaxDim = 512 // px max dimension for covers
-    private var prefetchRadius = 2  // decode/upload around current index
-    private var keepRadius = 3      // keep textures around current index; recycle others
+
+    // Radii
+    private var visibleRadius = 5        // items each side to actively draw
+    private var prefetchRadius = 8       // items each side to ensure decoded (>= visibleRadius)
+    private var keepRadius = 11          // items each side to retain before recycling (>= prefetchRadius)
 
     // GL program/attribs
     private var program = 0
@@ -90,19 +96,14 @@ class CoverFlowRenderer(
     fun setUris(list: List<Uri>) {
         uris.clear()
         uris.addAll(list)
-        // Clear textures; they will be requested lazily
-        queueGL {
-            deleteAllTextures()
-        }
-        requestPrefetch(centeredIndex())
+        queueGL { deleteAllTextures() }
+        requestPrefetch(scrollOffset)
     }
 
-    fun setPrefetchRadius(radius: Int) {
-        prefetchRadius = max(0, radius)
-    }
-
-    fun setKeepRadius(radius: Int) {
-        keepRadius = max(1, radius)
+    fun configureRadii(visible: Int? = null, prefetch: Int? = null, keep: Int? = null) {
+        visible?.let { visibleRadius = max(1, it) }
+        prefetch?.let { prefetchRadius = max(visibleRadius, it) }
+        keep?.let { keepRadius = max(prefetchRadius, it) }
     }
 
     fun centeredIndex(): Int = scrollOffset.roundToInt().coerceIn(0, max(0, uris.size - 1))
@@ -118,10 +119,12 @@ class CoverFlowRenderer(
         snapTarget = null
         scrollOffset += dxItems
         scrollOffset = scrollOffset.coerceIn(0f, (uris.size - 1).toFloat())
-        val center = centeredIndex()
+        val center = centeredIndex().toFloat()
         requestPrefetch(center)
-        queueGL { recycleFarTextures(center) }
+        queueGL { recycleFarTexturesFloat(scrollOffset) }
     }
+
+    private var placeholderTex = 0
 
     fun release() {
         decodeExecutor.shutdownNow()
@@ -132,12 +135,10 @@ class CoverFlowRenderer(
     override fun onSurfaceCreated(unused: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
-        GLES20.glEnable(GLES20.GL_BLEND)
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
         setupBuffers()
         buildProgram()
-        // Fix: correct lookAt parameters - camera at (0,0,3.1), looking at origin, up is Y
-        Matrix.setLookAtM(view, 0, 0f, 0f, 3.1f, 0f, 0f, 0f, 0f, 1f, 0f)
+        Matrix.setLookAtM(view, 0, 0f, 0f, 2.1f, 0f, 0f, 0f, 0f, 1f, 0f)
+        ensurePlaceholderTexture()
     }
 
     override fun onSurfaceChanged(unused: GL10?, width: Int, height: Int) {
@@ -171,51 +172,70 @@ class CoverFlowRenderer(
                 val factor = 1f - exp(-snapLambda * dt)
                 scrollOffset += delta * factor
             }
-            requestPrefetch(centeredIndex())
         }
 
-        val centerFloat = scrollOffset
+        val centerF = scrollOffset
 
-        // Use a generous drawing range to ensure items don't disappear on either side
-        // Draw enough items to fill the screen plus some buffer
-        val drawRange = max(6, max(keepRadius, prefetchRadius) + 2)
+        // Prefetch scheduling (prioritize closest missing within prefetchRadius)
+        schedulePrefetch(centerF)
 
-        // Calculate range based on float position, not just integer center
-        val startFloat = centerFloat - drawRange
-        val endFloat = centerFloat + drawRange
+        val lastIndex = uris.lastIndex
+        val visStart = max(0, floor(centerF - visibleRadius).toInt())
+        val visEnd = min(lastIndex, ceil(centerF + visibleRadius).toInt())
 
-        val start = max(0, startFloat.toInt())
-        val end = min(uris.size - 1, endFloat.toInt() + 1)
-
-        // Draw all items in the expanded range
-        for (i in start..end) {
-            val offset = i - centerFloat
-            val tex = textures[i] ?: run {
-                // Queue load for items within prefetch radius of current center
-                val centerIdx = centerFloat.roundToInt()
-                if (abs(i - centerIdx) <= prefetchRadius) enqueueLoad(i)
-                continue
+        for (i in visStart..visEnd) {
+            val centerIdx = centerF.roundToInt()
+            if (abs(i - centerIdx) <= prefetchRadius && !textures.containsKey(i) && !inFlight.containsKey(i)) {
+                enqueueLoad(i)
             }
+            val tex = textures[i] ?: placeholderTex
+            val offset = i - centerF
             drawItem(tex, offset)
         }
 
-        // Recycle textures that are far from current position
-        queueGL { recycleFarTextures(centerFloat.roundToInt()) }
+        // Recycle only those well beyond keepRadius from FLOAT center (not rounded) to avoid premature drops
+        queueGL { recycleFarTexturesFloat(centerF) }
+    }
+
+    private fun schedulePrefetch(centerF: Float) {
+        if (uris.isEmpty()) return
+        val lastIndex = uris.lastIndex
+        val preStart = max(0, floor(centerF - prefetchRadius).toInt())
+        val preEnd = min(lastIndex, ceil(centerF + prefetchRadius).toInt())
+        if (preEnd < preStart) return
+        // Build ordered list by distance from center
+        val toLoad = mutableListOf<Int>()
+        for (i in preStart..preEnd) if (!textures.containsKey(i) && !inFlight.containsKey(i)) toLoad.add(i)
+        toLoad.sortBy { abs(it - centerF) }
+        toLoad.forEach { enqueueLoad(it) }
+    }
+
+    // Add back legacy API setters for compatibility
+    fun setPrefetchRadius(radius: Int) {
+        prefetchRadius = max(visibleRadius, radius)
+        keepRadius = max(keepRadius, prefetchRadius + 2)
+    }
+
+    fun setKeepRadius(radius: Int) {
+        keepRadius = max(prefetchRadius, radius)
     }
 
     // ----- Drawing -----
     private fun drawItem(tex: Int, offsetFromCenter: Float) {
+        // Continuous transforms (no near-center snap) to avoid wiggle
         val x = offsetFromCenter * spacing
-        val nearCenter = abs(offsetFromCenter) < 0.006f
-        val rotY = if (nearCenter) 0f else max(-maxRotation, min(maxRotation, -offsetFromCenter * maxRotation))
-        val z = -abs(offsetFromCenter) * zSpread
-        val sideFactor = (1f - (1f - sideScale) * min(1f, abs(offsetFromCenter)))
+        val absOff = abs(offsetFromCenter)
+        val rotEase = smoothstep(0f, 0.18f, absOff) // gentle ramp in first ~0.18 item offset
+        val rotY = (-offsetFromCenter * maxRotation * rotEase).coerceIn(-maxRotation, maxRotation)
+        val depthFactor = if (depthParallaxEnabled) -absOff * zSpread * rotEase else 0f
+        val z = depthFactor
+        val sideFactor = (1f - (1f - sideScale) * min(1f, absOff))
         val scale = baseScale * sideFactor
-        val alpha = 1f - (1f - fadeSide) * min(1f, abs(offsetFromCenter).pow(0.9f))
+        val brightness = 1f
 
         Matrix.setIdentityM(model, 0)
-        Matrix.translateM(model, 0, if (nearCenter) 0f else x, 0f, z)
-        if (!nearCenter) Matrix.rotateM(model, 0, rotY, 0f, 1f, 0f)
+        Matrix.translateM(model, 0, x, 0f, z)
+        if (rotEase > 0f) Matrix.rotateM(model, 0, rotY, 0f, 1f, 0f)
         Matrix.scaleM(model, 0, scale, scale, 1f)
 
         Matrix.multiplyMM(mvp, 0, view, 0, model, 0)
@@ -223,7 +243,7 @@ class CoverFlowRenderer(
 
         GLES20.glUseProgram(program)
         GLES20.glUniformMatrix4fv(uMVP, 1, false, mvp, 0)
-        GLES20.glUniform1f(uAlpha, alpha)
+        GLES20.glUniform1f(uAlpha, brightness)
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex)
@@ -236,6 +256,12 @@ class CoverFlowRenderer(
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, quadIB)
         GLES20.glDisableVertexAttribArray(aPos)
         GLES20.glDisableVertexAttribArray(aUV)
+    }
+
+    private fun smoothstep(edge0: Float, edge1: Float, x: Float): Float {
+        if (edge0 == edge1) return 1f
+        val t = ((x - edge0) / (edge1 - edge0)).coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
     }
 
     private fun setupBuffers() {
@@ -272,13 +298,16 @@ class CoverFlowRenderer(
             precision mediump float; 
             varying vec2 vUV; 
             uniform sampler2D uTex; 
-            uniform float uAlpha; 
+            uniform float uAlpha; // used as brightness scale now
             void main(){
                 vec4 c = texture2D(uTex, vUV);
+                // Apply vignette to RGB only
                 vec2 uv = vUV - 0.5; 
                 float vignette = 1.0 - dot(uv, uv)*0.65; 
                 c.rgb *= clamp(vignette, 0.5, 1.0);
-                gl_FragColor = vec4(c.rgb, c.a * uAlpha);
+                // Side fade: modulate brightness, keep alpha = 1 for opaque output
+                c.rgb *= uAlpha;
+                gl_FragColor = vec4(c.rgb, 1.0);
             }
         """
         val vsId = compileShader(GLES20.GL_VERTEX_SHADER, vs)
@@ -321,10 +350,8 @@ class CoverFlowRenderer(
     }
 
     // ----- Prefetch & Recycling -----
-    private fun requestPrefetch(center: Int) {
-        val start = max(0, center - prefetchRadius)
-        val end = min(uris.size - 1, center + prefetchRadius)
-        for (i in start..end) enqueueLoad(i)
+    private fun requestPrefetch(centerF: Float) {
+        schedulePrefetch(centerF)
     }
 
     private fun enqueueLoad(index: Int) {
@@ -350,34 +377,56 @@ class CoverFlowRenderer(
         }
     }
 
-    private fun recycleFarTextures(center: Int) {
+    private fun recycleFarTexturesFloat(centerF: Float) {
+        val cutoff = keepRadius + 0.75f // small buffer to prevent rapid thrash
         val it = textures.entries.iterator()
         while (it.hasNext()) {
             val (idx, texId) = it.next()
-            if (abs(idx - center) > keepRadius) {
+            if (abs(idx - centerF) > cutoff) {
                 deleteTexture(texId)
                 it.remove()
             }
         }
     }
 
+    // keep legacy call
+    private fun recycleFarTextures(center: Int) = recycleFarTexturesFloat(center.toFloat())
+
+    // Placeholder texture (2x2 neutral gray gradient) to avoid gaps
+    private fun ensurePlaceholderTexture() {
+        if (placeholderTex != 0) return
+        val pixels = intArrayOf(
+                0xFF3A3A3A.toInt(), 0xFF444444.toInt(),
+                0xFF444444.toInt(), 0xFF3A3A3A.toInt()
+        )
+        val bb = ByteBuffer.allocateDirect(pixels.size * 4).order(ByteOrder.nativeOrder())
+        for (p in pixels) bb.putInt(p)
+        bb.position(0)
+        val ids = IntArray(1)
+        GLES20.glGenTextures(1, ids, 0)
+        placeholderTex = ids[0]
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, placeholderTex)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 2, 2, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, bb)
+    }
+
     private fun deleteAllTextures() {
         val ids = textures.values.toIntArray()
         if (ids.isNotEmpty()) GLES20.glDeleteTextures(ids.size, ids, 0)
         textures.clear()
+        if (placeholderTex != 0) {
+            GLES20.glDeleteTextures(1, intArrayOf(placeholderTex), 0)
+            placeholderTex = 0
+        }
     }
 
     // ----- Bitmap decode helpers -----
     @SuppressLint("NewApi")
     private fun decodeScaled(uri: Uri, maxDim: Int): Bitmap? {
         return context.contentResolver.loadThumbnail(uri, Size(maxDim, maxDim), null)
-    }
-
-    private fun computeInSampleSize(w: Int, h: Int, maxDim: Int): Int {
-        var size = 1
-        val largest = max(w, h)
-        while (largest / size > maxDim) size = size shl 1
-        return size
     }
 
     // ----- GL texture helpers (run on GL thread) -----
