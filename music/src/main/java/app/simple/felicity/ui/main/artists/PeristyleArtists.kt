@@ -1,5 +1,6 @@
 package app.simple.felicity.ui.main.artists
 
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -16,19 +17,23 @@ import app.simple.felicity.viewmodels.main.artists.ArtistsViewModel
 class PeristyleArtists : ScopedFragment() {
 
     private var binding: FragmentAlbumsBinding? = null
-    private val albumsViewModel: ArtistsViewModel? by viewModels({ requireActivity() })
+    private val artistsViewModel: ArtistsViewModel? by viewModels({ requireActivity() })
     private var adapter: AdapterPeristyleArtists? = null
     private var gridLayoutManager: GridLayoutManager? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentAlbumsBinding.inflate(inflater, container, false)
+
+        binding?.recyclerView?.setBackgroundColor(Color.BLACK)
+        requireLightBarIcons()
+
         return binding!!.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        albumsViewModel?.getArtists()?.observe(viewLifecycleOwner) { albums ->
+        artistsViewModel?.getArtists()?.observe(viewLifecycleOwner) { albums ->
             adapter = AdapterPeristyleArtists(albums)
 
             gridLayoutManager = GridLayoutManager(context, 2)

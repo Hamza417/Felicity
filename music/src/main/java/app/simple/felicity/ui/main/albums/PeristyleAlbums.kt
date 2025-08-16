@@ -24,13 +24,14 @@ class PeristyleAlbums : ScopedFragment() {
 
         binding = fragmentBinding
         albumsViewModel = ViewModelProvider(requireActivity())[AlbumsViewModel::class.java]
+        binding?.recyclerView?.setBackgroundColor(Color.BLACK)
+        requireLightBarIcons()
 
         return fragmentBinding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding?.recyclerView?.setBackgroundColor(Color.BLACK)
 
         albumsViewModel?.getAlbums()?.observe(viewLifecycleOwner) { albums ->
             adapter = AdapterPeristyleAlbums(albums)
@@ -46,17 +47,8 @@ class PeristyleAlbums : ScopedFragment() {
             binding?.recyclerView?.adapter = adapter
             binding?.recyclerView?.backgroundTintList = null
 
-            startPostViewTransition(requireView()) {
-                postDelayed(500) {
-                    app.simple.felicity.theme.managers.ThemeUtils.makeBarIconsWhite(requireActivity().window)
-                }
-            }
+            startPostViewTransition(requireView())
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        app.simple.felicity.theme.managers.ThemeUtils.updateNavAndStatusColors(requireActivity().resources, requireActivity().window)
     }
 
     companion object {

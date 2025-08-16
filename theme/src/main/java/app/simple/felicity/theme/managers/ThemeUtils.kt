@@ -4,6 +4,8 @@ import android.content.res.Configuration
 import android.content.res.Resources
 import android.view.Window
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import app.simple.felicity.core.utils.CalendarUtils
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.constants.ThemeConstants
@@ -30,6 +32,36 @@ object ThemeUtils {
     private fun darkBars(window: Window) {
         WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = false
         WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightNavigationBars = false
+    }
+
+    fun setLightBars(lifecycleOwner: LifecycleOwner, window: Window, resources: Resources) {
+        lifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onCreate(owner: LifecycleOwner) {
+                makeBarIconsWhite(window)
+            }
+
+            override fun onPause(owner: LifecycleOwner) {
+                super.onDestroy(owner)
+                lifecycleOwner.lifecycle.removeObserver(this)
+                setBarColors(resources, window)
+            }
+        })
+    }
+
+    fun setDarkBars(lifecycleOwner: LifecycleOwner, window: Window, resources: Resources) {
+        lifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onCreate(owner: LifecycleOwner) {
+                darkBars(window)
+                WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = false
+                WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightNavigationBars = false
+            }
+
+            override fun onPause(owner: LifecycleOwner) {
+                super.onDestroy(owner)
+                lifecycleOwner.lifecycle.removeObserver(this)
+                setBarColors(resources, window)
+            }
+        })
     }
 
     fun setAppTheme(resources: Resources) {

@@ -18,6 +18,7 @@ import app.simple.felicity.decorations.transitions.SeekableSharedAxisZTransition
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
+import app.simple.felicity.theme.managers.ThemeUtils
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -261,8 +262,24 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         return requireActivity().findViewById(R.id.app_container)
     }
 
+    /**
+     * Sets the light bar icons for the current fragment.
+     */
+    protected fun requireLightBarIcons() {
+        ThemeUtils.setDarkBars(
+                lifecycleOwner = viewLifecycleOwner,
+                window = requireActivity().window,
+                resources = requireContext().resources)
+    }
+
+    protected fun requireDarkBarIcons() {
+        ThemeUtils.setLightBars(
+                lifecycleOwner = viewLifecycleOwner,
+                window = requireActivity().window,
+                resources = requireContext().resources)
+    }
+
     companion object {
-        private const val INTERPOLATOR_TENSION_FACTOR = 1.5F
         private const val TAG = "ScopedFragment"
     }
 }
