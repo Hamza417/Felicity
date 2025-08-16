@@ -1,5 +1,6 @@
 package app.simple.felicity.decorations.seekbars
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
@@ -9,7 +10,11 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import androidx.annotation.ColorInt
+import androidx.dynamicanimation.animation.FloatPropertyCompat
+import androidx.dynamicanimation.animation.SpringAnimation
+import androidx.dynamicanimation.animation.SpringForce
 import app.simple.felicity.decoration.R
 import app.simple.felicity.theme.managers.ThemeManager
 import kotlin.math.max
@@ -30,7 +35,8 @@ class FelicitySeekbar @JvmOverloads constructor(
     private var listener: OnSeekChangeListener? = null
 
     private var maxProgress = 100 // 0..maxProgress inclusive style (like standard SeekBar uses max then 0..max)
-    private var progressInternal = 0 // current int progress
+    private var progressInternal = 0f // current float progress for animation
+    private var defaultProgress = 0 // value to reset to on long press
 
     @ColorInt
     private var trackColor: Int = ThemeManager.theme.viewGroupTheme.highlightColor
@@ -50,10 +56,10 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     private var smudgeEnabled = false
     private var smudgeRadius = 0f
-    private var smudgeColor = 0x22000000
+    private var smudgeColor = ThemeManager.accent.primaryAccentColor
     private var smudgeOffsetY = 0f
     private var thumbShadowRadius = 0f
-    private var thumbShadowColor = 0x55000000
+    private var thumbShadowColor = ThemeManager.accent.primaryAccentColor
 
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -67,6 +73,44 @@ class FelicitySeekbar @JvmOverloads constructor(
     private val progressRect = RectF()
 
     private var isDragging = false
+    private var thumbScale = 1f
+    private var thumbScaleAnimator: ValueAnimator? = null
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private var downX = 0f
+    private var downY = 0f
+    private var longPressTriggered = false
+    private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+    private var longPressRunnable: Runnable? = null
+    private var downOnThumb = false
+
+    // Spring animation support
+    private val progressProperty = object : FloatPropertyCompat<FelicitySeekbar>("felicityIntProgress") {
+        override fun getValue(view: FelicitySeekbar): Float = view.progressInternal
+        override fun setValue(view: FelicitySeekbar, value: Float) {
+            view.progressInternal = value.coerceIn(0f, maxProgress.toFloat())
+            invalidate()
+            // During animation, treat as programmatic (fromUser = false)
+            listener?.onProgressChanged(this@FelicitySeekbar, getProgress(), false)
+        }
+    }
+
+    private var animateFromUser = false
+    private val springAnimation = SpringAnimation(this, progressProperty).apply {
+        spring = SpringForce().apply {
+            stiffness = SpringForce.STIFFNESS_LOW
+            dampingRatio = SpringForce.DAMPING_RATIO_MEDIUM_BOUNCY
+        }
+        addEndListener { _, _, _, _ ->
+            listener?.onProgressChanged(this@FelicitySeekbar, getProgress(), animateFromUser)
+            // restore base spring if it was altered for fast snap
+            spring?.stiffness = baseStiffness
+            spring?.dampingRatio = baseDamping
+        }
+    }
+    private val baseStiffness = SpringForce.STIFFNESS_LOW
+    private val baseDamping = SpringForce.DAMPING_RATIO_MEDIUM_BOUNCY
+    private val fastStiffness = SpringForce.STIFFNESS_HIGH
+    private val fastDamping = SpringForce.DAMPING_RATIO_NO_BOUNCY
 
     init {
         val d = resources.displayMetrics.density
@@ -87,12 +131,12 @@ class FelicitySeekbar @JvmOverloads constructor(
                 if (hasValue(R.styleable.FelicitySeekbar_felicityProgress)) {
                     val tv = peekValue(R.styleable.FelicitySeekbar_felicityProgress)
                     progressInternal = when (tv.type) {
-                        android.util.TypedValue.TYPE_FLOAT -> getFloat(R.styleable.FelicitySeekbar_felicityProgress, 0f).toInt()
-                        android.util.TypedValue.TYPE_INT_DEC, android.util.TypedValue.TYPE_INT_HEX -> getInt(R.styleable.FelicitySeekbar_felicityProgress, 0)
-                        else -> getInt(R.styleable.FelicitySeekbar_felicityProgress, 0)
+                        android.util.TypedValue.TYPE_FLOAT -> getFloat(R.styleable.FelicitySeekbar_felicityProgress, 0f)
+                        android.util.TypedValue.TYPE_INT_DEC, android.util.TypedValue.TYPE_INT_HEX -> getInt(R.styleable.FelicitySeekbar_felicityProgress, 0).toFloat()
+                        else -> getInt(R.styleable.FelicitySeekbar_felicityProgress, 0).toFloat()
                     }
                 }
-                progressInternal = progressInternal.coerceIn(0, maxProgress)
+                progressInternal = progressInternal.coerceIn(0f, maxProgress.toFloat())
 
                 trackColor = getColor(R.styleable.FelicitySeekbar_felicityTrackColor, trackColor)
                 progressColor = getColor(R.styleable.FelicitySeekbar_felicityProgressColor, progressColor)
@@ -153,7 +197,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     fun setMax(max: Int) {
         setMaxInternal(max)
         if (progressInternal > maxProgress) {
-            progressInternal = maxProgress
+            progressInternal = maxProgress.toFloat()
             invalidate()
         }
     }
@@ -164,15 +208,32 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     fun getMax(): Int = maxProgress
 
-    fun setProgress(progress: Int, fromUser: Boolean = false) {
-        val newValue = progress.coerceIn(0, maxProgress)
-        if (newValue == progressInternal) return
-        progressInternal = newValue
-        invalidate()
-        listener?.onProgressChanged(this, progressInternal, fromUser)
+    fun setProgress(progress: Int, fromUser: Boolean = false, animate: Boolean = false) {
+        val target = progress.coerceIn(0, maxProgress).toFloat()
+        if (!animate) {
+            if (springAnimation.isRunning) springAnimation.cancel()
+            if (progressInternal == target) return
+            progressInternal = target
+            invalidate()
+            listener?.onProgressChanged(this, getProgress(), fromUser)
+        } else {
+            animateFromUser = fromUser
+            springAnimation.cancel()
+            springAnimation.setStartValue(progressInternal)
+            springAnimation.spring.finalPosition = target
+            springAnimation.start()
+        }
     }
 
-    fun getProgress(): Int = progressInternal
+    fun getProgress(): Int = progressInternal.toInt()
+
+    fun setDefaultProgress(value: Int) {
+        defaultProgress = value.coerceIn(0, maxProgress)
+    }
+
+    fun resetToDefault(animate: Boolean = true) {
+        setProgress(defaultProgress, fromUser = false, animate = animate)
+    }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val baseHeight = max(trackHeightPx, thumbRadiusPx * 2f)
@@ -188,15 +249,17 @@ class FelicitySeekbar @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val hOut = horizontalOutset()
-        val left = paddingLeft.toFloat() + hOut
-        val right = (width - paddingRight).toFloat() - hOut
+        val safeInset = thumbRadiusPx // ensure full thumb fits inside view bounds
+        val left = paddingLeft.toFloat() + hOut + safeInset
+        val right = (width - paddingRight).toFloat() - hOut - safeInset
         if (right <= left) return
         val centerY = height / 2f + if (smudgeEnabled) smudgeOffsetY else 0f
         val trackRadius = trackHeightPx / 2f
         trackRect.set(left, centerY - trackRadius, right, centerY + trackRadius)
 
-        val fraction = if (maxProgress == 0) 0f else progressInternal.toFloat() / maxProgress.toFloat()
-        val progressRight = left + (right - left) * fraction.coerceIn(0f, 1f)
+        val fraction = if (maxProgress == 0) 0f else progressInternal / maxProgress.toFloat()
+        val clampedFraction = fraction.coerceIn(0f, 1f)
+        val progressRight = left + (right - left) * clampedFraction
 
         if (smudgeEnabled && progressRight > left) {
             smudgeRect.set(left, trackRect.top, progressRight, trackRect.bottom)
@@ -208,13 +271,59 @@ class FelicitySeekbar @JvmOverloads constructor(
             canvas.drawRoundRect(progressRect, trackRadius, trackRadius, progressPaint)
         }
 
-        if (progressRight > left) {
-            val cx = progressRight
-            val cy = trackRect.centerY()
-            if (thumbShadowRadius > 0f) canvas.drawCircle(cx, cy, thumbRadiusPx, thumbShadowPaint)
-            if (thumbInnerColor != Color.TRANSPARENT) canvas.drawCircle(cx, cy, (thumbRadiusPx - thumbRingWidthPx / 2f).coerceAtLeast(0f), thumbInnerPaint)
-            canvas.drawCircle(cx, cy, thumbRadiusPx - thumbRingWidthPx / 2f, thumbRingPaint)
+        // Always draw thumb (even at start/end) fully within bounds
+        val cx = progressRight
+        val cy = trackRect.centerY()
+        val scaledRadius = thumbRadiusPx * thumbScale
+        if (thumbShadowRadius > 0f) canvas.drawCircle(cx, cy, scaledRadius, thumbShadowPaint)
+        if (thumbInnerColor != Color.TRANSPARENT) canvas.drawCircle(cx, cy, (scaledRadius - thumbRingWidthPx / 2f).coerceAtLeast(0f), thumbInnerPaint)
+        canvas.drawCircle(cx, cy, scaledRadius - thumbRingWidthPx / 2f, thumbRingPaint)
+    }
+
+    private fun isPointOnThumb(x: Float, y: Float): Boolean {
+        val hOut = horizontalOutset()
+        val safeInset = thumbRadiusPx
+        val left = paddingLeft.toFloat() + hOut + safeInset
+        val right = (width - paddingRight).toFloat() - hOut - safeInset
+        if (right <= left) return false
+        val fraction = if (maxProgress == 0) 0f else progressInternal / maxProgress.toFloat()
+        val progressX = left + (right - left) * fraction.coerceIn(0f, 1f)
+        val cy = height / 2f + if (smudgeEnabled) smudgeOffsetY else 0f
+        val dx = x - progressX
+        val dy = y - cy
+        val r = thumbRadiusPx * thumbScale
+        return dx * dx + dy * dy <= r * r
+    }
+
+    private fun startThumbScale(up: Boolean = false) {
+        val target = if (!up) 1.15f else 1f
+        if (thumbScale == target) return
+        thumbScaleAnimator?.cancel()
+        thumbScaleAnimator = ValueAnimator.ofFloat(thumbScale, target).apply {
+            duration = if (!up) 120 else 160
+            addUpdateListener { anim ->
+                thumbScale = (anim.animatedValue as Float)
+                invalidate()
+            }
+            start()
         }
+    }
+
+    private fun scheduleLongPress() {
+        cancelLongPress()
+        longPressRunnable = Runnable {
+            if (isPressed && downOnThumb) {
+                longPressTriggered = true
+                performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                resetToDefault(animate = true)
+            }
+        }.also { postDelayed(it, longPressTimeout) }
+    }
+
+    override fun cancelLongPress() {
+        super.cancelLongPress()
+        longPressRunnable?.let { removeCallbacks(it) }
+        longPressRunnable = null
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -223,20 +332,47 @@ class FelicitySeekbar @JvmOverloads constructor(
                 if (!isEnabled) return false
                 parent?.requestDisallowInterceptTouchEvent(true)
                 isDragging = true
+                downX = event.x
+                downY = event.y
+                downOnThumb = isPointOnThumb(downX, downY)
+                longPressTriggered = false
+                if (downOnThumb) {
+                    scheduleLongPress()
+                    startThumbScale(up = false)
+                } else {
+                    // fast animate to tap position
+                    val hOut = horizontalOutset()
+                    val safeInset = thumbRadiusPx
+                    val left = paddingLeft.toFloat() + hOut + safeInset
+                    val right = (width - paddingRight).toFloat() - hOut - safeInset
+                    val clamped = min(max(event.x, left), right)
+                    val fraction = (clamped - left) / (right - left)
+                    val newProgress = (fraction * maxProgress).toInt().coerceIn(0, maxProgress)
+                    if (springAnimation.isRunning) springAnimation.cancel()
+                    springAnimation.spring.stiffness = fastStiffness
+                    springAnimation.spring.dampingRatio = fastDamping
+                    setProgress(newProgress, fromUser = true, animate = true)
+                }
                 listener?.onStartTrackingTouch(this)
-                updateFromTouch(event.x, true)
                 performClick()
                 return true
             }
             MotionEvent.ACTION_MOVE -> if (isDragging) {
+                val dx = event.x - downX
+                val dy = event.y - downY
+                val movedFar = dx * dx + dy * dy > touchSlop * touchSlop
+                if (movedFar && !longPressTriggered) cancelLongPress()
                 updateFromTouch(event.x, true)
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (isDragging) {
                     isDragging = false
-                    listener?.onStopTrackingTouch(this)
+                    if (!longPressTriggered) listener?.onStopTrackingTouch(this)
                 }
+                cancelLongPress()
+                if (downOnThumb) startThumbScale(up = true)
+                downOnThumb = false
                 parent?.requestDisallowInterceptTouchEvent(false)
             }
         }
@@ -250,13 +386,15 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     private fun updateFromTouch(x: Float, fromUser: Boolean) {
         val hOut = horizontalOutset()
-        val left = paddingLeft.toFloat() + hOut
-        val right = (width - paddingRight).toFloat() - hOut
+        val safeInset = thumbRadiusPx // ensure full thumb fits inside view bounds
+        val left = paddingLeft.toFloat() + hOut + safeInset
+        val right = (width - paddingRight).toFloat() - hOut - safeInset
         if (right <= left) return
         val clamped = min(max(x, left), right)
         val fraction = (clamped - left) / (right - left)
         val newProgress = (fraction * maxProgress).toInt().coerceIn(0, maxProgress)
-        setProgress(newProgress, fromUser)
+        // User drag: immediate update without animation for responsiveness
+        setProgress(newProgress, fromUser, animate = false)
     }
 
     fun setColors(@ColorInt track: Int = trackColor,

@@ -1,7 +1,6 @@
 package app.simple.felicity.dialogs.carousel
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -23,13 +22,13 @@ class CarouselMenu : ScopedBottomSheetFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.cameraYSeekbar.setProgress(CarouselPreferences.getEyeY(), false)
-        Log.d(TAG, "Current Camera Y: ${CarouselPreferences.getEyeY()}")
+        binding.cameraYSeekbar.setDefaultProgress(CarouselPreferences.CAMERA_EYE_Y_DEFAULT)
+        binding.cameraYSeekbar.setProgress(CarouselPreferences.getEyeY())
 
         binding.cameraYSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
             override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean) {
                 if (fromUser) {
-                    CarouselPreferences.setCameraY(progress)
+                    CarouselPreferences.setEyeY(progress)
                 }
             }
         })

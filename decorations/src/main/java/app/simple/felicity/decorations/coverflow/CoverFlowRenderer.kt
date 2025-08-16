@@ -62,11 +62,13 @@ class CoverFlowRenderer(
 
     fun updateCamera() {
         val z = if (verticalOrientation) cameraZPortrait else cameraZLandscape
+        val y = if (verticalOrientation) 0f else CarouselPreferences.getEyeY() / 100f
+
         // eye at (0,0,z) looking at origin
         Matrix.setLookAtM(/* rm = */ view,
                           /* rmOffset = */ 0,
                           /* eyeX = */ 0f,
-                          /* eyeY = */ CarouselPreferences.getEyeY() / 100f,
+                          /* eyeY = */ y,
                           /* eyeZ = */ z,
                           /* centerX = */ 0f,
                           /* centerY = */ 0f,
