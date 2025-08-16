@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:padding="@dimen/padding_15"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
@@ -23,6 +24,26 @@
 
         <app.simple.felicity.decorations.seekbars.FelicitySeekbar
             android:id="@+id/camera_y_seekbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:felicityAnimateInitial="false"
+            app:felicityMax="200"
+            app:felicityProgress="100"
+            app:felicityThumbRadius="@dimen/padding_15"
+            app:felicityThumbRingWidth="@dimen/padding_10"
+            app:felicityTrackHeight="@dimen/padding_15" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/text_size_14"
+            android:text="Z"
+            app:appFontStyle="bold"
+            app:textColorStyle="primary"
+            tools:ignore="HardcodedText" />
+
+        <app.simple.felicity.decorations.seekbars.FelicitySeekbar
+            android:id="@+id/z_seekbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:felicityAnimateInitial="false"

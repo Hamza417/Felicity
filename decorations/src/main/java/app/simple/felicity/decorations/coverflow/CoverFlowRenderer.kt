@@ -61,7 +61,9 @@ class CoverFlowRenderer(
     private var reflectionEnabled = true
 
     fun updateCamera() {
-        val z = if (verticalOrientation) cameraZPortrait else cameraZLandscape
+        val z = (if (verticalOrientation) cameraZPortrait else cameraZLandscape)
+            .times(CarouselPreferences.getZ().coerceAtLeast(1))
+            .div(100F)
         val y = if (verticalOrientation) 0f else CarouselPreferences.getEyeY() / 100f
 
         // eye at (0,0,z) looking at origin

@@ -5,8 +5,10 @@ import androidx.core.content.edit
 object CarouselPreferences {
 
     const val CAMERA_EYE_Y = "camera_eye_y"
+    const val Z = "z"
 
     const val CAMERA_EYE_Y_DEFAULT = 100
+    const val Z_DEFAULT = 100
 
     // -------------------------------------------------------------------------------------------- //
 
@@ -23,4 +25,16 @@ object CarouselPreferences {
     }
 
     // -------------------------------------------------------------------------------------------- //
+
+    fun setZ(value: Int) {
+        SharedPreferences.getSharedPreferences()
+            .edit {
+                putInt(Z, value)
+            }
+    }
+
+    fun getZ(): Int {
+        return SharedPreferences.getSharedPreferences()
+            .getInt(Z, Z_DEFAULT)
+    }
 }
