@@ -8,6 +8,7 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.databinding.FragmentCoverflowBinding
 import app.simple.felicity.decorations.coverflow.CoverFlowRenderer
 import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.repository.models.Song
 import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 
@@ -23,18 +24,20 @@ class CoverFlow : ScopedFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        requireLightBarIcons()
 
         songsViewModel.getSongAndArt().observe(viewLifecycleOwner) { songs ->
-            binding.coverFlow.setUris(songs.keys.toList())
-            binding.coverFlow.scrollToIndex(songsViewModel.getCarouselPosition()).also {
+            binding.coverflow.setUris(songs.keys.toList())
+            binding.coverflow.scrollToIndex(songsViewModel.getCarouselPosition()).also {
                 if (songsViewModel.getCarouselPosition().isNotZero()) {
-                    binding.coverFlow.reloadTextures()
+                    binding.coverflow.reloadTextures()
                 }
             }
 
-            binding.coverFlow.addScrollListener(object : CoverFlowRenderer.ScrollListener {
+            binding.coverflow.addScrollListener(object : CoverFlowRenderer.ScrollListener {
                 override fun onCenteredIndexChanged(index: Int) {
                     songsViewModel.setCarouselPosition(index)
+                    updateInfo(index, songs.values.elementAtOrNull(index))
                 }
 
                 override fun onScrollOffsetChanged(offset: Float) {
@@ -49,6 +52,21 @@ class CoverFlow : ScopedFragment() {
 
                 }
             })
+
+            binding.arrowLeft.setOnClickListener {
+                binding.coverflow.scrollToIndex(binding.coverflow.getCenteredIndex() - 10)
+            }
+
+            binding.arrowRight.setOnClickListener {
+                binding.coverflow.scrollToIndex(binding.coverflow.getCenteredIndex() + 10)
+            }
+        }
+    }
+
+    private fun updateInfo(position: Int, song: Song?) {
+        if (song != null) {
+            binding.title.text = song.title
+            binding.artist.text = song.artist
         }
     }
 

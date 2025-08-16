@@ -409,6 +409,7 @@ class CoverFlowRenderer(
     }
 
     // ----- Bitmap decode helpers -----
+    @Suppress("SameParameterValue")
     @SuppressLint("NewApi")
     private fun decodeScaled(uri: Uri, maxDim: Int): Bitmap? {
         return context.contentResolver.loadThumbnail(uri, Size(maxDim, maxDim), null)
