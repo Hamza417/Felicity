@@ -39,6 +39,9 @@ class CoverFlowRenderer(
     var scrollOffset = 0f
         private set
 
+    @Suppress("PrivatePropertyName")
+    private val SCROLL_SENSITIVITY = 2.5f // faster scrolling
+
     // Orientation
     @Volatile
     private var verticalOrientation = false
@@ -92,8 +95,8 @@ class CoverFlowRenderer(
     private var depthParallaxEnabled = true
 
     // Reflection parameters
-    private val reflectionGap = 0.00f          // vertical gap below main cover
-    private val reflectionScale = 0.85f        // relative height of reflection
+    private val reflectionGap = 0.05f          // vertical gap below main cover
+    private val reflectionScale = 0.45f        // relative height of reflection
     private val reflectionStrength = 0.55f     // max brightness/alpha of reflection
     private var reflectionBlur = 0.006f // default subtle reflection blur
 
@@ -176,7 +179,7 @@ class CoverFlowRenderer(
     fun scrollBy(dxItems: Float) {
         if (uris.isEmpty()) return
         snapTarget = null
-        scrollOffset += dxItems
+        scrollOffset += dxItems * SCROLL_SENSITIVITY
         scrollOffset = scrollOffset.coerceIn(0f, (uris.size - 1).toFloat())
         val center = centeredIndex().toFloat()
         requestPrefetch(center)
@@ -230,14 +233,19 @@ class CoverFlowRenderer(
     // ----- Vertical drag (carousel pitch & offset) -----
     private val maxDragYOffset = 0.35f
     private val maxDragPitchDeg = 10f
+
     @Volatile
     private var targetDragYOffset = 0f
+
     @Volatile
     private var targetDragPitch = 0f
+
     @Volatile
     private var currentDragYOffset = 0f
+
     @Volatile
     private var currentDragPitch = 0f
+
     @Volatile
     private var userDraggingVertically = false
     private val dragEasingLambda = 14f
@@ -651,8 +659,8 @@ class CoverFlowRenderer(
         if (!userDraggingVertically) {
             val dy = targetDragYOffset - currentDragYOffset
             val dp = targetDragPitch - currentDragPitch
-            if (kotlin.math.abs(dy) > 0.0001f) currentDragYOffset += dy * (1f - exp(-dragEasingLambda * dt)) else currentDragYOffset = targetDragYOffset
-            if (kotlin.math.abs(dp) > 0.0001f) currentDragPitch += dp * (1f - exp(-dragEasingLambda * dt)) else currentDragPitch = targetDragPitch
+            if (abs(dy) > 0.0001f) currentDragYOffset += dy * (1f - exp(-dragEasingLambda * dt)) else currentDragYOffset = targetDragYOffset
+            if (abs(dp) > 0.0001f) currentDragPitch += dp * (1f - exp(-dragEasingLambda * dt)) else currentDragPitch = targetDragPitch
         }
         if (scrollOffset != prevOffset) notifyScrollChanged()
         val centerF = scrollOffset
@@ -662,7 +670,7 @@ class CoverFlowRenderer(
         val visEnd = min(lastIndex, ceil(centerF + visibleRadius).toInt())
         for (i in visStart..visEnd) {
             val centerIdx = centerF.roundToInt()
-            if (kotlin.math.abs(i - centerIdx) <= prefetchRadius && !textures.containsKey(i) && !inFlight.containsKey(i)) enqueueLoad(i)
+            if (abs(i - centerIdx) <= prefetchRadius && !textures.containsKey(i) && !inFlight.containsKey(i)) enqueueLoad(i)
             val tex = textures[i] ?: placeholderTex
             val offset = i - centerF
             drawItem(tex, offset)
@@ -736,7 +744,7 @@ class CoverFlowRenderer(
         synchronized(framePicks) {
             for (p in framePicks) {
                 if (nx >= p.minX && nx <= p.maxX) {
-                    if (best == null || (p.maxX - p.minX) < (best!!.maxX - best!!.minX)) best = p
+                    if (best == null || (p.maxX - p.minX) < (best.maxX - best.minX)) best = p
                 }
             }
         }
@@ -750,7 +758,7 @@ class CoverFlowRenderer(
         synchronized(framePicks) {
             for (p in framePicks) {
                 if (ny >= p.minY && ny <= p.maxY) {
-                    if (best == null || (p.maxY - p.minY) < (best!!.maxY - best!!.minY)) best = p
+                    if (best == null || (p.maxY - p.minY) < (best.maxY - best.minY)) best = p
                 }
             }
         }
