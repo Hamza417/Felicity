@@ -49,4 +49,6 @@
     <string name="four">Four</string>
     <string name="five">Five</string>
     <string name="six">Six</string>
+    <string name="carousel_settings">Carousel Settings</string>
+    <string name="songs_settings">Songs Settings</string>
 </resources>

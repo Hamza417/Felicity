@@ -6,10 +6,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
+import app.simple.felicity.core.R
 import app.simple.felicity.databinding.FragmentCoverflowBinding
 import app.simple.felicity.decorations.coverflow.CoverFlow.OnCoverClickListener
 import app.simple.felicity.decorations.coverflow.CoverFlowRenderer
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.popups.carousel.PopupSongsCarouselMenu
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
@@ -74,6 +76,27 @@ class CoverFlow : MediaFragment() {
 
             binding.arrowRight.setOnClickListener {
                 binding.coverflow.scrollToIndex(binding.coverflow.getCenteredIndex() + 10)
+            }
+
+            binding.menu.setOnClickListener {
+                PopupSongsCarouselMenu(
+                        container = requireContainerView(),
+                        anchorView = it,
+                        menuItems = listOf(R.string.carousel_settings, R.string.songs_settings),
+                        menuIcons = listOf(app.simple.felicity.decoration.R.drawable.ic_carousel,
+                                           app.simple.felicity.decoration.R.drawable.ic_song_16dp),
+                        onMenuItemClick = { id ->
+                            when (id) {
+                                R.string.songs_settings -> {
+
+                                }
+                                R.string.carousel_settings -> {
+
+                                }
+                            }
+                        },
+                        onDismiss = {}
+                ).show()
             }
         }
     }
