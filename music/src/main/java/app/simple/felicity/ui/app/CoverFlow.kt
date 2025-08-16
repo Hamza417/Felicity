@@ -10,6 +10,7 @@ import app.simple.felicity.core.R
 import app.simple.felicity.databinding.FragmentCoverflowBinding
 import app.simple.felicity.decorations.coverflow.CoverFlow.OnCoverClickListener
 import app.simple.felicity.decorations.coverflow.CoverFlowRenderer
+import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.popups.carousel.PopupSongsCarouselMenu
 import app.simple.felicity.repository.models.Song
@@ -91,7 +92,7 @@ class CoverFlow : MediaFragment() {
 
                                 }
                                 R.string.carousel_settings -> {
-
+                                    childFragmentManager.showCarouselMenu()
                                 }
                             }
                         },

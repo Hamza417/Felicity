@@ -2,6 +2,7 @@ package app.simple.felicity.decorations.coverflow
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.SharedPreferences
 import android.net.Uri
 import android.opengl.GLSurfaceView
 import android.util.AttributeSet
@@ -10,11 +11,16 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.widget.OverScroller
 import app.simple.felicity.decorations.coverflow.CoverFlowRenderer.ScrollListener
+import app.simple.felicity.preferences.CarouselPreferences
+import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
+import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 
 class CoverFlow @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null
-) : GLSurfaceView(context, attrs), Choreographer.FrameCallback {
+) : GLSurfaceView(context, attrs),
+    Choreographer.FrameCallback,
+    SharedPreferences.OnSharedPreferenceChangeListener {
 
     private val renderer: CoverFlowRenderer
     private val gestureDetector: GestureDetector
@@ -43,6 +49,8 @@ class CoverFlow @JvmOverloads constructor(
         renderMode = RENDERMODE_CONTINUOUSLY
 
         scroller = OverScroller(context)
+
+        registerSharedPreferenceChangeListener()
 
         gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
             override fun onDown(e: MotionEvent): Boolean {
@@ -155,6 +163,7 @@ class CoverFlow @JvmOverloads constructor(
         super.onDetachedFromWindow()
         queueEvent { renderer.release() }
         stopAnimating()
+        unregisterSharedPreferenceChangeListener()
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -196,6 +205,12 @@ class CoverFlow @JvmOverloads constructor(
             requestRender()
             // Keep one more frame for settling, then stop
             stopAnimating()
+        }
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        if (key == CarouselPreferences.CAMERA_EYE_Y) {
+            queueEvent { renderer.updateCamera() }
         }
     }
 }

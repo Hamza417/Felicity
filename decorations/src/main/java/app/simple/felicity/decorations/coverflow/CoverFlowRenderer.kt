@@ -12,6 +12,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.Size
+import app.simple.felicity.preferences.CarouselPreferences
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -59,10 +60,20 @@ class CoverFlowRenderer(
     @Volatile
     private var reflectionEnabled = true
 
-    private fun updateCamera() {
+    fun updateCamera() {
         val z = if (verticalOrientation) cameraZPortrait else cameraZLandscape
         // eye at (0,0,z) looking at origin
-        Matrix.setLookAtM(view, 0, 0f, 0f, z, 0f, 0f, 0f, 0f, 1f, 0f)
+        Matrix.setLookAtM(/* rm = */ view,
+                          /* rmOffset = */ 0,
+                          /* eyeX = */ 0f,
+                          /* eyeY = */ CarouselPreferences.getEyeY() / 100f,
+                          /* eyeZ = */ z,
+                          /* centerX = */ 0f,
+                          /* centerY = */ 0f,
+                          /* centerZ = */ 0f,
+                          /* upX = */ 0f,
+                          /* upY = */ 1F,
+                          /* upZ = */ 0f)
     }
 
     fun setVerticalOrientation(vertical: Boolean) {

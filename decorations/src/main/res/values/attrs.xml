@@ -200,4 +200,23 @@
         <attr name="initialValue" format="integer" />
     </declare-styleable>
 
+    <declare-styleable name="FelicitySeekbar">
+        <attr name="felicityMax" format="integer" />
+        <attr name="felicityProgress" format="integer" />
+        <attr name="felicityTrackColor" format="color|reference" />
+        <attr name="felicityProgressColor" format="color|reference" />
+        <attr name="felicityThumbRingColor" format="color|reference" />
+        <attr name="felicityThumbInnerColor" format="color|reference" />
+        <attr name="felicityTrackHeight" format="dimension" />
+        <attr name="felicityThumbRadius" format="dimension" />
+        <attr name="felicityThumbRingWidth" format="dimension" />
+        <attr name="felicityAnimateInitial" format="boolean" />
+        <attr name="felicitySmudgeEnabled" format="boolean" />
+        <attr name="felicitySmudgeRadius" format="dimension" />
+        <attr name="felicitySmudgeColor" format="color|reference" />
+        <attr name="felicitySmudgeOffsetY" format="dimension" />
+        <attr name="felicityThumbShadowRadius" format="dimension" />
+        <attr name="felicityThumbShadowColor" format="color|reference" />
+    </declare-styleable>
+
 </resources>

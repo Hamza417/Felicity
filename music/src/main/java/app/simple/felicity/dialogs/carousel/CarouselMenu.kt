@@ -1,0 +1,54 @@
+package app.simple.felicity.dialogs.carousel
+
+import android.os.Bundle
+import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.fragment.app.FragmentManager
+import app.simple.felicity.databinding.DialogCarouselSettingsBinding
+import app.simple.felicity.decorations.seekbars.FelicitySeekbar
+import app.simple.felicity.extensions.fragments.ScopedBottomSheetFragment
+import app.simple.felicity.preferences.CarouselPreferences
+
+class CarouselMenu : ScopedBottomSheetFragment() {
+
+    private lateinit var binding: DialogCarouselSettingsBinding
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        binding = DialogCarouselSettingsBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        binding.cameraYSeekbar.setProgress(CarouselPreferences.getEyeY(), false)
+        Log.d(TAG, "Current Camera Y: ${CarouselPreferences.getEyeY()}")
+
+        binding.cameraYSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
+            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    CarouselPreferences.setCameraY(progress)
+                }
+            }
+        })
+    }
+
+    companion object {
+        fun newInstance(): CarouselMenu {
+            val args = Bundle()
+            val fragment = CarouselMenu()
+            fragment.arguments = args
+            return fragment
+        }
+
+        fun FragmentManager.showCarouselMenu(): CarouselMenu {
+            val dialog = newInstance()
+            dialog.show(this, TAG)
+            return dialog
+        }
+
+        const val TAG = "DialogCarouselSettings"
+    }
+}

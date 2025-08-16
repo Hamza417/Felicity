@@ -51,4 +51,5 @@
     <string name="six">Six</string>
     <string name="carousel_settings">Carousel Settings</string>
     <string name="songs_settings">Songs Settings</string>
+    <string name="camera_y">Camera Y</string>
 </resources>
