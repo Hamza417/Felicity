@@ -10,7 +10,6 @@ import android.opengl.GLUtils
 import android.opengl.Matrix
 import android.util.Log
 import android.util.Size
-import com.google.android.material.math.MathUtils.lerp
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -20,6 +19,7 @@ import java.util.concurrent.Executors
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.abs
+import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -34,6 +34,10 @@ class CoverFlowRenderer(
     @Volatile
     var scrollOffset = 0f
         private set
+
+    // New snap state
+    @Volatile
+    private var snapTarget: Float? = null
 
     // Layout knobs
     private val spacing = 1.2f
@@ -103,16 +107,16 @@ class CoverFlowRenderer(
 
     fun centeredIndex(): Int = scrollOffset.roundToInt().coerceIn(0, max(0, uris.size - 1))
 
+    // Request a snap (does not jump immediately; animated in onDrawFrame)
     fun snapToNearest() {
-        val target = scrollOffset.roundToInt().toFloat()
-        scrollOffset = lerp(scrollOffset, target, 0.25f)
-        requestPrefetch(centeredIndex())
-        queueGL { recycleFarTextures(centeredIndex()) }
+        snapTarget = scrollOffset.roundToInt().coerceIn(0, max(0, uris.size - 1)).toFloat()
     }
 
     fun scrollBy(dxItems: Float) {
         if (uris.isEmpty()) return
-        scrollOffset += dxItems * 2.2f
+        // Cancel any ongoing snap because user is interacting
+        snapTarget = null
+        scrollOffset += dxItems
         scrollOffset = scrollOffset.coerceIn(0f, (uris.size - 1).toFloat())
         val center = centeredIndex()
         requestPrefetch(center)
@@ -142,50 +146,76 @@ class CoverFlowRenderer(
         Matrix.frustumM(proj, 0, -aspect, aspect, -1f, 1f, 2f, 10f)
     }
 
+    private var lastFrameNanos = 0L
+    private val snapLambda = 10f // higher -> faster snap (per second rate)
+
     override fun onDrawFrame(unused: GL10?) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
         if (uris.isEmpty()) return
 
-        // Small auto-settle
-        if (abs(scrollOffset - scrollOffset.roundToInt()) < 0.01f) {
-            snapToNearest()
+        // Time step for frame-rate independent easing
+        val now = System.nanoTime()
+        if (lastFrameNanos == 0L) lastFrameNanos = now
+        val dt = ((now - lastFrameNanos).coerceAtMost(100_000_000L)) / 1_000_000_000f // clamp dt to 0.1s
+        lastFrameNanos = now
+
+        // Step snap animation if active using exponential approach to target
+        snapTarget?.let { target ->
+            val delta = target - scrollOffset
+            val ad = abs(delta)
+            if (ad < 0.00008f) {
+                scrollOffset = target
+                snapTarget = null
+            } else {
+                // frame-rate independent exponential smoothing: x += delta * (1 - e^{-lambda*dt})
+                val factor = 1f - exp(-snapLambda * dt)
+                scrollOffset += delta * factor
+            }
+            requestPrefetch(centeredIndex())
         }
 
-        val centerIdx = centeredIndex()
         val centerFloat = scrollOffset
 
-        // Define a drawing window. We draw a little beyond keepRadius so that fade feels smooth
-        val drawRadius = max(keepRadius, prefetchRadius + 1)
-        val start = max(0, centerIdx - drawRadius)
-        val end = min(uris.size - 1, centerIdx + drawRadius)
+        // Use a generous drawing range to ensure items don't disappear on either side
+        // Draw enough items to fill the screen plus some buffer
+        val drawRange = max(6, max(keepRadius, prefetchRadius) + 2)
 
-        // Draw only the window range to avoid triggering loads for every item each frame
+        // Calculate range based on float position, not just integer center
+        val startFloat = centerFloat - drawRange
+        val endFloat = centerFloat + drawRange
+
+        val start = max(0, startFloat.toInt())
+        val end = min(uris.size - 1, endFloat.toInt() + 1)
+
+        // Draw all items in the expanded range
         for (i in start..end) {
             val offset = i - centerFloat
             val tex = textures[i] ?: run {
-                // Queue load only if within prefetch radius
+                // Queue load for items within prefetch radius of current center
+                val centerIdx = centerFloat.roundToInt()
                 if (abs(i - centerIdx) <= prefetchRadius) enqueueLoad(i)
                 continue
             }
             drawItem(tex, offset)
         }
 
-        // Recycle outside keep radius after drawing (in case center changed mid-frame)
-        queueGL { recycleFarTextures(centeredIndex()) }
+        // Recycle textures that are far from current position
+        queueGL { recycleFarTextures(centerFloat.roundToInt()) }
     }
 
     // ----- Drawing -----
     private fun drawItem(tex: Int, offsetFromCenter: Float) {
         val x = offsetFromCenter * spacing
-        val rotY = max(-maxRotation, min(maxRotation, -offsetFromCenter * maxRotation))
+        val nearCenter = abs(offsetFromCenter) < 0.006f
+        val rotY = if (nearCenter) 0f else max(-maxRotation, min(maxRotation, -offsetFromCenter * maxRotation))
         val z = -abs(offsetFromCenter) * zSpread
         val sideFactor = (1f - (1f - sideScale) * min(1f, abs(offsetFromCenter)))
         val scale = baseScale * sideFactor
         val alpha = 1f - (1f - fadeSide) * min(1f, abs(offsetFromCenter).pow(0.9f))
 
         Matrix.setIdentityM(model, 0)
-        Matrix.translateM(model, 0, x, 0f, z)
-        Matrix.rotateM(model, 0, rotY, 0f, 1f, 0f)
+        Matrix.translateM(model, 0, if (nearCenter) 0f else x, 0f, z)
+        if (!nearCenter) Matrix.rotateM(model, 0, rotY, 0f, 1f, 0f)
         Matrix.scaleM(model, 0, scale, scale, 1f)
 
         Matrix.multiplyMM(mvp, 0, view, 0, model, 0)
