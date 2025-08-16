@@ -1,5 +1,6 @@
 package app.simple.felicity.decorations.coverflow
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import android.opengl.GLSurfaceView
@@ -23,6 +24,16 @@ class CoverFlow @JvmOverloads constructor(
     private var animating = false
     private var lastFlingX = 0
     private var downY = 0f
+    private var coverClickListener: OnCoverClickListener? = null
+
+    interface OnCoverClickListener {
+        fun onCenteredCoverClick(index: Int, uri: Uri?) {}
+        fun onSideCoverSelected(index: Int, uri: Uri?) {}
+    }
+
+    fun setOnCoverClickListener(listener: OnCoverClickListener?) {
+        coverClickListener = listener
+    }
 
     init {
         setEGLContextClientVersion(2)
@@ -43,11 +54,11 @@ class CoverFlow @JvmOverloads constructor(
 
             override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
                 renderer.scrollBy(distanceX / (width * 0.3f))
-                // Vertical drag normalized [-1,1]
-                if (height > 0 && e1 != null) {
-                    val dy = (e2.y - downY) / height
-                    queueEvent { renderer.setDragVertical(dy.times(2)) }
-                }
+                //                // Vertical drag normalized [-1,1]
+                //                if (height > 0 && e1 != null) {
+                //                    val dy = (e2.y - downY) / height
+                //                    queueEvent { renderer.setDragVertical(dy.times(2)) }
+                //                }
                 requestRender()
                 return true
             }
@@ -69,6 +80,20 @@ class CoverFlow @JvmOverloads constructor(
             }
 
             override fun onSingleTapUp(e: MotionEvent): Boolean {
+                // Use renderer picking to determine which cover was tapped
+                val tapped = renderer.pickIndexAtScreenX(e.x)
+                if (tapped != null) {
+                    val centered = renderer.centeredIndex()
+                    if (tapped == centered) {
+                        coverClickListener?.onCenteredCoverClick(tapped, renderer.getUriAt(tapped))
+                    } else {
+                        // Move tapped side cover to center
+                        queueEvent { renderer.scrollToIndex(tapped, smooth = true) }
+                        coverClickListener?.onSideCoverSelected(tapped, renderer.getUriAt(tapped))
+                    }
+                    requestRender()
+                    return true
+                }
                 renderer.snapToNearest()
                 requestRender()
                 return true
@@ -123,6 +148,7 @@ class CoverFlow @JvmOverloads constructor(
         stopAnimating()
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val handled = gestureDetector.onTouchEvent(event)
         if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {

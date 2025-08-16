@@ -8,12 +8,12 @@ import android.util.AttributeSet;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import app.simple.felicity.decorations.inset.InsetRecyclerView;
+import androidx.recyclerview.widget.RecyclerView;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.themes.Theme;
 
-public class ThemeRecyclerView extends InsetRecyclerView implements ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
+public class ThemeRecyclerView extends RecyclerView implements ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
     
     private ValueAnimator valueAnimator;
     

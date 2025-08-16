@@ -54,6 +54,7 @@ class CoverFlowRenderer(
     private val reflectionGap = 0.04f          // vertical gap below main cover
     private val reflectionScale = 0.85f        // relative height of reflection
     private val reflectionStrength = 0.55f     // max brightness/alpha of reflection
+    private var reflectionBlur = 0.006f // default subtle reflection blur
 
     // New: base scale to enlarge items (center item ~1.0 * baseScale)
     private val baseScale = 1.4f
@@ -75,14 +76,21 @@ class CoverFlowRenderer(
     private var uTex = 0
     private var uReflection = 0
     private var uReflectStrength = 0
+    private var uReflectBlur = 0
 
     // Geometry
     private lateinit var quadVB: FloatBuffer
     private lateinit var quadTB: FloatBuffer
     private lateinit var quadIB: ShortBuffer
 
-    // Data
+    // Data set
     private val uris = mutableListOf<Uri>()
+
+    // Picking structures
+    private data class CoverPick(val index: Int, val minX: Float, val maxX: Float)
+
+    private val framePicks = ArrayList<CoverPick>()
+    private var viewWidth = 0
 
     // Matrices
     private val proj = FloatArray(16)
@@ -165,6 +173,7 @@ class CoverFlowRenderer(
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         GLES20.glViewport(0, 0, width, height)
+        viewWidth = width
         val aspect = width.toFloat() / height
         Matrix.frustumM(proj, 0, -aspect, aspect, -1f, 1f, 2f, 10f)
     }
@@ -234,6 +243,7 @@ class CoverFlowRenderer(
         GLES20.glUniform1f(uAlpha, brightness)
         GLES20.glUniform1f(uReflection, 0f)
         GLES20.glUniform1f(uReflectStrength, reflectionStrength)
+        GLES20.glUniform1f(uReflectBlur, 0f)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex)
         GLES20.glUniform1i(uTex, 0)
@@ -242,6 +252,9 @@ class CoverFlowRenderer(
         GLES20.glVertexAttribPointer(aPos, 3, GLES20.GL_FLOAT, false, 0, quadVB)
         GLES20.glVertexAttribPointer(aUV, 2, GLES20.GL_FLOAT, false, 0, quadTB)
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, quadIB)
+
+        // Capture pick bounds for main cover (after main cover draw, before changing model)
+        capturePickBoundsForIndex((scrollOffset + offsetFromCenter).roundToInt())
 
         // Reflection pass (reuse same global transforms)
         Matrix.setIdentityM(model, 0)
@@ -256,6 +269,7 @@ class CoverFlowRenderer(
         GLES20.glUniform1f(uAlpha, brightness)
         GLES20.glUniform1f(uReflection, 1f)
         GLES20.glUniform1f(uReflectStrength, reflectionStrength)
+        GLES20.glUniform1f(uReflectBlur, reflectionBlur)
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, quadIB)
 
         GLES20.glDisableVertexAttribArray(aPos)
@@ -305,15 +319,23 @@ class CoverFlowRenderer(
             uniform float uAlpha; 
             uniform float uReflection; // 0 = main, 1 = reflection
             uniform float uReflectStrength; 
+            uniform float uReflectionBlur; // blur radius in UV units
             void main(){
                 vec4 c = texture2D(uTex, vUV);
-                // optional vignette (retain subtle shading)
                 vec2 uv = vUV - 0.5; 
                 float vignette = 1.0 - dot(uv, uv)*0.65; 
                 c.rgb *= clamp(vignette, 0.5, 1.0);
                 if (uReflection > 0.5) {
-                    // reflection fade: seam (top after mirror) has vUV.y ~1
-                    float fade = vUV.y; // 1 at seam, 0 at bottom
+                    if (uReflectionBlur > 0.00001) {
+                        float offs[5];
+                        offs[0]=-2.0; offs[1]=-1.0; offs[2]=0.0; offs[3]=1.0; offs[4]=2.0;
+                        float wgts[5];
+                        wgts[0]=0.0544887; wgts[1]=0.244201; wgts[2]=0.40262; wgts[3]=0.244201; wgts[4]=0.0544887;
+                        vec4 sum = vec4(0.0);
+                        for (int i=0;i<5;i++) sum += texture2D(uTex, vUV + vec2(0.0, offs[i]*uReflectionBlur)) * wgts[i];
+                        c = sum;
+                    }
+                    float fade = vUV.y; 
                     c.rgb *= fade * uReflectStrength * uAlpha;
                     c.a = fade * uReflectStrength;
                 } else {
@@ -333,6 +355,7 @@ class CoverFlowRenderer(
         uTex = GLES20.glGetUniformLocation(program, "uTex")
         uReflection = GLES20.glGetUniformLocation(program, "uReflection")
         uReflectStrength = GLES20.glGetUniformLocation(program, "uReflectStrength")
+        uReflectBlur = GLES20.glGetUniformLocation(program, "uReflectionBlur")
     }
 
     private fun compileShader(type: Int, src: String): Int {
@@ -473,6 +496,10 @@ class CoverFlowRenderer(
         depthParallaxEnabled = enabled
     }
 
+    fun setReflectionBlur(radius: Float) {
+        reflectionBlur = radius.coerceAtLeast(0f)
+    }
+
     interface ScrollListener {
         fun onScrollOffsetChanged(offset: Float) {}
         fun onCenteredIndexChanged(index: Int) {}
@@ -550,6 +577,7 @@ class CoverFlowRenderer(
     override fun onDrawFrame(unused: GL10?) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
         if (uris.isEmpty()) return
+        framePicks.clear()
         val prevOffset = scrollOffset
         val hadSnapTarget = snapTarget != null
         val now = System.nanoTime()
@@ -613,5 +641,47 @@ class CoverFlowRenderer(
             requestPrefetch(scrollOffset)
             notifyScrollChanged(force = true)
         }
+    }
+
+    private fun capturePickBoundsForIndex(index: Int) {
+        if (index !in uris.indices) return
+        val corners = floatArrayOf(
+                -0.5f, 0.5f, 0f, 1f,
+                -0.5f, -0.5f, 0f, 1f,
+                0.5f, 0.5f, 0f, 1f,
+                0.5f, -0.5f, 0f, 1f
+        )
+        var minX = 10f
+        var maxX = -10f
+        for (i in 0 until 4) {
+            val bi = i * 4
+            val x = corners[bi]
+            val y = corners[bi + 1]
+            val z = corners[bi + 2]
+            val w = corners[bi + 3]
+            val vx = mvp[0] * x + mvp[4] * y + mvp[8] * z + mvp[12] * w
+            val vw = mvp[3] * x + mvp[7] * y + mvp[11] * z + mvp[15] * w
+            if (vw != 0f) {
+                val ndcX = vx / vw
+                if (ndcX < minX) minX = ndcX
+                if (ndcX > maxX) maxX = ndcX
+            }
+        }
+        if (minX <= maxX) synchronized(framePicks) { framePicks.add(CoverPick(index, minX, maxX)) }
+    }
+
+    fun getUriAt(index: Int): Uri? = if (index in uris.indices) uris[index] else null
+    fun pickIndexAtScreenX(x: Float): Int? {
+        if (viewWidth == 0) return null
+        val nx = (x / viewWidth.toFloat()) * 2f - 1f
+        var best: CoverPick? = null
+        synchronized(framePicks) {
+            for (p in framePicks) {
+                if (nx >= p.minX && nx <= p.maxX) {
+                    if (best == null || (p.maxX - p.minX) < (best.maxX - best.minX)) best = p
+                }
+            }
+        }
+        return best?.index
     }
 }

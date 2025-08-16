@@ -1,18 +1,20 @@
 package app.simple.felicity.ui.app
 
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.databinding.FragmentCoverflowBinding
+import app.simple.felicity.decorations.coverflow.CoverFlow.OnCoverClickListener
 import app.simple.felicity.decorations.coverflow.CoverFlowRenderer
-import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 
-class CoverFlow : ScopedFragment() {
+class CoverFlow : MediaFragment() {
 
     private lateinit var binding: FragmentCoverflowBinding
     private val songsViewModel: SongsViewModel by viewModels({ requireActivity() })
@@ -50,6 +52,19 @@ class CoverFlow : ScopedFragment() {
 
                 override fun onSnapStarted(targetIndex: Int) {
 
+                }
+            })
+
+            binding.coverflow.setOnCoverClickListener(object : OnCoverClickListener {
+                override fun onCenteredCoverClick(index: Int, uri: Uri?) {
+                    songsViewModel.setCarouselPosition(index)
+                    setMediaItems(songs.values.toList(), index)
+                    updateInfo(index, songs.values.elementAtOrNull(index))
+                }
+
+                override fun onSideCoverSelected(index: Int, uri: Uri?) {
+                    songsViewModel.setCarouselPosition(index)
+                    updateInfo(index, songs.values.elementAtOrNull(index))
                 }
             })
 
