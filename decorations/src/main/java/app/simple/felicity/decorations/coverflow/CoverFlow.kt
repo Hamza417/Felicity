@@ -22,6 +22,7 @@ class CoverFlow @JvmOverloads constructor(
 
     private var animating = false
     private var lastFlingX = 0
+    private var downY = 0f
 
     init {
         setEGLContextClientVersion(2)
@@ -35,13 +36,18 @@ class CoverFlow @JvmOverloads constructor(
             override fun onDown(e: MotionEvent): Boolean {
                 if (!scroller.isFinished) scroller.abortAnimation()
                 lastFlingX = (renderer.scrollOffset * 1000).toInt()
+                downY = e.y
                 ensureAnimating()
                 return true
             }
 
             override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-                // Fix: use distanceX for horizontal scrolling with better sensitivity
                 renderer.scrollBy(distanceX / (width * 0.3f))
+                // Vertical drag normalized [-1,1]
+                if (height > 0 && e1 != null) {
+                    val dy = (e2.y - downY) / height
+                    queueEvent { renderer.setDragVertical(dy.times(2)) }
+                }
                 requestRender()
                 return true
             }
@@ -121,6 +127,7 @@ class CoverFlow @JvmOverloads constructor(
         val handled = gestureDetector.onTouchEvent(event)
         if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
             if (scroller.isFinished) renderer.snapToNearest()
+            queueEvent { renderer.endVerticalDrag() }
         }
         return handled || super.onTouchEvent(event)
     }

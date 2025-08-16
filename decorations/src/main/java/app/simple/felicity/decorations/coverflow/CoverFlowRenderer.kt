@@ -128,7 +128,6 @@ class CoverFlowRenderer(
 
     fun scrollBy(dxItems: Float) {
         if (uris.isEmpty()) return
-        // Cancel any ongoing snap because user is interacting
         snapTarget = null
         scrollOffset += dxItems
         scrollOffset = scrollOffset.coerceIn(0f, (uris.size - 1).toFloat())
@@ -179,6 +178,36 @@ class CoverFlowRenderer(
     private var lastNotifiedCenteredIndex = -1
     private var snappingNotified = false
 
+    // ----- Vertical drag (carousel pitch & offset) -----
+    private val maxDragYOffset = 0.35f
+    private val maxDragPitchDeg = 10f
+    @Volatile
+    private var targetDragYOffset = 0f
+    @Volatile
+    private var targetDragPitch = 0f
+    @Volatile
+    private var currentDragYOffset = 0f
+    @Volatile
+    private var currentDragPitch = 0f
+    @Volatile
+    private var userDraggingVertically = false
+    private val dragEasingLambda = 14f
+
+    fun setDragVertical(normalized: Float) {
+        val n = normalized.coerceIn(-1f, 1f)
+        userDraggingVertically = true
+        targetDragYOffset = n * maxDragYOffset
+        targetDragPitch = n * maxDragPitchDeg
+        currentDragYOffset = targetDragYOffset
+        currentDragPitch = targetDragPitch
+    }
+
+    fun endVerticalDrag() {
+        userDraggingVertically = false
+        targetDragYOffset = 0f
+        targetDragPitch = 0f
+    }
+
     // ----- Drawing -----
     private fun drawItem(tex: Int, offsetFromCenter: Float) {
         val x = offsetFromCenter * spacing
@@ -191,9 +220,11 @@ class CoverFlowRenderer(
         val scale = baseScale * sideFactor
         val brightness = 1f
 
-        // Main cover
+        // Main cover with global vertical drag offset & pitch (pitch about X-axis)
         Matrix.setIdentityM(model, 0)
-        Matrix.translateM(model, 0, x, 0f, z)
+        // Apply pitch first so translation moves in pitched space consistently
+        if (currentDragPitch != 0f) Matrix.rotateM(model, 0, currentDragPitch, 1f, 0f, 0f)
+        Matrix.translateM(model, 0, x, currentDragYOffset, z)
         if (rotEase > 0f) Matrix.rotateM(model, 0, rotY, 0f, 1f, 0f)
         Matrix.scaleM(model, 0, scale, scale, 1f)
         Matrix.multiplyMM(mvp, 0, view, 0, model, 0)
@@ -212,13 +243,12 @@ class CoverFlowRenderer(
         GLES20.glVertexAttribPointer(aUV, 2, GLES20.GL_FLOAT, false, 0, quadTB)
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, quadIB)
 
-        // Reflection pass (draw after main)
+        // Reflection pass (reuse same global transforms)
         Matrix.setIdentityM(model, 0)
-        // move down by cover height * scale + gap * scale
+        if (currentDragPitch != 0f) Matrix.rotateM(model, 0, currentDragPitch, 1f, 0f, 0f)
         val down = scale + reflectionGap
-        Matrix.translateM(model, 0, x, -down, z)
+        Matrix.translateM(model, 0, x, currentDragYOffset - down, z)
         if (rotEase > 0f) Matrix.rotateM(model, 0, rotY, 0f, 1f, 0f)
-        // mirror by negative Y scale and shrink
         Matrix.scaleM(model, 0, scale, -scale * reflectionScale, 1f)
         Matrix.multiplyMM(mvp, 0, view, 0, model, 0)
         Matrix.multiplyMM(mvp, 0, proj, 0, mvp, 0)
@@ -520,17 +550,15 @@ class CoverFlowRenderer(
     override fun onDrawFrame(unused: GL10?) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
         if (uris.isEmpty()) return
-
         val prevOffset = scrollOffset
         val hadSnapTarget = snapTarget != null
-        // Time step for frame-rate independent easing
         val now = System.nanoTime()
         if (lastFrameNanos == 0L) lastFrameNanos = now
         val dt = ((now - lastFrameNanos).coerceAtMost(100_000_000L)) / 1_000_000_000f
         lastFrameNanos = now
         snapTarget?.let { target ->
             val delta = target - scrollOffset
-            val ad = abs(delta)
+            val ad = kotlin.math.abs(delta)
             if (ad < 0.00008f) {
                 scrollOffset = target
                 snapTarget = null
@@ -541,19 +569,21 @@ class CoverFlowRenderer(
                 notifySnapLifecycle(started = hadSnapTarget, finished = false)
             }
         }
-
+        if (!userDraggingVertically) {
+            val dy = targetDragYOffset - currentDragYOffset
+            val dp = targetDragPitch - currentDragPitch
+            if (kotlin.math.abs(dy) > 0.0001f) currentDragYOffset += dy * (1f - exp(-dragEasingLambda * dt)) else currentDragYOffset = targetDragYOffset
+            if (kotlin.math.abs(dp) > 0.0001f) currentDragPitch += dp * (1f - exp(-dragEasingLambda * dt)) else currentDragPitch = targetDragPitch
+        }
         if (scrollOffset != prevOffset) notifyScrollChanged()
-
         val centerF = scrollOffset
-
-        // Prefetch scheduling (prioritize closest missing within prefetchRadius)
         schedulePrefetch(centerF)
         val lastIndex = uris.lastIndex
         val visStart = max(0, floor(centerF - visibleRadius).toInt())
         val visEnd = min(lastIndex, ceil(centerF + visibleRadius).toInt())
         for (i in visStart..visEnd) {
             val centerIdx = centerF.roundToInt()
-            if (abs(i - centerIdx) <= prefetchRadius && !textures.containsKey(i) && !inFlight.containsKey(i)) enqueueLoad(i)
+            if (kotlin.math.abs(i - centerIdx) <= prefetchRadius && !textures.containsKey(i) && !inFlight.containsKey(i)) enqueueLoad(i)
             val tex = textures[i] ?: placeholderTex
             val offset = i - centerF
             drawItem(tex, offset)
