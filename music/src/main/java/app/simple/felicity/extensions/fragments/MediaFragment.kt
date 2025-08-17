@@ -22,6 +22,25 @@ open class MediaFragment : ScopedFragment() {
                 PlayerPreferences.setLastSongSeek(position)
             }
         }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            MediaManager.songPositionFlow.collect { position ->
+                Log.d(TAG, "Song position: $position")
+                PlayerPreferences.setLastSongPosition(position)
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            MediaManager.songListFlow.collect { songs ->
+                Log.d(TAG, "Song list updated: ${songs.size} songs")
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            MediaManager.playbackStateFlow.collect { state ->
+                Log.d(TAG, "Playback state changed: $state")
+            }
+        }
     }
 
     protected fun setMediaItems(songs: List<Song>, position: Int = 0) {

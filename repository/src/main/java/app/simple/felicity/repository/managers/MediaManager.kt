@@ -23,10 +23,12 @@ object MediaManager {
     private val _songListFlow = MutableSharedFlow<List<Song>>(replay = 1)
     private val _songPositionFlow = MutableSharedFlow<Int>(replay = 1)
     private val _songSeekPositionFlow = MutableSharedFlow<Long>(replay = 1)
+    private val _playbackStateFlow = MutableSharedFlow<Int>(replay = 1)
 
     val songListFlow = _songListFlow
     val songPositionFlow = _songPositionFlow
     val songSeekPositionFlow = _songSeekPositionFlow
+    val playbackStateFlow = _playbackStateFlow
 
     fun setMediaController(controller: MediaController) {
         mediaController = controller
@@ -136,5 +138,11 @@ object MediaManager {
     fun stopSeekPositionUpdates() {
         seekJob?.cancel()
         seekJob = null
+    }
+
+    fun notifyPlaybackState(state: Int) {
+        CoroutineScope(Dispatchers.Main).launch {
+            _playbackStateFlow.emit(state)
+        }
     }
 }

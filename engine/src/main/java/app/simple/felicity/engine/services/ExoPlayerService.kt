@@ -10,10 +10,13 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.IBinder
 import android.util.Log
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import app.simple.felicity.preferences.SharedPreferences.initRegisterSharedPreferenceChangeListener
+import app.simple.felicity.repository.constants.MediaConstants
+import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.repositories.MediaStoreRepository
 
 class ExoPlayerService : MediaLibraryService(),
@@ -55,6 +58,39 @@ class ExoPlayerService : MediaLibraryService(),
         initRegisterSharedPreferenceChangeListener(applicationContext)
         mediaStoreRepository = MediaStoreRepository(this)
         val player = ExoPlayer.Builder(this).build()
+
+        player.addListener(
+                object : Player.Listener {
+                    override fun onIsPlayingChanged(isPlaying: Boolean) {
+                        if (isPlaying) {
+                            MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
+                        } else {
+                            // Not playing because playback is paused, ended, suppressed, or the player
+                            // is buffering, stopped or failed. Check player.playWhenReady,
+                            // player.playbackState, player.playbackSuppressionReason and
+                            // player.playerError for details.
+                            when (player.playbackState) {
+                                Player.STATE_ENDED -> {
+                                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ENDED)
+                                }
+                                Player.STATE_BUFFERING -> {
+                                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_BUFFERING)
+                                }
+                                Player.STATE_READY -> {
+                                    if (player.playWhenReady) {
+                                        MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
+                                    } else {
+                                        MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
+                                    }
+                                }
+                                else -> {
+                                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
+                                }
+                            }
+                        }
+                    }
+                }
+        )
 
         mediaSession = MediaLibrarySession.Builder(this, player, callback).setId("ExoPlayerServiceSession").build()
 
