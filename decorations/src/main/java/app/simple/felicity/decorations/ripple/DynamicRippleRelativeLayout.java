@@ -40,7 +40,7 @@ public class DynamicRippleRelativeLayout extends RelativeLayout implements Share
         }
         setBackgroundColor(Color.TRANSPARENT);
         setBackground(null);
-        setBackground(Utils.getRippleDrawable(getBackground(), radius));
+        setBackground(Utils.getRippleDrawable(getBackground()));
     }
     
     private void setHighlightBackgroundColor() {
@@ -49,7 +49,7 @@ public class DynamicRippleRelativeLayout extends RelativeLayout implements Share
             setBackgroundTintList(ColorStateList.valueOf(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor()));
         } else {
             setBackground(null);
-            setBackground(Utils.getRippleDrawable(getBackground(), AppearancePreferences.INSTANCE.getCornerRadius()));
+            setBackground(Utils.getRippleDrawable(getBackground()));
         }
     }
     

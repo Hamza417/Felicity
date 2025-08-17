@@ -144,7 +144,7 @@ public class DynamicRippleTextView extends TypeFaceTextView {
             setBackgroundTintList(ColorStateList.valueOf(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor()));
         } else {
             setBackground(null);
-            setBackground(Utils.getRippleDrawable(getBackground(), AppearancePreferences.INSTANCE.getCornerRadius()));
+            setBackground(Utils.getRippleDrawable(getBackground()));
         }
     }
     

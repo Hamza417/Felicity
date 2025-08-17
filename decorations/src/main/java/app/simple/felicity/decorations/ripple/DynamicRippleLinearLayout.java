@@ -34,7 +34,7 @@ public class DynamicRippleLinearLayout extends LinearLayout implements SharedPre
         }
         setBackgroundColor(Color.TRANSPARENT);
         setBackground(null);
-        setBackground(Utils.getRippleDrawable(getBackground(), radius / cornerFactor));
+        setBackground(Utils.getRippleDrawable(getBackground()));
     }
     
     @Override
