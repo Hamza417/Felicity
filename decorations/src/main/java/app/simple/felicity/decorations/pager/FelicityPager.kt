@@ -8,13 +8,18 @@ import android.opengl.GLUtils
 import android.opengl.Matrix
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.AttributeSet
+import android.view.Choreographer
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.VelocityTracker
 import android.view.ViewConfiguration
 import android.widget.OverScroller
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.FloatBuffer
+import java.nio.ShortBuffer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
@@ -84,22 +89,61 @@ class FelicityPager @JvmOverloads constructor(
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private var isBeingDragged = false
     private var lastMotionX = 0f
+    private var velocityTracker: VelocityTracker? = null
+    private var dragStartOffset = 0f
+    private val minFlingVelocity = ViewConfiguration.get(context).scaledMinimumFlingVelocity * 0.4f // more sensitive
+    private val advanceThreshold = 0.12f // fraction of a page to switch without velocity
+
+    // Dispatch helpers (re-added)
+    private fun dispatchOnPageScrolled() {
+        val pos = scrollOffset.toInt().coerceAtMost(maxLastPage())
+        val offset = (scrollOffset - pos).coerceIn(0f, 1f)
+        val px = (offset * width).toInt()
+        pageChangeListeners.forEach { it.onPageScrolled(pos, offset, px) }
+    }
+
+    private fun dispatchPageSelected(position: Int) {
+        if (position != currentPage) {
+            currentPage = position
+            pageChangeListeners.forEach { it.onPageSelected(position) }
+        }
+    }
+
+    private fun dispatchOnScrollStateChanged(newState: Int) {
+        if (scrollState != newState) {
+            scrollState = newState
+            pageChangeListeners.forEach { it.onPageScrollStateChanged(newState) }
+        }
+    }
 
     // ----- Auto slide -----
     private val mainHandler = Handler(Looper.getMainLooper())
     private var autoSlideInterval = 0L
+    private var autoSlideLoop = true
     private val autoSlideRunnable = object : Runnable {
         override fun run() {
-            if (autoSlideInterval > 0 && adapter?.getCount()?.let { it > 1 } == true && scrollState != SCROLL_STATE_DRAGGING) {
-                val next = (currentPage + 1) % max(1, adapter!!.getCount())
-                setCurrentItem(next, smoothScroll = true)
+            val ad = adapter
+            val count = ad?.getCount() ?: 0
+            if (autoSlideInterval > 0 && count > 1 && scrollState != SCROLL_STATE_DRAGGING) {
+                if (autoSlideLoop) {
+                    if (currentPage >= count - 1) {
+                        // jump without animation to achieve looping then schedule next animated page
+                        setCurrentItem(0, smoothScroll = false)
+                    } else {
+                        setCurrentItem(currentPage + 1, smoothScroll = true)
+                    }
+                } else {
+                    val next = (currentPage + 1).coerceAtMost(count - 1)
+                    if (next != currentPage) setCurrentItem(next, smoothScroll = true)
+                }
                 mainHandler.postDelayed(this, autoSlideInterval)
             }
         }
     }
 
-    fun startAutoSlide(intervalMs: Long) {
+    fun startAutoSlide(intervalMs: Long, loop: Boolean = true) {
         autoSlideInterval = intervalMs
+        autoSlideLoop = loop
         mainHandler.removeCallbacks(autoSlideRunnable)
         if (intervalMs > 0) mainHandler.postDelayed(autoSlideRunnable, intervalMs)
     }
@@ -156,13 +200,42 @@ class FelicityPager @JvmOverloads constructor(
         requestRender()
     }
 
-    private fun finishDrag() {
-        val target = scrollOffset.roundToInt().coerceIn(0, maxLastPage())
-        smoothScrollTo(target.toFloat())
+    private fun finishDrag(velocityX: Float) {
+        val floor = scrollOffset.toInt().coerceIn(0, maxLastPage())
+        val ceil = (floor + 1).coerceAtMost(maxLastPage())
+        val delta = scrollOffset - dragStartOffset
+        val forward = delta > 0f
+        val distance = abs(delta)
+        var target: Int
+        target = if (abs(velocityX) > minFlingVelocity) {
+            if (velocityX < 0) ceil else floor
+        } else if (distance > advanceThreshold) {
+            if (forward) ceil else floor
+        } else {
+            dragStartOffset.roundToInt().coerceIn(0, maxLastPage())
+        }
+        smoothScrollTo(target.toFloat(), velocityX)
         isBeingDragged = false
     }
 
-    private fun smoothScrollTo(target: Float) {
+    // Animation state
+    private var animating = false
+    private var animStartTime = 0L
+    private var animDuration = 0L
+    private var animFrom = 0f
+    private var animTo = 0f
+    private var animPosted = false
+    private val choreographer: Choreographer by lazy { Choreographer.getInstance() }
+    private val frameCallback = Choreographer.FrameCallback { frameTimeNanos ->
+        animPosted = false
+        advanceAnimation(frameTimeNanos / 1_000_000L)
+    }
+
+    // Physics animation flags
+    private var physicsMode = false
+    private var physicsInitialVelocityPagesPerMs = 0f
+
+    private fun smoothScrollTo(target: Float, velocityX: Float? = null) {
         val start = scrollOffset
         if (start == target) {
             dispatchPageSelected(target.toInt())
@@ -170,30 +243,69 @@ class FelicityPager @JvmOverloads constructor(
             return
         }
         dispatchOnScrollStateChanged(SCROLL_STATE_SETTLING)
+        val distancePages = abs(target - start).coerceAtLeast(0.000001f)
+        physicsMode = false
         val widthPx = width.takeIf { it > 0 } ?: 1
-        scroller.startScroll((start * widthPx).toInt(), 0, ((target - start) * widthPx).toInt(), 0, 400)
-        queueAnimationTick()
+        if (velocityX != null && abs(velocityX) > minFlingVelocity) {
+            val vPagesPerMs = (abs(velocityX) / widthPx) / 1000f // pages per ms
+            if (vPagesPerMs > 0f) {
+                var durationCalc = (2f * distancePages / vPagesPerMs) // from s = 0.5*v*t => t=2s/v
+                durationCalc = durationCalc.coerceIn(180f, 900f)
+                physicsMode = true
+                physicsInitialVelocityPagesPerMs = vPagesPerMs
+                animDuration = durationCalc.toLong()
+            }
+        }
+        if (!physicsMode) {
+            // Fallback interpolated duration
+            val basePerPage = 520f
+            var duration = basePerPage * kotlin.math.sqrt(distancePages)
+            velocityX?.let { v ->
+                val absV = abs(v)
+                if (absV > 0f) {
+                    val norm = (absV / 6000f).coerceAtMost(1.5f)
+                    duration *= (1f - 0.55f * (norm / 1.5f))
+                }
+            }
+            duration = duration.coerceIn(260f, 840f)
+            animDuration = duration.toLong()
+        }
+        animFrom = start
+        animTo = target
+        animStartTime = SystemClock.uptimeMillis()
+        animating = true
+        queueAnimationFrame()
     }
 
-    private var animPosted = false
-    private fun queueAnimationTick() {
+    private fun queueAnimationFrame() {
         if (!animPosted) {
             animPosted = true
-            mainHandler.post(this)
+            choreographer.postFrameCallback(frameCallback)
         }
     }
 
-    override fun run() { // animation frame
-        animPosted = false
-        if (scroller.computeScrollOffset()) {
-            val widthPx = width.takeIf { it > 0 } ?: 1
-            scrollOffset = (scroller.currX.toFloat() / widthPx).coerceIn(0f, maxLastOffset())
-            renderer.setScrollOffset(scrollOffset)
-            dispatchOnPageScrolled()
-            requestRender()
-            queueAnimationTick()
+    private fun advanceAnimation(nowMs: Long) {
+        if (!animating) return
+        val elapsed = (nowMs - animStartTime).coerceAtLeast(0L)
+        val tRaw = (elapsed.toFloat() / animDuration).coerceIn(0f, 1f)
+        val fraction = if (physicsMode) {
+            // s(t) = v*t - 0.5*a*t^2 with a = v / duration => s = v*t - 0.5*(v/dur)*t^2
+            // Normalize by total distance S = v*dur - 0.5*v*dur = 0.5*v*dur
+            // So normalized fraction f = (v*t - 0.5*(v/dur)*t^2)/(0.5*v*dur) = 2*(t/dur) - (t/dur)^2
+            val x = tRaw
+            2f * x - x * x // smooth concave ease-out starting with initial velocity
         } else {
-            scrollOffset = scrollOffset.roundToInt().toFloat()
+            easeInOutCubic(tRaw)
+        }
+        scrollOffset = animFrom + (animTo - animFrom) * fraction
+        renderer.setScrollOffset(scrollOffset)
+        dispatchOnPageScrolled()
+        requestRender()
+        if (tRaw < 1f) {
+            queueAnimationFrame()
+        } else {
+            animating = false
+            scrollOffset = animTo
             renderer.setScrollOffset(scrollOffset)
             dispatchOnPageScrolled()
             dispatchPageSelected(scrollOffset.toInt())
@@ -202,25 +314,13 @@ class FelicityPager @JvmOverloads constructor(
         }
     }
 
-    private fun dispatchOnPageScrolled() {
-        val pos = scrollOffset.toInt().coerceAtMost(maxLastPage())
-        val offset = (scrollOffset - pos).coerceIn(0f, 1f)
-        val px = (offset * width).toInt()
-        pageChangeListeners.forEach { it.onPageScrolled(pos, offset, px) }
+    // Replace easeOutQuint with smoother easeInOutCubic for gentler start + soft end
+    private fun easeInOutCubic(t: Float): Float {
+        return if (t < 0.5f) 4f * t * t * t else 1f - (-2f * t + 2f).let { it * it * it } / 2f
     }
 
-    private fun dispatchPageSelected(position: Int) {
-        if (position != currentPage) {
-            currentPage = position
-            pageChangeListeners.forEach { it.onPageSelected(position) }
-        }
-    }
-
-    private fun dispatchOnScrollStateChanged(newState: Int) {
-        if (scrollState != newState) {
-            scrollState = newState
-            pageChangeListeners.forEach { it.onPageScrollStateChanged(newState) }
-        }
+    // Legacy run() no longer drives animation; kept to satisfy Runnable interface usage elsewhere
+    override fun run() { /* no-op for frame driving now */
     }
 
     // ----- Init -----
@@ -228,7 +328,7 @@ class FelicityPager @JvmOverloads constructor(
         setEGLContextClientVersion(2)
         renderer = PagerRenderer()
         setRenderer(renderer)
-        renderMode = RENDERMODE_CONTINUOUSLY // for smooth animations
+        renderMode = RENDERMODE_WHEN_DIRTY
     }
 
     // ----- Gesture handling -----
@@ -238,11 +338,15 @@ class FelicityPager @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 if (!scroller.isFinished) scroller.abortAnimation()
                 lastMotionX = event.x
+                dragStartOffset = scrollOffset
+                velocityTracker?.recycle()
+                velocityTracker = VelocityTracker.obtain().apply { addMovement(event) }
                 parent?.requestDisallowInterceptTouchEvent(true)
             }
             MotionEvent.ACTION_MOVE -> {
+                velocityTracker?.addMovement(event)
                 val dx = event.x - lastMotionX
-                if (!isBeingDragged && abs(dx) > touchSlop) {
+                if (!isBeingDragged && abs(dx) > touchSlop * 0.6f) { // slightly easier to start drag
                     isBeingDragged = true
                     dispatchOnScrollStateChanged(SCROLL_STATE_DRAGGING)
                     parent?.requestDisallowInterceptTouchEvent(true)
@@ -251,7 +355,16 @@ class FelicityPager @JvmOverloads constructor(
                 lastMotionX = event.x
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (isBeingDragged) finishDrag() else if (event.actionMasked == MotionEvent.ACTION_UP) performClick()
+                velocityTracker?.addMovement(event)
+                velocityTracker?.computeCurrentVelocity(1000)
+                val vx = velocityTracker?.xVelocity ?: 0f
+                if (isBeingDragged) {
+                    finishDrag(vx)
+                } else if (event.actionMasked == MotionEvent.ACTION_UP) {
+                    performClick()
+                }
+                velocityTracker?.recycle()
+                velocityTracker = null
                 isBeingDragged = false
             }
         }
@@ -277,7 +390,7 @@ class FelicityPager @JvmOverloads constructor(
         val velocityPagesPerSec = velocityX / widthPx
         var target = (scrollOffset - velocityPagesPerSec * 0.25f).roundToInt()
         target = target.coerceIn(0, maxLastPage())
-        smoothScrollTo(target.toFloat())
+        smoothScrollTo(target.toFloat(), velocityX)
         return true
     }
 
@@ -285,11 +398,14 @@ class FelicityPager @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         stopAutoSlide()
+        if (animPosted) choreographer.removeFrameCallback(frameCallback)
+        animPosted = false
+        animating = false
         queueEvent { renderer.clearAllTextures(); renderer.release() }
     }
 
     // ----- View <-> Renderer interaction -----
-    private inner class PagerRenderer : Renderer {
+    private inner class PagerRenderer : Renderer { // made inner public to adjust new logic
 
         // Matrices
         private val proj = FloatArray(16)
@@ -297,12 +413,12 @@ class FelicityPager @JvmOverloads constructor(
         private val model = FloatArray(16)
         private val mvp = FloatArray(16)
 
-        // Geometry quad
+        // Geometry quad now full screen (NDC -1..1)
         private val quadVerts = floatArrayOf(
-                -0.5f, 0.5f, 0f,
-                -0.5f, -0.5f, 0f,
-                0.5f, -0.5f, 0f,
-                0.5f, 0.5f, 0f
+                -1f, 1f, 0f,
+                -1f, -1f, 0f,
+                1f, -1f, 0f,
+                1f, 1f, 0f
         )
         private val quadUV = floatArrayOf(
                 0f, 0f,
@@ -311,9 +427,9 @@ class FelicityPager @JvmOverloads constructor(
                 1f, 0f
         )
         private val quadInd = shortArrayOf(0, 1, 2, 0, 2, 3)
-        private lateinit var vb: java.nio.FloatBuffer
-        private lateinit var tb: java.nio.FloatBuffer
-        private lateinit var ib: java.nio.ShortBuffer
+        private lateinit var vb: FloatBuffer
+        private lateinit var tb: FloatBuffer
+        private lateinit var ib: ShortBuffer
 
         // Program
         private var program = 0
@@ -337,6 +453,10 @@ class FelicityPager @JvmOverloads constructor(
         // Scroll offset copy used in GL thread
         @Volatile
         private var glScrollOffset = 0f
+
+        // Track surface size for aspect-crop
+        private var surfaceWidth = 0
+        private var surfaceHeight = 0
 
         fun setScrollOffset(offset: Float) {
             glScrollOffset = offset
@@ -365,18 +485,19 @@ class FelicityPager @JvmOverloads constructor(
             tb = ByteBuffer.allocateDirect(quadUV.size * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().apply { put(quadUV); position(0) }
             ib = ByteBuffer.allocateDirect(quadInd.size * 2).order(ByteOrder.nativeOrder()).asShortBuffer().apply { put(quadInd); position(0) }
             buildProgram()
-            Matrix.setLookAtM(viewM, 0, 0f, 0f, 2.5f, 0f, 0f, 0f, 0f, 1f, 0f)
+            Matrix.setIdentityM(viewM, 0)
         }
 
         override fun onSurfaceChanged(unused: javax.microedition.khronos.opengles.GL10?, width: Int, height: Int) {
             GLES20.glViewport(0, 0, width, height)
-            val aspect = width.toFloat() / height
-            Matrix.frustumM(proj, 0, -aspect, aspect, -1f, 1f, 2f, 10f)
+            surfaceWidth = width
+            surfaceHeight = height
+            // Use orthographic projection for simple 2D full-screen pages
+            Matrix.orthoM(proj, 0, -1f, 1f, -1f, 1f, -2f, 2f)
         }
 
         override fun onDrawFrame(unused: javax.microedition.khronos.opengles.GL10?) {
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
-            // Preload visible pages
             preloadAround(glScrollOffset)
             val count = adapter?.getCount() ?: 0
             if (count == 0) return
@@ -407,27 +528,19 @@ class FelicityPager @JvmOverloads constructor(
             uAlpha = GLES20.glGetUniformLocation(program, "uAlpha")
         }
 
-        private fun compileShader(type: Int, src: String): Int {
-            val id = GLES20.glCreateShader(type)
-            GLES20.glShaderSource(id, src)
-            GLES20.glCompileShader(id)
-            return id
-        }
-
         private fun drawPage(position: Int, offsetFromPage: Float) {
             val count = adapter?.getCount() ?: return
             if (position < 0 || position >= count) return
             val id = adapter?.getItemId(position) ?: position.toLong()
-            val tex = textures[id] ?: return // not loaded yet
-            val scale = 1.6f // base scale to fill height
+            val tex = textures[id] ?: return
             Matrix.setIdentityM(model, 0)
-            Matrix.translateM(model, 0, -offsetFromPage * scale * 0.65f, 0f, 0f)
-            Matrix.scaleM(model, 0, scale, scale, 1f)
+            // Translate horizontally in NDC. Each page spans width=2.
+            Matrix.translateM(model, 0, -offsetFromPage * 2f, 0f, 0f)
             Matrix.multiplyMM(mvp, 0, viewM, 0, model, 0)
             Matrix.multiplyMM(mvp, 0, proj, 0, mvp, 0)
             GLES20.glUseProgram(program)
             GLES20.glUniformMatrix4fv(uMVP, 1, false, mvp, 0)
-            GLES20.glUniform1f(uAlpha, 1f - min(1f, abs(offsetFromPage)))
+            GLES20.glUniform1f(uAlpha, 1f) // no cross-fade; fully opaque
             GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex)
             GLES20.glUniform1i(uTex, 0)
@@ -468,16 +581,18 @@ class FelicityPager @JvmOverloads constructor(
             if (textures.containsKey(id)) return
             val ad = adapter ?: return
             inFlight[position] = true
+            // snapshot desired aspect based on current view size
+            val targetAspect = if (surfaceWidth > 0 && surfaceHeight > 0) surfaceWidth.toFloat() / surfaceHeight else this@FelicityPager.width.takeIf { it > 0 }?.let { w -> this@FelicityPager.height.takeIf { it > 0 }?.let { h -> w.toFloat() / h } } ?: 1f
             futures[position] = decodeExecutor.submit {
                 val bmp = try {
                     ad.loadBitmap(position)
                 } catch (_: Throwable) {
                     null
                 }
-                if (bmp != null) {
-                    val cropped = centerCrop(bmp)
+                val processed = bmp?.let { centerCropToAspect(it, targetAspect) }
+                if (processed != null) {
                     queueEvent {
-                        val texId = createTexture(cropped)
+                        val texId = createTexture(processed)
                         textures[id] = texId
                         positionToId[position] = id
                     }
@@ -486,17 +601,11 @@ class FelicityPager @JvmOverloads constructor(
             }
         }
 
-        private fun centerCrop(src: Bitmap): Bitmap {
-            val w = src.width;
-            val h = src.height
-            if (w == h) return src
-            return if (w > h) {
-                val x = (w - h) / 2
-                Bitmap.createBitmap(src, x, 0, h, h)
-            } else {
-                val y = (h - w) / 2
-                Bitmap.createBitmap(src, 0, y, w, w)
-            }
+        private fun compileShader(type: Int, src: String): Int {
+            val id = GLES20.glCreateShader(type)
+            GLES20.glShaderSource(id, src)
+            GLES20.glCompileShader(id)
+            return id
         }
 
         private fun createTexture(bitmap: Bitmap): Int {
@@ -511,6 +620,24 @@ class FelicityPager @JvmOverloads constructor(
             GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0)
             bitmap.recycle()
             return id
+        }
+
+        private fun centerCropToAspect(src: Bitmap, targetAspect: Float): Bitmap {
+            if (targetAspect <= 0f) return src
+            val w = src.width
+            val h = src.height
+            val bmpAspect = w.toFloat() / h
+            return if (abs(bmpAspect - targetAspect) < 0.01f) {
+                src
+            } else if (bmpAspect > targetAspect) { // too wide, crop width
+                val newW = (h * targetAspect).roundToInt().coerceAtLeast(1)
+                val x = ((w - newW) / 2f).roundToInt().coerceAtLeast(0)
+                Bitmap.createBitmap(src, x, 0, min(newW, w - x), h)
+            } else { // too tall, crop height
+                val newH = (w / targetAspect).roundToInt().coerceAtLeast(1)
+                val y = ((h - newH) / 2f).roundToInt().coerceAtLeast(0)
+                Bitmap.createBitmap(src, 0, y, w, min(newH, h - y))
+            }.also { if (it != src) src.recycle() }
         }
     }
 }
