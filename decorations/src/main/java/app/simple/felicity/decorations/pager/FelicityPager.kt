@@ -164,6 +164,8 @@ class FelicityPager @JvmOverloads constructor(
         this.adapter = adapter
         scrollOffset = 0f
         currentPage = 0
+        // Prime first page load early so first frame appears without user interaction
+        queueEvent { renderer.primeInitialLoad() }
         requestRender()
     }
 
@@ -510,6 +512,10 @@ class FelicityPager @JvmOverloads constructor(
             recycleFar(center)
         }
 
+        fun primeInitialLoad() {
+            preloadAround(0f)
+        }
+
         private fun buildProgram() {
             val vs = """
                 attribute vec3 aPos; attribute vec2 aUV; uniform mat4 uMVP; varying vec2 vUV; void main(){vUV=aUV; gl_Position = uMVP*vec4(aPos,1.0);}"""
@@ -595,6 +601,8 @@ class FelicityPager @JvmOverloads constructor(
                         val texId = createTexture(processed)
                         textures[id] = texId
                         positionToId[position] = id
+                        // Trigger a new frame so freshly loaded texture becomes visible immediately
+                        requestRender()
                     }
                 }
                 inFlight.remove(position)
@@ -638,18 +646,6 @@ class FelicityPager @JvmOverloads constructor(
                 val y = ((h - newH) / 2f).roundToInt().coerceAtLeast(0)
                 Bitmap.createBitmap(src, 0, y, w, min(newH, h - y))
             }.also { if (it != src) src.recycle() }
-        }
-
-        private fun forceReloadAll() {
-            queueEvent {
-                textures.clear()
-                positionToId.clear()
-                inFlight.clear()
-                futures.values.forEach { it.cancel(true) }
-                futures.clear()
-                renderer.clearAllTextures()
-            }
-            requestRender()
         }
     }
 }
