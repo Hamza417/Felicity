@@ -30,9 +30,11 @@ import androidx.annotation.Nullable;
 public class FelicityRippleDrawable extends Drawable {
     // Configuration
     private static final long PRESS_GROW_DURATION = 850L; // ms to reach mid radius
-    private static final long RELEASE_ANIMATION_DURATION = 820L; // ms
+    // Removed fixed RELEASE_ANIMATION_DURATION; use adaptive duration instead
+    private static final long MIN_RELEASE_DURATION = 360L; // when almost fully grown
+    private static final long MAX_RELEASE_DURATION = 420L; // when released immediately
     private static final float PRESS_TARGET_FRACTION = 0.75f; // fraction of max it grows to while held
-    private static final int PRESSED_ALPHA = 90; // out of 255
+    private static final int PRESSED_ALPHA = 128; // out of 255
     private static final TimeInterpolator PRESS_INTERPOLATOR = new DecelerateInterpolator();
     private static final TimeInterpolator RELEASE_INTERPOLATOR = new DecelerateInterpolator();
     // Paint & color handling
@@ -43,7 +45,7 @@ public class FelicityRippleDrawable extends Drawable {
     private int currentColor; // color currently being drawn (with applied pressed alpha/overallAlpha)
     // Animation state
     private float radius; // current radius
-    private float startRadius; // used on release animation start
+
     private float hotspotX = -1f;
     private float hotspotY = -1f;
     private float maxRadius; // computed from bounds & hotspot
@@ -286,24 +288,53 @@ public class FelicityRippleDrawable extends Drawable {
     private void startRelease() {
         cancelAnim(pressAnimator);
         cancelAnim(releaseAnimator);
+        // Ensure a minimally visible radius so very quick taps still show a ripple
+        float minVisible = maxRadius * 0.12f; // 12% of max
+        if (radius < minVisible) {
+            radius = minVisible;
+        }
         float startRadiusLocal = radius;
         final float endRadius = maxRadius;
         final int colorAtRelease = currentColor;
         final int startAlpha = Color.alpha(colorAtRelease);
+        // Adaptive duration based on remaining distance to travel (sqrt for perceptual uniformity)
+        float remaining = Math.max(0f, endRadius - startRadiusLocal);
+        float remainingFraction = remaining / endRadius; // 0..1
+        long adaptiveDuration = (long) (MIN_RELEASE_DURATION + (MAX_RELEASE_DURATION - MIN_RELEASE_DURATION) * Math.sqrt(remainingFraction));
+        if (adaptiveDuration < MIN_RELEASE_DURATION) {
+            adaptiveDuration = MIN_RELEASE_DURATION;
+        }
+        // We'll also adapt fade so early releases keep some time to finish color transition to endColor before fading out.
+        final boolean reachedTargetColor = (startRadiusLocal >= endRadius * PRESS_TARGET_FRACTION * 0.98f); // margin
         releaseAnimator = ValueAnimator.ofFloat(0f, 1f);
-        releaseAnimator.setDuration(RELEASE_ANIMATION_DURATION);
+        releaseAnimator.setDuration(adaptiveDuration);
         releaseAnimator.setInterpolator(RELEASE_INTERPOLATOR);
         running = true;
         releaseAnimator.addUpdateListener(a -> {
             float t = (float) a.getAnimatedValue();
+            // Smooth expansion
             radius = lerp(startRadiusLocal, endRadius, t);
-            int fadeAlpha = (int) (startAlpha * (1f - t));
-            // Keep endColor hue while fading
-            int baseBlend = endColor == 0 ? colorAtRelease : endColor;
-            int r = Color.red(baseBlend);
-            int g = Color.green(baseBlend);
-            int b = Color.blue(baseBlend);
-            currentColor = Color.argb(fadeAlpha, r, g, b);
+            // Two-phase color handling if we released early: first blend to endColor, then fade
+            if (!reachedTargetColor) {
+                float blendPortion = 0.35f; // first 35% used to complete color blend
+                if (t < blendPortion) {
+                    float bt = t / blendPortion; // 0..1
+                    currentColor = blendARGB(colorAtRelease, applyPressedMask(endColor), bt);
+                } else {
+                    float fadeT = (t - blendPortion) / (1f - blendPortion); // 0..1 for fade
+                    int baseBlend = endColor;
+                    int r = Color.red(baseBlend);
+                    int g = Color.green(baseBlend);
+                    int b = Color.blue(baseBlend);
+                    int fadeAlpha = (int) (startAlpha * (1f - fadeT));
+                    currentColor = Color.argb(fadeAlpha, r, g, b);
+                }
+            } else {
+                // Normal fade from current color
+                int fadeAlpha = (int) (startAlpha * (1f - t));
+                int baseBlend = endColor == 0 ? colorAtRelease : endColor;
+                currentColor = Color.argb(fadeAlpha, Color.red(baseBlend), Color.green(baseBlend), Color.blue(baseBlend));
+            }
             paint.setColor(currentColor);
             invalidateSelf();
         });
