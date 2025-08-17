@@ -22,7 +22,6 @@ import androidx.annotation.Nullable;
 import androidx.core.widget.NestedScrollView;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.decorations.adapters.menus.AdapterFloatingMenu;
@@ -35,7 +34,6 @@ import app.simple.felicity.preferences.MainPreferences;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;
 import app.simple.felicity.theme.themes.Theme;
-
 import kotlin.Pair;
 import kotlin.ranges.RangesKt;
 
@@ -85,7 +83,7 @@ public class FloatingMenuRecyclerView extends CustomHorizontalRecyclerView {
             return;
         }
         displayWidth = new DisplayMetrics().widthPixels;
-        int padding = getResources().getDimensionPixelOffset(R.dimen.popup_padding);
+        int padding = getResources().getDimensionPixelOffset(R.dimen.padding_10);
         setPadding(padding, padding, padding, padding);
         setElevation(getResources().getDimensionPixelOffset(R.dimen.app_views_elevation));
         LayoutBackground.setBackground(getContext(), this, attributeSet);

@@ -19,6 +19,7 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
+import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 
 class CoverFlow : MediaFragment() {
@@ -121,6 +122,10 @@ class CoverFlow : MediaFragment() {
 
         binding.previous.setOnClickListener {
             MediaManager.previous()
+        }
+
+        binding.miniplayerContainer.setOnClickListener {
+            openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
         }
     }
 

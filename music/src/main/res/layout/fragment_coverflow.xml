@@ -20,7 +20,7 @@
         android:padding="@dimen/padding_15"
         android:orientation="horizontal">
 
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/menu"
             android:layout_width="@dimen/icon_size_50"
             android:layout_height="@dimen/icon_size_50"
@@ -30,7 +30,7 @@
             app:layout_constraintEnd_toStartOf="@+id/arrow_left"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/arrow_left"
             android:layout_width="@dimen/icon_size_50"
             android:layout_height="@dimen/icon_size_50"
@@ -40,7 +40,7 @@
             app:layout_constraintEnd_toStartOf="@id/arrow_right"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/arrow_right"
             android:layout_width="@dimen/icon_size_50"
             android:layout_height="@dimen/icon_size_50"
@@ -52,7 +52,8 @@
 
     </LinearLayout>
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout
+        android:id="@+id/miniplayer_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal|bottom"
@@ -103,7 +104,7 @@
             app:layout_constraintTop_toBottomOf="@+id/title"
             app:textColorStyle="white" />
 
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/previous"
             android:layout_width="@dimen/icon_size_50"
             android:layout_height="@dimen/icon_size_50"
@@ -113,7 +114,7 @@
             app:layout_constraintEnd_toStartOf="@+id/play"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/play"
             android:layout_width="@dimen/icon_size_50"
             android:layout_height="@dimen/icon_size_50"
@@ -123,7 +124,7 @@
             app:layout_constraintEnd_toStartOf="@+id/next"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/next"
             android:layout_width="@dimen/icon_size_50"
             android:layout_height="@dimen/icon_size_50"
@@ -133,5 +134,5 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout>
 </FrameLayout>

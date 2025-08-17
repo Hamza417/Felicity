@@ -21,9 +21,9 @@ import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;
 import app.simple.felicity.theme.themes.Theme;
 
-public class DynamicRippleImageImageButton extends ThemeImageButton {
+public class DynamicRippleImageButton extends ThemeImageButton {
     
-    public DynamicRippleImageImageButton(Context context, AttributeSet attrs) {
+    public DynamicRippleImageButton(Context context, AttributeSet attrs) {
         super(context, attrs);
         setBackgroundColor(Color.TRANSPARENT);
     }

@@ -39,16 +39,16 @@ class FelicitySeekbar @JvmOverloads constructor(
     private var defaultProgress = 0 // value to reset to on long press
 
     @ColorInt
-    private var trackColor: Int = ThemeManager.theme.viewGroupTheme.highlightColor
+    private var trackColor: Int = Color.LTGRAY
 
     @ColorInt
-    private var progressColor: Int = ThemeManager.accent.primaryAccentColor
+    private var progressColor: Int = Color.BLUE
 
     @ColorInt
     private var thumbRingColor: Int = Color.WHITE
 
     @ColorInt
-    private var thumbInnerColor: Int = ThemeManager.accent.primaryAccentColor
+    private var thumbInnerColor: Int = Color.TRANSPARENT
 
     private var trackHeightPx: Float
     private var thumbRadiusPx: Float
@@ -56,10 +56,10 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     private var smudgeEnabled = false
     private var smudgeRadius = 0f
-    private var smudgeColor = ThemeManager.accent.primaryAccentColor
+    private var smudgeColor = progressColor
     private var smudgeOffsetY = 0f
     private var thumbShadowRadius = 0f
-    private var thumbShadowColor = ThemeManager.accent.primaryAccentColor
+    private var thumbShadowColor = progressColor
 
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -158,6 +158,7 @@ class FelicitySeekbar @JvmOverloads constructor(
 
         applyPaintColors()
         setupSmudgeAndShadow()
+        applyThemeColors()
 
         isClickable = true
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -170,6 +171,17 @@ class FelicitySeekbar @JvmOverloads constructor(
         thumbRingPaint.color = thumbRingColor
         thumbRingPaint.strokeWidth = thumbRingWidthPx
         thumbInnerPaint.color = thumbInnerColor
+    }
+
+    private fun applyThemeColors() {
+        if (isInEditMode.not()) {
+            progressColor = ThemeManager.accent.primaryAccentColor
+            trackColor = ThemeManager.theme.viewGroupTheme.highlightColor
+            thumbRingColor = Color.WHITE
+            thumbInnerColor = progressColor
+            smudgeColor = progressColor
+            thumbShadowColor = progressColor
+        }
     }
 
     private fun setupSmudgeAndShadow() {

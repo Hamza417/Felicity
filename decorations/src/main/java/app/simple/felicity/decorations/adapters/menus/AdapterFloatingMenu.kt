@@ -8,7 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.interfaces.BottomMenuCallbacks
 import app.simple.felicity.decorations.overscroll.HorizontalListViewHolder
-import app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+import app.simple.felicity.decorations.ripple.DynamicRippleImageButton
 import app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout
 import app.simple.felicity.decorations.theme.ThemeIcon
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -125,7 +125,7 @@ class AdapterFloatingMenu(private val bottomMenuItems: ArrayList<Pair<Int, Int>>
     }
 
     inner class Holder(itemView: View) : HorizontalListViewHolder(itemView) {
-        val button: DynamicRippleImageImageButton = itemView.findViewById(R.id.button)
+        val button: DynamicRippleImageButton = itemView.findViewById(R.id.button)
     }
 
     inner class HolderContext(itemView: View) : HorizontalListViewHolder(itemView) {

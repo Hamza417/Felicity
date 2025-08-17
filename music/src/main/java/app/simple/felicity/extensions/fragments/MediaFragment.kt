@@ -20,6 +20,7 @@ open class MediaFragment : ScopedFragment() {
             MediaManager.songSeekPositionFlow.collect { position ->
                 Log.d(TAG, "Seek position: $position")
                 PlayerPreferences.setLastSongSeek(position)
+                onSeekChanged(position)
             }
         }
 
@@ -30,6 +31,7 @@ open class MediaFragment : ScopedFragment() {
                 MediaManager.getCurrentSong()?.let { song ->
                     onSong(song)
                 }
+                onPositionChanged(position)
             }
         }
 
@@ -68,6 +70,14 @@ open class MediaFragment : ScopedFragment() {
 
     open fun onSong(song: Song) {
         Log.d(TAG, "New song played: ${song.title} by ${song.artist}")
+    }
+
+    open fun onPositionChanged(position: Int) {
+        Log.d(TAG, "Position changed: $position")
+    }
+
+    open fun onSeekChanged(seek: Long) {
+        Log.d(TAG, "Seek changed: $seek")
     }
 
     companion object {

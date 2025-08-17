@@ -141,8 +141,26 @@ object MediaManager {
         return getCurrentSong()?.id
     }
 
+    fun setNesPosition(position: Int) {
+        if (position in songs.indices) {
+            currentSongPosition = position
+            playCurrent()
+        } else {
+            Log.w(TAG, "Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")
+        }
+    }
+
     fun getDuration(): Long {
         return getCurrentSong()?.duration ?: 0L
+    }
+
+    fun getSongAt(position: Int): Song? {
+        return if (position in songs.indices) {
+            songs[position]
+        } else {
+            Log.w(TAG, "Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")
+            null
+        }
     }
 
     fun startSeekPositionUpdates(intervalMs: Long = 1000L) {

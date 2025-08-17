@@ -1,5 +1,6 @@
 package app.simple.felicity.extensions.fragments
 
+import android.content.ContentResolver
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
@@ -260,6 +261,10 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
 
     protected fun requireContainerView(): ViewGroup {
         return requireActivity().findViewById(R.id.app_container)
+    }
+
+    protected fun requireContentResolver(): ContentResolver {
+        return requireActivity().contentResolver
     }
 
     /**

@@ -19,7 +19,7 @@
         app:layout_constraintTop_toTopOf="parent"
         app:textColorStyle="primary" />
 
-    <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
         android:id="@+id/menu"
         android:layout_width="@dimen/button_size"
         android:layout_height="@dimen/button_size"
@@ -30,7 +30,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@+id/heading" />
 
-    <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
         android:id="@+id/search"
         android:layout_width="@dimen/button_size"
         android:layout_height="@dimen/button_size"

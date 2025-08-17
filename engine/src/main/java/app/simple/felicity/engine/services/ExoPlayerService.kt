@@ -11,6 +11,7 @@ import android.media.AudioManager
 import android.os.IBinder
 import android.util.Log
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
@@ -44,8 +45,9 @@ class ExoPlayerService : MediaLibraryService(),
 
     private var wasPlaying = false
 
-    var callback: MediaLibrarySession.Callback = object : MediaLibrarySession.Callback {
-        // will attempt to handle media library requests
+    var callback: MediaLibrarySession.Callback = @UnstableApi
+    object : MediaLibrarySession.Callback {
+
     }
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -89,6 +91,12 @@ class ExoPlayerService : MediaLibraryService(),
                             }
                         }
                     }
+
+                    override fun onEvents(player: Player, events: Player.Events) {
+                        super.onEvents(player, events)
+
+                    }
+                    
                 }
         )
 

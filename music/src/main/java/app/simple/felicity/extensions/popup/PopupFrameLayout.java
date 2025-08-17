@@ -15,7 +15,7 @@ public class PopupFrameLayout extends DynamicCornerFrameLayout {
     }
     
     private void init() {
-        int p = getResources().getDimensionPixelOffset(R.dimen.popup_padding);
+        int p = getResources().getDimensionPixelOffset(R.dimen.padding_10);
         setPadding(p, p, p, p);
         setBackgroundTintList(ColorStateList.valueOf(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getBackgroundColor()));
     }

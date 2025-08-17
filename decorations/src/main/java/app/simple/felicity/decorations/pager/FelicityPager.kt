@@ -639,5 +639,17 @@ class FelicityPager @JvmOverloads constructor(
                 Bitmap.createBitmap(src, 0, y, w, min(newH, h - y))
             }.also { if (it != src) src.recycle() }
         }
+
+        private fun forceReloadAll() {
+            queueEvent {
+                textures.clear()
+                positionToId.clear()
+                inFlight.clear()
+                futures.values.forEach { it.cancel(true) }
+                futures.clear()
+                renderer.clearAllTextures()
+            }
+            requestRender()
+        }
     }
 }

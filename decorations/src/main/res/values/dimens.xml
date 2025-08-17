@@ -21,7 +21,6 @@
     <dimen name="fast_scroller_padding_end">29dp</dimen>
     <dimen name="fast_scroller_dimen">64dp</dimen>
     <dimen name="app_views_elevation">30dp</dimen>
-    <dimen name="popup_padding">0dp</dimen>
     <dimen name="panel_item_padding">20dp</dimen>
     <dimen name="header_padding">20dp</dimen>
     <dimen name="preferences_title_text_size">14sp</dimen>
@@ -33,6 +32,7 @@
     <dimen name="art_flow_title_text_size">32sp</dimen>
     <dimen name="art_flow_artist_text_size">18sp</dimen>
 
+    <dimen name="padding_1">1dp</dimen>
     <dimen name="padding_5">5dp</dimen>
     <dimen name="padding_10">10dp</dimen>
     <dimen name="padding_15">15dp</dimen>
