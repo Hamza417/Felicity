@@ -10,69 +10,31 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="center_vertical"
-        android:background="@android:color/transparent"
-        app:snapGravity="center"
-        app:snapScrollMsPerInch="20" />
+        android:background="@android:color/transparent" />
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="match_parent"
+    <LinearLayout
+        android:id="@+id/top_menu_container"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal|bottom"
-        android:layout_margin="@dimen/padding_25"
-        android:orientation="vertical">
-
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
-            android:id="@+id/arrow_left"
-            android:layout_width="@dimen/icon_size_50"
-            android:layout_height="@dimen/icon_size_50"
-            android:src="@drawable/ic_arrow_back"
-            app:buttonTintType="white"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <app.simple.felicity.decorations.typeface.TypeFaceTextView
-            android:id="@+id/title"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginHorizontal="16dp"
-            android:textSize="@dimen/text_size_18"
-            android:maxLines="1"
-            android:singleLine="true"
-            android:ellipsize="marquee"
-            android:marqueeRepeatLimit="marquee_forever"
-            app:appFontStyle="bold"
-            app:layout_constraintBottom_toTopOf="@+id/artist"
-            app:layout_constraintEnd_toStartOf="@+id/menu"
-            app:layout_constraintStart_toEndOf="@+id/arrow_left"
-            app:layout_constraintTop_toTopOf="parent"
-            app:textColorStyle="white" />
-
-        <app.simple.felicity.decorations.typeface.TypeFaceTextView
-            android:id="@+id/artist"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginHorizontal="16dp"
-            android:textSize="@dimen/desc_text_size"
-            app:appFontStyle="regular"
-            android:maxLines="1"
-            android:singleLine="true"
-            android:ellipsize="marquee"
-            android:marqueeRepeatLimit="marquee_forever"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/menu"
-            app:layout_constraintStart_toEndOf="@+id/arrow_left"
-            app:layout_constraintTop_toBottomOf="@+id/title"
-            app:textColorStyle="white" />
+        android:layout_gravity="top|end"
+        android:padding="@dimen/padding_15"
+        android:orientation="horizontal">
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
             android:id="@+id/menu"
             android:layout_width="@dimen/icon_size_50"
             android:layout_height="@dimen/icon_size_50"
             android:src="@drawable/ic_menu"
-            android:layout_marginEnd="@dimen/padding_5"
+            app:buttonTintType="white"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/arrow_left"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+            android:id="@+id/arrow_left"
+            android:layout_width="@dimen/icon_size_50"
+            android:layout_height="@dimen/icon_size_50"
+            android:src="@drawable/ic_arrow_back"
             app:buttonTintType="white"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/arrow_right"
@@ -83,6 +45,89 @@
             android:layout_width="@dimen/icon_size_50"
             android:layout_height="@dimen/icon_size_50"
             android:src="@drawable/ic_arrow_forward"
+            app:buttonTintType="white"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </LinearLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal|bottom"
+        android:layout_margin="@dimen/padding_25"
+        android:orientation="vertical">
+
+        <app.simple.felicity.decorations.views.SquareImageView
+            android:id="@+id/art"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginHorizontal="@dimen/padding_15"
+            android:textSize="@dimen/text_size_18"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
+            app:appFontStyle="bold"
+            app:layout_constraintBottom_toTopOf="@+id/artist"
+            app:layout_constraintEnd_toStartOf="@+id/previous"
+            app:layout_constraintStart_toEndOf="@+id/art"
+            app:layout_constraintTop_toTopOf="@+id/art"
+            app:textColorStyle="white" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/artist"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginHorizontal="@dimen/padding_15"
+            android:textSize="@dimen/desc_text_size"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
+            app:appFontStyle="regular"
+            app:layout_constraintBottom_toBottomOf="@+id/art"
+            app:layout_constraintEnd_toStartOf="@+id/previous"
+            app:layout_constraintStart_toEndOf="@+id/art"
+            app:layout_constraintTop_toBottomOf="@+id/title"
+            app:textColorStyle="white" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+            android:id="@+id/previous"
+            android:layout_width="@dimen/icon_size_50"
+            android:layout_height="@dimen/icon_size_50"
+            android:src="@drawable/ic_skip_previous"
+            app:buttonTintType="white"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/play"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+            android:id="@+id/play"
+            android:layout_width="@dimen/icon_size_50"
+            android:layout_height="@dimen/icon_size_50"
+            android:src="@drawable/ic_play"
+            app:buttonTintType="white"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/next"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageImageButton
+            android:id="@+id/next"
+            android:layout_width="@dimen/icon_size_50"
+            android:layout_height="@dimen/icon_size_50"
+            android:src="@drawable/ic_skip_next"
             app:buttonTintType="white"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"

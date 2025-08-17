@@ -1,5 +1,6 @@
 package app.simple.felicity.repository.managers
 
+import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
@@ -15,9 +16,21 @@ import kotlinx.coroutines.withContext
 
 object MediaManager {
 
+    private const val TAG = "MediaManager"
     private var mediaController: MediaController? = null
     private var songs: List<Song> = emptyList()
     private var currentSongPosition: Int = 0
+        set(value) {
+            if (value in songs.indices) {
+                field = value
+                CoroutineScope(Dispatchers.Main).launch {
+                    _songPositionFlow.emit(value)
+                }
+            } else {
+                Log.i(TAG, "Invalid song position: $value. Must be between 0 and ${songs.size - 1}.")
+            }
+        }
+
     private var seekJob: Job? = null
 
     private val _songListFlow = MutableSharedFlow<List<Song>>(replay = 1)
@@ -88,6 +101,14 @@ object MediaManager {
 
     fun stop() {
         mediaController?.stop()
+    }
+
+    fun flipState() {
+        if (mediaController?.isPlaying == true) {
+            pause()
+        } else {
+            play()
+        }
     }
 
     fun next() {

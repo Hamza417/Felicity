@@ -27,6 +27,9 @@ open class MediaFragment : ScopedFragment() {
             MediaManager.songPositionFlow.collect { position ->
                 Log.d(TAG, "Song position: $position")
                 PlayerPreferences.setLastSongPosition(position)
+                MediaManager.getCurrentSong()?.let { song ->
+                    onSong(song)
+                }
             }
         }
 
@@ -38,7 +41,7 @@ open class MediaFragment : ScopedFragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             MediaManager.playbackStateFlow.collect { state ->
-                Log.d(TAG, "Playback state changed: $state")
+                onPlaybackStateChanged(state)
             }
         }
     }
@@ -57,6 +60,14 @@ open class MediaFragment : ScopedFragment() {
             val songDao = lastSongDatabase.songDao()
             songDao.cleanInsert(songs)
         }
+    }
+
+    open fun onPlaybackStateChanged(state: Int) {
+        Log.d(TAG, "Playback state changed: $state")
+    }
+
+    open fun onSong(song: Song) {
+        Log.d(TAG, "New song played: ${song.title} by ${song.artist}")
     }
 
     companion object {

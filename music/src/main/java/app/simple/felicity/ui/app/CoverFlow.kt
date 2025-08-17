@@ -7,12 +7,16 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.core.R
+import app.simple.felicity.core.utils.WindowUtil
 import app.simple.felicity.databinding.FragmentCoverflowBinding
 import app.simple.felicity.decorations.coverflow.CoverFlow.OnCoverClickListener
 import app.simple.felicity.decorations.coverflow.CoverFlowRenderer
 import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
 import app.simple.felicity.popups.carousel.PopupSongsCarouselMenu
+import app.simple.felicity.repository.constants.MediaConstants
+import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
@@ -31,6 +35,15 @@ class CoverFlow : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
         requireLightBarIcons()
 
+        WindowUtil.getStatusBarHeightWhenAvailable(binding.topMenuContainer) { height ->
+            binding.topMenuContainer.setPadding(
+                    binding.topMenuContainer.paddingLeft,
+                    height,
+                    binding.topMenuContainer.paddingRight,
+                    binding.topMenuContainer.paddingBottom
+            )
+        }
+
         songsViewModel.getSongAndArt().observe(viewLifecycleOwner) { songs ->
             binding.coverflow.setUris(songs.keys.toList())
             binding.coverflow.scrollToIndex(songsViewModel.getCarouselPosition()).also {
@@ -42,7 +55,6 @@ class CoverFlow : MediaFragment() {
             binding.coverflow.addScrollListener(object : CoverFlowRenderer.ScrollListener {
                 override fun onCenteredIndexChanged(index: Int) {
                     songsViewModel.setCarouselPosition(index)
-                    updateInfo(index, songs.values.elementAtOrNull(index))
                 }
 
                 override fun onScrollOffsetChanged(offset: Float) {
@@ -62,12 +74,10 @@ class CoverFlow : MediaFragment() {
                 override fun onCenteredCoverClick(index: Int, uri: Uri?) {
                     songsViewModel.setCarouselPosition(index)
                     setMediaItems(songs.values.toList(), index)
-                    updateInfo(index, songs.values.elementAtOrNull(index))
                 }
 
                 override fun onSideCoverSelected(index: Int, uri: Uri?) {
                     songsViewModel.setCarouselPosition(index)
-                    updateInfo(index, songs.values.elementAtOrNull(index))
                 }
             })
 
@@ -100,12 +110,36 @@ class CoverFlow : MediaFragment() {
                 ).show()
             }
         }
+
+        binding.play.setOnClickListener {
+            MediaManager.flipState()
+        }
+
+        binding.next.setOnClickListener {
+            MediaManager.next()
+        }
+
+        binding.previous.setOnClickListener {
+            MediaManager.previous()
+        }
     }
 
-    private fun updateInfo(position: Int, song: Song?) {
-        if (song != null) {
-            binding.title.text = song.title
-            binding.artist.text = song.artist
+    override fun onSong(song: Song) {
+        super.onSong(song)
+        binding.title.text = song.title
+        binding.artist.text = song.artist
+        binding.art.loadSongCover(song)
+    }
+
+    override fun onPlaybackStateChanged(state: Int) {
+        super.onPlaybackStateChanged(state)
+        when (state) {
+            MediaConstants.PLAYBACK_PLAYING -> {
+                binding.play.setImageResource(app.simple.felicity.decoration.R.drawable.ic_pause)
+            }
+            MediaConstants.PLAYBACK_PAUSED -> {
+                binding.play.setImageResource(app.simple.felicity.decoration.R.drawable.ic_play)
+            }
         }
     }
 
