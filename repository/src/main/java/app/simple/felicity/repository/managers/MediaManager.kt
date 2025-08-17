@@ -141,7 +141,7 @@ object MediaManager {
         return getCurrentSong()?.id
     }
 
-    fun setNesPosition(position: Int) {
+    fun updatePosition(position: Int) {
         if (position in songs.indices) {
             currentSongPosition = position
             playCurrent()

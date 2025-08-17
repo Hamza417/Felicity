@@ -234,7 +234,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         }
     }
 
-    protected fun postDelayed(delayMillis: Long, action: () -> Unit) {
+    protected fun postDelayed(delayMillis: Long = 500L, action: () -> Unit) {
         handler.postDelayed(action, delayMillis)
     }
 

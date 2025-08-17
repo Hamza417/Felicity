@@ -46,7 +46,9 @@ class DefaultPlayer : MediaFragment() {
 
         binding.pager.addOnPageChangeListener(object : FelicityPager.OnPageChangeListener {
             override fun onPageSelected(position: Int) {
-                MediaManager.setNesPosition(position)
+                super.onPageSelected(position)
+                Log.i(TAG, "Page selected: $position")
+                MediaManager.updatePosition(position)
             }
         })
 
