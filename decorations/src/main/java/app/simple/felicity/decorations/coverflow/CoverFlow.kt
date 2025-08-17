@@ -210,7 +210,7 @@ class CoverFlow @JvmOverloads constructor(
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
-            CarouselPreferences.CAMERA_EYE_Y, CarouselPreferences.Z -> {
+            CarouselPreferences.CAMERA_EYE_Y -> {
                 queueEvent { renderer.updateCamera() }
             }
         }
