@@ -8,7 +8,10 @@ import androidx.core.content.ContextCompat
 object MaterialYou {
 
     @RequiresApi(Build.VERSION_CODES.S)
-    const val MATERIAL_YOU_ACCENT_RES_ID = android.R.color.system_accent1_500
+    const val MATERIAL_YOU_PRIMARY_ACCENT_RES_ID = android.R.color.system_accent1_500
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    const val MATERIAL_YOU_SECONDARY_ACCENT_RES_ID = android.R.color.system_accent2_500
     const val MATERIAL_YOU_ADAPTER_INDEX = 1
 
     var headingTextColor = 0
@@ -41,10 +44,20 @@ object MaterialYou {
     var regularIconColorDark = 0
     var secondaryIconColorDark = 0
 
+    var primaryAccentColor = 0
+    var secondaryAccentColor = 0
+
     @RequiresApi(Build.VERSION_CODES.S)
     fun Context.presetMaterialYouDynamicColors() {
         setLightColors()
         setDarkColors()
+        setAccentColors()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    fun Context.setAccentColors() {
+        primaryAccentColor = ContextCompat.getColor(this, MATERIAL_YOU_PRIMARY_ACCENT_RES_ID)
+        secondaryAccentColor = ContextCompat.getColor(this, MATERIAL_YOU_SECONDARY_ACCENT_RES_ID)
     }
 
     @RequiresApi(Build.VERSION_CODES.S)

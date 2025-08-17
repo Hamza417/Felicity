@@ -13,7 +13,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import app.simple.felicity.R
-import app.simple.felicity.theme.accents.Felicity
+import app.simple.felicity.theme.accents.MaterialYouAccent
 import app.simple.felicity.theme.data.MaterialYou.presetMaterialYouDynamicColors
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.managers.ThemeUtils
@@ -26,7 +26,9 @@ open class BaseActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        presetMaterialYouDynamicColors()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            presetMaterialYouDynamicColors()
+        }
         setStrictModePolicy()
         enableNotchArea()
         makeAppFullScreen()
@@ -35,7 +37,7 @@ open class BaseActivity : AppCompatActivity() {
 
     private fun initTheme() {
         ThemeUtils.setAppTheme(resources)
-        ThemeManager.accent = Felicity()
+        ThemeManager.accent = MaterialYouAccent()
         ThemeUtils.updateNavAndStatusColors(resources, window)
     }
 
