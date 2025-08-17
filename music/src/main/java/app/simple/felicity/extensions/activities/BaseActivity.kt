@@ -1,24 +1,37 @@
 package app.simple.felicity.extensions.activities
 
+import android.content.ComponentName
 import android.content.Context
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.StrictMode
+import android.util.Log
 import android.view.WindowManager
-import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
-import androidx.coordinatorlayout.widget.CoordinatorLayout
-import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import app.simple.felicity.R
+import androidx.lifecycle.lifecycleScope
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import app.simple.felicity.engine.services.ExoPlayerService
+import app.simple.felicity.preferences.PlayerPreferences
+import app.simple.felicity.repository.database.instances.LastSongDatabase
+import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.theme.accents.MaterialYouAccent
 import app.simple.felicity.theme.data.MaterialYou.presetMaterialYouDynamicColors
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.managers.ThemeUtils
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 open class BaseActivity : AppCompatActivity() {
+
+    protected var mediaController: MediaController? = null
+    private var controllerFuture: ListenableFuture<MediaController>? = null
+
     override fun attachBaseContext(newBase: Context?) {
         app.simple.felicity.preferences.SharedPreferences.init(newBase!!)
         super.attachBaseContext(newBase)
@@ -29,10 +42,50 @@ open class BaseActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             presetMaterialYouDynamicColors()
         }
+
+        initMediaController()
         setStrictModePolicy()
         enableNotchArea()
         makeAppFullScreen()
         initTheme()
+    }
+
+    private fun initMediaController() {
+        val sessionToken =
+            SessionToken(this,
+                         ComponentName(this, ExoPlayerService::class.java))
+
+        controllerFuture =
+            MediaController.Builder(this, sessionToken).buildAsync()
+
+        val listener = Runnable {
+            Log.d(TAG, "MediaController created successfully")
+            mediaController = controllerFuture?.get()
+            MediaManager.setMediaController(mediaController!!)
+            restoreLastSongStateFromDatabase()
+        }
+
+        controllerFuture?.addListener(listener, MoreExecutors.directExecutor())
+    }
+
+    private fun restoreLastSongStateFromDatabase() {
+        lifecycleScope.launch(Dispatchers.Default) {
+            val lastSongDatabase = LastSongDatabase.getInstance(applicationContext)
+            val songDao = lastSongDatabase.songDao()
+            val lastSongs = songDao.getAllSongs()
+
+            if (lastSongs.isNotEmpty()) {
+                withContext(Dispatchers.Main) {
+                    MediaManager.setSongs(
+                            songs = lastSongs,
+                            position = PlayerPreferences.getLastSongPosition())
+                    MediaManager.seekTo(PlayerPreferences.getLastSongSeek())
+                }
+            } else {
+                Log.d(TAG, "No last songs found in the database")
+            }
+
+        }
     }
 
     private fun initTheme() {
@@ -51,39 +104,6 @@ open class BaseActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Making the Navigation system bar not overlapping with the activity
-     */
-    fun fixNavigationBarOverlap() {
-        /**
-         * Root ViewGroup of this activity
-         */
-        val root = findViewById<CoordinatorLayout>(R.id.app_container)
-
-        ViewCompat.setOnApplyWindowInsetsListener(root) { view, windowInsets ->
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            // val imeVisible = windowInsets.isVisible(WindowInsetsCompat.Type.ime())
-            // val imeHeight = windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-
-            /**
-             * Apply the insets as a margin to the view. Here the system is setting
-             * only the bottom, left, and right dimensions, but apply whichever insets are
-             * appropriate to your layout. You can also update the view padding
-             * if that's more appropriate.
-             */
-            view.layoutParams = (view.layoutParams as FrameLayout.LayoutParams).apply {
-                leftMargin = insets.left
-                bottomMargin = insets.bottom
-                rightMargin = insets.right
-            }
-            /**
-             * Return CONSUMED if you don't want want the window insets to keep being
-             * passed down to descendant views.
-             */
-            WindowInsetsCompat.CONSUMED
-        }
-    }
-
     private fun enableNotchArea() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -97,9 +117,25 @@ open class BaseActivity : AppCompatActivity() {
                     .build())
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        MediaManager.stopSeekPositionUpdates()
+
+        try {
+            mediaController?.let {
+                MediaManager.clearMediaController()
+                it.release()
+            }
+
+            MediaController.releaseFuture(controllerFuture!!)
+        } catch (e: NullPointerException) {
+            e.printStackTrace()
+        }
+
+        LastSongDatabase.getInstance(this.applicationContext).close()
+    }
+
     companion object {
         const val TAG = "BaseActivity"
-        var statusBarHeight = 0
-        var navigationBarHeight = 0
     }
 }

@@ -3,11 +3,17 @@ package app.simple.felicity.repository.models
 
 import android.net.Uri
 import android.os.Parcelable
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import androidx.room.TypeConverters
+import app.simple.felicity.repository.database.coverters.UriTypeConverter
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
+@Entity(tableName = "songs")
+@TypeConverters(UriTypeConverter::class)
 data class Song(
-        val id: Long,
+        @PrimaryKey val id: Long,
         val title: String?,
         val artist: String?,
         val album: String?,
@@ -19,19 +25,4 @@ data class Song(
         val size: Long,
         val dateAdded: Long,
         val dateModified: Long,
-) : Parcelable {
-    override fun toString(): String {
-        return "Song(id=$id, " +
-                "title=$title, " +
-                "artist=$artist, " +
-                "album=$album, " +
-                "albumId=$albumId, " +
-                "artistId=$artistId, " +
-                "uri=$uri, " +
-                "path='$path', " +
-                "duration=$duration, " +
-                "size=$size, " +
-                "dateAdded=$dateAdded, " +
-                "dateModified=$dateModified"
-    }
-}
+) : Parcelable
