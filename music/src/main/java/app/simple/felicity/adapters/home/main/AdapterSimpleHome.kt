@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterDividerBinding
 import app.simple.felicity.databinding.AdapterHeaderHomeBinding
 import app.simple.felicity.databinding.AdapterHomeSimpleBinding
@@ -18,15 +19,15 @@ class AdapterSimpleHome(private val data: List<Element>) : RecyclerView.Adapter<
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
             RecyclerViewUtils.TYPE_HEADER -> {
-                Header(AdapterHeaderHomeBinding.inflate(LayoutInflater.from(parent.context), parent, false).root)
+                Header(AdapterHeaderHomeBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
 
             RecyclerViewUtils.TYPE_ITEM -> {
-                Holder(AdapterHomeSimpleBinding.inflate(LayoutInflater.from(parent.context), parent, false).root)
+                Holder(AdapterHomeSimpleBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
 
             RecyclerViewUtils.TYPE_DIVIDER -> {
-                Divider(AdapterDividerBinding.inflate(LayoutInflater.from(parent.context), parent, false).root)
+                Divider(AdapterDividerBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
 
             else -> {
@@ -38,11 +39,18 @@ class AdapterSimpleHome(private val data: List<Element>) : RecyclerView.Adapter<
     override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
         when (holder) {
             is Holder -> {
-                holder.bind(AdapterHomeSimpleBinding.bind(holder.itemView))
+                val position = position - 2
+                holder.binding.icon.setImageResource(data[position].icon)
+                holder.binding.title.text = holder.context.getString(data[position].title)
+                holder.binding.container.transitionName = holder.context.getString(data[position].title)
+
+                holder.binding.container.setOnClickListener {
+                    adapterSimpleHomeCallbacks?.onItemClicked(data[position], position, holder.binding.container)
+                }
             }
 
             is Header -> {
-                holder.bind(AdapterHeaderHomeBinding.bind(holder.itemView))
+
             }
         }
     }
@@ -67,32 +75,25 @@ class AdapterSimpleHome(private val data: List<Element>) : RecyclerView.Adapter<
         }
     }
 
-    inner class Holder(itemView: View) : VerticalListViewHolder(itemView) {
-        var adapterHomeSimpleBinding: AdapterHomeSimpleBinding? = null
+    inner class Holder(val binding: AdapterHomeSimpleBinding) : VerticalListViewHolder(binding.root) {
+        init {
 
-        fun bind(adapterHomeSimpleBinding: AdapterHomeSimpleBinding) {
-            this.adapterHomeSimpleBinding = adapterHomeSimpleBinding
-            val position = bindingAdapterPosition.minus(2)
+        }
+    }
 
-            adapterHomeSimpleBinding.icon.setImageResource(data[position].icon)
-            adapterHomeSimpleBinding.title.text = itemView.context.getString(data[position].title)
-            adapterHomeSimpleBinding.container.transitionName = itemView.context.getString(data[position].title)
+    inner class Header(val binding: AdapterHeaderHomeBinding) : VerticalListViewHolder(binding.root) {
+        init {
+            binding.search.setOnClickListener {
+                adapterSimpleHomeCallbacks?.onSearchClicked(it)
+            }
 
-            adapterHomeSimpleBinding.container.setOnClickListener {
-                adapterSimpleHomeCallbacks?.onItemClicked(data[position], position, adapterHomeSimpleBinding.container)
+            binding.settings.setOnClickListener {
+                adapterSimpleHomeCallbacks?.onMenuClicked(it)
             }
         }
     }
 
-    inner class Header(itemView: View) : VerticalListViewHolder(itemView) {
-        var adapterHeaderHomeBinding: AdapterHeaderHomeBinding? = null
-
-        fun bind(adapterHeaderHomeBinding: AdapterHeaderHomeBinding) {
-            this.adapterHeaderHomeBinding = adapterHeaderHomeBinding
-        }
-    }
-
-    inner class Divider(itemView: View) : VerticalListViewHolder(itemView)
+    inner class Divider(binding: AdapterDividerBinding) : VerticalListViewHolder(binding.root)
 
     fun setAdapterSimpleHomeCallbacks(adapterSimpleHomeCallbacks: AdapterSimpleHomeCallbacks) {
         this.adapterSimpleHomeCallbacks = adapterSimpleHomeCallbacks
@@ -101,7 +102,7 @@ class AdapterSimpleHome(private val data: List<Element>) : RecyclerView.Adapter<
     companion object {
         private const val TAG = "AdapterSimpleHome"
 
-        interface AdapterSimpleHomeCallbacks {
+        interface AdapterSimpleHomeCallbacks : GeneralAdapterCallbacks {
             fun onItemClicked(element: Element, position: Int, view: View)
         }
     }
