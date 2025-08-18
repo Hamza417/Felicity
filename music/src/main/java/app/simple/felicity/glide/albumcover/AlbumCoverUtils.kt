@@ -2,6 +2,7 @@ package app.simple.felicity.glide.albumcover
 
 import android.widget.ImageView
 import app.simple.felicity.R
+import app.simple.felicity.glide.transformation.Blur
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.transformation.RoundedCorners
@@ -17,7 +18,8 @@ object AlbumCoverUtils {
     fun ImageView.loadAlbumCover(
             album: Album,
             roundedCorners: Boolean = true,
-            blur: Boolean = true,
+            blurShadow: Boolean = true,
+            blur: Boolean = false,
             skipCache: Boolean = false,
             crop: Boolean = true
     ) {
@@ -33,7 +35,7 @@ object AlbumCoverUtils {
             transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt(), 0))
         }
 
-        if (blur) {
+        if (blurShadow) {
             transformations.add(Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()))
 
             transformations.add(
@@ -41,6 +43,10 @@ object AlbumCoverUtils {
                         .setElevation(25F)
                         .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE)
             )
+        }
+
+        if (blur) {
+            transformations.add(Blur())
         }
 
         var glideRequest = Glide.with(this)

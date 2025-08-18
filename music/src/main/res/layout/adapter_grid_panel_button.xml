@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.square.SquareFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_arrow_forward"
+            app:tint="@color/white" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/text_size_18"
+            android:layout_gravity="center"
+            android:gravity="center"
+            app:textColorStyle="white" />
+
+    </LinearLayout>
+
+</app.simple.felicity.decorations.square.SquareFrameLayout>

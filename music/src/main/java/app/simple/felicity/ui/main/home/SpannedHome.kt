@@ -1,5 +1,6 @@
 package app.simple.felicity.ui.main.home
 
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -17,24 +18,26 @@ import app.simple.felicity.viewmodels.main.home.HomeViewModel
 
 class SpannedHome : ScopedFragment() {
 
-    private var binding: FragmentHomeSpannedBinding? = null
+    private lateinit var binding: FragmentHomeSpannedBinding
     private val homeViewModel: HomeViewModel by viewModels({ requireActivity() })
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = FragmentHomeSpannedBinding.inflate(inflater, container, false)
-        return binding?.root
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        postponeEnterTransition()
+        requireLightBarIcons()
+        binding.recyclerView.setBackgroundColor(Color.BLACK)
 
         homeViewModel.getData().observe(viewLifecycleOwner) {
             val adapter = AdapterGridHome(it)
-            binding?.recyclerView?.setHasFixedSize(false)
-            binding?.recyclerView?.adapter = adapter
-            binding?.recyclerView?.scheduleLayoutAnimation()
-            binding?.recyclerView?.itemAnimator = null
-            binding?.recyclerView?.scheduleLayoutAnimation()
+            binding.recyclerView.setHasFixedSize(false)
+            binding.recyclerView.adapter = adapter
+            binding.recyclerView.scheduleLayoutAnimation()
+            binding.recyclerView.itemAnimator = null
 
             adapter.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onMenuClicked(view: View) {
@@ -47,14 +50,14 @@ class SpannedHome : ScopedFragment() {
     private val randomizer: Runnable = object : Runnable {
         override fun run() {
             try {
-                binding?.recyclerView?.randomViewHolder<AdapterGridHome.Holder> { holder ->
-                    holder.binding?.artGrid?.animate()!!
+                binding.recyclerView.randomViewHolder<AdapterGridHome.Holder> { holder ->
+                    holder.binding.artGrid.animate()!!
                         .alpha(0F)
                         .setDuration(resources.getInteger(android.R.integer.config_longAnimTime).toLong())
                         .withEndAction {
-                            (holder.binding?.artGrid?.adapter as AdapterGridArt).randomize()
-                            holder.binding?.artGrid?.scheduleLayoutAnimation()
-                            holder.binding?.artGrid?.animate()!!
+                            (holder.binding.artGrid.adapter as AdapterGridArt).randomize()
+                            holder.binding.artGrid.scheduleLayoutAnimation()
+                            holder.binding.artGrid.animate()!!
                                 .alpha(1F)
                                 .setDuration(resources.getInteger(android.R.integer.config_shortAnimTime).toLong())
                                 .start()

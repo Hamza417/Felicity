@@ -22,20 +22,19 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool;
-import com.google.android.renderscript.Toolkit;
 
 import java.security.MessageDigest;
 
 import androidx.annotation.NonNull;
 import app.simple.felicity.BuildConfig;
-import app.simple.felicity.glide.internals.FastBlur;
+import app.simple.felicity.glide.internals.StackBlur;
 
 public class Blur extends BitmapTransformation {
     
     private static final int VERSION = BuildConfig.VERSION_CODE;
     private static final String ID = "app.simple.felicity.glide.transformations.BlurTransformation." + VERSION;
     
-    private static final int MAX_RADIUS = 25;
+    private static final int MAX_RADIUS = 32;
     private static final int DEFAULT_DOWN_SAMPLING = 1;
     
     private final int radius;
@@ -72,11 +71,7 @@ public class Blur extends BitmapTransformation {
         paint.setFlags(Paint.FILTER_BITMAP_FLAG);
         canvas.drawBitmap(toTransform, 0, 0, paint);
         
-        try {
-            bitmap = Toolkit.INSTANCE.blur(bitmap, radius);
-        } catch (IllegalArgumentException e) {
-            bitmap = FastBlur.blur(bitmap, radius, true);
-        }
+        new StackBlur().blurRgb(bitmap, radius);
         
         return bitmap;
     }

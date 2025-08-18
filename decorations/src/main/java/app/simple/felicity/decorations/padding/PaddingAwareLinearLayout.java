@@ -12,6 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.TestOnly;
 
 import androidx.annotation.Nullable;
+import app.simple.felicity.core.utils.BarHeight;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.decorations.theme.ThemeLinearLayout;
 
@@ -40,8 +41,17 @@ public class PaddingAwareLinearLayout extends ThemeLinearLayout implements Share
         try (TypedArray typedArray = getContext().obtainStyledAttributes(attrs, R.styleable.PaddingAwareLinearLayout)) {
             statusPaddingRequired = typedArray.getBoolean(R.styleable.PaddingAwareLinearLayout_statusPaddingRequired, true);
             navigationPaddingRequired = typedArray.getBoolean(R.styleable.PaddingAwareLinearLayout_navigationPaddingRequired, true);
-            
-            Utils.applySystemBarPadding(this, statusPaddingRequired, navigationPaddingRequired);
+        }
+        
+        int statusBarHeight = BarHeight.getStatusBarHeight(getResources());
+        int navigationBarHeight = BarHeight.getNavigationBarHeight(getResources());
+        
+        if (statusPaddingRequired) {
+            setPadding(getPaddingLeft(), statusBarHeight + getPaddingTop(), getPaddingRight(), getPaddingBottom());
+        }
+        
+        if (navigationPaddingRequired) {
+            setPadding(getPaddingLeft(), getPaddingTop(), getPaddingRight(), navigationBarHeight + getPaddingBottom());
         }
         
         if (isInEditMode()) {

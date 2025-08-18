@@ -2,7 +2,10 @@ package app.simple.felicity.glide.songcover
 
 import android.widget.ImageView
 import app.simple.felicity.R
+import app.simple.felicity.glide.transformation.Blur
 import app.simple.felicity.glide.transformation.BlurShadow
+import app.simple.felicity.glide.transformation.Darken
+import app.simple.felicity.glide.transformation.Greyscale
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.transformation.RoundedCorners
 import app.simple.felicity.preferences.AppearancePreferences
@@ -10,13 +13,16 @@ import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.Transformation
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.load.resource.bitmap.CenterCrop
 
 object SongCoverUtils {
     fun ImageView.loadSongCover(
             song: Song,
             roundedCorners: Boolean = true,
-            blur: Boolean = true,
-            skipCache: Boolean = false
+            blurShadow: Boolean = true,
+            blur: Boolean = false,
+            skipCache: Boolean = false,
+            greyscale: Boolean = false
     ) {
         val transformations = mutableListOf<Transformation<android.graphics.Bitmap>>()
 
@@ -24,7 +30,7 @@ object SongCoverUtils {
             transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt(), 0))
         }
 
-        if (blur) {
+        if (blurShadow) {
             transformations.add(Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()))
 
             transformations.add(
@@ -32,6 +38,14 @@ object SongCoverUtils {
                         .setElevation(25F)
                         .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE)
             )
+        }
+
+        if (blur) {
+            transformations.add(Blur())
+        }
+
+        if (greyscale) {
+            transformations.add(Greyscale())
         }
 
         var glideRequest = Glide.with(this)
@@ -48,5 +62,17 @@ object SongCoverUtils {
         }
 
         glideRequest.into(this)
+    }
+
+    fun ImageView.loadBlurredBWSongCover(song: Song) {
+        Glide.with(this)
+            .asBitmap()
+            .load(song)
+            .transform(
+                    CenterCrop(),
+                    Blur(),
+                    Darken(0.4F)
+            )
+            .into(this)
     }
 }

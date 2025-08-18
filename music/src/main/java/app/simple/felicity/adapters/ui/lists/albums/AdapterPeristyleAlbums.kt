@@ -29,7 +29,7 @@ class AdapterPeristyleAlbums(private val albums: List<Album>) : RecyclerView.Ada
 
         fun bind(binding: AdapterAlbumsPeristyleBinding) {
             this.binding = binding
-            binding.albumArt.loadAlbumCover(albums[bindingAdapterPosition], crop = true, roundedCorners = false, blur = false, skipCache = false)
+            binding.albumArt.loadAlbumCover(albums[bindingAdapterPosition], crop = true, roundedCorners = false, blurShadow = false, skipCache = false)
             binding.title.text = albums[bindingAdapterPosition].name
         }
     }

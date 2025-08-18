@@ -1,19 +1,20 @@
 package app.simple.felicity.adapters.home.main
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.adapters.home.sub.AdapterGridArt
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
-import app.simple.felicity.databinding.AdapterCentralHomeHeaderBinding
 import app.simple.felicity.databinding.AdapterGridHomeBinding
+import app.simple.felicity.databinding.AdapterSpannedHomeHeaderBinding
 import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
 import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.decorations.ripple.RippleUtils
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
+import app.simple.felicity.glide.songcover.SongCoverUtils.loadBlurredBWSongCover
 import app.simple.felicity.models.ArtFlowData
-import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.repository.models.Song
 import app.simple.felicity.utils.ArrayUtils.getTwoRandomIndices
 
 class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
@@ -23,7 +24,7 @@ class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.A
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
             RecyclerViewUtils.TYPE_HEADER ->
-                Header(AdapterCentralHomeHeaderBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+                Header(AdapterSpannedHomeHeaderBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             RecyclerViewUtils.TYPE_ITEM ->
                 Holder(AdapterGridHomeBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             else ->
@@ -34,10 +35,6 @@ class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.A
     override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
         if (holder is Holder) {
             with(holder) {
-                binding.title.text = context.getString(data[position.minus(1)].title)
-                binding.title.setBackgroundColor(ThemeManager.accent.secondaryAccentColor)
-                RippleUtils.setForegroundDrawable(binding.title)
-
                 val randomPossibleAlternateSpanPositions = intArrayOf(1, 2, 3, 4, 5, 7).getTwoRandomIndices()
                 val spannedGridLayoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, 3)
 
@@ -79,7 +76,7 @@ class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.A
 
     inner class Holder(val binding: AdapterGridHomeBinding) : VerticalListViewHolder(binding.root)
 
-    inner class Header(val binding: AdapterCentralHomeHeaderBinding) : VerticalListViewHolder(binding.root) {
+    inner class Header(val binding: AdapterSpannedHomeHeaderBinding) : VerticalListViewHolder(binding.root) {
         init {
             binding.menu.setOnClickListener {
                 generalAdapterCallbacks?.onMenuClicked(it)
@@ -88,7 +85,21 @@ class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.A
             binding.search.setOnClickListener {
                 generalAdapterCallbacks?.onSearchClicked(it)
             }
+
+            findRandomSongFromData()?.let { binding.headerArt.loadBlurredBWSongCover(it) }
+            binding.subContainer.background = null
         }
+    }
+
+    private fun findRandomSongFromData(): Song? {
+        data.forEach {
+            if (it.items.random() is Song) {
+                Log.d("AdapterGridHome", "Found a random song in data")
+                return it.items.random() as Song
+            }
+        }
+
+        return null
     }
 
     fun setGeneralAdapterCallbacks(callbacks: GeneralAdapterCallbacks) {

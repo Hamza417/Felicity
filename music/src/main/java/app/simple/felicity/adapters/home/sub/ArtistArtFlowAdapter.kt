@@ -36,7 +36,7 @@ class ArtistArtFlowAdapter(private val data: ArtFlowData<Any>)
                     holder.binding.art.loadFromDescriptor(item.uri, roundedCorners = false, blur = false, skipCache = false, crop = true)
                 }
                 is Album -> {
-                    holder.binding.art.loadAlbumCover(item, roundedCorners = false, blur = false, skipCache = false)
+                    holder.binding.art.loadAlbumCover(item, roundedCorners = false, blurShadow = false, skipCache = false)
                 }
                 is Artist -> {
                     holder.binding.art.loadArtistCover(item, roundedCorners = false, blur = false, skipCache = false)

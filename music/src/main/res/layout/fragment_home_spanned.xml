@@ -6,5 +6,5 @@
     android:layout_height="match_parent"
     android:layoutAnimation="@anim/list_animation_controller"
     app:fastScrollEnabled="false"
-    app:navigationPaddingRequired="true"
-    app:statusPaddingRequired="true" />
+    app:navigationPaddingRequired="false"
+    app:statusPaddingRequired="false" />

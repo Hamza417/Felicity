@@ -368,10 +368,17 @@ object ViewUtils {
         return ColorStateList.valueOf(this)
     }
 
-    fun View.drawBottomToTopFadeBackground(color: Int = Color.TRANSPARENT) {
+    fun View.drawFadeBackground(color: Int = Color.TRANSPARENT, orientation: GradientDrawable.Orientation = GradientDrawable.Orientation.TOP_BOTTOM) {
         background = GradientDrawable(
-                GradientDrawable.Orientation.BOTTOM_TOP,
-                intArrayOf(color, ColorUtils.changeAlpha(color, 128))
+                orientation,
+                intArrayOf(color, ColorUtils.changeAlpha(color, 0))
         )
+    }
+
+    fun View.drawTranslucentBackground(@ColorInt color: Int = 0x900000) {
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(color)
+        }
     }
 }

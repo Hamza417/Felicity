@@ -45,7 +45,7 @@ class ArtFlowAdapter(private val data: ArtFlowData<Any>, private val metadata: B
                     holder.binding.artist.text = item.artist ?: holder.getContext().getString(R.string.unknown)
                 }
                 is Album -> {
-                    holder.binding.art.loadAlbumCover(item, roundedCorners = false, blur = false, skipCache = false)
+                    holder.binding.art.loadAlbumCover(item, roundedCorners = false, blurShadow = false, skipCache = false)
                     holder.binding.title.text = item.name ?: holder.getContext().getString(R.string.unknown)
                     holder.binding.artist.text = item.artist ?: holder.getContext().getString(R.string.unknown)
                 }
