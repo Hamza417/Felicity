@@ -40,6 +40,18 @@ class CoverFlowRenderer(
     var scrollOffset = 0f
         private set
 
+    // Global fade alpha (0..1) applied to every drawn cover
+    @Volatile
+    private var globalAlpha = 1f
+
+    fun setGlobalAlpha(alpha: Float) {
+        val a = alpha.coerceIn(0f, 1f)
+        if (a != globalAlpha) {
+            globalAlpha = a
+            glView.requestRender()
+        }
+    }
+
     @Suppress("PrivatePropertyName")
     private val SCROLL_SENSITIVITY = 2.5f // faster scrolling
 
@@ -208,7 +220,7 @@ class CoverFlowRenderer(
 
     // ----- GLSurfaceView.Renderer -----
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-        GLES20.glClearColor(0f, 0f, 0f, 1f)
+        GLES20.glClearColor(0f, 0f, 0f, 0f)
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         GLES20.glEnable(GLES20.GL_BLEND)
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
@@ -285,7 +297,7 @@ class CoverFlowRenderer(
         val depthFactor = if (depthParallaxEnabled) -absOff * zSpread * rotEase else 0f
         val sideFactor = (1f - (1f - sideScale) * min(1f, absOff))
         val scale = currentBaseScale * sideFactor
-        val brightness = 1f
+        val brightness = globalAlpha // apply global alpha as brightness multiplier
 
         Matrix.setIdentityM(model, 0)
         if (currentDragPitch != 0f) Matrix.rotateM(model, 0, currentDragPitch, 1f, 0f, 0f)
@@ -409,11 +421,12 @@ class CoverFlowRenderer(
                         c = sum;
                     }
                     float fade = vUV.y; 
-                    c.rgb *= fade * uReflectStrength * uAlpha;
-                    c.a = fade * uReflectStrength;
+                    float oa = fade * uReflectStrength * uAlpha; // overall alpha for reflection
+                    c.rgb *= oa;
+                    c.a = oa;
                 } else {
                     c.rgb *= uAlpha;
-                    c.a = 1.0;
+                    c.a = uAlpha; // make main cover transparent based on global alpha
                 }
                 gl_FragColor = c;
             }

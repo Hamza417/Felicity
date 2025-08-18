@@ -6,6 +6,7 @@ import android.content.SharedPreferences
 import android.net.Uri
 import android.opengl.GLSurfaceView
 import android.util.AttributeSet
+import android.util.Log
 import android.view.Choreographer
 import android.view.GestureDetector
 import android.view.MotionEvent
@@ -44,6 +45,9 @@ class CoverFlow @JvmOverloads constructor(
 
     init {
         setEGLContextClientVersion(2)
+        setEGLConfigChooser(8, 8, 8, 8, 16, 0)
+        holder.setFormat(android.graphics.PixelFormat.TRANSLUCENT)
+        setZOrderOnTop(true) // or setZOrderMediaOverlay(true) if needed
         renderer = CoverFlowRenderer(this, context.applicationContext)
         setRenderer(renderer)
         renderMode = RENDERMODE_CONTINUOUSLY
@@ -216,5 +220,10 @@ class CoverFlow @JvmOverloads constructor(
                 queueEvent { renderer.updateCamera() }
             }
         }
+    }
+
+    override fun setAlpha(alpha: Float) {
+        Log.i("CoverFlow", "Setting global alpha to $alpha")
+        renderer.setGlobalAlpha(alpha)
     }
 }
