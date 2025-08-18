@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.adapters.home.sub.ArtFlowAdapter
+import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterHomeArtflowBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.models.ArtFlowData
@@ -58,6 +59,10 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
 
             adapterArtFlowHomeCallbacks?.onClicked(holder.binding.container, position)
         }
+
+        holder.binding.title.setOnClickListener {
+            adapterArtFlowHomeCallbacks?.onPanelItemClicked(item.title, it)
+        }
     }
 
     inner class Holder(val binding: AdapterHomeArtflowBinding) : VerticalListViewHolder(binding.root)
@@ -67,7 +72,7 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
     }
 
     companion object {
-        interface AdapterArtFlowHomeCallbacks {
+        interface AdapterArtFlowHomeCallbacks : GeneralAdapterCallbacks {
             fun onClicked(view: View, position: Int, itemPosition: Int)
             fun onClicked(view: View, position: Int)
         }
