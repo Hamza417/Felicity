@@ -1,12 +1,17 @@
 package app.simple.felicity.activities
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.KeyEvent
 import app.simple.felicity.R
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.extensions.activities.BaseActivity
+import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
+import app.simple.felicity.ui.main.home.ArtFlowHome
 import app.simple.felicity.ui.main.home.CarouselHome
+import app.simple.felicity.ui.main.home.SimpleHome
+import app.simple.felicity.ui.main.home.SpannedHome
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -20,11 +25,42 @@ class MainActivity : BaseActivity() {
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         if (savedInstanceState.isNull()) {
-            val fragment = CarouselHome.newInstance()
-            fragment.setTransitions()
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.app_container, fragment, CarouselHome.TAG)
-                .commit()
+            setHomePanel()
+        }
+    }
+
+    private fun setHomePanel() {
+        val tags = listOf(
+                CarouselHome.TAG,
+                SpannedHome.TAG,
+                ArtFlowHome.TAG,
+                SimpleHome.TAG
+        )
+
+        val currentFragment = supportFragmentManager.findFragmentById(R.id.app_container)
+
+        when (HomePreferences.getHomeInterface()) {
+            HomePreferences.HOME_INTERFACE_CAROUSEL -> {
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.app_container, CarouselHome.newInstance(), CarouselHome.TAG)
+                    .commit()
+            }
+
+            HomePreferences.HOME_INTERFACE_SPANNED -> {
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.app_container, SpannedHome.newInstance(), SpannedHome.TAG)
+                    .commit()
+            }
+            HomePreferences.HOME_INTERFACE_ARTFLOW -> {
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.app_container, ArtFlowHome.newInstance(), ArtFlowHome.TAG)
+                    .commit()
+            }
+            HomePreferences.HOME_INTERFACE_SIMPLE -> {
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.app_container, SimpleHome.newInstance(), SimpleHome.TAG)
+                    .commit()
+            }
         }
     }
 
@@ -42,6 +78,15 @@ class MainActivity : BaseActivity() {
 
             else -> {
                 super.onKeyDown(keyCode, event)
+            }
+        }
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            HomePreferences.HOME_INTERFACE -> {
+                setHomePanel()
             }
         }
     }

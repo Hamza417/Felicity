@@ -101,7 +101,7 @@ class ArtFlowHome : MediaFragment() {
             return fragment
         }
 
-        private const val TAG = "ArtFlowHome"
+        const val TAG = "ArtFlowHome"
         private const val DELAY = 5_000L
     }
 }

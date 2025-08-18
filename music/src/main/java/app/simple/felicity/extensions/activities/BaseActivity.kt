@@ -2,6 +2,7 @@ package app.simple.felicity.extensions.activities
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -15,6 +16,8 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import app.simple.felicity.engine.services.ExoPlayerService
 import app.simple.felicity.preferences.PlayerPreferences
+import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
+import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.repository.database.instances.LastSongDatabase
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.theme.accents.MaterialYouAccent
@@ -27,13 +30,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-open class BaseActivity : AppCompatActivity() {
+open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
 
     protected var mediaController: MediaController? = null
     private var controllerFuture: ListenableFuture<MediaController>? = null
 
     override fun attachBaseContext(newBase: Context?) {
         app.simple.felicity.preferences.SharedPreferences.init(newBase!!)
+        registerSharedPreferenceChangeListener()
         super.attachBaseContext(newBase)
     }
 
@@ -120,6 +124,7 @@ open class BaseActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         MediaManager.stopSeekPositionUpdates()
+        unregisterSharedPreferenceChangeListener()
 
         try {
             mediaController?.let {
@@ -133,6 +138,10 @@ open class BaseActivity : AppCompatActivity() {
         }
 
         LastSongDatabase.getInstance(this.applicationContext).close()
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+
     }
 
     companion object {

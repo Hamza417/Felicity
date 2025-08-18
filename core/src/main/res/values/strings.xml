@@ -52,4 +52,8 @@
     <string name="carousel_settings">Carousel Settings</string>
     <string name="songs_settings">Songs Settings</string>
     <string name="camera_y">Camera Y</string>
+    <string name="change_home_interface">Change Home Interface</string>
+    <string name="spanned">Spanned</string>
+    <string name="carousel">Carousel</string>
+    <string name="simple">Simple</string>
 </resources>

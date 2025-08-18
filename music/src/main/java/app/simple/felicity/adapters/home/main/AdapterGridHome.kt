@@ -5,8 +5,9 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.adapters.home.sub.AdapterGridArt
+import app.simple.felicity.callbacks.GeneralAdapterCallbacks
+import app.simple.felicity.databinding.AdapterCentralHomeHeaderBinding
 import app.simple.felicity.databinding.AdapterGridHomeBinding
-import app.simple.felicity.databinding.AdapterHeaderFelicityMainBinding
 import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
 import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -16,10 +17,12 @@ import app.simple.felicity.utils.ArrayUtils.getTwoRandomIndices
 
 class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
+    private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
             RecyclerViewUtils.TYPE_HEADER -> {
-                Header(AdapterHeaderFelicityMainBinding.inflate(LayoutInflater.from(parent.context), parent, false).root)
+                Header(AdapterCentralHomeHeaderBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
 
             RecyclerViewUtils.TYPE_ITEM -> {
@@ -84,5 +87,19 @@ class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.A
         }
     }
 
-    inner class Header(itemView: View) : VerticalListViewHolder(itemView)
+    inner class Header(val binding: AdapterCentralHomeHeaderBinding) : VerticalListViewHolder(binding.root) {
+        init {
+            binding.menu.setOnClickListener {
+                generalAdapterCallbacks?.onMenuClicked(it)
+            }
+
+            binding.search.setOnClickListener {
+                generalAdapterCallbacks?.onSearchClicked(it)
+            }
+        }
+    }
+
+    fun setGeneralAdapterCallbacks(callbacks: GeneralAdapterCallbacks) {
+        this.generalAdapterCallbacks = callbacks
+    }
 }

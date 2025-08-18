@@ -7,8 +7,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.adapters.home.main.AdapterCarouselHome
+import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentHomeCarouselBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
+import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
@@ -94,6 +96,17 @@ class CarouselHome : MediaFragment() {
                             }
                         }
                     }
+                }
+            })
+
+            adapter.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
+                override fun onMenuClicked(view: View) {
+                    parentFragmentManager.showHomeMenu()
+                }
+
+                override fun onSearchClicked(view: View) {
+                    Log.d(TAG, "Search clicked")
+                    // Handle search click if needed
                 }
             })
         }

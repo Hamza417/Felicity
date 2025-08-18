@@ -71,6 +71,6 @@ class SimpleHome : ScopedFragment() {
             return fragment
         }
 
-        private const val TAG = "Inure_Home"
+        const val TAG = "Inure_Home"
     }
 }

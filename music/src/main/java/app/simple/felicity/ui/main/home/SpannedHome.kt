@@ -8,8 +8,10 @@ import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.adapters.home.main.AdapterGridHome
 import app.simple.felicity.adapters.home.sub.AdapterGridArt
+import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.randomViewHolder
+import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 
@@ -33,6 +35,12 @@ class SpannedHome : ScopedFragment() {
             binding?.recyclerView?.scheduleLayoutAnimation()
             binding?.recyclerView?.itemAnimator = null
             binding?.recyclerView?.scheduleLayoutAnimation()
+
+            adapter.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
+                override fun onMenuClicked(view: View) {
+                    parentFragmentManager.showHomeMenu()
+                }
+            })
         }
     }
 
@@ -87,7 +95,7 @@ class SpannedHome : ScopedFragment() {
             return fragment
         }
 
-        private const val TAG = "SpannedHome"
+        const val TAG = "SpannedHome"
         private const val DELAY = 3_000L
         private const val BASIC_DURATION = 1_500L
         private const val SMALL_DURATION = 250L

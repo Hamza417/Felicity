@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
+import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterCentralHomeHeaderBinding
 import app.simple.felicity.databinding.AdapterHomeCarouselBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
@@ -18,6 +19,7 @@ import app.simple.felicity.models.ArtFlowData
 class AdapterCarouselHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var adapterCarouselCallbacks: AdapterCarouselCallbacks? = null
+    private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         val inflater = LayoutInflater.from(parent.context)
@@ -70,10 +72,24 @@ class AdapterCarouselHome(private val data: List<ArtFlowData<Any>>) : RecyclerVi
 
     inner class Holder(val binding: AdapterHomeCarouselBinding) : VerticalListViewHolder(binding.root)
 
-    inner class Header(val binding: AdapterCentralHomeHeaderBinding) : VerticalListViewHolder(binding.root)
+    inner class Header(val binding: AdapterCentralHomeHeaderBinding) : VerticalListViewHolder(binding.root) {
+        init {
+            binding.menu.setOnClickListener {
+                generalAdapterCallbacks?.onMenuClicked(it)
+            }
+
+            binding.search.setOnClickListener {
+                generalAdapterCallbacks?.onSearchClicked(it)
+            }
+        }
+    }
 
     fun setAdapterCarouselHomeCallbacks(callbacks: AdapterCarouselCallbacks) {
         this.adapterCarouselCallbacks = callbacks
+    }
+
+    fun setGeneralAdapterCallbacks(callbacks: GeneralAdapterCallbacks) {
+        this.generalAdapterCallbacks = callbacks
     }
 
     companion object {
