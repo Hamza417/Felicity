@@ -22,7 +22,8 @@ object SongCoverUtils {
             blurShadow: Boolean = true,
             blur: Boolean = false,
             skipCache: Boolean = false,
-            greyscale: Boolean = false
+            greyscale: Boolean = false,
+            darken: Boolean = false
     ) {
         val transformations = mutableListOf<Transformation<android.graphics.Bitmap>>()
 
@@ -46,6 +47,10 @@ object SongCoverUtils {
 
         if (greyscale) {
             transformations.add(Greyscale())
+        }
+
+        if (darken) {
+            transformations.add(Darken(0.6F))
         }
 
         var glideRequest = Glide.with(this)

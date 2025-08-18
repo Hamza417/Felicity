@@ -4,6 +4,7 @@ import android.widget.ImageView
 import app.simple.felicity.R
 import app.simple.felicity.glide.transformation.Blur
 import app.simple.felicity.glide.transformation.BlurShadow
+import app.simple.felicity.glide.transformation.Darken
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.transformation.RoundedCorners
 import app.simple.felicity.preferences.AppearancePreferences
@@ -21,7 +22,8 @@ object AlbumCoverUtils {
             blurShadow: Boolean = true,
             blur: Boolean = false,
             skipCache: Boolean = false,
-            crop: Boolean = true
+            crop: Boolean = true,
+            darken: Boolean = false
     ) {
         val transformations = mutableListOf<Transformation<android.graphics.Bitmap>>()
 
@@ -47,6 +49,10 @@ object AlbumCoverUtils {
 
         if (blur) {
             transformations.add(Blur())
+        }
+
+        if (darken) {
+            transformations.add(Darken(0.6F))
         }
 
         var glideRequest = Glide.with(this)

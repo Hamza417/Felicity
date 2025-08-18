@@ -3,6 +3,7 @@ package app.simple.felicity.glide.genres
 import android.widget.ImageView
 import app.simple.felicity.R
 import app.simple.felicity.glide.transformation.BlurShadow
+import app.simple.felicity.glide.transformation.Darken
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.transformation.RoundedCorners
 import app.simple.felicity.preferences.AppearancePreferences
@@ -17,7 +18,8 @@ object GenreCoverUtils {
             genre: Genre,
             roundedCorners: Boolean = true,
             blur: Boolean = true,
-            skipCache: Boolean = false
+            skipCache: Boolean = false,
+            darken: Boolean = false
     ) {
         val transformations = mutableListOf<com.bumptech.glide.load.Transformation<android.graphics.Bitmap>>()
 
@@ -34,6 +36,10 @@ object GenreCoverUtils {
                         .setElevation(25F)
                         .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE)
             )
+        }
+
+        if (darken) {
+            transformations.add(Darken(0.6F))
         }
 
         var glideRequest = Glide.with(this)

@@ -32,7 +32,7 @@ class AdapterGridArt(private val data: ArtFlowData<Any>) :
         when (holder) {
             is Holder -> {
                 if (data.items.isNotEmpty()) {
-                    val item = data.items[position]
+                    val item = data.items.shuffled()[position]
 
                     when (item) {
                         is Song -> {
@@ -40,21 +40,30 @@ class AdapterGridArt(private val data: ArtFlowData<Any>) :
                                     song = item,
                                     blurShadow = false,
                                     roundedCorners = false,
-                                    skipCache = true)
+                                    skipCache = true,
+                                    darken = true)
+
+                            holder.binding.title.text = item.title
                         }
                         is Album -> {
                             holder.binding.art.loadAlbumCover(
                                     album = item,
                                     blurShadow = false,
                                     roundedCorners = false,
-                                    skipCache = true)
+                                    skipCache = true,
+                                    darken = true)
+
+                            holder.binding.title.text = item.artist
                         }
                         is Artist -> {
                             holder.binding.art.loadArtistCover(
                                     artist = item,
                                     blur = false,
                                     roundedCorners = false,
-                                    skipCache = true)
+                                    skipCache = true,
+                                    darken = true)
+
+                            holder.binding.title.text = item.name
                         }
                         is Genre -> {
                             holder.binding.art.loadGenreCover(
@@ -62,6 +71,8 @@ class AdapterGridArt(private val data: ArtFlowData<Any>) :
                                     blur = false,
                                     roundedCorners = false,
                                     skipCache = true)
+
+                            holder.binding.title.text = item.name
                         }
                     }
                 }

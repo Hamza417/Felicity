@@ -1,5 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.views.SquareImageView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/art"
+<app.simple.felicity.decorations.square.SquareFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
     android:layout_width="match_parent"
-    android:layout_height="match_parent" />
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/art"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:importantForAccessibility="no" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:textSize="@dimen/text_size_14"
+        android:layout_margin="@dimen/padding_5"
+        android:ellipsize="end"
+        android:maxLines="1"
+        app:appFontStyle="bold"
+        app:textColorStyle="white" />
+
+</app.simple.felicity.decorations.square.SquareFrameLayout>
