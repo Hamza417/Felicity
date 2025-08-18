@@ -19,7 +19,7 @@ import app.simple.felicity.utils.ArrayUtils.getTwoRandomIndices
 
 class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
-    private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
+    private var adapterSpannedHomeCallbacks: AdapterSpannedHomeCallbacks? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
@@ -46,9 +46,10 @@ class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.A
                     }
                 }
 
+                val adapter = AdapterGridArt(data[position.minus(1)])
                 binding.artGrid.setHasFixedSize(true)
                 binding.artGrid.layoutManager = spannedGridLayoutManager
-                binding.artGrid.adapter = AdapterGridArt(data[position.minus(1)])
+                binding.artGrid.adapter = adapter
                 binding.artGrid.scheduleLayoutAnimation()
 
                 binding.artGrid.post {
@@ -58,6 +59,20 @@ class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.A
                                 binding.artGrid.paddingBottom
                     binding.artGrid.requestLayout()
                 }
+
+                adapter.setCallbacks(object : AdapterGridArt.Companion.AdapterGridArtCallbacks {
+                    override fun onItemClicked(items: List<Any>, position: Int) {
+                        adapterSpannedHomeCallbacks?.onItemClicked(items, position)
+                    }
+
+                    override fun onItemLongClicked(item: Any) {
+                        adapterSpannedHomeCallbacks?.onItemLongClicked(item)
+                    }
+
+                    override fun onButtonClicked(title: Int) {
+                        adapterSpannedHomeCallbacks?.onButtonClicked(title)
+                    }
+                })
             }
         }
     }
@@ -74,16 +89,24 @@ class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.A
         }
     }
 
+    override fun getItemId(position: Int): Long {
+        return if (position == 0) {
+            RecyclerViewUtils.TYPE_HEADER.toLong()
+        } else {
+            data[position - 1].title.hashCode().toLong()
+        }
+    }
+
     inner class Holder(val binding: AdapterGridHomeBinding) : VerticalListViewHolder(binding.root)
 
     inner class Header(val binding: AdapterSpannedHomeHeaderBinding) : VerticalListViewHolder(binding.root) {
         init {
             binding.menu.setOnClickListener {
-                generalAdapterCallbacks?.onMenuClicked(it)
+                adapterSpannedHomeCallbacks?.onMenuClicked(it)
             }
 
             binding.search.setOnClickListener {
-                generalAdapterCallbacks?.onSearchClicked(it)
+                adapterSpannedHomeCallbacks?.onSearchClicked(it)
             }
 
             findRandomSongFromData()?.let { binding.headerArt.loadBlurredBWSongCover(it) }
@@ -102,7 +125,15 @@ class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.A
         return null
     }
 
-    fun setGeneralAdapterCallbacks(callbacks: GeneralAdapterCallbacks) {
-        this.generalAdapterCallbacks = callbacks
+    fun setAdapterSpannedHomeCallbacks(callbacks: AdapterSpannedHomeCallbacks) {
+        this.adapterSpannedHomeCallbacks = callbacks
+    }
+
+    companion object {
+        interface AdapterSpannedHomeCallbacks : GeneralAdapterCallbacks {
+            fun onItemClicked(items: List<Any>, position: Int)
+            fun onItemLongClicked(item: Any)
+            fun onButtonClicked(title: Int)
+        }
     }
 }

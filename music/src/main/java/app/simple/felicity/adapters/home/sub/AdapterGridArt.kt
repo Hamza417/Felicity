@@ -1,5 +1,6 @@
 package app.simple.felicity.adapters.home.sub
 
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -20,6 +21,8 @@ import app.simple.felicity.repository.models.Song
 class AdapterGridArt(private val data: ArtFlowData<Any>) :
         RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
+    private lateinit var callbacks: AdapterGridArtCallbacks
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when (viewType) {
             TYPE_BUTTON -> Button(AdapterGridPanelButtonBinding.inflate(LayoutInflater.from(parent.context), parent, false))
@@ -32,7 +35,14 @@ class AdapterGridArt(private val data: ArtFlowData<Any>) :
         when (holder) {
             is Holder -> {
                 if (data.items.isNotEmpty()) {
-                    val item = data.items.shuffled()[position]
+                    val shuffledList = data.items.shuffled()
+                    val item = shuffledList[position]
+
+                    holder.binding.container.setOnClickListener {
+                        if (data.items.isNotEmpty()) {
+                            callbacks.onItemClicked(shuffledList, position)
+                        }
+                    }
 
                     when (item) {
                         is Song -> {
@@ -95,6 +105,10 @@ class AdapterGridArt(private val data: ArtFlowData<Any>) :
                             holder.binding.title.text = holder.binding.root.context.getString(R.string.genres)
                         }
                     }
+
+                    holder.binding.container.setOnClickListener {
+                        callbacks.onButtonClicked(data.title)
+                    }
                 }
             }
             else -> throw IllegalArgumentException("Invalid view holder type")
@@ -117,7 +131,11 @@ class AdapterGridArt(private val data: ArtFlowData<Any>) :
         }
     }
 
-    inner class Holder(val binding: AdapterGridImageBinding) : RecyclerView.ViewHolder(binding.root)
+    inner class Holder(val binding: AdapterGridImageBinding) : RecyclerView.ViewHolder(binding.root) {
+        init {
+            binding.title.setTextColor(Color.LTGRAY)
+        }
+    }
 
     inner class Button(val binding: AdapterGridPanelButtonBinding) : RecyclerView.ViewHolder(binding.root) {
         init {
@@ -136,8 +154,22 @@ class AdapterGridArt(private val data: ArtFlowData<Any>) :
         }
     }
 
+    fun updateItem(position: Int) {
+        notifyItemChanged(position)
+    }
+
+    fun setCallbacks(callbacks: AdapterGridArtCallbacks) {
+        this.callbacks = callbacks
+    }
+
     companion object {
         private const val TYPE_BUTTON = 0
         private const val TYPE_IMAGE = 1
+
+        interface AdapterGridArtCallbacks {
+            fun onItemClicked(items: List<Any>, position: Int)
+            fun onItemLongClicked(item: Any)
+            fun onButtonClicked(title: Int)
+        }
     }
 }

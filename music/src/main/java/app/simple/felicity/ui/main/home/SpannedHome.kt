@@ -6,17 +6,28 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import androidx.fragment.app.viewModels
 import app.simple.felicity.adapters.home.main.AdapterGridHome
+import app.simple.felicity.adapters.home.main.AdapterGridHome.Companion.AdapterSpannedHomeCallbacks
 import app.simple.felicity.adapters.home.sub.AdapterGridArt
-import app.simple.felicity.callbacks.GeneralAdapterCallbacks
+import app.simple.felicity.core.R
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.randomViewHolder
 import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
-import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.repository.models.Album
+import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.models.Song
+import app.simple.felicity.ui.main.albums.AlbumPage
+import app.simple.felicity.ui.main.albums.PeristyleAlbums
+import app.simple.felicity.ui.main.artists.ArtistPage
+import app.simple.felicity.ui.main.artists.PeristyleArtists
+import app.simple.felicity.ui.main.genres.Genres
+import app.simple.felicity.ui.main.songs.Songs
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 
-class SpannedHome : ScopedFragment() {
+class SpannedHome : MediaFragment() {
 
     private lateinit var binding: FragmentHomeSpannedBinding
     private val homeViewModel: HomeViewModel by viewModels({ requireActivity() })
@@ -32,16 +43,65 @@ class SpannedHome : ScopedFragment() {
         requireLightBarIcons()
         binding.recyclerView.setBackgroundColor(Color.BLACK)
 
-        homeViewModel.getData().observe(viewLifecycleOwner) {
+        homeViewModel.getData().observe(viewLifecycleOwner) { it ->
             val adapter = AdapterGridHome(it)
             binding.recyclerView.setHasFixedSize(false)
             binding.recyclerView.adapter = adapter
             binding.recyclerView.scheduleLayoutAnimation()
             binding.recyclerView.itemAnimator = null
 
-            adapter.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
+            adapter.setAdapterSpannedHomeCallbacks(object : AdapterSpannedHomeCallbacks {
                 override fun onMenuClicked(view: View) {
                     parentFragmentManager.showHomeMenu()
+                }
+
+                override fun onItemClicked(items: List<Any>, position: Int) {
+                    when (items.first()) {
+                        is Song -> {
+                            setMediaItems(items.filterIsInstance<Song>(), position)
+                        }
+                        is Artist -> {
+                            openFragment(ArtistPage.newInstance(items.filterIsInstance<Artist>()[position]), ArtistPage.TAG)
+                        }
+                        is Album -> {
+                            openFragment(AlbumPage.newInstance(items.filterIsInstance<Album>()[position]), AlbumPage.TAG)
+                        }
+                        else -> {
+                            Log.w(TAG, "onItemClicked: Unsupported item type: ${items.first()::class.java.simpleName}")
+                        }
+                    }
+                }
+
+                override fun onItemLongClicked(item: Any) {
+
+                }
+
+                override fun onButtonClicked(title: Int) {
+                    when (title) {
+                        R.string.songs -> {
+                            openFragment(Songs.newInstance(), Songs.TAG)
+                        }
+                        R.string.albums -> {
+                            openFragment(PeristyleAlbums.newInstance(), AlbumPage.TAG)
+                        }
+                        R.string.artists -> {
+                            openFragment(PeristyleArtists.newInstance(), ArtistPage.TAG)
+                        }
+                        R.string.genres -> {
+                            openFragment(Genres.newInstance(), Genres.TAG)
+                        }
+                        else -> {
+                            Log.w(TAG, "onButtonClicked: Unsupported button title: $title")
+                        }
+                    }
+                }
+            })
+
+            binding.recyclerView.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+                override fun onPreDraw(): Boolean {
+                    binding.recyclerView.viewTreeObserver.removeOnPreDrawListener(this)
+                    startPostponedEnterTransition()
+                    return true
                 }
             })
         }
@@ -94,7 +154,7 @@ class SpannedHome : ScopedFragment() {
         }
 
         const val TAG = "SpannedHome"
-        private const val DELAY = 3_000L
+        private const val DELAY = 5_000L
         private const val BASIC_DURATION = 1_500L
         private const val SMALL_DURATION = 250L
     }
