@@ -405,9 +405,13 @@ class FelicityPager @JvmOverloads constructor(
         queueEvent { renderer.clearAllTextures(); renderer.release() }
     }
 
-    // ----- View <-> Renderer interaction -----
-    private inner class PagerRenderer : Renderer { // made inner public to adjust new logic
+    override fun setAlpha(alpha: Float) {
+        // Update pager alpha via renderer to avoid extra composition layer
+        queueEvent { renderer.setPagerAlpha(alpha) }
+    }
 
+    // ----- View <-> Renderer interaction -----
+    private inner class PagerRenderer : Renderer {
         // Matrices
         private val proj = FloatArray(16)
         private val viewM = FloatArray(16)
@@ -458,6 +462,29 @@ class FelicityPager @JvmOverloads constructor(
         // Track surface size for aspect-crop
         private var surfaceWidth = 0
         private var surfaceHeight = 0
+
+        // Global alpha (0..1) multiplied onto every rendered page via shader uniform.
+        // Does NOT rely on View layer alpha, so fading does not incur an additional composition layer.
+        @Volatile
+        private var globalAlpha: Float = 1f
+        fun setGlobalAlpha(a: Float) {
+            globalAlpha = a.coerceIn(0f, 1f)
+        }
+
+        /**
+         * Sets the pager content alpha (0f..1f). This multiplies each fragment's sampled alpha.
+         * Avoids using View-layer alpha (which would add an extra composition layer for SurfaceView).
+         */
+        fun setPagerAlpha(alpha: Float) {
+            val a = alpha.coerceIn(0f, 1f)
+            if (a == globalAlpha) return
+            globalAlpha = a
+            queueEvent { setGlobalAlpha(a) }
+            requestRender()
+        }
+
+        /** Returns current pager content alpha (0..1). */
+        fun getPagerAlpha(): Float = globalAlpha
 
         fun setScrollOffset(offset: Float) {
             glScrollOffset = offset
@@ -517,9 +544,26 @@ class FelicityPager @JvmOverloads constructor(
 
         private fun buildProgram() {
             val vs = """
-                attribute vec3 aPos; attribute vec2 aUV; uniform mat4 uMVP; varying vec2 vUV; void main(){vUV=aUV; gl_Position = uMVP*vec4(aPos,1.0);}"""
+                attribute vec3 aPos;
+                attribute vec2 aUV;
+                uniform mat4 uMVP;
+                varying vec2 vUV;
+                void main() {
+                    vUV = aUV;
+                    gl_Position = uMVP * vec4(aPos, 1.0);
+                }
+            """
+
             val fs = """
-                precision mediump float; varying vec2 vUV; uniform sampler2D uTex; uniform float uAlpha; void main(){ vec4 c=texture2D(uTex,vUV); gl_FragColor=vec4(c.rgb, c.a*uAlpha);}"""
+                precision mediump float;
+                varying vec2 vUV;
+                uniform sampler2D uTex;
+                uniform float uAlpha;
+                void main() {
+                    vec4 c = texture2D(uTex, vUV);
+                    gl_FragColor = vec4(c.rgb, c.a * uAlpha);
+                }
+            """
             val vId = compileShader(GLES20.GL_VERTEX_SHADER, vs)
             val fId = compileShader(GLES20.GL_FRAGMENT_SHADER, fs)
             program = GLES20.glCreateProgram()
@@ -545,7 +589,7 @@ class FelicityPager @JvmOverloads constructor(
             Matrix.multiplyMM(mvp, 0, proj, 0, mvp, 0)
             GLES20.glUseProgram(program)
             GLES20.glUniformMatrix4fv(uMVP, 1, false, mvp, 0)
-            GLES20.glUniform1f(uAlpha, 1f) // no cross-fade; fully opaque
+            GLES20.glUniform1f(uAlpha, globalAlpha)
             GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex)
             GLES20.glUniform1i(uTex, 0)
