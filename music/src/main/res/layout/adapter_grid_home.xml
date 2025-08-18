@@ -7,21 +7,20 @@
     android:orientation="vertical">
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
-        android:id="@+id/category_title"
+        android:id="@+id/title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="@dimen/padding_15"
         android:text="Sample Text"
         android:textSize="@dimen/text_size_36"
+        android:padding="@dimen/padding_10"
         app:appFontStyle="bold"
-        app:textColorStyle="primary"
+        app:textColorStyle="white"
         tools:ignore="HardcodedText" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/art_grid"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layoutAnimation="@anim/spanned_animation_controller"
-        android:padding="@dimen/padding_15" />
+        android:layoutAnimation="@anim/spanned_animation_controller" />
 
 </LinearLayout>

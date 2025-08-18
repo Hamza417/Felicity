@@ -43,7 +43,7 @@ public class DynamicRippleFrameLayout extends FrameLayout implements SharedPrefe
     private void init() {
         setBackgroundColor(Color.TRANSPARENT);
         setBackground(null);
-        setBackground(Utils.getRippleDrawable(getBackground()));
+        setBackground(RippleUtils.getRippleDrawable(getBackground()));
     }
     
     @Override

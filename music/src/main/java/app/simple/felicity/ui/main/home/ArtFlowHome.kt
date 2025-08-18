@@ -37,6 +37,8 @@ class ArtFlowHome : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         postponeEnterTransition()
+        requireLightBarIcons()
+        binding?.recyclerView?.setBackgroundColor(Color.BLACK)
 
         homeViewModel.getData().observe(viewLifecycleOwner) { data ->
             Log.d(TAG, "Data received: ${data.size} items")
@@ -85,6 +87,8 @@ class ArtFlowHome : MediaFragment() {
 
                 false
             }
+
+            requireView().startTransitionOnPreDraw()
         }
     }
 

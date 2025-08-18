@@ -58,7 +58,7 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
             LayoutBackground.setBackground(getContext(), this, null, radius);
         } else {
             setBackground(null);
-            setBackground(Utils.getRippleDrawable(getBackground()));
+            setBackground(RippleUtils.getRippleDrawable(getBackground()));
         }
     }
     

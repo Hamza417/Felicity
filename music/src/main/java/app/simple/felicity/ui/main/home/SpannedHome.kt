@@ -48,13 +48,13 @@ class SpannedHome : ScopedFragment() {
         override fun run() {
             try {
                 binding?.recyclerView?.randomViewHolder<AdapterGridHome.Holder> { holder ->
-                    holder.adapterGridHomeBinding?.artGrid?.animate()!!
+                    holder.binding?.artGrid?.animate()!!
                         .alpha(0F)
                         .setDuration(resources.getInteger(android.R.integer.config_longAnimTime).toLong())
                         .withEndAction {
-                            (holder.adapterGridHomeBinding?.artGrid?.adapter as AdapterGridArt).randomize()
-                            holder.adapterGridHomeBinding?.artGrid?.scheduleLayoutAnimation()
-                            holder.adapterGridHomeBinding?.artGrid?.animate()!!
+                            (holder.binding?.artGrid?.adapter as AdapterGridArt).randomize()
+                            holder.binding?.artGrid?.scheduleLayoutAnimation()
+                            holder.binding?.artGrid?.animate()!!
                                 .alpha(1F)
                                 .setDuration(resources.getInteger(android.R.integer.config_shortAnimTime).toLong())
                                 .start()
@@ -69,11 +69,6 @@ class SpannedHome : ScopedFragment() {
 
             handler.postDelayed(this, DELAY)
         }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        binding = null
     }
 
     override fun onPause() {

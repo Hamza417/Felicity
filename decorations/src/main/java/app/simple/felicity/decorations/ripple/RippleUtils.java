@@ -15,7 +15,7 @@ import com.google.android.material.shape.ShapeAppearanceModel;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.theme.managers.ThemeManager;
 
-public class Utils {
+public class RippleUtils {
     
     static void animateBackground(int endColor, View view) {
         view.clearAnimation();
@@ -39,11 +39,24 @@ public class Utils {
         valueAnimator.start();
     }
     
-    static FelicityRippleDrawable getRippleDrawable(Drawable backgroundDrawable) {
+    public static FelicityRippleDrawable getRippleDrawable(Drawable backgroundDrawable) {
         FelicityRippleDrawable ripple = new FelicityRippleDrawable(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
         ripple.setCornerRadius(AppearancePreferences.INSTANCE.getCornerRadius());
         ripple.setStartColor(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor());
         return ripple;
+    }
+    
+    public static void setForegroundDrawable(View view) {
+        if (view.getForeground() instanceof FelicityRippleDrawable) {
+            return;
+        }
+        
+        FelicityRippleDrawable ripple = new FelicityRippleDrawable(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
+        ripple.setCornerRadius(AppearancePreferences.INSTANCE.getCornerRadius());
+        ripple.setStartColor(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor());
+        
+        view.setForeground(ripple);
+        view.setClickable(true);
     }
     
     static MaterialShapeDrawable getRoundedBackground(float divisiveFactor) {

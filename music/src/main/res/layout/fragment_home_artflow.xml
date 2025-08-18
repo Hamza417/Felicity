@@ -7,5 +7,5 @@
     android:layoutAnimation="@anim/list_animation_controller"
     app:fastScrollEnabled="false"
     app:isFadingEdgeRequired="true"
-    app:navigationPaddingRequired="true"
-    app:statusPaddingRequired="true" />
+    app:navigationPaddingRequired="false"
+    app:statusPaddingRequired="false" />

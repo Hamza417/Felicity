@@ -52,7 +52,7 @@ public class DynamicRippleTextView extends TypeFaceTextView {
     @Override
     public void setSelected(boolean selected) {
         super.setSelected(selected);
-        setBackground(Utils.getRoundedBackground(AppearancePreferences.INSTANCE.getCornerRadius()));
+        setBackground(RippleUtils.getRoundedBackground(AppearancePreferences.INSTANCE.getCornerRadius()));
         setClickable(false);
         setSelectedBackgroundColor();
     }
@@ -144,7 +144,7 @@ public class DynamicRippleTextView extends TypeFaceTextView {
             setBackgroundTintList(ColorStateList.valueOf(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor()));
         } else {
             setBackground(null);
-            setBackground(Utils.getRippleDrawable(getBackground()));
+            setBackground(RippleUtils.getRippleDrawable(getBackground()));
         }
     }
     
