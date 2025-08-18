@@ -148,6 +148,11 @@ class CoverFlow : MediaFragment() {
         }
     }
 
+    override fun onStop() {
+        super.onStop()
+        requireContainerView().removeView(binding.coverflow)
+    }
+
     companion object {
         fun newInstance(): CoverFlow {
             val args = Bundle()

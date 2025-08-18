@@ -9,8 +9,7 @@
         android:id="@+id/coverflow"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_gravity="center_vertical"
-        android:background="@android:color/transparent" />
+        android:layout_gravity="center_vertical" />
 
     <LinearLayout
         android:id="@+id/top_menu_container"

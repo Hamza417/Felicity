@@ -64,7 +64,8 @@ class CoverFlow @JvmOverloads constructor(
             override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
                 val dim = if (verticalMode) height else width
                 if (dim > 0) {
-                    val dist = if (verticalMode) -distanceY else distanceX // invert vertical for natural feel
+                    // For vertical mode use raw distanceY so upward movement (distanceY > 0) advances forward
+                    val dist = if (verticalMode) distanceY else distanceX
                     renderer.scrollBy(dist / (dim * 0.3f))
                 }
                 requestRender()
@@ -74,7 +75,8 @@ class CoverFlow @JvmOverloads constructor(
             override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
                 val dim = if (verticalMode) height else width
                 if (dim <= 0) return true
-                val velAxis = if (verticalMode) -velocityY else velocityX // invert vertical fling
+                // For vertical mode use raw velocityY so upward fling (velocityY < 0) advances forward
+                val velAxis = if (verticalMode) velocityY else velocityX
                 val velocityItemsPerSec = velAxis / (dim * 0.5f)
                 val start = (renderer.scrollOffset * 1000).toInt()
                 val vel = (velocityItemsPerSec * 1000).toInt()

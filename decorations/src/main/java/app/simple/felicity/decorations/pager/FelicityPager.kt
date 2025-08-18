@@ -30,7 +30,6 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * FelicityPager
  * OpenGL based lightweight pager with recycling & auto sliding banners.
  * It renders bitmaps (supplied by adapter) on textured quads with simple horizontal translation.
  */
@@ -588,7 +587,9 @@ class FelicityPager @JvmOverloads constructor(
             val ad = adapter ?: return
             inFlight[position] = true
             // snapshot desired aspect based on current view size
-            val targetAspect = if (surfaceWidth > 0 && surfaceHeight > 0) surfaceWidth.toFloat() / surfaceHeight else this@FelicityPager.width.takeIf { it > 0 }?.let { w -> this@FelicityPager.height.takeIf { it > 0 }?.let { h -> w.toFloat() / h } } ?: 1f
+            val targetAspect = if (surfaceWidth > 0 && surfaceHeight > 0) surfaceWidth.toFloat() / surfaceHeight else this@FelicityPager.width.takeIf { it > 0 }?.let { w ->
+                this@FelicityPager.height.takeIf { it > 0 }?.let { h -> w.toFloat() / h }
+            } ?: 1f
             futures[position] = decodeExecutor.submit {
                 val bmp = try {
                     ad.loadBitmap(position)

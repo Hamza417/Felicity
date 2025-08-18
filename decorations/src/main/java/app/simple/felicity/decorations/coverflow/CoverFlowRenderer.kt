@@ -111,7 +111,7 @@ class CoverFlowRenderer(
     private val reflectionGap = 0.05f          // vertical gap below main cover
     private val reflectionScale = 0.45f        // relative height of reflection
     private val reflectionStrength = 0.55f     // max brightness/alpha of reflection
-    private var reflectionBlur = 0.006f // default subtle reflection blur
+    private var reflectionBlur = 0.006f        // default subtle reflection blur
 
     // Texture management
     private val targetMaxDim = 512 // px max dimension for covers
@@ -291,8 +291,9 @@ class CoverFlowRenderer(
         if (currentDragPitch != 0f) Matrix.rotateM(model, 0, currentDragPitch, 1f, 0f, 0f)
 
         if (verticalOrientation) {
-            val y = offsetFromCenter * currentSpacing
-            val rotX = (offsetFromCenter * maxRotation * rotEase).coerceIn(-maxRotation, maxRotation)
+            // In vertical mode we want higher indices to appear below the center item, so invert translation.
+            val y = -offsetFromCenter * currentSpacing
+            val rotX = (-offsetFromCenter * maxRotation * rotEase).coerceIn(-maxRotation, maxRotation)
             Matrix.translateM(model, 0, 0f, currentDragYOffset + y, depthFactor)
             if (rotEase > 0f) Matrix.rotateM(model, 0, rotX, 1f, 0f, 0f)
         } else {
