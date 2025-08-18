@@ -45,9 +45,9 @@ class CoverFlow @JvmOverloads constructor(
 
     init {
         setEGLContextClientVersion(2)
-        setEGLConfigChooser(8, 8, 8, 8, 16, 0)
-        holder.setFormat(android.graphics.PixelFormat.TRANSLUCENT)
-        setZOrderOnTop(true) // or setZOrderMediaOverlay(true) if needed
+        //        setEGLConfigChooser(8, 8, 8, 8, 16, 0)
+        //        holder.setFormat(android.graphics.PixelFormat.TRANSLUCENT)
+        //        setZOrderOnTop(true)
         renderer = CoverFlowRenderer(this, context.applicationContext)
         setRenderer(renderer)
         renderMode = RENDERMODE_CONTINUOUSLY
