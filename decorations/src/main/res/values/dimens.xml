@@ -6,7 +6,7 @@
     <dimen name="switch_height">30dp</dimen>
     <dimen name="switch_padding">5dp</dimen>
     <dimen name="switch_thumb_dimensions">20dp</dimen>
-    <dimen name="button_size">40dp</dimen>
+    <dimen name="button_size">50dp</dimen>
     <dimen name="checkbox_dimensions">40dp</dimen>
     <dimen name="prominent_threshold">72dp</dimen>
     <dimen name="seekbar_thumb_size">35dp</dimen>
