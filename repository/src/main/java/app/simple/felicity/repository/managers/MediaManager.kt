@@ -166,9 +166,13 @@ object MediaManager {
     fun startSeekPositionUpdates(intervalMs: Long = 1000L) {
         seekJob?.cancel()
         seekJob = CoroutineScope(Dispatchers.Default).launch {
+            var lastEmittedPosition: Long? = null
             while (isActive) {
                 val position = withContext(Dispatchers.Main) { getSeekPosition() }
-                _songSeekPositionFlow.emit(position)
+                if (position != lastEmittedPosition) {
+                    _songSeekPositionFlow.emit(position)
+                    lastEmittedPosition = position
+                }
                 delay(intervalMs)
             }
         }

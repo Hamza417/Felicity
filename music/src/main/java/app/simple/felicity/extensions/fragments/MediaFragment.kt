@@ -6,8 +6,11 @@ import android.view.View
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.database.instances.LastSongDatabase
+import app.simple.felicity.repository.database.instances.SongStatDatabase
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Song
+import app.simple.felicity.repository.utils.SongUtils
+import app.simple.felicity.repository.utils.SongUtils.createSongStat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -18,7 +21,6 @@ open class MediaFragment : ScopedFragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             MediaManager.songSeekPositionFlow.collect { position ->
-                Log.d(TAG, "Seek position: $position")
                 PlayerPreferences.setLastSongSeek(position)
                 onSeekChanged(position)
             }
@@ -54,6 +56,7 @@ open class MediaFragment : ScopedFragment() {
         MediaManager.setSongs(songs, position)
         MediaManager.play()
         createSongHistoryDatabase(songs)
+        createStatForSong(songs[position])
     }
 
     private fun createSongHistoryDatabase(songs: List<Song>) {
@@ -61,6 +64,21 @@ open class MediaFragment : ScopedFragment() {
             val lastSongDatabase = LastSongDatabase.getInstance(requireContext())
             val songDao = lastSongDatabase.songDao()
             songDao.cleanInsert(songs)
+        }
+    }
+
+    private fun createStatForSong(song: Song) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val songStatDatabase = SongStatDatabase.getInstance(requireContext())
+            val songStatDao = songStatDatabase.songStatDao()
+            val existingStat = songStatDao.getSongStatByStableId(SongUtils.generateStableId(song))
+
+            if (existingStat == null) {
+                songStatDao.insertSongStat(song.createSongStat(existingStat))
+                Log.d(TAG, "Created new song stat for: ${song.title}")
+            } else {
+                songStatDao.updateSongStat(existingStat.copy(playCount = existingStat.playCount + 1))
+            }
         }
     }
 
