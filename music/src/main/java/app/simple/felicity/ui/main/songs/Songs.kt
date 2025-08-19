@@ -8,6 +8,7 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentSongsBinding
+import app.simple.felicity.decorations.itemanimators.FlipItemAnimator
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Song
@@ -35,6 +36,7 @@ class Songs : MediaFragment() {
             songsAdapter = SongsAdapter(it)
             binding.recyclerView.addItemDecoration(SpacingItemDecoration(48, true))
             binding.recyclerView.adapter = songsAdapter
+            binding.recyclerView.itemAnimator = FlipItemAnimator()
 
             songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: List<Song>, position: Int, view: View?) {
@@ -42,6 +44,11 @@ class Songs : MediaFragment() {
                 }
             })
         }
+    }
+
+    override fun onSong(song: Song) {
+        super.onSong(song)
+        songsAdapter?.currentlyPlayingSong = song
     }
 
     companion object {

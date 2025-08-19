@@ -1,5 +1,6 @@
 package app.simple.felicity.adapters.ui.lists.songs
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -17,6 +18,23 @@ class SongsAdapter(private val audio: List<Song>) :
         RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
+    private var previousIndex = -1
+
+    var currentlyPlayingSong: Song? = null
+        @SuppressLint("NotifyDataSetChanged")
+        set(value) {
+            field = value
+            val idx = audio.indexOf(value)
+            if (idx != -1) {
+                notifyItemChanged(idx + 1) // +1 for the header
+                if (previousIndex != -1 && previousIndex != idx) {
+                    notifyItemChanged(previousIndex + 1) // +1 for the header
+                }
+                previousIndex = idx
+            } else {
+                notifyDataSetChanged() // If the song is not found, refresh the entire list
+            }
+        }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return if (viewType == RecyclerViewUtils.TYPE_HEADER) {
@@ -35,6 +53,8 @@ class SongsAdapter(private val audio: List<Song>) :
             holder.binding.container.setOnClickListener {
                 generalAdapterCallbacks?.onSongClicked(audio, holder.bindingAdapterPosition - 1, it)
             }
+
+            holder.binding.container.setDefaultBackground(currentlyPlayingSong == audio[position - 1])
         }
     }
 
@@ -51,6 +71,9 @@ class SongsAdapter(private val audio: List<Song>) :
     }
 
     override fun onViewRecycled(holder: VerticalListViewHolder) {
+        if (holder is Holder) {
+            holder.itemView.clearAnimation()
+        }
         super.onViewRecycled(holder)
         if (holder is Holder) {
             Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
