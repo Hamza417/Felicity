@@ -10,15 +10,14 @@ import app.simple.felicity.adapters.home.main.AdapterSimpleHome
 import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
 import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
-import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.models.Element
 import app.simple.felicity.ui.main.albums.PeristyleAlbums
 import app.simple.felicity.ui.main.artists.PeristyleArtists
 import app.simple.felicity.ui.main.genres.Genres
-import app.simple.felicity.ui.main.songs.Songs
 import app.simple.felicity.viewmodels.main.home.SimpleHomeViewModel
 
-class SimpleHome : ScopedFragment() {
+class SimpleHome : MediaFragment() {
 
     private lateinit var recyclerView: CustomVerticalRecyclerView
 
@@ -44,7 +43,7 @@ class SimpleHome : ScopedFragment() {
                 override fun onItemClicked(element: Element, position: Int, view: View) {
                     when (element.title) {
                         R.string.songs -> {
-                            openFragment(Songs.newInstance(), Songs.TAG)
+                            navigateToSongsFragment()
                         }
 
                         R.string.albums -> {

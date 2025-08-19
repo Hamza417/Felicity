@@ -87,7 +87,6 @@ class SongsAdapter(private val audio: List<Song>) :
     inner class Holder(val binding: AdapterSongsBinding) : VerticalListViewHolder(binding.root) {
         fun bind(song: Song) {
             binding.apply {
-                // albumArt.transitionName = audio.fileUri
                 title.setTextOrUnknown(song.title)
                 artists.setTextOrUnknown(song.artist)
                 album.setTextOrUnknown(song.album)
@@ -99,8 +98,10 @@ class SongsAdapter(private val audio: List<Song>) :
     }
 
     inner class Header(val binding: AdapterSongHeaderBinding) : VerticalListViewHolder(binding.root) {
-        fun bind() {
-            // No specific binding needed for header
+        init {
+            binding.menu.setOnClickListener {
+                generalAdapterCallbacks?.onMenuClicked(binding.menu)
+            }
         }
     }
 }

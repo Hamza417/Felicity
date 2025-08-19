@@ -12,6 +12,7 @@ import app.simple.felicity.databinding.FragmentCoverflowBinding
 import app.simple.felicity.decorations.coverflow.CoverFlow.OnCoverClickListener
 import app.simple.felicity.decorations.coverflow.CoverFlowRenderer
 import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselMenu
+import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
 import app.simple.felicity.popups.carousel.PopupSongsCarouselMenu
@@ -100,7 +101,7 @@ class CoverFlow : MediaFragment() {
                         onMenuItemClick = { id ->
                             when (id) {
                                 R.string.songs_settings -> {
-
+                                    parentFragmentManager.showSongsMenu()
                                 }
                                 R.string.carousel_settings -> {
                                     childFragmentManager.showCarouselMenu()
