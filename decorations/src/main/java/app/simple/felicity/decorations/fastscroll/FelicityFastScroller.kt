@@ -14,9 +14,9 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
-import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.theme.managers.ThemeManager
 import java.lang.ref.WeakReference
 import kotlin.math.roundToInt
 
@@ -28,22 +28,54 @@ class FelicityFastScroller @JvmOverloads constructor(
 
     // Appearance configuration
     private val trackWidth = dp(4f)
-    private val thumbRadius = dp(10f)
+    private val majorGraduationLength = dp(18f) // Increased from 12f
+    private val minorGraduationLength = dp(10f) // Increased from 6f
+    private val graduationWidth = dp(3f) // Increased from 2f
+    private val magnifiedGraduationLength = dp(28f) // New: magnified length
+    private val magnifiedGraduationWidth = dp(4f) // New: magnified width
     private val edgeActivationWidth = dp(24f)
     private val minTouchSlopY = dp(4f)
+    private val magnifyRadius = dp(40f) // Radius around touch point for magnification
 
     // Colors (fallback simple palette – could later integrate theme or dynamic colors)
-    private val trackColor = 0x44FFFFFF
-    private val thumbColorIdle = 0xAAFFFFFF.toInt()
-    private val thumbColorActive = 0xFFFFFFFF.toInt()
+    private val trackColor = 0x00000000 // Transparent
+    private val majorGraduationColor = ThemeManager.theme.viewGroupTheme.dividerColor
+    private val minorGraduationColor = ThemeManager.theme.viewGroupTheme.highlightColor
+    private val activeGraduationColor = ThemeManager.accent.primaryAccentColor
 
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = trackColor
     }
-    private val thumbPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        color = thumbColorIdle
+    private val majorGraduationPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = majorGraduationColor
+        strokeWidth = graduationWidth
+        strokeCap = Paint.Cap.ROUND
+    }
+    private val minorGraduationPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = minorGraduationColor
+        strokeWidth = graduationWidth
+        strokeCap = Paint.Cap.ROUND
+    }
+    private val activeGraduationPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = activeGraduationColor
+        strokeWidth = graduationWidth
+        strokeCap = Paint.Cap.ROUND
+    }
+    private val magnifiedMajorGraduationPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = majorGraduationColor
+        strokeWidth = magnifiedGraduationWidth
+        strokeCap = Paint.Cap.ROUND
+    }
+    private val magnifiedMinorGraduationPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = minorGraduationColor
+        strokeWidth = magnifiedGraduationWidth
+        strokeCap = Paint.Cap.ROUND
     }
 
     // Rects reused
@@ -56,13 +88,15 @@ class FelicityFastScroller @JvmOverloads constructor(
     private var regionBottom = 0f
     private var regionHeight = 0f
 
-    // Thumb state
-    private var thumbCenterY = 0f
+    // Current position state
+    private var currentPosition = 0f // 0.0 to 1.0 representing position in the list
     private var isDragging = false
     private var lastTouchY = 0f
 
     // Adapter meta cache
     private var itemCount = 0
+    private var majorStepCount = 10 // Number of major graduations
+    private var minorStepsPerMajor = 5 // Number of minor steps between major ones
 
     // Auto hide
     private val hideDelayMs = 1200L
@@ -75,7 +109,7 @@ class FelicityFastScroller @JvmOverloads constructor(
     private val scrollListener = object : RecyclerView.OnScrollListener() {
         override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
             if (!isDragging) {
-                syncThumbWithRecycler()
+                syncGraduationWithRecycler()
             }
         }
     }
@@ -98,7 +132,7 @@ class FelicityFastScroller @JvmOverloads constructor(
         if (parent is ViewGroup && parent.indexOfChild(this) == -1) {
             parent.addView(this, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         }
-        post { syncThumbWithRecycler() }
+        post { syncGraduationWithRecycler() }
     }
 
     override fun onDetachedFromWindow() {
@@ -109,7 +143,7 @@ class FelicityFastScroller @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         computeRegion(h)
-        syncThumbWithRecycler()
+        syncGraduationWithRecycler()
     }
 
     private fun computeRegion(totalHeight: Int) {
@@ -128,9 +162,55 @@ class FelicityFastScroller @JvmOverloads constructor(
         trackRect.set(left, regionTop, right, regionBottom)
         canvas.drawRoundRect(trackRect, trackWidth, trackWidth, trackPaint)
 
-        // Draw thumb
-        val thumbX = (left + right) / 2f
-        canvas.drawCircle(thumbX, thumbCenterY.coerceIn(regionTop, regionBottom), thumbRadius, thumbPaint)
+        // Draw graduations
+        drawGraduations(canvas, left, right)
+    }
+
+    private fun drawGraduations(canvas: Canvas, left: Float, right: Float) {
+        val touchY = if (isDragging) lastTouchY else -1f
+
+        // Draw major graduations
+        for (i in 0..majorStepCount) {
+            val y = regionTop + (i.toFloat() / majorStepCount) * regionHeight
+            val startX = right
+
+            // Check if this graduation is within magnify radius
+            val isMagnified = isDragging && touchY > 0 && kotlin.math.abs(y - touchY) < magnifyRadius
+            val length = if (isMagnified) magnifiedGraduationLength else majorGraduationLength
+            val endX = right + length
+
+            // Check if this is the active graduation
+            val graduationFraction = i.toFloat() / majorStepCount
+            val isActive = kotlin.math.abs(currentPosition - graduationFraction) < (1f / majorStepCount / 2f)
+
+            val paint = when {
+                isActive && (visible || isDragging) -> activeGraduationPaint
+                isMagnified -> magnifiedMajorGraduationPaint
+                else -> majorGraduationPaint
+            }
+
+            canvas.drawLine(startX, y, endX, y, paint)
+        }
+
+        // Draw minor graduations between major ones
+        for (i in 0 until majorStepCount) {
+            for (j in 1 until minorStepsPerMajor) {
+                val majorY1 = regionTop + (i.toFloat() / majorStepCount) * regionHeight
+                val majorY2 = regionTop + ((i + 1).toFloat() / majorStepCount) * regionHeight
+                val y = majorY1 + (j.toFloat() / minorStepsPerMajor) * (majorY2 - majorY1)
+
+                val startX = right
+
+                // Check if this graduation is within magnify radius
+                val isMagnified = isDragging && touchY > 0 && kotlin.math.abs(y - touchY) < magnifyRadius
+                val length = if (isMagnified) magnifiedGraduationLength * 0.7f else minorGraduationLength
+                val endX = right + length
+
+                val paint = if (isMagnified) magnifiedMinorGraduationPaint else minorGraduationPaint
+
+                canvas.drawLine(startX, y, endX, y, paint)
+            }
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -145,6 +225,7 @@ class FelicityFastScroller @JvmOverloads constructor(
                 if (shouldActivateFromDown(x, y)) {
                     parent.requestDisallowInterceptTouchEvent(true)
                     startDrag(y)
+                    performClick()
                     return true
                 }
                 return false
@@ -165,6 +246,11 @@ class FelicityFastScroller @JvmOverloads constructor(
         return isDragging
     }
 
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
+
     private fun shouldActivateFromDown(x: Float, y: Float): Boolean {
         // Edge activation OR (already visible and touching within reasonable horizontal proximity of track)
         val inEdge = x >= width - edgeActivationWidth
@@ -176,8 +262,7 @@ class FelicityFastScroller @JvmOverloads constructor(
         isDragging = true
         lastTouchY = y
         fadeIn()
-        updateThumbPosition(y)
-        thumbPaint.color = thumbColorActive
+        updateGraduationPosition(y)
         invalidate()
         removeCallbacks(hideRunnable)
     }
@@ -185,23 +270,55 @@ class FelicityFastScroller @JvmOverloads constructor(
     private fun handleDrag(y: Float) {
         if (kotlin.math.abs(y - lastTouchY) < minTouchSlopY) return
         lastTouchY = y
-        updateThumbPosition(y)
+        updateGraduationPosition(y)
     }
 
     private fun endDrag() {
         isDragging = false
-        thumbPaint.color = thumbColorIdle
         postDelayed(hideRunnable, hideDelayMs)
         invalidate()
     }
 
-    private fun updateThumbPosition(y: Float) {
-        thumbCenterY = y.coerceIn(regionTop, regionBottom)
-        mapThumbToRecycler()
+    private fun mapGraduationToRecycler() {
+        val recycler = recyclerRef?.get() ?: return
+        val adapter = recycler.adapter ?: return
+        itemCount = adapter.itemCount
+        if (itemCount <= 0) return
+
+        val targetIndex = (currentPosition * (itemCount - 1)).roundToInt().coerceIn(0, itemCount - 1)
+        val lm = recycler.layoutManager as? LinearLayoutManager
+        if (lm != null) {
+            // Jump scrolling (step) – immediate scroll to position
+            lm.scrollToPositionWithOffset(targetIndex, 0)
+        } else {
+            recycler.scrollToPosition(targetIndex)
+        }
+    }
+
+    private fun findNearestMajorStep(position: Float): Float {
+        val stepSize = 1f / majorStepCount
+        val nearestStep = (position / stepSize).roundToInt()
+        return (nearestStep * stepSize).coerceIn(0f, 1f)
+    }
+
+    private fun updateGraduationPosition(y: Float) {
+        val rawPosition = ((y - regionTop) / regionHeight).coerceIn(0f, 1f)
+
+        // Snap to nearest major graduation when close enough
+        val snapThreshold = 1f / majorStepCount / 3f // Snap within 1/3 of a major step
+        val nearestMajorStep = findNearestMajorStep(rawPosition)
+
+        currentPosition = if (kotlin.math.abs(rawPosition - nearestMajorStep) < snapThreshold) {
+            nearestMajorStep
+        } else {
+            rawPosition
+        }
+
+        mapGraduationToRecycler()
         invalidate()
     }
 
-    private fun syncThumbWithRecycler() {
+    private fun syncGraduationWithRecycler() {
         val recycler = recyclerRef?.get() ?: return
         val adapter = recycler.adapter ?: return
         itemCount = adapter.itemCount
@@ -210,22 +327,8 @@ class FelicityFastScroller @JvmOverloads constructor(
         val first = layoutManager.findFirstVisibleItemPosition()
         if (first == RecyclerView.NO_POSITION) return
         val fraction = if (itemCount <= 1) 0f else first.toFloat() / (itemCount - 1).toFloat()
-        thumbCenterY = regionTop + regionHeight * fraction
+        currentPosition = fraction
         invalidate()
-    }
-
-    private fun mapThumbToRecycler() {
-        val recycler = recyclerRef?.get() ?: return
-        val adapter = recycler.adapter ?: return
-        itemCount = adapter.itemCount
-        if (itemCount <= 0) return
-
-        val fraction = (thumbCenterY - regionTop) / regionHeight
-        val targetIndex = ((itemCount - 1) * fraction).roundToInt().coerceIn(0, itemCount - 1)
-        (recycler.layoutManager as? LinearLayoutManager)?.let { lm ->
-            // Jump scrolling (step) – immediate scroll to position
-            lm.scrollToPositionWithOffset(targetIndex, 0)
-        } ?: recycler.scrollToPosition(targetIndex)
     }
 
     private fun fadeIn() {
@@ -246,7 +349,7 @@ class FelicityFastScroller @JvmOverloads constructor(
             interpolator = DecelerateInterpolator()
             addUpdateListener { valueAnimator ->
                 this@FelicityFastScroller.alpha = valueAnimator.animatedValue as Float
-                ViewCompat.postInvalidateOnAnimation(this@FelicityFastScroller)
+                invalidate()
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
