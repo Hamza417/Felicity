@@ -11,6 +11,7 @@ import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.decorations.itemanimators.FlipItemAnimator
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
+import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
@@ -47,6 +48,10 @@ class Songs : MediaFragment() {
                 override fun onMenuClicked(view: View) {
                     super.onMenuClicked(view)
                     parentFragmentManager.showSongsMenu()
+                }
+
+                override fun onFilterClicked(view: View) {
+                    childFragmentManager.showSongsSort()
                 }
             })
         }

@@ -19,8 +19,15 @@
         android:id="@+id/search"
         android:layout_gravity="center_vertical"
         android:layout_width="@dimen/button_size"
-        android:layout_marginHorizontal="@dimen/padding_5"
         android:src="@drawable/ic_search"
+        android:layout_height="@dimen/button_size" />
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        android:id="@+id/filter"
+        android:layout_gravity="center_vertical"
+        android:layout_width="@dimen/button_size"
+        android:layout_marginHorizontal="@dimen/padding_5"
+        android:src="@drawable/ic_filter"
         android:layout_height="@dimen/button_size" />
 
     <app.simple.felicity.decorations.ripple.DynamicRippleImageButton

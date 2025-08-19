@@ -102,6 +102,10 @@ class SongsAdapter(private val audio: List<Song>) :
             binding.menu.setOnClickListener {
                 generalAdapterCallbacks?.onMenuClicked(binding.menu)
             }
+
+            binding.filter.setOnClickListener {
+                generalAdapterCallbacks?.onFilterClicked(binding.filter)
+            }
         }
     }
 }

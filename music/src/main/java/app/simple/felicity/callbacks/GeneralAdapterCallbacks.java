@@ -45,6 +45,11 @@ public interface GeneralAdapterCallbacks {
     
     }
     
+    default void onFilterClicked(@NonNull View view) {
+    
+    }
+    
+    
     default void onSearchClicked(@NonNull View view) {
     
     }

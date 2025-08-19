@@ -51,4 +51,5 @@
     <dimen name="icon_size_30">30dp</dimen>
     <dimen name="icon_size_50">50dp</dimen>
     <dimen name="margin_1">1dp</dimen>
+    <dimen name="chip_spacing_vertical">-5dp</dimen>
 </resources>

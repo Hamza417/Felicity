@@ -58,4 +58,14 @@
     <string name="simple">Simple</string>
     <string name="recommended">Recommended</string>
     <string name="change_songs_interface">Change Songs Interface</string>
+    <string name="title">Title</string>
+    <string name="album">Album</string>
+    <string name="artist">Artist</string>
+    <string name="path">Path</string>
+    <string name="date_added">Date Added</string>
+    <string name="duration">Duration</string>
+    <string name="year">Year</string>
+    <string name="sorting_style">Sorting Style</string>
+    <string name="normal">Normal</string>
+    <string name="reversed">Reversed</string>
 </resources>
