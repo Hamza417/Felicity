@@ -15,11 +15,6 @@
 
     <dimen name="min_touch_target_size">48dp</dimen>
     <dimen name="popup_min_size">88dp</dimen>
-    <dimen name="fast_scroller_popup_margin_end">16dp</dimen>
-    <dimen name="fast_scroller_popup_text_size">45dp</dimen>
-    <dimen name="fast_scroller_padding_start">16dp</dimen>
-    <dimen name="fast_scroller_padding_end">29dp</dimen>
-    <dimen name="fast_scroller_dimen">64dp</dimen>
     <dimen name="app_views_elevation">30dp</dimen>
     <dimen name="panel_item_padding">20dp</dimen>
     <dimen name="header_padding">20dp</dimen>

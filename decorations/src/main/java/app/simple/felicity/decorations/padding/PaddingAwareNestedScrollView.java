@@ -7,11 +7,10 @@ import android.util.AttributeSet;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
 import app.simple.felicity.decoration.R;
-import app.simple.felicity.decorations.fastscroll.FastScrollNestedScrollView;
+import app.simple.felicity.decorations.theme.ThemeNestedScrollView;
 
-public class PaddingAwareNestedScrollView extends FastScrollNestedScrollView implements SharedPreferences.OnSharedPreferenceChangeListener {
+public class PaddingAwareNestedScrollView extends ThemeNestedScrollView implements SharedPreferences.OnSharedPreferenceChangeListener {
     
     private boolean statusPaddingRequired = true;
     private boolean navigationPaddingRequired = true;
