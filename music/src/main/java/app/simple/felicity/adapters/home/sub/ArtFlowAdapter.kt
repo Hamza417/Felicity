@@ -6,10 +6,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterArtFlowBinding
-import app.simple.felicity.glide.albumcover.AlbumCoverUtils.loadAlbumCover
-import app.simple.felicity.glide.artistcover.ArtistCoverUtils.loadArtistCover
-import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverUtils.loadFromDescriptor
-import app.simple.felicity.glide.genres.GenreCoverUtils.loadGenreCover
+import app.simple.felicity.glide.Util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
@@ -38,23 +35,25 @@ class ArtFlowAdapter(private val data: ArtFlowData<Any>, private val metadata: B
         if (data.items.isNotEmpty()) {
             val item = data.items[position]
 
+            holder.binding.art.loadArtCover(
+                    item,
+                    skipCache = true,
+                    crop = true
+            )
+
             when (item) {
                 is Song -> {
-                    holder.binding.art.loadFromDescriptor(item.uri, roundedCorners = false, blur = false, skipCache = false)
                     holder.binding.title.text = item.title ?: holder.getContext().getString(R.string.unknown)
                     holder.binding.artist.text = item.artist ?: holder.getContext().getString(R.string.unknown)
                 }
                 is Album -> {
-                    holder.binding.art.loadAlbumCover(item, roundedCorners = false, blurShadow = false, skipCache = false)
                     holder.binding.title.text = item.name ?: holder.getContext().getString(R.string.unknown)
                     holder.binding.artist.text = item.artist ?: holder.getContext().getString(R.string.unknown)
                 }
                 is Artist -> {
-                    holder.binding.art.loadArtistCover(item, roundedCorners = false, blur = false, skipCache = false)
                     holder.binding.title.text = item.name ?: holder.getContext().getString(R.string.unknown)
                 }
                 is Genre -> {
-                    holder.binding.art.loadGenreCover(item, roundedCorners = false, blur = false, skipCache = false)
                     holder.binding.title.text = item.name ?: holder.getContext().getString(R.string.unknown)
                 }
             }

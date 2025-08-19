@@ -1,6 +1,7 @@
 package app.simple.felicity.decorations.views;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.util.AttributeSet;
 import android.view.Gravity;
 
@@ -46,6 +47,12 @@ public class FelicityImageSlider extends SliderView {
         setIndicatorRadius(2);
         setAutoCycle(true);
         startAutoCycle();
+    }
+    
+    public void removeIndicators() {
+        setIndicatorVisibility(false);
+        setIndicatorSelectedColor(Color.TRANSPARENT);
+        setIndicatorUnselectedColor(Color.TRANSPARENT);
     }
     
     public void restartCycle() {

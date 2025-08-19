@@ -23,9 +23,14 @@ object SongCoverUtils {
             blur: Boolean = false,
             skipCache: Boolean = false,
             greyscale: Boolean = false,
-            darken: Boolean = false
+            darken: Boolean = false,
+            crop: Boolean = true
     ) {
         val transformations = mutableListOf<Transformation<android.graphics.Bitmap>>()
+
+        if (crop) {
+            transformations.add(CenterCrop())
+        }
 
         if (roundedCorners) {
             transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt(), 0))
