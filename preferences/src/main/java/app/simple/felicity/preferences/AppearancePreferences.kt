@@ -119,7 +119,7 @@ object AppearancePreferences {
     }
 
     fun getCornerRadius(): Float {
-        return getSharedPreferences().getFloat(APP_CORNER_RADIUS, 60F)
+        return getSharedPreferences().getFloat(APP_CORNER_RADIUS, 20F)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //

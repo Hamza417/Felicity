@@ -35,9 +35,9 @@ class HomeMenu : ScopedBottomSheetFragment() {
                                        R.string.artflow,
                                        R.string.simple),
                     menuIcons = listOf(R.drawable.ic_spanned_16dp,
-                                       R.drawable.ic_two_16dp,
-                                       R.drawable.ic_three_16dp,
-                                       R.drawable.ic_four_16dp),
+                                       R.drawable.ic_carousel_16dp,
+                                       R.drawable.ic_flow_16dp,
+                                       R.drawable.ic_list_16dp),
                     onMenuItemClick = {
                         when (it) {
                             R.string.spanned -> {

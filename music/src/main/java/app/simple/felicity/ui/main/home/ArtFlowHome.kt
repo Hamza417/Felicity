@@ -14,6 +14,7 @@ import app.simple.felicity.adapters.home.main.AdapterArtFlowHome
 import app.simple.felicity.core.R
 import app.simple.felicity.databinding.FragmentHomeArtflowBinding
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolder
+import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
@@ -94,6 +95,10 @@ class ArtFlowHome : MediaFragment() {
                             Log.w(TAG, "Unknown panel item clicked with title: $title")
                         }
                     }
+                }
+
+                override fun onMenuClicked(view: View) {
+                    parentFragmentManager.showHomeMenu()
                 }
             })
 

@@ -46,7 +46,8 @@ class AdapterCarouselHome(private val data: List<ArtFlowData<Any>>) : RecyclerVi
 
     override fun onBindViewHolder(holder: VerticalListViewHolder, @SuppressLint("RecyclerView") position: Int) {
         if (holder is Holder) {
-            val item = data[position.minus(1)]
+            val position1 = position.minus(1)
+            val item = data[position1]
             val adapter = AdapterCarouselItems(item)
             adapter.stateRestorationPolicy = StateRestorationPolicy.ALLOW
             holder.binding.recyclerView.setUniqueKey(holder.binding.title.context.getString(item.title))
@@ -60,12 +61,12 @@ class AdapterCarouselHome(private val data: List<ArtFlowData<Any>>) : RecyclerVi
             adapter.setAdapterCarouselCallbacks(object : AdapterCarouselItems.Companion.AdapterCarouselCallbacks {
                 override fun onClicked(view: View, position: Int) {
                     CarouselScrollStateStore.savePosition(holder.binding.title.context.getString(item.title), position)
-                    adapterCarouselCallbacks?.onSubItemClicked(view, holder.bindingAdapterPosition, position)
+                    adapterCarouselCallbacks?.onSubItemClicked(view, position1, position)
                 }
             })
 
             holder.binding.container.setOnClickListener {
-                adapterCarouselCallbacks?.onClicked(it, holder.bindingAdapterPosition)
+                adapterCarouselCallbacks?.onClicked(it, position1)
             }
         }
     }
