@@ -6,7 +6,8 @@
 
     <app.simple.felicity.decorations.views.SquareView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:background="@drawable/fg_art_tint" />
 
     <app.simple.felicity.decorations.views.FelicityImageSlider
         android:id="@+id/imageSlider"
@@ -19,7 +20,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
         android:layout_marginHorizontal="@dimen/padding_15"
-        android:layout_marginBottom="@dimen/padding_20"
+        android:layout_marginBottom="@dimen/padding_25"
         android:textSize="@dimen/text_size_22"
         android:padding="@dimen/padding_10"
         android:drawablePadding="@dimen/padding_20"

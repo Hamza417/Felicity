@@ -1,46 +1,67 @@
 package app.simple.felicity.adapters.ui.lists.songs
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.callbacks.GeneralAdapterCallbacks
+import app.simple.felicity.databinding.AdapterSongHeaderBinding
 import app.simple.felicity.databinding.AdapterSongsBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
 import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
 
 class SongsAdapter(private val audio: List<Song>) :
-        RecyclerView.Adapter<SongsAdapter.Holder>() {
+        RecyclerView.Adapter<VerticalListViewHolder>() {
 
-    var onItemClickListener: ((Song, Int, View) -> Unit)? = null
+    private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-        return Holder(
-                AdapterSongsBinding.inflate(
-                        LayoutInflater.from(parent.context),
-                        parent,
-                        false
-                )
-        )
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
+        return if (viewType == RecyclerViewUtils.TYPE_HEADER) {
+            val binding = AdapterSongHeaderBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            Header(binding)
+        } else {
+            val binding = AdapterSongsBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            Holder(binding)
+        }
     }
 
-    override fun onBindViewHolder(holder: Holder, position: Int) {
-        holder.bind(audio[position])
+    override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
+        if (holder is Holder) {
+            holder.bind(audio[position - 1])
+
+            holder.binding.container.setOnClickListener {
+                generalAdapterCallbacks?.onSongClicked(audio, holder.bindingAdapterPosition - 1, it)
+            }
+        }
     }
 
     override fun getItemCount(): Int {
-        return audio.size
+        return audio.size.plus(1)
     }
 
-    override fun onViewRecycled(holder: Holder) {
+    override fun getItemViewType(position: Int): Int {
+        return if (position == 0) {
+            RecyclerViewUtils.TYPE_HEADER
+        } else {
+            RecyclerViewUtils.TYPE_ITEM
+        }
+    }
+
+    override fun onViewRecycled(holder: VerticalListViewHolder) {
         super.onViewRecycled(holder)
-        Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
+        if (holder is Holder) {
+            Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
+        }
     }
 
-    inner class Holder(val binding: AdapterSongsBinding) :
-            VerticalListViewHolder(binding.root) {
+    fun setGeneralAdapterCallbacks(callbacks: GeneralAdapterCallbacks) {
+        this.generalAdapterCallbacks = callbacks
+    }
+
+    inner class Holder(val binding: AdapterSongsBinding) : VerticalListViewHolder(binding.root) {
         fun bind(song: Song) {
             binding.apply {
                 // albumArt.transitionName = audio.fileUri
@@ -51,10 +72,12 @@ class SongsAdapter(private val audio: List<Song>) :
                 albumArt.loadSongCover(song)
                 albumArt.transitionName = song.path
             }
+        }
+    }
 
-            binding.root.setOnClickListener {
-                onItemClickListener?.invoke(song, bindingAdapterPosition, binding.albumArt)
-            }
+    inner class Header(val binding: AdapterSongHeaderBinding) : VerticalListViewHolder(binding.root) {
+        fun bind() {
+            // No specific binding needed for header
         }
     }
 }

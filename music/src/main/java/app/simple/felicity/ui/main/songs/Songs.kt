@@ -6,14 +6,18 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
+import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.repository.models.Song
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 
 class Songs : MediaFragment() {
 
     private lateinit var binding: FragmentSongsBinding
+
+    private var songsAdapter: SongsAdapter? = null
 
     private val songsViewModel: SongsViewModel by viewModels({ requireActivity() })
 
@@ -28,12 +32,15 @@ class Songs : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) {
+            songsAdapter = SongsAdapter(it)
             binding.recyclerView.addItemDecoration(SpacingItemDecoration(48, true))
-            binding.recyclerView.adapter = SongsAdapter(it)
+            binding.recyclerView.adapter = songsAdapter
 
-            (binding.recyclerView.adapter as SongsAdapter).onItemClickListener = { _, position, view ->
-                setMediaItems(it, position)
-            }
+            songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
+                override fun onSongClicked(songs: List<Song>, position: Int, view: View?) {
+                    setMediaItems(songs, position)
+                }
+            })
         }
     }
 
