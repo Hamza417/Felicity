@@ -3,6 +3,9 @@ apply from: rootProject.file('common.gradle')
 
 android {
     namespace 'app.simple.felicity.decoration'
+    kotlinOptions {
+        freeCompilerArgs = ['-XXLanguage:+PropertyParamAnnotationDefaultTargetMode']
+    }
 }
 
 dependencies {
@@ -14,7 +17,8 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     implementation 'androidx.viewpager2:viewpager2:1.1.0'
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
-
-    api 'com.github.smarteist:Android-Image-Slider:1.4.0'
     implementation 'androidx.databinding:viewbinding:8.12.1'
+
+    implementation 'com.github.duanhong169:drawabletoolbox:1.0.7'
+    api 'com.github.smarteist:Android-Image-Slider:1.4.0'
 }

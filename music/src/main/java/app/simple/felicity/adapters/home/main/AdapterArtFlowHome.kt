@@ -6,14 +6,12 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.adapters.home.sub.ArtFlowAdapter
-import app.simple.felicity.adapters.home.sub.HeaderArtFlowAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterFlowHomeHeaderBinding
 import app.simple.felicity.databinding.AdapterHomeArtflowBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.models.ArtFlowData
-import com.smarteist.autoimageslider.SliderAnimations
 
 class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
     private var adapterArtFlowHomeCallbacks: AdapterArtFlowHomeCallbacks? = null
@@ -80,10 +78,7 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
                 adapterArtFlowHomeCallbacks?.onPanelItemClicked(item.title, it)
             }
         } else if (holder is Header) {
-            holder.binding.subContainer.background = null
-            holder.binding.headerSlider.setSliderAdapter(HeaderArtFlowAdapter(data.random()))
-            holder.binding.headerSlider.removeIndicators()
-            holder.binding.headerSlider.setSliderTransformAnimation(SliderAnimations.FADETRANSFORMATION)
+            holder.binding.container.background = null
         } else {
             throw IllegalArgumentException("Invalid ViewHolder type")
         }

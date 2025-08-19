@@ -35,6 +35,7 @@
     <dimen name="padding_1">1dp</dimen>
     <dimen name="padding_5">5dp</dimen>
     <dimen name="padding_10">10dp</dimen>
+    <dimen name="padding_12">12dp</dimen>
     <dimen name="padding_15">15dp</dimen>
     <dimen name="padding_25">25dp</dimen>
     <dimen name="padding_20">20dp</dimen>

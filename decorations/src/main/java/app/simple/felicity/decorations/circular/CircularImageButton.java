@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
 import android.graphics.Color;
-import android.graphics.drawable.RippleDrawable;
 import android.graphics.drawable.ShapeDrawable;
 import android.util.AttributeSet;
 import android.view.animation.DecelerateInterpolator;
@@ -18,15 +17,17 @@ import androidx.appcompat.widget.AppCompatImageButton;
 import app.simple.felicity.core.utils.ColorUtils;
 import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decoration.R;
+import app.simple.felicity.decorations.ripple.FelicityRippleDrawable;
+import app.simple.felicity.decorations.ripple.RippleUtils;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;
 import app.simple.felicity.theme.themes.Theme;
 
-public class CircularImageImageButton extends AppCompatImageButton implements ThemeChangedListener {
+public class CircularImageButton extends AppCompatImageButton implements ThemeChangedListener {
     
     private ShapeDrawable backgroundDrawable;
-    private RippleDrawable rippleDrawable;
+    private FelicityRippleDrawable rippleDrawable;
     private ValueAnimator valueAnimator;
     private final byte BACKGROUND_REGULAR = 0;
     private final byte BACKGROUND_SECONDARY = 1;
@@ -43,13 +44,19 @@ public class CircularImageImageButton extends AppCompatImageButton implements Th
     private byte COLOR_MODE = BACKGROUND_REGULAR;
     private int TINT_MODE = REGULAR;
     
-    public CircularImageImageButton(@NonNull Context context, @Nullable AttributeSet attrs) {
+    public CircularImageButton(@NonNull Context context) {
+        super(context);
+        typedArray = context.obtainStyledAttributes(R.styleable.CircularImageImageButton);
+        init();
+    }
+    
+    public CircularImageButton(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         typedArray = context.obtainStyledAttributes(attrs, R.styleable.CircularImageImageButton);
         init();
     }
     
-    public CircularImageImageButton(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+    public CircularImageButton(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         typedArray = context.obtainStyledAttributes(attrs, R.styleable.CircularImageImageButton, defStyleAttr, 0);
         init();
@@ -57,7 +64,7 @@ public class CircularImageImageButton extends AppCompatImageButton implements Th
     
     private void init() {
         backgroundDrawable = Utils.getCircularBackgroundDrawable(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
-        rippleDrawable = Utils.getRippleDrawable(ThemeManager.INSTANCE.getAccent().getSecondaryAccentColor());
+        rippleDrawable = RippleUtils.getRippleDrawable();
         backgroundDrawable.getPaint().setColor(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
         setBackground(backgroundDrawable);
         setScaleType(ScaleType.FIT_CENTER);
@@ -81,7 +88,7 @@ public class CircularImageImageButton extends AppCompatImageButton implements Th
         }
         
         valueAnimator = Utils.animateColorChange(backgroundDrawable, accent.getPrimaryAccentColor());
-        rippleDrawable.setColor(ColorStateList.valueOf(accent.getSecondaryAccentColor()));
+        rippleDrawable.setColor(accent.getSecondaryAccentColor());
         setBackgroundColor();
         setTint(getTintColor(TINT_MODE), true);
     }
@@ -157,5 +164,18 @@ public class CircularImageImageButton extends AppCompatImageButton implements Th
             default ->
                     Objects.requireNonNull(getImageTintList()).getDefaultColor();
         };
+    }
+    
+    public void overrideRadius(float radius) {
+        backgroundDrawable = Utils.getCircularBackgroundDrawable(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(), radius);
+        setBackground(backgroundDrawable);
+    }
+    
+    public void setCircleColor(int color) {
+        if (valueAnimator != null) {
+            valueAnimator.cancel();
+        }
+        backgroundDrawable.getPaint().setColor(color);
+        setBackground(backgroundDrawable);
     }
 }

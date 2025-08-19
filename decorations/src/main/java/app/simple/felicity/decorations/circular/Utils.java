@@ -1,8 +1,6 @@
 package app.simple.felicity.decorations.circular;
 
 import android.animation.ValueAnimator;
-import android.content.res.ColorStateList;
-import android.graphics.drawable.RippleDrawable;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.RoundRectShape;
 
@@ -15,7 +13,7 @@ import java.util.Arrays;
 import app.simple.felicity.preferences.AppearancePreferences;
 
 public class Utils {
-    public static RippleDrawable getRippleDrawable(int color) {
+    public static ShapeDrawable getCircularBackgroundDrawable(int color) {
         float[] outerRadii = new float[8];
         float[] innerRadii = new float[8];
         
@@ -29,22 +27,20 @@ public class Utils {
         }
         
         RoundRectShape shape = new RoundRectShape(outerRadii, null, innerRadii);
-        ShapeDrawable mask = new ShapeDrawable(shape);
+        ShapeDrawable drawable = new ShapeDrawable(shape);
+        drawable.getPaint().setColor(color);
         
-        ColorStateList stateList = ColorStateList.valueOf(color);
-        
-        return new RippleDrawable(stateList, null, mask);
+        return drawable;
     }
     
-    public static ShapeDrawable getCircularBackgroundDrawable(int color) {
+    public static ShapeDrawable getCircularBackgroundDrawable(int color, float radius) {
         float[] outerRadii = new float[8];
         float[] innerRadii = new float[8];
         
         try {
-            Arrays.fill(outerRadii, AppearancePreferences.INSTANCE.getCornerRadius());
-            Arrays.fill(innerRadii, AppearancePreferences.INSTANCE.getCornerRadius());
+            Arrays.fill(outerRadii, radius);
+            Arrays.fill(innerRadii, radius);
         } catch (NullPointerException e) {
-            // Fallback to default corner radius if AppearancePreferences is not initialized
             Arrays.fill(outerRadii, 16F);
             Arrays.fill(innerRadii, 16F);
         }

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="FelicitySideBar">
+        <attr name="sidebarSide" format="enum">
+            <enum name="left" value="0" />
+            <enum name="right" value="1" />
+        </attr>
+        <attr name="sidebarAutoHideOnScroll" format="boolean" />
+        <attr name="sidebarAnimationDuration" format="integer" />
+        <attr name="sidebarShowToggle" format="boolean" />
+    </declare-styleable>
+</resources>
+

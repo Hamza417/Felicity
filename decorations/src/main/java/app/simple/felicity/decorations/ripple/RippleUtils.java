@@ -2,7 +2,6 @@ package app.simple.felicity.decorations.ripple;
 
 import android.animation.ValueAnimator;
 import android.content.res.ColorStateList;
-import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
@@ -39,7 +38,7 @@ public class RippleUtils {
         valueAnimator.start();
     }
     
-    public static FelicityRippleDrawable getRippleDrawable(Drawable backgroundDrawable) {
+    public static FelicityRippleDrawable getRippleDrawable() {
         FelicityRippleDrawable ripple = new FelicityRippleDrawable(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
         ripple.setCornerRadius(AppearancePreferences.INSTANCE.getCornerRadius());
         ripple.setStartColor(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor());

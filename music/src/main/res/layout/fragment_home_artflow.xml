@@ -1,11 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/recycler_view"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:layoutAnimation="@anim/list_animation_controller"
-    app:fastScrollEnabled="false"
-    app:isFadingEdgeRequired="true"
-    app:navigationPaddingRequired="false"
-    app:statusPaddingRequired="false" />
+    android:layout_height="match_parent">
+
+    <app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layoutAnimation="@anim/list_animation_controller"
+        app:fastScrollEnabled="false"
+        app:isFadingEdgeRequired="true"
+        app:navigationPaddingRequired="false"
+        app:statusPaddingRequired="false" />
+
+    <app.simple.felicity.decorations.flowsidemenu.FelicitySideBar xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/side_bar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/padding_15"
+        android:layout_gravity="center_vertical|end"
+        app:sidebarShowToggle="true"
+        app:sidebarSide="right" />
+
+</FrameLayout>

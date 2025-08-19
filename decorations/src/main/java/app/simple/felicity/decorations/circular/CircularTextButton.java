@@ -4,7 +4,6 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
-import android.graphics.drawable.RippleDrawable;
 import android.graphics.drawable.ShapeDrawable;
 import android.util.AttributeSet;
 
@@ -14,6 +13,8 @@ import androidx.appcompat.widget.AppCompatTextView;
 import androidx.core.widget.TextViewCompat;
 import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decoration.R;
+import app.simple.felicity.decorations.ripple.FelicityRippleDrawable;
+import app.simple.felicity.decorations.ripple.RippleUtils;
 import app.simple.felicity.decorations.typeface.TypeFace;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
@@ -22,7 +23,7 @@ import app.simple.felicity.theme.models.Accent;
 public class CircularTextButton extends AppCompatTextView implements ThemeChangedListener {
     
     private ShapeDrawable backgroundDrawable;
-    private RippleDrawable rippleDrawable;
+    private FelicityRippleDrawable rippleDrawable;
     private ValueAnimator valueAnimator;
     
     public CircularTextButton(@NonNull Context context) {
@@ -42,7 +43,7 @@ public class CircularTextButton extends AppCompatTextView implements ThemeChange
     
     private void init() {
         backgroundDrawable = Utils.getCircularBackgroundDrawable(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
-        rippleDrawable = Utils.getRippleDrawable(ThemeManager.INSTANCE.getAccent().getSecondaryAccentColor());
+        rippleDrawable = RippleUtils.getRippleDrawable();
         backgroundDrawable.getPaint().setColor(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
         setBackground(backgroundDrawable);
         setTextColor(Color.WHITE);
@@ -65,7 +66,7 @@ public class CircularTextButton extends AppCompatTextView implements ThemeChange
         }
         
         valueAnimator = Utils.animateColorChange(backgroundDrawable, accent.getPrimaryAccentColor());
-        rippleDrawable.setColor(ColorStateList.valueOf(accent.getSecondaryAccentColor()));
+        rippleDrawable.setColor(accent.getSecondaryAccentColor());
     }
     
     @Override

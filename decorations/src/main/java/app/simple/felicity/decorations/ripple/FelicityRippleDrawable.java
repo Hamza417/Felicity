@@ -45,7 +45,7 @@ public class FelicityRippleDrawable extends Drawable {
     private int currentColor; // color currently being drawn (with applied pressed alpha/overallAlpha)
     // Animation state
     private float radius; // current radius
-
+    
     private float hotspotX = -1f;
     private float hotspotY = -1f;
     private float maxRadius; // computed from bounds & hotspot

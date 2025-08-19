@@ -102,6 +102,16 @@ class VolumeKnob : ScopedBottomSheetFragment() {
             return supportFragmentManager.findFragmentByTag(TAG) as VolumeKnob
         }
 
+        fun FragmentManager.showVolumeKnob(): VolumeKnob {
+            if (!isVolumeKnobShowing()) {
+                val dialog = newInstance()
+                dialog.show(this, TAG)
+                return dialog
+            }
+
+            return findFragmentByTag(TAG) as VolumeKnob
+        }
+
         private fun FragmentManager.isVolumeKnobShowing(): Boolean {
             return findFragmentByTag(TAG) != null
         }

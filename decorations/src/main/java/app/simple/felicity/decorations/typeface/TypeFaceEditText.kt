@@ -6,11 +6,9 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.TypedArray
 import android.graphics.Color
-import android.os.Build
 import android.util.AttributeSet
 import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
-import android.widget.TextView
 import androidx.annotation.ColorInt
 import androidx.appcompat.widget.AppCompatEditText
 import app.simple.felicity.core.utils.ColorUtils
@@ -20,8 +18,6 @@ import app.simple.felicity.decorations.utils.TextViewUtils.setDrawableTint
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.shared.utils.ConditionUtils.invert
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
-import top.defaults.drawabletoolbox.DrawableBuilder
-import java.lang.reflect.Field
 
 open class TypeFaceEditText : AppCompatEditText, ThemeChangedListener {
 
@@ -114,25 +110,25 @@ open class TypeFaceEditText : AppCompatEditText, ThemeChangedListener {
 
     @SuppressLint("DiscouragedPrivateApi")
     private fun setCursorDrawable() {
-        val drawable = DrawableBuilder()
-            .rectangle()
-            .width(resources.getDimensionPixelOffset(R.dimen.cursor_width))
-            .ripple(false)
-            .strokeWidth(0)
-            .solidColor(AppearancePreferences.getAccentColor())
-            .build()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            textCursorDrawable = drawable
-        } else {
-            try {
-                // https://github.com/android/platform_frameworks_base/blob/kitkat-release/core/java/android/widget/TextView.java#L562-564
-                val f: Field = TextView::class.java.getDeclaredField("mCursorDrawableRes")
-                f.isAccessible = true
-                f.set(this, drawable)
-            } catch (ignored: Exception) {
-            }
-        }
+        //        val drawable = DrawableBuilder()
+        //            .rectangle()
+        //            .width(resources.getDimensionPixelOffset(R.dimen.cursor_width))
+        //            .ripple(false)
+        //            .strokeWidth(0)
+        //            .solidColor(AppearancePreferences.getAccentColor())
+        //            .build()
+        //
+        //        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        //            textCursorDrawable = drawable
+        //        } else {
+        //            try {
+        //                // https://github.com/android/platform_frameworks_base/blob/kitkat-release/core/java/android/widget/TextView.java#L562-564
+        //                val f: Field = TextView::class.java.getDeclaredField("mCursorDrawableRes")
+        //                f.isAccessible = true
+        //                f.set(this, drawable)
+        //            } catch (ignored: Exception) {
+        //            }
+        //        }
     }
 
     private fun setHighlightColor() {
