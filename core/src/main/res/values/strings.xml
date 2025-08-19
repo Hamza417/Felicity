@@ -56,4 +56,5 @@
     <string name="spanned">Spanned</string>
     <string name="carousel">Carousel</string>
     <string name="simple">Simple</string>
+    <string name="recommended">Recommended</string>
 </resources>

@@ -19,9 +19,13 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
         android:layout_marginHorizontal="@dimen/padding_15"
-        android:layout_marginBottom="@dimen/padding_25"
-        android:textSize="@dimen/art_flow_title_text_size"
-        app:appFontStyle="bold"
+        android:layout_marginBottom="@dimen/padding_20"
+        android:textSize="@dimen/text_size_22"
+        android:padding="@dimen/padding_10"
+        android:drawablePadding="@dimen/padding_20"
+        app:appFontStyle="medium"
+        app:drawableEndCompat="@drawable/ic_for_arrow"
+        app:drawableTintStyle="accent"
         app:textColorStyle="white" />
 
 </FrameLayout>

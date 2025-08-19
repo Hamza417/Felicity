@@ -17,7 +17,6 @@ import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolder
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
-import app.simple.felicity.popups.app.PopupPanelsMenu
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
@@ -73,37 +72,6 @@ class ArtFlowHome : MediaFragment() {
                 }
                 decorationR.drawable.ic_album -> {
                     openFragment(PeristyleAlbums.newInstance(), PeristyleAlbums.TAG)
-                }
-                decorationR.drawable.ic_menu -> {
-                    PopupPanelsMenu(
-                            container = requireContainerView(),
-                            view,
-                            menuItems = listOf(
-                                    R.string.recently_added,
-                                    R.string.genres
-                            ),
-                            menuIcons = listOf(
-                                    decorationR.drawable.ic_history_16dp,
-                                    decorationR.drawable.ic_piano_16dp
-                            ),
-                            onMenuItemClick = {
-                                Log.d(TAG, "Menu item clicked with id: $it")
-                                when (it) {
-                                    R.string.recently_added -> {
-                                        openFragment(CoverFlow.newInstance(), CoverFlow.TAG)
-                                    }
-                                    R.string.genres -> {
-                                        openFragment(Genres.newInstance(), GenrePage.TAG)
-                                    }
-                                    else -> {
-                                        Log.w(TAG, "Unknown menu item clicked with id: $it")
-                                    }
-                                }
-                            },
-                            onDismiss = {
-                                Log.d(TAG, "Popup dismissed")
-                            }
-                    )
                 }
                 decorationR.drawable.ic_volume -> {
                     childFragmentManager.showVolumeKnob()

@@ -44,7 +44,7 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
         if (holder is Holder) {
             val position = position.minus(1)
             val item = data[position]
-            val adapter = ArtFlowAdapter(item)
+            val adapter = ArtFlowAdapter(item, position % 2 == 0)
             holder.binding.title.text = holder.binding.title.context.getString(item.title)
             holder.binding.imageSlider.setSliderAdapter(adapter)
 

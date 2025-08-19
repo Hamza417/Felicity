@@ -40,7 +40,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             Log.d(TAG, "Loading data...")
 
-            val songs = songRepository.fetchSongs().shuffled().take(TAKE_COUNT)
+            val songs = songRepository.fetchRecentSongs(TAKE_COUNT)
             val albums = albumRepository.fetchAlbums().shuffled().take(TAKE_COUNT)
             val artists = artistRepository.fetchArtists().shuffled().take(TAKE_COUNT)
             val genres = genreRepository.fetchGenres().shuffled().take(TAKE_COUNT)
@@ -49,13 +49,13 @@ class HomeViewModel @Inject constructor(
             Log.d(TAG, "Songs count: ${songs.size}, Albums count: ${albums.size}")
 
             val artFlowData = mutableListOf<ArtFlowData<Any>>()
-            artFlowData.add(ArtFlowData(R.string.songs, songs))
-            artFlowData.add(ArtFlowData(R.string.albums, albums))
-            artFlowData.add(ArtFlowData(R.string.artists, artists))
-            artFlowData.add(ArtFlowData(R.string.genres, genres))
+            artFlowData.add(ArtFlowData(R.string.recommended, songs))
             if (recentlyAdded.isNotEmpty()) {
                 artFlowData.add(ArtFlowData(R.string.recently_added, recentlyAdded))
             }
+            artFlowData.add(ArtFlowData(R.string.albums, albums))
+            artFlowData.add(ArtFlowData(R.string.artists, artists))
+            artFlowData.add(ArtFlowData(R.string.genres, genres))
 
             Log.d(TAG, "Data loaded successfully")
             data.postValue(artFlowData)

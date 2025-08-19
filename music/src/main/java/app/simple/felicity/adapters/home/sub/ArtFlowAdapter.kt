@@ -14,7 +14,7 @@ import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import com.smarteist.autoimageslider.SliderViewAdapter
 
-class ArtFlowAdapter(private val data: ArtFlowData<Any>, private val metadata: Boolean = true)
+class ArtFlowAdapter(private val data: ArtFlowData<Any>, private val startGravity: Boolean = true)
     : SliderViewAdapter<ArtFlowAdapter.ArtFlowViewHolder>() {
 
     private var artFlowAdapterCallbacks: ArtFlowAdapterCallbacks? = null
@@ -38,7 +38,8 @@ class ArtFlowAdapter(private val data: ArtFlowData<Any>, private val metadata: B
             holder.binding.art.loadArtCover(
                     item,
                     skipCache = true,
-                    crop = true
+                    crop = true,
+                    darken = false
             )
 
             when (item) {
@@ -57,6 +58,15 @@ class ArtFlowAdapter(private val data: ArtFlowData<Any>, private val metadata: B
                     holder.binding.title.text = item.name ?: holder.getContext().getString(R.string.unknown)
                 }
             }
+
+            // alternate text gravity on every alternate item
+            holder.binding.title.gravity = if (startGravity) {
+                android.view.Gravity.START
+            } else {
+                android.view.Gravity.END
+            }
+
+            holder.binding.artist.gravity = holder.binding.title.gravity
 
             holder.binding.container.setOnClickListener {
                 Log.d("ArtFlowAdapter", "Item clicked at position: $position")
