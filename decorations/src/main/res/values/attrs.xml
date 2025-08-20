@@ -200,4 +200,14 @@
         <attr name="felicityThumbShadowColor" format="color|reference" />
     </declare-styleable>
 
+    <declare-styleable name="AppHeader">
+        <attr name="scrollMode" format="enum">
+            <enum name="pinned" value="0" />
+            <enum name="hide_on_scroll" value="1" />
+            <enum name="scroll_with_content" value="2" />
+        </attr>
+        <attr name="headerContentLayout" format="reference" />
+        <attr name="hideThreshold" format="dimension" />
+    </declare-styleable>
+
 </resources>

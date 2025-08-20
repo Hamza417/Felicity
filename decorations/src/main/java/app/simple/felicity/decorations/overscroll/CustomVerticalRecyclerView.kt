@@ -36,7 +36,6 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
     private var manuallyAnimated = false
     private var fastScroll = true
     private var isEdgeColorRequired = true
-    private var isFastScrollerAdded = false
     private var statusBarPaddingRequired = true
     private var navigationBarPaddingRequired = true
 
