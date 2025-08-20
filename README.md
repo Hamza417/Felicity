@@ -31,12 +31,18 @@ hopefully finish working on it before the end of this week
 20 Aug 2025: The UI components are almost done, I have also almost finished main design of the app.
 
 ## Screenshots
+Last Updated: 20 Aug 2025
 
 |                          |                          |                          |
 |--------------------------|--------------------------|--------------------------|
 | ![](/screenshots/01.png) | ![](/screenshots/02.png) | ![](/screenshots/03.png) |
 | ![](/screenshots/04.png) | ![](/screenshots/05.png) | ![](/screenshots/06.png) |
-| ![](/screenshots/07.png) |                          |                          |
+| ![](/screenshots/07.png) | ![](/screenshots/08.png) |                          |
+
+|                          |
+|--------------------------|
+| ![](/screenshots/09.png) |
+| ![](/screenshots/10.png) |
 
 ## License
 
