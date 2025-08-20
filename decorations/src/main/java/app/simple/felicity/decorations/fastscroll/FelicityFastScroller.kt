@@ -4,246 +4,294 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.text.TextPaint
 import android.util.AttributeSet
 import android.util.DisplayMetrics
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.theme.managers.ThemeManager
 import java.lang.ref.WeakReference
-import kotlin.math.roundToInt
+import kotlin.math.ceil
 
+/**
+ * Windows-like jump navigation overlay:
+ *  - Hidden by default; call show()/hide().
+ *  - Displays provided positions in a grid (label + background).
+ *  - Clicking a position invokes listener; caller handles RecyclerView jump manually.
+ *  - Only responsibility with RecyclerView: overlay addition via attachTo().
+ */
 class FelicityFastScroller @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    // Appearance configuration
-    private val trackWidth = dp(4f)
-    private val majorGraduationLength = dp(18f) // Increased from 12f
-    private val minorGraduationLength = dp(10f) // Increased from 6f
-    private val graduationWidth = dp(3f) // Increased from 2f
-    private val magnifiedGraduationLength = dp(28f) // New: magnified length
-    private val magnifiedGraduationWidth = dp(4f) // New: magnified width
-    private val edgeActivationWidth = dp(24f)
-    private val minTouchSlopY = dp(4f)
-    private val magnifyRadius = dp(40f) // Radius around touch point for magnification
-
-    // Colors (fallback simple palette – could later integrate theme or dynamic colors)
-    private val trackColor = 0x00000000 // Transparent
-    private val majorGraduationColor = ThemeManager.theme.viewGroupTheme.dividerColor
-    private val minorGraduationColor = ThemeManager.theme.viewGroupTheme.highlightColor
-    private val activeGraduationColor = ThemeManager.accent.primaryAccentColor
-
-    private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        color = trackColor
-    }
-    private val majorGraduationPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        color = majorGraduationColor
-        strokeWidth = graduationWidth
-        strokeCap = Paint.Cap.ROUND
-    }
-    private val minorGraduationPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        color = minorGraduationColor
-        strokeWidth = graduationWidth
-        strokeCap = Paint.Cap.ROUND
-    }
-    private val activeGraduationPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        color = activeGraduationColor
-        strokeWidth = graduationWidth
-        strokeCap = Paint.Cap.ROUND
-    }
-    private val magnifiedMajorGraduationPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        color = majorGraduationColor
-        strokeWidth = magnifiedGraduationWidth
-        strokeCap = Paint.Cap.ROUND
-    }
-    private val magnifiedMinorGraduationPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        color = minorGraduationColor
-        strokeWidth = magnifiedGraduationWidth
-        strokeCap = Paint.Cap.ROUND
-    }
-
-    // Rects reused
-    private val trackRect = RectF()
+    data class Position(val label: String, val index: Int)
 
     private var recyclerRef: WeakReference<RecyclerView>? = null
 
-    // Active region (computed each draw / size change)
-    private var regionTop = 0f
-    private var regionBottom = 0f
-    private var regionHeight = 0f
+    private var positions: List<Position> = emptyList()
+    private var positionRects: MutableList<RectF> = mutableListOf()
 
-    // Current position state
-    private var currentPosition = 0f // 0.0 to 1.0 representing position in the list
-    private var isDragging = false
-    private var lastTouchY = 0f
+    // Grid configuration
+    private var columns = 5 // current active columns (set dynamically)
+    private var portraitColumns = 5
+    private var landscapeColumns = 10 // landscape wider grid (8-12 range); adjustable via setter
+    private var rows = 0
+    private val cellSpacing = dp(28f) // larger spacing
+    private val bigMargin = dp(72f) // huge margin on all sides
+    private val cellPaddingV = dp(8f)
 
-    // Adapter meta cache
-    private var itemCount = 0
-    private var majorStepCount = 10 // Number of major graduations
-    private var minorStepsPerMajor = 5 // Number of minor steps between major ones
+    // Visual styles
+    private val overlayColor = ThemeManager.theme.viewGroupTheme.backgroundColor // opaque background
+    private val textColor = ThemeManager.theme.textViewTheme.primaryTextColor
+    private val pressedTextColor = ThemeManager.accent.primaryAccentColor
 
-    // Auto hide
-    private val hideDelayMs = 1200L
-    private var visible = false
-    private var fadeAnimator: ValueAnimator? = null
+    // Removed button backgrounds – flat text only
 
-    private val hideRunnable = Runnable { if (!isDragging) fadeOut() }
-
-    // Listener to sync thumb while list scrolls normally
-    private val scrollListener = object : RecyclerView.OnScrollListener() {
-        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-            if (!isDragging) {
-                syncGraduationWithRecycler()
-            }
-        }
+    private val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = textColor
+        textSize = sp(26f) // larger text
+        textAlign = Paint.Align.CENTER
+        letterSpacing = 0.05f
+        typeface = TypeFace.getBoldTypeFace(context)
     }
+
+    // Animation config
+    private var animationDurationShow = 300L
+    private var animationDurationHide = 260L
+    private val inScaleStart = 1.52f
+    private val outScaleEnd = 1.52f
+
+    private var fadeScaleAnimator: ValueAnimator? = null
+
+    private var isShowing = false
+    private var isLaidOutOnce = false
+
+    private var pressedIndex = -1
+    private var onPositionSelected: ((Position) -> Unit)? = null
+
+    private var lastOrientation = -1
 
     init {
-        // Keep it visible but transparent so it can intercept edge touches
         alpha = 0f
-        visibility = VISIBLE
+        scaleX = 0.92f
+        scaleY = 0.92f
+        visibility = GONE
         isClickable = true
-        isFocusable = false
+        isFocusable = true
+        setBackgroundColor(overlayColor) // opaque backdrop
+        setWillNotDraw(false)
     }
 
-    /** Attach this fast scroller to a RecyclerView. Adds itself to parent if needed. */
+    /** Attach overlay to RecyclerView's parent so it can draw above list. */
     fun attachTo(recyclerView: RecyclerView) {
-        recyclerRef?.get()?.removeOnScrollListener(scrollListener)
         recyclerRef = WeakReference(recyclerView)
-        recyclerView.addOnScrollListener(scrollListener)
-
         val parent = recyclerView.parent
         if (parent is ViewGroup && parent.indexOfChild(this) == -1) {
             parent.addView(this, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         }
-        post { syncGraduationWithRecycler() }
     }
 
-    override fun onDetachedFromWindow() {
-        recyclerRef?.get()?.removeOnScrollListener(scrollListener)
-        super.onDetachedFromWindow()
+    fun setPositions(list: List<Position>) {
+        positions = list
+        updateColumnsForOrientation()
+        rows = if (positions.isEmpty()) 0 else ceil(positions.size / columns.toFloat()).toInt()
+        computeRects(width, height)
+        invalidate()
+    }
+
+    fun setOnPositionSelectedListener(listener: (Position) -> Unit) {
+        onPositionSelected = listener
+    }
+
+    fun show(animated: Boolean = true) {
+        if (isShowing) return
+        isShowing = true
+        visibility = VISIBLE
+        // Prep starting state for in animation
+        if (animated) {
+            alpha = 0f
+            scaleX = inScaleStart
+            scaleY = inScaleStart
+        } else {
+            alpha = 1f
+            scaleX = 1f
+            scaleY = 1f
+        }
+        animateIn(animated)
+    }
+
+    fun hide(animated: Boolean = true) {
+        if (!isShowing && fadeScaleAnimator == null) return // Already hidden and no running anim
+
+        animateOut(animated)
+
+        if (isShowing) {
+            isShowing = false
+        }
+    }
+
+    fun toggle() = if (isShowing) hide() else show()
+
+    private fun animateIn(animated: Boolean) {
+        fadeScaleAnimator?.cancel()
+        if (!animated) {
+            alpha = 1f; scaleX = 1f; scaleY = 1f; return
+        }
+        fadeScaleAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = animationDurationShow
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { va ->
+                val f = va.animatedFraction
+                alpha = f
+                val s = inScaleStart + (1f - inScaleStart) * f // shrink to 1f
+                scaleX = s; scaleY = s
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    private fun animateOut(animated: Boolean) {
+        fadeScaleAnimator?.cancel()
+        if (!animated) {
+            alpha = 0f; scaleX = outScaleEnd; scaleY = outScaleEnd; visibility = GONE; return
+        }
+        // Ensure starting baseline (might be mid-animation)
+        if (scaleX != 1f && scaleX < 1f) {
+            scaleX = 1f; scaleY = 1f
+        }
+        val startAlpha = alpha
+        val startScale = scaleX
+        fadeScaleAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = animationDurationHide
+            interpolator = AccelerateInterpolator()
+            addUpdateListener { va ->
+                val f = va.animatedFraction
+                alpha = startAlpha * (1f - f)
+                val s = startScale + (outScaleEnd - startScale) * f // grow outward
+                scaleX = s; scaleY = s
+                invalidate()
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    if (!isShowing) {
+                        visibility = GONE
+                        alpha = 0f
+                        scaleX = 1f
+                        scaleY = 1f
+                    }
+
+                    fadeScaleAnimator = null
+                }
+            })
+            start()
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        computeRegion(h)
-        syncGraduationWithRecycler()
+        val orientation = resources.configuration.orientation
+        if (orientation != lastOrientation) {
+            lastOrientation = orientation
+            updateColumnsForOrientation()
+            rows = if (positions.isEmpty()) 0 else ceil(positions.size / columns.toFloat()).toInt()
+        }
+        isLaidOutOnce = true
+        computeRects(w, h)
     }
 
-    private fun computeRegion(totalHeight: Int) {
-        regionHeight = totalHeight * 0.6f
-        regionTop = (totalHeight - regionHeight) / 2f
-        regionBottom = regionTop + regionHeight
+    private fun computeRects(w: Int, h: Int) {
+        positionRects.clear()
+        if (!isLaidOutOnce || positions.isEmpty() || w == 0 || h == 0) return
+
+        val usableWidth = (w - bigMargin * 2).coerceAtLeast(dp(120f))
+        val totalSpacingX = cellSpacing * (columns - 1)
+        val cellWidth = ((usableWidth - totalSpacingX) / columns.toFloat()).coerceAtLeast(dp(48f))
+        val cellHeight = (textPaint.textSize + cellPaddingV * 2)
+
+        val totalGridHeight = rows * cellHeight + (rows - 1) * cellSpacing
+        val startY = (h - totalGridHeight) / 2f
+        val gridWidth = columns * cellWidth + totalSpacingX
+        val startX = (w - gridWidth) / 2f
+
+        for (i in positions.indices) {
+            val row = i / columns
+            val col = i % columns
+            val left = startX + col * (cellWidth + cellSpacing)
+            val top = startY + row * (cellHeight + cellSpacing)
+            positionRects.add(RectF(left, top, left + cellWidth, top + cellHeight))
+        }
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (!visible && !isDragging) return
+        if (positions.isEmpty() || !isShowing) return
 
-        // Draw track (right aligned)
-        val left = width - trackWidth - dp(8f) // small inset from absolute edge
-        val right = left + trackWidth
-        trackRect.set(left, regionTop, right, regionBottom)
-        canvas.drawRoundRect(trackRect, trackWidth, trackWidth, trackPaint)
-
-        // Draw graduations
-        drawGraduations(canvas, left, right)
-    }
-
-    private fun drawGraduations(canvas: Canvas, left: Float, right: Float) {
-        val touchY = if (isDragging) lastTouchY else -1f
-
-        // Draw major graduations
-        for (i in 0..majorStepCount) {
-            val y = regionTop + (i.toFloat() / majorStepCount) * regionHeight
-            val startX = right
-
-            // Check if this graduation is within magnify radius
-            val isMagnified = isDragging && touchY > 0 && kotlin.math.abs(y - touchY) < magnifyRadius
-            val length = if (isMagnified) magnifiedGraduationLength else majorGraduationLength
-            val endX = right + length
-
-            // Check if this is the active graduation
-            val graduationFraction = i.toFloat() / majorStepCount
-            val isActive = kotlin.math.abs(currentPosition - graduationFraction) < (1f / majorStepCount / 2f)
-
-            val paint = when {
-                isActive && (visible || isDragging) -> activeGraduationPaint
-                isMagnified -> magnifiedMajorGraduationPaint
-                else -> majorGraduationPaint
+        val fm = textPaint.fontMetrics
+        val textCenterOffset = (fm.bottom + fm.top) / 2f
+        for (i in positionRects.indices) {
+            val rect = positionRects[i]
+            val pos = positions[i]
+            val cx = rect.centerX()
+            val cy = rect.centerY() - textCenterOffset
+            if (i == pressedIndex) {
+                textPaint.color = pressedTextColor
+            } else {
+                textPaint.color = textColor
             }
-
-            canvas.drawLine(startX, y, endX, y, paint)
-        }
-
-        // Draw minor graduations between major ones
-        for (i in 0 until majorStepCount) {
-            for (j in 1 until minorStepsPerMajor) {
-                val majorY1 = regionTop + (i.toFloat() / majorStepCount) * regionHeight
-                val majorY2 = regionTop + ((i + 1).toFloat() / majorStepCount) * regionHeight
-                val y = majorY1 + (j.toFloat() / minorStepsPerMajor) * (majorY2 - majorY1)
-
-                val startX = right
-
-                // Check if this graduation is within magnify radius
-                val isMagnified = isDragging && touchY > 0 && kotlin.math.abs(y - touchY) < magnifyRadius
-                val length = if (isMagnified) magnifiedGraduationLength * 0.7f else minorGraduationLength
-                val endX = right + length
-
-                val paint = if (isMagnified) magnifiedMinorGraduationPaint else minorGraduationPaint
-
-                canvas.drawLine(startX, y, endX, y, paint)
-            }
+            // Flat letters only
+            canvas.drawText(pos.label, cx, cy, textPaint)
         }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        val recycler = recyclerRef?.get() ?: return false
-        if (recycler.adapter == null) return false
-
-        val y = event.y
+        if (!isShowing) return false
         val x = event.x
-
+        val y = event.y
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                if (shouldActivateFromDown(x, y)) {
-                    parent.requestDisallowInterceptTouchEvent(true)
-                    startDrag(y)
-                    performClick()
+                pressedIndex = hitTest(x, y)
+                if (pressedIndex != -1) {
+                    invalidate()
                     return true
                 }
-                return false
             }
             MotionEvent.ACTION_MOVE -> {
-                if (isDragging) {
-                    handleDrag(y)
-                    return true
+                val newIndex = hitTest(x, y)
+                if (newIndex != pressedIndex) {
+                    pressedIndex = newIndex
+                    invalidate()
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (isDragging) {
-                    endDrag()
-                    return true
+                val selected = if (event.actionMasked == MotionEvent.ACTION_UP) pressedIndex else -1
+                val idx = pressedIndex
+                pressedIndex = -1
+                invalidate()
+                if (selected != -1 && idx in positions.indices) {
+                    performClick()
+                    onPositionSelected?.invoke(positions[idx])
                 }
+                if (event.actionMasked == MotionEvent.ACTION_UP) {
+                    // Optionally auto-hide after selection
+                    hide(animated = true)
+                }
+                return true
             }
         }
-        return isDragging
+        return super.onTouchEvent(event)
     }
 
     override fun performClick(): Boolean {
@@ -251,113 +299,17 @@ class FelicityFastScroller @JvmOverloads constructor(
         return true
     }
 
-    private fun shouldActivateFromDown(x: Float, y: Float): Boolean {
-        // Edge activation OR (already visible and touching within reasonable horizontal proximity of track)
-        val inEdge = x >= width - edgeActivationWidth
-        val inRegion = y in regionTop..regionBottom
-        return inRegion && (inEdge || visible)
-    }
-
-    private fun startDrag(y: Float) {
-        isDragging = true
-        lastTouchY = y
-        fadeIn()
-        updateGraduationPosition(y)
-        invalidate()
-        removeCallbacks(hideRunnable)
-    }
-
-    private fun handleDrag(y: Float) {
-        if (kotlin.math.abs(y - lastTouchY) < minTouchSlopY) return
-        lastTouchY = y
-        updateGraduationPosition(y)
-    }
-
-    private fun endDrag() {
-        isDragging = false
-        postDelayed(hideRunnable, hideDelayMs)
-        invalidate()
-    }
-
-    private fun mapGraduationToRecycler() {
-        val recycler = recyclerRef?.get() ?: return
-        val adapter = recycler.adapter ?: return
-        itemCount = adapter.itemCount
-        if (itemCount <= 0) return
-
-        val targetIndex = (currentPosition * (itemCount - 1)).roundToInt().coerceIn(0, itemCount - 1)
-        val lm = recycler.layoutManager as? LinearLayoutManager
-        if (lm != null) {
-            // Jump scrolling (step) – immediate scroll to position
-            lm.scrollToPositionWithOffset(targetIndex, 0)
-        } else {
-            recycler.scrollToPosition(targetIndex)
+    private fun hitTest(x: Float, y: Float): Int {
+        for (i in positionRects.indices) {
+            if (positionRects[i].contains(x, y)) return i
         }
+        return -1
     }
 
-    private fun findNearestMajorStep(position: Float): Float {
-        val stepSize = 1f / majorStepCount
-        val nearestStep = (position / stepSize).roundToInt()
-        return (nearestStep * stepSize).coerceIn(0f, 1f)
-    }
-
-    private fun updateGraduationPosition(y: Float) {
-        val rawPosition = ((y - regionTop) / regionHeight).coerceIn(0f, 1f)
-
-        // Snap to nearest major graduation when close enough
-        val snapThreshold = 1f / majorStepCount / 3f // Snap within 1/3 of a major step
-        val nearestMajorStep = findNearestMajorStep(rawPosition)
-
-        currentPosition = if (kotlin.math.abs(rawPosition - nearestMajorStep) < snapThreshold) {
-            nearestMajorStep
-        } else {
-            rawPosition
-        }
-
-        mapGraduationToRecycler()
-        invalidate()
-    }
-
-    private fun syncGraduationWithRecycler() {
-        val recycler = recyclerRef?.get() ?: return
-        val adapter = recycler.adapter ?: return
-        itemCount = adapter.itemCount
-        if (itemCount <= 0) return
-        val layoutManager = recycler.layoutManager as? LinearLayoutManager ?: return
-        val first = layoutManager.findFirstVisibleItemPosition()
-        if (first == RecyclerView.NO_POSITION) return
-        val fraction = if (itemCount <= 1) 0f else first.toFloat() / (itemCount - 1).toFloat()
-        currentPosition = fraction
-        invalidate()
-    }
-
-    private fun fadeIn() {
-        if (visible) return
-        visible = true
-        animateAlpha(1f)
-    }
-
-    private fun fadeOut() {
-        if (!visible || isDragging) return
-        animateAlpha(0f) { visible = false }
-    }
-
-    private fun animateAlpha(target: Float, end: (() -> Unit)? = null) {
-        fadeAnimator?.cancel()
-        fadeAnimator = ValueAnimator.ofFloat(alpha, target).apply {
-            duration = if (target == 1f) 160 else 260
-            interpolator = DecelerateInterpolator()
-            addUpdateListener { valueAnimator ->
-                this@FelicityFastScroller.alpha = valueAnimator.animatedValue as Float
-                invalidate()
-            }
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    end?.invoke()
-                }
-            })
-            start()
-        }
+    override fun onDetachedFromWindow() {
+        recyclerRef = null
+        fadeScaleAnimator?.cancel()
+        super.onDetachedFromWindow()
     }
 
     private fun dp(value: Float): Float {
@@ -365,13 +317,31 @@ class FelicityFastScroller @JvmOverloads constructor(
         return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, metrics)
     }
 
+    private fun sp(value: Float): Float {
+        val metrics: DisplayMetrics = resources.displayMetrics
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, value, metrics)
+    }
+
+    fun setColumnCounts(portrait: Int, landscape: Int) {
+        portraitColumns = portrait.coerceAtLeast(1)
+        landscapeColumns = landscape.coerceAtLeast(1)
+        updateColumnsForOrientation()
+        rows = if (positions.isEmpty()) 0 else ceil(positions.size / columns.toFloat()).toInt()
+        computeRects(width, height)
+        invalidate()
+    }
+
+    private fun updateColumnsForOrientation() {
+        val orientation = resources.configuration.orientation
+        columns = if (orientation == Configuration.ORIENTATION_LANDSCAPE) landscapeColumns else portraitColumns
+    }
+
     companion object {
-        /** Convenient helper to attach a new fast scroller to a given RecyclerView. */
         fun attach(recyclerView: RecyclerView): FelicityFastScroller {
             val ctx = recyclerView.context
-            val scroller = FelicityFastScroller(ctx)
-            scroller.attachTo(recyclerView)
-            return scroller
+            val nav = FelicityFastScroller(ctx)
+            nav.attachTo(recyclerView)
+            return nav
         }
     }
 }

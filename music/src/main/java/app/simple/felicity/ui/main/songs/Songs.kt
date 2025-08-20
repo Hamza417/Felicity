@@ -12,6 +12,7 @@ import app.simple.felicity.core.R
 import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.databinding.AdapterSongHeaderBinding
 import app.simple.felicity.databinding.FragmentSongsBinding
+import app.simple.felicity.decorations.fastscroll.FelicityFastScroller
 import app.simple.felicity.decorations.itemanimators.FlipItemAnimator
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.decorations.views.AppHeader
@@ -49,6 +50,13 @@ class Songs : MediaFragment() {
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) {
+            val nav = FelicityFastScroller.attach(binding.recyclerView)
+            nav.setPositions(provideScrollPositionDataBasedOnSortStyle(it))
+
+            nav.setOnPositionSelectedListener { position ->
+                binding.recyclerView.scrollToPosition(position.index)
+            }
+
             if (songsAdapter.isNull()) {
                 songsAdapter = SongsAdapter(it)
                 binding.recyclerView.adapter = songsAdapter
@@ -102,12 +110,73 @@ class Songs : MediaFragment() {
             headerBinding.sortOrder.setOnClickListener {
                 childFragmentManager.showSongsSort()
             }
+
+            headerBinding.scroll.setOnClickListener {
+                nav.show()
+            }
         }
     }
 
     override fun onSong(song: Song) {
         super.onSong(song)
         songsAdapter?.currentlyPlayingSong = song
+    }
+
+    private fun provideScrollPositionDataBasedOnSortStyle(songs: List<Song>): List<FelicityFastScroller.Position> {
+        return when (SongsPreferences.getSongSort()) {
+            SongsPreferences.BY_TITLE -> {
+                val firstAlphabetToIndex = linkedMapOf<Char, Int>()
+                songs.forEachIndexed { index, song ->
+                    song.title?.firstOrNull()?.uppercaseChar()?.let { firstChar ->
+                        if (firstChar.isLetter() && !firstAlphabetToIndex.containsKey(firstChar)) {
+                            firstAlphabetToIndex[firstChar] = index
+                        }
+                    }
+                }
+                firstAlphabetToIndex.map { (char, index) ->
+                    FelicityFastScroller.Position(char.toString(), index)
+                }
+            }
+            SongsPreferences.BY_ARTIST -> {
+                val firstAlphabetToIndex = linkedMapOf<Char, Int>()
+                songs.forEachIndexed { index, song ->
+                    song.artist?.firstOrNull()?.uppercaseChar()?.let { firstChar ->
+                        if (firstChar.isLetter() && !firstAlphabetToIndex.containsKey(firstChar)) {
+                            firstAlphabetToIndex[firstChar] = index
+                        }
+                    }
+                }
+                firstAlphabetToIndex.map { (char, index) ->
+                    FelicityFastScroller.Position(char.toString(), index)
+                }
+            }
+            SongsPreferences.BY_ALBUM -> {
+                val firstAlphabetToIndex = linkedMapOf<Char, Int>()
+                songs.forEachIndexed { index, song ->
+                    song.album?.firstOrNull()?.uppercaseChar()?.let { firstChar ->
+                        if (firstChar.isLetter() && !firstAlphabetToIndex.containsKey(firstChar)) {
+                            firstAlphabetToIndex[firstChar] = index
+                        }
+                    }
+                }
+                firstAlphabetToIndex.map { (char, index) ->
+                    FelicityFastScroller.Position(char.toString(), index)
+                }
+            }
+            else -> {
+                val firstAlphabetToIndex = linkedMapOf<Char, Int>()
+                songs.forEachIndexed { index, song ->
+                    song.title?.firstOrNull()?.uppercaseChar()?.let { firstChar ->
+                        if (firstChar.isLetter() && !firstAlphabetToIndex.containsKey(firstChar)) {
+                            firstAlphabetToIndex[firstChar] = index
+                        }
+                    }
+                }
+                firstAlphabetToIndex.map { (char, index) ->
+                    FelicityFastScroller.Position(char.toString(), index)
+                }
+            }
+        }
     }
 
     companion object {
