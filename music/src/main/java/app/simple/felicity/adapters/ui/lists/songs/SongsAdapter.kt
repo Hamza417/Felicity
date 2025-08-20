@@ -1,10 +1,13 @@
 package app.simple.felicity.adapters.ui.lists.songs
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import androidx.asynclayoutinflater.view.AsyncLayoutInflater
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterSongsBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -12,8 +15,9 @@ import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
 import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
+import java.util.ArrayDeque
 
-class SongsAdapter(initial: List<Song>) :
+class SongsAdapter(initial: List<Song>, preInflate: Int = 0) :
         RecyclerView.Adapter<SongsAdapter.Holder>() {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
@@ -21,8 +25,23 @@ class SongsAdapter(initial: List<Song>) :
 
     private var songs = mutableListOf<Song>().apply { addAll(initial) }
 
+    // Optional async pre-inflation pool
+    private val preInflationPool: SongItemPreInflationPool? =
+        if (preInflate > 0) SongItemPreInflationPool(preInflate) else null
+
     init {
         setHasStableIds(true)
+    }
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        // Start async pre-inflation once we have the parent (needed for proper LayoutParams)
+        preInflationPool?.start(recyclerView)
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView)
+        preInflationPool?.clear()
     }
 
     var currentlyPlayingSong: Song? = null
@@ -31,10 +50,10 @@ class SongsAdapter(initial: List<Song>) :
             field = value
             val newIndex = value?.let { songs.indexOf(it) } ?: -1
             if (newIndex != -1) {
-                notifyItemChanged(newIndex + 1, PAYLOAD_PLAYBACK_STATE)
+                notifyItemChanged(newIndex, PAYLOAD_PLAYBACK_STATE)
             }
             if (oldIndex != -1 && oldIndex != newIndex) {
-                notifyItemChanged(oldIndex + 1, PAYLOAD_PLAYBACK_STATE)
+                notifyItemChanged(oldIndex, PAYLOAD_PLAYBACK_STATE)
             }
             previousIndex = newIndex
         }
@@ -44,7 +63,11 @@ class SongsAdapter(initial: List<Song>) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-        val binding = AdapterSongsBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        // Try to acquire a pre-inflated view; fallback to normal synchronous inflate
+        val view = preInflationPool?.acquire(parent)
+            ?: LayoutInflater.from(parent.context)
+                .inflate(R.layout.adapter_songs, parent, false)
+        val binding = AdapterSongsBinding.bind(view)
         return Holder(binding)
     }
 
@@ -151,5 +174,37 @@ class SongsAdapter(initial: List<Song>) :
 
     companion object {
         private const val PAYLOAD_PLAYBACK_STATE = "payload_playing_state"
+    }
+}
+
+/**
+ * Simple async pre-inflation pool for adapter_songs layout.
+ * - Inflates up to [capacity] item views off the main thread (XML parsing part) using AsyncLayoutInflater.
+ * - Views are acquired in onCreateViewHolder; falls back to synchronous inflate if pool empty or not ready.
+ * NOTE: Complex view hierarchies or binding logic still run on main thread when binding data.
+ */
+private class SongItemPreInflationPool(private val capacity: Int) {
+    private val queue = ArrayDeque<View>()
+
+    @Volatile
+    private var started = false
+
+    fun start(parent: ViewGroup) {
+        if (started) return
+        started = true
+        repeat(capacity) {
+            AsyncLayoutInflater(parent.context).inflate(R.layout.adapter_songs, parent
+            ) { view: View, _: Int, _: ViewGroup? ->
+                synchronized(queue) { queue.addLast(view) }
+            }
+        }
+    }
+
+    fun acquire(@Suppress("UNUSED_PARAMETER") parent: ViewGroup): View? {
+        synchronized(queue) { return if (queue.isEmpty()) null else queue.removeFirst() }
+    }
+
+    fun clear() {
+        synchronized(queue) { queue.clear() }
     }
 }
