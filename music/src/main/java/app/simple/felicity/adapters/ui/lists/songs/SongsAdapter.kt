@@ -136,6 +136,11 @@ class SongsAdapter(initial: List<Song>, preInflate: Int = 0) :
 
                 albumArt.loadSongCover(song)
                 albumArt.transitionName = song.path
+
+                container.setOnLongClickListener {
+                    generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, it)
+                    true
+                }
             }
         }
     }

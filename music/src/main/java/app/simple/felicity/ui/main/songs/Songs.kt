@@ -17,6 +17,7 @@ import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.itemanimators.FlipItemAnimator
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.songs.SongMenu.Companion.showSongMenu
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -73,6 +74,10 @@ class Songs : MediaFragment() {
                 songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                     override fun onSongClicked(songs: List<Song>, position: Int, view: View?) {
                         setMediaItems(songs, position)
+                    }
+
+                    override fun onSongLongClicked(songs: List<Song>, position: Int, view: View?) {
+                        childFragmentManager.showSongMenu(songs[position])
                     }
                 })
             } else {

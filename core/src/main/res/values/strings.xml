@@ -27,7 +27,7 @@
     <string name="ok">OK</string>
     <string name="playlists">Playlists</string>
     <string name="genres">Genres</string>
-    <string name="info">%1$d Songs • %2$s</string>
+    <string name="info">Info</string>
     <string name="shuffle">Shuffle</string>
     <string name="play">Play</string>
     <string name="x_albums">%1$d Albums</string>
@@ -74,4 +74,5 @@
     <string name="artflow">ArtFlow</string>
     <string name="sort_by">Sort By</string>
     <string name="date_modified">Date Modified</string>
+    <string name="lyrics">Lyrics</string>
 </resources>
