@@ -84,7 +84,7 @@ class Songs : MediaFragment() {
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
-            SongsPreferences.SONG_SORT -> {
+            SongsPreferences.SONG_SORT, SongsPreferences.SORTING_STYLE -> {
                 binding.recyclerView.findFirstHolder<SongsAdapter.Header> {
                     it.updateSortStyle()
                 }

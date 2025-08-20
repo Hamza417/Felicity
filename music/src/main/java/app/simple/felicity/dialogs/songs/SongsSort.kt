@@ -61,6 +61,13 @@ class SongsSort : ScopedBottomSheetFragment() {
                 // binding.favorite.id -> SongsPreferences.setSongSort(SongsPreferences.BY_FAVORITE)
             }
         }
+
+        binding.sortingStyleChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            when (checkedIds.firstOrNull()) {
+                binding.normal.id -> SongsPreferences.setSortingStyle(SongsPreferences.ACCENDING)
+                binding.reversed.id -> SongsPreferences.setSortingStyle(SongsPreferences.DESCENDING)
+            }
+        }
     }
 
     companion object {

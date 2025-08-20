@@ -101,9 +101,10 @@
             app:textColorStyle="primary" />
 
         <com.google.android.material.chip.ChipGroup
+            android:id="@+id/sorting_style_chip_group"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:checkedChip="@id/title"
+            app:checkedChip="@id/normal"
             app:selectionRequired="true"
             app:singleSelection="true">
 
