@@ -13,6 +13,7 @@ import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.databinding.AdapterSongHeaderBinding
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.decorations.fastscroll.FelicityFastScroller
+import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.itemanimators.FlipItemAnimator
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.decorations.views.AppHeader
@@ -48,6 +49,7 @@ class Songs : MediaFragment() {
         binding.recyclerView.itemAnimator = FlipItemAnimator()
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
+        SectionedFastScroller.attach(binding.recyclerView)
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) {
             val nav = FelicityFastScroller.attach(binding.recyclerView)
