@@ -176,6 +176,18 @@ class Songs : MediaFragment() {
                     FelicityFastScroller.Position(char.toString(), index)
                 }
             }
+            SongsPreferences.BY_YEAR -> {
+                val firstAlphabetToIndex = linkedMapOf<String, Int>()
+                songs.forEachIndexed { index, song ->
+                    val key = song.year?.toString()?.takeIf { it.all { ch -> ch.isDigit() } } ?: "#"
+                    if (!firstAlphabetToIndex.containsKey(key)) {
+                        firstAlphabetToIndex[key] = index
+                    }
+                }
+                firstAlphabetToIndex.map { (year, index) ->
+                    FelicityFastScroller.Position(year, index)
+                }
+            }
             else -> {
                 val firstAlphabetToIndex = linkedMapOf<Char, Int>()
                 songs.forEachIndexed { index, song ->
