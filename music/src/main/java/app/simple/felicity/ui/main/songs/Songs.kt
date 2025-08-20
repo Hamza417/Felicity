@@ -1,10 +1,12 @@
 package app.simple.felicity.ui.main.songs
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
+import androidx.recyclerview.widget.LinearLayoutManager
 import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentSongsBinding
@@ -13,7 +15,9 @@ import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Song
+import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 
 class Songs : MediaFragment() {
@@ -34,32 +38,55 @@ class Songs : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        binding.recyclerView.addItemDecoration(SpacingItemDecoration(48, true))
+        binding.recyclerView.itemAnimator = FlipItemAnimator()
+
         songsViewModel.getSongs().observe(viewLifecycleOwner) {
-            songsAdapter = SongsAdapter(it)
-            binding.recyclerView.addItemDecoration(SpacingItemDecoration(48, true))
-            binding.recyclerView.adapter = songsAdapter
-            binding.recyclerView.itemAnimator = FlipItemAnimator()
+            if (songsAdapter.isNull() || true) {
+                songsAdapter = SongsAdapter(it)
+                binding.recyclerView.adapter = songsAdapter
 
-            songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
-                override fun onSongClicked(songs: List<Song>, position: Int, view: View?) {
-                    setMediaItems(songs, position)
-                }
+                songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
+                    override fun onSongClicked(songs: List<Song>, position: Int, view: View?) {
+                        setMediaItems(songs, position)
+                    }
 
-                override fun onMenuClicked(view: View) {
-                    super.onMenuClicked(view)
-                    parentFragmentManager.showSongsMenu()
-                }
+                    override fun onMenuClicked(view: View) {
+                        super.onMenuClicked(view)
+                        parentFragmentManager.showSongsMenu()
+                    }
 
-                override fun onFilterClicked(view: View) {
-                    childFragmentManager.showSongsSort()
-                }
-            })
+                    override fun onFilterClicked(view: View) {
+
+                    }
+
+                    override fun onSortClicked(view: View) {
+                        childFragmentManager.showSongsSort()
+                    }
+                })
+            } else {
+                val layoutManager = binding.recyclerView.layoutManager as LinearLayoutManager
+                val savedPosition = layoutManager.findFirstVisibleItemPosition()
+
+                songsAdapter?.updateSongs(it)
+
+                binding.recyclerView.scrollToPosition(savedPosition)
+            }
         }
     }
 
     override fun onSong(song: Song) {
         super.onSong(song)
         songsAdapter?.currentlyPlayingSong = song
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            SongsPreferences.SONG_SORT -> {
+                // songsAdapter?.notifyItemChanged(0)
+            }
+        }
     }
 
     companion object {

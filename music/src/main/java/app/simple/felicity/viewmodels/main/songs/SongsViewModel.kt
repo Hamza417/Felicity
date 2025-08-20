@@ -1,6 +1,7 @@
 package app.simple.felicity.viewmodels.main.songs
 
 import android.app.Application
+import android.content.SharedPreferences
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.LiveData
@@ -8,8 +9,11 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.repository.repositories.SongRepository
+import app.simple.felicity.repository.sort.SongSort.sort
+import app.simple.felicity.repository.sort.SongSort.sorted
 import app.simple.felicity.repository.utils.SongUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -45,7 +49,7 @@ class SongsViewModel @Inject constructor(
 
     private fun loadData() {
         viewModelScope.launch(Dispatchers.IO) {
-            val songsList = songRepository.fetchSongs()
+            val songsList = songRepository.fetchSongs().sorted()
             songs.postValue(songsList)
             Log.d(TAG, "loadData: ${songsList.size} songs loaded")
         }
@@ -53,7 +57,7 @@ class SongsViewModel @Inject constructor(
 
     private fun loadSongAndArt() {
         viewModelScope.launch(Dispatchers.IO) {
-            val songs = songRepository.fetchSongs()
+            val songs = songRepository.fetchSongs().sort()
             val songArtMap = mutableMapOf<Uri, Song>()
 
             for (i in songs.indices) {
@@ -76,6 +80,18 @@ class SongsViewModel @Inject constructor(
 
     fun getCarouselPosition(): Int {
         return carouselPosition
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, s: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, s)
+        when (s) {
+            SongsPreferences.SONG_SORT -> {
+                loadData()
+            }
+            SongsPreferences.SORTING_STYLE -> {
+                loadData()
+            }
+        }
     }
 
     companion object {

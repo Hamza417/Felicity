@@ -49,6 +49,10 @@ public interface GeneralAdapterCallbacks {
     
     }
     
+    default void onSortClicked(@NonNull View view) {
+    
+    }
+    
     
     default void onSearchClicked(@NonNull View view) {
     

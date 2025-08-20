@@ -61,7 +61,7 @@ public class Chip extends com.google.android.material.chip.Chip {
         ViewUtils.INSTANCE.addShadow(this, ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
         setRippleColor(ColorStateList.valueOf(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor()));
         setChipStrokeColor(ColorStateList.valueOf(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor()));
-        setChipStrokeWidth(1);
+        setChipStrokeWidth(2);
     }
     
     @Override

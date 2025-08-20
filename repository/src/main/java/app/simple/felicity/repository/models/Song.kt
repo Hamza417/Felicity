@@ -25,4 +25,10 @@ data class Song(
         val size: Long,
         val dateAdded: Long,
         val dateModified: Long,
+        val genre: String?,         // Song genre
+        val trackNumber: Int?,      // Track number in album
+        val composer: String?,      // Composer name
+        val year: Int?,             // Year of release
+        val bitrate: Int?,          // Audio bitrate
+        val isMusic: Boolean = true // Is this file music
 ) : Parcelable

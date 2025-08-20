@@ -96,22 +96,22 @@ public class GenreRepository @Inject constructor(private val context: Context) {
                 val path = it.getString(dataCol)
                 val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId)
 
-                songs.add(
-                        Song(
-                                id = songId,
-                                title = it.getString(titleCol),
-                                artist = it.getString(artistCol),
-                                album = it.getString(albumCol),
-                                albumId = albumId,
-                                artistId = it.getLong(artistIdCol),
-                                uri = uri,
-                                path = path,
-                                duration = it.getLong(durationCol),
-                                size = it.getLong(sizeCol),
-                                dateAdded = it.getLong(dateAddedCol),
-                                dateModified = it.getLong(dateModifiedCol)
-                        )
-                )
+                //                songs.add(
+                //                        Song(
+                //                                id = songId,
+                //                                title = it.getString(titleCol),
+                //                                artist = it.getString(artistCol),
+                //                                album = it.getString(albumCol),
+                //                                albumId = albumId,
+                //                                artistId = it.getLong(artistIdCol),
+                //                                uri = uri,
+                //                                path = path,
+                //                                duration = it.getLong(durationCol),
+                //                                size = it.getLong(sizeCol),
+                //                                dateAdded = it.getLong(dateAddedCol),
+                //                                dateModified = it.getLong(dateModifiedCol)
+                //                        )
+                //                )
             }
         }
 
