@@ -12,6 +12,7 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.decorations.itemanimators.FlipItemAnimator
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
+import app.simple.felicity.decorations.utils.RecyclerViewUtils.findFirstHolder
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -42,7 +43,7 @@ class Songs : MediaFragment() {
         binding.recyclerView.itemAnimator = FlipItemAnimator()
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) {
-            if (songsAdapter.isNull() || true) {
+            if (songsAdapter.isNull()) {
                 songsAdapter = SongsAdapter(it)
                 binding.recyclerView.adapter = songsAdapter
 
@@ -84,7 +85,9 @@ class Songs : MediaFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             SongsPreferences.SONG_SORT -> {
-                // songsAdapter?.notifyItemChanged(0)
+                binding.recyclerView.findFirstHolder<SongsAdapter.Header> {
+                    it.updateSortStyle()
+                }
             }
         }
     }

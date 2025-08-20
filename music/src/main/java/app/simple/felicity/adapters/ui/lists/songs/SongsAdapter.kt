@@ -1,9 +1,9 @@
 package app.simple.felicity.adapters.ui.lists.songs
 
-import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListUpdateCallback
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.core.R
@@ -23,26 +23,24 @@ class SongsAdapter(initial: List<Song>) :
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
     private var previousIndex = -1
 
-    private val songs = mutableListOf<Song>().apply { addAll(initial) }
+    private var songs = mutableListOf<Song>().apply { addAll(initial) }
 
     init {
         setHasStableIds(true)
     }
 
     var currentlyPlayingSong: Song? = null
-        @SuppressLint("NotifyDataSetChanged")
         set(value) {
+            val oldIndex = previousIndex
             field = value
-            val idx = songs.indexOf(value)
-            if (idx != -1) {
-                notifyItemChanged(idx + 1) // +1 for header
-                if (previousIndex != -1 && previousIndex != idx) {
-                    notifyItemChanged(previousIndex + 1)
-                }
-                previousIndex = idx
-            } else {
-                notifyDataSetChanged() // Song not found; full refresh fallback
+            val newIndex = value?.let { songs.indexOf(it) } ?: -1
+            if (newIndex != -1) {
+                notifyItemChanged(newIndex + 1, PAYLOAD_PLAYBACK_STATE)
             }
+            if (oldIndex != -1 && oldIndex != newIndex) {
+                notifyItemChanged(oldIndex + 1, PAYLOAD_PLAYBACK_STATE)
+            }
+            previousIndex = newIndex
         }
 
     override fun getItemId(position: Int): Long {
@@ -61,28 +59,24 @@ class SongsAdapter(initial: List<Song>) :
 
     override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
         if (holder is Holder) {
-            holder.bind(songs[position - 1])
+            val song = songs[position - 1]
+            holder.bind(song)
 
             holder.binding.container.setOnClickListener {
                 generalAdapterCallbacks?.onSongClicked(songs, holder.bindingAdapterPosition - 1, it)
             }
 
-            holder.binding.container.setDefaultBackground(currentlyPlayingSong == songs[position - 1])
-        } else if (holder is Header) {
-            holder.binding.sortStyle.text = when (SongsPreferences.getSongSort()) {
-                SongsPreferences.BY_TITLE -> holder.binding.root.context.getString(R.string.title)
-                SongsPreferences.BY_ARTIST -> holder.binding.root.context.getString(R.string.artist)
-                SongsPreferences.BY_ALBUM -> holder.binding.root.context.getString(R.string.album)
-                SongsPreferences.PATH -> holder.binding.root.context.getString(R.string.path)
-                SongsPreferences.BY_DATE_ADDED -> holder.binding.root.context.getString(R.string.date_added)
-                SongsPreferences.BY_DATE_MODIFIED -> holder.binding.root.context.getString(R.string.date_added)
-                SongsPreferences.BY_DURATION -> holder.binding.root.context.getString(R.string.duration)
-                SongsPreferences.BY_YEAR -> holder.binding.root.context.getString(R.string.year)
-                SongsPreferences.BY_TRACK_NUMBER -> holder.binding.root.context.getString(R.string.track_number)
-                SongsPreferences.BY_COMPOSER -> holder.binding.root.context.getString(R.string.composer)
-                else -> holder.binding.root.context.getString(R.string.unknown)
-            }
+            holder.binding.container.setDefaultBackground(currentlyPlayingSong == song)
         }
+    }
+
+    override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int, payloads: MutableList<Any>) {
+        if (payloads.contains(PAYLOAD_PLAYBACK_STATE) && holder is Holder) {
+            val song = songs[position - 1]
+            holder.binding.container.setDefaultBackground(currentlyPlayingSong == song)
+            return
+        }
+        super.onBindViewHolder(holder, position, payloads)
     }
 
     override fun getItemCount(): Int = songs.size + 1
@@ -105,24 +99,27 @@ class SongsAdapter(initial: List<Song>) :
         this.generalAdapterCallbacks = callbacks
     }
 
-    // DiffUtil update method
+    /**
+     * Update songs using DiffUtil while keeping header fixed at position 0.
+     * All diff callback indices are offset by +1 when notifying this adapter,
+     * so header never animates or shifts.
+     */
     fun updateSongs(newSongs: List<Song>) {
-        val diffCallback = object : DiffUtil.Callback() {
-            override fun getOldListSize(): Int = songs.size
-            override fun getNewListSize(): Int = newSongs.size
-            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
-                songs[oldItemPosition].id == newSongs[newItemPosition].id
+        if (songs === newSongs) return // Same instance, skip
+        val diffResult = DiffUtil.calculateDiff(SongsDiffCallback(songs, newSongs))
+        songs = newSongs.toMutableList()
+        diffResult.dispatchUpdatesTo(HeaderAwareListUpdateCallback(this))
 
-            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
-                songs[oldItemPosition] == newSongs[newItemPosition]
-        }
-        val diffResult = DiffUtil.calculateDiff(diffCallback)
-        songs.clear()
-        songs.addAll(newSongs)
-        diffResult.dispatchUpdatesTo(this)
-        // Recompute previousIndex in new list for currently playing song
+        // Re-highlight playing song if present in new list
         currentlyPlayingSong?.let { cps ->
-            previousIndex = songs.indexOf(cps)
+            val newIdx = songs.indexOf(cps)
+            if (newIdx != -1) {
+                notifyItemChanged(newIdx + 1, PAYLOAD_PLAYBACK_STATE)
+            } else {
+                // Playing song disappeared; clear previous highlight
+                if (previousIndex != -1) notifyItemChanged(previousIndex + 1, PAYLOAD_PLAYBACK_STATE)
+                previousIndex = -1
+            }
         }
     }
 
@@ -141,21 +138,63 @@ class SongsAdapter(initial: List<Song>) :
 
     inner class Header(val binding: AdapterSongHeaderBinding) : VerticalListViewHolder(binding.root) {
         init {
-            binding.menu.setOnClickListener {
-                generalAdapterCallbacks?.onMenuClicked(binding.menu)
-            }
+            binding.menu.setOnClickListener { generalAdapterCallbacks?.onMenuClicked(binding.menu) }
+            binding.filter.setOnClickListener { generalAdapterCallbacks?.onFilterClicked(binding.filter) }
+            binding.sortStyle.setOnClickListener { generalAdapterCallbacks?.onSortClicked(binding.sortStyle) }
+            updateSortStyle()
+        }
 
-            binding.filter.setOnClickListener {
-                generalAdapterCallbacks?.onFilterClicked(binding.filter)
+        fun updateSortStyle() {
+            binding.sortStyle.text = when (SongsPreferences.getSongSort()) {
+                SongsPreferences.BY_TITLE -> binding.root.context.getString(R.string.title)
+                SongsPreferences.BY_ARTIST -> binding.root.context.getString(R.string.artist)
+                SongsPreferences.BY_ALBUM -> binding.root.context.getString(R.string.album)
+                SongsPreferences.PATH -> binding.root.context.getString(R.string.path)
+                SongsPreferences.BY_DATE_ADDED -> binding.root.context.getString(R.string.date_added)
+                SongsPreferences.BY_DATE_MODIFIED -> binding.root.context.getString(R.string.date_added)
+                SongsPreferences.BY_DURATION -> binding.root.context.getString(R.string.duration)
+                SongsPreferences.BY_YEAR -> binding.root.context.getString(R.string.year)
+                SongsPreferences.BY_TRACK_NUMBER -> binding.root.context.getString(R.string.track_number)
+                SongsPreferences.BY_COMPOSER -> binding.root.context.getString(R.string.composer)
+                else -> binding.root.context.getString(R.string.unknown)
             }
+        }
+    }
 
-            binding.sortStyle.setOnClickListener {
-                generalAdapterCallbacks?.onSortClicked(binding.sortStyle)
-            }
+    private class SongsDiffCallback(
+            private val old: List<Song>,
+            private val new: List<Song>
+    ) : DiffUtil.Callback() {
+        override fun getOldListSize(): Int = old.size
+        override fun getNewListSize(): Int = new.size
+        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+            old[oldItemPosition].id == new[newItemPosition].id
+
+        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+            old[oldItemPosition] == new[newItemPosition]
+    }
+
+    /** Offsets list diff updates by +1 to account for fixed header at position 0 */
+    private class HeaderAwareListUpdateCallback(private val adapter: SongsAdapter) : ListUpdateCallback {
+        override fun onInserted(position: Int, count: Int) {
+            adapter.notifyItemRangeInserted(position + 1, count)
+        }
+
+        override fun onRemoved(position: Int, count: Int) {
+            adapter.notifyItemRangeRemoved(position + 1, count)
+        }
+
+        override fun onMoved(fromPosition: Int, toPosition: Int) {
+            adapter.notifyItemMoved(fromPosition + 1, toPosition + 1)
+        }
+
+        override fun onChanged(position: Int, count: Int, payload: Any?) {
+            adapter.notifyItemRangeChanged(position + 1, count, payload)
         }
     }
 
     companion object {
         private const val HEADER_ITEM_ID = Long.MIN_VALUE // Unique stable ID for header
+        private const val PAYLOAD_PLAYBACK_STATE = "payload_playing_state"
     }
 }

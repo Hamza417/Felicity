@@ -91,4 +91,14 @@ object RecyclerViewUtils {
             action(holder)
         }
     }
+
+    inline fun <reified T : RecyclerView.ViewHolder> RecyclerView.findFirstHolder(action: (T) -> Unit) {
+        for (i in 0 until childCount) {
+            val holder = getChildViewHolder(getChildAt(i))
+            if (holder is T) {
+                action(holder)
+                break
+            }
+        }
+    }
 }

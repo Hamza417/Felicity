@@ -229,7 +229,21 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
             e.printStackTrace()
         }
 
-        super.setAdapter(adapter)
+        if (this.adapter != null) {
+            this.clearAnimation()
+            this.animate()
+                .alpha(0F)
+                .setDuration(300L)
+                .withEndAction {
+                    super.setAdapter(adapter)
+                    this.animate()
+                        .alpha(1f)
+                        .setDuration(300L)
+                        .start()
+                }
+        } else {
+            super.setAdapter(adapter)
+        }
 
         if (!manuallyAnimated && isInEditMode.invert()) {
             if (!AccessibilityPreferences.isAnimationReduced()) {
