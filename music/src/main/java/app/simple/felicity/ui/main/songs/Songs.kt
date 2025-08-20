@@ -55,6 +55,13 @@ class Songs : MediaFragment() {
 
             nav.setOnPositionSelectedListener { position ->
                 binding.recyclerView.scrollToPosition(position.index)
+                if (position.index > 10) {
+                    binding.appHeader.hideHeader()
+                    binding.appHeader.resumeAutoBehavior()
+                } else {
+                    binding.appHeader.showHeader()
+                    binding.appHeader.resumeAutoBehavior()
+                }
             }
 
             if (songsAdapter.isNull()) {
@@ -125,16 +132,20 @@ class Songs : MediaFragment() {
     private fun provideScrollPositionDataBasedOnSortStyle(songs: List<Song>): List<FelicityFastScroller.Position> {
         return when (SongsPreferences.getSongSort()) {
             SongsPreferences.BY_TITLE -> {
-                val firstAlphabetToIndex = linkedMapOf<Char, Int>()
+                val firstAlphabetToIndex = linkedMapOf<String, Int>()
                 songs.forEachIndexed { index, song ->
-                    song.title?.firstOrNull()?.uppercaseChar()?.let { firstChar ->
-                        if (firstChar.isLetter() && !firstAlphabetToIndex.containsKey(firstChar)) {
-                            firstAlphabetToIndex[firstChar] = index
-                        }
+                    val firstChar = song.title?.firstOrNull()?.uppercaseChar()
+                    val key = if (firstChar != null && firstChar.isLetter()) {
+                        firstChar.toString()
+                    } else {
+                        "#"
+                    }
+                    if (!firstAlphabetToIndex.containsKey(key)) {
+                        firstAlphabetToIndex[key] = index
                     }
                 }
                 firstAlphabetToIndex.map { (char, index) ->
-                    FelicityFastScroller.Position(char.toString(), index)
+                    FelicityFastScroller.Position(char, index)
                 }
             }
             SongsPreferences.BY_ARTIST -> {

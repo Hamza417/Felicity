@@ -46,6 +46,7 @@ class AppHeader @JvmOverloads constructor(
     private var originalRecyclerPaddingTop: Int = -1
     private var lastAppliedHeaderHeight: Int = -1
     private var adjustRecyclerPadding: Boolean = true
+    private var manualOverride = false // when true, scroll-based behavior is suspended
 
     private val layoutChangeListener = OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
         maybeApplyRecyclerPadding()
@@ -54,6 +55,7 @@ class AppHeader @JvmOverloads constructor(
     private val scrollListener = object : RecyclerView.OnScrollListener() {
         override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
             if (dy == 0) return
+            if (manualOverride) return // ignore scroll-based hiding while manually overridden
             when (scrollMode) {
                 ScrollMode.PINNED -> Unit
                 ScrollMode.HIDE_ON_SCROLL -> handleHideOnScroll(dy)
@@ -239,4 +241,64 @@ class AppHeader @JvmOverloads constructor(
 
     /** Ratio [0f,1f] of how much header is hidden (only meaningful for HIDE_ON_SCROLL). */
     fun hiddenRatio(): Float = if (height > 0) accumulatedScroll / height.toFloat() else 0f
+
+    /** Manually hide the header. If [override] true, disables automatic scroll reactions until resumed. */
+    fun hideHeader(animated: Boolean = true, override: Boolean = true) {
+        val action = {
+            accumulatedScroll = height
+            isHidden = true
+            translationY = -height.toFloat()
+        }
+        if (height == 0) { // Not laid out yet
+            post { hideHeader(animated, override) }
+            return
+        }
+        if (animated) {
+            animate().translationY(-height.toFloat())
+                .setDuration(180L)
+                .withEndAction(action)
+                .start()
+        } else {
+            action()
+        }
+        if (override) manualOverride = true
+    }
+
+    /** Manually show the header. If [override] true, keeps automatic behavior suspended until resumed. */
+    fun showHeader(animated: Boolean = true, override: Boolean = true) {
+        val action = {
+            accumulatedScroll = 0
+            isHidden = false
+            translationY = 0f
+        }
+        if (animated) {
+            animate().translationY(0f)
+                .setDuration(180L)
+                .withEndAction(action)
+                .start()
+        } else {
+            action()
+        }
+        if (override) manualOverride = true
+    }
+
+    /** Toggle header visibility manually (always sets manual override). */
+    fun toggleHeader(animated: Boolean = true) {
+        if (isHidden) showHeader(animated, override = true) else hideHeader(animated, override = true)
+    }
+
+    /** Resume automatic scroll-based behavior. Optionally reset position. */
+    fun resumeAutoBehavior(reset: Boolean = false) {
+        manualOverride = false
+        if (reset) {
+            when (scrollMode) {
+                ScrollMode.HIDE_ON_SCROLL, ScrollMode.SCROLL_WITH_CONTENT -> {
+                    accumulatedScroll = 0
+                    isHidden = false
+                    translationY = 0f
+                }
+                else -> Unit
+            }
+        }
+    }
 }
