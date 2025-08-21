@@ -1,5 +1,6 @@
 package app.simple.felicity.adapters.preference
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -23,8 +24,7 @@ class AdapterPreference(private val data: List<Preference>) : RecyclerView.Adapt
         holder.binding.description.text = holder.context.getString(data[position].description)
         holder.binding.icon.setImageResource(data[position].icon)
 
-        holder.binding.title.visibility = if (titlesVisible) View.VISIBLE else View.GONE
-        holder.binding.description.visibility = if (titlesVisible) View.VISIBLE else View.GONE
+        holder.binding.textContainer.visibility = if (titlesVisible) View.VISIBLE else View.GONE
 
         holder.binding.container.setOnClickListener {
             callbacks?.onPreferenceClicked(data[position], position, holder.binding.container)
@@ -45,6 +45,7 @@ class AdapterPreference(private val data: List<Preference>) : RecyclerView.Adapt
         this.callbacks = callbacks
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     fun setTitlesVisible(visible: Boolean) {
         if (titlesVisible != visible) {
             titlesVisible = visible

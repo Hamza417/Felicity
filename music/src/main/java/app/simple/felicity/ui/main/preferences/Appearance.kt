@@ -5,9 +5,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import app.simple.felicity.databinding.FragmentPreferenceAppearanceBinding
-import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.extensions.fragments.PreferenceFragment
 
-class Appearance : ScopedFragment() {
+class Appearance : PreferenceFragment() {
 
     private lateinit var binding: FragmentPreferenceAppearanceBinding
 

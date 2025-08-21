@@ -8,9 +8,9 @@ import android.widget.LinearLayout
 import androidx.activity.addCallback
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.viewModels
+import app.simple.felicity.R
 import app.simple.felicity.adapters.preference.AdapterPreference
 import app.simple.felicity.adapters.preference.AdapterPreference.Companion.AdapterPreferenceCallbacks
-import app.simple.felicity.core.R
 import app.simple.felicity.core.utils.ViewUtils.visible
 import app.simple.felicity.databinding.FragmentPreferencesBinding
 import app.simple.felicity.databinding.HeaderPreferencesBinding
@@ -28,13 +28,18 @@ class Preferences : ScopedFragment() {
 
     private val preferencesViewModel: PreferencesViewModel by viewModels({ requireActivity() })
 
+    private var lastOpenedTag: String? = null
+
     private val backStackChangedListener = FragmentManager.OnBackStackChangedListener {
         val hasChild = childFragmentManager.backStackEntryCount > 0
         if (hasChild) {
             hideTitles()
         } else {
             showTitles()
+            // Reset lastOpenedTag when all children are popped so user can reopen
+            lastOpenedTag = null
         }
+
         updateWeights(hasChild)
     }
 
@@ -59,9 +64,19 @@ class Preferences : ScopedFragment() {
                     createPreferencePane(preference)
                 }
             })
-        }
 
-        childFragmentManager.addOnBackStackChangedListener(backStackChangedListener)
+            childFragmentManager.addOnBackStackChangedListener(backStackChangedListener)
+
+            // Apply correct weights immediately (e.g., after rotation) based on current back stack
+            val hasChild = childFragmentManager.backStackEntryCount > 0
+            updateWeights(hasChild)
+            if (hasChild) {
+                hideTitles()
+                lastOpenedTag = childFragmentManager.fragments.lastOrNull { it.isVisible }?.tag
+            } else {
+                showTitles()
+            }
+        }
 
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
             if (childFragmentManager.backStackEntryCount > 0) {
@@ -73,23 +88,50 @@ class Preferences : ScopedFragment() {
     }
 
     private fun createPreferencePane(preference: Preference) {
-        when (preference.title) {
-            R.string.appearance -> {
-                childFragmentManager.beginTransaction()
-                    .replace(binding.childContainer.id, Appearance.newInstance(), Appearance.TAG)
-                    .setCustomAnimations(app.simple.felicity.decoration.R.anim.zoom_in,
-                                         app.simple.felicity.decoration.R.anim.zoom_out,
-                                         app.simple.felicity.decoration.R.anim.zoom_in,
-                                         app.simple.felicity.decoration.R.anim.zoom_out)
-                    .addToBackStack(Appearance.TAG)
-                    .commit()
-            }
+        // Map preference to fragment tag & instance
+        val tag = when (preference.title) {
+            R.string.appearance -> Appearance.TAG
+            else -> return // Unsupported for now
+        }
 
-            else -> {
-                // Handle other preferences or show a message
+        // Guard against rapid double taps launching same fragment while transaction pending
+        if (lastOpenedTag == tag) return
+
+        // If the current visible fragment already matches this tag, do nothing
+        val currentVisible = childFragmentManager.fragments.lastOrNull { it.isVisible }
+        if (currentVisible?.tag == tag) return
+
+        // If a back stack entry with same name exists anywhere, pop back to it instead of adding duplicate
+        for (i in 0 until childFragmentManager.backStackEntryCount) {
+            if (childFragmentManager.getBackStackEntryAt(i).name == tag) {
+                childFragmentManager.popBackStack(tag, 0)
+                lastOpenedTag = tag
+                return
             }
         }
+
+        // Reuse existing fragment instance if already added (but not in back stack), else create new
+        val fragment = childFragmentManager.findFragmentByTag(tag) ?: when (preference.title) {
+            R.string.appearance -> Appearance.newInstance()
+            else -> null
+        } ?: return
+
+        lastOpenedTag = tag
+
+        // Perform a replace so only one child fragment occupies the container. Add to back stack with tag name.
+        childFragmentManager.beginTransaction()
+            .setReorderingAllowed(true)
+            .setCustomAnimations(
+                    R.anim.enter_from_right, // enter
+                    R.anim.exit_to_right, // exit
+                    R.anim.enter_from_right, // popEnter
+                    R.anim.exit_to_right // popExit
+            )
+            .replace(binding.childContainer.id, fragment, tag)
+            .addToBackStack(tag)
+            .commit()
     }
+
 
     private fun hideTitles() {
         adapter?.setTitlesVisible(false)
@@ -109,12 +151,18 @@ class Preferences : ScopedFragment() {
         val preferenceParams = preferencePane.layoutParams as LinearLayout.LayoutParams
 
         if (hasChild) {
-            optionsParams.weight = 2f // 20%
-            preferenceParams.weight = 8f // 80%
+            // Options list shrinks to wrap its content; child pane takes remaining space
+            optionsParams.width = LinearLayout.LayoutParams.WRAP_CONTENT
+            optionsParams.weight = 0f
+            preferenceParams.width = 0 // width controlled by weight
+            preferenceParams.weight = 1f
             preferencePane.visibility = View.VISIBLE
         } else {
-            optionsParams.weight = 1f // 100%
-            preferenceParams.weight = 0f // hidden
+            // Options list expands to full width without relying on weight distribution
+            optionsParams.width = LinearLayout.LayoutParams.MATCH_PARENT
+            optionsParams.weight = 0f
+            preferenceParams.width = 0
+            preferenceParams.weight = 0f
             preferencePane.visibility = View.GONE
         }
 
