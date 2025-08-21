@@ -223,14 +223,28 @@ class FelicityFastScroller @JvmOverloads constructor(
 
         val totalGridHeight = rows * cellHeight + (rows - 1) * cellSpacing
         val startY = (h - totalGridHeight) / 2f
-        val gridWidth = columns * cellWidth + totalSpacingX
-        val startX = (w - gridWidth) / 2f
 
         for (i in positions.indices) {
             val row = i / columns
             val col = i % columns
-            val left = startX + col * (cellWidth + cellSpacing)
+
+            // Determine how many items this row actually has
+            val isLastRow = row == rows - 1
+            val remainder = positions.size % columns
+            val itemsInRow = if (isLastRow && remainder != 0) remainder else columns
+
+            // Width for this specific row
+            val rowSpacing = cellSpacing * (itemsInRow - 1)
+            val rowWidth = itemsInRow * cellWidth + rowSpacing
+
+            // Center this row horizontally inside full width (w)
+            val rowStartX = (w - rowWidth) / 2f
             val top = startY + row * (cellHeight + cellSpacing)
+
+            // Column index inside this (possibly partial) row
+            val colInThisRow = if (itemsInRow == columns) col else i - row * columns
+            val left = rowStartX + colInThisRow * (cellWidth + cellSpacing)
+
             positionRects.add(RectF(left, top, left + cellWidth, top + cellHeight))
         }
     }
