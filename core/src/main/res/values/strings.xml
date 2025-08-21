@@ -75,4 +75,8 @@
     <string name="sort_by">Sort By</string>
     <string name="date_modified">Date Modified</string>
     <string name="lyrics">Lyrics</string>
+    <string name="appearance">Appearance</string>
+    <string name="appearance_desc">Change or update appearance of the app\'s interface.</string>
+    <string name="user_interface">User Interface</string>
+    <string name="user_interface_desc">Change user interface of the various panels in the app.</string>
 </resources>

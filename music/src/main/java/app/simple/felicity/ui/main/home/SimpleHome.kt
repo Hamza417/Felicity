@@ -63,7 +63,7 @@ class SimpleHome : MediaFragment() {
                 }
 
                 override fun onMenuClicked(view: View) {
-                    parentFragmentManager.showHomeMenu()
+                    childFragmentManager.showHomeMenu()
                 }
             })
 

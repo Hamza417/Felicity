@@ -47,6 +47,7 @@ class AppHeader @JvmOverloads constructor(
     private var lastAppliedHeaderHeight: Int = -1
     private var adjustRecyclerPadding: Boolean = true
     private var manualOverride = false // when true, scroll-based behavior is suspended
+    private var statusBarPaddingApplied = false
 
     private val layoutChangeListener = OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
         maybeApplyRecyclerPadding()
@@ -80,9 +81,15 @@ class AppHeader @JvmOverloads constructor(
             }
 
             WindowUtil.getStatusBarHeightWhenAvailable(this@AppHeader) { height ->
-                setPadding(paddingLeft, height + paddingTop, paddingRight, paddingBottom)
-                // Header height changed due to inset; reapply list padding
-                post { maybeApplyRecyclerPadding(force = true) }
+                if (statusBarPaddingApplied.not()) {
+                    setPadding(paddingLeft, height + paddingTop, paddingRight, paddingBottom)
+                    // Header height changed due to inset; reapply list padding
+                    post { maybeApplyRecyclerPadding(force = true) }
+                } else {
+                    // Already applied status bar padding, no need to reapply
+                }
+
+                statusBarPaddingApplied = true
             }
         }
         addOnLayoutChangeListener(layoutChangeListener)

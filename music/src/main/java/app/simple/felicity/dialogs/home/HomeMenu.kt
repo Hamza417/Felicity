@@ -59,6 +59,10 @@ class HomeMenu : ScopedBottomSheetFragment() {
                     }
             ).show()
         }
+
+        binding.openAppSettings.setOnClickListener {
+            openAppSettings()
+        }
     }
 
     private fun setHomeInterfaceType() {

@@ -15,6 +15,7 @@ import app.simple.felicity.R
 import app.simple.felicity.core.utils.ViewUtils
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.ui.main.preferences.Preferences
 import com.google.android.material.R.id.design_bottom_sheet
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -134,5 +135,13 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
             .replace(R.id.app_container, fragment, tag)
             .addToBackStack(tag)
             .commit()
+    }
+
+    protected fun openAppSettings() {
+        try {
+            openFragmentSlide(Preferences.newInstance(), Preferences.TAG)
+        } catch (e: Exception) {
+            Log.e("ScopedBottomSheetFragment", "openAppSettings: ${e.message}")
+        }
     }
 }
