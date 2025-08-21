@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import androidx.recyclerview.widget.LinearLayoutManager
 import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.core.R
@@ -23,7 +22,6 @@ import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Song
-import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 
@@ -67,27 +65,18 @@ class Songs : MediaFragment() {
                 }
             }
 
-            if (songsAdapter.isNull()) {
-                songsAdapter = SongsAdapter(it)
-                binding.recyclerView.adapter = songsAdapter
+            songsAdapter = SongsAdapter(it)
+            binding.recyclerView.adapter = songsAdapter
 
-                songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
-                    override fun onSongClicked(songs: List<Song>, position: Int, view: View?) {
-                        setMediaItems(songs, position)
-                    }
+            songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
+                override fun onSongClicked(songs: List<Song>, position: Int, view: View?) {
+                    setMediaItems(songs, position)
+                }
 
-                    override fun onSongLongClicked(songs: List<Song>, position: Int, view: View?) {
-                        childFragmentManager.showSongMenu(songs[position])
-                    }
-                })
-            } else {
-                val layoutManager = binding.recyclerView.layoutManager as LinearLayoutManager
-                val savedPosition = layoutManager.findFirstVisibleItemPosition()
-
-                songsAdapter?.updateSongs(it)
-
-                binding.recyclerView.scrollToPosition(savedPosition)
-            }
+                override fun onSongLongClicked(songs: List<Song>, position: Int, view: View?) {
+                    childFragmentManager.showSongMenu(songs[position])
+                }
+            })
 
             headerBinding.sortStyle.text = when (SongsPreferences.getSongSort()) {
                 SongsPreferences.BY_TITLE -> binding.root.context.getString(R.string.title)
@@ -103,7 +92,7 @@ class Songs : MediaFragment() {
                 else -> binding.root.context.getString(R.string.unknown)
             }
 
-            headerBinding.count.text = it.size.toString()
+            headerBinding.count.text = getString(R.string.x_songs, it.size)
 
             headerBinding.sortOrder.text = when (SongsPreferences.getSortingStyle()) {
                 SongsPreferences.ACCENDING -> binding.root.context.getString(R.string.normal)

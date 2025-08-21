@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
+    android:animateLayoutChanges="true"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     tools:ignore="RtlSymmetry">
@@ -51,6 +52,7 @@
         android:paddingHorizontal="@dimen/padding_15"
         android:scrollbars="none"
         android:fadingEdge="horizontal"
+        android:animateLayoutChanges="true"
         android:requiresFadingEdge="horizontal"
         android:fadingEdgeLength="@dimen/padding_20"
         android:layout_height="wrap_content">
@@ -58,6 +60,7 @@
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:animateLayoutChanges="true"
             android:orientation="horizontal">
 
             <app.simple.felicity.decorations.ripple.DynamicRippleTextView
@@ -66,8 +69,8 @@
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:padding="@dimen/padding_5"
-                android:drawableStart="@drawable/ic_song"
-                android:drawablePadding="@dimen/padding_10"
+                android:drawableStart="@drawable/ic_song_16dp"
+                android:drawablePadding="@dimen/padding_5"
                 android:textSize="@dimen/text_size_14"
                 app:appFontStyle="bold"
                 app:drawableTintStyle="accent"
@@ -80,8 +83,8 @@
                 android:gravity="center_vertical"
                 android:padding="@dimen/padding_5"
                 android:layout_marginStart="@dimen/padding_10"
-                android:drawableStart="@drawable/ic_hourglass_20dp"
-                android:drawablePadding="@dimen/padding_10"
+                android:drawableStart="@drawable/ic_time_16dp"
+                android:drawablePadding="@dimen/padding_5"
                 android:textSize="@dimen/text_size_14"
                 app:appFontStyle="bold"
                 app:drawableTintStyle="accent"
@@ -93,8 +96,8 @@
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:padding="@dimen/padding_5"
-                android:drawableStart="@drawable/ic_filter"
-                android:drawablePadding="@dimen/padding_10"
+                android:drawableStart="@drawable/ic_alphabet_16dp"
+                android:drawablePadding="@dimen/padding_5"
                 android:textSize="@dimen/text_size_14"
                 android:layout_marginStart="@dimen/padding_10"
                 app:appFontStyle="bold"
@@ -108,8 +111,8 @@
                 android:gravity="center_vertical"
                 android:padding="@dimen/padding_5"
                 android:layout_marginStart="@dimen/padding_10"
-                android:drawableStart="@drawable/ic_sort"
-                android:drawablePadding="@dimen/padding_10"
+                android:drawableStart="@drawable/ic_order_16dp"
+                android:drawablePadding="@dimen/padding_5"
                 android:textSize="@dimen/text_size_14"
                 app:appFontStyle="bold"
                 app:drawableTintStyle="accent"
