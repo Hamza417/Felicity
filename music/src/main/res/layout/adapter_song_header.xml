@@ -24,17 +24,17 @@
             app:textColorStyle="primary" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/scroll"
+            android:layout_gravity="center_vertical"
+            android:layout_width="@dimen/button_size"
+            android:src="@drawable/ic_double_arrow_right"
+            android:layout_height="@dimen/button_size" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/search"
             android:layout_gravity="center_vertical"
             android:layout_width="@dimen/button_size"
             android:src="@drawable/ic_search"
-            android:layout_height="@dimen/button_size" />
-
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-            android:id="@+id/scroll"
-            android:layout_gravity="center_vertical"
-            android:layout_width="@dimen/button_size"
-            android:src="@drawable/ic_alphabet"
             android:layout_height="@dimen/button_size" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton

@@ -100,7 +100,7 @@ class Songs : MediaFragment() {
                 else -> binding.root.context.getString(R.string.unknown)
             }
 
-            headerBinding.hours.text = it.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
+            headerBinding.hours.text = it.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
 
             headerBinding.menu.setOnClickListener {
                 childFragmentManager.showSongsMenu()
