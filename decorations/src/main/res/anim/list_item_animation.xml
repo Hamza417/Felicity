@@ -11,9 +11,9 @@
         android:toXScale="1"
         android:toYScale="1" />
 
-    <!--    <translate-->
-    <!--        android:fromYDelta="200"-->
-    <!--        android:toYDelta="0" />-->
+    <translate
+        android:fromYDelta="200"
+        android:toYDelta="0" />
 
     <alpha
         android:fromAlpha="0"

@@ -10,7 +10,7 @@ import app.simple.felicity.databinding.AdapterHeaderHomeBinding
 import app.simple.felicity.databinding.AdapterHomeSimpleBinding
 import app.simple.felicity.decorations.overscroll.RecyclerViewUtils
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.models.Element
+import app.simple.felicity.viewmodels.main.home.SimpleHomeViewModel.Companion.Element
 
 class AdapterSimpleHome(private val data: List<Element>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
@@ -40,9 +40,8 @@ class AdapterSimpleHome(private val data: List<Element>) : RecyclerView.Adapter<
         when (holder) {
             is Holder -> {
                 val position = position - 2
-                holder.binding.icon.setImageResource(data[position].icon)
-                holder.binding.title.text = holder.context.getString(data[position].title)
-                holder.binding.container.transitionName = holder.context.getString(data[position].title)
+                holder.binding.icon.setImageResource(data[position].iconResId)
+                holder.binding.title.text = holder.context.getString(data[position].titleResId)
 
                 holder.binding.container.setOnClickListener {
                     adapterSimpleHomeCallbacks?.onItemClicked(data[position], position, holder.binding.container)

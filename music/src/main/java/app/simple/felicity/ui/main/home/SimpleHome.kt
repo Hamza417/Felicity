@@ -11,11 +11,12 @@ import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
 import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
-import app.simple.felicity.models.Element
 import app.simple.felicity.ui.main.albums.PeristyleAlbums
 import app.simple.felicity.ui.main.artists.PeristyleArtists
 import app.simple.felicity.ui.main.genres.Genres
+import app.simple.felicity.ui.main.preferences.Preferences
 import app.simple.felicity.viewmodels.main.home.SimpleHomeViewModel
+import app.simple.felicity.viewmodels.main.home.SimpleHomeViewModel.Companion.Element
 
 class SimpleHome : MediaFragment() {
 
@@ -41,7 +42,7 @@ class SimpleHome : MediaFragment() {
 
             (recyclerView.adapter as AdapterSimpleHome).setAdapterSimpleHomeCallbacks(object : AdapterSimpleHome.Companion.AdapterSimpleHomeCallbacks {
                 override fun onItemClicked(element: Element, position: Int, view: View) {
-                    when (element.title) {
+                    when (element.titleResId) {
                         R.string.songs -> {
                             navigateToSongsFragment()
                         }
@@ -55,6 +56,9 @@ class SimpleHome : MediaFragment() {
                         }
                         R.string.genres -> {
                             openFragment(Genres.newInstance(), Genres.TAG)
+                        }
+                        R.string.preferences -> {
+                            openFragment(Preferences.newInstance(), Preferences.TAG)
                         }
                         else -> {
                             // Handle other cases or show a message

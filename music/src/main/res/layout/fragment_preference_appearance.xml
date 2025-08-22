@@ -15,6 +15,7 @@
         android:id="@+id/recycler_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layoutAnimation="@anim/list_animation_controller"
         android:clipToPadding="false"
         android:paddingBottom="8dp"
         android:paddingTop="8dp"
