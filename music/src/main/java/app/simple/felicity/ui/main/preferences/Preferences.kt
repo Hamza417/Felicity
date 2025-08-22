@@ -91,6 +91,7 @@ class Preferences : ScopedFragment() {
         // Map preference to fragment tag & instance
         val tag = when (preference.title) {
             R.string.appearance -> Appearance.TAG
+            R.string.user_interface -> UserInterface.TAG
             else -> return // Unsupported for now
         }
 
@@ -113,6 +114,7 @@ class Preferences : ScopedFragment() {
         // Reuse existing fragment instance if already added (but not in back stack), else create new
         val fragment = childFragmentManager.findFragmentByTag(tag) ?: when (preference.title) {
             R.string.appearance -> Appearance.newInstance()
+            R.string.user_interface -> UserInterface.newInstance()
             else -> null
         } ?: return
 

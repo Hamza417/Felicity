@@ -9,7 +9,7 @@ import app.simple.felicity.databinding.FragmentPreferenceAppearanceBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.PreferenceFragment
 
-class Appearance : PreferenceFragment() {
+class UserInterface : PreferenceFragment() {
 
     private lateinit var binding: FragmentPreferenceAppearanceBinding
 
@@ -22,17 +22,17 @@ class Appearance : PreferenceFragment() {
         super.onViewCreated(view, savedInstanceState)
         binding.recyclerView.setHasFixedSize(false)
         binding.recyclerView.addItemDecoration(SpacingItemDecoration(24, true))
-        binding.recyclerView.adapter = GenericPreferencesAdapter(createAppearancePanel())
+        binding.recyclerView.adapter = GenericPreferencesAdapter(createUserInterfacePanel())
     }
 
     companion object {
-        fun newInstance(): Appearance {
+        fun newInstance(): UserInterface {
             val args = Bundle()
-            val fragment = Appearance()
+            val fragment = UserInterface()
             fragment.arguments = args
             return fragment
         }
 
-        const val TAG = "Appearance"
+        const val TAG = "UserInterface"
     }
 }

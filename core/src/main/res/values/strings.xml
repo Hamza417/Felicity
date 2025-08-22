@@ -79,4 +79,7 @@
     <string name="appearance_desc">Change or update appearance of the app\'s interface.</string>
     <string name="user_interface">User Interface</string>
     <string name="user_interface_desc">Change user interface of the various panels in the app.</string>
+    <string name="corner_radius">Corner Radius</string>
+    <string name="corner_radius_summary">Change corner radius of the interface components in the app.</string>
+    <string name="change_songs_interface_summary">Change default song interface to a different one.</string>
 </resources>

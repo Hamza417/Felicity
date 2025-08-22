@@ -27,30 +27,7 @@ class SongsMenu : ScopedBottomSheetFragment() {
         setSongsInterfaceType()
 
         binding.changeSongsInterface.setOnClickListener { it ->
-            PopupSongsInterfaceMenu(
-                    container = binding.container,
-                    anchorView = it,
-                    menuItems = listOf(R.string.app_name,
-                                       R.string.artflow
-                    ),
-                    menuIcons = listOf(
-                            R.drawable.ic_list_16dp,
-                            R.drawable.ic_flow_16dp,
-                    ),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.app_name -> {
-                                SongsPreferences.setSongsInterface(SongsPreferences.SONG_INTERFACE_FELICITY)
-                            }
-                            R.string.artflow -> {
-                                SongsPreferences.setSongsInterface(SongsPreferences.SONG_INTERFACE_FLOW)
-                            }
-                        }
-                    },
-                    onDismiss = {
 
-                    }
-            ).show()
         }
     }
 
