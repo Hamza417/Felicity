@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import app.simple.felicity.R
 import app.simple.felicity.adapters.preference.GenericPreferencesAdapter
 import app.simple.felicity.databinding.FragmentPreferenceAppearanceBinding
 import app.simple.felicity.databinding.HeaderPreferencesGenericBinding
@@ -24,7 +25,8 @@ class Appearance : PreferenceFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        headerBinding.title.text = getString(app.simple.felicity.R.string.appearance)
+        headerBinding.title.text = getString(R.string.appearance)
+        headerBinding.icon.setImageResource(R.drawable.ic_water_drop)
         binding.header.setContentView(headerBinding.root)
         binding.recyclerView.setHasFixedSize(false)
         binding.recyclerView.addItemDecoration(SpacingItemDecoration(48))

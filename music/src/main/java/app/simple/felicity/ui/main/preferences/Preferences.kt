@@ -34,7 +34,7 @@ class Preferences : ScopedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.recyclerView.addItemDecoration(SpacingItemDecoration(48, true))
+        binding.recyclerView.addItemDecoration(SpacingItemDecoration(48))
 
         preferencesViewModel.getPreferences().observe(viewLifecycleOwner) { preferences ->
             adapter = AdapterPreference(preferences)

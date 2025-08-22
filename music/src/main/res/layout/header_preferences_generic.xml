@@ -8,15 +8,33 @@
     android:orientation="vertical"
     tools:ignore="RtlSymmetry">
 
-    <app.simple.felicity.decorations.typeface.TypeFaceTextView
-        android:id="@+id/title"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="@dimen/text_size_36"
-        android:paddingVertical="@dimen/padding_10"
         android:paddingHorizontal="@dimen/padding_20"
-        app:appFontStyle="black"
-        app:textColorStyle="primary" />
+        android:orientation="horizontal">
+
+        <app.simple.felicity.decorations.theme.ThemeIcon
+            android:id="@+id/icon"
+            android:src="@drawable/ic_settings"
+            android:layout_width="@dimen/icon_size_40"
+            android:layout_height="@dimen/icon_size_40"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="@dimen/padding_10"
+            app:tintType="accent" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/title"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/text_size_36"
+            android:text="@string/preferences"
+            android:paddingVertical="@dimen/padding_10"
+            app:appFontStyle="black"
+            app:textColorStyle="primary" />
+
+    </LinearLayout>
 
     <app.simple.felicity.decorations.theme.ThemeDivider
         android:layout_width="match_parent"

@@ -126,7 +126,7 @@ abstract class SharedScrollViewPopup @JvmOverloads constructor(
 
                         // Define scale range (e.g., shrink to 0.95 and grow to 1.05)
                         val minScale = 0.85f
-                        val maxScale = 1.15f
+                        // val maxScale = 1.15f
 
                         // Map intensity 0..1 to scale range using easing (can reuse easeOutDecay)
                         // When intensity is 0, scale = 1f (normal), when 1 -> scale near minScale or maxScale
