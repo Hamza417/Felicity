@@ -19,6 +19,6 @@
         android:id="@+id/app_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:headerContentLayout="@layout/adapter_song_header" />
+        app:headerContentLayout="@layout/header_songs" />
 
 </app.simple.felicity.decorations.theme.ThemeFrameLayout>

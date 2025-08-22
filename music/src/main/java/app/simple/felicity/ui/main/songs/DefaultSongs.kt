@@ -9,8 +9,8 @@ import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.core.R
 import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
-import app.simple.felicity.databinding.AdapterSongHeaderBinding
 import app.simple.felicity.databinding.FragmentSongsBinding
+import app.simple.felicity.databinding.HeaderSongsBinding
 import app.simple.felicity.decorations.fastscroll.FelicityFastScroller
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.itemanimators.FlipItemAnimator
@@ -25,10 +25,10 @@ import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 
-class Songs : MediaFragment() {
+class DefaultSongs : MediaFragment() {
 
     private lateinit var binding: FragmentSongsBinding
-    private lateinit var headerBinding: AdapterSongHeaderBinding
+    private lateinit var headerBinding: HeaderSongsBinding
 
     private var songsAdapter: SongsAdapter? = null
 
@@ -36,7 +36,7 @@ class Songs : MediaFragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentSongsBinding.inflate(inflater, container, false)
-        headerBinding = AdapterSongHeaderBinding.inflate(inflater, binding.recyclerView, false)
+        headerBinding = HeaderSongsBinding.inflate(inflater, binding.recyclerView, false)
 
         return binding.root
     }
@@ -201,9 +201,9 @@ class Songs : MediaFragment() {
     companion object {
         const val TAG = "Songs"
 
-        fun newInstance(): Songs {
+        fun newInstance(): DefaultSongs {
             val args = Bundle()
-            val fragment = Songs()
+            val fragment = DefaultSongs()
             fragment.arguments = args
             return fragment
         }

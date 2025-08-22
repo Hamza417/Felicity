@@ -8,19 +8,19 @@ import android.view.ViewGroup
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.adapters.ui.lists.albums.AdapterPeristyleAlbums
-import app.simple.felicity.databinding.FragmentAlbumsBinding
+import app.simple.felicity.databinding.FragmentAlbumsPeristyleBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.viewmodels.main.albums.AlbumsViewModel
 
 class PeristyleAlbums : ScopedFragment() {
 
-    private var binding: FragmentAlbumsBinding? = null
+    private var binding: FragmentAlbumsPeristyleBinding? = null
     private var albumsViewModel: AlbumsViewModel? = null
     private var adapter: AdapterPeristyleAlbums? = null
     private var gridLayoutManager: GridLayoutManager? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        val fragmentBinding = FragmentAlbumsBinding.inflate(inflater, container, false)
+        val fragmentBinding = FragmentAlbumsPeristyleBinding.inflate(inflater, container, false)
 
         binding = fragmentBinding
         albumsViewModel = ViewModelProvider(requireActivity())[AlbumsViewModel::class.java]

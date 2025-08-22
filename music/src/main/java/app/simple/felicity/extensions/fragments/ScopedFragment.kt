@@ -22,7 +22,7 @@ import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.theme.managers.ThemeUtils
 import app.simple.felicity.ui.app.CoverFlow
-import app.simple.felicity.ui.main.songs.Songs
+import app.simple.felicity.ui.main.songs.DefaultSongs
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -290,7 +290,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
     protected fun navigateToSongsFragment() {
         when (SongsPreferences.getSongsInterface()) {
             SongsPreferences.SONG_INTERFACE_FELICITY -> {
-                openFragment(Songs.newInstance(), Songs.TAG)
+                openFragment(DefaultSongs.newInstance(), DefaultSongs.TAG)
             }
             SongsPreferences.SONG_INTERFACE_FLOW -> {
                 openFragment(CoverFlow.newInstance(), CoverFlow.TAG)

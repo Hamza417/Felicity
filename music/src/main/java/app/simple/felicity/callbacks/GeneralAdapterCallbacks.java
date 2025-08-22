@@ -37,7 +37,11 @@ public interface GeneralAdapterCallbacks {
     
     }
     
-    default void onAlbumClicked(Album album) {
+    default void onAlbumClicked(List <Album> albums, int position, View view) {
+    
+    }
+    
+    default void onAlbumLongClicked(List <Album> albums, int position, View view) {
     
     }
     

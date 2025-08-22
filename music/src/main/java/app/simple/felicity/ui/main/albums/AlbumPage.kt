@@ -82,13 +82,8 @@ class AlbumPage : MediaFragment() {
                     openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
                 }
 
-                override fun onAlbumClicked(album: Album?) {
-                    Log.i(TAG, "onAlbumClicked: Album clicked: ${album?.name}")
-                    if (album != null) {
-                        openFragment(newInstance(album), TAG)
-                    } else {
-                        Log.w(TAG, "onAlbumClicked: Album is null")
-                    }
+                override fun onAlbumClicked(albums: List<Album>, position: Int, view: View) {
+                    openFragment(newInstance(albums[position]), TAG)
                 }
 
                 override fun onGenreClicked(genre: Genre, view: View) {

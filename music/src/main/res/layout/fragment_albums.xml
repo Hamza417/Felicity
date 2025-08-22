@@ -1,13 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.theme.ThemeFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/recycler_view"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:clipToPadding="false"
-    android:layoutAnimation="@anim/grid_list_animation_controller"
-    android:transitionName="@string/albums"
-    app:isFadingEdgeRequired="true"
-    app:isFastScrollRequired="false"
-    app:navigationPaddingRequired="false"
-    app:statusPaddingRequired="false" />
+    android:layout_height="match_parent">
+
+    <app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
+        android:id="@+id/recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:layoutAnimation="@anim/list_animation_controller"
+        android:transitionName="@string/songs"
+        app:fastScrollEnabled="false"
+        app:isFadingEdgeRequired="false"
+        app:statusPaddingRequired="false" />
+
+    <app.simple.felicity.decorations.views.AppHeader
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:headerContentLayout="@layout/header_albums" />
+
+</app.simple.felicity.decorations.theme.ThemeFrameLayout>
