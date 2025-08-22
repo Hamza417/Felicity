@@ -1,18 +1,17 @@
 package app.simple.felicity.extensions.fragments
 
-import app.simple.felicity.core.R
+import android.widget.TextView
+import app.simple.felicity.R
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.models.Preference
+import app.simple.felicity.popups.home.PopupHomeInterfaceMenu
 import app.simple.felicity.popups.songs.PopupSongsInterfaceMenu
+import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.SongsPreferences
 import java.util.function.Supplier
 
 open class PreferenceFragment : ScopedFragment() {
-
-    override fun setTransitions() {
-        // No transitions for preference fragments
-    }
 
     protected fun createAppearancePanel(): List<Preference> {
         val preferences = mutableListOf<Preference>()
@@ -26,7 +25,7 @@ open class PreferenceFragment : ScopedFragment() {
                 type = PreferenceType.DIALOG,
         )
 
-        cornerRadius.onClickAction = { view ->
+        cornerRadius.onClickAction = { view, callback ->
             childFragmentManager.showSongsSort()
             true
         }
@@ -51,30 +50,32 @@ open class PreferenceFragment : ScopedFragment() {
 
         songInterface.valueProvider = Supplier {
             when (SongsPreferences.getSongsInterface()) {
-                SongsPreferences.SONG_INTERFACE_FELICITY -> getString(app.simple.felicity.R.string.app_name)
+                SongsPreferences.SONG_INTERFACE_FELICITY -> getString(R.string.app_name)
                 SongsPreferences.SONG_INTERFACE_FLOW -> getString(R.string.artflow)
-                else -> getString(app.simple.felicity.R.string.app_name)
+                else -> getString(R.string.app_name)
             }
         }
 
-        songInterface.onClickAction = { view ->
+        songInterface.onClickAction = { view, callback ->
             PopupSongsInterfaceMenu(
                     container = requireContainerView(),
                     anchorView = view,
-                    menuItems = listOf(app.simple.felicity.R.string.app_name,
-                                       app.simple.felicity.R.string.artflow
+                    menuItems = listOf(R.string.app_name,
+                                       R.string.artflow
                     ),
                     menuIcons = listOf(
-                            app.simple.felicity.R.drawable.ic_list_16dp,
-                            app.simple.felicity.R.drawable.ic_flow_16dp,
+                            R.drawable.ic_list_16dp,
+                            R.drawable.ic_flow_16dp,
                     ),
                     onMenuItemClick = {
                         when (it) {
-                            app.simple.felicity.R.string.app_name -> {
+                            R.string.app_name -> {
                                 SongsPreferences.setSongsInterface(SongsPreferences.SONG_INTERFACE_FELICITY)
+                                (view as TextView).text = getString(R.string.app_name)
                             }
-                            app.simple.felicity.R.string.artflow -> {
+                            R.string.artflow -> {
                                 SongsPreferences.setSongsInterface(SongsPreferences.SONG_INTERFACE_FLOW)
+                                (view as TextView).text = getString(R.string.artflow)
                             }
                         }
                     },
@@ -82,10 +83,63 @@ open class PreferenceFragment : ScopedFragment() {
 
                     }
             ).show()
-
-            getString(app.simple.felicity.R.string.app_name)
         }
 
+        val homeHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.home)
+
+        val homeInterface = Preference(
+                title = R.string.change_home_interface,
+                summary = R.string.change_home_interface_summary,
+                icon = app.simple.felicity.decoration.R.drawable.ic_felicity_full,
+                type = PreferenceType.POPUP,
+        )
+
+        homeInterface.valueProvider = Supplier {
+            when (HomePreferences.getHomeInterface()) {
+                HomePreferences.HOME_INTERFACE_CAROUSEL -> getString(R.string.carousel)
+                HomePreferences.HOME_INTERFACE_ARTFLOW -> getString(R.string.artflow)
+                HomePreferences.HOME_INTERFACE_SPANNED -> getString(R.string.spanned)
+                HomePreferences.HOME_INTERFACE_SIMPLE -> getString(R.string.simple)
+                else -> getString(R.string.app_name)
+            }
+        }
+
+        homeInterface.onClickAction = { view, callback ->
+            PopupHomeInterfaceMenu(
+                    container = requireContainerView(),
+                    anchorView = view,
+                    menuItems = listOf(R.string.spanned,
+                                       R.string.carousel,
+                                       R.string.artflow,
+                                       R.string.simple),
+                    menuIcons = listOf(R.drawable.ic_spanned_16dp,
+                                       R.drawable.ic_carousel_16dp,
+                                       R.drawable.ic_flow_16dp,
+                                       R.drawable.ic_list_16dp),
+                    onMenuItemClick = {
+                        when (it) {
+                            R.string.spanned -> {
+                                HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_SPANNED)
+                            }
+                            R.string.carousel -> {
+                                HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_CAROUSEL)
+                            }
+                            R.string.artflow -> {
+                                HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_ARTFLOW)
+                            }
+                            R.string.simple -> {
+                                HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_SIMPLE)
+                            }
+                        }
+                    },
+                    onDismiss = {
+                        callback
+                    }
+            ).show()
+        }
+
+        preferences.add(homeHeader)
+        preferences.add(homeInterface)
         preferences.add(songsHeader)
         preferences.add(songInterface)
 

@@ -19,7 +19,7 @@ class Preference {
 
     var valueProvider: Supplier<String?>? = null
 
-    var onClickAction: ((View) -> Any?)? = null
+    var onClickAction: ((View, (Any?) -> Unit) -> Unit)? = null
 
     constructor(@StringRes title: Int, @StringRes summary: Int, @DrawableRes icon: Int, type: PreferenceType?) {
         this.title = title

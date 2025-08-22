@@ -1,12 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.theme.ThemeLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/recycler_view"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:clipToPadding="false"
-    android:paddingBottom="8dp"
-    android:paddingTop="8dp"
-    android:scrollbars="none"
-    app:navigationPaddingRequired="true"
-    app:statusPaddingRequired="false" />
+    android:orientation="vertical">
+
+    <app.simple.felicity.decorations.views.AppHeader
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:headerContentLayout="@layout/header_preferences_generic" />
+
+    <app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
+        android:id="@+id/recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingBottom="8dp"
+        android:paddingTop="8dp"
+        android:scrollbars="none"
+        app:navigationPaddingRequired="true"
+        app:statusPaddingRequired="false" />
+
+</app.simple.felicity.decorations.theme.ThemeLinearLayout>

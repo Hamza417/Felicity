@@ -6,22 +6,28 @@ import android.view.View
 import android.view.ViewGroup
 import app.simple.felicity.adapters.preference.GenericPreferencesAdapter
 import app.simple.felicity.databinding.FragmentPreferenceAppearanceBinding
+import app.simple.felicity.databinding.HeaderPreferencesGenericBinding
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.PreferenceFragment
 
 class Appearance : PreferenceFragment() {
 
     private lateinit var binding: FragmentPreferenceAppearanceBinding
+    private lateinit var headerBinding: HeaderPreferencesGenericBinding
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = FragmentPreferenceAppearanceBinding.inflate(inflater, container, false)
+        headerBinding = HeaderPreferencesGenericBinding.inflate(inflater, container, false)
+
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        headerBinding.title.text = getString(app.simple.felicity.R.string.appearance)
+        binding.header.setContentView(headerBinding.root)
         binding.recyclerView.setHasFixedSize(false)
-        binding.recyclerView.addItemDecoration(SpacingItemDecoration(24, true))
+        binding.recyclerView.addItemDecoration(SpacingItemDecoration(48))
         binding.recyclerView.adapter = GenericPreferencesAdapter(createAppearancePanel())
     }
 

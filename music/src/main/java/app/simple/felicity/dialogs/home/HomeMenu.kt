@@ -9,7 +9,6 @@ import androidx.fragment.app.FragmentManager
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogHomeMenuBinding
 import app.simple.felicity.extensions.fragments.ScopedBottomSheetFragment
-import app.simple.felicity.popups.home.PopupHomeInterfaceMenu
 import app.simple.felicity.preferences.HomePreferences
 
 class HomeMenu : ScopedBottomSheetFragment() {
@@ -27,37 +26,7 @@ class HomeMenu : ScopedBottomSheetFragment() {
         setHomeInterfaceType()
 
         binding.changeHomeInterface.setOnClickListener { it ->
-            PopupHomeInterfaceMenu(
-                    container = binding.container,
-                    anchorView = it,
-                    menuItems = listOf(R.string.spanned,
-                                       R.string.carousel,
-                                       R.string.artflow,
-                                       R.string.simple),
-                    menuIcons = listOf(R.drawable.ic_spanned_16dp,
-                                       R.drawable.ic_carousel_16dp,
-                                       R.drawable.ic_flow_16dp,
-                                       R.drawable.ic_list_16dp),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.spanned -> {
-                                HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_SPANNED)
-                            }
-                            R.string.carousel -> {
-                                HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_CAROUSEL)
-                            }
-                            R.string.artflow -> {
-                                HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_ARTFLOW)
-                            }
-                            R.string.simple -> {
-                                HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_SIMPLE)
-                            }
-                        }
-                    },
-                    onDismiss = {
 
-                    }
-            ).show()
         }
 
         binding.openAppSettings.setOnClickListener {

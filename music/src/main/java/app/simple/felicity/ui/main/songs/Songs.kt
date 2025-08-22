@@ -44,7 +44,7 @@ class Songs : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.recyclerView.addItemDecoration(SpacingItemDecoration(48, true))
+        binding.recyclerView.addItemDecoration(SpacingItemDecoration(48))
         binding.recyclerView.itemAnimator = FlipItemAnimator()
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)

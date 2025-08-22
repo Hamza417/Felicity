@@ -58,7 +58,7 @@
         android:drawableEnd="@drawable/ic_unfold_16dp"
         android:drawablePadding="10dp"
         android:gravity="center_vertical"
-        android:padding="@dimen/padding_10"
+        android:padding="@dimen/padding_15"
         android:textSize="@dimen/text_size_12"
         app:appFontStyle="regular"
         app:drawableTintStyle="accent"

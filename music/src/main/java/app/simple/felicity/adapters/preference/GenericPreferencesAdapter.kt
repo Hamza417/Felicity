@@ -50,7 +50,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                 holder.binding.icon.setImageResource(preference.icon)
 
                 holder.binding.popup.setOnClickListener {
-                    preference.onClickAction?.invoke(it)
+                    preference.onClickAction?.invoke(it) {
+                        holder.binding.popup.text = preference.valueProvider?.get() ?: ""
+                    }
                 }
 
                 holder.binding.popup.text = preference.valueProvider?.get() ?: ""
@@ -63,7 +65,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                 holder.binding.root.parent?.requestLayout()
 
                 holder.binding.container.setOnClickListener {
-                    preference.onClickAction?.invoke(it)
+                    preference.onClickAction?.invoke(it) {
+                        /* no-op */
+                    }
                 }
             }
         }
