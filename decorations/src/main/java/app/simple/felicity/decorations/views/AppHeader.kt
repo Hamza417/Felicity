@@ -206,6 +206,10 @@ class AppHeader @JvmOverloads constructor(
             rv.clipToPadding = false
         }
         lastAppliedHeaderHeight = headerHeight
+
+        if (rv.scrollY == 0 && rv.canScrollVertically(-1).not()) {
+            rv.scrollBy(0, headerHeight)
+        }
     }
 
     private fun restoreRecyclerPaddingIfNeeded() {
