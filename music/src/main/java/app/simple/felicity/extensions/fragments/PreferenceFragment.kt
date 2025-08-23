@@ -34,10 +34,10 @@ open class PreferenceFragment : ScopedFragment() {
 
         cornerRadius.valueProvider = Supplier {
             SeekbarState(
-                    position = AppearancePreferences.getCornerRadius().toInt(),
-                    max = AppearancePreferences.MAX_CORNER_RADIUS.toInt(),
-                    min = 0,
-                    default = AppearancePreferences.DEFAULT_CORNER_RADIUS.toInt(),
+                    position = AppearancePreferences.getCornerRadius(),
+                    max = AppearancePreferences.MAX_CORNER_RADIUS,
+                    min = 0F,
+                    default = AppearancePreferences.DEFAULT_CORNER_RADIUS,
             )
         }
 

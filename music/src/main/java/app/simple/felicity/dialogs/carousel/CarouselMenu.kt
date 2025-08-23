@@ -32,7 +32,7 @@ class CarouselMenu : ScopedBottomSheetFragment() {
         binding.scaleSeekbar.setProgress(CarouselPreferences.getScale())
 
         binding.cameraYSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
-            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean) {
+            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
                 if (fromUser) {
                     CarouselPreferences.setEyeY(progress)
                 }
@@ -40,7 +40,7 @@ class CarouselMenu : ScopedBottomSheetFragment() {
         })
 
         binding.zSpreadSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
-            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean) {
+            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
                 if (fromUser) {
                     CarouselPreferences.setZSpread(progress)
                 }
@@ -48,7 +48,7 @@ class CarouselMenu : ScopedBottomSheetFragment() {
         })
 
         binding.reflectionGapSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
-            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean) {
+            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
                 if (fromUser) {
                     CarouselPreferences.setReflectionGap(progress)
                 }
@@ -56,7 +56,7 @@ class CarouselMenu : ScopedBottomSheetFragment() {
         })
 
         binding.scaleSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
-            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean) {
+            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
                 if (fromUser) {
                     CarouselPreferences.setScale(progress)
                 }

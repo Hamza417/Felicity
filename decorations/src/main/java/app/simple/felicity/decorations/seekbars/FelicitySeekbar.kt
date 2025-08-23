@@ -36,7 +36,7 @@ class FelicitySeekbar @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr), SharedPreferences.OnSharedPreferenceChangeListener {
 
     interface OnSeekChangeListener {
-        fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean)
+        fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean)
         fun onStartTrackingTouch(seekbar: FelicitySeekbar) {}
         fun onStopTrackingTouch(seekbar: FelicitySeekbar) {}
     }
@@ -44,10 +44,10 @@ class FelicitySeekbar @JvmOverloads constructor(
     private var listener: OnSeekChangeListener? = null
 
     // Range: [minProgress..maxProgress]
-    private var minProgress = 0
-    private var maxProgress = 100
+    private var minProgress = 0f
+    private var maxProgress = 100f
     private var progressInternal = 0f // current float progress for animation, in absolute units within [min..max]
-    private var defaultProgress = 0 // value to reset to on double tap
+    private var defaultProgress = 0f // value to reset to on double tap
     private var hasDefaultSet = false // only reset if explicitly configured
 
     @ColorInt
@@ -154,10 +154,10 @@ class FelicitySeekbar @JvmOverloads constructor(
     }
 
     // Spring animation support
-    private val progressProperty = object : FloatPropertyCompat<FelicitySeekbar>("felicityIntProgress") {
+    private val progressProperty = object : FloatPropertyCompat<FelicitySeekbar>("felicityProgress") {
         override fun getValue(view: FelicitySeekbar): Float = view.progressInternal
         override fun setValue(view: FelicitySeekbar, value: Float) {
-            view.progressInternal = value.coerceIn(minProgress.toFloat(), maxProgress.toFloat())
+            view.progressInternal = value.coerceIn(minProgress, maxProgress)
             invalidate()
             // During animation, treat as programmatic (fromUser = false)
             listener?.onProgressChanged(this@FelicitySeekbar, getProgress(), false)
@@ -197,32 +197,20 @@ class FelicitySeekbar @JvmOverloads constructor(
 
         context.theme.obtainStyledAttributes(attrs, R.styleable.FelicitySeekbar, defStyleAttr, 0).apply {
             try {
-                // Read min first so subsequent attributes can clamp correctly
                 if (hasValue(R.styleable.FelicitySeekbar_felicityMin)) {
-                    val mn = try {
-                        getFloat(R.styleable.FelicitySeekbar_felicityMin, minProgress.toFloat()).toInt()
-                    } catch (e: Exception) {
-                        getInt(R.styleable.FelicitySeekbar_felicityMin, minProgress)
-                    }
-                    setMinInternal(mn)
+                    setMinInternal(getFloat(R.styleable.FelicitySeekbar_felicityMin, minProgress))
                 }
                 if (hasValue(R.styleable.FelicitySeekbar_felicityMax)) {
-                    val m = try {
-                        getFloat(R.styleable.FelicitySeekbar_felicityMax, maxProgress.toFloat()).toInt()
-                    } catch (e: Exception) {
-                        getInt(R.styleable.FelicitySeekbar_felicityMax, maxProgress)
-                    }
-                    setMaxInternal(m)
+                    setMaxInternal(getFloat(R.styleable.FelicitySeekbar_felicityMax, maxProgress))
                 }
                 if (hasValue(R.styleable.FelicitySeekbar_felicityProgress)) {
                     val tv = peekValue(R.styleable.FelicitySeekbar_felicityProgress)
                     progressInternal = when (tv.type) {
-                        TypedValue.TYPE_FLOAT -> getFloat(R.styleable.FelicitySeekbar_felicityProgress, minProgress.toFloat())
-                        TypedValue.TYPE_INT_DEC, TypedValue.TYPE_INT_HEX -> getInt(R.styleable.FelicitySeekbar_felicityProgress, minProgress).toFloat()
-                        else -> getInt(R.styleable.FelicitySeekbar_felicityProgress, minProgress).toFloat()
+                        TypedValue.TYPE_FLOAT -> getFloat(R.styleable.FelicitySeekbar_felicityProgress, minProgress)
+                        else -> getFloat(R.styleable.FelicitySeekbar_felicityProgress, minProgress)
                     }
                 }
-                progressInternal = progressInternal.coerceIn(minProgress.toFloat(), maxProgress.toFloat())
+                progressInternal = progressInternal.coerceIn(minProgress, maxProgress)
 
                 trackColor = getColor(R.styleable.FelicitySeekbar_felicityTrackColor, trackColor)
                 progressColor = getColor(R.styleable.FelicitySeekbar_felicityProgressColor, progressColor)
@@ -259,7 +247,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         outlineProvider = null
     }
 
-    private fun rangeSpan(): Float = (maxProgress - minProgress).toFloat()
+    private fun rangeSpan(): Float = (maxProgress - minProgress)
 
     private fun valueToFraction(value: Float): Float {
         val span = rangeSpan()
@@ -268,7 +256,7 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     private fun fractionToValue(fraction: Float): Float {
         val span = rangeSpan()
-        return if (span <= 0f) minProgress.toFloat() else minProgress + (fraction * span)
+        return if (span <= 0f) minProgress else minProgress + (fraction * span)
     }
 
     private fun applyPaintColors() {
@@ -317,10 +305,10 @@ class FelicitySeekbar @JvmOverloads constructor(
         this.listener = listener
     }
 
-    fun setMax(max: Int) {
+    fun setMax(max: Float) {
         setMaxInternal(max)
         if (progressInternal > maxProgress) {
-            progressInternal = maxProgress.toFloat()
+            progressInternal = maxProgress
             invalidate()
         }
         if (defaultProgress > maxProgress) {
@@ -328,7 +316,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         }
     }
 
-    private fun setMaxInternal(max: Int) {
+    private fun setMaxInternal(max: Float) {
         maxProgress = max
         if (maxProgress < minProgress) {
             // Keep range valid: shift min down to max
@@ -336,12 +324,12 @@ class FelicitySeekbar @JvmOverloads constructor(
         }
     }
 
-    fun getMax(): Int = maxProgress
+    fun getMax(): Float = maxProgress
 
-    fun setMin(min: Int) {
+    fun setMin(min: Float) {
         setMinInternal(min)
         if (progressInternal < minProgress) {
-            progressInternal = minProgress.toFloat()
+            progressInternal = minProgress
             invalidate()
         }
         if (defaultProgress < minProgress) {
@@ -349,7 +337,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         }
     }
 
-    private fun setMinInternal(min: Int) {
+    private fun setMinInternal(min: Float) {
         minProgress = min
         if (maxProgress < minProgress) {
             // Keep range valid: raise max up to min
@@ -357,9 +345,9 @@ class FelicitySeekbar @JvmOverloads constructor(
         }
     }
 
-    fun getMin(): Int = minProgress
+    fun getMin(): Float = minProgress
 
-    fun setRange(min: Int, max: Int) {
+    fun setRange(min: Float, max: Float) {
         // Preserve intent even if min>max: collapse to single point at the midpoint after ordering
         if (min <= max) {
             minProgress = min
@@ -368,13 +356,13 @@ class FelicitySeekbar @JvmOverloads constructor(
             minProgress = max
             maxProgress = min
         }
-        progressInternal = progressInternal.coerceIn(minProgress.toFloat(), maxProgress.toFloat())
+        progressInternal = progressInternal.coerceIn(minProgress, maxProgress)
         defaultProgress = defaultProgress.coerceIn(minProgress, maxProgress)
         invalidate()
     }
 
-    fun setProgress(progress: Int, fromUser: Boolean = false, animate: Boolean = false) {
-        val target = progress.coerceIn(minProgress, maxProgress).toFloat()
+    fun setProgress(progress: Float, fromUser: Boolean = false, animate: Boolean = false) {
+        val target = progress.coerceIn(minProgress, maxProgress)
         if (!animate) {
             if (springAnimation.isRunning) springAnimation.cancel()
             if (progressInternal == target) return
@@ -390,9 +378,9 @@ class FelicitySeekbar @JvmOverloads constructor(
         }
     }
 
-    fun getProgress(): Int = progressInternal.toInt()
+    fun getProgress(): Float = progressInternal
 
-    fun setDefaultProgress(value: Int) {
+    fun setDefaultProgress(value: Float) {
         hasDefaultSet = true
         defaultProgress = value.coerceIn(minProgress, maxProgress)
     }
@@ -562,7 +550,7 @@ class FelicitySeekbar @JvmOverloads constructor(
                     val right = (width - paddingRight).toFloat() - hOut - safeInset
                     val clamped = min(max(event.x, left), right)
                     val fraction = (clamped - left) / (right - left)
-                    val newProgress = fractionToValue(fraction).toInt().coerceIn(minProgress, maxProgress)
+                    val newProgress = fractionToValue(fraction).coerceIn(minProgress, maxProgress)
                     if (springAnimation.isRunning) springAnimation.cancel()
                     springAnimation.spring.stiffness = fastStiffness
                     springAnimation.spring.dampingRatio = fastDamping
@@ -602,7 +590,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         if (right <= left) return
         val clamped = min(max(x, left), right)
         val fraction = (clamped - left) / (right - left)
-        val newProgress = fractionToValue(fraction).toInt().coerceIn(minProgress, maxProgress)
+        val newProgress = fractionToValue(fraction).coerceIn(minProgress, maxProgress)
         // User drag: immediate update without animation for responsiveness
         setProgress(newProgress, fromUser, animate = false)
     }
@@ -642,7 +630,7 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     // Public API: set/get corner radius for thumb fill (rx==ry)
     fun setThumbCornerRadius(radius: Float) {
-        thumbCornerRadiusPxOverride = max(0f, radius)
+        thumbCornerRadiusPxOverride = max(0f, radius).coerceAtLeast(thumbRadiusPx)
         invalidate()
     }
 

@@ -9,65 +9,64 @@ object CarouselPreferences {
     const val REFLECTION_GAP = "reflection_gap"
     const val SCALE = "scale"
 
-    const val CAMERA_EYE_Y_DEFAULT = 0
-    const val Z_SPREAD_DEFAULT = 35
-    const val REFLECTION_GAP_DEFAULT = 5
-    const val REFLECTION_BLUR_DEFAULT = 0
-    const val SCALE_DEFAULT = 75
+    const val CAMERA_EYE_Y_DEFAULT = 0F
+    const val Z_SPREAD_DEFAULT = 0.35F
+    const val REFLECTION_GAP_DEFAULT = 0.05F
+    const val SCALE_DEFAULT = 0.75F
 
     // -------------------------------------------------------------------------------------------- //
 
-    fun setEyeY(value: Int) {
+    fun setEyeY(value: Float) {
         SharedPreferences.getSharedPreferences()
             .edit {
-                putInt(CAMERA_EYE_Y, value)
+                putFloat(CAMERA_EYE_Y, value)
             }
     }
 
-    fun getEyeY(): Int {
+    fun getEyeY(): Float {
         return SharedPreferences.getSharedPreferences()
-            .getInt(CAMERA_EYE_Y, CAMERA_EYE_Y_DEFAULT)
-    }
-
-    // -------------------------------------------------------------------------------------------- //
-
-    fun setZSpread(value: Int) {
-        SharedPreferences.getSharedPreferences()
-            .edit {
-                putInt(Z_SPREAD, value)
-            }
-    }
-
-    fun getZSpread(): Int {
-        return SharedPreferences.getSharedPreferences()
-            .getInt(Z_SPREAD, Z_SPREAD_DEFAULT)
+            .getFloat(CAMERA_EYE_Y, CAMERA_EYE_Y_DEFAULT)
     }
 
     // -------------------------------------------------------------------------------------------- //
 
-    fun setReflectionGap(value: Int) {
+    fun setZSpread(value: Float) {
         SharedPreferences.getSharedPreferences()
             .edit {
-                putInt(REFLECTION_GAP, value)
+                putFloat(Z_SPREAD, value)
             }
     }
 
-    fun getReflectionGap(): Int {
+    fun getZSpread(): Float {
         return SharedPreferences.getSharedPreferences()
-            .getInt(REFLECTION_GAP, REFLECTION_GAP_DEFAULT)
+            .getFloat(Z_SPREAD, Z_SPREAD_DEFAULT)
     }
 
     // -------------------------------------------------------------------------------------------- //
 
-    fun setScale(value: Int) {
+    fun setReflectionGap(value: Float) {
         SharedPreferences.getSharedPreferences()
             .edit {
-                putInt(SCALE, value)
+                putFloat(REFLECTION_GAP, value)
             }
     }
 
-    fun getScale(): Int {
+    fun getReflectionGap(): Float {
         return SharedPreferences.getSharedPreferences()
-            .getInt(SCALE, SCALE_DEFAULT)
+            .getFloat(REFLECTION_GAP, REFLECTION_GAP_DEFAULT)
+    }
+
+    // -------------------------------------------------------------------------------------------- //
+
+    fun setScale(value: Float) {
+        SharedPreferences.getSharedPreferences()
+            .edit {
+                putFloat(SCALE, value)
+            }
+    }
+
+    fun getScale(): Float {
+        return SharedPreferences.getSharedPreferences()
+            .getFloat(SCALE, SCALE_DEFAULT)
     }
 }

@@ -65,7 +65,7 @@ class DefaultPlayer : MediaFragment() {
         }
 
         binding.seekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
-            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean) {
+            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
                 if (fromUser) {
                     MediaManager.seekTo(progress.toLong())
                     binding.currentTime.text = NumberUtils.getFormattedTime(progress.toLong())
@@ -92,12 +92,12 @@ class DefaultPlayer : MediaFragment() {
         binding.album.text = song.album
         binding.info.text = song.path
         binding.duration.text = NumberUtils.getFormattedTime(song.duration)
-        binding.seekbar.setMax(song.duration.toInt())
+        binding.seekbar.setMax(song.duration.toFloat())
     }
 
     override fun onSeekChanged(seek: Long) {
         super.onSeekChanged(seek)
-        binding.seekbar.setProgress(seek.toInt(), false)
+        binding.seekbar.setProgress(seek.toFloat(), false)
         binding.currentTime.text = NumberUtils.getFormattedTime(seek)
     }
 

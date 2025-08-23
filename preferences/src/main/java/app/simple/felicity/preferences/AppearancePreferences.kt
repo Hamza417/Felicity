@@ -24,7 +24,7 @@ object AppearancePreferences {
     private const val APP_FONT = "type_face"
     const val ACCENT_ON_NAV = "accent_color_on_nav_bar"
 
-    const val MAX_CORNER_RADIUS = 60F
+    const val MAX_CORNER_RADIUS = 80F
     const val DEFAULT_CORNER_RADIUS = 20F
 
     // ---------------------------------------------------------------------------------------------------------- //

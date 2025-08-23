@@ -79,7 +79,7 @@ class ArtFlowRenderer(
 
     fun updateCamera() {
         val z = if (verticalOrientation) cameraZPortrait else cameraZLandscape
-        val y = if (verticalOrientation) 0f else CarouselPreferences.getEyeY() / 100f
+        val y = if (verticalOrientation) 0f else CarouselPreferences.getEyeY()
 
         // eye at (0,0,z) looking at origin
         Matrix.setLookAtM(/* rm = */ view,

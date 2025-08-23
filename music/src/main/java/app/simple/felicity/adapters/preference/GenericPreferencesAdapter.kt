@@ -89,7 +89,7 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                 holder.binding.slider.setMin(seekbarState.min)
 
                 holder.binding.slider.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
-                    override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean) {
+                    override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
                         if (fromUser) {
                             preference.onPreferenceAction?.invoke(seekbar) {
                                 /* no-op */

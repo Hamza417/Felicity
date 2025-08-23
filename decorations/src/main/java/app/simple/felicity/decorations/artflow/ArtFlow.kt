@@ -49,11 +49,11 @@ class ArtFlow @JvmOverloads constructor(
         //        holder.setFormat(android.graphics.PixelFormat.TRANSLUCENT)
         //        setZOrderOnTop(true)
         renderer = ArtFlowRenderer(this, context.applicationContext)
-        renderer.setZSpread(CarouselPreferences.getZSpread().div(100F))
+        renderer.setZSpread(CarouselPreferences.getZSpread())
         setRenderer(renderer)
         renderMode = RENDERMODE_CONTINUOUSLY
-        renderer.setReflectionGap(CarouselPreferences.getReflectionGap().div(100F))
-        renderer.setSideScale(CarouselPreferences.getScale().div(100F))
+        renderer.setReflectionGap(CarouselPreferences.getReflectionGap())
+        renderer.setSideScale(CarouselPreferences.getScale())
 
         scroller = OverScroller(context)
 
@@ -224,15 +224,15 @@ class ArtFlow @JvmOverloads constructor(
             }
 
             CarouselPreferences.Z_SPREAD -> {
-                queueEvent { renderer.setZSpread(CarouselPreferences.getZSpread().div(100F)) }
+                queueEvent { renderer.setZSpread(CarouselPreferences.getZSpread()) }
             }
 
             CarouselPreferences.REFLECTION_GAP -> {
-                renderer.setReflectionGap(CarouselPreferences.getReflectionGap().div(100F))
+                renderer.setReflectionGap(CarouselPreferences.getReflectionGap())
             }
 
             CarouselPreferences.SCALE -> {
-                renderer.setSideScale(CarouselPreferences.getScale().div(100F))
+                renderer.setSideScale(CarouselPreferences.getScale())
             }
         }
     }
