@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.albums.AdapterDefaultAlbums
+import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentAlbumsBinding
 import app.simple.felicity.databinding.HeaderAlbumsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
@@ -14,6 +15,7 @@ import app.simple.felicity.decorations.itemanimators.FlipItemAnimator
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.repository.models.Album
 import app.simple.felicity.viewmodels.main.albums.AlbumsViewModel
 
 class DefaultAlbums : MediaFragment() {
@@ -45,6 +47,12 @@ class DefaultAlbums : MediaFragment() {
             adapterDefaultAlbums = AdapterDefaultAlbums(it, 4)
             binding.recyclerView.adapter = adapterDefaultAlbums
             headerBinding.count.text = getString(R.string.x_albums, it.size)
+
+            adapterDefaultAlbums?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
+                override fun onAlbumClicked(albums: List<Album>, position: Int, view: View?) {
+                    openFragment(AlbumPage.newInstance(albums[position]), AlbumPage.TAG)
+                }
+            })
         }
     }
 

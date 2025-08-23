@@ -1,6 +1,8 @@
 package app.simple.felicity.decorations.views
 
 import android.content.Context
+import android.os.Parcel
+import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
@@ -234,6 +236,7 @@ class AppHeader @JvmOverloads constructor(
         removeOnLayoutChangeListener(layoutChangeListener)
     }
 
+    @Suppress("SameParameterValue")
     private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
 
     /** Convenience: true if header currently hidden (only for HIDE_ON_SCROLL mode). */
@@ -310,6 +313,95 @@ class AppHeader @JvmOverloads constructor(
                 }
                 else -> Unit
             }
+        }
+    }
+
+    // --------------------------
+    // State saving / restoring
+    // --------------------------
+    override fun onSaveInstanceState(): Parcelable? {
+        val superState = super.onSaveInstanceState()
+        return SavedState(superState).apply {
+            modeOrdinal = scrollMode.ordinal
+            hideThreshold = hideThresholdPx
+            savedAccumulatedScroll = accumulatedScroll
+            savedIsHidden = isHidden
+            savedManualOverride = manualOverride
+            savedAdjustRecyclerPadding = adjustRecyclerPadding
+        }
+    }
+
+    override fun onRestoreInstanceState(state: Parcelable?) {
+        if (state !is SavedState) {
+            super.onRestoreInstanceState(state)
+            return
+        }
+        super.onRestoreInstanceState(state.superState)
+        val modes = ScrollMode.entries
+        if (state.modeOrdinal in modes.indices) {
+            scrollMode = modes[state.modeOrdinal]
+        }
+        hideThresholdPx = state.hideThreshold
+        accumulatedScroll = state.savedAccumulatedScroll
+        isHidden = state.savedIsHidden
+        manualOverride = state.savedManualOverride
+        adjustRecyclerPadding = state.savedAdjustRecyclerPadding
+
+        // Apply translation after we're laid out so we know our height
+        post {
+            when (scrollMode) {
+                ScrollMode.PINNED -> {
+                    accumulatedScroll = 0
+                    isHidden = false
+                    translationY = 0f
+                }
+                ScrollMode.HIDE_ON_SCROLL, ScrollMode.SCROLL_WITH_CONTENT -> {
+                    val h = height
+                    val clamped = if (h > 0) accumulatedScroll.coerceIn(0, h) else accumulatedScroll
+                    accumulatedScroll = clamped
+                    translationY = -clamped.toFloat()
+                    isHidden = if (scrollMode == ScrollMode.HIDE_ON_SCROLL && h > 0) {
+                        clamped == h
+                    } else {
+                        clamped > 0
+                    }
+                }
+            }
+            maybeApplyRecyclerPadding(force = true)
+        }
+    }
+
+    private class SavedState : BaseSavedState {
+        var modeOrdinal: Int = 0
+        var hideThreshold: Int = 0
+        var savedAccumulatedScroll: Int = 0
+        var savedIsHidden: Boolean = false
+        var savedManualOverride: Boolean = false
+        var savedAdjustRecyclerPadding: Boolean = true
+
+        constructor(superState: Parcelable?) : super(superState)
+        private constructor(parcel: Parcel) : super(parcel) {
+            modeOrdinal = parcel.readInt()
+            hideThreshold = parcel.readInt()
+            savedAccumulatedScroll = parcel.readInt()
+            savedIsHidden = parcel.readInt() == 1
+            savedManualOverride = parcel.readInt() == 1
+            savedAdjustRecyclerPadding = parcel.readInt() == 1
+        }
+
+        override fun writeToParcel(out: Parcel, flags: Int) {
+            super.writeToParcel(out, flags)
+            out.writeInt(modeOrdinal)
+            out.writeInt(hideThreshold)
+            out.writeInt(savedAccumulatedScroll)
+            out.writeInt(if (savedIsHidden) 1 else 0)
+            out.writeInt(if (savedManualOverride) 1 else 0)
+            out.writeInt(if (savedAdjustRecyclerPadding) 1 else 0)
+        }
+
+        companion object CREATOR : Parcelable.Creator<SavedState> {
+            override fun createFromParcel(source: Parcel): SavedState = SavedState(source)
+            override fun newArray(size: Int): Array<SavedState?> = arrayOfNulls(size)
         }
     }
 }
