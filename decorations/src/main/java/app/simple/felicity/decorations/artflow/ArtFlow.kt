@@ -52,6 +52,7 @@ class ArtFlow @JvmOverloads constructor(
         renderer.setZSpread(CarouselPreferences.getZSpread().div(100F))
         setRenderer(renderer)
         renderMode = RENDERMODE_CONTINUOUSLY
+        renderer.setReflectionGap(CarouselPreferences.getReflectionGap().div(100F))
 
         scroller = OverScroller(context)
 
@@ -223,6 +224,10 @@ class ArtFlow @JvmOverloads constructor(
 
             CarouselPreferences.Z_SPREAD -> {
                 queueEvent { renderer.setZSpread(CarouselPreferences.getZSpread().div(100F)) }
+            }
+
+            CarouselPreferences.REFLECTION_GAP -> {
+                renderer.setReflectionGap(CarouselPreferences.getReflectionGap().div(100F))
             }
         }
     }

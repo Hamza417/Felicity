@@ -26,6 +26,8 @@ class CarouselMenu : ScopedBottomSheetFragment() {
         binding.cameraYSeekbar.setProgress(CarouselPreferences.getEyeY())
         binding.zSpreadSeekbar.setDefaultProgress(CarouselPreferences.Z_SPREAD_DEFAULT)
         binding.zSpreadSeekbar.setProgress(CarouselPreferences.getZSpread())
+        binding.reflectionGapSeekbar.setDefaultProgress(CarouselPreferences.REFLECTION_GAP_DEFAULT)
+        binding.reflectionGapSeekbar.setProgress(CarouselPreferences.getReflectionGap())
 
         binding.cameraYSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
             override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean) {
@@ -39,6 +41,14 @@ class CarouselMenu : ScopedBottomSheetFragment() {
             override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean) {
                 if (fromUser) {
                     CarouselPreferences.setZSpread(progress)
+                }
+            }
+        })
+
+        binding.reflectionGapSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
+            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    CarouselPreferences.setReflectionGap(progress)
                 }
             }
         })

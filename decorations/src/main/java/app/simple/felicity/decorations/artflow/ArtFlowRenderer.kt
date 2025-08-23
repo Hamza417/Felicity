@@ -125,7 +125,7 @@ class ArtFlowRenderer(
     private var depthParallaxEnabled = true
 
     // Reflection parameters
-    private val reflectionGap = 0.05f          // vertical gap below main cover
+    private var reflectionGap = 0.0f          // vertical gap below main cover (in scaled quad units)
     private val reflectionScale = 0.65f        // relative height of reflection
     private val reflectionStrength = 0.55f     // max brightness/alpha of reflection
     private var reflectionBlur = 0.006f        // default subtle reflection blur
@@ -295,6 +295,24 @@ class ArtFlowRenderer(
         targetDragPitch = 0f
     }
 
+    // Allow configuring reflection gap at runtime
+    fun setReflectionGap(gap: Float) {
+        val g = gap.coerceAtLeast(0f)
+        if (g != reflectionGap) {
+            reflectionGap = g
+            glView.requestRender()
+        }
+    }
+
+    // Allow configuring reflection blur at runtime
+    fun setReflectionBlur(radius: Float) {
+        reflectionBlur = radius.coerceAtLeast(0f)
+    }
+
+    fun setDepthParallaxEnabled(enabled: Boolean) {
+        depthParallaxEnabled = enabled
+    }
+
     // ----- Drawing -----
     private fun drawItem(tex: Int, offsetFromCenter: Float) {
         val absOff = abs(offsetFromCenter)
@@ -342,7 +360,8 @@ class ArtFlowRenderer(
         if (reflectionEnabled) {
             Matrix.setIdentityM(model, 0)
             if (currentDragPitch != 0f) Matrix.rotateM(model, 0, currentDragPitch, 1f, 0f, 0f)
-            val down = scale + reflectionGap
+            // Correct center-to-center offset: half of main height + half of reflection height + optional gap
+            val down = 0.5f * (scale + scale * reflectionScale) + reflectionGap
             if (verticalOrientation) {
                 // Skip drawing reflection in portrait (reflectionEnabled should be false anyway)
             } else {
@@ -581,14 +600,6 @@ class ArtFlowRenderer(
     private inline fun queueGL(crossinline block: () -> Unit) {
         glView.queueEvent { block() }
         glView.requestRender()
-    }
-
-    fun setDepthParallaxEnabled(enabled: Boolean) {
-        depthParallaxEnabled = enabled
-    }
-
-    fun setReflectionBlur(radius: Float) {
-        reflectionBlur = radius.coerceAtLeast(0f)
     }
 
     interface ScrollListener {

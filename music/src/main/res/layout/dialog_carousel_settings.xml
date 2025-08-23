@@ -27,7 +27,6 @@
             android:layout_height="wrap_content"
             app:felicityAnimateInitial="false"
             app:felicityMax="200"
-            app:felicityProgress="100"
             app:felicityThumbRadius="@dimen/padding_10"
             app:felicityThumbRingWidth="@dimen/padding_10"
             app:felicityTrackHeight="@dimen/padding_10" />
@@ -48,6 +47,26 @@
             app:felicityMax="80"
             app:felicityMin="35"
             app:felicityProgress="35"
+            app:felicityThumbRadius="@dimen/padding_10"
+            app:felicityThumbRingWidth="@dimen/padding_10"
+            app:felicityTrackHeight="@dimen/padding_10" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/text_size_14"
+            android:text="@string/reflection_gap"
+            app:appFontStyle="bold"
+            app:textColorStyle="primary" />
+
+        <app.simple.felicity.decorations.seekbars.FelicitySeekbar
+            android:id="@+id/reflection_gap_seekbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:felicityAnimateInitial="false"
+            app:felicityMax="60"
+            app:felicityMin="0"
+            app:felicityProgress="0"
             app:felicityThumbRadius="@dimen/padding_10"
             app:felicityThumbRingWidth="@dimen/padding_10"
             app:felicityTrackHeight="@dimen/padding_10" />
