@@ -9,7 +9,7 @@ import app.simple.felicity.preferences.SharedPreferences.getSharedPreferences
 
 object AppearancePreferences {
 
-    private const val APP_CORNER_RADIUS = "view_corner_radius"
+    const val APP_CORNER_RADIUS = "view_corner_radius"
     private const val ICON_SHADOWS = "icon_shadows"
     private const val LAST_LIGHT_THEME = "last_light_theme"
     private const val LAST_DARK_THEME = "last_dark_theme"
@@ -23,10 +23,9 @@ object AppearancePreferences {
     private const val ACCENT_COLOR_LIGHT = "app_accent_color_light"
     private const val APP_FONT = "type_face"
     const val ACCENT_ON_NAV = "accent_color_on_nav_bar"
-    const val ICON_SIZE = "app_icon_size"
 
-    var minIconSize = 0
-    var maxIconSize = 75
+    const val MAX_CORNER_RADIUS = 60F
+    const val DEFAULT_CORNER_RADIUS = 20F
 
     // ---------------------------------------------------------------------------------------------------------- //
 
@@ -140,17 +139,6 @@ object AppearancePreferences {
 
     fun isAccentOnNavigationBar(): Boolean {
         return getSharedPreferences().getBoolean(ACCENT_ON_NAV, false)
-    }
-
-    // ---------------------------------------------------------------------------------------------------------- //
-
-    fun setIconSize(size: Int) {
-        getSharedPreferences().edit().putInt(ICON_SIZE, size).apply()
-    }
-
-    @Synchronized
-    fun getIconSize(): Int {
-        return getSharedPreferences().getInt(ICON_SIZE, maxIconSize.div(4))
     }
 
     // ---------------------------------------------------------------------------------------------------------- //

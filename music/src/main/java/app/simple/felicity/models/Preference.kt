@@ -17,9 +17,9 @@ class Preference {
     var icon: Int = 0
     var type: PreferenceType?
 
-    var valueProvider: Supplier<String?>? = null
+    var valueProvider: Supplier<Any?>? = null
 
-    var onClickAction: ((View, (Any?) -> Unit) -> Unit)? = null
+    var onPreferenceAction: ((View, (Any?) -> Unit) -> Unit)? = null
 
     constructor(@StringRes title: Int, @StringRes summary: Int, @DrawableRes icon: Int, type: PreferenceType?) {
         this.title = title
@@ -33,8 +33,11 @@ class Preference {
         this.type = type
     }
 
-    val value: String?
-        get() = if (valueProvider != null) valueProvider!!.get() else ""
+    val valueAsStringProvider: String?
+        get() = valueProvider?.get() as String?
+
+    val valueAsSeekbarStateProvider: SeekbarState?
+        get() = valueProvider?.get() as SeekbarState?
 }
 
 

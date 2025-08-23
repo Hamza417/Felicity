@@ -2,6 +2,7 @@ package app.simple.felicity.decorations.seekbars
 
 import android.animation.ValueAnimator
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
@@ -21,6 +22,8 @@ import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
 import app.simple.felicity.decoration.R
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
+import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.theme.managers.ThemeManager
 import kotlin.math.abs
 import kotlin.math.max
@@ -30,7 +33,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr) {
+) : View(context, attrs, defStyleAttr), SharedPreferences.OnSharedPreferenceChangeListener {
 
     interface OnSeekChangeListener {
         fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean)
@@ -649,5 +652,21 @@ class FelicitySeekbar @JvmOverloads constructor(
     fun clearThumbCornerRadiusOverride() {
         thumbCornerRadiusPxOverride = null
         invalidate()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        registerSharedPreferenceChangeListener()
+    }
+
+    override fun onSharedPreferenceChanged(p0: SharedPreferences?, p1: String?) {
+        if (p1 == AppearancePreferences.APP_CORNER_RADIUS) {
+            setThumbCornerRadius(AppearancePreferences.getCornerRadius())
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        unregisterSharedPreferenceChangeListener()
     }
 }

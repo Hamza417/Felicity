@@ -2,11 +2,13 @@ package app.simple.felicity.extensions.fragments
 
 import android.widget.TextView
 import app.simple.felicity.R
-import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
+import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.models.Preference
+import app.simple.felicity.models.SeekbarState
 import app.simple.felicity.popups.home.PopupHomeInterfaceMenu
 import app.simple.felicity.popups.songs.PopupSongsInterfaceMenu
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.SongsPreferences
 import java.util.function.Supplier
@@ -22,12 +24,21 @@ open class PreferenceFragment : ScopedFragment() {
                 title = R.string.corner_radius,
                 summary = R.string.corner_radius_summary,
                 icon = app.simple.felicity.decoration.R.drawable.ic_corner,
-                type = PreferenceType.DIALOG,
+                type = PreferenceType.SLIDER,
         )
 
-        cornerRadius.onClickAction = { view, callback ->
-            childFragmentManager.showSongsSort()
+        cornerRadius.onPreferenceAction = { view, callback ->
+            AppearancePreferences.setCornerRadius((view as FelicitySeekbar).getProgress().toFloat())
             true
+        }
+
+        cornerRadius.valueProvider = Supplier {
+            SeekbarState(
+                    position = AppearancePreferences.getCornerRadius().toInt(),
+                    max = AppearancePreferences.MAX_CORNER_RADIUS.toInt(),
+                    min = 0,
+                    default = AppearancePreferences.DEFAULT_CORNER_RADIUS.toInt(),
+            )
         }
 
         preferences.add(header)
@@ -56,7 +67,7 @@ open class PreferenceFragment : ScopedFragment() {
             }
         }
 
-        songInterface.onClickAction = { view, callback ->
+        songInterface.onPreferenceAction = { view, callback ->
             PopupSongsInterfaceMenu(
                     container = requireContainerView(),
                     anchorView = view,
@@ -104,7 +115,7 @@ open class PreferenceFragment : ScopedFragment() {
             }
         }
 
-        homeInterface.onClickAction = { view, callback ->
+        homeInterface.onPreferenceAction = { view, callback ->
             PopupHomeInterfaceMenu(
                     container = requireContainerView(),
                     anchorView = view,
