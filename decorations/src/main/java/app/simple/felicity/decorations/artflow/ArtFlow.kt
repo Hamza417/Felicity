@@ -53,6 +53,7 @@ class ArtFlow @JvmOverloads constructor(
         setRenderer(renderer)
         renderMode = RENDERMODE_CONTINUOUSLY
         renderer.setReflectionGap(CarouselPreferences.getReflectionGap().div(100F))
+        renderer.setSideScale(CarouselPreferences.getScale().div(100F))
 
         scroller = OverScroller(context)
 
@@ -228,6 +229,10 @@ class ArtFlow @JvmOverloads constructor(
 
             CarouselPreferences.REFLECTION_GAP -> {
                 renderer.setReflectionGap(CarouselPreferences.getReflectionGap().div(100F))
+            }
+
+            CarouselPreferences.SCALE -> {
+                renderer.setSideScale(CarouselPreferences.getScale().div(100F))
             }
         }
     }

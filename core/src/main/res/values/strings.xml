@@ -85,4 +85,5 @@
     <string name="change_home_interface_summary">Change default home interface to a different one.</string>
     <string name="home">Home</string>
     <string name="reflection_gap">Reflection Gap</string>
+    <string name="scale">Scale</string>
 </resources>

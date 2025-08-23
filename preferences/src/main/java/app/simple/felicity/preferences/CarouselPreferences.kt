@@ -7,10 +7,13 @@ object CarouselPreferences {
     const val CAMERA_EYE_Y = "camera_eye_y"
     const val Z_SPREAD = "z_spread"
     const val REFLECTION_GAP = "reflection_gap"
+    const val SCALE = "scale"
 
     const val CAMERA_EYE_Y_DEFAULT = 100
     const val Z_SPREAD_DEFAULT = 35
     const val REFLECTION_GAP_DEFAULT = 5
+    const val REFLECTION_BLUR_DEFAULT = 0
+    const val SCALE_DEFAULT = 75
 
     // -------------------------------------------------------------------------------------------- //
 
@@ -52,5 +55,19 @@ object CarouselPreferences {
     fun getReflectionGap(): Int {
         return SharedPreferences.getSharedPreferences()
             .getInt(REFLECTION_GAP, REFLECTION_GAP_DEFAULT)
+    }
+
+    // -------------------------------------------------------------------------------------------- //
+
+    fun setScale(value: Int) {
+        SharedPreferences.getSharedPreferences()
+            .edit {
+                putInt(SCALE, value)
+            }
+    }
+
+    fun getScale(): Int {
+        return SharedPreferences.getSharedPreferences()
+            .getInt(SCALE, SCALE_DEFAULT)
     }
 }

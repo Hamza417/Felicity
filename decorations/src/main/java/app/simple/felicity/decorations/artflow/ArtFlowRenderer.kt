@@ -120,15 +120,14 @@ class ArtFlowRenderer(
     private val spacingPortrait = 0.65f // tighter spacing in portrait
     private var currentSpacing = spacingLandscape
     private val maxRotation = 55f
-    private val sideScale = 0.75f
+    private var sideScale = 0.75f
     private var zSpread = 0.35f
     private var depthParallaxEnabled = true
 
     // Reflection parameters
-    private var reflectionGap = 0.0f          // vertical gap below main cover (in scaled quad units)
+    private var reflectionGap = 0.05f          // vertical gap below main cover (in scaled quad units)
     private val reflectionScale = 0.65f        // relative height of reflection
     private val reflectionStrength = 0.55f     // max brightness/alpha of reflection
-    private var reflectionBlur = 0.006f        // default subtle reflection blur
 
     // Texture management
     private val targetMaxDim = 512 // px max dimension for covers
@@ -147,7 +146,6 @@ class ArtFlowRenderer(
     private var uTex = 0
     private var uReflection = 0
     private var uReflectStrength = 0
-    private var uReflectBlur = 0
 
     // Geometry
     private lateinit var quadVB: FloatBuffer
@@ -304,17 +302,12 @@ class ArtFlowRenderer(
         }
     }
 
-    // Allow configuring reflection blur at runtime
-    fun setReflectionBlur(radius: Float) {
-        reflectionBlur = radius.coerceAtLeast(0f)
-    }
-
     fun setDepthParallaxEnabled(enabled: Boolean) {
         depthParallaxEnabled = enabled
     }
 
     // ----- Drawing -----
-    private fun drawItem(tex: Int, offsetFromCenter: Float) {
+    private fun drawItem(index: Int, tex: Int, offsetFromCenter: Float) {
         val absOff = abs(offsetFromCenter)
         val rotEase = smoothstep(0f, 0.18f, absOff)
         val depthFactor = if (depthParallaxEnabled) -absOff * zSpread * rotEase else 0f
@@ -345,7 +338,6 @@ class ArtFlowRenderer(
         GLES20.glUniform1f(uAlpha, brightness)
         GLES20.glUniform1f(uReflection, 0f)
         GLES20.glUniform1f(uReflectStrength, reflectionStrength)
-        GLES20.glUniform1f(uReflectBlur, 0f)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex)
         GLES20.glUniform1i(uTex, 0)
@@ -355,7 +347,7 @@ class ArtFlowRenderer(
         GLES20.glVertexAttribPointer(aUV, 2, GLES20.GL_FLOAT, false, 0, quadTB)
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, quadIB)
 
-        capturePickBoundsForIndex((scrollOffset + offsetFromCenter).roundToInt())
+        capturePickBoundsForIndex(index)
 
         if (reflectionEnabled) {
             Matrix.setIdentityM(model, 0)
@@ -376,7 +368,6 @@ class ArtFlowRenderer(
                 GLES20.glUniform1f(uAlpha, brightness)
                 GLES20.glUniform1f(uReflection, 1f)
                 GLES20.glUniform1f(uReflectStrength, reflectionStrength)
-                GLES20.glUniform1f(uReflectBlur, reflectionBlur)
                 GLES20.glDrawElements(GLES20.GL_TRIANGLES, 6, GLES20.GL_UNSIGNED_SHORT, quadIB)
             }
         }
@@ -428,22 +419,12 @@ class ArtFlowRenderer(
             uniform float uAlpha; 
             uniform float uReflection; // 0 = main, 1 = reflection
             uniform float uReflectStrength; 
-            uniform float uReflectionBlur; // blur radius in UV units
             void main(){
                 vec4 c = texture2D(uTex, vUV);
                 vec2 uv = vUV - 0.5; 
                 float vignette = 1.0 - dot(uv, uv)*0.65; 
                 c.rgb *= clamp(vignette, 0.5, 1.0);
                 if (uReflection > 0.5) {
-                    if (uReflectionBlur > 0.00001) {
-                        float offs[5];
-                        offs[0]=-2.0; offs[1]=-1.0; offs[2]=0.0; offs[3]=1.0; offs[4]=2.0;
-                        float wgts[5];
-                        wgts[0]=0.0544887; wgts[1]=0.244201; wgts[2]=0.40262; wgts[3]=0.244201; wgts[4]=0.0544887;
-                        vec4 sum = vec4(0.0);
-                        for (int i=0;i<5;i++) sum += texture2D(uTex, vUV + vec2(0.0, offs[i]*uReflectionBlur)) * wgts[i];
-                        c = sum;
-                    }
                     float fade = vUV.y; 
                     float oa = fade * uReflectStrength * uAlpha; // overall alpha for reflection
                     c.rgb *= oa;
@@ -465,7 +446,6 @@ class ArtFlowRenderer(
         uTex = GLES20.glGetUniformLocation(program, "uTex")
         uReflection = GLES20.glGetUniformLocation(program, "uReflection")
         uReflectStrength = GLES20.glGetUniformLocation(program, "uReflectStrength")
-        uReflectBlur = GLES20.glGetUniformLocation(program, "uReflectionBlur")
     }
 
     private fun compileShader(type: Int, src: String): Int {
@@ -716,7 +696,7 @@ class ArtFlowRenderer(
             if (abs(i - centerIdx) <= prefetchRadius && !textures.containsKey(i) && !inFlight.containsKey(i)) enqueueLoad(i)
             val tex = textures[i] ?: placeholderTex
             val offset = i - centerF
-            drawItem(tex, offset)
+            drawItem(i, tex, offset)
         }
         queueGL { recycleFarTexturesFloat(centerF) }
     }
@@ -806,5 +786,13 @@ class ArtFlowRenderer(
             }
         }
         return best?.index
+    }
+
+    fun setSideScale(scale: Float) {
+        val s = scale.coerceIn(0.1f, 1f)
+        if (s != sideScale) {
+            sideScale = s
+            glView.requestRender()
+        }
     }
 }
