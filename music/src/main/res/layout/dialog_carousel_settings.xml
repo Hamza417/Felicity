@@ -27,6 +27,7 @@
             android:layout_height="wrap_content"
             app:felicityAnimateInitial="false"
             app:felicityMax="200"
+            app:felicityMin="0"
             app:felicityThumbRadius="@dimen/padding_10"
             app:felicityThumbRingWidth="@dimen/padding_10"
             app:felicityTrackHeight="@dimen/padding_10" />

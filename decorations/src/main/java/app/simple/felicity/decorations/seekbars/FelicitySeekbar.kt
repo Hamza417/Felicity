@@ -8,6 +8,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.view.GestureDetector
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -40,7 +42,8 @@ class FelicitySeekbar @JvmOverloads constructor(
     private var minProgress = 0
     private var maxProgress = 100
     private var progressInternal = 0f // current float progress for animation, in absolute units within [min..max]
-    private var defaultProgress = 0 // value to reset to on long press
+    private var defaultProgress = 0 // value to reset to on double tap
+    private var hasDefaultSet = false // only reset if explicitly configured
 
     @ColorInt
     private var trackColor: Int = if (isInEditMode) {
@@ -98,10 +101,22 @@ class FelicitySeekbar @JvmOverloads constructor(
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private var downX = 0f
     private var downY = 0f
-    private var longPressTriggered = false
-    private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
-    private var longPressRunnable: Runnable? = null
     private var downOnThumb = false
+
+    // Gesture detection for double-tap to reset
+    private var consumedDoubleTap = false
+    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+        override fun onDoubleTap(e: MotionEvent): Boolean {
+            if (hasDefaultSet) {
+                // Provide a subtle haptic and animate back to default
+                performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                resetToDefault(animate = true)
+                consumedDoubleTap = true
+                return true
+            }
+            return false
+        }
+    })
 
     // Spring animation support
     private val progressProperty = object : FloatPropertyCompat<FelicitySeekbar>("felicityIntProgress") {
@@ -118,7 +133,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     private val springAnimation = SpringAnimation(this, progressProperty).apply {
         spring = SpringForce().apply {
             stiffness = SpringForce.STIFFNESS_LOW
-            dampingRatio = SpringForce.DAMPING_RATIO_MEDIUM_BOUNCY
+            dampingRatio = SpringForce.DAMPING_RATIO_NO_BOUNCY
         }
         addEndListener { _, _, _, _ ->
             listener?.onProgressChanged(this@FelicitySeekbar, getProgress(), animateFromUser)
@@ -128,7 +143,8 @@ class FelicitySeekbar @JvmOverloads constructor(
         }
     }
     private val baseStiffness = SpringForce.STIFFNESS_LOW
-    private val baseDamping = SpringForce.DAMPING_RATIO_MEDIUM_BOUNCY
+    private val baseDamping = SpringForce.DAMPING_RATIO_NO_BOUNCY
+
     private val fastStiffness = SpringForce.STIFFNESS_HIGH
     private val fastDamping = SpringForce.DAMPING_RATIO_NO_BOUNCY
 
@@ -333,11 +349,12 @@ class FelicitySeekbar @JvmOverloads constructor(
     fun getProgress(): Int = progressInternal.toInt()
 
     fun setDefaultProgress(value: Int) {
+        hasDefaultSet = true
         defaultProgress = value.coerceIn(minProgress, maxProgress)
     }
 
     fun resetToDefault(animate: Boolean = true) {
-        setProgress(defaultProgress, fromUser = false, animate = animate)
+        setProgress(defaultProgress, fromUser = true, animate = animate)
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -444,24 +461,19 @@ class FelicitySeekbar @JvmOverloads constructor(
         }
     }
 
-    private fun scheduleLongPress() {
-        cancelLongPress()
-        longPressRunnable = Runnable {
-            if (isPressed && downOnThumb) {
-                longPressTriggered = true
-                performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
-                resetToDefault(animate = true)
-            }
-        }.also { postDelayed(it, longPressTimeout) }
-    }
-
-    override fun cancelLongPress() {
-        super.cancelLongPress()
-        longPressRunnable?.let { removeCallbacks(it) }
-        longPressRunnable = null
-    }
-
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        // First pass events to gesture detector to catch double-tap
+        consumedDoubleTap = false
+        gestureDetector.onTouchEvent(event)
+        if (consumedDoubleTap) {
+            // Avoid triggering drag/tap behaviors for this gesture
+            isDragging = false
+            thumbScaleAnimator?.cancel()
+            thumbScale = 1f
+            invalidate()
+            return true
+        }
+
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 if (!isEnabled) return false
@@ -470,9 +482,7 @@ class FelicitySeekbar @JvmOverloads constructor(
                 downX = event.x
                 downY = event.y
                 downOnThumb = isPointOnThumb(downX, downY)
-                longPressTriggered = false
                 if (downOnThumb) {
-                    scheduleLongPress()
                     startThumbScale(up = false)
                 } else {
                     // fast animate to tap position
@@ -493,19 +503,14 @@ class FelicitySeekbar @JvmOverloads constructor(
                 return true
             }
             MotionEvent.ACTION_MOVE -> if (isDragging) {
-                val dx = event.x - downX
-                val dy = event.y - downY
-                val movedFar = dx * dx + dy * dy > touchSlop * touchSlop
-                if (movedFar && !longPressTriggered) cancelLongPress()
                 updateFromTouch(event.x, true)
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (isDragging) {
                     isDragging = false
-                    if (!longPressTriggered) listener?.onStopTrackingTouch(this)
+                    listener?.onStopTrackingTouch(this)
                 }
-                cancelLongPress()
                 if (downOnThumb) startThumbScale(up = true)
                 downOnThumb = false
                 parent?.requestDisallowInterceptTouchEvent(false)

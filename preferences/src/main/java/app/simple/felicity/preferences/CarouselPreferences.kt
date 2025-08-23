@@ -9,7 +9,7 @@ object CarouselPreferences {
     const val REFLECTION_GAP = "reflection_gap"
     const val SCALE = "scale"
 
-    const val CAMERA_EYE_Y_DEFAULT = 100
+    const val CAMERA_EYE_Y_DEFAULT = 0
     const val Z_SPREAD_DEFAULT = 35
     const val REFLECTION_GAP_DEFAULT = 5
     const val REFLECTION_BLUR_DEFAULT = 0
