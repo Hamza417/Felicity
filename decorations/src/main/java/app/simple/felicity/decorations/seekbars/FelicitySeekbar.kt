@@ -20,6 +20,7 @@ import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
 import app.simple.felicity.decoration.R
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.managers.ThemeManager
 import kotlin.math.abs
 import kotlin.math.max
@@ -68,7 +69,11 @@ class FelicitySeekbar @JvmOverloads constructor(
     }
 
     @ColorInt
-    private var thumbInnerColor: Int = Color.WHITE
+    private var thumbInnerColor: Int = if (isInEditMode) {
+        Color.TRANSPARENT
+    } else {
+        thumbRingColor
+    }
 
     private var trackHeightPx: Float
     private var thumbRadiusPx: Float
@@ -91,6 +96,9 @@ class FelicitySeekbar @JvmOverloads constructor(
     private val smudgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val thumbShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
 
+    // Press ring paint (MD2-style halo around thumb on press)
+    private val thumbPressRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+
     private val trackRect = RectF()
     private val smudgeRect = RectF()
     private val progressRect = RectF()
@@ -100,6 +108,9 @@ class FelicitySeekbar @JvmOverloads constructor(
     private val thumbStrokeRect = RectF()
     private val thumbInnerRect = RectF()
 
+    // Extra rect for press ring
+    private val thumbPressRingRect = RectF()
+
     private var isDragging = false
     private var thumbScale = 1f
     private var thumbScaleAnimator: ValueAnimator? = null
@@ -108,20 +119,36 @@ class FelicitySeekbar @JvmOverloads constructor(
     private var downY = 0f
     private var downOnThumb = false
 
+    // Press ring animation
+    private var pressRingProgress = 0f // 0..1
+    private var pressRingAnimator: ValueAnimator? = null
+    private var pressRingOutsetPx: Float
+    private var pressRingStrokePx: Float
+
+    @ColorInt
+    private var pressRingColor: Int
+
+    // Helper: total outward outset for press ring including half the stroke
+    private fun pressRingTotalOutset(): Float = pressRingOutsetPx + (pressRingStrokePx / 2f)
+
     // Gesture detection for double-tap to reset
     private var consumedDoubleTap = false
-    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+    private val gestureListener = object : GestureDetector.SimpleOnGestureListener() {
+        override fun onDown(e: MotionEvent): Boolean = true
         override fun onDoubleTap(e: MotionEvent): Boolean {
             if (hasDefaultSet) {
-                // Provide a subtle haptic and animate back to default
                 performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 resetToDefault(animate = true)
                 consumedDoubleTap = true
+                startPressRing(false)
                 return true
             }
             return false
         }
-    })
+    }
+    private val gestureDetector = GestureDetector(context, gestureListener).apply {
+        setOnDoubleTapListener(gestureListener)
+    }
 
     // Spring animation support
     private val progressProperty = object : FloatPropertyCompat<FelicitySeekbar>("felicityIntProgress") {
@@ -160,6 +187,10 @@ class FelicitySeekbar @JvmOverloads constructor(
         thumbRingWidthPx = 4f * d
         // Default pill width: 3x radius (i.e., 1.5x diameter)
         thumbWidthPx = thumbRadiusPx * 3f
+        // MD2 press ring defaults
+        pressRingOutsetPx = 6f * d
+        pressRingStrokePx = 2f * d
+        pressRingColor = progressColor
 
         context.theme.obtainStyledAttributes(attrs, R.styleable.FelicitySeekbar, defStyleAttr, 0).apply {
             try {
@@ -214,7 +245,7 @@ class FelicitySeekbar @JvmOverloads constructor(
 
         applyPaintColors()
         setupSmudgeAndShadow()
-        applyThemeColors()
+        applyThemeProps()
 
         isClickable = true
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -243,9 +274,12 @@ class FelicitySeekbar @JvmOverloads constructor(
         thumbRingPaint.color = thumbRingColor
         thumbRingPaint.strokeWidth = thumbRingWidthPx
         thumbInnerPaint.color = thumbInnerColor
+        // Press ring picks accent color with dynamic alpha
+        thumbPressRingPaint.color = progressColor
+        thumbPressRingPaint.strokeWidth = pressRingStrokePx
     }
 
-    private fun applyThemeColors() {
+    private fun applyThemeProps() {
         if (isInEditMode.not()) {
             progressColor = ThemeManager.accent.primaryAccentColor
             trackColor = ThemeManager.theme.viewGroupTheme.highlightColor
@@ -253,6 +287,8 @@ class FelicitySeekbar @JvmOverloads constructor(
             thumbInnerColor = progressColor
             smudgeColor = progressColor
             thumbShadowColor = progressColor
+            pressRingColor = progressColor
+            setThumbCornerRadius(AppearancePreferences.getCornerRadius())
         }
     }
 
@@ -363,7 +399,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val baseHeight = max(trackHeightPx, thumbRadiusPx * 2f)
+        val baseHeight = max(trackHeightPx, thumbRadiusPx * 2f) + (pressRingTotalOutset() * 2f)
         val verticalBlur = max(thumbShadowRadius, if (smudgeEnabled) (smudgeRadius + abs(smudgeOffsetY)) else 0f)
         val desiredHeight = (paddingTop + paddingBottom + baseHeight + verticalBlur * 2f).toInt()
         val resolvedWidth = resolveSize(suggestedMinimumWidth + paddingLeft + paddingRight, widthMeasureSpec)
@@ -371,7 +407,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         setMeasuredDimension(resolvedWidth, resolvedHeight)
     }
 
-    private fun horizontalOutset(): Float = max(thumbShadowRadius, if (smudgeEnabled) smudgeRadius else 0f)
+    private fun horizontalOutset(): Float = max(max(thumbShadowRadius, if (smudgeEnabled) smudgeRadius else 0f), pressRingTotalOutset())
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -407,8 +443,10 @@ class FelicitySeekbar @JvmOverloads constructor(
         // Outer rect for shadow and overall silhouette
         thumbOuterRect.set(cx - scaledHalfW, cy - scaledR, cx + scaledHalfW, cy + scaledR)
 
+        val baseThumbCornerR = min(thumbCornerRadiusPxOverride ?: scaledR, min(scaledR, scaledHalfW))
+
         if (thumbShadowRadius > 0f) {
-            canvas.drawRoundRect(thumbOuterRect, scaledR, scaledR, thumbShadowPaint)
+            canvas.drawRoundRect(thumbOuterRect, baseThumbCornerR, baseThumbCornerR, thumbShadowPaint)
         }
 
         // Inner fill (beneath the ring)
@@ -416,16 +454,31 @@ class FelicitySeekbar @JvmOverloads constructor(
             thumbInnerRect.set(thumbOuterRect)
             val inset = thumbRingWidthPx / 2f
             thumbInnerRect.inset(inset, inset)
-            val innerR = max(0f, scaledR - inset)
+            val innerR = max(0f, baseThumbCornerR - inset)
             canvas.drawRoundRect(thumbInnerRect, innerR, innerR, thumbInnerPaint)
         }
 
-        // Stroke ring
+        // Stroke ring (always drawn around thumb to define shape)
         thumbStrokeRect.set(thumbOuterRect)
         val strokeInset = thumbRingWidthPx / 2f
         thumbStrokeRect.inset(strokeInset, strokeInset)
-        val ringR = max(0f, scaledR - strokeInset)
+        val baseRingCornerR = baseThumbCornerR // ring follows thumb shape strictly
+        val ringR = max(0f, baseRingCornerR - strokeInset)
         canvas.drawRoundRect(thumbStrokeRect, ringR, ringR, thumbRingPaint)
+
+        // MD2-style press ring (appears/animates on touch) — draw last so it's above progress/track
+        if (pressRingProgress > 0f) {
+            val extra = pressRingOutsetPx * pressRingProgress
+            thumbPressRingRect.set(thumbOuterRect)
+            // Expand outwards by extra to keep same shape proportion
+            thumbPressRingRect.inset(-extra, -extra)
+            // Corner radius scales with expansion, plus a tiny offset to keep corners uniformly round
+            val pressRingCornerR = baseRingCornerR + extra // + (pressRingStrokePx / 2f)
+            val alpha = (0.35f * pressRingProgress * 255).toInt().coerceIn(0, 255)
+            thumbPressRingPaint.color = (pressRingColor and 0x00FFFFFF) or (alpha shl 24)
+            thumbPressRingPaint.strokeWidth = pressRingStrokePx
+            canvas.drawRoundRect(thumbPressRingRect, pressRingCornerR, pressRingCornerR, thumbPressRingPaint)
+        }
     }
 
     private fun isPointOnThumb(x: Float, y: Float): Boolean {
@@ -438,28 +491,36 @@ class FelicitySeekbar @JvmOverloads constructor(
         val cy = height / 2f + if (smudgeEnabled) smudgeOffsetY else 0f
         val dx = x - progressX
         val dy = y - cy
-        val r = thumbRadiusPx * thumbScale
+        val halfH = thumbRadiusPx * thumbScale
         val halfW = (thumbWidthPx / 2f) * thumbScale
-        val bodyHalfW = max(0f, halfW - r)
-        // Inside central rectangle
-        if (abs(dx) <= bodyHalfW && abs(dy) <= r) return true
-        // Check circular caps
+        val cornerR = min(thumbCornerRadiusPxOverride ?: halfH, min(halfH, halfW))
+        val bodyHalfW = max(0f, halfW - cornerR)
+        // Inside central rectangle of rounded-rect
+        if (abs(dx) <= bodyHalfW && abs(dy) <= halfH) return true
+        // Check circular caps centered at +/- bodyHalfW
         val leftCx = -bodyHalfW
         val rightCx = bodyHalfW
         val dlx = dx - leftCx
         val drx = dx - rightCx
-        return (dlx * dlx + dy * dy <= r * r) || (drx * drx + dy * dy <= r * r)
+        return (dlx * dlx + dy * dy <= cornerR * cornerR) || (drx * drx + dy * dy <= cornerR * cornerR)
     }
 
+    // Deprecated: no-op to keep binary/source compatibility; press ring provides feedback instead
     private fun startThumbScale(up: Boolean = false) {
-        val target = if (!up) 1.15f else 1f
-        if (thumbScale == target) return
         thumbScaleAnimator?.cancel()
-        thumbScaleAnimator = ValueAnimator.ofFloat(thumbScale, target).apply {
-            duration = if (!up) 220 else 360
+        thumbScale = 1f
+        invalidate()
+    }
+
+    private fun startPressRing(show: Boolean) {
+        val target = if (show) 1f else 0f
+        if (pressRingProgress == target) return
+        pressRingAnimator?.cancel()
+        pressRingAnimator = ValueAnimator.ofFloat(pressRingProgress, target).apply {
+            duration = if (show) 160 else 200
             interpolator = DecelerateInterpolator()
             addUpdateListener { anim ->
-                thumbScale = (anim.animatedValue as Float)
+                pressRingProgress = anim.animatedValue as Float
                 invalidate()
             }
             start()
@@ -475,6 +536,7 @@ class FelicitySeekbar @JvmOverloads constructor(
             isDragging = false
             thumbScaleAnimator?.cancel()
             thumbScale = 1f
+            startPressRing(false)
             invalidate()
             return true
         }
@@ -488,7 +550,7 @@ class FelicitySeekbar @JvmOverloads constructor(
                 downY = event.y
                 downOnThumb = isPointOnThumb(downX, downY)
                 if (downOnThumb) {
-                    startThumbScale(up = false)
+                    startPressRing(true)
                 } else {
                     // fast animate to tap position
                     val hOut = horizontalOutset()
@@ -516,7 +578,7 @@ class FelicitySeekbar @JvmOverloads constructor(
                     isDragging = false
                     listener?.onStopTrackingTouch(this)
                 }
-                if (downOnThumb) startThumbScale(up = true)
+                if (downOnThumb) startPressRing(false)
                 downOnThumb = false
                 parent?.requestDisallowInterceptTouchEvent(false)
             }
@@ -550,6 +612,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         progressColor = progress
         thumbRingColor = ring
         thumbInnerColor = inner
+        pressRingColor = progress
         applyPaintColors()
         invalidate()
     }
@@ -568,6 +631,23 @@ class FelicitySeekbar @JvmOverloads constructor(
         thumbShadowRadius = radius
         thumbShadowColor = color
         setupSmudgeAndShadow()
+        invalidate()
+    }
+
+    // Optional overrides for corner radii (rx=ry) of thumb fill only (ring follows thumb)
+    private var thumbCornerRadiusPxOverride: Float? = null
+
+    // Public API: set/get corner radius for thumb fill (rx==ry)
+    fun setThumbCornerRadius(radius: Float) {
+        thumbCornerRadiusPxOverride = max(0f, radius)
+        invalidate()
+    }
+
+    fun getThumbCornerRadius(): Float? = thumbCornerRadiusPxOverride
+
+    // Convenience: clear thumb override (reverts to pill radius)
+    fun clearThumbCornerRadiusOverride() {
+        thumbCornerRadiusPxOverride = null
         invalidate()
     }
 }
