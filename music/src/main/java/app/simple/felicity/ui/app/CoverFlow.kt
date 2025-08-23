@@ -9,8 +9,8 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.core.R
 import app.simple.felicity.core.utils.WindowUtil
 import app.simple.felicity.databinding.FragmentCoverflowBinding
-import app.simple.felicity.decorations.coverflow.CoverFlow.OnCoverClickListener
-import app.simple.felicity.decorations.coverflow.CoverFlowRenderer
+import app.simple.felicity.decorations.artflow.ArtFlow.OnCoverClickListener
+import app.simple.felicity.decorations.artflow.ArtFlowRenderer
 import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselMenu
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -54,7 +54,7 @@ class CoverFlow : MediaFragment() {
                 }
             }
 
-            binding.coverflow.addScrollListener(object : CoverFlowRenderer.ScrollListener {
+            binding.coverflow.addScrollListener(object : ArtFlowRenderer.ScrollListener {
                 override fun onCenteredIndexChanged(index: Int) {
                     songsViewModel.setCarouselPosition(index)
                 }

@@ -10,7 +10,7 @@ import android.view.animation.DecelerateInterpolator;
 import androidx.annotation.NonNull;
 import androidx.transition.TransitionValues;
 import androidx.transition.Visibility;
-import app.simple.felicity.decorations.coverflow.CoverFlow;
+import app.simple.felicity.decorations.artflow.ArtFlow;
 import app.simple.felicity.decorations.pager.FelicityPager;
 
 public class SeekableSharedAxisZTransition extends Visibility {
@@ -31,15 +31,15 @@ public class SeekableSharedAxisZTransition extends Visibility {
         return true;
     }
     
-    private static CoverFlow findCoverFlow(View root) {
-        if (root instanceof CoverFlow) {
+    private static ArtFlow findCoverFlow(View root) {
+        if (root instanceof ArtFlow) {
             root.setAlpha(0f);
-            return (CoverFlow) root;
+            return (ArtFlow) root;
         }
         
         if (root instanceof ViewGroup group) {
             for (int i = 0; i < group.getChildCount(); i++) {
-                CoverFlow found = findCoverFlow(group.getChildAt(i));
+                ArtFlow found = findCoverFlow(group.getChildAt(i));
                 if (found != null) {
                     Log.i("SeekableSharedAxisZTransition", "Found CoverFlow: " + found.getClass().getSimpleName());
                     return found;
@@ -89,7 +89,7 @@ public class SeekableSharedAxisZTransition extends Visibility {
     
     private Animator createAnimator(final View view, final float startScale, final float endScale,
             final float startAlpha, final float endAlpha) {
-        CoverFlow coverFlow = findCoverFlow(view);
+        ArtFlow artFlow = findCoverFlow(view);
         FelicityPager felicityPager = findFelicityPager(view);
         
         ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
@@ -103,8 +103,8 @@ public class SeekableSharedAxisZTransition extends Visibility {
             view.setScaleY(scale);
             view.setAlpha(alpha);
             
-            if (coverFlow != null) {
-                coverFlow.setAlpha(alpha);
+            if (artFlow != null) {
+                artFlow.setAlpha(alpha);
             }
             
             if (felicityPager != null) {

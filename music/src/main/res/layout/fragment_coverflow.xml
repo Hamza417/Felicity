@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
-    <app.simple.felicity.decorations.coverflow.CoverFlow
+    <app.simple.felicity.decorations.artflow.ArtFlow
         android:id="@+id/coverflow"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

@@ -32,6 +32,26 @@
             app:felicityThumbRingWidth="@dimen/padding_10"
             app:felicityTrackHeight="@dimen/padding_10" />
 
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/text_size_14"
+            android:text="@string/z_spread"
+            app:appFontStyle="bold"
+            app:textColorStyle="primary" />
+
+        <app.simple.felicity.decorations.seekbars.FelicitySeekbar
+            android:id="@+id/z_spread_seekbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:felicityAnimateInitial="false"
+            app:felicityMax="80"
+            app:felicityMin="35"
+            app:felicityProgress="35"
+            app:felicityThumbRadius="@dimen/padding_10"
+            app:felicityThumbRingWidth="@dimen/padding_10"
+            app:felicityTrackHeight="@dimen/padding_10" />
+
     </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
 
 </FrameLayout>

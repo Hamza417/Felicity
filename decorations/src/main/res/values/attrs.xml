@@ -182,6 +182,7 @@
     </declare-styleable>
 
     <declare-styleable name="FelicitySeekbar">
+        <attr name="felicityMin" format="integer" />
         <attr name="felicityMax" format="integer" />
         <attr name="felicityProgress" format="integer" />
         <attr name="felicityTrackColor" format="color|reference" />

@@ -1,4 +1,4 @@
-package app.simple.felicity.decorations.coverflow
+package app.simple.felicity.decorations.artflow
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -11,19 +11,19 @@ import android.view.Choreographer
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.widget.OverScroller
-import app.simple.felicity.decorations.coverflow.CoverFlowRenderer.ScrollListener
+import app.simple.felicity.decorations.artflow.ArtFlowRenderer.ScrollListener
 import app.simple.felicity.preferences.CarouselPreferences
 import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 
-class CoverFlow @JvmOverloads constructor(
+class ArtFlow @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null
 ) : GLSurfaceView(context, attrs),
     Choreographer.FrameCallback,
     SharedPreferences.OnSharedPreferenceChangeListener {
 
-    private val renderer: CoverFlowRenderer
+    private val renderer: ArtFlowRenderer
     private val gestureDetector: GestureDetector
     private val scroller: OverScroller
     private val choreographer = Choreographer.getInstance()
@@ -48,7 +48,8 @@ class CoverFlow @JvmOverloads constructor(
         //        setEGLConfigChooser(8, 8, 8, 8, 16, 0)
         //        holder.setFormat(android.graphics.PixelFormat.TRANSLUCENT)
         //        setZOrderOnTop(true)
-        renderer = CoverFlowRenderer(this, context.applicationContext)
+        renderer = ArtFlowRenderer(this, context.applicationContext)
+        renderer.setZSpread(CarouselPreferences.getZSpread().div(100F))
         setRenderer(renderer)
         renderMode = RENDERMODE_CONTINUOUSLY
 
@@ -218,6 +219,10 @@ class CoverFlow @JvmOverloads constructor(
         when (key) {
             CarouselPreferences.CAMERA_EYE_Y -> {
                 queueEvent { renderer.updateCamera() }
+            }
+
+            CarouselPreferences.Z_SPREAD -> {
+                queueEvent { renderer.setZSpread(CarouselPreferences.getZSpread().div(100F)) }
             }
         }
     }

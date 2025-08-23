@@ -1,4 +1,4 @@
-package app.simple.felicity.decorations.coverflow
+package app.simple.felicity.decorations.artflow
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -30,7 +30,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-class CoverFlowRenderer(
+class ArtFlowRenderer(
         private val glView: GLSurfaceView,
         private val context: Context
 ) : GLSurfaceView.Renderer {
@@ -50,6 +50,11 @@ class CoverFlowRenderer(
             globalAlpha = a
             glView.requestRender()
         }
+    }
+
+    fun setZSpread(spread: Float) {
+        // limit spread to prevent excessive parallax
+        zSpread = spread.coerceIn(0f, 1f)
     }
 
     @Suppress("PrivatePropertyName")
@@ -116,12 +121,12 @@ class CoverFlowRenderer(
     private var currentSpacing = spacingLandscape
     private val maxRotation = 55f
     private val sideScale = 0.75f
-    private val zSpread = 0.35f
+    private var zSpread = 0.35f
     private var depthParallaxEnabled = true
 
     // Reflection parameters
     private val reflectionGap = 0.05f          // vertical gap below main cover
-    private val reflectionScale = 0.45f        // relative height of reflection
+    private val reflectionScale = 0.65f        // relative height of reflection
     private val reflectionStrength = 0.55f     // max brightness/alpha of reflection
     private var reflectionBlur = 0.006f        // default subtle reflection blur
 

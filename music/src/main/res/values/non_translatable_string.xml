@@ -11,4 +11,5 @@
     <string name="xml" translatable="false">.XML</string>
     <string name="json" translatable="false">.JSON</string>
     <string name="csv" translatable="false">.CSV</string>
+    <string name="z_spread">z Spread</string>
 </resources>

@@ -24,11 +24,21 @@ class CarouselMenu : ScopedBottomSheetFragment() {
 
         binding.cameraYSeekbar.setDefaultProgress(CarouselPreferences.CAMERA_EYE_Y_DEFAULT)
         binding.cameraYSeekbar.setProgress(CarouselPreferences.getEyeY())
+        binding.zSpreadSeekbar.setDefaultProgress(CarouselPreferences.Z_SPREAD_DEFAULT)
+        binding.zSpreadSeekbar.setProgress(CarouselPreferences.getZSpread())
 
         binding.cameraYSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
             override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean) {
                 if (fromUser) {
                     CarouselPreferences.setEyeY(progress)
+                }
+            }
+        })
+
+        binding.zSpreadSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
+            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    CarouselPreferences.setZSpread(progress)
                 }
             }
         })
