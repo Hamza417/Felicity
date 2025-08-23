@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.util.TypedValue
 import android.view.GestureDetector
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
@@ -60,7 +61,11 @@ class FelicitySeekbar @JvmOverloads constructor(
     }
 
     @ColorInt
-    private var thumbRingColor: Int = Color.WHITE
+    private var thumbRingColor: Int = if (isInEditMode) {
+        Color.WHITE
+    } else {
+        ThemeManager.theme.viewGroupTheme.backgroundColor
+    }
 
     @ColorInt
     private var thumbInnerColor: Int = Color.WHITE
@@ -132,7 +137,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     private var animateFromUser = false
     private val springAnimation = SpringAnimation(this, progressProperty).apply {
         spring = SpringForce().apply {
-            stiffness = SpringForce.STIFFNESS_LOW
+            stiffness = SpringForce.STIFFNESS_VERY_LOW
             dampingRatio = SpringForce.DAMPING_RATIO_NO_BOUNCY
         }
         addEndListener { _, _, _, _ ->
@@ -178,8 +183,8 @@ class FelicitySeekbar @JvmOverloads constructor(
                 if (hasValue(R.styleable.FelicitySeekbar_felicityProgress)) {
                     val tv = peekValue(R.styleable.FelicitySeekbar_felicityProgress)
                     progressInternal = when (tv.type) {
-                        android.util.TypedValue.TYPE_FLOAT -> getFloat(R.styleable.FelicitySeekbar_felicityProgress, minProgress.toFloat())
-                        android.util.TypedValue.TYPE_INT_DEC, android.util.TypedValue.TYPE_INT_HEX -> getInt(R.styleable.FelicitySeekbar_felicityProgress, minProgress).toFloat()
+                        TypedValue.TYPE_FLOAT -> getFloat(R.styleable.FelicitySeekbar_felicityProgress, minProgress.toFloat())
+                        TypedValue.TYPE_INT_DEC, TypedValue.TYPE_INT_HEX -> getInt(R.styleable.FelicitySeekbar_felicityProgress, minProgress).toFloat()
                         else -> getInt(R.styleable.FelicitySeekbar_felicityProgress, minProgress).toFloat()
                     }
                 }
