@@ -190,6 +190,8 @@
         <attr name="felicityThumbInnerColor" format="color|reference" />
         <attr name="felicityTrackHeight" format="dimension" />
         <attr name="felicityThumbRadius" format="dimension" />
+        <!-- optional pill thumb width (full width). If omitted, a default based on radius is used. -->
+        <attr name="felicityThumbWidth" format="dimension" />
         <attr name="felicityThumbRingWidth" format="dimension" />
         <attr name="felicityAnimateInitial" format="boolean" />
         <attr name="felicitySmudgeEnabled" format="boolean" />

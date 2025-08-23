@@ -11,12 +11,14 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.animation.DecelerateInterpolator
 import androidx.annotation.ColorInt
 import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
 import app.simple.felicity.decoration.R
 import app.simple.felicity.theme.managers.ThemeManager
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
@@ -39,23 +41,34 @@ class FelicitySeekbar @JvmOverloads constructor(
     private var defaultProgress = 0 // value to reset to on long press
 
     @ColorInt
-    private var trackColor: Int = Color.LTGRAY
+    private var trackColor: Int = if (isInEditMode) {
+        Color.LTGRAY
+    } else {
+        ThemeManager.theme.viewGroupTheme.highlightColor
+    }
 
     @ColorInt
-    private var progressColor: Int = Color.BLUE
+    private var progressColor: Int = if (isInEditMode) {
+        Color.BLUE
+    } else {
+        ThemeManager.accent.primaryAccentColor
+    }
 
     @ColorInt
     private var thumbRingColor: Int = Color.WHITE
 
     @ColorInt
-    private var thumbInnerColor: Int = Color.TRANSPARENT
+    private var thumbInnerColor: Int = Color.WHITE
 
     private var trackHeightPx: Float
     private var thumbRadiusPx: Float
     private var thumbRingWidthPx: Float
 
-    private var smudgeEnabled = false
-    private var smudgeRadius = 0f
+    // New: horizontal width of pill-shaped thumb (full width, not half). Default set after radius init.
+    private var thumbWidthPx: Float
+
+    private var smudgeEnabled = true
+    private var smudgeRadius = 10f
     private var smudgeColor = progressColor
     private var smudgeOffsetY = 0f
     private var thumbShadowRadius = 0f
@@ -71,6 +84,11 @@ class FelicitySeekbar @JvmOverloads constructor(
     private val trackRect = RectF()
     private val smudgeRect = RectF()
     private val progressRect = RectF()
+
+    // Reusable temp rects for thumb drawing to avoid allocations
+    private val thumbOuterRect = RectF()
+    private val thumbStrokeRect = RectF()
+    private val thumbInnerRect = RectF()
 
     private var isDragging = false
     private var thumbScale = 1f
@@ -117,6 +135,8 @@ class FelicitySeekbar @JvmOverloads constructor(
         trackHeightPx = 4f * d
         thumbRadiusPx = 12f * d
         thumbRingWidthPx = 4f * d
+        // Default pill width: 3x radius (i.e., 1.5x diameter)
+        thumbWidthPx = thumbRadiusPx * 3f
 
         context.theme.obtainStyledAttributes(attrs, R.styleable.FelicitySeekbar, defStyleAttr, 0).apply {
             try {
@@ -144,17 +164,21 @@ class FelicitySeekbar @JvmOverloads constructor(
                 thumbInnerColor = getColor(R.styleable.FelicitySeekbar_felicityThumbInnerColor, thumbInnerColor)
                 trackHeightPx = getDimension(R.styleable.FelicitySeekbar_felicityTrackHeight, trackHeightPx)
                 thumbRadiusPx = getDimension(R.styleable.FelicitySeekbar_felicityThumbRadius, thumbRadiusPx)
+                thumbWidthPx = getDimension(R.styleable.FelicitySeekbar_felicityThumbWidth, thumbWidthPx)
                 thumbRingWidthPx = getDimension(R.styleable.FelicitySeekbar_felicityThumbRingWidth, thumbRingWidthPx)
                 smudgeEnabled = getBoolean(R.styleable.FelicitySeekbar_felicitySmudgeEnabled, smudgeEnabled)
                 smudgeRadius = getDimension(R.styleable.FelicitySeekbar_felicitySmudgeRadius, 2f * d)
-                smudgeColor = getColor(R.styleable.FelicitySeekbar_felicitySmudgeColor, smudgeColor.toInt())
+                smudgeColor = getColor(R.styleable.FelicitySeekbar_felicitySmudgeColor, smudgeColor)
                 smudgeOffsetY = getDimension(R.styleable.FelicitySeekbar_felicitySmudgeOffsetY, 0f)
                 thumbShadowRadius = getDimension(R.styleable.FelicitySeekbar_felicityThumbShadowRadius, 6f * d)
-                thumbShadowColor = getColor(R.styleable.FelicitySeekbar_felicityThumbShadowColor, thumbShadowColor.toInt())
+                thumbShadowColor = getColor(R.styleable.FelicitySeekbar_felicityThumbShadowColor, thumbShadowColor)
             } finally {
                 recycle()
             }
         }
+
+        // If width is smaller than diameter, coerce to diameter to avoid inverted corners
+        thumbWidthPx = max(thumbWidthPx, thumbRadiusPx * 2f)
 
         applyPaintColors()
         setupSmudgeAndShadow()
@@ -163,6 +187,10 @@ class FelicitySeekbar @JvmOverloads constructor(
         isClickable = true
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
         contentDescription = context.getString(android.R.string.untitled)
+        // Ensure no outline-based clipping occurs (elevation/outline providers)
+        clipToOutline = false
+        clipBounds = null
+        outlineProvider = null
     }
 
     private fun applyPaintColors() {
@@ -249,7 +277,7 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val baseHeight = max(trackHeightPx, thumbRadiusPx * 2f)
-        val verticalBlur = max(thumbShadowRadius, if (smudgeEnabled) (smudgeRadius + kotlin.math.abs(smudgeOffsetY)) else 0f)
+        val verticalBlur = max(thumbShadowRadius, if (smudgeEnabled) (smudgeRadius + abs(smudgeOffsetY)) else 0f)
         val desiredHeight = (paddingTop + paddingBottom + baseHeight + verticalBlur * 2f).toInt()
         val resolvedWidth = resolveSize(suggestedMinimumWidth + paddingLeft + paddingRight, widthMeasureSpec)
         val resolvedHeight = resolveSize(desiredHeight, heightMeasureSpec)
@@ -261,7 +289,8 @@ class FelicitySeekbar @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val hOut = horizontalOutset()
-        val safeInset = thumbRadiusPx // ensure full thumb fits inside view bounds
+        // Ensure full thumb fits horizontally: use half of pill width
+        val safeInset = thumbWidthPx / 2f
         val left = paddingLeft.toFloat() + hOut + safeInset
         val right = (width - paddingRight).toFloat() - hOut - safeInset
         if (right <= left) return
@@ -283,18 +312,39 @@ class FelicitySeekbar @JvmOverloads constructor(
             canvas.drawRoundRect(progressRect, trackRadius, trackRadius, progressPaint)
         }
 
-        // Always draw thumb (even at start/end) fully within bounds
+        // Thumb (pill-shaped)
         val cx = progressRight
         val cy = trackRect.centerY()
-        val scaledRadius = thumbRadiusPx * thumbScale
-        if (thumbShadowRadius > 0f) canvas.drawCircle(cx, cy, scaledRadius, thumbShadowPaint)
-        if (thumbInnerColor != Color.TRANSPARENT) canvas.drawCircle(cx, cy, (scaledRadius - thumbRingWidthPx / 2f).coerceAtLeast(0f), thumbInnerPaint)
-        canvas.drawCircle(cx, cy, scaledRadius - thumbRingWidthPx / 2f, thumbRingPaint)
+        val scaledR = thumbRadiusPx * thumbScale
+        val scaledHalfW = (thumbWidthPx / 2f) * thumbScale
+
+        // Outer rect for shadow and overall silhouette
+        thumbOuterRect.set(cx - scaledHalfW, cy - scaledR, cx + scaledHalfW, cy + scaledR)
+
+        if (thumbShadowRadius > 0f) {
+            canvas.drawRoundRect(thumbOuterRect, scaledR, scaledR, thumbShadowPaint)
+        }
+
+        // Inner fill (beneath the ring)
+        if (thumbInnerColor != Color.TRANSPARENT) {
+            thumbInnerRect.set(thumbOuterRect)
+            val inset = thumbRingWidthPx / 2f
+            thumbInnerRect.inset(inset, inset)
+            val innerR = max(0f, scaledR - inset)
+            canvas.drawRoundRect(thumbInnerRect, innerR, innerR, thumbInnerPaint)
+        }
+
+        // Stroke ring
+        thumbStrokeRect.set(thumbOuterRect)
+        val strokeInset = thumbRingWidthPx / 2f
+        thumbStrokeRect.inset(strokeInset, strokeInset)
+        val ringR = max(0f, scaledR - strokeInset)
+        canvas.drawRoundRect(thumbStrokeRect, ringR, ringR, thumbRingPaint)
     }
 
     private fun isPointOnThumb(x: Float, y: Float): Boolean {
         val hOut = horizontalOutset()
-        val safeInset = thumbRadiusPx
+        val safeInset = thumbWidthPx / 2f
         val left = paddingLeft.toFloat() + hOut + safeInset
         val right = (width - paddingRight).toFloat() - hOut - safeInset
         if (right <= left) return false
@@ -304,7 +354,16 @@ class FelicitySeekbar @JvmOverloads constructor(
         val dx = x - progressX
         val dy = y - cy
         val r = thumbRadiusPx * thumbScale
-        return dx * dx + dy * dy <= r * r
+        val halfW = (thumbWidthPx / 2f) * thumbScale
+        val bodyHalfW = max(0f, halfW - r)
+        // Inside central rectangle
+        if (abs(dx) <= bodyHalfW && abs(dy) <= r) return true
+        // Check circular caps
+        val leftCx = -bodyHalfW
+        val rightCx = bodyHalfW
+        val dlx = dx - leftCx
+        val drx = dx - rightCx
+        return (dlx * dlx + dy * dy <= r * r) || (drx * drx + dy * dy <= r * r)
     }
 
     private fun startThumbScale(up: Boolean = false) {
@@ -312,7 +371,8 @@ class FelicitySeekbar @JvmOverloads constructor(
         if (thumbScale == target) return
         thumbScaleAnimator?.cancel()
         thumbScaleAnimator = ValueAnimator.ofFloat(thumbScale, target).apply {
-            duration = if (!up) 120 else 160
+            duration = if (!up) 220 else 360
+            interpolator = DecelerateInterpolator()
             addUpdateListener { anim ->
                 thumbScale = (anim.animatedValue as Float)
                 invalidate()
@@ -354,7 +414,7 @@ class FelicitySeekbar @JvmOverloads constructor(
                 } else {
                     // fast animate to tap position
                     val hOut = horizontalOutset()
-                    val safeInset = thumbRadiusPx
+                    val safeInset = thumbWidthPx / 2f
                     val left = paddingLeft.toFloat() + hOut + safeInset
                     val right = (width - paddingRight).toFloat() - hOut - safeInset
                     val clamped = min(max(event.x, left), right)
@@ -398,7 +458,7 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     private fun updateFromTouch(x: Float, fromUser: Boolean) {
         val hOut = horizontalOutset()
-        val safeInset = thumbRadiusPx // ensure full thumb fits inside view bounds
+        val safeInset = thumbWidthPx / 2f // ensure full thumb fits inside view bounds
         val left = paddingLeft.toFloat() + hOut + safeInset
         val right = (width - paddingRight).toFloat() - hOut - safeInset
         if (right <= left) return

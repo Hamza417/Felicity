@@ -209,8 +209,19 @@ class AppHeader @JvmOverloads constructor(
         }
         lastAppliedHeaderHeight = headerHeight
 
-        if (rv.scrollY == 0 && rv.canScrollVertically(-1).not()) {
-            rv.scrollBy(0, headerHeight)
+        ensureListStartBelowPadding(rv)
+        rv.post { ensureListStartBelowPadding(rv) }
+    }
+
+    private fun ensureListStartBelowPadding(rv: RecyclerView) {
+        // Only adjust if list is at absolute top (no upward scroll history)
+        if (rv.computeVerticalScrollOffset() != 0 || rv.canScrollVertically(-1)) return
+        val firstChild = rv.getChildAt(0) ?: return
+        val desiredTop = rv.paddingTop
+        val delta = desiredTop - firstChild.top
+        if (delta > 0) {
+            // Move content down so first item clears the top padding area
+            rv.scrollBy(0, -delta)
         }
     }
 
