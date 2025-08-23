@@ -23,7 +23,7 @@ open class PreferenceFragment : ScopedFragment() {
         val cornerRadius = Preference(
                 title = R.string.corner_radius,
                 summary = R.string.corner_radius_summary,
-                icon = app.simple.felicity.decoration.R.drawable.ic_corner,
+                icon = R.drawable.ic_corner,
                 type = PreferenceType.SLIDER,
         )
 
@@ -41,8 +41,30 @@ open class PreferenceFragment : ScopedFragment() {
             )
         }
 
+        val spacing = Preference(
+                title = R.string.vertical_spacing,
+                summary = R.string.spacing_summary,
+                icon = R.drawable.ic_spacing,
+                type = PreferenceType.SLIDER,
+        )
+
+        spacing.onPreferenceAction = { view, callback ->
+            AppearancePreferences.setListSpacing((view as FelicitySeekbar).getProgress())
+            true
+        }
+
+        spacing.valueProvider = Supplier {
+            SeekbarState(
+                    position = AppearancePreferences.getListSpacing(),
+                    max = AppearancePreferences.MAX_SPACING,
+                    min = 0F,
+                    default = AppearancePreferences.DEFAULT_SPACING,
+            )
+        }
+
         preferences.add(header)
         preferences.add(cornerRadius)
+        preferences.add(spacing)
 
         return preferences
     }

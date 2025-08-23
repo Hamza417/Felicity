@@ -86,4 +86,7 @@
     <string name="home">Home</string>
     <string name="reflection_gap">Reflection Gap</string>
     <string name="scale">Scale</string>
+    <string name="vertical_spacing">Vertical Spacing</string>
+    <string name="delete">Delete</string>
+    <string name="spacing_summary">Adjust spaces between items in various lists of the app.</string>
 </resources>

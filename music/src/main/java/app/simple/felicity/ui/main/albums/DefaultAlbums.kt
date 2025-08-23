@@ -12,7 +12,6 @@ import app.simple.felicity.databinding.FragmentAlbumsBinding
 import app.simple.felicity.databinding.HeaderAlbumsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.itemanimators.FlipItemAnimator
-import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Album
@@ -37,7 +36,6 @@ class DefaultAlbums : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.recyclerView.addItemDecoration(SpacingItemDecoration(48))
         binding.recyclerView.itemAnimator = FlipItemAnimator()
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)

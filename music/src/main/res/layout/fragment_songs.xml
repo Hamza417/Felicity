@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
+    <app.simple.felicity.decorations.views.SpacingRecyclerView
         android:id="@+id/recycler_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

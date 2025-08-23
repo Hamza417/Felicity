@@ -8,7 +8,6 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.preference.GenericPreferencesAdapter
 import app.simple.felicity.databinding.FragmentPreferenceAppearanceBinding
 import app.simple.felicity.databinding.HeaderPreferencesGenericBinding
-import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.extensions.fragments.PreferenceFragment
 
 class UserInterface : PreferenceFragment() {
@@ -29,7 +28,6 @@ class UserInterface : PreferenceFragment() {
         headerBinding.icon.setImageResource(R.drawable.ic_carousel)
         binding.header.setContentView(headerBinding.root)
         binding.recyclerView.setHasFixedSize(false)
-        binding.recyclerView.addItemDecoration(SpacingItemDecoration(48))
         binding.recyclerView.adapter = GenericPreferencesAdapter(createUserInterfacePanel())
     }
 

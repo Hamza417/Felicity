@@ -4,10 +4,10 @@ import androidx.core.content.edit
 
 object CarouselPreferences {
 
-    const val CAMERA_EYE_Y = "camera_eye_y"
-    const val Z_SPREAD = "z_spread"
-    const val REFLECTION_GAP = "reflection_gap"
-    const val SCALE = "scale"
+    const val CAMERA_EYE_Y = "camera_eye_y_"
+    const val Z_SPREAD = "z_spread_"
+    const val REFLECTION_GAP = "reflection_gap_"
+    const val SCALE = "scale_"
 
     const val CAMERA_EYE_Y_DEFAULT = 0F
     const val Z_SPREAD_DEFAULT = 0.35F

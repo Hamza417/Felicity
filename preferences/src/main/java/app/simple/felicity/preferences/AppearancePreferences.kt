@@ -3,6 +3,7 @@ package app.simple.felicity.preferences
 import android.os.Build
 import androidx.annotation.ColorInt
 import androidx.annotation.RequiresApi
+import androidx.core.content.edit
 import app.simple.felicity.core.constants.ThemeConstants
 import app.simple.felicity.core.utils.ColorUtils
 import app.simple.felicity.preferences.SharedPreferences.getSharedPreferences
@@ -10,6 +11,7 @@ import app.simple.felicity.preferences.SharedPreferences.getSharedPreferences
 object AppearancePreferences {
 
     const val APP_CORNER_RADIUS = "view_corner_radius"
+    const val LIST_SPACING = "list_spacing"
     private const val ICON_SHADOWS = "icon_shadows"
     private const val LAST_LIGHT_THEME = "last_light_theme"
     private const val LAST_DARK_THEME = "last_dark_theme"
@@ -25,7 +27,10 @@ object AppearancePreferences {
     const val ACCENT_ON_NAV = "accent_color_on_nav_bar"
 
     const val MAX_CORNER_RADIUS = 80F
+    const val MAX_SPACING = 80F
+
     const val DEFAULT_CORNER_RADIUS = 20F
+    const val DEFAULT_SPACING = 48F
 
     // ---------------------------------------------------------------------------------------------------------- //
 
@@ -124,7 +129,7 @@ object AppearancePreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setIconShadows(boolean: Boolean) {
-        getSharedPreferences().edit().putBoolean(ICON_SHADOWS, boolean).apply()
+        getSharedPreferences().edit { putBoolean(ICON_SHADOWS, boolean) }
     }
 
     fun isIconShadowsOn(): Boolean {
@@ -134,7 +139,7 @@ object AppearancePreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setAccentOnNavigationBar(boolean: Boolean) {
-        getSharedPreferences().edit().putBoolean(ACCENT_ON_NAV, boolean).apply()
+        getSharedPreferences().edit { putBoolean(ACCENT_ON_NAV, boolean) }
     }
 
     fun isAccentOnNavigationBar(): Boolean {
@@ -144,7 +149,7 @@ object AppearancePreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setColoredIconShadowsState(boolean: Boolean) {
-        getSharedPreferences().edit().putBoolean(COLORED_ICON_SHADOWS, boolean).apply()
+        getSharedPreferences().edit { putBoolean(COLORED_ICON_SHADOWS, boolean) }
     }
 
     fun getColoredIconShadows(): Boolean {
@@ -155,7 +160,7 @@ object AppearancePreferences {
 
     @RequiresApi(Build.VERSION_CODES.S)
     fun setMaterialYouAccent(boolean: Boolean) {
-        getSharedPreferences().edit().putBoolean(IS_MATERIAL_YOU_ACCENT, boolean).apply()
+        getSharedPreferences().edit { putBoolean(IS_MATERIAL_YOU_ACCENT, boolean) }
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -166,10 +171,22 @@ object AppearancePreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setAccentColorOnBottomMenu(boolean: Boolean) {
-        getSharedPreferences().edit().putBoolean(ACCENT_COLOR_ON_BOTTOM_MENU, boolean).apply()
+        getSharedPreferences().edit { putBoolean(ACCENT_COLOR_ON_BOTTOM_MENU, boolean) }
     }
 
     fun isAccentColorOnBottomMenu(): Boolean {
         return getSharedPreferences().getBoolean(ACCENT_COLOR_ON_BOTTOM_MENU, false)
+    }
+
+    // ---------------------------------------------------------------------------------------------------------- //
+
+    fun setListSpacing(spacing: Float) {
+        getSharedPreferences().edit {
+            putFloat(LIST_SPACING, spacing)
+        }
+    }
+
+    fun getListSpacing(): Float {
+        return getSharedPreferences().getFloat(LIST_SPACING, DEFAULT_SPACING)
     }
 }

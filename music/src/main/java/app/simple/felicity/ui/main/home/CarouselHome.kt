@@ -9,7 +9,6 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.adapters.home.main.AdapterCarouselHome
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentHomeCarouselBinding
-import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Album
@@ -41,7 +40,6 @@ class CarouselHome : MediaFragment() {
 
         homeViewModel.getData().observe(viewLifecycleOwner) { data ->
             val adapter = AdapterCarouselHome(data)
-            binding?.recyclerView?.addItemDecoration(SpacingItemDecoration(48, true))
             binding?.recyclerView?.adapter = adapter
             binding?.recyclerView?.setHasFixedSize(true)
 
