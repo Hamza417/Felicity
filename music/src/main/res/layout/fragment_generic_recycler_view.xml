@@ -4,6 +4,7 @@
     android:id="@+id/recycler_view"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:layoutAnimation="@anim/list_animation_controller"
     app:isFastScrollRequired="true"
     app:navigationPaddingRequired="true"
     app:statusPaddingRequired="true" />

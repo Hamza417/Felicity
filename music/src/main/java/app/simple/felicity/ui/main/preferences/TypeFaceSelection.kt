@@ -19,8 +19,12 @@ class TypeFaceSelection : ScopedFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        postponeEnterTransition()
 
         binding.recyclerView.adapter = AdapterTypefaceItem()
+        binding.recyclerView.scheduleLayoutAnimation()
+
+        view.startTransitionOnPreDraw()
     }
 
     companion object {
