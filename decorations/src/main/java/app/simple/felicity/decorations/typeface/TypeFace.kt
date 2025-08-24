@@ -43,6 +43,50 @@ object TypeFace {
         )
     }
 
+    private val interMap by lazy {
+        mapOf(
+                TypefaceStyle.EXTRA_LIGHT.style to R.font.inter_extralight,
+                TypefaceStyle.LIGHT.style to R.font.inter_light,
+                TypefaceStyle.REGULAR.style to R.font.inter_regular,
+                TypefaceStyle.MEDIUM.style to R.font.inter_medium,
+                TypefaceStyle.BOLD.style to R.font.inter_bold,
+                TypefaceStyle.BLACK.style to R.font.inter_black
+        )
+    }
+
+    private val barlowMap by lazy {
+        mapOf(
+                TypefaceStyle.EXTRA_LIGHT.style to R.font.barlow_extralight,
+                TypefaceStyle.LIGHT.style to R.font.barlow_light,
+                TypefaceStyle.REGULAR.style to R.font.barlow_regular,
+                TypefaceStyle.MEDIUM.style to R.font.barlow_medium,
+                TypefaceStyle.BOLD.style to R.font.barlow_bold,
+                TypefaceStyle.BLACK.style to R.font.barlow_black
+        )
+    }
+
+    private val nunitoMap by lazy {
+        mapOf(
+                TypefaceStyle.EXTRA_LIGHT.style to R.font.nunito_extralight,
+                TypefaceStyle.LIGHT.style to R.font.nunito_light,
+                TypefaceStyle.REGULAR.style to R.font.nunito_regular,
+                TypefaceStyle.MEDIUM.style to R.font.nunito_medium,
+                TypefaceStyle.BOLD.style to R.font.nunito_bold,
+                TypefaceStyle.BLACK.style to R.font.nunito_black
+        )
+    }
+
+    private val spectralMap by lazy {
+        mapOf(
+                TypefaceStyle.EXTRA_LIGHT.style to R.font.spectral_extralight,
+                TypefaceStyle.LIGHT.style to R.font.spectral_light,
+                TypefaceStyle.REGULAR.style to R.font.spectral_regular,
+                TypefaceStyle.MEDIUM.style to R.font.spectral_medium,
+                TypefaceStyle.BOLD.style to R.font.spectral_bold,
+                TypefaceStyle.BLACK.style to R.font.spectral_extrabold
+        )
+    }
+
     fun getTypeFace(appFont: String, style: Int, context: Context): Typeface? {
         var typeface: Typeface? = null
         Log.d("TypeFace", "getTypeFace: appFont=$appFont, style=$style")
@@ -59,6 +103,26 @@ object TypeFace {
             }
             TypeFaceConstants.WORK_SANS -> {
                 workSansMap[style]?.let {
+                    typeface = ResourcesCompat.getFont(context, it)
+                }
+            }
+            TypeFaceConstants.INTER -> {
+                interMap[style]?.let {
+                    typeface = ResourcesCompat.getFont(context, it)
+                }
+            }
+            TypeFaceConstants.BARLOW -> {
+                barlowMap[style]?.let {
+                    typeface = ResourcesCompat.getFont(context, it)
+                }
+            }
+            TypeFaceConstants.NUNITO -> {
+                nunitoMap[style]?.let {
+                    typeface = ResourcesCompat.getFont(context, it)
+                }
+            }
+            TypeFaceConstants.SPECTRAL -> {
+                spectralMap[style]?.let {
                     typeface = ResourcesCompat.getFont(context, it)
                 }
             }
@@ -113,7 +177,7 @@ object TypeFace {
             TypeFaceModel(
                     typefaceName = "NotoSans Condensed",
                     name = TypeFaceConstants.NOTOSANS_CONDENSED,
-                    type = TYPE_SANS,
+                    type = TYPE_SANS_SERIF,
                     description = "A condensed version of NotoSans, ideal for compact layouts.",
                     license = "OFL (Open Font License) © Noto Project Authors"
             ),
@@ -125,6 +189,41 @@ object TypeFace {
                             "such as those by Stephenson Blake, Miller & Richard and Bauerschen Giesserei.",
                     license = "OFL (Open Font License) © Wei Huang"
             ),
+            TypeFaceModel(
+                    typefaceName = "Inter",
+                    name = TypeFaceConstants.INTER,
+                    type = TYPE_SANS_SERIF,
+                    description = "Inter is a typeface specially designed for computer screens. " +
+                            "It features a tall x-height to aid in readability of mixed-case and lower-case text.",
+                    license = "OFL (Open Font License) © Rasmus Andersson"
+            ),
+            TypeFaceModel(
+                    typefaceName = "Barlow",
+                    name = TypeFaceConstants.BARLOW,
+                    type = TYPE_SANS_SERIF,
+                    description = "Barlow is a slightly rounded, low-contrast, grotesk type family. " +
+                            "Drawing from the visual style of the California public, Barlow shares qualities " +
+                            "with the state's car plates, highway signs, busses, and trains.",
+                    license = "OFL (Open Font License) © Jeremy Tribby"
+            ),
+            TypeFaceModel(
+                    typefaceName = "Nunito",
+                    name = TypeFaceConstants.NUNITO,
+                    type = TYPE_SANS_SERIF,
+                    description = "Nunito is a well balanced sans serif typeface superfamily, with " +
+                            "rounded terminals. The Nunito project started as a single typeface with " +
+                            "two weights (regular and bold).",
+                    license = "OFL (Open Font License) © Vernon Adams"
+            ),
+            TypeFaceModel(
+                    typefaceName = "Spectral",
+                    name = TypeFaceConstants.SPECTRAL,
+                    type = TYPE_SERIF,
+                    description = "Spectral is a versatile, contemporary serif typeface for text " +
+                            "and display use. It is a high-contrast serif with a distinctive character, " +
+                            "informed by the Scotch Modern genre.",
+                    license = "OFL (Open Font License) © Production Type"
+            )
     )
 
     class TypeFaceModel(

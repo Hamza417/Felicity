@@ -15,4 +15,8 @@ object TypeFaceConstants {
     const val NOTOSANS = "notosans"
     const val NOTOSANS_CONDENSED = "notosans_condensed"
     const val WORK_SANS = "worksans"
+    const val INTER = "inter"
+    const val BARLOW = "barlow"
+    const val NUNITO = "nunito"
+    const val SPECTRAL = "spectral"
 }
