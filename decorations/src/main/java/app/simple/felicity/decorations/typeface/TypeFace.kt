@@ -2,6 +2,7 @@ package app.simple.felicity.decorations.typeface
 
 import android.content.Context
 import android.graphics.Typeface
+import android.util.Log
 import androidx.core.content.res.ResourcesCompat
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.constants.TypeFaceConstants
@@ -31,9 +32,20 @@ object TypeFace {
         )
     }
 
+    private val workSansMap by lazy {
+        mapOf(
+                TypefaceStyle.EXTRA_LIGHT.style to R.font.work_sans_extralight,
+                TypefaceStyle.LIGHT.style to R.font.work_sans_light,
+                TypefaceStyle.REGULAR.style to R.font.work_sans_regular,
+                TypefaceStyle.MEDIUM.style to R.font.work_sans_medium,
+                TypefaceStyle.BOLD.style to R.font.work_sans_bold,
+                TypefaceStyle.BLACK.style to R.font.work_sans_black
+        )
+    }
+
     fun getTypeFace(appFont: String, style: Int, context: Context): Typeface? {
         var typeface: Typeface? = null
-
+        Log.d("TypeFace", "getTypeFace: appFont=$appFont, style=$style")
         when (appFont) {
             TypeFaceConstants.NOTOSANS -> {
                 notoSansMap[style]?.let {
@@ -42,6 +54,11 @@ object TypeFace {
             }
             TypeFaceConstants.NOTOSANS_CONDENSED -> {
                 notoSansCondensedMap[style]?.let {
+                    typeface = ResourcesCompat.getFont(context, it)
+                }
+            }
+            TypeFaceConstants.WORK_SANS -> {
+                workSansMap[style]?.let {
                     typeface = ResourcesCompat.getFont(context, it)
                 }
             }
@@ -80,21 +97,41 @@ object TypeFace {
      * List of all typefaces with their code names and red IDs
      */
     val list: ArrayList<TypeFaceModel> = arrayListOf(
-            TypeFaceModel("Auto (System Default)", 0, TypeFaceConstants.AUTO),
-            TypeFaceModel("NotoSans", R.font.notosans_bold, TypeFaceConstants.NOTOSANS),
-            TypeFaceModel("NotoSans Condensed", R.font.notosans_condensed_bold, TypeFaceConstants.NOTOSANS_CONDENSED),
+            TypeFaceModel(
+                    typefaceName = "Auto (System Default)",
+                    name = TypeFaceConstants.AUTO,
+                    type = "System"),
+            TypeFaceModel(
+                    typefaceName = "NotoSans",
+                    name = TypeFaceConstants.NOTOSANS,
+                    type = TYPE_SANS_SERIF,
+                    description = "Noto Sans is an unmodulated (“sans serif”) design for texts in the Latin, " +
+                            "Cyrillic and Greek scripts, which is also suitable as the complementary choice for " +
+                            "other script-specific Noto Sans fonts.",
+                    license = "OFL (Open Font License) © Noto Project Authors"
+            ),
+            TypeFaceModel(
+                    typefaceName = "NotoSans Condensed",
+                    name = TypeFaceConstants.NOTOSANS_CONDENSED,
+                    type = TYPE_SANS,
+                    description = "A condensed version of NotoSans, ideal for compact layouts.",
+                    license = "OFL (Open Font License) © Noto Project Authors"
+            ),
+            TypeFaceModel(
+                    typefaceName = "Work Sans",
+                    name = TypeFaceConstants.WORK_SANS,
+                    type = TYPE_SANS_SERIF,
+                    description = "Work Sans is a typeface family based loosely on early Grotesques, " +
+                            "such as those by Stephenson Blake, Miller & Richard and Bauerschen Giesserei.",
+                    license = "OFL (Open Font License) © Wei Huang"
+            ),
     )
 
     class TypeFaceModel(
             /**
-             * Proper name of the typeface such as [TypeFaceConstants.NOTOSANS]
+             * Proper marketed name of the typeface
              */
             val typefaceName: String,
-
-            /**
-             * Resource ID for the type face that is used to set typeface
-             */
-            val typeFaceResId: Int,
 
             /**
              * Name of the typeface that is used by the
@@ -103,5 +140,14 @@ object TypeFace {
              * except it is all lowercase
              */
             val name: String,
+
+            val type: String,
+            val description: String? = null,
+            val license: String? = null
     )
+
+    private const val TYPE_SANS = "Sans"
+    private const val TYPE_SANS_SERIF = "Sans Serif"
+    private const val TYPE_SERIF = "Serif"
+    private const val TYPE_MONOSPACE = "Monospace"
 }

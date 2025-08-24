@@ -182,8 +182,6 @@ object ThemeUtils {
                 ThemeManager.theme = MaterialYouDark()
             }
         }
-
-        ThemeManager.theme = MaterialYouLight()
     }
 
     fun isNightMode(resources: Resources): Boolean {

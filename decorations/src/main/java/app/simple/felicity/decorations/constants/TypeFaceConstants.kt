@@ -14,4 +14,5 @@ object TypeFaceConstants {
     const val AUTO = "auto"
     const val NOTOSANS = "notosans"
     const val NOTOSANS_CONDENSED = "notosans_condensed"
+    const val WORK_SANS = "worksans"
 }

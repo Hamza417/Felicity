@@ -20,7 +20,7 @@ import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceC
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.database.instances.LastSongDatabase
 import app.simple.felicity.repository.managers.MediaManager
-import app.simple.felicity.theme.accents.MaterialYouAccent
+import app.simple.felicity.theme.accents.Felicity
 import app.simple.felicity.theme.data.MaterialYou.presetMaterialYouDynamicColors
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.managers.ThemeUtils
@@ -94,7 +94,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
     private fun initTheme() {
         ThemeUtils.setAppTheme(resources)
-        ThemeManager.accent = MaterialYouAccent()
+        ThemeManager.accent = Felicity()
         ThemeUtils.updateNavAndStatusColors(resources, window)
     }
 

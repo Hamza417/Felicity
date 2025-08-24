@@ -11,6 +11,7 @@ import app.simple.felicity.popups.songs.PopupSongsInterfaceMenu
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.SongsPreferences
+import app.simple.felicity.ui.main.preferences.TypeFaceSelection
 import java.util.function.Supplier
 
 open class PreferenceFragment : ScopedFragment() {
@@ -52,7 +53,7 @@ open class PreferenceFragment : ScopedFragment() {
         )
 
         typeface.onPreferenceAction = { view, callback ->
-            // Open typeface panel
+            openFragment(TypeFaceSelection.newInstance(), TypeFaceSelection.TAG)
             true
         }
 
