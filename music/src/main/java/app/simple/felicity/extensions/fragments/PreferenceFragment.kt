@@ -20,6 +20,18 @@ open class PreferenceFragment : ScopedFragment() {
 
         val colors = Preference(type = PreferenceType.SUB_HEADER, title = R.string.colors)
 
+        val theme = Preference(
+                title = R.string.theme,
+                summary = R.string.theme_summary,
+                icon = R.drawable.ic_invert,
+                type = PreferenceType.PANEL,
+        )
+
+        theme.onPreferenceAction = { view, callback ->
+            // Open theme panel
+            true
+        }
+
         val accentColor = Preference(
                 title = R.string.accent_color,
                 summary = R.string.accent_color_summary,
@@ -29,6 +41,18 @@ open class PreferenceFragment : ScopedFragment() {
 
         accentColor.onPreferenceAction = { view, callback ->
             // Open accent color panel
+            true
+        }
+
+        val typeface = Preference(
+                title = R.string.typeface,
+                summary = R.string.typeface_summary,
+                icon = R.drawable.ic_text_fields,
+                type = PreferenceType.PANEL,
+        )
+
+        typeface.onPreferenceAction = { view, callback ->
+            // Open typeface panel
             true
         }
 
@@ -77,7 +101,9 @@ open class PreferenceFragment : ScopedFragment() {
         }
 
         preferences.add(colors)
+        preferences.add(theme)
         preferences.add(accentColor)
+        preferences.add(typeface)
         preferences.add(header)
         preferences.add(cornerRadius)
         preferences.add(spacing)

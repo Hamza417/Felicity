@@ -96,4 +96,8 @@
     <string name="colors">Colors</string>
     <string name="accent_color">Accent Color</string>
     <string name="accent_color_summary">Pick accent color of the app.</string>
+    <string name="theme">Theme</string>
+    <string name="theme_summary">Change app theme to dark/light themes or Material You.</string>
+    <string name="typeface">Typeface</string>
+    <string name="typeface_summary">Change app\'s typeface/font to different ones or use system\'s default.</string>
 </resources>
