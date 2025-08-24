@@ -98,7 +98,7 @@ public class ThemeIcon extends AppCompatImageView implements ThemeChangedListene
         if (isInEditMode()) {
             return;
         }
-        app.simple.felicity.preferences.SharedPreferences.INSTANCE.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+        app.simple.felicity.manager.SharedPreferences.INSTANCE.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
         ThemeManager.INSTANCE.addListener(this);
     }
     
@@ -110,7 +110,7 @@ public class ThemeIcon extends AppCompatImageView implements ThemeChangedListene
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        app.simple.felicity.preferences.SharedPreferences.INSTANCE.getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+        app.simple.felicity.manager.SharedPreferences.INSTANCE.getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
         ThemeManager.INSTANCE.removeListener(this);
         if (valueAnimator != null) {
             valueAnimator.cancel();

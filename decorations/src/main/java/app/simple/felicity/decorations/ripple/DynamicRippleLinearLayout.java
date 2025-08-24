@@ -44,14 +44,14 @@ public class DynamicRippleLinearLayout extends LinearLayout implements SharedPre
             return;
         }
         ThemeManager.INSTANCE.addListener(this);
-        app.simple.felicity.preferences.SharedPreferences.INSTANCE.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+        app.simple.felicity.manager.SharedPreferences.INSTANCE.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
     }
     
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         ThemeManager.INSTANCE.removeListener(this);
-        app.simple.felicity.preferences.SharedPreferences.INSTANCE.getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+        app.simple.felicity.manager.SharedPreferences.INSTANCE.getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
         clearAnimation();
         setScaleX(1);
         setScaleY(1);

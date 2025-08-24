@@ -21,9 +21,9 @@ import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
 import app.simple.felicity.decoration.R
+import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
+import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
-import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
-import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.theme.managers.ThemeManager
 import kotlin.math.abs
 import kotlin.math.max

@@ -1,8 +1,8 @@
-package app.simple.felicity.preferences
+package app.simple.felicity.manager
 
 import android.content.Context
 import android.content.SharedPreferences
-import app.simple.felicity.preferences.SharedPreferences.init
+import app.simple.felicity.manager.SharedPreferences.init
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 
 object SharedPreferences {
@@ -48,7 +48,7 @@ object SharedPreferences {
 
     /**
      * Use this function to register shared preference change listener if
-     * the current context has [SharedPreferences.OnSharedPreferenceChangeListener]
+     * the current context has [android.content.SharedPreferences.OnSharedPreferenceChangeListener]
      * implemented.
      */
     fun SharedPreferences.OnSharedPreferenceChangeListener.registerSharedPreferenceChangeListener() {
@@ -57,7 +57,7 @@ object SharedPreferences {
 
     /**
      * Use this function to unregister shared preference change listener if
-     * the current context has [SharedPreferences.OnSharedPreferenceChangeListener]
+     * the current context has [android.content.SharedPreferences.OnSharedPreferenceChangeListener]
      * implemented.
      */
     fun SharedPreferences.OnSharedPreferenceChangeListener.unregisterSharedPreferenceChangeListener() {
@@ -70,7 +70,7 @@ object SharedPreferences {
      * @see init
      */
     fun getSharedPreferences(context: Context): SharedPreferences {
-        kotlin.runCatching {
+        runCatching {
             return sharedPreferences ?: throw NullPointerException()
         }.getOrElse {
             init(context)

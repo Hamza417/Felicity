@@ -19,10 +19,10 @@ import app.simple.felicity.core.utils.ViewUtils.fadeOutAnimation
 import app.simple.felicity.core.utils.ViewUtils.slideInAnimation
 import app.simple.felicity.core.utils.ViewUtils.slideOutAnimation
 import app.simple.felicity.decoration.R
+import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
+import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
-import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
-import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.shared.utils.ConditionUtils.invert
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 

@@ -1,6 +1,7 @@
 package app.simple.felicity.preferences
 
 import androidx.annotation.NonNull
+import app.simple.felicity.manager.SharedPreferences
 import org.jetbrains.annotations.NotNull
 
 object FormattingPreferences {

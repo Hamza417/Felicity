@@ -12,8 +12,8 @@ import com.google.android.material.card.MaterialCardView;
 import java.util.Objects;
 
 import androidx.annotation.NonNull;
-import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.preferences.AppearancePreferences;
+import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.themes.Theme;
 
@@ -50,7 +50,7 @@ public class ThemeMaterialCardView extends MaterialCardView implements ThemeChan
             return;
         }
         ThemeManager.INSTANCE.addListener(this);
-        app.simple.felicity.preferences.SharedPreferences.INSTANCE.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+        app.simple.felicity.manager.SharedPreferences.INSTANCE.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
     }
     
     @Override
@@ -62,7 +62,7 @@ public class ThemeMaterialCardView extends MaterialCardView implements ThemeChan
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         ThemeManager.INSTANCE.removeListener(this);
-        app.simple.felicity.preferences.SharedPreferences.INSTANCE.getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+        app.simple.felicity.manager.SharedPreferences.INSTANCE.getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
         if (valueAnimator != null) {
             valueAnimator.cancel();
         }

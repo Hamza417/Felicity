@@ -25,7 +25,7 @@
 -dontwarn app.simple.felicity.preferences.AccessibilityPreferences
 -dontwarn app.simple.felicity.preferences.AppearancePreferences
 -dontwarn app.simple.felicity.preferences.BehaviourPreferences
--dontwarn app.simple.felicity.preferences.SharedPreferences
+-dontwarn app.simple.felicity.manager.SharedPreferences
 -dontwarn app.simple.felicity.shared.utils.ConditionUtils
 -dontwarn app.simple.felicity.theme.interfaces.ThemeChangedListener
 -dontwarn app.simple.felicity.theme.managers.ThemeManager

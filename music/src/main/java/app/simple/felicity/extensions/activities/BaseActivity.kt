@@ -15,9 +15,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import app.simple.felicity.engine.services.ExoPlayerService
+import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
+import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.PlayerPreferences
-import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
-import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.repository.database.instances.LastSongDatabase
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.theme.accents.MaterialYouAccent
@@ -36,7 +36,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     private var controllerFuture: ListenableFuture<MediaController>? = null
 
     override fun attachBaseContext(newBase: Context?) {
-        app.simple.felicity.preferences.SharedPreferences.init(newBase!!)
+        app.simple.felicity.manager.SharedPreferences.init(newBase!!)
         registerSharedPreferenceChangeListener()
         super.attachBaseContext(newBase)
     }

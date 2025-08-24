@@ -42,7 +42,7 @@ class DefaultAlbums : MediaFragment() {
         SlideFastScroller.attach(binding.recyclerView)
 
         albumsViewModel.getAlbums().observe(viewLifecycleOwner) {
-            adapterDefaultAlbums = AdapterDefaultAlbums(it, 4)
+            adapterDefaultAlbums = AdapterDefaultAlbums(it)
             binding.recyclerView.adapter = adapterDefaultAlbums
             headerBinding.count.text = getString(R.string.x_albums, it.size)
 

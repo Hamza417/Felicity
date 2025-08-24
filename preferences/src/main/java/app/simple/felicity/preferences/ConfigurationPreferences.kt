@@ -1,5 +1,7 @@
 package app.simple.felicity.preferences
 
+import app.simple.felicity.manager.SharedPreferences
+
 object ConfigurationPreferences {
 
     private const val KEEP_SCREEN_ON = "keep_screen_on"

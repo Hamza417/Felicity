@@ -12,9 +12,9 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.widget.OverScroller
 import app.simple.felicity.decorations.artflow.ArtFlowRenderer.ScrollListener
+import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
+import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.CarouselPreferences
-import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
-import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
 
 class ArtFlow @JvmOverloads constructor(
         context: Context,

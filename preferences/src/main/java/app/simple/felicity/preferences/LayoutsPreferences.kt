@@ -1,5 +1,7 @@
 package app.simple.felicity.preferences
 
+import app.simple.felicity.manager.SharedPreferences
+
 object LayoutsPreferences {
 
     private const val CENTER_FLOATING_MENU = "center_floating_menu"

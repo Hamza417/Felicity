@@ -16,8 +16,8 @@ import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
 import app.simple.felicity.R
 import app.simple.felicity.decorations.transitions.SeekableSharedAxisZTransition
-import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
-import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
+import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.theme.managers.ThemeUtils
@@ -62,7 +62,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
     }
 
     /**
-     * Called when any preferences is changed using [app.simple.felicity.preferences.SharedPreferences.getSharedPreferences]
+     * Called when any preferences is changed using [app.simple.felicity.manager.SharedPreferences.getSharedPreferences]
      *
      * Override this to get any preferences change events inside
      * the fragment

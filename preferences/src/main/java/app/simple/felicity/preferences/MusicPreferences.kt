@@ -1,6 +1,7 @@
 package app.simple.felicity.preferences
 
 import android.annotation.SuppressLint
+import app.simple.felicity.manager.SharedPreferences
 
 object MusicPreferences {
 

@@ -1,5 +1,6 @@
 package app.simple.felicity.preferences
 
+import app.simple.felicity.manager.SharedPreferences
 import app.simple.felicity.shared.constants.Colors
 
 object AccessibilityPreferences {

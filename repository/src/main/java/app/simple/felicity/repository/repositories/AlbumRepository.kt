@@ -16,7 +16,9 @@ class AlbumRepository @Inject constructor(private val context: Context) {
                 MediaStore.Audio.Albums.ALBUM,
                 MediaStore.Audio.Albums.ARTIST,
                 MediaStore.Audio.Albums.ARTIST_ID,
-                MediaStore.Audio.Albums.NUMBER_OF_SONGS
+                MediaStore.Audio.Albums.NUMBER_OF_SONGS,
+                MediaStore.Audio.Albums.FIRST_YEAR,
+                MediaStore.Audio.Albums.LAST_YEAR
         )
 
         val cursor = context.contentResolver.query(
@@ -33,6 +35,8 @@ class AlbumRepository @Inject constructor(private val context: Context) {
             val artistCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ARTIST)
             val artistIdCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ARTIST_ID)
             val songCountCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.NUMBER_OF_SONGS)
+            val firstYearCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.FIRST_YEAR)
+            val lastYearCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.LAST_YEAR)
 
             while (it.moveToNext()) {
                 val albumId = it.getLong(idCol)
@@ -42,7 +46,9 @@ class AlbumRepository @Inject constructor(private val context: Context) {
                                 name = it.getString(albumCol),
                                 artist = it.getString(artistCol),
                                 artistId = it.getLong(artistIdCol),
-                                songCount = it.getInt(songCountCol)
+                                songCount = it.getInt(songCountCol),
+                                firstYear = it.getLong(firstYearCol),
+                                lastYear = it.getLong(lastYearCol)
                         )
                 )
             }
@@ -57,7 +63,9 @@ class AlbumRepository @Inject constructor(private val context: Context) {
                 MediaStore.Audio.Albums.ALBUM,
                 MediaStore.Audio.Albums.ARTIST,
                 MediaStore.Audio.Albums.ARTIST_ID,
-                MediaStore.Audio.Albums.NUMBER_OF_SONGS
+                MediaStore.Audio.Albums.NUMBER_OF_SONGS,
+                MediaStore.Audio.Albums.FIRST_YEAR,
+                MediaStore.Audio.Albums.LAST_YEAR
         )
 
         val selection = "${MediaStore.Audio.Albums.ARTIST_ID} = ?"
@@ -79,6 +87,8 @@ class AlbumRepository @Inject constructor(private val context: Context) {
             val artistCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ARTIST)
             val artistIdCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.ARTIST_ID)
             val songCountCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.NUMBER_OF_SONGS)
+            val firstYearCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.FIRST_YEAR)
+            val lastYearCol = it.getColumnIndexOrThrow(MediaStore.Audio.Albums.LAST_YEAR)
 
             while (it.moveToNext()) {
                 val albumId = it.getLong(idCol)
@@ -88,7 +98,9 @@ class AlbumRepository @Inject constructor(private val context: Context) {
                                 name = it.getString(albumCol),
                                 artist = it.getString(artistCol),
                                 artistId = it.getLong(artistIdCol),
-                                songCount = it.getInt(songCountCol)
+                                songCount = it.getInt(songCountCol),
+                                firstYear = it.getLong(firstYearCol),
+                                lastYear = it.getLong(lastYearCol)
                         )
                 )
             }

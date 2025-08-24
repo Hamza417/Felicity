@@ -44,13 +44,13 @@ public class EdgeEffectNestedScrollView extends NestedScrollView implements Shar
         if (isInEditMode()) {
             return;
         }
-        app.simple.felicity.preferences.SharedPreferences.INSTANCE.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+        app.simple.felicity.manager.SharedPreferences.INSTANCE.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
     }
     
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        app.simple.felicity.preferences.SharedPreferences.INSTANCE.getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+        app.simple.felicity.manager.SharedPreferences.INSTANCE.getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
     }
     
     protected void setEdgeEffectColor() {

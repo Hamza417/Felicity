@@ -7,7 +7,6 @@ import android.util.AttributeSet;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.decorations.theme.ThemeFrameLayout;
 
@@ -33,7 +32,7 @@ public class PaddingAwareFrameLayout extends ThemeFrameLayout implements SharedP
             
             Utils.applySystemBarPadding(this, statusPaddingRequired, navigationPaddingRequired);
         }
-        app.simple.felicity.preferences.SharedPreferences.INSTANCE.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+        app.simple.felicity.manager.SharedPreferences.INSTANCE.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
     }
     
     @Override
@@ -44,6 +43,6 @@ public class PaddingAwareFrameLayout extends ThemeFrameLayout implements SharedP
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        app.simple.felicity.preferences.SharedPreferences.INSTANCE.getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+        app.simple.felicity.manager.SharedPreferences.INSTANCE.getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
     }
 }

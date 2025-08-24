@@ -1,5 +1,7 @@
 package app.simple.felicity.preferences
 
+import app.simple.felicity.manager.SharedPreferences
+
 object MainPreferences {
 
     private const val DATA_LOADED = "data_loaded"

@@ -1,5 +1,7 @@
 package app.simple.felicity.preferences
 
+import app.simple.felicity.manager.SharedPreferences
+
 object RecyclerViewPreferences {
 
     private const val viewTag = "view_tag"

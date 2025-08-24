@@ -343,13 +343,13 @@ class BleedingIcon : AppCompatImageView, ThemeChangedListener, SharedPreferences
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         if (isInEditMode) return
-        app.simple.felicity.preferences.SharedPreferences.registerListener(this)
+        app.simple.felicity.manager.SharedPreferences.registerListener(this)
         ThemeManager.addListener(this)
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        app.simple.felicity.preferences.SharedPreferences.unregisterListener(this)
+        app.simple.felicity.manager.SharedPreferences.unregisterListener(this)
         ThemeManager.removeListener(this)
         tintAnimator?.cancel()
         tintAnimator = null

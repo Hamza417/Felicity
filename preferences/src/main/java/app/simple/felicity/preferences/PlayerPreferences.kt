@@ -1,6 +1,7 @@
 package app.simple.felicity.preferences
 
 import androidx.core.content.edit
+import app.simple.felicity.manager.SharedPreferences
 
 object PlayerPreferences {
 

@@ -20,7 +20,7 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
--dontwarn app.simple.felicity.preferences.SharedPreferences
+-dontwarn app.simple.felicity.manager.SharedPreferences
 -dontwarn app.simple.felicity.repository.repositories.MediaStoreRepository
 
 -keeppackagenames

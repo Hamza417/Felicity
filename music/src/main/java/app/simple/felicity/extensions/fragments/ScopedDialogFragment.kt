@@ -18,8 +18,8 @@ import androidx.fragment.app.Fragment
 import app.simple.felicity.R
 import app.simple.felicity.core.utils.BarHeight
 import app.simple.felicity.core.utils.ViewUtils
-import app.simple.felicity.preferences.SharedPreferences.registerSharedPreferenceChangeListener
-import app.simple.felicity.preferences.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
+import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 
 open class ScopedDialogFragment : DialogFragment(), SharedPreferences.OnSharedPreferenceChangeListener {
 

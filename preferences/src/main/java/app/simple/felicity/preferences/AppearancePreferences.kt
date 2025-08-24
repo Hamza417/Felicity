@@ -6,7 +6,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.content.edit
 import app.simple.felicity.core.constants.ThemeConstants
 import app.simple.felicity.core.utils.ColorUtils
-import app.simple.felicity.preferences.SharedPreferences.getSharedPreferences
+import app.simple.felicity.manager.SharedPreferences.getSharedPreferences
 
 object AppearancePreferences {
 

@@ -105,7 +105,7 @@ public class ThemeImageButton extends AppCompatImageButton implements ThemeChang
         if (isInEditMode()) {
             return;
         }
-        app.simple.felicity.preferences.SharedPreferences.INSTANCE.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+        app.simple.felicity.manager.SharedPreferences.INSTANCE.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
         ThemeManager.INSTANCE.addListener(this);
     }
     
@@ -118,7 +118,7 @@ public class ThemeImageButton extends AppCompatImageButton implements ThemeChang
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         ThemeManager.INSTANCE.removeListener(this);
-        app.simple.felicity.preferences.SharedPreferences.INSTANCE.getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+        app.simple.felicity.manager.SharedPreferences.INSTANCE.getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
         if (valueAnimator != null) {
             valueAnimator.cancel();
         }

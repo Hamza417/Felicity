@@ -25,7 +25,7 @@ public class WrappedViewModel extends AndroidViewModel implements SharedPreferen
     
     public WrappedViewModel(@NonNull Application application) {
         super(application);
-        app.simple.felicity.preferences.SharedPreferences.INSTANCE.registerListener(this);
+        app.simple.felicity.manager.SharedPreferences.INSTANCE.registerListener(this);
     }
     
     public final Context getContext() {
@@ -80,7 +80,7 @@ public class WrappedViewModel extends AndroidViewModel implements SharedPreferen
         } catch (NullPointerException ignored) {
         }
         
-        app.simple.felicity.preferences.SharedPreferences.INSTANCE.unregisterListener(this);
+        app.simple.felicity.manager.SharedPreferences.INSTANCE.unregisterListener(this);
     }
     
     @Override

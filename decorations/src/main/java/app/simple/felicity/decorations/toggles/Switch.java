@@ -22,11 +22,10 @@ import android.view.animation.OvershootInterpolator;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
-
 import app.simple.felicity.decoration.R;
-import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.preferences.BehaviourPreferences;
+import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;
 import app.simple.felicity.theme.themes.Theme;
@@ -654,7 +653,7 @@ public class Switch extends View implements SharedPreferences.OnSharedPreference
         super.onAttachedToWindow();
         ThemeManager.INSTANCE.addListener(this);
         if (!isInEditMode()) {
-            app.simple.felicity.preferences.SharedPreferences.INSTANCE.registerListener(this);
+            app.simple.felicity.manager.SharedPreferences.INSTANCE.registerListener(this);
         }
     }
     
@@ -664,7 +663,7 @@ public class Switch extends View implements SharedPreferences.OnSharedPreference
         super.onDetachedFromWindow();
         ThemeManager.INSTANCE.removeListener(this);
         if (!isInEditMode()) {
-            app.simple.felicity.preferences.SharedPreferences.INSTANCE.unregisterListener(this);
+            app.simple.felicity.manager.SharedPreferences.INSTANCE.unregisterListener(this);
         }
     }
     

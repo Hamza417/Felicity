@@ -453,7 +453,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         if (!isInEditMode()) {
-            app.simple.felicity.preferences.SharedPreferences.INSTANCE.registerSharedPreferenceChangeListener(this);
+            app.simple.felicity.manager.SharedPreferences.INSTANCE.registerSharedPreferenceChangeListener(this);
         }
     }
     
@@ -461,7 +461,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         if (!isInEditMode()) {
-            app.simple.felicity.preferences.SharedPreferences.INSTANCE.unregisterSharedPreferenceChangeListener(this);
+            app.simple.felicity.manager.SharedPreferences.INSTANCE.unregisterSharedPreferenceChangeListener(this);
         }
     }
     

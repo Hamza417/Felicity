@@ -1,5 +1,7 @@
 package app.simple.felicity.preferences
 
+import app.simple.felicity.manager.SharedPreferences
+
 object CrashPreferences {
 
     private const val crashTimestamp = "crash_timestamp"
