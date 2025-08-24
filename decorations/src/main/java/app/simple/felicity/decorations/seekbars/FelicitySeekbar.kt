@@ -102,9 +102,15 @@ class FelicitySeekbar @JvmOverloads constructor(
     // Press ring paint (MD2-style halo around thumb on press)
     private val thumbPressRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
 
+    // New: default indicator paint (drawn above progress)
+    private val defaultIndicatorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+
     private val trackRect = RectF()
     private val smudgeRect = RectF()
     private val progressRect = RectF()
+
+    // Reuse rect for default indicator to avoid allocations during draw
+    private val defaultIndicatorRect = RectF()
 
     // Reusable temp rects for thumb drawing to avoid allocations
     private val thumbOuterRect = RectF()
@@ -113,6 +119,15 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     // Extra rect for press ring
     private val thumbPressRingRect = RectF()
+
+    // Default indicator configuration
+    @ColorInt
+    private var defaultIndicatorColor: Int = if (isInEditMode) {
+        Color.WHITE
+    } else {
+        ThemeManager.accent.secondaryAccentColor
+    }
+    private var defaultIndicatorWidthPx: Float
 
     private var isDragging = false
     private var thumbScale = 1f
@@ -194,6 +209,8 @@ class FelicitySeekbar @JvmOverloads constructor(
         pressRingOutsetPx = 6f * d
         pressRingStrokePx = 2f * d
         pressRingColor = progressColor
+        // Default indicator stroke width
+        defaultIndicatorWidthPx = 2f * d
 
         context.theme.obtainStyledAttributes(attrs, R.styleable.FelicitySeekbar, defStyleAttr, 0).apply {
             try {
@@ -226,6 +243,7 @@ class FelicitySeekbar @JvmOverloads constructor(
                 smudgeOffsetY = getDimension(R.styleable.FelicitySeekbar_felicitySmudgeOffsetY, 0f)
                 thumbShadowRadius = getDimension(R.styleable.FelicitySeekbar_felicityThumbShadowRadius, 6f * d)
                 thumbShadowColor = getColor(R.styleable.FelicitySeekbar_felicityThumbShadowColor, thumbShadowColor)
+                defaultIndicatorColor = getColor(R.styleable.FelicitySeekbar_felicityDefaultIndicatorColor, thumbRingColor)
             } finally {
                 recycle()
             }
@@ -268,6 +286,8 @@ class FelicitySeekbar @JvmOverloads constructor(
         // Press ring picks accent color with dynamic alpha
         thumbPressRingPaint.color = progressColor
         thumbPressRingPaint.strokeWidth = pressRingStrokePx
+        // Default indicator paint
+        defaultIndicatorPaint.color = defaultIndicatorColor
     }
 
     private fun applyThemeProps() {
@@ -279,7 +299,10 @@ class FelicitySeekbar @JvmOverloads constructor(
             smudgeColor = progressColor
             thumbShadowColor = progressColor
             pressRingColor = progressColor
+            defaultIndicatorColor = ThemeManager.accent.secondaryAccentColor
             setThumbCornerRadius(AppearancePreferences.getCornerRadius())
+            // Ensure paints reflect theme-updated colors
+            applyPaintColors()
         }
     }
 
@@ -383,6 +406,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     fun setDefaultProgress(value: Float) {
         hasDefaultSet = true
         defaultProgress = value.coerceIn(minProgress, maxProgress)
+        invalidate()
     }
 
     fun resetToDefault(animate: Boolean = true) {
@@ -423,6 +447,17 @@ class FelicitySeekbar @JvmOverloads constructor(
         if (progressRight > left) {
             progressRect.set(left, trackRect.top, progressRight, trackRect.bottom)
             canvas.drawRoundRect(progressRect, trackRadius, trackRadius, progressPaint)
+        }
+
+        // Default indicator: draw on top of progress so it's always visible; only if default is set within range
+        if (hasDefaultSet) {
+            val df = valueToFraction(defaultProgress).coerceIn(0f, 1f)
+            val dx = left + (right - left) * df
+            val halfW = defaultIndicatorWidthPx / 2f
+            // Indicator height equals track height for a clean tick; rounded ends to look like a tiny capsule
+            defaultIndicatorRect.set(dx - halfW, trackRect.top, dx + halfW, trackRect.bottom)
+            defaultIndicatorPaint.color = defaultIndicatorColor
+            canvas.drawRoundRect(defaultIndicatorRect, halfW, halfW, defaultIndicatorPaint)
         }
 
         // Thumb (pill-shaped)
@@ -639,6 +674,13 @@ class FelicitySeekbar @JvmOverloads constructor(
     // Convenience: clear thumb override (reverts to pill radius)
     fun clearThumbCornerRadiusOverride() {
         thumbCornerRadiusPxOverride = null
+        invalidate()
+    }
+
+    // configure default indicator color
+    fun setDefaultIndicatorColor(@ColorInt color: Int) {
+        defaultIndicatorColor = color
+        defaultIndicatorPaint.color = color
         invalidate()
     }
 

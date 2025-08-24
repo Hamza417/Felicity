@@ -201,6 +201,8 @@
         <attr name="felicitySmudgeOffsetY" format="dimension" />
         <attr name="felicityThumbShadowRadius" format="dimension" />
         <attr name="felicityThumbShadowColor" format="color|reference" />
+        <!-- New: color of small default-value indicator drawn on top of progress -->
+        <attr name="felicityDefaultIndicatorColor" format="color|reference" />
     </declare-styleable>
 
     <declare-styleable name="AppHeader">
