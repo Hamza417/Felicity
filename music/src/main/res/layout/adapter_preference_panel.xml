@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingVertical="@dimen/padding_10"
+    android:paddingHorizontal="@dimen/padding_5">
+
+    <app.simple.felicity.decorations.theme.ThemeIcon
+        android:id="@+id/icon"
+        android:layout_width="@dimen/icon_size_30"
+        android:layout_height="@dimen/icon_size_30"
+        android:layout_centerVertical="true"
+        android:src="@drawable/ic_felicity"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tintType="secondary" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/padding_15"
+        android:drawablePadding="5dp"
+        android:gravity="center_vertical"
+        android:text="Text"
+        android:textSize="@dimen/text_size_14"
+        app:appFontStyle="bold"
+        app:drawableEndCompat="@drawable/ic_arrow_right_16dp"
+        app:drawableTintStyle="accent"
+        app:layout_constraintBottom_toTopOf="@id/summary"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toEndOf="@+id/icon"
+        app:layout_constraintTop_toTopOf="parent"
+        app:textColorStyle="primary" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/summary"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="@dimen/padding_15"
+        android:text="Text"
+        android:textSize="@dimen/text_size_12"
+        app:appFontStyle="regular"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/icon"
+        app:layout_constraintTop_toBottomOf="@id/title"
+        app:textColorStyle="tertiary" />
+
+</app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout>

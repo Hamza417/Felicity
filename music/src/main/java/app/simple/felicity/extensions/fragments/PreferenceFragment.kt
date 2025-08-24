@@ -18,6 +18,20 @@ open class PreferenceFragment : ScopedFragment() {
     protected fun createAppearancePanel(): List<Preference> {
         val preferences = mutableListOf<Preference>()
 
+        val colors = Preference(type = PreferenceType.SUB_HEADER, title = R.string.colors)
+
+        val accentColor = Preference(
+                title = R.string.accent_color,
+                summary = R.string.accent_color_summary,
+                icon = R.drawable.ic_palette,
+                type = PreferenceType.PANEL,
+        )
+
+        accentColor.onPreferenceAction = { view, callback ->
+            // Open accent color panel
+            true
+        }
+
         val header = Preference(type = PreferenceType.SUB_HEADER, title = R.string.appearance)
 
         val cornerRadius = Preference(
@@ -62,6 +76,8 @@ open class PreferenceFragment : ScopedFragment() {
             )
         }
 
+        preferences.add(colors)
+        preferences.add(accentColor)
         preferences.add(header)
         preferences.add(cornerRadius)
         preferences.add(spacing)

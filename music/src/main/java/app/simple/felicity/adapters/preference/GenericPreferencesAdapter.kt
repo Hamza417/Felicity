@@ -1,10 +1,12 @@
 package app.simple.felicity.adapters.preference
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterPreferenceDialogBinding
 import app.simple.felicity.databinding.AdapterPreferenceHeaderBinding
+import app.simple.felicity.databinding.AdapterPreferencePanelBinding
 import app.simple.felicity.databinding.AdapterPreferencePopupBinding
 import app.simple.felicity.databinding.AdapterPreferenceSliderBinding
 import app.simple.felicity.databinding.AdapterPreferenceSubHeaderBinding
@@ -32,13 +34,16 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             VIEW_TYPE_SLIDER -> {
                 Slider(AdapterPreferenceSliderBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
+            VIEW_TYPE_PANEL -> {
+                Panel(AdapterPreferencePanelBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            }
             else -> {
                 throw IllegalArgumentException()
             }
         }
     }
 
-    override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: VerticalListViewHolder, @SuppressLint("RecyclerView") position: Int) {
         when (holder) {
             is Header -> {
                 val preference = preferences[position]
@@ -98,6 +103,18 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                     }
                 })
             }
+            is Panel -> {
+                val preference = preferences[position]
+                holder.binding.title.setText(preference.title)
+                holder.binding.summary.setText(preference.summary)
+                holder.binding.icon.setImageResource(preference.icon)
+
+                holder.binding.container.setOnClickListener {
+                    preference.onPreferenceAction?.invoke(it) {
+                        /* no-op */
+                    }
+                }
+            }
         }
     }
 
@@ -118,6 +135,7 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             PreferenceType.CHECKBOX -> VIEW_TYPE_CHECKBOX
             PreferenceType.SLIDER -> VIEW_TYPE_SLIDER
             PreferenceType.DIALOG -> VIEW_TYPE_DIALOG
+            PreferenceType.PANEL -> VIEW_TYPE_PANEL
             else -> throw IllegalArgumentException("Unknown view type at position $position")
         }
     }
@@ -127,6 +145,8 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
     inner class Dialog(val binding: AdapterPreferenceDialogBinding) : VerticalListViewHolder(binding.root)
 
     inner class Slider(val binding: AdapterPreferenceSliderBinding) : VerticalListViewHolder(binding.root)
+
+    inner class Panel(val binding: AdapterPreferencePanelBinding) : VerticalListViewHolder(binding.root)
 
     inner class SubHeader(val binding: AdapterPreferenceSubHeaderBinding) : VerticalListViewHolder(binding.root)
 
@@ -140,7 +160,7 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
         const val VIEW_TYPE_CHECKBOX = 2
         const val VIEW_TYPE_POPUP = 3
         const val VIEW_TYPE_SLIDER = 4
-        const val VIEW_TYPE_EDIT_TEXT = 5
+        const val VIEW_TYPE_PANEL = 5
         const val VIEW_TYPE_SUB_HEADER = 6
         const val VIEW_TYPE_DIALOG = 7
     }

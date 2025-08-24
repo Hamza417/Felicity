@@ -93,4 +93,7 @@
     <string name="last_year">Last Year</string>
     <string name="first_year">First Year</string>
     <string name="number_of_songs">Number of Songs</string>
+    <string name="colors">Colors</string>
+    <string name="accent_color">Accent Color</string>
+    <string name="accent_color_summary">Pick accent color of the app.</string>
 </resources>

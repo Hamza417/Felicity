@@ -7,5 +7,6 @@ enum class PreferenceType {
     DIALOG,
     SWITCH,
     CHECKBOX,
-    SLIDER
+    SLIDER,
+    PANEL
 }
