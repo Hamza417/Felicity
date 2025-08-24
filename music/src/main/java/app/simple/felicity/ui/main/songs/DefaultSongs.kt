@@ -11,8 +11,8 @@ import app.simple.felicity.core.R
 import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.databinding.HeaderSongsBinding
-import app.simple.felicity.decorations.fastscroll.FelicityFastScroller
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
+import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.itemanimators.FlipItemAnimator
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.songs.SongMenu.Companion.showSongMenu
@@ -46,10 +46,10 @@ class DefaultSongs : MediaFragment() {
         binding.recyclerView.itemAnimator = FlipItemAnimator()
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-        SectionedFastScroller.attach(binding.recyclerView)
+        SlideFastScroller.attach(binding.recyclerView)
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) {
-            val nav = FelicityFastScroller.attach(binding.recyclerView)
+            val nav = SectionedFastScroller.attach(binding.recyclerView)
             nav.setPositions(provideScrollPositionDataBasedOnSortStyle(it))
 
             nav.setOnPositionSelectedListener { position ->
@@ -123,7 +123,7 @@ class DefaultSongs : MediaFragment() {
         songsAdapter?.currentlyPlayingSong = song
     }
 
-    private fun provideScrollPositionDataBasedOnSortStyle(songs: List<Song>): List<FelicityFastScroller.Position> {
+    private fun provideScrollPositionDataBasedOnSortStyle(songs: List<Song>): List<SectionedFastScroller.Position> {
         return when (SongsPreferences.getSongSort()) {
             SongsPreferences.BY_TITLE -> {
                 val firstAlphabetToIndex = linkedMapOf<String, Int>()
@@ -139,7 +139,7 @@ class DefaultSongs : MediaFragment() {
                     }
                 }
                 firstAlphabetToIndex.map { (char, index) ->
-                    FelicityFastScroller.Position(char, index)
+                    SectionedFastScroller.Position(char, index)
                 }
             }
             SongsPreferences.BY_ARTIST -> {
@@ -152,7 +152,7 @@ class DefaultSongs : MediaFragment() {
                     }
                 }
                 firstAlphabetToIndex.map { (char, index) ->
-                    FelicityFastScroller.Position(char.toString(), index)
+                    SectionedFastScroller.Position(char.toString(), index)
                 }
             }
             SongsPreferences.BY_ALBUM -> {
@@ -165,7 +165,7 @@ class DefaultSongs : MediaFragment() {
                     }
                 }
                 firstAlphabetToIndex.map { (char, index) ->
-                    FelicityFastScroller.Position(char.toString(), index)
+                    SectionedFastScroller.Position(char.toString(), index)
                 }
             }
             SongsPreferences.BY_YEAR -> {
@@ -177,7 +177,7 @@ class DefaultSongs : MediaFragment() {
                     }
                 }
                 firstAlphabetToIndex.map { (year, index) ->
-                    FelicityFastScroller.Position(year, index)
+                    SectionedFastScroller.Position(year, index)
                 }
             }
             else -> {
@@ -190,7 +190,7 @@ class DefaultSongs : MediaFragment() {
                     }
                 }
                 firstAlphabetToIndex.map { (char, index) ->
-                    FelicityFastScroller.Position(char.toString(), index)
+                    SectionedFastScroller.Position(char.toString(), index)
                 }
             }
         }

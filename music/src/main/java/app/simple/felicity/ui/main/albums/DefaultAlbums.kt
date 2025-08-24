@@ -10,7 +10,7 @@ import app.simple.felicity.adapters.ui.lists.albums.AdapterDefaultAlbums
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentAlbumsBinding
 import app.simple.felicity.databinding.HeaderAlbumsBinding
-import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
+import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.itemanimators.FlipItemAnimator
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -39,7 +39,7 @@ class DefaultAlbums : MediaFragment() {
         binding.recyclerView.itemAnimator = FlipItemAnimator()
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-        SectionedFastScroller.attach(binding.recyclerView)
+        SlideFastScroller.attach(binding.recyclerView)
 
         albumsViewModel.getAlbums().observe(viewLifecycleOwner) {
             adapterDefaultAlbums = AdapterDefaultAlbums(it, 4)

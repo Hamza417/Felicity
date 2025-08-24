@@ -13,7 +13,7 @@ import androidx.recyclerview.widget.SimpleItemAnimator
 import app.simple.felicity.core.utils.BarHeight
 import app.simple.felicity.core.utils.WindowUtil
 import app.simple.felicity.decoration.R
-import app.simple.felicity.decorations.fastscroll.FelicityFastScroller
+import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.itemdecorations.DividerItemDecoration
 import app.simple.felicity.decorations.theme.ThemeRecyclerView
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.flingTranslationMagnitude
@@ -250,7 +250,7 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
             }
         }
 
-        FelicityFastScroller.attach(this)
+        SectionedFastScroller.attach(this)
     }
 
     override fun isPaddingOffsetRequired(): Boolean {

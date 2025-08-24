@@ -1,39 +1,34 @@
 package app.simple.felicity.decorations.fastscroll
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.RectF
-import android.graphics.drawable.Drawable
+import android.text.TextPaint
 import android.util.AttributeSet
 import android.util.DisplayMetrics
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
-import androidx.annotation.DrawableRes
-import androidx.appcompat.content.res.AppCompatResources
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import app.simple.felicity.decoration.R
+import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.theme.managers.ThemeManager
 import java.lang.ref.WeakReference
-import kotlin.math.max
-import kotlin.math.min
+import kotlin.math.ceil
 
 /**
- * A lightweight vertical slider (pill) fast scroller that:
- *  - Attaches as an overlay to a RecyclerView (added to its parent).
- *  - Displays a draggable pill along the right edge.
- *  - Dragging the pill scrolls the list using percentage (0f..1f) of total item count.
- *  - Observes RecyclerView scroll events to keep pill position in sync when user scrolls normally.
- *
- * Percentage mapping rules:
- *  - percent = (firstVisible + intraItemOffset) / (totalItems - 1) when totalItems > 1 else 0.
- *  - intraItemOffset adds smoothness based on first visible view's top offset.
+ * Windows-like jump navigation overlay:
+ *  - Hidden by default; call show()/hide().
+ *  - Displays provided positions in a grid (label + background).
+ *  - Clicking a position invokes listener; caller handles RecyclerView jump manually.
+ *  - Only responsibility with RecyclerView: overlay addition via attachTo().
  */
 class SectionedFastScroller @JvmOverloads constructor(
         context: Context,
@@ -41,395 +36,326 @@ class SectionedFastScroller @JvmOverloads constructor(
         defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
+    data class Position(val label: String, val index: Int)
+
     private var recyclerRef: WeakReference<RecyclerView>? = null
 
-    // Half-circle handle configuration
-    private val handleRadius = dp(28f) // visual radius (diameter = height)
-    private val minRadius = dp(22f)
-    private val maxRadius = dp(40f)
-    private val touchExtra = dp(12f)
+    private var positions: List<Position> = emptyList()
+    private var positionRects: MutableList<RectF> = mutableListOf()
 
-    private val handleColorActive = ThemeManager.accent.primaryAccentColor
-    private val handleColorInactive = ThemeManager.theme.viewGroupTheme.backgroundColor
-    private val ridgeColor = ThemeManager.theme.textViewTheme.secondaryTextColor
+    // Grid configuration
+    private var columns = 5 // current active columns (set dynamically)
+    private var portraitColumns = 5
+    private var landscapeColumns = 10 // landscape wider grid (8-12 range); adjustable via setter
+    private var rows = 0
+    private val cellSpacing = dp(28f) // larger spacing
+    private val bigMargin = dp(72f) // huge margin on all sides
+    private val cellPaddingV = dp(8f)
 
-    private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = handleColorInactive }
-    private val ridgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ridgeColor
-        strokeWidth = dp(2f)
-        strokeCap = Paint.Cap.ROUND
+    // Visual styles
+    private val overlayColor = ThemeManager.theme.viewGroupTheme.backgroundColor // opaque background
+    private val textColor = ThemeManager.theme.textViewTheme.primaryTextColor
+    private val pressedTextColor = ThemeManager.accent.primaryAccentColor
+
+    // Removed button backgrounds – flat text only
+
+    private val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = textColor
+        textSize = sp(22f) // larger text
+        textAlign = Paint.Align.CENTER
+        letterSpacing = 0.05f
+        typeface = TypeFace.getBoldTypeFace(context)
     }
 
-    // Path + rect for internal half-circle rendering
-    private val handlePath = Path()
-    private val circleRect = RectF()
+    // Animation config
+    private var animationDurationShow = 300L
+    private var animationDurationHide = 260L
+    private val inScaleStart = 1.52f
+    private val outScaleEnd = 1.52f
 
-    // Custom drawable support
-    private var handleDrawable: Drawable? = null
-    private var handleDrawableActive: Drawable? = null
-    private var useIntrinsicSize = true
+    private var fadeScaleAnimator: ValueAnimator? = null
 
-    // State
-    private var percent = 0f // 0..1
-    private var dragging = false
-    private var enabledWhileEmpty = false
+    private var isShowing = false
+    private var isLaidOutOnce = false
 
-    // Animation / visibility
-    private var visible = true
-    private var autoHideDelay = 1500L
-    private var visibilityAnimator: ValueAnimator? = null
-    private val autoHideRunnable = Runnable { if (!dragging) hide(true) }
+    private var pressedIndex = -1
+    private var onPositionSelected: ((Position) -> Unit)? = null
 
-    private val scrollListener = object : RecyclerView.OnScrollListener() {
-        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-            if (!dragging) updatePercentFromRecycler()
-            if (dy != 0) {
-                show(true)
-                scheduleAutoHide()
-            }
-        }
-    }
+    private var lastOrientation = -1
 
     init {
-        isClickable = false
-        isFocusable = false
+        alpha = 0f
+        scaleX = 0.92f
+        scaleY = 0.92f
+        visibility = GONE
+        isClickable = true
+        isFocusable = true
+        setBackgroundColor(overlayColor) // opaque backdrop
         setWillNotDraw(false)
-        alpha = 0f // start hidden until first scroll
-        translationX = handleRadius // off-screen to right partially
-        visible = false
     }
 
-    /** Attach the fast scroller overlay to the RecyclerView's parent (must be a ViewGroup). */
+    /** Attach overlay to RecyclerView's parent so it can draw above list. */
     fun attachTo(recyclerView: RecyclerView) {
         recyclerRef = WeakReference(recyclerView)
-        recyclerView.removeOnScrollListener(scrollListener)
-        recyclerView.addOnScrollListener(scrollListener)
         val parent = recyclerView.parent
         if (parent is ViewGroup && parent.indexOfChild(this) == -1) {
-            parent.addView(
-                    this,
-                    ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            )
-        }
-        post { updatePercentFromRecycler(); show(true); scheduleAutoHide() }
-    }
-
-    /** Allow enabling drag even if adapter empty (mostly for testing). */
-    @Suppress("unused")
-    fun setEnabledWhileEmpty(enable: Boolean) {
-        enabledWhileEmpty = enable
-    }
-
-    /** Returns current scroll progress percent [0f,1f]. */
-    @Suppress("unused")
-    fun getPercent(): Float = percent
-
-    /** Programmatically set scroll percent and scroll list (clamped). */
-    @Suppress("unused")
-    fun setPercent(p: Float) {
-        val clamped = p.coerceIn(0f, 1f); if (clamped != percent) {
-            percent = clamped; scrollToPercent(clamped); invalidate()
+            parent.addView(this, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         }
     }
 
-    /** Set the delay before the scroller auto-hides when not in use (in milliseconds). */
-    @Suppress("unused")
-    fun setAutoHideDelay(delayMillis: Long) {
-        autoHideDelay = delayMillis
+    fun setPositions(list: List<Position>) {
+        positions = list
+        updateColumnsForOrientation()
+        rows = if (positions.isEmpty()) 0 else ceil(positions.size / columns.toFloat()).toInt()
+        computeRects(width, height)
+        invalidate()
     }
 
-    /** Show the fast scroller, with optional animation. */
-    fun show(animated: Boolean) {
-        if (visible) return
-        visible = true
-        visibilityAnimator?.cancel()
-        if (!animated) {
-            alpha = 1f
-            translationX = 0f
-        } else {
-            val startAlpha = alpha
-            val startTx = translationX
-            visibilityAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = 220L
-                interpolator = DecelerateInterpolator()
-                addUpdateListener { va ->
-                    val f = va.animatedFraction
-                    alpha = startAlpha + (1f - startAlpha) * f
-                    translationX = startTx + (0f - startTx) * f
-                }
-                start()
-            }
-        }
+    fun setOnPositionSelectedListener(listener: (Position) -> Unit) {
+        onPositionSelected = listener
     }
 
-    /** Hide the fast scroller, with optional animation. */
-    fun hide(animated: Boolean) {
-        if (!visible) return
-        visible = false
-        visibilityAnimator?.cancel()
-        if (!animated) {
+    fun show(animated: Boolean = true) {
+        if (isShowing) return
+        isShowing = true
+        visibility = VISIBLE
+        // Prep starting state for in animation
+        if (animated) {
             alpha = 0f
-            translationX = handleRadius
+            scaleX = inScaleStart
+            scaleY = inScaleStart
         } else {
-            val startAlpha = alpha
-            val startTx = translationX
-            visibilityAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = 260L
-                interpolator = DecelerateInterpolator()
-                addUpdateListener { va ->
-                    val f = va.animatedFraction
-                    alpha = startAlpha * (1f - f)
-                    translationX = startTx + (handleRadius - startTx) * f
+            alpha = 1f
+            scaleX = 1f
+            scaleY = 1f
+        }
+        animateIn(animated)
+    }
+
+    fun hide(animated: Boolean = true) {
+        if (!isShowing && fadeScaleAnimator == null) return // Already hidden and no running anim
+
+        animateOut(animated)
+
+        if (isShowing) {
+            isShowing = false
+        }
+    }
+
+    fun toggle() = if (isShowing) hide() else show()
+
+    private fun animateIn(animated: Boolean) {
+        fadeScaleAnimator?.cancel()
+        if (!animated) {
+            alpha = 1f; scaleX = 1f; scaleY = 1f; return
+        }
+        fadeScaleAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = animationDurationShow
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { va ->
+                val f = va.animatedFraction
+                alpha = f
+                val s = inScaleStart + (1f - inScaleStart) * f // shrink to 1f
+                scaleX = s; scaleY = s
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    private fun animateOut(animated: Boolean) {
+        fadeScaleAnimator?.cancel()
+        if (!animated) {
+            alpha = 0f; scaleX = outScaleEnd; scaleY = outScaleEnd; visibility = GONE; return
+        }
+        // Ensure starting baseline (might be mid-animation)
+        if (scaleX != 1f && scaleX < 1f) {
+            scaleX = 1f; scaleY = 1f
+        }
+        val startAlpha = alpha
+        val startScale = scaleX
+        fadeScaleAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = animationDurationHide
+            interpolator = AccelerateInterpolator()
+            addUpdateListener { va ->
+                val f = va.animatedFraction
+                alpha = startAlpha * (1f - f)
+                val s = startScale + (outScaleEnd - startScale) * f // grow outward
+                scaleX = s; scaleY = s
+                invalidate()
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    if (!isShowing) {
+                        visibility = GONE
+                        alpha = 0f
+                        scaleX = 1f
+                        scaleY = 1f
+                    }
+
+                    fadeScaleAnimator = null
                 }
-                start()
-            }
+            })
+            start()
         }
     }
 
-    private fun scheduleAutoHide() {
-        removeCallbacks(autoHideRunnable)
-        postDelayed(autoHideRunnable, autoHideDelay)
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        val orientation = resources.configuration.orientation
+        if (orientation != lastOrientation) {
+            lastOrientation = orientation
+            updateColumnsForOrientation()
+            rows = if (positions.isEmpty()) 0 else ceil(positions.size / columns.toFloat()).toInt()
+        }
+        isLaidOutOnce = true
+        computeRects(w, h)
     }
 
-    private fun scrollToPercent(p: Float) {
-        val rv = recyclerRef?.get() ?: return
-        val adapter = rv.adapter ?: return
-        val count = adapter.itemCount
-        if (count <= 0) return
-        val target = ((count - 1) * p).toInt().coerceIn(0, count - 1)
-        val lm = rv.layoutManager
-        if (lm is LinearLayoutManager) {
-            // Use scrollToPositionWithOffset for consistent placement.
-            lm.scrollToPositionWithOffset(target, 0)
-        } else {
-            rv.scrollToPosition(target)
-        }
-    }
+    private fun computeRects(w: Int, h: Int) {
+        positionRects.clear()
+        if (!isLaidOutOnce || positions.isEmpty() || w == 0 || h == 0) return
 
-    private fun updatePercentFromRecycler() {
-        val rv = recyclerRef?.get() ?: return
-        val adapter = rv.adapter ?: return
-        val total = adapter.itemCount
-        if (total <= 1) {
-            percent = 0f; invalidate(); return
-        }
-        val lm = rv.layoutManager
-        if (lm is LinearLayoutManager && lm.orientation == RecyclerView.VERTICAL) {
-            val first = lm.findFirstVisibleItemPosition()
-            val firstView = lm.findViewByPosition(first)
-            if (first == RecyclerView.NO_POSITION || firstView == null) return
-            val itemHeight = max(1, firstView.height)
-            val offsetInside = (-firstView.top).toFloat() / itemHeight.toFloat()
-            val raw = (first + offsetInside) / (total - 1).toFloat()
-            val newPercent = raw.coerceIn(0f, 1f)
-            if (newPercent != percent) {
-                percent = newPercent; invalidate()
-            }
-        } else {
-            // Fallback: use computeVerticalScrollOffset / range for non-linear managers
-            val range = rv.computeVerticalScrollRange() - rv.computeVerticalScrollExtent()
-            val off = rv.computeVerticalScrollOffset()
-            val raw = if (range <= 0) 0f else off.toFloat() / range.toFloat()
-            val newPercent = raw.coerceIn(0f, 1f)
-            if (newPercent != percent) {
-                percent = newPercent; invalidate()
-            }
+        val usableWidth = (w - bigMargin * 2).coerceAtLeast(dp(120f))
+        val totalSpacingX = cellSpacing * (columns - 1)
+        val cellWidth = ((usableWidth - totalSpacingX) / columns.toFloat()).coerceAtLeast(dp(48f))
+        val cellHeight = (textPaint.textSize + cellPaddingV * 2)
+
+        val totalGridHeight = rows * cellHeight + (rows - 1) * cellSpacing
+        val startY = (h - totalGridHeight) / 2f
+
+        for (i in positions.indices) {
+            val row = i / columns
+            val col = i % columns
+
+            // Determine how many items this row actually has
+            val isLastRow = row == rows - 1
+            val remainder = positions.size % columns
+            val itemsInRow = if (isLastRow && remainder != 0) remainder else columns
+
+            // Width for this specific row
+            val rowSpacing = cellSpacing * (itemsInRow - 1)
+            val rowWidth = itemsInRow * cellWidth + rowSpacing
+
+            // Center this row horizontally inside full width (w)
+            val rowStartX = (w - rowWidth) / 2f
+            val top = startY + row * (cellHeight + cellSpacing)
+
+            // Column index inside this (possibly partial) row
+            val colInThisRow = if (itemsInRow == columns) col else i - row * columns
+            val left = rowStartX + colInThisRow * (cellWidth + cellSpacing)
+
+            positionRects.add(RectF(left, top, left + cellWidth, top + cellHeight))
         }
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val rv = recyclerRef?.get()
-        val adapterCount = rv?.adapter?.itemCount ?: 0
-        val adapterEmpty = adapterCount <= 0
-        if (adapterEmpty && !enabledWhileEmpty) return
-        if (alpha <= 0f) return
-        val w = width.toFloat();
-        val h = height.toFloat(); if (w <= 0f || h <= 0f) return
+        if (positions.isEmpty() || !isShowing) return
 
-        val custom = handleDrawable != null
-        if (custom) {
-            drawCustomHandle(canvas, adapterCount, w, h)
-            return
+        val fm = textPaint.fontMetrics
+        val textCenterOffset = (fm.bottom + fm.top) / 2f
+        for (i in positionRects.indices) {
+            val rect = positionRects[i]
+            val pos = positions[i]
+            val cx = rect.centerX()
+            val cy = rect.centerY() - textCenterOffset
+            if (i == pressedIndex) {
+                textPaint.color = pressedTextColor
+            } else {
+                textPaint.color = textColor
+            }
+            // Flat letters only
+            canvas.drawText(pos.label, cx, cy, textPaint)
         }
-
-        val radius = computeRadius(adapterCount)
-        val centerY = radius + (h - radius * 2f) * percent
-        val clampedCY = centerY.coerceIn(radius, h - radius)
-        circleRect.set(w - radius * 2f, clampedCY - radius, w, clampedCY + radius)
-        handlePath.reset()
-        handlePath.moveTo(w, clampedCY - radius)
-        handlePath.lineTo(w, clampedCY + radius)
-        handlePath.addArc(circleRect, 90f, 180f)
-        handlePath.close()
-        handlePaint.color = if (dragging) handleColorActive else handleColorInactive
-        canvas.drawPath(handlePath, handlePaint)
-        val ridgeCount = 3
-        val ridgeSpacing = radius * 0.5f / (ridgeCount - 1)
-        val ridgeMaxLength = radius * 1.05f
-        val startX = w - radius * 1.6f
-        val endBase = w - radius * 0.3f
-        for (i in 0 until ridgeCount) {
-            val ry = clampedCY - ridgeSpacing * (ridgeCount - 1) / 2f + i * ridgeSpacing
-            val shrinkFactor = 1f - 0.15f * (kotlin.math.abs(i - (ridgeCount - 1) / 2f))
-            val endX = startX + ridgeMaxLength * shrinkFactor
-            canvas.drawLine(startX, ry, min(endX, endBase), ry, ridgePaint)
-        }
-    }
-
-    private fun drawCustomHandle(canvas: Canvas, adapterCount: Int, w: Float, h: Float) {
-        val inactive = handleDrawable ?: return
-        val active = handleDrawableActive
-        val drawable = if (dragging) (active ?: inactive) else inactive
-        val intrinsicW = if (useIntrinsicSize && drawable.intrinsicWidth > 0) drawable.intrinsicWidth else dp(56f).toInt()
-        val intrinsicH = if (useIntrinsicSize && drawable.intrinsicHeight > 0) drawable.intrinsicHeight else dp(56f).toInt()
-        val available = (h - intrinsicH).coerceAtLeast(1f)
-        val top = (percent * available).coerceIn(0f, h - intrinsicH)
-        val left = w - intrinsicW // flush to right edge
-        drawable.setBounds(left.toInt(), top.toInt(), w.toInt(), (top + intrinsicH).toInt())
-        drawable.draw(canvas)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        val rv = recyclerRef?.get()
-        val adapterCount = rv?.adapter?.itemCount ?: 0
-        val adapterEmpty = adapterCount <= 0
-        if (adapterEmpty && !enabledWhileEmpty) return false
-        val w = width.toFloat()
-        val h = height.toFloat(); if (w == 0f || h == 0f) return false
+        if (!isShowing) return false
+        val x = event.x
+        val y = event.y
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                if (hitTest(event.x, event.y, adapterCount)) {
-                    parent?.requestDisallowInterceptTouchEvent(true)
-                    dragging = true
-                    show(true)
-                    removeCallbacks(autoHideRunnable)
-                    updatePercentFromTouch(event.y, adapterCount)
+                pressedIndex = hitTest(x, y)
+                if (pressedIndex != -1) {
                     invalidate()
                     return true
                 }
-                return false
             }
             MotionEvent.ACTION_MOVE -> {
-                if (dragging) {
-                    updatePercentFromTouch(event.y, adapterCount)
+                val newIndex = hitTest(x, y)
+                if (newIndex != pressedIndex) {
+                    pressedIndex = newIndex
                     invalidate()
-                    return true
                 }
-                return false
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (dragging) {
-                    dragging = false
-                    parent?.requestDisallowInterceptTouchEvent(false)
-                    scheduleAutoHide()
-                    invalidate()
-                    performClick() // formalize end of interaction
-                    return true
+                val selected = if (event.actionMasked == MotionEvent.ACTION_UP) pressedIndex else -1
+                val idx = pressedIndex
+                pressedIndex = -1
+                invalidate()
+                if (selected != -1 && idx in positions.indices) {
+                    performClick()
+                    onPositionSelected?.invoke(positions[idx])
                 }
-                return false
+                if (event.actionMasked == MotionEvent.ACTION_UP) {
+                    // Optionally auto-hide after selection
+                    hide(animated = true)
+                }
+                return true
             }
         }
-        return false
+        return super.onTouchEvent(event)
     }
 
     override fun performClick(): Boolean {
-        // No click action, but maintain accessibility contract
-        return super.performClick()
+        super.performClick()
+        return true
     }
 
-    private fun hitTest(x: Float, y: Float, adapterCount: Int): Boolean {
-        val w = width.toFloat()
-        val custom = handleDrawable != null
-        if (custom) {
-            val inactive = handleDrawable ?: return false
-            val intrinsicW = if (useIntrinsicSize && inactive.intrinsicWidth > 0) inactive.intrinsicWidth else dp(56f).toInt()
-            val intrinsicH = if (useIntrinsicSize && inactive.intrinsicHeight > 0) inactive.intrinsicHeight else dp(56f).toInt()
-            val available = (height - intrinsicH).coerceAtLeast(1)
-            val top = (percent * available).coerceIn(0f, (height - intrinsicH).toFloat())
-            val rect = RectF(w - intrinsicW - touchExtra, top - touchExtra, w + touchExtra, top + intrinsicH + touchExtra)
-            return rect.contains(x, y)
+    private fun hitTest(x: Float, y: Float): Int {
+        for (i in positionRects.indices) {
+            if (positionRects[i].contains(x, y)) return i
         }
-        val radius = computeRadius(adapterCount)
-        val centerY = radius + (height - radius * 2f) * percent
-        val cy = centerY.coerceIn(radius, height - radius)
-        val rect = RectF(w - radius * 2f - touchExtra, cy - radius - touchExtra, w + touchExtra, cy + radius + touchExtra)
-        return rect.contains(x, y)
+        return -1
     }
 
-    private fun updatePercentFromTouch(y: Float, adapterCount: Int) {
-        val h = height.toFloat(); if (h <= 0f) return
-        val custom = handleDrawable != null
-        if (custom) {
-            val inactive = handleDrawable ?: return
-            val intrinsicH = if (useIntrinsicSize && inactive.intrinsicHeight > 0) inactive.intrinsicHeight.toFloat() else dp(56f)
-            val available = (h - intrinsicH).coerceAtLeast(1f)
-            val clampedTop = y - intrinsicH / 2f
-            val clamped = clampedTop.coerceIn(0f, h - intrinsicH)
-            val newPercent = (clamped / available).coerceIn(0f, 1f)
-            if (newPercent != percent) {
-                percent = newPercent; scrollToPercent(percent)
-            }
-            return
-        }
-        val radius = computeRadius(adapterCount)
-        val available = (h - radius * 2f).coerceAtLeast(1f)
-        val clampedY = y.coerceIn(radius, h - radius)
-        val newPercent = (clampedY - radius) / available
-        if (newPercent != percent) {
-            percent = newPercent; scrollToPercent(percent)
-        }
+    override fun onDetachedFromWindow() {
+        recyclerRef = null
+        fadeScaleAnimator?.cancel()
+        super.onDetachedFromWindow()
     }
 
     private fun dp(value: Float): Float {
-        val metrics: DisplayMetrics = resources.displayMetrics; return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, metrics)
+        val metrics: DisplayMetrics = resources.displayMetrics
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, metrics)
     }
 
-    private fun computeRadius(adapterCount: Int): Float = when {
-        adapterCount <= 0 -> handleRadius
-        adapterCount <= 20 -> maxRadius
-        adapterCount >= 400 -> minRadius
-        else -> minRadius + (maxRadius - minRadius) * (1f - (adapterCount - 20f) / 380f)
+    private fun sp(value: Float): Float {
+        val metrics: DisplayMetrics = resources.displayMetrics
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, value, metrics)
     }
 
-    /** Provide a custom drawable resource for the handle (used for both active & inactive). */
-    fun setHandleDrawable(@DrawableRes resId: Int, useIntrinsic: Boolean = true) {
-        val d = AppCompatResources.getDrawable(context, resId)
-        handleDrawable = d
-        handleDrawableActive = null
-        useIntrinsicSize = useIntrinsic
+    fun setColumnCounts(portrait: Int, landscape: Int) {
+        portraitColumns = portrait.coerceAtLeast(1)
+        landscapeColumns = landscape.coerceAtLeast(1)
+        updateColumnsForOrientation()
+        rows = if (positions.isEmpty()) 0 else ceil(positions.size / columns.toFloat()).toInt()
+        computeRects(width, height)
         invalidate()
     }
 
-    /** Provide separate inactive and active drawables. */
-    fun setHandleDrawables(@DrawableRes inactiveResId: Int, @DrawableRes activeResId: Int, useIntrinsic: Boolean = true) {
-        handleDrawable = AppCompatResources.getDrawable(context, inactiveResId)
-        handleDrawableActive = AppCompatResources.getDrawable(context, activeResId)
-        useIntrinsicSize = useIntrinsic
-        invalidate()
-    }
-
-    /** Provide a custom drawable instance. */
-    fun setHandleDrawable(drawable: Drawable?, drawableActive: Drawable? = null, useIntrinsic: Boolean = true) {
-        handleDrawable = drawable
-        handleDrawableActive = drawableActive
-        useIntrinsicSize = useIntrinsic
-        invalidate()
-    }
-
-    /** Remove any custom drawable and revert to internal rendering. */
-    fun clearHandleDrawable() {
-        handleDrawable = null
-        handleDrawableActive = null
-        invalidate()
+    private fun updateColumnsForOrientation() {
+        val orientation = resources.configuration.orientation
+        columns = if (orientation == Configuration.ORIENTATION_LANDSCAPE) landscapeColumns else portraitColumns
     }
 
     companion object {
         fun attach(recyclerView: RecyclerView): SectionedFastScroller {
-            val scroller = SectionedFastScroller(recyclerView.context); scroller.attachTo(recyclerView);
-            scroller.setHandleDrawable(R.drawable.ic_fast_thumb)
-            scroller.handleDrawable?.setTint(ThemeManager.accent.primaryAccentColor)
-            return scroller
+            val ctx = recyclerView.context
+            val nav = SectionedFastScroller(ctx)
+            nav.attachTo(recyclerView)
+            return nav
         }
     }
 }
