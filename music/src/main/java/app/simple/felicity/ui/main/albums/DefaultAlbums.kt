@@ -13,8 +13,11 @@ import app.simple.felicity.databinding.HeaderAlbumsBinding
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.itemanimators.FlipItemAnimator
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.albums.AlbumsSort.Companion.showAlbumsSort
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Album
+import app.simple.felicity.repository.sort.AlbumSort.setCurrentSortOrder
+import app.simple.felicity.repository.sort.AlbumSort.setCurrentSortStyle
 import app.simple.felicity.viewmodels.main.albums.AlbumsViewModel
 
 class DefaultAlbums : MediaFragment() {
@@ -51,6 +54,17 @@ class DefaultAlbums : MediaFragment() {
                     openFragment(AlbumPage.newInstance(albums[position]), AlbumPage.TAG)
                 }
             })
+
+            headerBinding.sortStyle.setOnClickListener {
+                childFragmentManager.showAlbumsSort()
+            }
+
+            headerBinding.sortOrder.setOnClickListener {
+                childFragmentManager.showAlbumsSort()
+            }
+
+            headerBinding.sortStyle.setCurrentSortStyle()
+            headerBinding.sortOrder.setCurrentSortOrder()
         }
     }
 

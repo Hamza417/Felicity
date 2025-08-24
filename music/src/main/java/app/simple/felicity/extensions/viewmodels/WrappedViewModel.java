@@ -84,7 +84,7 @@ public class WrappedViewModel extends AndroidViewModel implements SharedPreferen
     }
     
     @Override
-    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, @Nullable String s) {
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, @Nullable String key) {
     
     }
 }
