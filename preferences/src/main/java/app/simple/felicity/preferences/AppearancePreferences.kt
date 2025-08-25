@@ -23,7 +23,7 @@ object AppearancePreferences {
     const val THEME = "current_app_theme"
     const val ACCENT_COLOR = "app_accent_color"
     private const val ACCENT_COLOR_LIGHT = "app_accent_color_light"
-    private const val APP_FONT = "type_face"
+    const val APP_FONT = "type_face"
     const val ACCENT_ON_NAV = "accent_color_on_nav_bar"
 
     const val MAX_CORNER_RADIUS = 80F

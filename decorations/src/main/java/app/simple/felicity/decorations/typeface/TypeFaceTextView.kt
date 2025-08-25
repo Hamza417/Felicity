@@ -225,6 +225,10 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
                 setTextColor(animate = true)
                 setDrawableTint(animate = true)
             }
+            AppearancePreferences.APP_FONT -> {
+                typeface = TypeFace.getTypeFace(AppearancePreferences.getAppFont(), fontStyle, context)
+                invalidate()
+            }
         }
     }
 
