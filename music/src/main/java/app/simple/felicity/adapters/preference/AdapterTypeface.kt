@@ -5,14 +5,14 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterPreferenceHeaderBinding
-import app.simple.felicity.databinding.AdapterTypefaceItemBinding
+import app.simple.felicity.databinding.AdapterTypefaceBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.decorations.typeface.TypefaceStyle
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.preferences.AppearancePreferences
 
-class AdapterTypefaceItem : RecyclerView.Adapter<VerticalListViewHolder>() {
+class AdapterTypeface : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private val typefaces = TypeFace.list
 
@@ -23,7 +23,7 @@ class AdapterTypefaceItem : RecyclerView.Adapter<VerticalListViewHolder>() {
                 return Header(binding)
             }
             RecyclerViewUtils.TYPE_ITEM -> {
-                val binding = AdapterTypefaceItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+                val binding = AdapterTypefaceBinding.inflate(LayoutInflater.from(parent.context), parent, false)
                 return Holder(binding)
             }
             else -> throw IllegalStateException("unknown view type")
@@ -87,7 +87,7 @@ class AdapterTypefaceItem : RecyclerView.Adapter<VerticalListViewHolder>() {
         }
     }
 
-    inner class Holder(val binding: AdapterTypefaceItemBinding) : VerticalListViewHolder(binding.root)
+    inner class Holder(val binding: AdapterTypefaceBinding) : VerticalListViewHolder(binding.root)
 
     inner class Header(val binding: AdapterPreferenceHeaderBinding) : VerticalListViewHolder(binding.root)
 }

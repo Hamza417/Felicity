@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import app.simple.felicity.adapters.preference.AdapterTypefaceItem
+import app.simple.felicity.adapters.preference.AdapterTypeface
 import app.simple.felicity.databinding.FragmentGenericRecyclerViewBinding
 import app.simple.felicity.extensions.fragments.ScopedFragment
 
@@ -21,7 +21,7 @@ class TypeFaceSelection : ScopedFragment() {
         super.onViewCreated(view, savedInstanceState)
         postponeEnterTransition()
 
-        binding.recyclerView.adapter = AdapterTypefaceItem()
+        binding.recyclerView.adapter = AdapterTypeface()
         binding.recyclerView.scheduleLayoutAnimation()
 
         view.startTransitionOnPreDraw()
