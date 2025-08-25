@@ -87,6 +87,39 @@ object TypeFace {
         )
     }
 
+    private val jostMap by lazy {
+        mapOf(
+                TypefaceStyle.EXTRA_LIGHT.style to R.font.jost_extralight,
+                TypefaceStyle.LIGHT.style to R.font.jost_light,
+                TypefaceStyle.REGULAR.style to R.font.jost_regular,
+                TypefaceStyle.MEDIUM.style to R.font.jost_medium,
+                TypefaceStyle.BOLD.style to R.font.jost_bold,
+                TypefaceStyle.BLACK.style to R.font.jost_black
+        )
+    }
+
+    private val exo2Map by lazy {
+        mapOf(
+                TypefaceStyle.EXTRA_LIGHT.style to R.font.exo2_extralight,
+                TypefaceStyle.LIGHT.style to R.font.exo2_light,
+                TypefaceStyle.REGULAR.style to R.font.exo2_regular,
+                TypefaceStyle.MEDIUM.style to R.font.exo2_medium,
+                TypefaceStyle.BOLD.style to R.font.exo2_bold,
+                TypefaceStyle.BLACK.style to R.font.exo2_black
+        )
+    }
+
+    private val sourGummyMap by lazy {
+        mapOf(
+                TypefaceStyle.EXTRA_LIGHT.style to R.font.sourgummy_extralight,
+                TypefaceStyle.LIGHT.style to R.font.sourgummy_light,
+                TypefaceStyle.REGULAR.style to R.font.sourgummy_regular,
+                TypefaceStyle.MEDIUM.style to R.font.sourgummy_medium,
+                TypefaceStyle.BOLD.style to R.font.sourgummy_bold,
+                TypefaceStyle.BLACK.style to R.font.sourgummy_black
+        )
+    }
+
     fun getTypeFace(appFont: String, style: Int, context: Context): Typeface? {
         var typeface: Typeface? = null
         Log.d("TypeFace", "getTypeFace: appFont=$appFont, style=$style")
@@ -123,6 +156,21 @@ object TypeFace {
             }
             TypeFaceConstants.SPECTRAL -> {
                 spectralMap[style]?.let {
+                    typeface = ResourcesCompat.getFont(context, it)
+                }
+            }
+            TypeFaceConstants.JOST -> {
+                jostMap[style]?.let {
+                    typeface = ResourcesCompat.getFont(context, it)
+                }
+            }
+            TypeFaceConstants.EXO2 -> {
+                exo2Map[style]?.let {
+                    typeface = ResourcesCompat.getFont(context, it)
+                }
+            }
+            TypeFaceConstants.SOURGUMMY -> {
+                sourGummyMap[style]?.let {
                     typeface = ResourcesCompat.getFont(context, it)
                 }
             }
@@ -223,6 +271,33 @@ object TypeFace {
                             "and display use. It is a high-contrast serif with a distinctive character, " +
                             "informed by the Scotch Modern genre.",
                     license = "OFL (Open Font License) © Production Type"
+            ),
+            TypeFaceModel(
+                    typefaceName = "Jost",
+                    name = TypeFaceConstants.JOST,
+                    type = TYPE_SANS_SERIF,
+                    description = "Jost is a revival of the German sans-serif typeface " +
+                            "family 'Futura' (1927) which was originally designed by Paul Renner. ",
+                    license = "SIL Open Font License, Version 1.1 © Owen Earl"
+            ),
+            TypeFaceModel(
+                    typefaceName = "Exo 2",
+                    name = TypeFaceConstants.EXO2,
+                    type = TYPE_SANS_SERIF,
+                    description = "Exo 2 is a contemporary geometric sans serif typeface. " +
+                            "It is the updated version of Exo font family, which was designed by " +
+                            "Natanael Gama in 2011. Exo 2 features a more technological feel, " +
+                            "a more consistent stroke width and a more uniform design.",
+                    license = "OFL (Open Font License) © Natanael Gama"
+            ),
+            TypeFaceModel(
+                    typefaceName = "Sour Gummy",
+                    name = TypeFaceConstants.SOURGUMMY,
+                    type = TYPE_SANS_SERIF,
+                    description = "Sour Gummy Font is a fun and playful typeface that was first created in 2018. " +
+                            "The letters are designed to look like they are made of bubbles, with rounded edges and a " +
+                            "slightly irregular shape that adds to the playful nature of the font.",
+                    license = "OFL (Open Font License) © Stefie Justprince"
             )
     )
 

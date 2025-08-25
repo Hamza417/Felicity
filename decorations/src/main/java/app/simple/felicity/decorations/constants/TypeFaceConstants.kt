@@ -19,4 +19,7 @@ object TypeFaceConstants {
     const val BARLOW = "barlow"
     const val NUNITO = "nunito"
     const val SPECTRAL = "spectral"
+    const val JOST = "jost"
+    const val EXO2 = "exo2"
+    const val SOURGUMMY = "sourgummy"
 }
