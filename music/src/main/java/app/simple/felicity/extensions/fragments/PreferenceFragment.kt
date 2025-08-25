@@ -12,6 +12,7 @@ import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.ui.main.preferences.AccentColors
+import app.simple.felicity.ui.main.preferences.Theme
 import app.simple.felicity.ui.main.preferences.TypeFaceSelection
 import java.util.function.Supplier
 
@@ -30,7 +31,7 @@ open class PreferenceFragment : ScopedFragment() {
         )
 
         theme.onPreferenceAction = { view, callback ->
-            // Open theme panel
+            openFragment(Theme.newInstance(), Theme.TAG)
             true
         }
 

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal">
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+        android:id="@+id/name"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:paddingHorizontal="@dimen/padding_15"
+        android:paddingVertical="@dimen/padding_10"
+        android:drawablePadding="@dimen/padding_10"
+        android:layout_height="wrap_content"
+        android:textSize="@dimen/text_size_16"
+        app:appFontStyle="bold"
+        app:textColorStyle="primary" />
+
+    <app.simple.felicity.decorations.theme.ThemeIcon
+        android:id="@+id/ring"
+        android:layout_width="@dimen/icon_size_30"
+        android:layout_height="@dimen/icon_size_30"
+        android:layout_gravity="center_vertical"
+        android:src="@drawable/ic_ring_12dp"
+        android:scaleType="centerInside"
+        app:tintType="accent" />
+
+</app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>

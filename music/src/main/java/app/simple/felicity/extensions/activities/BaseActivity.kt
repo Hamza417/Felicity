@@ -3,17 +3,21 @@ package app.simple.felicity.extensions.activities
 import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.StrictMode
 import android.util.Log
 import android.view.WindowManager
+import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import app.simple.felicity.core.constants.ThemeConstants
 import app.simple.felicity.engine.services.ExoPlayerService
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
@@ -23,18 +27,21 @@ import app.simple.felicity.repository.database.instances.LastSongDatabase
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.theme.accents.Felicity
 import app.simple.felicity.theme.data.MaterialYou.presetMaterialYouDynamicColors
+import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.managers.ThemeUtils
+import app.simple.felicity.theme.themes.Theme
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
+open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener, ThemeChangedListener {
 
     protected var mediaController: MediaController? = null
     private var controllerFuture: ListenableFuture<MediaController>? = null
+    private lateinit var content: FrameLayout
 
     override fun attachBaseContext(newBase: Context?) {
         app.simple.felicity.manager.SharedPreferences.init(newBase!!)
@@ -47,6 +54,11 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             presetMaterialYouDynamicColors()
         }
+
+        content = findViewById(android.R.id.content)
+        ThemeManager.addListener(this)
+        ThemeUtils.setAppTheme(resources)
+        content.setBackgroundColor(ThemeManager.theme.viewGroupTheme.backgroundColor)
 
         initMediaController()
         setStrictModePolicy()
@@ -134,6 +146,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         super.onDestroy()
         MediaManager.stopSeekPositionUpdates()
         unregisterSharedPreferenceChangeListener()
+        ThemeManager.removeListener(this)
 
         try {
             mediaController?.let {
@@ -147,6 +160,24 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         }
 
         LastSongDatabase.getInstance(this.applicationContext).close()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (AppearancePreferences.getTheme() == ThemeConstants.MATERIAL_YOU_DARK ||
+                    AppearancePreferences.getTheme() == ThemeConstants.MATERIAL_YOU_LIGHT) {
+                recreate()
+            }
+        }
+        ThemeUtils.setAppTheme(resources)
+        ThemeUtils.setBarColors(resources, window)
+    }
+
+    override fun onThemeChanged(theme: Theme, animate: Boolean) {
+        ThemeUtils.setBarColors(resources, window)
+        content.setBackgroundColor(ThemeManager.theme.viewGroupTheme.backgroundColor)
+        window.setBackgroundDrawable(ThemeManager.theme.viewGroupTheme.backgroundColor.toDrawable())
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {

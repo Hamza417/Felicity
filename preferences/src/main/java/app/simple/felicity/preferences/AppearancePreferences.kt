@@ -63,7 +63,7 @@ object AppearancePreferences {
     fun migrateMaterialYouTheme() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             @Suppress("DEPRECATION")
-            if (getTheme() == ThemeConstants.MATERIAL_YOU) {
+            if (getTheme() == ThemeConstants.MATERIAL_YOU_LIGHT || getTheme() == ThemeConstants.MATERIAL_YOU_DARK) {
                 setLastDarkTheme(ThemeConstants.MATERIAL_YOU_DARK)
                 setLastLightTheme(ThemeConstants.MATERIAL_YOU_LIGHT)
                 setTheme(ThemeConstants.FOLLOW_SYSTEM)

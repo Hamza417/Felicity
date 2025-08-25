@@ -7,6 +7,16 @@ import app.simple.felicity.theme.accents.MaterialYouAccent
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.themes.Theme
+import app.simple.felicity.theme.themes.dark.AMOLED
+import app.simple.felicity.theme.themes.dark.DarkTheme
+import app.simple.felicity.theme.themes.dark.HighContrastDark
+import app.simple.felicity.theme.themes.dark.MaterialYouDark
+import app.simple.felicity.theme.themes.dark.Oil
+import app.simple.felicity.theme.themes.dark.Slate
+import app.simple.felicity.theme.themes.light.HighContrastLight
+import app.simple.felicity.theme.themes.light.LightTheme
+import app.simple.felicity.theme.themes.light.MaterialYouLight
+import app.simple.felicity.theme.themes.light.SoapStone
 
 object ThemeManager {
     private val listeners = mutableSetOf<ThemeChangedListener>()
@@ -59,5 +69,25 @@ object ThemeManager {
         list.add(GrapeFruit())
 
         return list
+    }
+
+    fun getLightThemes(): List<Theme> {
+        return listOf(
+                LightTheme(),
+                SoapStone(),
+                MaterialYouLight(),
+                HighContrastLight()
+        )
+    }
+
+    fun getDarkThemes(): List<Theme> {
+        return listOf(
+                DarkTheme(),
+                AMOLED(),
+                Oil(),
+                Slate(),
+                MaterialYouDark(),
+                HighContrastDark()
+        )
     }
 }

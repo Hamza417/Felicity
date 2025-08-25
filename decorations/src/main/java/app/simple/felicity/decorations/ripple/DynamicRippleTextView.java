@@ -20,6 +20,7 @@ import app.simple.felicity.decorations.typeface.TypeFaceTextView;
 import app.simple.felicity.preferences.AccessibilityPreferences;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.theme.managers.ThemeManager;
+import app.simple.felicity.theme.models.Accent;
 import app.simple.felicity.theme.themes.Theme;
 
 /**
@@ -123,10 +124,19 @@ public class DynamicRippleTextView extends TypeFaceTextView {
     
     @Override
     public void onThemeChanged(@NonNull Theme theme, boolean animate) {
+        super.onThemeChanged(theme, animate);
         if (isClickable()) {
             setHighlightBackgroundColor();
         } else if (isSelected()) {
             setSelectedBackgroundColor();
+        }
+    }
+    
+    @Override
+    public void onAccentChanged(@NonNull Accent accent) {
+        super.onAccentChanged(accent);
+        if (isClickable()) {
+            setHighlightBackgroundColor();
         }
     }
     
@@ -150,6 +160,7 @@ public class DynamicRippleTextView extends TypeFaceTextView {
     
     @Override
     public void onSharedPreferenceChanged(@Nullable SharedPreferences sharedPreferences, @Nullable String key) {
+        super.onSharedPreferenceChanged(sharedPreferences, key);
         if (Objects.equals(key, AppearancePreferences.ACCENT_COLOR)) {
             setHighlightBackgroundColor();
         }
