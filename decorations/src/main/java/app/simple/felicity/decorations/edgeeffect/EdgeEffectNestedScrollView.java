@@ -14,6 +14,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.widget.NestedScrollView;
 import app.simple.felicity.preferences.AppearancePreferences;
+import app.simple.felicity.theme.managers.ThemeManager;
 
 public class EdgeEffectNestedScrollView extends NestedScrollView implements SharedPreferences.OnSharedPreferenceChangeListener {
     public EdgeEffectNestedScrollView(@NonNull Context context) {
@@ -63,7 +64,7 @@ public class EdgeEffectNestedScrollView extends NestedScrollView implements Shar
                     edgeGlowField.setAccessible(true);
                     final EdgeEffect edgeEffect = (EdgeEffect) edgeGlowField.get(this);
                     assert edgeEffect != null;
-                    edgeEffect.setColor(AppearancePreferences.INSTANCE.getAccentColor());
+                    edgeEffect.setColor(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
                     break;
                 } catch (Exception e) {
                     // e.printStackTrace();

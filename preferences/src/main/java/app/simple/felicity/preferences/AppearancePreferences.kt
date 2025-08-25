@@ -1,11 +1,9 @@
 package app.simple.felicity.preferences
 
 import android.os.Build
-import androidx.annotation.ColorInt
 import androidx.annotation.RequiresApi
 import androidx.core.content.edit
 import app.simple.felicity.core.constants.ThemeConstants
-import app.simple.felicity.core.utils.ColorUtils
 import app.simple.felicity.manager.SharedPreferences.getSharedPreferences
 
 object AppearancePreferences {
@@ -34,26 +32,14 @@ object AppearancePreferences {
 
     // ---------------------------------------------------------------------------------------------------------- //
 
-    fun setAccentColor(@ColorInt int: Int): Boolean {
-        return getSharedPreferences().edit().putInt(ACCENT_COLOR, int).commit()
+    fun setAccentColorName(name: String) {
+        getSharedPreferences().edit {
+            putString(ACCENT_COLOR, name)
+        }
     }
 
-    @ColorInt
-    fun getAccentColor(): Int {
-        return getSharedPreferences().getInt(ACCENT_COLOR, 0)
-    }
-
-    // ---------------------------------------------------------------------------------------------------------- //
-
-    @Suppress("unused")
-    fun setAccentColorLight(@ColorInt int: Int) {
-        getSharedPreferences().edit().putInt(ACCENT_COLOR_LIGHT, int).apply()
-    }
-
-    @Suppress("unused")
-    @ColorInt
-    fun getAccentColorLight(): Int {
-        return ColorUtils.lightenColor(getSharedPreferences().getInt(ACCENT_COLOR, 0), 0.3F)
+    fun getAccentColorName(): String? {
+        return getSharedPreferences().getString(ACCENT_COLOR, null)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //

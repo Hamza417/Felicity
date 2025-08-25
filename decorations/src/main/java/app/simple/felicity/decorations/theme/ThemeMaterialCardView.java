@@ -4,7 +4,6 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.util.AttributeSet;
 
 import com.google.android.material.card.MaterialCardView;
@@ -32,15 +31,13 @@ public class ThemeMaterialCardView extends MaterialCardView implements ThemeChan
     }
     
     private void init() {
-        setCardBackgroundColor(Color.WHITE);
+        setCardBackgroundColor(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getBackgroundColor());
         setBackground(false);
         setRipple();
     }
     
     private void setRipple() {
-        if (isClickable()) {
-            setRippleColor(ColorStateList.valueOf(AppearancePreferences.INSTANCE.getAccentColor()));
-        }
+        setRippleColor(ColorStateList.valueOf(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor()));
     }
     
     @Override

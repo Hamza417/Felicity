@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.corners.DynamicCornerMaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:orientation="horizontal">
+
+            <View
+                android:id="@+id/primary_color"
+                android:layout_width="0dp"
+                android:layout_weight="0.75"
+                android:layout_height="match_parent" />
+
+            <View
+                android:id="@+id/secondary_color"
+                android:layout_width="0dp"
+                android:layout_weight="0.25"
+                android:layout_height="match_parent" />
+
+        </LinearLayout>
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:drawablePadding="@dimen/padding_10"
+            android:layout_marginTop="@dimen/padding_10"
+            android:layout_marginHorizontal="@dimen/padding_10"
+            android:textSize="@dimen/text_size_16"
+            app:appFontStyle="bold"
+            app:textColorStyle="primary" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/palette"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/padding_10"
+            android:layout_marginBottom="@dimen/padding_10"
+            android:textSize="@dimen/text_size_12"
+            app:appFontStyle="regular"
+            app:textColorStyle="tertiary" />
+
+    </LinearLayout>
+
+</app.simple.felicity.decorations.corners.DynamicCornerMaterialCardView>

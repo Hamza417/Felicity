@@ -115,7 +115,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         
         if (!isInEditMode()) {
             if (BehaviourPreferences.INSTANCE.areColoredShadowsOn()) {
-                elevationColor = AppearancePreferences.INSTANCE.getAccentColor();
+                elevationColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
             } else {
                 elevationColor = Color.DKGRAY;
             }
@@ -176,7 +176,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
             });
             
             colorAnimator = ValueAnimator.ofArgb(ThemeManager.INSTANCE.getTheme().getSwitchTheme().getSwitchOffColor(),
-                    AppearancePreferences.INSTANCE.getAccentColor());
+                    ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
             colorAnimator.setDuration(duration);
             colorAnimator.setInterpolator(new DecelerateInterpolator());
             colorAnimator.addUpdateListener(animation -> {
@@ -187,7 +187,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
             int endColor;
             
             if (BehaviourPreferences.INSTANCE.areColoredShadowsOn()) {
-                endColor = AppearancePreferences.INSTANCE.getAccentColor();
+                endColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
             } else {
                 endColor = Color.DKGRAY;
             }
@@ -215,7 +215,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
                 invalidate();
             });
             
-            colorAnimator = ValueAnimator.ofArgb(AppearancePreferences.INSTANCE.getAccentColor(),
+            colorAnimator = ValueAnimator.ofArgb(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(),
                     ThemeManager.INSTANCE.getTheme().getSwitchTheme().getSwitchOffColor());
             colorAnimator.setDuration(duration);
             colorAnimator.setInterpolator(new AccelerateInterpolator());
@@ -242,8 +242,8 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         clearAnimation();
         
         if (isChecked) {
-            backgroundColor = AppearancePreferences.INSTANCE.getAccentColor();
-            elevationColor = AppearancePreferences.INSTANCE.getAccentColor();
+            backgroundColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
+            elevationColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
             // shadowRadius = 10F;
             checkedIcon.setAlpha(255);
             checkedIcon.setBounds(

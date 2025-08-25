@@ -59,7 +59,12 @@ class Genres : ScopedFragment() {
                 }
             }
 
-            binding.recyclerView.addItemDecoration(GridSpacingItemDecoration(gridLayoutManager.spanCount, resources.getDimensionPixelOffset(R.dimen.padding_15), true, 1))
+            binding.recyclerView.addItemDecoration(GridSpacingItemDecoration(
+                    gridLayoutManager.spanCount,
+                    resources.getDimensionPixelOffset(R.dimen.padding_15),
+                    resources.getDimensionPixelOffset(R.dimen.padding_15),
+                    true,
+                    1))
             binding.recyclerView.setHasFixedSize(true)
             binding.recyclerView.adapter = adapter
 

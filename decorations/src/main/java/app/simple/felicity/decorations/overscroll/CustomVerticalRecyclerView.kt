@@ -21,6 +21,7 @@ import app.simple.felicity.decorations.utils.RecyclerViewUtils.overScrollTransla
 import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.shared.utils.ConditionUtils.invert
+import app.simple.felicity.theme.managers.ThemeManager
 
 /**
  * Custom recycler view with nice layout animation and
@@ -286,7 +287,7 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
             AppearancePreferences.ACCENT_COLOR -> {
-                edgeColor = AppearancePreferences.getAccentColor()
+                edgeColor = ThemeManager.accent.primaryAccentColor
             }
         }
     }

@@ -11,7 +11,7 @@ object MaterialYou {
     const val MATERIAL_YOU_PRIMARY_ACCENT_RES_ID = android.R.color.system_accent1_500
 
     @RequiresApi(Build.VERSION_CODES.S)
-    const val MATERIAL_YOU_SECONDARY_ACCENT_RES_ID = android.R.color.system_accent2_500
+    const val MATERIAL_YOU_SECONDARY_ACCENT_RES_ID = android.R.color.system_accent1_300
     const val MATERIAL_YOU_ADAPTER_INDEX = 1
 
     var headingTextColor = 0

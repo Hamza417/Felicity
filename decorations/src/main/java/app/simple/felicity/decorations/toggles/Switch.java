@@ -254,9 +254,9 @@ public class Switch extends View implements SharedPreferences.OnSharedPreference
         if (isChecked) {
             thumbX = width - thumbDiameter / 2 - thumbPadding / 2;
             currentThumbScale = FIXED_THUMB_SCALE;
-            backgroundColor = AppearancePreferences.INSTANCE.getAccentColor();
+            backgroundColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
             if (BehaviourPreferences.INSTANCE.areColoredShadowsOn()) {
-                elevationColor = AppearancePreferences.INSTANCE.getAccentColor();
+                elevationColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
             } else {
                 elevationColor = Color.DKGRAY;
             }
@@ -346,7 +346,7 @@ public class Switch extends View implements SharedPreferences.OnSharedPreference
         }
         
         if (isChecked) {
-            backgroundAnimator = ValueAnimator.ofArgb(backgroundColor, AppearancePreferences.INSTANCE.getAccentColor());
+            backgroundAnimator = ValueAnimator.ofArgb(backgroundColor, ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
             backgroundAnimator.setDuration(duration);
             backgroundAnimator.addUpdateListener(animation -> {
                 backgroundColor = (int) animation.getAnimatedValue();
@@ -387,7 +387,7 @@ public class Switch extends View implements SharedPreferences.OnSharedPreference
             int endColor;
             
             if (BehaviourPreferences.INSTANCE.areColoredShadowsOn()) {
-                endColor = AppearancePreferences.INSTANCE.getAccentColor();
+                endColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
             } else {
                 endColor = Color.DKGRAY;
             }

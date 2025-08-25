@@ -3,11 +3,11 @@ package app.simple.felicity.theme.accents;
 import app.simple.felicity.theme.models.Accent;
 
 public class Felicity extends Accent {
-    public Felicity(int primaryAccentColor, int secondaryAccentColor) {
-        super(primaryAccentColor, secondaryAccentColor);
+    public Felicity(int primaryAccentColor, int secondaryAccentColor, String name) {
+        super(primaryAccentColor, secondaryAccentColor, name);
     }
-
+    
     public Felicity() {
-        super(0xFF2980b9, 0xFF5499c7);
+        super(0xFF2980b9, 0xFF5499c7, "Felicity");
     }
 }

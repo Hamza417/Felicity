@@ -18,6 +18,7 @@ import app.simple.felicity.decorations.utils.TextViewUtils.setDrawableTint
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.shared.utils.ConditionUtils.invert
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
+import app.simple.felicity.theme.managers.ThemeManager
 
 open class TypeFaceEditText : AppCompatEditText, ThemeChangedListener {
 
@@ -54,8 +55,8 @@ open class TypeFaceEditText : AppCompatEditText, ThemeChangedListener {
             colorMode = typedArray.getInt(R.styleable.TypeFaceTextView_textColorStyle, 1)
             setHighlightColor()
             setTextColor(colorMode, false)
-            setHintTextColor(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.tertiaryTextColor)
-            setDrawableTint(app.simple.felicity.theme.managers.ThemeManager.theme.iconTheme.secondaryIconColor)
+            setHintTextColor(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+            setDrawableTint(ThemeManager.theme.iconTheme.secondaryIconColor)
             setCursorDrawable()
             typedArray.recycle()
         }
@@ -63,14 +64,14 @@ open class TypeFaceEditText : AppCompatEditText, ThemeChangedListener {
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        app.simple.felicity.theme.managers.ThemeManager.addListener(this)
+        ThemeManager.addListener(this)
     }
 
     override fun onDetachedFromWindow() {
         valueAnimator?.cancel()
         super.onDetachedFromWindow()
         hideInput()
-        app.simple.felicity.theme.managers.ThemeManager.removeListener(this)
+        ThemeManager.removeListener(this)
     }
 
     override fun onThemeChanged(theme: app.simple.felicity.theme.themes.Theme, animate: Boolean) {
@@ -81,21 +82,21 @@ open class TypeFaceEditText : AppCompatEditText, ThemeChangedListener {
     private fun setTextColor(mode: Int, animate: Boolean) {
         if (animate) {
             when (mode) {
-                0 -> this.animateColorChange(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.headerTextColor)
-                1 -> this.animateColorChange(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.primaryTextColor)
-                2 -> this.animateColorChange(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.secondaryTextColor)
-                3 -> this.animateColorChange(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.tertiaryTextColor)
-                4 -> this.animateColorChange(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.quaternaryTextColor)
-                5 -> this.animateColorChange(AppearancePreferences.getAccentColor())
+                0 -> this.animateColorChange(ThemeManager.theme.textViewTheme.headerTextColor)
+                1 -> this.animateColorChange(ThemeManager.theme.textViewTheme.primaryTextColor)
+                2 -> this.animateColorChange(ThemeManager.theme.textViewTheme.secondaryTextColor)
+                3 -> this.animateColorChange(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+                4 -> this.animateColorChange(ThemeManager.theme.textViewTheme.quaternaryTextColor)
+                5 -> this.animateColorChange(ThemeManager.accent.primaryAccentColor)
             }
         } else {
             when (mode) {
-                0 -> setTextColor(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.headerTextColor)
-                1 -> setTextColor(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.primaryTextColor)
-                2 -> setTextColor(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.secondaryTextColor)
-                3 -> setTextColor(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.tertiaryTextColor)
-                4 -> setTextColor(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.quaternaryTextColor)
-                5 -> setTextColor(AppearancePreferences.getAccentColor())
+                0 -> setTextColor(ThemeManager.theme.textViewTheme.headerTextColor)
+                1 -> setTextColor(ThemeManager.theme.textViewTheme.primaryTextColor)
+                2 -> setTextColor(ThemeManager.theme.textViewTheme.secondaryTextColor)
+                3 -> setTextColor(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+                4 -> setTextColor(ThemeManager.theme.textViewTheme.quaternaryTextColor)
+                5 -> setTextColor(ThemeManager.accent.primaryAccentColor)
             }
         }
     }

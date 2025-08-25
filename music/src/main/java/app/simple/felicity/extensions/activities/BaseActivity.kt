@@ -17,6 +17,7 @@ import androidx.media3.session.SessionToken
 import app.simple.felicity.engine.services.ExoPlayerService
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.database.instances.LastSongDatabase
 import app.simple.felicity.repository.managers.MediaManager
@@ -94,8 +95,16 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
     private fun initTheme() {
         ThemeUtils.setAppTheme(resources)
-        ThemeManager.accent = Felicity()
         ThemeUtils.updateNavAndStatusColors(resources, window)
+
+        ThemeManager.accent = when (val accentName = AppearancePreferences.getAccentColorName()) {
+            null -> Felicity().also {
+                AppearancePreferences.setAccentColorName(it.name)
+            }
+            else -> {
+                ThemeManager.getAccentByName(accentName)
+            }
+        }
     }
 
     private fun makeAppFullScreen() {
@@ -141,7 +150,11 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
-
+        when (key) {
+            AppearancePreferences.ACCENT_COLOR -> {
+                initTheme()
+            }
+        }
     }
 
     companion object {
