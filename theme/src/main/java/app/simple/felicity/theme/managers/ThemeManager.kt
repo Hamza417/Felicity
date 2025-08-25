@@ -2,6 +2,7 @@ package app.simple.felicity.theme.managers
 
 import android.os.Build
 import app.simple.felicity.theme.accents.Felicity
+import app.simple.felicity.theme.accents.GrapeFruit
 import app.simple.felicity.theme.accents.MaterialYouAccent
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.models.Accent
@@ -41,6 +42,7 @@ object ThemeManager {
                     Felicity()
                 }
             }
+            "GrapeFruit" -> GrapeFruit()
             else -> Felicity()
         }
     }
@@ -53,6 +55,8 @@ object ThemeManager {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             list.add(MaterialYouAccent())
         }
+
+        list.add(GrapeFruit())
 
         return list
     }
