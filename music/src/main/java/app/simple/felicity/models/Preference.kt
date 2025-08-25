@@ -38,6 +38,9 @@ class Preference {
 
     val valueAsSeekbarStateProvider: SeekbarState?
         get() = valueProvider?.get() as SeekbarState?
+
+    val valueAsBooleanProvider: Boolean?
+        get() = valueProvider?.get() as Boolean?
 }
 
 

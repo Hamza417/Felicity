@@ -10,6 +10,7 @@ import app.simple.felicity.databinding.AdapterPreferencePanelBinding
 import app.simple.felicity.databinding.AdapterPreferencePopupBinding
 import app.simple.felicity.databinding.AdapterPreferenceSliderBinding
 import app.simple.felicity.databinding.AdapterPreferenceSubHeaderBinding
+import app.simple.felicity.databinding.AdapterPreferenceSwitchBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.enums.PreferenceType
@@ -36,6 +37,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             }
             VIEW_TYPE_PANEL -> {
                 Panel(AdapterPreferencePanelBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            }
+            VIEW_TYPE_SWITCH -> {
+                Switch(AdapterPreferenceSwitchBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
             else -> {
                 throw IllegalArgumentException()
@@ -115,6 +119,19 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                     }
                 }
             }
+            is Switch -> {
+                val preference = preferences[position]
+                holder.binding.title.setText(preference.title)
+                holder.binding.summary.setText(preference.summary)
+                holder.binding.icon.setImageResource(preference.icon)
+                holder.binding.switchToggle.isChecked = preference.valueAsBooleanProvider ?: false
+
+                holder.binding.switchToggle.setOnCheckedChangeListener { buttonView, isChecked ->
+                    preference.onPreferenceAction?.invoke(buttonView) {
+                        /* no-op */
+                    }
+                }
+            }
         }
     }
 
@@ -147,6 +164,8 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
     inner class Slider(val binding: AdapterPreferenceSliderBinding) : VerticalListViewHolder(binding.root)
 
     inner class Panel(val binding: AdapterPreferencePanelBinding) : VerticalListViewHolder(binding.root)
+
+    inner class Switch(val binding: AdapterPreferenceSwitchBinding) : VerticalListViewHolder(binding.root)
 
     inner class SubHeader(val binding: AdapterPreferenceSubHeaderBinding) : VerticalListViewHolder(binding.root)
 

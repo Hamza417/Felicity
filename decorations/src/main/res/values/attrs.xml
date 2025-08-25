@@ -205,6 +205,18 @@
         <attr name="felicityDefaultIndicatorColor" format="color|reference" />
     </declare-styleable>
 
+    <declare-styleable name="FelicitySwitch">
+        <attr name="felicitySwitchTrackOnColor" format="color|reference" />
+        <attr name="felicitySwitchTrackOffColor" format="color|reference" />
+        <attr name="felicitySwitchThumbRingColor" format="color|reference" />
+        <attr name="felicitySwitchPadding" format="dimension" />
+        <attr name="felicitySwitchStrokeWidth" format="dimension" />
+        <attr name="felicitySwitchPressScale" format="float" />
+        <attr name="felicitySwitchChecked" format="boolean" />
+        <!-- Elevation to apply when checked; 0 when unchecked -->
+        <attr name="felicitySwitchCheckedElevation" format="dimension" />
+    </declare-styleable>
+
     <declare-styleable name="AppHeader">
         <attr name="scrollMode" format="enum">
             <enum name="pinned" value="0" />

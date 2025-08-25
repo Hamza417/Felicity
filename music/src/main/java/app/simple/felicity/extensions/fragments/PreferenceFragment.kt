@@ -3,6 +3,7 @@ package app.simple.felicity.extensions.fragments
 import android.widget.TextView
 import app.simple.felicity.R
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
+import app.simple.felicity.decorations.toggles.FelicitySwitch
 import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.models.Preference
 import app.simple.felicity.models.SeekbarState
@@ -103,6 +104,25 @@ open class PreferenceFragment : ScopedFragment() {
             )
         }
 
+        val effects = Preference(type = PreferenceType.SUB_HEADER, title = R.string.effects)
+
+        val shadowEffectToggle = Preference(
+                title = R.string.shadow_effect,
+                summary = R.string.shadow_effect_summary,
+                icon = R.drawable.ic_shadow,
+                type = PreferenceType.SWITCH
+        )
+
+        shadowEffectToggle.onPreferenceAction = { view, callback ->
+            val isChecked = (view as FelicitySwitch).isChecked
+            AppearancePreferences.setIconShadows(isChecked)
+            true
+        }
+
+        shadowEffectToggle.valueProvider = Supplier {
+            AppearancePreferences.isIconShadowsOn()
+        }
+
         preferences.add(colors)
         preferences.add(theme)
         preferences.add(accentColor)
@@ -110,6 +130,8 @@ open class PreferenceFragment : ScopedFragment() {
         preferences.add(header)
         preferences.add(cornerRadius)
         preferences.add(spacing)
+        preferences.add(effects)
+        preferences.add(shadowEffectToggle)
 
         return preferences
     }
