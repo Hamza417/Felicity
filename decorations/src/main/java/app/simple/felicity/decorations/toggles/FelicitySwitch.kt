@@ -89,8 +89,10 @@ class FelicitySwitch @JvmOverloads constructor(
     // Interpret as scale-up factor (>= 1f)
     private var pressScaleMin: Float = 0.7f
 
-    // Single control for background shadow radius when checked
-    private var shadowRadiusPx: Float = 28f
+    // Shadow radius config (target when checked) and its animated current value
+    private var shadowRadiusTargetPx: Float = 28f
+    private var animatedShadowRadiusPx: Float = 0f
+    private var animatedShadowAlpha: Float = 0f
 
     // Manual shadow color/offset for TRACK
     @ColorInt
@@ -112,9 +114,14 @@ class FelicitySwitch @JvmOverloads constructor(
     private var thumbAnimator: ValueAnimator? = null
     private var scaleAnimator: ValueAnimator? = null
     private var colorAnimator: ValueAnimator? = null
+    private var elevationAnimator: ValueAnimator? = null
     private var squashAnimator: ValueAnimator? = null
+
     private val linearInterpolator = LinearInterpolator()
+
+    // Milder, more controlled overshoot for thumb position (less bouncy)
     private val thumbOvershootInterpolator = OvershootInterpolator(3f)
+
     private var thumbAnimDuration = 420L
     private var pressAnimDuration = 400L
     private var colorAnimDuration = 450L
@@ -161,8 +168,8 @@ class FelicitySwitch @JvmOverloads constructor(
                 ringStrokeWidthPx = a.getDimension(R.styleable.FelicitySwitch_felicitySwitchStrokeWidth, ringStrokeWidthPx)
                 pressScaleMin = a.getFloat(R.styleable.FelicitySwitch_felicitySwitchPressScale, pressScaleMin).coerceAtLeast(1f)
                 checked = a.getBoolean(R.styleable.FelicitySwitch_felicitySwitchChecked, false)
-                // Reuse the same attr for shadow radius when checked
-                shadowRadiusPx = a.getDimension(R.styleable.FelicitySwitch_felicitySwitchCheckedElevation, shadowRadiusPx)
+                // Reuse the same attr for shadow radius when checked (target value)
+                shadowRadiusTargetPx = a.getDimension(R.styleable.FelicitySwitch_felicitySwitchCheckedElevation, shadowRadiusTargetPx)
             } finally {
                 a.recycle()
             }
@@ -174,6 +181,9 @@ class FelicitySwitch @JvmOverloads constructor(
         trackPaint.color = currentTrackColor
         thumbPos = if (checked) 1f else 0f
         contentDescription = if (checked) "On" else "Off"
+        // initialize animated shadow according to current state
+        animatedShadowRadiusPx = if (checked) shadowRadiusTargetPx else 0f
+        animatedShadowAlpha = if (checked) 1f else 0f
         updateElevation()
 
         post {
@@ -232,14 +242,20 @@ class FelicitySwitch @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         // Ensure shadow state is up-to-date on every draw
-        if (checked && shadowRadiusPx > 0f) {
-            trackShadowPaint.setShadowLayer(shadowRadiusPx, shadowOffsetX, shadowOffsetY, shadowColor)
+        val hasShadow = animatedShadowRadiusPx > 0f && animatedShadowAlpha > 0f
+        if (hasShadow) {
+            trackShadowPaint.setShadowLayer(
+                    animatedShadowRadiusPx,
+                    shadowOffsetX,
+                    shadowOffsetY,
+                    applyAlpha(shadowColor, animatedShadowAlpha)
+            )
         } else {
             trackShadowPaint.clearShadowLayer()
         }
 
         // Draw track shadow first (if enabled)
-        if (checked && shadowRadiusPx > 0f) {
+        if (hasShadow) {
             val rTrack = height / 2f
             canvas.drawRoundRect(trackRect, rTrack, rTrack, trackShadowPaint)
         }
@@ -361,7 +377,8 @@ class FelicitySwitch @JvmOverloads constructor(
         checked = newChecked
         refreshDrawableState()
         contentDescription = if (checked) "On" else "Off"
-        updateElevation()
+        // animate shadow radius along with state change for smooth elevation
+        animateElevation(checked)
         // animate track color towards new state color
         animateTrackColorTo(if (checked) trackOnColor else trackOffColor)
         if (animateThumb) animateThumbTo(if (checked) 1f else 0f) else run { thumbPos = if (checked) 1f else 0f; invalidate() }
@@ -382,7 +399,8 @@ class FelicitySwitch @JvmOverloads constructor(
         colorAnimator?.cancel()
         colorAnimator = ValueAnimator.ofObject(ArgbEvaluator(), start, targetColor).apply {
             duration = colorAnimDuration
-            interpolator = DecelerateInterpolator()
+            interpolator = DecelerateInterpolator(1.5F)
+            // or for even smoother: interpolator = LinearOutSlowInInterpolator()
             addUpdateListener { anim ->
                 currentTrackColor = (anim.animatedValue as Int)
                 invalidate()
@@ -397,13 +415,39 @@ class FelicitySwitch @JvmOverloads constructor(
         matrix.setScale(SHADOW_SCALE_RGB, SHADOW_SCALE_RGB, SHADOW_SCALE_RGB, SHADOW_SCALE_ALPHA)
         trackShadowPaint.colorFilter = ColorMatrixColorFilter(matrix)
 
-        if (checked && shadowRadiusPx > 0f) {
-            trackShadowPaint.setShadowLayer(shadowRadiusPx, shadowOffsetX, shadowOffsetY, shadowColor)
+        // Update shadow layer parameters; color alpha animates to avoid abrupt transitions
+        val hasShadow = animatedShadowRadiusPx > 0f && animatedShadowAlpha > 0f
+        if (hasShadow) {
+            trackShadowPaint.setShadowLayer(
+                    animatedShadowRadiusPx,
+                    shadowOffsetX,
+                    shadowOffsetY,
+                    applyAlpha(shadowColor, animatedShadowAlpha)
+            )
         } else {
             trackShadowPaint.clearShadowLayer()
         }
         clipToOutline = false
         invalidate()
+    }
+
+    private fun animateElevation(toChecked: Boolean) {
+        elevationAnimator?.cancel()
+        val startR = animatedShadowRadiusPx
+        val endR = if (toChecked) shadowRadiusTargetPx else 0f
+        val startA = animatedShadowAlpha
+        val endA = if (toChecked) 1f else 0f
+        elevationAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 450L
+            interpolator = DecelerateInterpolator(1.5f)
+            addUpdateListener { anim ->
+                val t = anim.animatedFraction
+                animatedShadowRadiusPx = startR + (endR - startR) * t
+                animatedShadowAlpha = startA + (endA - startA) * t
+                updateElevation()
+            }
+            start()
+        }
     }
 
     private fun animateThumbTo(target: Float) {
@@ -504,12 +548,21 @@ class FelicitySwitch @JvmOverloads constructor(
 
     // Optionally expose shadow radius
     fun setShadowRadiusPx(radius: Float) {
-        shadowRadiusPx = max(0f, radius)
-        updateElevation()
+        shadowRadiusTargetPx = max(0f, radius)
+        // If currently checked, gently animate towards the new target; otherwise keep collapsed
+        if (checked) {
+            animateElevation(true)
+        } else {
+            // keep animated value at 0 when unchecked
+            animatedShadowRadiusPx = 0f
+            animatedShadowAlpha = 0f
+            updateElevation()
+        }
     }
 
     // Optionally expose configuration for squash
     fun setThumbSquash(strengthX: Float, strengthY: Float, durationMs: Long = squashDuration) {
+        // Update defaults but keep safety clamps
         squashStrengthX = strengthX.coerceIn(0f, 0.3f)
         squashStrengthY = strengthY.coerceIn(0f, 0.6f)
         squashDuration = durationMs.coerceAtLeast(0L)
@@ -560,6 +613,10 @@ class FelicitySwitch @JvmOverloads constructor(
     private fun dp(v: Float): Float = v * resources.displayMetrics.density
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
     private fun clamp01(v: Float): Float = min(1f, max(0f, v))
+    private fun applyAlpha(@ColorInt color: Int, alphaFactor: Float): Int {
+        val a = (Color.alpha(color) * alphaFactor).coerceIn(0f, 255f)
+        return Color.argb(a.toInt(), Color.red(color), Color.green(color), Color.blue(color))
+    }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
 
