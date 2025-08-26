@@ -2,6 +2,8 @@
 
 package app.simple.felicity.decorations.toggles
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.content.Context
@@ -19,6 +21,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.accessibility.AccessibilityEvent
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
 import android.view.animation.OvershootInterpolator
@@ -29,7 +32,10 @@ import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.themes.Theme
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 
@@ -107,11 +113,13 @@ class FelicitySwitch @JvmOverloads constructor(
     private var thumbAnimator: ValueAnimator? = null
     private var scaleAnimator: ValueAnimator? = null
     private var colorAnimator: ValueAnimator? = null
+    private var squashAnimator: ValueAnimator? = null
     private val linearInterpolator = LinearInterpolator()
     private val thumbOvershootInterpolator = OvershootInterpolator(3f)
     private var thumbAnimDuration = 420L
     private var pressAnimDuration = 400L
-    private var colorAnimDuration = 250L
+    private var colorAnimDuration = 450L
+    private var squashDuration = 600L
 
     private val SHADOW_SCALE_RGB = 0.85f
     private val SHADOW_SCALE_ALPHA = 0.4f
@@ -123,6 +131,15 @@ class FelicitySwitch @JvmOverloads constructor(
 
     // Listeners
     private var onCheckedChange: ((FelicitySwitch, Boolean) -> Unit)? = null
+
+    // Thumb squash (elastic) state
+    private var thumbScaleX: Float = 1f
+    private var thumbScaleY: Float = 1f
+
+    // Anisotropic elastic strengths (more Y than X)
+    private var squashStrengthX: Float = -0.1f
+    private var squashStrengthY: Float = -0.30f
+    private var skipElasticThisToggle = false
 
     init {
         isClickable = true
@@ -245,9 +262,13 @@ class FelicitySwitch @JvmOverloads constructor(
         val cx = lerp(minCenter, maxCenter, effectivePosRaw)
         val cy = height / 2f
 
-        // Draw ring thumb (no shadow here)
+        // Draw ring thumb with elastic scale
         ringPaint.color = thumbRingColor
-        canvas.drawCircle(cx, cy, scaledRadius, ringPaint)
+        canvas.save()
+        canvas.translate(cx, cy)
+        canvas.scale(thumbScaleX, thumbScaleY)
+        canvas.drawCircle(0f, 0f, scaledRadius, ringPaint)
+        canvas.restore()
 
         super.onDraw(canvas)
     }
@@ -291,10 +312,12 @@ class FelicitySwitch @JvmOverloads constructor(
                 if (event.actionMasked == MotionEvent.ACTION_UP) {
                     val effectivePos = if (layoutDirection == LAYOUT_DIRECTION_RTL) 1f - thumbPos else thumbPos
                     val newChecked = if (wasDragging) effectivePos >= 0.5f else !checked
+                    skipElasticThisToggle = wasDragging
                     setCheckedInternal(newChecked, animateThumb = true)
                     performClick()
                 } else {
                     // Cancel -> animate back to current state
+                    skipElasticThisToggle = true
                     animateThumbTo(if (checked) 1f else 0f)
                 }
                 return true
@@ -339,6 +362,13 @@ class FelicitySwitch @JvmOverloads constructor(
         // animate track color towards new state color
         animateTrackColorTo(if (checked) trackOnColor else trackOffColor)
         if (animateThumb) animateThumbTo(if (checked) 1f else 0f) else run { thumbPos = if (checked) 1f else 0f; invalidate() }
+        // trigger elastic squash on toggle only if not from drag
+        if (!skipElasticThisToggle) {
+            animateThumbSquash()
+        } else {
+            thumbScaleX = 1f; thumbScaleY = 1f
+        }
+        skipElasticThisToggle = false
         onCheckedChange?.invoke(this, checked)
         invalidate()
     }
@@ -402,6 +432,35 @@ class FelicitySwitch @JvmOverloads constructor(
         }
     }
 
+    private fun animateThumbSquash() {
+        val Ax = squashStrengthX
+        val Ay = squashStrengthY
+        val damping = 1.8f   // higher = faster decay
+        val cycles = 1f   // few oscillations for elastic feel
+
+        squashAnimator?.cancel()
+        squashAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = squashDuration
+            interpolator = linearInterpolator
+            addUpdateListener { anim ->
+                val u = anim.animatedValue as Float // 0..1 time
+                val s = (exp(-damping * u) * cos(2.0 * PI * cycles * u)).toFloat()
+                // Squeeze horizontally while stretching vertically; strong Y effect
+                thumbScaleX = 1f - Ax * s
+                thumbScaleY = 1f + Ay * s
+                invalidate()
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    thumbScaleX = 1f
+                    thumbScaleY = 1f
+                    invalidate()
+                }
+            })
+            start()
+        }
+    }
+
     // Public API: colors and dimensions
     fun setOnCheckedChangeListener(listener: ((FelicitySwitch, Boolean) -> Unit)?) {
         onCheckedChange = listener
@@ -444,6 +503,18 @@ class FelicitySwitch @JvmOverloads constructor(
     fun setShadowRadiusPx(radius: Float) {
         shadowRadiusPx = max(0f, radius)
         updateElevation()
+    }
+
+    // Optionally expose configuration for squash
+    fun setThumbSquash(strengthX: Float, strengthY: Float, durationMs: Long = squashDuration) {
+        squashStrengthX = strengthX.coerceIn(0f, 0.3f)
+        squashStrengthY = strengthY.coerceIn(0f, 0.6f)
+        squashDuration = durationMs.coerceAtLeast(0L)
+    }
+
+    // Backward-compatible setter (applies same strength to both axes)
+    fun setThumbSquash(strength: Float = 0.1f, durationMs: Long = squashDuration) {
+        setThumbSquash(strength, strength, durationMs)
     }
 
     // State save/restore
