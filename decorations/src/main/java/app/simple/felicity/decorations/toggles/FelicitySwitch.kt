@@ -1,3 +1,5 @@
+@file:Suppress("PrivatePropertyName")
+
 package app.simple.felicity.decorations.toggles
 
 import android.animation.ArgbEvaluator
@@ -18,10 +20,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.accessibility.AccessibilityEvent
 import android.view.animation.DecelerateInterpolator
+import android.view.animation.LinearInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.Checkable
 import androidx.annotation.ColorInt
-import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import app.simple.felicity.decoration.R
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
@@ -105,12 +107,11 @@ class FelicitySwitch @JvmOverloads constructor(
     private var thumbAnimator: ValueAnimator? = null
     private var scaleAnimator: ValueAnimator? = null
     private var colorAnimator: ValueAnimator? = null
-    private val thumbInterpolator = OvershootInterpolator(1.5F)
-    private val scaleInterpolator = DecelerateInterpolator(1.5f)
-    private val colorInterpolator = FastOutSlowInInterpolator()
-    private var thumbAnimDuration = 820L
+    private val linearInterpolator = LinearInterpolator()
+    private val thumbOvershootInterpolator = OvershootInterpolator(3f)
+    private var thumbAnimDuration = 420L
     private var pressAnimDuration = 400L
-    private var colorAnimDuration = 600L
+    private var colorAnimDuration = 250L
 
     private val SHADOW_SCALE_RGB = 0.85f
     private val SHADOW_SCALE_ALPHA = 0.4f
@@ -214,13 +215,20 @@ class FelicitySwitch @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
-        // Draw track shadow first (only when checked and radius > 0)
+        // Ensure shadow state is up-to-date on every draw
+        if (checked && shadowRadiusPx > 0f) {
+            trackShadowPaint.setShadowLayer(shadowRadiusPx, shadowOffsetX, shadowOffsetY, shadowColor)
+        } else {
+            trackShadowPaint.clearShadowLayer()
+        }
+
+        // Draw track shadow first (if enabled)
         if (checked && shadowRadiusPx > 0f) {
             val rTrack = height / 2f
             canvas.drawRoundRect(trackRect, rTrack, rTrack, trackShadowPaint)
         }
 
-        // Draw track with animated/current color (no shadow on this paint)
+        // Draw track
         trackPaint.color = currentTrackColor
         val rTrack = height / 2f
         canvas.drawRoundRect(trackRect, rTrack, rTrack, trackPaint)
@@ -234,8 +242,7 @@ class FelicitySwitch @JvmOverloads constructor(
         val minCenter = ringPaddingPx + scaledRadius + s / 2f
         val maxCenter = width - (ringPaddingPx + scaledRadius + s / 2f)
         val effectivePosRaw = if (layoutDirection == LAYOUT_DIRECTION_RTL) 1f - thumbPos else thumbPos
-        val effectivePos = reflectWithinUnit(effectivePosRaw)
-        val cx = lerp(minCenter, maxCenter, effectivePos)
+        val cx = lerp(minCenter, maxCenter, effectivePosRaw)
         val cy = height / 2f
 
         // Draw ring thumb (no shadow here)
@@ -342,7 +349,7 @@ class FelicitySwitch @JvmOverloads constructor(
         colorAnimator?.cancel()
         colorAnimator = ValueAnimator.ofObject(ArgbEvaluator(), start, targetColor).apply {
             duration = colorAnimDuration
-            interpolator = colorInterpolator
+            interpolator = DecelerateInterpolator()
             addUpdateListener { anim ->
                 currentTrackColor = (anim.animatedValue as Int)
                 invalidate()
@@ -369,14 +376,10 @@ class FelicitySwitch @JvmOverloads constructor(
     private fun animateThumbTo(target: Float) {
         val end = clamp01(target)
         val start = thumbPos
-        val dir = if (end >= start) 1f else -1f
-        val overshootDelta = 0.18f * dir // 8% of travel
-        val overshoot = end + overshootDelta
-
         thumbAnimator?.cancel()
-        thumbAnimator = ValueAnimator.ofFloat(start, overshoot, end).apply {
+        thumbAnimator = ValueAnimator.ofFloat(start, end).apply {
             duration = thumbAnimDuration
-            interpolator = thumbInterpolator
+            interpolator = thumbOvershootInterpolator
             addUpdateListener { anim ->
                 thumbPos = anim.animatedValue as Float
                 invalidate()
@@ -390,7 +393,7 @@ class FelicitySwitch @JvmOverloads constructor(
         scaleAnimator?.cancel()
         scaleAnimator = ValueAnimator.ofFloat(pressScale, target).apply {
             duration = pressAnimDuration
-            interpolator = scaleInterpolator
+            interpolator = linearInterpolator
             addUpdateListener { anim ->
                 pressScale = anim.animatedValue as Float
                 invalidate()
@@ -496,14 +499,5 @@ class FelicitySwitch @JvmOverloads constructor(
     override fun onAccentChanged(accent: Accent) {
         setTrackOnColor(accent.primaryAccentColor)
         invalidate()
-    }
-
-    private fun reflectWithinUnit(p: Float): Float {
-        // Maps any value to [0,1] by reflecting the overshoot back inside the range
-        return when {
-            p < 0f -> (-p).coerceAtMost(1f)
-            p > 1f -> (2f - p).coerceIn(0f, 1f)
-            else -> p
-        }
     }
 }
