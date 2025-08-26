@@ -10,7 +10,6 @@ import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
 import android.graphics.RectF;
-import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -21,7 +20,6 @@ import android.view.animation.OvershootInterpolator;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.preferences.BehaviourPreferences;
@@ -47,7 +45,6 @@ public class Switch extends View implements SharedPreferences.OnSharedPreference
     private final float THUMB_SCALE_ON_TOUCH = 1.50F;
     private final float SHADOW_Y_OFFSET = 10F;
     private final float MINIMUM_SHADOW_RADIUS = 5F;
-    private Drawable thumbDrawable;
     private ValueAnimator thumbXAnimator;
     private ValueAnimator thumbYAnimator;
     private ValueAnimator thumbSizeAnimator;
@@ -128,10 +125,7 @@ public class Switch extends View implements SharedPreferences.OnSharedPreference
         
         backgroundColor = ThemeManager.INSTANCE.getTheme().getSwitchTheme().getSwitchOffColor();
         duration = getResources().getInteger(R.integer.animation_duration);
-        elevation = getResources().getDimensionPixelSize(R.dimen.app_views_elevation) * 2;
-        
-        thumbDrawable = ContextCompat.getDrawable(getContext(), R.drawable.switch_thumb);
-        thumbDrawable.setTint(Color.WHITE);
+        elevation = 32;
         
         post(() -> {
             setOnClickListener(v -> {

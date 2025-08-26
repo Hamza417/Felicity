@@ -126,8 +126,8 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                 holder.binding.icon.setImageResource(preference.icon)
                 holder.binding.switchToggle.isChecked = preference.valueAsBooleanProvider ?: false
 
-                holder.binding.switchToggle.setOnCheckedChangeListener { buttonView, isChecked ->
-                    preference.onPreferenceAction?.invoke(buttonView) {
+                holder.binding.switchToggle.setOnCheckedChangeListener { switch, isChecked ->
+                    preference.onPreferenceAction?.invoke(switch) {
                         /* no-op */
                     }
                 }
@@ -165,7 +165,12 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
 
     inner class Panel(val binding: AdapterPreferencePanelBinding) : VerticalListViewHolder(binding.root)
 
-    inner class Switch(val binding: AdapterPreferenceSwitchBinding) : VerticalListViewHolder(binding.root)
+    inner class Switch(val binding: AdapterPreferenceSwitchBinding) : VerticalListViewHolder(binding.root) {
+        init {
+            binding.root.clipToPadding = false
+            binding.root.clipChildren = false
+        }
+    }
 
     inner class SubHeader(val binding: AdapterPreferenceSubHeaderBinding) : VerticalListViewHolder(binding.root)
 

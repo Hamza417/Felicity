@@ -5,6 +5,9 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.RectF
 import android.os.Parcel
@@ -12,6 +15,7 @@ import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.accessibility.AccessibilityEvent
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
@@ -42,6 +46,10 @@ class FelicitySwitch @JvmOverloads constructor(
 
     // Paints and geometry
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val trackShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.TRANSPARENT
+    }
     private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
     private val trackRect = RectF()
 
@@ -73,7 +81,20 @@ class FelicitySwitch @JvmOverloads constructor(
 
     // Interpret as scale-up factor (>= 1f)
     private var pressScaleMin: Float = 0.7f
-    private var checkedElevationPx: Float = 0f
+
+    // Single control for background shadow radius when checked
+    private var shadowRadiusPx: Float = 28f
+
+    // Manual shadow color/offset for TRACK
+    @ColorInt
+    private var shadowColor: Int = if (isInEditMode) {
+        0x55000000
+    } else {
+        ThemeManager.accent.primaryAccentColor
+    }
+
+    private var shadowOffsetX: Float = 0f
+    private var shadowOffsetY: Float = dp(1f)
 
     // State
     private var checked: Boolean = false
@@ -91,6 +112,9 @@ class FelicitySwitch @JvmOverloads constructor(
     private var pressAnimDuration = 400L
     private var colorAnimDuration = 600L
 
+    private val SHADOW_SCALE_RGB = 0.85f
+    private val SHADOW_SCALE_ALPHA = 0.4f
+
     // Touch/drag
     private var downX: Float = 0f
     private var dragging = false
@@ -102,6 +126,7 @@ class FelicitySwitch @JvmOverloads constructor(
     init {
         isClickable = true
         isFocusable = true
+        clipToOutline = false
 
         if (attrs != null) {
             val a = context.obtainStyledAttributes(attrs, R.styleable.FelicitySwitch)
@@ -119,7 +144,8 @@ class FelicitySwitch @JvmOverloads constructor(
                 ringStrokeWidthPx = a.getDimension(R.styleable.FelicitySwitch_felicitySwitchStrokeWidth, ringStrokeWidthPx)
                 pressScaleMin = a.getFloat(R.styleable.FelicitySwitch_felicitySwitchPressScale, pressScaleMin).coerceAtLeast(1f)
                 checked = a.getBoolean(R.styleable.FelicitySwitch_felicitySwitchChecked, false)
-                checkedElevationPx = a.getDimension(R.styleable.FelicitySwitch_felicitySwitchCheckedElevation, checkedElevationPx)
+                // Reuse the same attr for shadow radius when checked
+                shadowRadiusPx = a.getDimension(R.styleable.FelicitySwitch_felicitySwitchCheckedElevation, shadowRadiusPx)
             } finally {
                 a.recycle()
             }
@@ -132,16 +158,54 @@ class FelicitySwitch @JvmOverloads constructor(
         thumbPos = if (checked) 1f else 0f
         contentDescription = if (checked) "On" else "Off"
         updateElevation()
+
+        post {
+            disableAncestorClipping()
+        }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        disableAncestorClipping()
+    }
+
+    private fun disableAncestorClipping() {
+        var p = parent
+        while (p is ViewGroup) {
+            try {
+                p.clipChildren = false
+                p.clipToPadding = false
+                p.clipToOutline = false
+            } catch (_: Throwable) {
+                // ignore
+            }
+            p = p.parent
+        }
     }
 
     // Measurement: default size similar to a standard switch
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val desiredWidth = dp(52f).toInt()
-        val desiredHeight = dp(32f).toInt()
+        val desiredWidth = resources.getDimensionPixelSize(R.dimen.switch_width)
+        val desiredHeight = resources.getDimensionPixelSize(R.dimen.switch_height)
 
-        val width = resolveSize(desiredWidth, widthMeasureSpec)
-        val height = resolveSize(desiredHeight, heightMeasureSpec)
-        setMeasuredDimension(width, height)
+        val widthMode = MeasureSpec.getMode(widthMeasureSpec)
+        val widthSize = MeasureSpec.getSize(widthMeasureSpec)
+        val heightMode = MeasureSpec.getMode(heightMeasureSpec)
+        val heightSize = MeasureSpec.getSize(heightMeasureSpec)
+
+        val measuredWidth = when (widthMode) {
+            MeasureSpec.EXACTLY -> widthSize
+            MeasureSpec.AT_MOST -> min(desiredWidth, widthSize)
+            else -> desiredWidth
+        }
+
+        val measuredHeight = when (heightMode) {
+            MeasureSpec.EXACTLY -> heightSize
+            MeasureSpec.AT_MOST -> min(desiredHeight, heightSize)
+            else -> desiredHeight
+        }
+
+        setMeasuredDimension(measuredWidth, measuredHeight)
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -150,9 +214,13 @@ class FelicitySwitch @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
+        // Draw track shadow first (only when checked and radius > 0)
+        if (checked && shadowRadiusPx > 0f) {
+            val rTrack = height / 2f
+            canvas.drawRoundRect(trackRect, rTrack, rTrack, trackShadowPaint)
+        }
 
-        // Draw track with animated/current color
+        // Draw track with animated/current color (no shadow on this paint)
         trackPaint.color = currentTrackColor
         val rTrack = height / 2f
         canvas.drawRoundRect(trackRect, rTrack, rTrack, trackPaint)
@@ -170,9 +238,11 @@ class FelicitySwitch @JvmOverloads constructor(
         val cx = lerp(minCenter, maxCenter, effectivePos)
         val cy = height / 2f
 
-        // Draw ring thumb
+        // Draw ring thumb (no shadow here)
         ringPaint.color = thumbRingColor
         canvas.drawCircle(cx, cy, scaledRadius, ringPaint)
+
+        super.onDraw(canvas)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -214,7 +284,7 @@ class FelicitySwitch @JvmOverloads constructor(
                 if (event.actionMasked == MotionEvent.ACTION_UP) {
                     val effectivePos = if (layoutDirection == LAYOUT_DIRECTION_RTL) 1f - thumbPos else thumbPos
                     val newChecked = if (wasDragging) effectivePos >= 0.5f else !checked
-                    setCheckedInternal(newChecked, fromUser = true, animateThumb = true)
+                    setCheckedInternal(newChecked, animateThumb = true)
                     performClick()
                 } else {
                     // Cancel -> animate back to current state
@@ -247,10 +317,10 @@ class FelicitySwitch @JvmOverloads constructor(
     }
 
     override fun setChecked(checked: Boolean) {
-        setCheckedInternal(checked, fromUser = false, animateThumb = true)
+        setCheckedInternal(checked, animateThumb = true)
     }
 
-    private fun setCheckedInternal(newChecked: Boolean, fromUser: Boolean, animateThumb: Boolean) {
+    private fun setCheckedInternal(newChecked: Boolean, animateThumb: Boolean) {
         if (checked == newChecked) {
             if (animateThumb) animateThumbTo(if (checked) 1f else 0f)
             return
@@ -274,7 +344,7 @@ class FelicitySwitch @JvmOverloads constructor(
             duration = colorAnimDuration
             interpolator = colorInterpolator
             addUpdateListener { anim ->
-                currentTrackColor = anim.animatedValue as Int
+                currentTrackColor = (anim.animatedValue as Int)
                 invalidate()
             }
             start()
@@ -282,7 +352,18 @@ class FelicitySwitch @JvmOverloads constructor(
     }
 
     private fun updateElevation() {
-        elevation = if (checked) checkedElevationPx else 0f
+        // Apply manual shadow to TRACK using a dedicated shadow paint
+        val matrix = ColorMatrix()
+        matrix.setScale(SHADOW_SCALE_RGB, SHADOW_SCALE_RGB, SHADOW_SCALE_RGB, SHADOW_SCALE_ALPHA)
+        trackShadowPaint.colorFilter = ColorMatrixColorFilter(matrix)
+
+        if (checked && shadowRadiusPx > 0f) {
+            trackShadowPaint.setShadowLayer(shadowRadiusPx, shadowOffsetX, shadowOffsetY, shadowColor)
+        } else {
+            trackShadowPaint.clearShadowLayer()
+        }
+        clipToOutline = false
+        invalidate()
     }
 
     private fun animateThumbTo(target: Float) {
@@ -354,6 +435,12 @@ class FelicitySwitch @JvmOverloads constructor(
 
     fun setPressScaleMin(scale: Float) {
         pressScaleMin = max(1f, scale)
+    }
+
+    // Optionally expose shadow radius
+    fun setShadowRadiusPx(radius: Float) {
+        shadowRadiusPx = max(0f, radius)
+        updateElevation()
     }
 
     // State save/restore

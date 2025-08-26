@@ -5,6 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingVertical="@dimen/padding_10"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:paddingHorizontal="@dimen/padding_5">
 
     <app.simple.felicity.decorations.theme.ThemeIcon
@@ -12,7 +14,6 @@
         android:layout_width="@dimen/icon_size_30"
         android:layout_height="@dimen/icon_size_30"
         android:layout_centerVertical="true"
-        android:src="@drawable/ic_felicity"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -25,10 +26,8 @@
         android:layout_marginStart="15dp"
         android:drawablePadding="5dp"
         android:gravity="center_vertical"
-        android:text="Text"
         android:textSize="@dimen/preferences_title_text_size"
         app:appFontStyle="bold"
-        app:drawableEndCompat="@drawable/ic_dot_16dp"
         app:drawableTintStyle="accent"
         app:layout_constraintBottom_toTopOf="@id/summary"
         app:layout_constraintEnd_toStartOf="@+id/switch_toggle"
@@ -42,7 +41,6 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="15dp"
-        android:text="Text"
         android:textSize="@dimen/text_size_12"
         app:appFontStyle="regular"
         app:layout_constraintBottom_toBottomOf="parent"
