@@ -124,7 +124,7 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                 holder.binding.title.setText(preference.title)
                 holder.binding.summary.setText(preference.summary)
                 holder.binding.icon.setImageResource(preference.icon)
-                holder.binding.switchToggle.isChecked = preference.valueAsBooleanProvider ?: false
+                holder.binding.switchToggle.setChecked(preference.valueAsBooleanProvider ?: false, false)
 
                 holder.binding.switchToggle.setOnCheckedChangeListener { switch, isChecked ->
                     preference.onPreferenceAction?.invoke(switch) {

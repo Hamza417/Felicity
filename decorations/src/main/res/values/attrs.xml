@@ -137,29 +137,6 @@
         <attr name="navigationPaddingRequired" />
     </declare-styleable>
 
-    <declare-styleable name="FeatureCoverFlow">
-        <attr name="coverWidth" format="dimension" />
-        <attr name="coverHeight" format="dimension" />
-        <attr name="spacing" format="float" />
-        <attr name="rotationThreshold" format="float" />
-        <attr name="scalingThreshold" format="float" />
-        <attr name="adjustPositionThreshold" format="float" />
-        <attr name="adjustPositionMultiplier" format="float" />
-        <attr name="maxRotationAngle" format="float" />
-        <attr name="maxScaleFactor" format="float" />
-        <attr name="circlePathRadius" format="float" />
-        <attr name="circlePathRadiusInMatrixSpace" format="float" />
-        <attr name="reflectionHeight" format="float" />
-        <attr name="reflectionGap" format="dimension" />
-        <attr name="reflectionOpacity" format="integer" />
-        <attr name="tuningWidgetSize" format="dimension" />
-        <attr name="alignAnimationTime" format="integer" />
-        <attr name="verticalPaddingTop" format="dimension" />
-        <attr name="verticalPaddingBottom" format="dimension" />
-        <attr name="reflectionBackgroundColor" format="color" />
-        <attr name="reflectionEnabled" format="boolean" />
-    </declare-styleable>
-
     <declare-styleable name="BasicContentBand">
         <attr name="gridMode">
             <flag name="fixed" value="0" />

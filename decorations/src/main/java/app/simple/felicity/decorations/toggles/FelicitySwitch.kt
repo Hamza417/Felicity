@@ -21,7 +21,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.accessibility.AccessibilityEvent
-import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
 import android.view.animation.OvershootInterpolator
@@ -348,6 +347,10 @@ class FelicitySwitch @JvmOverloads constructor(
 
     override fun setChecked(checked: Boolean) {
         setCheckedInternal(checked, animateThumb = true)
+    }
+
+    fun setChecked(checked: Boolean, animateThumb: Boolean) {
+        setCheckedInternal(checked, animateThumb)
     }
 
     private fun setCheckedInternal(newChecked: Boolean, animateThumb: Boolean) {
