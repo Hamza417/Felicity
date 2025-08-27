@@ -35,6 +35,10 @@ class Theme : ScopedFragment() {
         }
     }
 
+    override fun getTransitionType(): TransitionType {
+        return TransitionType.SLIDE
+    }
+
     companion object {
         fun newInstance(): Theme {
             val args = Bundle()

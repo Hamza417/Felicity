@@ -26,6 +26,10 @@ class AccentColors : ScopedFragment() {
         view.startTransitionOnPreDraw()
     }
 
+    override fun getTransitionType(): TransitionType {
+        return TransitionType.SLIDE
+    }
+
     companion object {
         fun newInstance(): AccentColors {
             return AccentColors()

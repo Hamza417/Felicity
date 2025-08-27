@@ -16,6 +16,7 @@ import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
 import app.simple.felicity.R
 import app.simple.felicity.decorations.transitions.SeekableSharedAxisZTransition
+import app.simple.felicity.decorations.transitions.SeekableSlideTransition
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.SongsPreferences
@@ -47,11 +48,14 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setTransitions()
+        // postponeEnterTransition()
+        applyFragmentTransition()
     }
 
     override fun onResume() {
         super.onResume()
+        clearTransitions()
+        applyFragmentTransition()
         registerSharedPreferenceChangeListener()
     }
 
@@ -83,12 +87,11 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
      * @param tag back stack tag for fragment
      */
     protected fun openFragmentSlide(fragment: ScopedFragment, tag: String? = null) {
-        clearTransitions()
+        setSlideTransitions()
 
         try {
             val transaction = requireActivity().supportFragmentManager.beginTransaction()
             transaction.setReorderingAllowed(true)
-            transaction.setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left, R.anim.enter_from_left, R.anim.exit_to_right)
             transaction.replace(R.id.app_container, fragment, tag)
             if (tag.isNotNull()) {
                 transaction.addToBackStack(tag)
@@ -98,7 +101,6 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         } catch (_: IllegalStateException) {
             val transaction = requireActivity().supportFragmentManager.beginTransaction()
             transaction.setReorderingAllowed(true)
-            transaction.setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left, R.anim.enter_from_left, R.anim.exit_to_right)
             transaction.replace(R.id.app_container, fragment, tag)
             if (tag.isNotNull()) {
                 transaction.addToBackStack(tag)
@@ -119,7 +121,17 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
      * @param tag back stack tag for fragment
      */
     fun openFragment(fragment: ScopedFragment, tag: String? = null) {
-        setTransitions()
+        // Get the transition type of the next fragment
+        val nextTransitionType = fragment.getTransitionType()
+
+        // Apply the same transition to the current fragment
+        when (nextTransitionType) {
+            ScopedFragment.TransitionType.SHARED_AXIS -> setTransitions()
+            ScopedFragment.TransitionType.SLIDE -> setSlideTransitions()
+        }
+
+        // Apply transition to the next fragment
+        fragment.applyFragmentTransition()
 
         try {
             val transaction = requireActivity().supportFragmentManager.beginTransaction()
@@ -172,6 +184,14 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         exitTransition = SeekableSharedAxisZTransition(true)
         reenterTransition = SeekableSharedAxisZTransition(false)
         returnTransition = SeekableSharedAxisZTransition(false)
+    }
+
+    open fun setSlideTransitions() {
+        clearTransitions()
+        enterTransition = SeekableSlideTransition(true)
+        exitTransition = SeekableSlideTransition(true)
+        reenterTransition = SeekableSlideTransition(false)
+        returnTransition = SeekableSlideTransition(false)
     }
 
     protected fun getInteger(@IntegerRes resId: Int): Int {
@@ -296,6 +316,19 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                 openFragment(CoverFlow.newInstance(), CoverFlow.TAG)
             }
         }
+    }
+
+    protected open fun getTransitionType(): TransitionType = TransitionType.SHARED_AXIS
+
+    protected fun applyFragmentTransition() {
+        when (getTransitionType()) {
+            TransitionType.SHARED_AXIS -> setTransitions()
+            TransitionType.SLIDE -> setSlideTransitions()
+        }
+    }
+
+    enum class TransitionType {
+        SHARED_AXIS, SLIDE
     }
 
     companion object {

@@ -48,6 +48,11 @@ open class PreferenceFragment : ScopedFragment() {
             true
         }
 
+        val font = Preference(
+                title = R.string.font,
+                type = PreferenceType.SUB_HEADER,
+        )
+
         val typeface = Preference(
                 title = R.string.typeface,
                 summary = R.string.typeface_summary,
@@ -56,7 +61,7 @@ open class PreferenceFragment : ScopedFragment() {
         )
 
         typeface.onPreferenceAction = { view, callback ->
-            openFragment(TypeFaceSelection.newInstance(), TypeFaceSelection.TAG)
+            openFragmentSlide(TypeFaceSelection.newInstance(), TypeFaceSelection.TAG)
             true
         }
 
@@ -126,6 +131,7 @@ open class PreferenceFragment : ScopedFragment() {
         preferences.add(colors)
         preferences.add(theme)
         preferences.add(accentColor)
+        preferences.add(font)
         preferences.add(typeface)
         preferences.add(header)
         preferences.add(cornerRadius)

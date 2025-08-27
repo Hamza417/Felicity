@@ -113,4 +113,5 @@
     <string name="material_you_dark">Material You (Dark)</string>
     <string name="effects">Effects</string>
     <string name="shadow_effect">Shadow Effect</string>
+    <string name="font">Font</string>
 </resources>

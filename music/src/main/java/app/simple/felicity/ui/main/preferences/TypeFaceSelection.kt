@@ -27,6 +27,10 @@ class TypeFaceSelection : ScopedFragment() {
         view.startTransitionOnPreDraw()
     }
 
+    override fun getTransitionType(): TransitionType {
+        return TransitionType.SLIDE
+    }
+
     companion object {
         fun newInstance(): TypeFaceSelection {
             val args = Bundle()
