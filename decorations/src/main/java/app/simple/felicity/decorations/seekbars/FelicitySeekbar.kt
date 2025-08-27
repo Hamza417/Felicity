@@ -198,6 +198,10 @@ class FelicitySeekbar @JvmOverloads constructor(
     private val fastStiffness = SpringForce.STIFFNESS_HIGH
     private val fastDamping = SpringForce.DAMPING_RATIO_NO_BOUNCY
 
+    // Animator to drive progress changes smoothly (replaces spring for progress)
+    private var progressAnimator: ValueAnimator? = null
+    private var progressAnimFromUser: Boolean = false
+
     init {
         val d = resources.displayMetrics.density
         trackHeightPx = 4f * d
@@ -387,17 +391,32 @@ class FelicitySeekbar @JvmOverloads constructor(
     fun setProgress(progress: Float, fromUser: Boolean = false, animate: Boolean = false) {
         val target = progress.coerceIn(minProgress, maxProgress)
         if (!animate) {
+            // Cancel any ongoing animations
             if (springAnimation.isRunning) springAnimation.cancel()
+            progressAnimator?.cancel()
             if (progressInternal == target) return
             progressInternal = target
             invalidate()
             listener?.onProgressChanged(this, getProgress(), fromUser)
         } else {
+            // Animate with ValueAnimator and notify during animation
             animateFromUser = fromUser
-            springAnimation.cancel()
-            springAnimation.setStartValue(progressInternal)
-            springAnimation.spring.finalPosition = target
-            springAnimation.start()
+            if (springAnimation.isRunning) springAnimation.cancel()
+            progressAnimator?.cancel()
+            progressAnimFromUser = fromUser
+            val start = progressInternal
+            if (start == target) return
+            progressAnimator = ValueAnimator.ofFloat(start, target).apply {
+                duration = if (fromUser) 420L else 460L
+                interpolator = DecelerateInterpolator()
+                addUpdateListener { anim ->
+                    progressInternal = (anim.animatedValue as Float).coerceIn(minProgress, maxProgress)
+                    invalidate()
+                    // Notify on every frame so listeners see intermediate values while it moves
+                    listener?.onProgressChanged(this@FelicitySeekbar, getProgress(), progressAnimFromUser)
+                }
+                start()
+            }
         }
     }
 
@@ -586,9 +605,6 @@ class FelicitySeekbar @JvmOverloads constructor(
                     val clamped = min(max(event.x, left), right)
                     val fraction = (clamped - left) / (right - left)
                     val newProgress = fractionToValue(fraction).coerceIn(minProgress, maxProgress)
-                    if (springAnimation.isRunning) springAnimation.cancel()
-                    springAnimation.spring.stiffness = fastStiffness
-                    springAnimation.spring.dampingRatio = fastDamping
                     setProgress(newProgress, fromUser = true, animate = true)
                 }
                 listener?.onStartTrackingTouch(this)
@@ -700,5 +716,9 @@ class FelicitySeekbar @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         unregisterSharedPreferenceChangeListener()
+        // Cancel running animations to avoid leaks or stray callbacks
+        progressAnimator?.cancel()
+        pressRingAnimator?.cancel()
+        if (springAnimation.isRunning) springAnimation.cancel()
     }
 }
