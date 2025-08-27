@@ -111,7 +111,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
         ThemeManager.accent = when (val accentName = AppearancePreferences.getAccentColorName()) {
             null -> Felicity().also {
-                AppearancePreferences.setAccentColorName(it.name)
+                AppearancePreferences.setAccentColorName(it.identifier)
             }
             else -> {
                 ThemeManager.getAccentByName(accentName)

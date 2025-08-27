@@ -38,6 +38,7 @@
             android:layout_marginHorizontal="@dimen/padding_10"
             android:textSize="@dimen/text_size_16"
             app:appFontStyle="bold"
+            app:drawableTintStyle="accent"
             app:textColorStyle="primary" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView

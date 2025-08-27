@@ -39,16 +39,16 @@ class AdapterAccentColors : RecyclerView.Adapter<VerticalListViewHolder>() {
                 val accent = colors[position - 1]
                 holder.binding.primaryColor.setBackgroundColor(accent.primaryAccentColor)
                 holder.binding.secondaryColor.setBackgroundColor(accent.secondaryAccentColor)
-                holder.binding.name.text = accent.name
+                holder.binding.name.text = accent.identifier
                 holder.binding.palette.text = accent.hexes
                 ViewUtils.addShadow(holder.binding.container, accent.primaryAccentColor)
 
                 holder.itemView.setOnClickListener {
-                    AppearancePreferences.setAccentColorName(accent.name)
+                    AppearancePreferences.setAccentColorName(accent.identifier)
                     notifyDataSetChanged()
                 }
 
-                if (accent.name == AppearancePreferences.getAccentColorName()) {
+                if (accent.identifier == AppearancePreferences.getAccentColorName()) {
                     holder.binding.name.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_ring_12dp, 0)
                 } else {
                     holder.binding.name.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)

@@ -44,17 +44,21 @@ object ThemeManager {
 
     fun getAccentByName(name: String): Accent {
         return when (name) {
-            "Felicity" -> Felicity()
-            "Material You" -> {
+            Felicity.IDENTIFIER -> Felicity()
+            MaterialYouAccent.IDENTIFIER -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     MaterialYouAccent()
                 } else {
                     Felicity()
                 }
             }
-            "GrapeFruit" -> GrapeFruit()
+            GrapeFruit.IDENTIFIER -> GrapeFruit()
             else -> Felicity()
         }
+    }
+
+    fun updateAccentColor(name: String) {
+        accent = getAccentByName(name)
     }
 
     fun getAllAccents(): List<Accent> {

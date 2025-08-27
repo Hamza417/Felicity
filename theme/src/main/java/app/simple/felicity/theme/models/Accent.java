@@ -5,12 +5,12 @@ import androidx.annotation.NonNull;
 public class Accent {
     private int primaryAccentColor;
     private int secondaryAccentColor;
-    private String name;
+    private String identifier;
     
-    public Accent(int primaryAccentColor, int secondaryAccentColor, String name) {
+    public Accent(int primaryAccentColor, int secondaryAccentColor, String identifier) {
         this.primaryAccentColor = primaryAccentColor;
         this.secondaryAccentColor = secondaryAccentColor;
-        this.name = name;
+        this.identifier = identifier;
     }
     
     public static Builder builder() {
@@ -33,12 +33,12 @@ public class Accent {
         this.secondaryAccentColor = secondaryAccentColor;
     }
     
-    public String getName() {
-        return name;
+    public String getIdentifier() {
+        return identifier;
     }
     
-    public void setName(String name) {
-        this.name = name;
+    public void setIdentifier(String identifier) {
+        this.identifier = identifier;
     }
     
     public String getHexes() {
