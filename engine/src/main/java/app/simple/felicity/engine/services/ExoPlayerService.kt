@@ -10,6 +10,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.IBinder
 import android.util.Log
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -85,6 +86,9 @@ class ExoPlayerService : MediaLibraryService(),
                                         MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
                                     }
                                 }
+                                Player.STATE_IDLE -> {
+                                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_STOPPED)
+                                }
                                 else -> {
                                     MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
                                 }
@@ -92,11 +96,35 @@ class ExoPlayerService : MediaLibraryService(),
                         }
                     }
 
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        when (playbackState) {
+                            Player.STATE_BUFFERING -> MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_BUFFERING)
+                            Player.STATE_READY -> {
+                                if (player.playWhenReady) {
+                                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
+                                } else {
+                                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
+                                }
+                            }
+                            Player.STATE_ENDED -> MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ENDED)
+                            Player.STATE_IDLE -> MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_STOPPED)
+                        }
+                    }
+
+                    override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                        Log.e(TAG, "Player error: ${error.errorCodeName}", error)
+                        MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ERROR)
+                    }
+
+                    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                        // Update current position to match ExoPlayer's index so UI updates pager
+                        val index = player.currentMediaItemIndex
+                        MediaManager.notifyCurrentPosition(index)
+                    }
+
                     override fun onEvents(player: Player, events: Player.Events) {
                         super.onEvents(player, events)
-
                     }
-                    
                 }
         )
 
@@ -155,6 +183,13 @@ class ExoPlayerService : MediaLibraryService(),
     }
 
     override fun onDestroy() {
+        // Unregister receiver to avoid leaks
+        try {
+            unregisterReceiver(becomingNoisyReceiver)
+        } catch (e: Exception) {
+            Log.w(TAG, "Receiver already unregistered or not registered", e)
+        }
+
         mediaSession?.run {
             player.release()
             release()

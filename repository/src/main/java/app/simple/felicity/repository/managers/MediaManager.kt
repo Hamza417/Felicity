@@ -188,4 +188,13 @@ object MediaManager {
             _playbackStateFlow.emit(state)
         }
     }
+
+    // Notify UI about current media item index changes originating from the player/service without reconfiguring playback
+    fun notifyCurrentPosition(position: Int) {
+        if (position in songs.indices) {
+            currentSongPosition = position
+        } else {
+            Log.w(TAG, "notifyCurrentPosition: Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")
+        }
+    }
 }
