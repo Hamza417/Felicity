@@ -32,7 +32,7 @@ object AudioCoverUtils {
         val transformations = mutableListOf<Transformation<android.graphics.Bitmap>>()
 
         if (crop) transformations.add(CenterCrop())
-        if (roundedCorners) transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt(), 0))
+        if (roundedCorners) transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt()))
         if (shadows) {
             transformations.add(Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()))
 

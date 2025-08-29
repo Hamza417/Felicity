@@ -29,7 +29,7 @@ public class RoundedCorners extends BitmapTransformation {
     }
     
     public RoundedCorners(int radius) {
-        this(radius, 0);
+        this(radius / 3, 0);
     }
     
     private static int dpToPx(Context context, int dp) {

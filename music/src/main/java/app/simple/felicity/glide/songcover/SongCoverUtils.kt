@@ -33,7 +33,7 @@ object SongCoverUtils {
         }
 
         if (roundedCorners) {
-            transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt(), 0))
+            transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt()))
         }
 
         if (blurShadow) {
