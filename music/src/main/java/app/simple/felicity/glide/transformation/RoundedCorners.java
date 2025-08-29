@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -36,29 +37,62 @@ public class RoundedCorners extends BitmapTransformation {
         return Math.round(dp * density);
     }
     
+    @NonNull
+    private static Paint getPaint(@NonNull Bitmap toTransform, int targetHeight, int targetWidth) {
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        BitmapShader shader = new BitmapShader(toTransform, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+        
+        // Center-crop the source into the target size so radius is applied at final resolution
+        float scale;
+        float dx = 0f, dy = 0f;
+        if (toTransform.getWidth() * targetHeight > targetWidth * toTransform.getHeight()) {
+            scale = (float) targetHeight / (float) toTransform.getHeight();
+            dx = (targetWidth - toTransform.getWidth() * scale) * 0.5f;
+        } else {
+            scale = (float) targetWidth / (float) toTransform.getWidth();
+            dy = (targetHeight - toTransform.getHeight() * scale) * 0.5f;
+        }
+        Matrix matrix = new Matrix();
+        matrix.setScale(scale, scale);
+        matrix.postTranslate((int) (dx + 0.5f), (int) (dy + 0.5f));
+        shader.setLocalMatrix(matrix);
+        paint.setShader(shader);
+        
+        return paint;
+    }
+    
+    /**
+     * @noinspection UnnecessaryLocalVariable
+     */
     @Override
     protected Bitmap transform(@NonNull Context context, @NonNull BitmapPool pool,
             @NonNull Bitmap toTransform, int outWidth, int outHeight) {
-        int width = toTransform.getWidth();
-        int height = toTransform.getHeight();
+        // Target output dimensions from Glide so rounding appears consistent on-screen
+        int targetWidth = outWidth;
+        int targetHeight = outHeight;
         
         int pixelRadius = dpToPx(context, radius);
         int pixelMargin = dpToPx(context, margin);
         
-        Bitmap bitmap = pool.get(width, height, Bitmap.Config.ARGB_8888);
+        // Ensure radius doesn't exceed half of the shortest side after accounting for margin
+        int maxAllowedRadius = Math.max(0, (Math.min(targetWidth, targetHeight) - 2 * pixelMargin) / 2);
+        if (pixelRadius > maxAllowedRadius) {
+            pixelRadius = maxAllowedRadius;
+        }
+        
+        Bitmap bitmap = pool.get(targetWidth, targetHeight, Bitmap.Config.ARGB_8888);
         bitmap.setHasAlpha(true);
         
         setCanvasBitmapDensity(toTransform, bitmap);
         
         Canvas canvas = new Canvas(bitmap);
-        Paint paint = new Paint();
-        paint.setAntiAlias(true);
-        paint.setShader(new BitmapShader(toTransform, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP));
+        Paint paint = getPaint(toTransform, targetHeight, targetWidth);
         
-        float right = width - pixelMargin;
-        float bottom = height - pixelMargin;
-        canvas.drawRoundRect(new RectF(pixelMargin, pixelMargin, right, bottom),
-                pixelRadius, pixelRadius, paint);
+        float left = pixelMargin;
+        float top = pixelMargin;
+        float right = targetWidth - pixelMargin;
+        float bottom = targetHeight - pixelMargin;
+        canvas.drawRoundRect(new RectF(left, top, right, bottom), pixelRadius, pixelRadius, paint);
         
         return bitmap;
     }
