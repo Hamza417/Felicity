@@ -11,8 +11,10 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.page.AlbumDetailsAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentPageArtistBinding
+import app.simple.felicity.decorations.itemdecorations.SongHolderSpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.popups.PopupArtistMenu
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
@@ -58,7 +60,7 @@ class AlbumPage : MediaFragment() {
         albumViewerViewModel.getData().observe(viewLifecycleOwner) { data ->
             Log.i(TAG, "onViewCreated: Received songs for genre: ${album.name}, count: ${data.songs}")
             val adapter = AlbumDetailsAdapter(data, album)
-            // binding.recyclerView.addItemDecoration(SpacingItemDecoration(48, true))
+            binding.recyclerView.addItemDecoration(SongHolderSpacingItemDecoration(48, AppearancePreferences.getListSpacing().toInt()))
             binding.recyclerView.adapter = adapter
 
             adapter.setArtistAdapterListener(object : GeneralAdapterCallbacks {

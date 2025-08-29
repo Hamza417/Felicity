@@ -134,6 +134,12 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
                 val adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, data.albums))
                 binding.title.text = binding.title.context.getString(R.string.albums_from_artist, artist.name ?: context.getString(R.string.unknown))
                 binding.recyclerView.adapter = adapter
+
+                adapter.setAdapterCarouselCallbacks(object : AdapterCarouselItems.Companion.AdapterCarouselCallbacks {
+                    override fun onClicked(view: View, position: Int) {
+                        listener?.onAlbumClicked(data.albums, position, view)
+                    }
+                })
             } else {
                 binding.title.visibility = View.GONE
                 binding.recyclerView.visibility = View.GONE

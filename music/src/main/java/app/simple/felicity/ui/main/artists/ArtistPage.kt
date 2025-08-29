@@ -11,11 +11,15 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.page.ArtistDetailsAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentPageArtistBinding
+import app.simple.felicity.decorations.itemdecorations.SongHolderSpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.popups.PopupArtistMenu
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.repository.constants.BundleConstants
+import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Song
+import app.simple.felicity.ui.main.albums.AlbumPage
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.main.artists.ArtistViewerViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -54,7 +58,7 @@ class ArtistPage : MediaFragment() {
         artistViewerViewModel.getData().observe(viewLifecycleOwner) { data ->
             Log.i(TAG, "onViewCreated: Received songs for genre: ${artist.name}, count: ${data.songs}")
             val adapter = ArtistDetailsAdapter(data, artist)
-            // binding.recyclerView.addItemDecoration(SpacingItemDecoration(48, true))
+            binding.recyclerView.addItemDecoration(SongHolderSpacingItemDecoration(48, AppearancePreferences.getListSpacing().toInt()))
             binding.recyclerView.adapter = adapter
 
             adapter.setArtistAdapterListener(object : GeneralAdapterCallbacks {
@@ -76,6 +80,12 @@ class ArtistPage : MediaFragment() {
                 override fun onArtistClicked(artist: Artist, position: Int, view: View) {
                     Log.i(TAG, "onArtistClicked: Artist clicked: ${artist.name}")
                     openFragment(newInstance(artist), TAG)
+                }
+
+                override fun onAlbumClicked(albums: List<Album>, position: Int, view: View) {
+                    val album = albums[position]
+                    Log.i(TAG, "onAlbumClicked: Album clicked: ${album.name}")
+                    openFragment(AlbumPage.newInstance(album), AlbumPage.TAG)
                 }
 
                 override fun onMenuClicked(view: View) {
