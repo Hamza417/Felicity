@@ -12,7 +12,7 @@ import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
 import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.ui.main.albums.DefaultAlbums
-import app.simple.felicity.ui.main.artists.PeristyleArtists
+import app.simple.felicity.ui.main.artists.Artists
 import app.simple.felicity.ui.main.genres.Genres
 import app.simple.felicity.ui.main.preferences.Preferences
 import app.simple.felicity.viewmodels.main.home.SimpleHomeViewModel
@@ -52,7 +52,7 @@ class SimpleHome : MediaFragment() {
                         }
 
                         R.string.artists -> {
-                            openFragment(PeristyleArtists.newInstance(), PeristyleArtists.TAG)
+                            openFragment(Artists.newInstance(), Artists.TAG)
                         }
                         R.string.genres -> {
                             openFragment(Genres.newInstance(), Genres.TAG)

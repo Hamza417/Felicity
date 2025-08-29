@@ -22,9 +22,9 @@ import app.simple.felicity.repository.models.Song
 import app.simple.felicity.ui.main.albums.AlbumPage
 import app.simple.felicity.ui.main.albums.DefaultAlbums
 import app.simple.felicity.ui.main.artists.ArtistPage
-import app.simple.felicity.ui.main.artists.PeristyleArtists
+import app.simple.felicity.ui.main.artists.Artists
 import app.simple.felicity.ui.main.genres.Genres
-import app.simple.felicity.ui.main.songs.DefaultSongs
+import app.simple.felicity.ui.main.songs.Songs
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 
 class SpannedHome : MediaFragment() {
@@ -79,13 +79,13 @@ class SpannedHome : MediaFragment() {
                 override fun onButtonClicked(title: Int) {
                     when (title) {
                         R.string.songs -> {
-                            openFragment(DefaultSongs.newInstance(), DefaultSongs.TAG)
+                            openFragment(Songs.newInstance(), Songs.TAG)
                         }
                         R.string.albums -> {
                             openFragment(DefaultAlbums.newInstance(), DefaultAlbums.TAG)
                         }
                         R.string.artists -> {
-                            openFragment(PeristyleArtists.newInstance(), ArtistPage.TAG)
+                            openFragment(Artists.newInstance(), Artists.TAG)
                         }
                         R.string.genres -> {
                             openFragment(Genres.newInstance(), Genres.TAG)

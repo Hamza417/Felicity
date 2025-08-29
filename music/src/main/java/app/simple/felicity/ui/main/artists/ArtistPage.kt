@@ -73,7 +73,7 @@ class ArtistPage : MediaFragment() {
                     setMediaItems(songs.shuffled(), position)
                 }
 
-                override fun onArtistClicked(artist: Artist) {
+                override fun onArtistClicked(artist: Artist, position: Int, view: View) {
                     Log.i(TAG, "onArtistClicked: Artist clicked: ${artist.name}")
                     openFragment(newInstance(artist), TAG)
                 }

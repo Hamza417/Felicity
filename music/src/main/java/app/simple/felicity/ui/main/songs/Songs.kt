@@ -24,7 +24,7 @@ import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 
-class DefaultSongs : MediaFragment() {
+class Songs : MediaFragment() {
 
     private lateinit var binding: FragmentSongsBinding
     private lateinit var headerBinding: HeaderSongsBinding
@@ -199,9 +199,9 @@ class DefaultSongs : MediaFragment() {
     companion object {
         const val TAG = "Songs"
 
-        fun newInstance(): DefaultSongs {
+        fun newInstance(): Songs {
             val args = Bundle()
-            val fragment = DefaultSongs()
+            val fragment = Songs()
             fragment.arguments = args
             return fragment
         }

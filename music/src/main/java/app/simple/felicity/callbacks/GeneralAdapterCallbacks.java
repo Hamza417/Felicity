@@ -33,7 +33,11 @@ public interface GeneralAdapterCallbacks {
     
     }
     
-    default void onArtistClicked(Artist artist) {
+    default void onArtistClicked(@NonNull Artist artist, int position, @NonNull View view) {
+    
+    }
+    
+    default void onArtistLongClicked(@NonNull Artist artist, int position, @NonNull View view) {
     
     }
     
@@ -56,7 +60,6 @@ public interface GeneralAdapterCallbacks {
     default void onSortClicked(@NonNull View view) {
     
     }
-    
     
     default void onSearchClicked(@NonNull View view) {
     
