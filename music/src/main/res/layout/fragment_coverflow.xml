@@ -30,6 +30,16 @@
             app:layout_constraintTop_toTopOf="parent" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/filter"
+            android:layout_width="@dimen/icon_size_50"
+            android:layout_height="@dimen/icon_size_50"
+            android:src="@drawable/ic_filter"
+            app:buttonTintType="white"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/arrow_left"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/arrow_left"
             android:layout_width="@dimen/icon_size_50"
             android:layout_height="@dimen/icon_size_50"

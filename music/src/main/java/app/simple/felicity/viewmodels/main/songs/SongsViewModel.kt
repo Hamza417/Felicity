@@ -58,7 +58,7 @@ class SongsViewModel @Inject constructor(
     private fun loadSongAndArt() {
         viewModelScope.launch(Dispatchers.IO) {
             val songs = songRepository.fetchSongs().sort()
-            val songArtMap = mutableMapOf<Uri, Song>()
+            val songArtMap = LinkedHashMap<Uri, Song>()
 
             for (i in songs.indices) {
                 val song = songs[i]
@@ -87,9 +87,11 @@ class SongsViewModel @Inject constructor(
         when (s) {
             SongsPreferences.SONG_SORT -> {
                 loadData()
+                loadSongAndArt()
             }
             SongsPreferences.SORTING_STYLE -> {
                 loadData()
+                loadSongAndArt()
             }
         }
     }

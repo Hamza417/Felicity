@@ -110,9 +110,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     }
 
     override fun onPositionChanged(position: Int) {
-        binding.miniAlbumArtPager.setCurrentItem(position, true)
-        binding.title.text = MediaManager.getSongAt(position)?.title ?: ""
-        binding.artist.text = MediaManager.getSongAt(position)?.artist ?: ""
+
     }
 
     override fun onHideMiniPlayer() {

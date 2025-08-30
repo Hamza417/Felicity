@@ -2,23 +2,26 @@ package app.simple.felicity.ui.app
 
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import app.simple.felicity.core.R
+import app.simple.felicity.R
 import app.simple.felicity.core.utils.WindowUtil
 import app.simple.felicity.databinding.FragmentCoverflowBinding
 import app.simple.felicity.decorations.artflow.ArtFlow.OnCoverClickListener
 import app.simple.felicity.decorations.artflow.ArtFlowRenderer
 import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselMenu
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
+import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
 import app.simple.felicity.popups.carousel.PopupSongsCarouselMenu
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Song
+import app.simple.felicity.repository.sort.SongSort.sorted
 import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
@@ -76,7 +79,9 @@ class ArtFlow : MediaFragment() {
             binding.coverflow.setOnCoverClickListener(object : OnCoverClickListener {
                 override fun onCenteredCoverClick(index: Int, uri: Uri?) {
                     songsViewModel.setCarouselPosition(index)
-                    setMediaItems(songs.values.toList(), index)
+                    val sorted = songs.values.toList().sorted()
+                    Log.d(TAG, "onCenteredCoverClick: Playing ${sorted[index].title} at index $index")
+                    setMediaItems(sorted, index)
                 }
 
                 override fun onSideCoverSelected(index: Int, uri: Uri?) {
@@ -92,13 +97,17 @@ class ArtFlow : MediaFragment() {
                 binding.coverflow.scrollToIndex(binding.coverflow.getCenteredIndex() + 10)
             }
 
+            binding.filter.setOnClickListener {
+                childFragmentManager.showSongsSort()
+            }
+
             binding.menu.setOnClickListener {
                 PopupSongsCarouselMenu(
                         container = requireContainerView(),
                         anchorView = it,
                         menuItems = listOf(R.string.carousel_settings, R.string.songs_settings),
-                        menuIcons = listOf(app.simple.felicity.decoration.R.drawable.ic_carousel,
-                                           app.simple.felicity.decoration.R.drawable.ic_song_16dp),
+                        menuIcons = listOf(R.drawable.ic_carousel,
+                                           R.drawable.ic_song_16dp),
                         onMenuItemClick = { id ->
                             when (id) {
                                 R.string.songs_settings -> {
@@ -150,9 +159,8 @@ class ArtFlow : MediaFragment() {
         }
     }
 
-    override fun onStop() {
-        super.onStop()
-        requireContainerView().removeView(binding.coverflow)
+    override fun getTransitionType(): TransitionType {
+        return TransitionType.SLIDE
     }
 
     companion object {
@@ -163,6 +171,6 @@ class ArtFlow : MediaFragment() {
             return fragment
         }
 
-        const val TAG = "CoverFlow"
+        const val TAG = "ArtFlow"
     }
 }

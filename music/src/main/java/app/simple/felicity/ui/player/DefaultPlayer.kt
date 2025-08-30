@@ -29,6 +29,7 @@ class DefaultPlayer : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        requireHiddenMiniPlayer()
 
         binding.pager.setAdapter(object : FelicityPager.Adapter {
             override fun getCount(): Int {
@@ -111,6 +112,10 @@ class DefaultPlayer : MediaFragment() {
                 binding.play.setImageResource(app.simple.felicity.decoration.R.drawable.ic_play)
             }
         }
+    }
+
+    override fun getTransitionType(): TransitionType {
+        return TransitionType.SLIDE
     }
 
     companion object {
