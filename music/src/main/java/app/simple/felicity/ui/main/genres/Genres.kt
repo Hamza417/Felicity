@@ -17,9 +17,9 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentGenresBinding
 import app.simple.felicity.databinding.HeaderGenresBinding
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
-import app.simple.felicity.decorations.utils.RecyclerViewUtils.clearDecorations
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.genres.DialogGenreMenu.Companion.showGenreMenu
+import app.simple.felicity.dialogs.genres.DialogGenreSort.Companion.showGenresSortDialog
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.models.Genre
@@ -59,9 +59,6 @@ class Genres : ScopedFragment() {
             gridLayoutManager = GridLayoutManager(requireContext(), GenresPreferences.getGridSize())
             binding.recyclerView.layoutManager = gridLayoutManager
 
-            binding.recyclerView.clearDecorations()
-
-
             binding.recyclerView.setHasFixedSize(true)
             binding.recyclerView.adapter = adapterGenres
 
@@ -77,9 +74,27 @@ class Genres : ScopedFragment() {
             })
 
             headerBinding.count.text = getString(R.string.x_genres, genres.size)
+            headerBinding.sortStyle.text = when (GenresPreferences.getSortStyle()) {
+                GenresPreferences.BY_NAME -> getString(R.string.name)
+                else -> getString(R.string.name)
+            }
+
+            headerBinding.sortOrder.text = when (GenresPreferences.getSortOrder()) {
+                GenresPreferences.ACCENDING -> getString(R.string.normal)
+                GenresPreferences.DESCENDING -> getString(R.string.reversed)
+                else -> getString(R.string.normal)
+            }
 
             headerBinding.menu.setOnClickListener {
                 childFragmentManager.showGenreMenu()
+            }
+
+            headerBinding.sortOrder.setOnClickListener {
+                childFragmentManager.showGenresSortDialog()
+            }
+
+            headerBinding.sortStyle.setOnClickListener {
+                childFragmentManager.showGenresSortDialog()
             }
 
             view.startTransitionOnPreDraw()

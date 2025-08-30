@@ -295,7 +295,7 @@ class FelicityPager @JvmOverloads constructor(
         if (abs(velocityX) > minFlingVelocity) {
             // Fling-based: advance proportional to velocity
             val vPagesPerSec = abs(velocityX) / widthPx
-            val windowSec = 0.20f
+            val windowSec = 0.40f
             val pages = max(1, (vPagesPerSec * windowSec).roundToInt())
             val dir = if (velocityX < 0) +1 else -1
             val base = if (dir > 0) ceil else floor
