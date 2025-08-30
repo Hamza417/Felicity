@@ -18,12 +18,11 @@ class SongHolderSpacingItemDecoration(
         val position = parent.getChildAdapterPosition(view)
         val viewType = parent.adapter?.getItemViewType(position)
 
-        // Suppose you want spacing only for viewType == MY_VIEW_TYPE
         if (viewType == RecyclerViewUtils.TYPE_ITEM) {
-            outRect.left = horizontalSpacing
-            outRect.right = horizontalSpacing
-            outRect.top = verticalSpacing
-            outRect.bottom = verticalSpacing
+            outRect.left = if (leftEdge) horizontalSpacing else 0
+            outRect.right = if (rightEdge) horizontalSpacing else 0
+            outRect.top = if (topEdge && position == 1) verticalSpacing else 0
+            outRect.bottom = if (bottomEdge) verticalSpacing else 0
         }
     }
 }

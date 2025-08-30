@@ -52,7 +52,9 @@ class GenrePage : MediaFragment() {
         genreViewerViewModel.getData().observe(viewLifecycleOwner) { data ->
             Log.i(TAG, "onViewCreated: Received songs for genre: ${genre.name}, count: ${data.songs}")
             val adapter = GenreDetailsAdapter(data, genre)
-            binding.recyclerView.addItemDecoration(SongHolderSpacingItemDecoration(48, AppearancePreferences.getListSpacing().toInt()))
+            binding.recyclerView.addItemDecoration(SongHolderSpacingItemDecoration(
+                    AppearancePreferences.DEFAULT_SPACING.toInt(),
+                    AppearancePreferences.getListSpacing().toInt()))
             binding.recyclerView.adapter = adapter
 
             adapter.setGenreSongsAdapterListener(object : GenreDetailsAdapter.Companion.GenreSongsAdapterListener {

@@ -64,7 +64,13 @@ public class GenreRepository @Inject constructor(private val context: Context) {
                 MediaStore.Audio.Media.DURATION,
                 MediaStore.Audio.Media.SIZE,
                 MediaStore.Audio.Media.DATE_ADDED,
-                MediaStore.Audio.Media.DATE_MODIFIED
+                MediaStore.Audio.Media.DATE_MODIFIED,
+                MediaStore.Audio.Media.GENRE,         // May not exist on all devices
+                MediaStore.Audio.Media.TRACK,
+                MediaStore.Audio.Media.COMPOSER,
+                MediaStore.Audio.Media.YEAR,
+                MediaStore.Audio.Media.BITRATE,
+                MediaStore.Audio.Media.IS_MUSIC
         )
 
         val genreUri = MediaStore.Audio.Genres.Members.getContentUri("external", genreId)
@@ -89,6 +95,12 @@ public class GenreRepository @Inject constructor(private val context: Context) {
             val sizeCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
             val dateAddedCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
             val dateModifiedCol = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
+            val genreCol = it.getColumnIndex(MediaStore.Audio.Media.GENRE)
+            val trackCol = it.getColumnIndex(MediaStore.Audio.Media.TRACK)
+            val composerCol = it.getColumnIndex(MediaStore.Audio.Media.COMPOSER)
+            val yearCol = it.getColumnIndex(MediaStore.Audio.Media.YEAR)
+            val bitrateCol = it.getColumnIndex(MediaStore.Audio.Media.BITRATE)
+            val isMusicCol = it.getColumnIndex(MediaStore.Audio.Media.IS_MUSIC)
 
             while (it.moveToNext()) {
                 val songId = it.getLong(idCol)
@@ -96,22 +108,28 @@ public class GenreRepository @Inject constructor(private val context: Context) {
                 val path = it.getString(dataCol)
                 val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId)
 
-                //                songs.add(
-                //                        Song(
-                //                                id = songId,
-                //                                title = it.getString(titleCol),
-                //                                artist = it.getString(artistCol),
-                //                                album = it.getString(albumCol),
-                //                                albumId = albumId,
-                //                                artistId = it.getLong(artistIdCol),
-                //                                uri = uri,
-                //                                path = path,
-                //                                duration = it.getLong(durationCol),
-                //                                size = it.getLong(sizeCol),
-                //                                dateAdded = it.getLong(dateAddedCol),
-                //                                dateModified = it.getLong(dateModifiedCol)
-                //                        )
-                //                )
+                songs.add(
+                        Song(
+                                id = songId,
+                                title = it.getString(titleCol),
+                                artist = it.getString(artistCol),
+                                album = it.getString(albumCol),
+                                albumId = albumId,
+                                artistId = it.getLong(artistIdCol),
+                                uri = uri,
+                                path = path,
+                                duration = it.getLong(durationCol),
+                                size = it.getLong(sizeCol),
+                                dateAdded = it.getLong(dateAddedCol),
+                                dateModified = it.getLong(dateModifiedCol),
+                                genre = if (genreCol != -1) it.getString(genreCol) else null,
+                                trackNumber = if (trackCol != -1) it.getInt(trackCol) else null,
+                                composer = if (composerCol != -1) it.getString(composerCol) else null,
+                                year = if (yearCol != -1) it.getInt(yearCol) else null,
+                                bitrate = if (bitrateCol != -1) it.getInt(bitrateCol) else null,
+                                isMusic = if (isMusicCol != -1) it.getInt(isMusicCol) != 0 else true
+                        )
+                )
             }
         }
 
