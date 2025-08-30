@@ -16,6 +16,9 @@ import android.view.MotionEvent
 import android.view.VelocityTracker
 import android.view.ViewConfiguration
 import android.widget.OverScroller
+import app.simple.felicity.decorations.pager.FelicityPager.Companion.SCROLL_STATE_DRAGGING
+import app.simple.felicity.decorations.pager.FelicityPager.Companion.SCROLL_STATE_IDLE
+import app.simple.felicity.decorations.pager.FelicityPager.Companion.SCROLL_STATE_SETTLING
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -30,8 +33,77 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * OpenGL based lightweight pager with recycling & auto sliding banners.
- * It renders bitmaps (supplied by adapter) on textured quads with simple horizontal translation.
+ * FelicityPager
+ *
+ * A lightweight OpenGL-based horizontal pager that renders adapter-provided Bitmaps on textured quads
+ * and supports both drag and fling navigation with predictable selection dispatching.
+ *
+ * Behavior summary
+ * - Rendering: Each page is a full-screen quad translated horizontally in NDC; only a small window
+ *   of neighboring pages is drawn for performance. Bitmaps are center-cropped to the surface aspect
+ *   and uploaded as GL textures. Decoding happens off of the GL thread.
+ * - Dragging: Touch MOVE updates a fractional page offset ([scrollOffset]). When the gesture ends,
+ *   page settling chooses the target as follows:
+ *   - If |velocityX| > [minFlingVelocity]: fling-based navigation (see below).
+ *   - Else if absolute drag distance > [advanceThreshold] (fraction of a page): advance to nearest in the drag direction.
+ *   - Else: snap back to the starting page.
+ * - Fling-based scrolling: Target pages are chosen based on fling velocity magnitude and direction.
+ *   Let widthPx be the view width; vPagesPerSec = |velocityX| / widthPx. The number of pages to advance
+ *   is pages = max(1, round(vPagesPerSec * windowSec)), where windowSec = 0.40f. Direction is left for
+ *   velocityX < 0 (advance forward), right otherwise (go backward). Duration is derived from distance and
+ *   velocity: durationMs ≈ (distancePages / vPagesPerSec) * 1000, clamped to [200, 900] ms, and animated
+ *   with an [easeOutCubic] for a decelerating feel. You can tweak the window in [finishDrag] and [onFling].
+ * - Programmatic smooth scroll: [setCurrentItem] (item, smoothScroll = true) uses a fixed duration
+ *   [animationDurationMs] (default 420 ms) with the same easing.
+ * - Selection events: [OnPageChangeListener.onPageSelected] is dispatched only after the final settle completes (or immediately
+ *   for non-animated jumps). Rapid successive swipes will not emit intermediate selections; only the final
+ *   settled page fires selection, preventing chained song changes while swiping quickly.
+ * - fromUser flag: An overload [OnPageChangeListener.onPageSelected] with (position, fromUser) is provided to differentiate user-initiated
+ *   vs app-initiated changes. Both the new overload and the legacy [OnPageChangeListener.onPageSelected] are called for
+ *   compatibility. User drags/flings pass fromUser = true; programmatic navigation passes false.
+ * - State callbacks: [OnPageChangeListener.onPageScrollStateChanged] is dispatched with [SCROLL_STATE_DRAGGING], [SCROLL_STATE_SETTLING], and [SCROLL_STATE_IDLE]. Dragging starts
+ *   once movement exceeds touch slop (scaledTouchSlop * 0.6). ACTION_DOWN cancels any in-flight animation so
+ *   the user can take over immediately without friction.
+ * - Auto slide: [startAutoSlide] (intervalMs, loop) advances pages on a timer when not dragging. With loop=true,
+ *   it jumps to 0 (without animation) after the last page so the next timed advance animates from the start.
+ *
+ * Key configuration points (what to tweak later)
+ * - [animationDurationMs]: Base duration (ms) for app-initiated smooth scrolls. Change via [setAnimationDurationMs].
+ * - [advanceThreshold]: Fraction (0..1) of a page required to advance when releasing without a fling. Default 0.12f.
+ * - [minFlingVelocity] sensitivity: Multiplier applied to ViewConfiguration.scaledMinimumFlingVelocity. Default 0.4f.
+ *   Increase to require stronger flings; decrease to make flings easier to trigger.
+ * - Fling window (windowSec): 0.40f. Controls how many pages are advanced per fling based on velocity. To tweak,
+ *   update the local windowSec constants inside [finishDrag] and [onFling].
+ * - Fling duration clamps: [200, 900] ms. Adjust the coerceIn bounds where durationMs is computed in [finishDrag]
+ *   and [onFling] to change the feel for long or short hops.
+ * - Easing: [easeOutCubic] is used for all settling animations. Replace [easeOutCubic] if a different curve is desired.
+ * - Touch slop factor: Drag begins at ~60% of scaled touch slop. Adjust the 0.6f factor in ACTION_MOVE if needed.
+ *
+ * Adapter contract
+ * - [getCount](): Int — total pages.
+ * - [loadBitmap](position): Bitmap? — decode/load on a background thread; null to skip a page.
+ * - [getItemId](position): Long — stable IDs help texture caching and reuse.
+ *
+ * Callbacks
+ * - [onPageScrolled](position, positionOffset, positionOffsetPixels) — emitted continuously during drag/settle.
+ * - [onPageSelected] (position, fromUser) — emitted only after a settle completes; legacy [onPageSelected]
+ *   is also called for compatibility in the same moment.
+ * - [onPageScrollStateChanged](state) — DRAGGING, SETTLING, IDLE.
+ *
+ * Limits and notes
+ * - Bounds: Scrolling is clamped to [0, lastPage]. No true wrap-around; looping is achieved only by auto-slide
+ *   jump to 0 at boundary.
+ * - Interrupting: ACTION_DOWN cancels any running animation and returns the state to [SCROLL_STATE_IDLE] before starting drag.
+ * - Rendering: [setAlpha] proxies to a uniform in the GL shader to avoid extra composition layers with SurfaceView.
+ * - Resources: Textures are preloaded in a small radius around the current page and recycled when far away.
+ *
+ * Quick guidance
+ * - Want faster programmatic slides? Call [setAnimationDurationMs] with 250.
+ * - Want more pages per fling? Increase windowSec from 0.40f in [finishDrag]/[onFling].
+ * - Want flings harder to trigger? Increase the 0.4f multiplier on [minFlingVelocity].
+ * - Want releases to advance more easily without a fling? Raise [advanceThreshold] from 0.12f.
+ *
+ * @author Hamza417
  */
 class FelicityPager @JvmOverloads constructor(
         context: Context,
@@ -52,6 +124,9 @@ class FelicityPager @JvmOverloads constructor(
     interface OnPageChangeListener {
         fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {}
         fun onPageSelected(position: Int) {}
+
+        // Overload with fromUser flag (backward-compatible default no-op)
+        fun onPageSelected(position: Int, fromUser: Boolean) {}
         fun onPageScrollStateChanged(state: Int) {}
     }
 
@@ -93,7 +168,15 @@ class FelicityPager @JvmOverloads constructor(
     private val minFlingVelocity = ViewConfiguration.get(context).scaledMinimumFlingVelocity * 0.4f // more sensitive
     private val advanceThreshold = 0.12f // fraction of a page to switch without velocity
 
-    // Dispatch helpers (re-added)
+    // Animation config (consistent, non-physics)
+    private var animationDurationMs: Long = 420L
+    private var animFromUser: Boolean = false
+
+    fun setAnimationDurationMs(durationMs: Long) {
+        animationDurationMs = durationMs.coerceAtLeast(0L)
+    }
+
+    // Dispatch helpers
     private fun dispatchOnPageScrolled() {
         val pos = scrollOffset.toInt().coerceAtMost(maxLastPage())
         val offset = (scrollOffset - pos).coerceIn(0f, 1f)
@@ -101,10 +184,13 @@ class FelicityPager @JvmOverloads constructor(
         pageChangeListeners.forEach { it.onPageScrolled(pos, offset, px) }
     }
 
-    private fun dispatchPageSelected(position: Int) {
+    private fun dispatchPageSelected(position: Int, fromUser: Boolean) {
         if (position != currentPage) {
             currentPage = position
-            pageChangeListeners.forEach { it.onPageSelected(position) }
+            pageChangeListeners.forEach { l ->
+                l.onPageSelected(position, fromUser)
+                l.onPageSelected(position)
+            }
         }
     }
 
@@ -126,7 +212,6 @@ class FelicityPager @JvmOverloads constructor(
             if (autoSlideInterval > 0 && count > 1 && scrollState != SCROLL_STATE_DRAGGING) {
                 if (autoSlideLoop) {
                     if (currentPage >= count - 1) {
-                        // jump without animation to achieve looping then schedule next animated page
                         setCurrentItem(0, smoothScroll = false)
                     } else {
                         setCurrentItem(currentPage + 1, smoothScroll = true)
@@ -163,7 +248,6 @@ class FelicityPager @JvmOverloads constructor(
         this.adapter = adapter
         scrollOffset = 0f
         currentPage = 0
-        // Prime first page load early so first frame appears without user interaction
         queueEvent { renderer.primeInitialLoad() }
         requestRender()
     }
@@ -183,11 +267,11 @@ class FelicityPager @JvmOverloads constructor(
             scroller.abortAnimation()
             renderer.setScrollOffset(scrollOffset)
             dispatchOnPageScrolled()
-            dispatchPageSelected(bounded)
+            dispatchPageSelected(bounded, false)
             dispatchOnScrollStateChanged(SCROLL_STATE_IDLE)
             requestRender()
         } else {
-            smoothScrollTo(bounded.toFloat())
+            smoothScrollTo(bounded.toFloat(), durationOverrideMs = null, fromUser = false)
         }
     }
 
@@ -207,15 +291,29 @@ class FelicityPager @JvmOverloads constructor(
         val delta = scrollOffset - dragStartOffset
         val forward = delta > 0f
         val distance = abs(delta)
-        var target: Int
-        target = if (abs(velocityX) > minFlingVelocity) {
-            if (velocityX < 0) ceil else floor
-        } else if (distance > advanceThreshold) {
-            if (forward) ceil else floor
+        val widthPx = width.takeIf { it > 0 } ?: 1
+        if (abs(velocityX) > minFlingVelocity) {
+            // Fling-based: advance proportional to velocity
+            val vPagesPerSec = abs(velocityX) / widthPx
+            val windowSec = 0.20f
+            val pages = max(1, (vPagesPerSec * windowSec).roundToInt())
+            val dir = if (velocityX < 0) +1 else -1
+            val base = if (dir > 0) ceil else floor
+            val targetIdx = (base + (pages - 1) * dir).coerceIn(0, maxLastPage())
+            val distPages = abs(targetIdx - scrollOffset)
+            val durationMs = (if (vPagesPerSec > 0f) (distPages / vPagesPerSec) * 1000f * 0.95f else 420f)
+                .coerceIn(200f, 900f).toLong()
+            smoothScrollTo(targetIdx.toFloat(), durationOverrideMs = durationMs, fromUser = true)
         } else {
-            dragStartOffset.roundToInt().coerceIn(0, maxLastPage())
+            val target = if (distance > advanceThreshold) {
+                if (forward) ceil else floor
+            } else {
+                dragStartOffset.roundToInt().coerceIn(0, maxLastPage())
+            }
+            val distPages = abs(target - scrollOffset)
+            val durationMs = (300f + 180f * distPages).coerceIn(200f, 700f).toLong()
+            smoothScrollTo(target.toFloat(), durationOverrideMs = durationMs, fromUser = true)
         }
-        smoothScrollTo(target.toFloat(), velocityX)
         isBeingDragged = false
     }
 
@@ -232,45 +330,16 @@ class FelicityPager @JvmOverloads constructor(
         advanceAnimation(frameTimeNanos / 1_000_000L)
     }
 
-    // Physics animation flags
-    private var physicsMode = false
-    private var physicsInitialVelocityPagesPerMs = 0f
-
-    private fun smoothScrollTo(target: Float, velocityX: Float? = null) {
+    private fun smoothScrollTo(target: Float, durationOverrideMs: Long?, fromUser: Boolean) {
         val start = scrollOffset
+        animFromUser = fromUser
         if (start == target) {
-            dispatchPageSelected(target.toInt())
+            dispatchPageSelected(target.toInt(), fromUser)
             dispatchOnScrollStateChanged(SCROLL_STATE_IDLE)
             return
         }
         dispatchOnScrollStateChanged(SCROLL_STATE_SETTLING)
-        val distancePages = abs(target - start).coerceAtLeast(0.000001f)
-        physicsMode = false
-        val widthPx = width.takeIf { it > 0 } ?: 1
-        if (velocityX != null && abs(velocityX) > minFlingVelocity) {
-            val vPagesPerMs = (abs(velocityX) / widthPx) / 1000f // pages per ms
-            if (vPagesPerMs > 0f) {
-                var durationCalc = (2f * distancePages / vPagesPerMs) // from s = 0.5*v*t => t=2s/v
-                durationCalc = durationCalc.coerceIn(180f, 900f)
-                physicsMode = true
-                physicsInitialVelocityPagesPerMs = vPagesPerMs
-                animDuration = durationCalc.toLong()
-            }
-        }
-        if (!physicsMode) {
-            // Fallback interpolated duration
-            val basePerPage = 520f
-            var duration = basePerPage * kotlin.math.sqrt(distancePages)
-            velocityX?.let { v ->
-                val absV = abs(v)
-                if (absV > 0f) {
-                    val norm = (absV / 6000f).coerceAtMost(1.5f)
-                    duration *= (1f - 0.55f * (norm / 1.5f))
-                }
-            }
-            duration = duration.coerceIn(260f, 840f)
-            animDuration = duration.toLong()
-        }
+        animDuration = (durationOverrideMs ?: animationDurationMs).coerceAtLeast(0L)
         animFrom = start
         animTo = target
         animStartTime = SystemClock.uptimeMillis()
@@ -288,16 +357,9 @@ class FelicityPager @JvmOverloads constructor(
     private fun advanceAnimation(nowMs: Long) {
         if (!animating) return
         val elapsed = (nowMs - animStartTime).coerceAtLeast(0L)
-        val tRaw = (elapsed.toFloat() / animDuration).coerceIn(0f, 1f)
-        val fraction = if (physicsMode) {
-            // s(t) = v*t - 0.5*a*t^2 with a = v / duration => s = v*t - 0.5*(v/dur)*t^2
-            // Normalize by total distance S = v*dur - 0.5*v*dur = 0.5*v*dur
-            // So normalized fraction f = (v*t - 0.5*(v/dur)*t^2)/(0.5*v*dur) = 2*(t/dur) - (t/dur)^2
-            val x = tRaw
-            2f * x - x * x // smooth concave ease-out starting with initial velocity
-        } else {
-            easeInOutCubic(tRaw)
-        }
+        val tRaw = if (animDuration > 0L) (elapsed.toFloat() / animDuration).coerceIn(0f, 1f) else 1f
+        // Decelerate towards the end for fling feel
+        val fraction = easeOutCubic(tRaw)
         scrollOffset = animFrom + (animTo - animFrom) * fraction
         renderer.setScrollOffset(scrollOffset)
         dispatchOnPageScrolled()
@@ -309,18 +371,17 @@ class FelicityPager @JvmOverloads constructor(
             scrollOffset = animTo
             renderer.setScrollOffset(scrollOffset)
             dispatchOnPageScrolled()
-            dispatchPageSelected(scrollOffset.toInt())
+            dispatchPageSelected(scrollOffset.toInt(), animFromUser)
             dispatchOnScrollStateChanged(SCROLL_STATE_IDLE)
             requestRender()
         }
     }
 
-    // Replace easeOutQuint with smoother easeInOutCubic for gentler start + soft end
-    private fun easeInOutCubic(t: Float): Float {
-        return if (t < 0.5f) 4f * t * t * t else 1f - (-2f * t + 2f).let { it * it * it } / 2f
+    private fun easeOutCubic(t: Float): Float {
+        val p = t - 1f
+        return p * p * p + 1f
     }
 
-    // Legacy run() no longer drives animation; kept to satisfy Runnable interface usage elsewhere
     override fun run() { /* no-op for frame driving now */
     }
 
@@ -338,6 +399,13 @@ class FelicityPager @JvmOverloads constructor(
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 if (!scroller.isFinished) scroller.abortAnimation()
+                // Cancel any in-flight animation so user drag takes over immediately
+                if (animating) {
+                    animating = false
+                    if (animPosted) choreographer.removeFrameCallback(frameCallback)
+                    animPosted = false
+                    dispatchOnScrollStateChanged(SCROLL_STATE_IDLE)
+                }
                 lastMotionX = event.x
                 dragStartOffset = scrollOffset
                 velocityTracker?.recycle()
@@ -347,7 +415,7 @@ class FelicityPager @JvmOverloads constructor(
             MotionEvent.ACTION_MOVE -> {
                 velocityTracker?.addMovement(event)
                 val dx = event.x - lastMotionX
-                if (!isBeingDragged && abs(dx) > touchSlop * 0.6f) { // slightly easier to start drag
+                if (!isBeingDragged && abs(dx) > touchSlop * 0.6f) {
                     isBeingDragged = true
                     dispatchOnScrollStateChanged(SCROLL_STATE_DRAGGING)
                     parent?.requestDisallowInterceptTouchEvent(true)
@@ -372,26 +440,33 @@ class FelicityPager @JvmOverloads constructor(
         return true
     }
 
-    override fun performClick(): Boolean {
-        return super.performClick()
-    }
+    override fun performClick(): Boolean = super.performClick()
 
     // ----- GestureDetector callbacks -----
     override fun onDown(e: MotionEvent): Boolean = true
     override fun onShowPress(e: MotionEvent) {}
     override fun onSingleTapUp(e: MotionEvent): Boolean {
-        performClick()
-        return true
+        performClick(); return true
     }
 
     override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean = false
     override fun onLongPress(e: MotionEvent) {}
     override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+        // Allow fling to advance multiple pages proportional to velocity
+        if (scrollState == SCROLL_STATE_DRAGGING) return false
         val widthPx = width.takeIf { it > 0 } ?: return false
-        val velocityPagesPerSec = velocityX / widthPx
-        var target = (scrollOffset - velocityPagesPerSec * 0.25f).roundToInt()
-        target = target.coerceIn(0, maxLastPage())
-        smoothScrollTo(target.toFloat(), velocityX)
+        val floor = scrollOffset.toInt().coerceIn(0, maxLastPage())
+        val ceil = (floor + 1).coerceAtMost(maxLastPage())
+        val vPagesPerSec = abs(velocityX) / widthPx
+        val windowSec = 0.40f
+        val pages = max(1, (vPagesPerSec * windowSec).roundToInt())
+        val dir = if (velocityX < 0) +1 else -1
+        val base = if (dir > 0) ceil else floor
+        val targetIdx = (base + (pages - 1) * dir).coerceIn(0, maxLastPage())
+        val distPages = abs(targetIdx - scrollOffset)
+        val durationMs = (if (vPagesPerSec > 0f) (distPages / vPagesPerSec) * 1000f * 0.95f else 420f)
+            .coerceIn(200f, 900f).toLong()
+        smoothScrollTo(targetIdx.toFloat(), durationOverrideMs = durationMs, fromUser = true)
         return true
     }
 
@@ -406,19 +481,16 @@ class FelicityPager @JvmOverloads constructor(
     }
 
     override fun setAlpha(alpha: Float) {
-        // Update pager alpha via renderer to avoid extra composition layer
         queueEvent { renderer.setPagerAlpha(alpha) }
     }
 
     // ----- View <-> Renderer interaction -----
     private inner class PagerRenderer : Renderer {
-        // Matrices
         private val proj = FloatArray(16)
         private val viewM = FloatArray(16)
         private val model = FloatArray(16)
         private val mvp = FloatArray(16)
 
-        // Geometry quad now full screen (NDC -1..1)
         private val quadVerts = floatArrayOf(
                 -1f, 1f, 0f,
                 -1f, -1f, 0f,
@@ -436,7 +508,6 @@ class FelicityPager @JvmOverloads constructor(
         private lateinit var tb: FloatBuffer
         private lateinit var ib: ShortBuffer
 
-        // Program
         private var program = 0
         private var aPos = 0
         private var aUV = 0
@@ -444,37 +515,26 @@ class FelicityPager @JvmOverloads constructor(
         private var uTex = 0
         private var uAlpha = 0
 
-        // Textures & decode
-        private val textures = ConcurrentHashMap<Long, Int>() // id -> tex
+        private val textures = ConcurrentHashMap<Long, Int>()
         private val positionToId = ConcurrentHashMap<Int, Long>()
         private val inFlight = ConcurrentHashMap<Int, Boolean>()
         private val decodeExecutor = Executors.newFixedThreadPool(2)
         private val futures = ConcurrentHashMap<Int, Future<*>>()
 
-        // Radii
-        private var visibleRadius = 1 // one each side
+        private var visibleRadius = 1
         private var keepRadius = 2
 
-        // Scroll offset copy used in GL thread
         @Volatile
         private var glScrollOffset = 0f
-
-        // Track surface size for aspect-crop
         private var surfaceWidth = 0
         private var surfaceHeight = 0
 
-        // Global alpha (0..1) multiplied onto every rendered page via shader uniform.
-        // Does NOT rely on View layer alpha, so fading does not incur an additional composition layer.
         @Volatile
         private var globalAlpha: Float = 1f
         fun setGlobalAlpha(a: Float) {
             globalAlpha = a.coerceIn(0f, 1f)
         }
 
-        /**
-         * Sets the pager content alpha (0f..1f). This multiplies each fragment's sampled alpha.
-         * Avoids using View-layer alpha (which would add an extra composition layer for SurfaceView).
-         */
         fun setPagerAlpha(alpha: Float) {
             val a = alpha.coerceIn(0f, 1f)
             if (a == globalAlpha) return
@@ -483,9 +543,7 @@ class FelicityPager @JvmOverloads constructor(
             requestRender()
         }
 
-        /** Returns current pager content alpha (0..1). */
         fun getPagerAlpha(): Float = globalAlpha
-
         fun setScrollOffset(offset: Float) {
             glScrollOffset = offset
         }
@@ -500,15 +558,13 @@ class FelicityPager @JvmOverloads constructor(
         }
 
         fun release() {
-            futures.values.forEach { it.cancel(true) }
-            decodeExecutor.shutdownNow()
+            futures.values.forEach { it.cancel(true) }; decodeExecutor.shutdownNow()
         }
 
         override fun onSurfaceCreated(unused: javax.microedition.khronos.opengles.GL10?, config: javax.microedition.khronos.egl.EGLConfig?) {
             GLES20.glClearColor(0f, 0f, 0f, 1f)
             GLES20.glEnable(GLES20.GL_BLEND)
             GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
-            // Buffers
             vb = ByteBuffer.allocateDirect(quadVerts.size * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().apply { put(quadVerts); position(0) }
             tb = ByteBuffer.allocateDirect(quadUV.size * 4).order(ByteOrder.nativeOrder()).asFloatBuffer().apply { put(quadUV); position(0) }
             ib = ByteBuffer.allocateDirect(quadInd.size * 2).order(ByteOrder.nativeOrder()).asShortBuffer().apply { put(quadInd); position(0) }
@@ -520,7 +576,6 @@ class FelicityPager @JvmOverloads constructor(
             GLES20.glViewport(0, 0, width, height)
             surfaceWidth = width
             surfaceHeight = height
-            // Use orthographic projection for simple 2D full-screen pages
             Matrix.orthoM(proj, 0, -1f, 1f, -1f, 1f, -2f, 2f)
         }
 
@@ -553,7 +608,6 @@ class FelicityPager @JvmOverloads constructor(
                     gl_Position = uMVP * vec4(aPos, 1.0);
                 }
             """
-
             val fs = """
                 precision mediump float;
                 varying vec2 vUV;
@@ -583,7 +637,6 @@ class FelicityPager @JvmOverloads constructor(
             val id = adapter?.getItemId(position) ?: position.toLong()
             val tex = textures[id] ?: return
             Matrix.setIdentityM(model, 0)
-            // Translate horizontally in NDC. Each page spans width=2.
             Matrix.translateM(model, 0, -offsetFromPage * 2f, 0f, 0f)
             Matrix.multiplyMM(mvp, 0, viewM, 0, model, 0)
             Matrix.multiplyMM(mvp, 0, proj, 0, mvp, 0)
@@ -630,7 +683,6 @@ class FelicityPager @JvmOverloads constructor(
             if (textures.containsKey(id)) return
             val ad = adapter ?: return
             inFlight[position] = true
-            // snapshot desired aspect based on current view size
             val targetAspect = if (surfaceWidth > 0 && surfaceHeight > 0) surfaceWidth.toFloat() / surfaceHeight else this@FelicityPager.width.takeIf { it > 0 }?.let { w ->
                 this@FelicityPager.height.takeIf { it > 0 }?.let { h -> w.toFloat() / h }
             } ?: 1f
@@ -646,7 +698,6 @@ class FelicityPager @JvmOverloads constructor(
                         val texId = createTexture(processed)
                         textures[id] = texId
                         positionToId[position] = id
-                        // Trigger a new frame so freshly loaded texture becomes visible immediately
                         requestRender()
                     }
                 }
@@ -682,11 +733,11 @@ class FelicityPager @JvmOverloads constructor(
             val bmpAspect = w.toFloat() / h
             return if (abs(bmpAspect - targetAspect) < 0.01f) {
                 src
-            } else if (bmpAspect > targetAspect) { // too wide, crop width
+            } else if (bmpAspect > targetAspect) {
                 val newW = (h * targetAspect).roundToInt().coerceAtLeast(1)
                 val x = ((w - newW) / 2f).roundToInt().coerceAtLeast(0)
                 Bitmap.createBitmap(src, x, 0, min(newW, w - x), h)
-            } else { // too tall, crop height
+            } else {
                 val newH = (w / targetAspect).roundToInt().coerceAtLeast(1)
                 val y = ((h - newH) / 2f).roundToInt().coerceAtLeast(0)
                 Bitmap.createBitmap(src, 0, y, w, min(newH, h - y))
