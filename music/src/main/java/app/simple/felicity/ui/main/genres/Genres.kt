@@ -10,7 +10,6 @@ import android.widget.ImageView
 import androidx.core.view.forEach
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.GridLayoutManager
-import androidx.transition.TransitionManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.genres.AdapterGenres
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
@@ -147,7 +146,8 @@ class Genres : ScopedFragment() {
                         Glide.with(it).clear(it)
                     }
                 }
-                TransitionManager.beginDelayedTransition(binding.recyclerView)
+
+                binding.recyclerView.beginDelayedTransition()
                 gridLayoutManager.spanCount = GenresPreferences.getGridSize()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }

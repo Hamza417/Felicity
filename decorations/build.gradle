@@ -22,4 +22,6 @@ dependencies {
     api 'com.google.android.flexbox:flexbox:3.0.0'
     implementation 'com.github.duanhong169:drawabletoolbox:1.0.7'
     api 'com.github.smarteist:Android-Image-Slider:1.4.0'
+
+    implementation 'com.google.android.material:material:1.12.0'
 }
