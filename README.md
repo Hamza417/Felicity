@@ -11,7 +11,8 @@ development process.
 I am taking my time developing it because I want it to exceed my own expectations and by that I mean
 the quality of the software. I hope you are patient enough until the first few results :)
 
-The project will be developed under the codename Felicity, the final name maybe updated in the future.
+The project will be developed under the codename Felicity, the final name maybe updated in the
+future.
 
 ## Update
 
@@ -33,6 +34,7 @@ hopefully finish working on it before the end of this week
 20 Aug 2025: The UI components are almost done, I have also almost finished main design of the app.
 
 ## Screenshots
+
 Last Updated: 20 Aug 2025
 
 |                          |                          |                          |
@@ -40,7 +42,7 @@ Last Updated: 20 Aug 2025
 | ![](/screenshots/01.png) | ![](/screenshots/02.png) | ![](/screenshots/03.png) |
 | ![](/screenshots/04.png) | ![](/screenshots/05.png) | ![](/screenshots/06.png) |
 | ![](/screenshots/07.png) | ![](/screenshots/08.png) | ![](/screenshots/11.png) |
-| ![](/screenshots/12.png) |                          |                          |
+| ![](/screenshots/12.png) | ![](/screenshots/13.png) |                          |
 
 |                          |
 |--------------------------|
