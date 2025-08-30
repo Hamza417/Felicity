@@ -15,7 +15,7 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
-import app.simple.felicity.ui.app.CoverFlow
+import app.simple.felicity.ui.app.ArtFlow
 import app.simple.felicity.ui.main.albums.AlbumPage
 import app.simple.felicity.ui.main.albums.PeristyleAlbums
 import app.simple.felicity.ui.main.artists.ArtistPage
@@ -78,7 +78,7 @@ class CarouselHome : MediaFragment() {
                         when (data[position].items[0]) {
                             is Song -> {
                                 // openFragment(ArtFlowRv.newInstance(), ArtFlowRv.TAG)
-                                openFragment(CoverFlow.newInstance(), CoverFlow.TAG)
+                                openFragment(ArtFlow.newInstance(), ArtFlow.TAG)
                             }
                             is Genre -> {
                                 openFragment(Genres.newInstance(), Genres.TAG)

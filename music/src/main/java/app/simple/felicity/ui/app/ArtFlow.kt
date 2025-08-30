@@ -23,7 +23,7 @@ import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 
-class CoverFlow : MediaFragment() {
+class ArtFlow : MediaFragment() {
 
     private lateinit var binding: FragmentCoverflowBinding
     private val songsViewModel: SongsViewModel by viewModels({ requireActivity() })
@@ -36,6 +36,7 @@ class CoverFlow : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         requireLightBarIcons()
+        requireHiddenMiniPlayer()
 
         WindowUtil.getStatusBarHeightWhenAvailable(binding.topMenuContainer) { height ->
             binding.topMenuContainer.setPadding(
@@ -155,9 +156,9 @@ class CoverFlow : MediaFragment() {
     }
 
     companion object {
-        fun newInstance(): CoverFlow {
+        fun newInstance(): ArtFlow {
             val args = Bundle()
-            val fragment = CoverFlow()
+            val fragment = ArtFlow()
             fragment.arguments = args
             return fragment
         }

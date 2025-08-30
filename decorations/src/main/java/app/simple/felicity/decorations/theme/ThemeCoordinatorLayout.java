@@ -8,7 +8,6 @@ import android.util.AttributeSet;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
-
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.themes.Theme;
@@ -33,8 +32,10 @@ public class ThemeCoordinatorLayout extends CoordinatorLayout implements ThemeCh
     }
     
     private void init() {
-        setBackgroundColor(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getBackgroundColor());
-        setBackground(false);
+        if (!isInEditMode()) {
+            setBackgroundColor(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getBackgroundColor());
+            setBackground(false);
+        }
     }
     
     @Override

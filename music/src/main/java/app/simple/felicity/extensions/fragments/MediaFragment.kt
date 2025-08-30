@@ -3,7 +3,10 @@ package app.simple.felicity.extensions.fragments
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.database.instances.LastSongDatabase
 import app.simple.felicity.repository.database.instances.SongStatDatabase
@@ -15,6 +18,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 open class MediaFragment : ScopedFragment() {
+
+    private val miniPlayerCallbacks: MiniPlayerCallbacks?
+        get() = requireActivity() as? MiniPlayerCallbacks
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -80,6 +86,20 @@ open class MediaFragment : ScopedFragment() {
                 songStatDao.updateSongStat(existingStat.copy(playCount = existingStat.playCount + 1))
             }
         }
+    }
+
+    protected fun requireHiddenMiniPlayer() {
+        viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) {
+                super.onStart(owner)
+                miniPlayerCallbacks?.onHideMiniPlayer()
+            }
+
+            override fun onPause(owner: LifecycleOwner) {
+                super.onPause(owner)
+                miniPlayerCallbacks?.onShowMiniPlayer()
+            }
+        })
     }
 
     open fun onPlaybackStateChanged(state: Int) {

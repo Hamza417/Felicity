@@ -20,7 +20,7 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
-import app.simple.felicity.ui.app.CoverFlow
+import app.simple.felicity.ui.app.ArtFlow
 import app.simple.felicity.ui.main.albums.PeristyleAlbums
 import app.simple.felicity.ui.main.artists.PeristyleArtists
 import app.simple.felicity.ui.main.genres.GenrePage
@@ -65,7 +65,7 @@ class ArtFlowHome : MediaFragment() {
             Log.d(TAG, "Sidebar item clicked with id: $id")
             when (id) {
                 decorationR.drawable.ic_song -> {
-                    openFragment(CoverFlow.newInstance(), CoverFlow.TAG)
+                    openFragment(ArtFlow.newInstance(), ArtFlow.TAG)
                 }
                 decorationR.drawable.ic_artist -> {
                     openFragment(PeristyleArtists.newInstance(), PeristyleArtists.TAG)
@@ -117,7 +117,7 @@ class ArtFlowHome : MediaFragment() {
                     Log.d(TAG, "Panel item clicked with title: $title")
                     when (title) {
                         R.string.songs -> {
-                            openFragment(CoverFlow.newInstance(), CoverFlow.TAG)
+                            openFragment(ArtFlow.newInstance(), ArtFlow.TAG)
                         }
                         R.string.artists -> {
                             openFragment(PeristyleArtists.newInstance(), PeristyleArtists.TAG)

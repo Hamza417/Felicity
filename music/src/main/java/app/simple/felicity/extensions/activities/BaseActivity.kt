@@ -25,6 +25,7 @@ import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.database.instances.LastSongDatabase
 import app.simple.felicity.repository.managers.MediaManager
+import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.accents.Felicity
 import app.simple.felicity.theme.data.MaterialYou.presetMaterialYouDynamicColors
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
@@ -65,6 +66,35 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         enableNotchArea()
         makeAppFullScreen()
         initTheme()
+
+        lifecycleScope.launch {
+            MediaManager.songSeekPositionFlow.collect { position ->
+                PlayerPreferences.setLastSongSeek(position)
+                onSeekChanged(position)
+            }
+        }
+
+        lifecycleScope.launch {
+            MediaManager.songPositionFlow.collect { position ->
+                PlayerPreferences.setLastSongPosition(position)
+                MediaManager.getCurrentSong()?.let { song ->
+                    onSong(song)
+                }
+                onPositionChanged(position)
+            }
+        }
+
+        lifecycleScope.launch {
+            MediaManager.songListFlow.collect { songs ->
+                onSongs(songs)
+            }
+        }
+
+        lifecycleScope.launch {
+            MediaManager.playbackStateFlow.collect { state ->
+                onPlaybackStateChanged(state)
+            }
+        }
     }
 
     private fun initMediaController() {
@@ -97,6 +127,8 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                             songs = lastSongs,
                             position = PlayerPreferences.getLastSongPosition())
                     MediaManager.seekTo(PlayerPreferences.getLastSongSeek())
+
+                    onSongs(lastSongs)
                 }
             } else {
                 Log.d(TAG, "No last songs found in the database")
@@ -187,6 +219,12 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
             }
         }
     }
+
+    open fun onSongs(songs: List<Song>) {}
+    open fun onSong(song: Song) {}
+    open fun onPositionChanged(position: Int) {}
+    open fun onSeekChanged(position: Long) {}
+    open fun onPlaybackStateChanged(state: Int) {}
 
     companion object {
         const val TAG = "BaseActivity"
