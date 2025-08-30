@@ -2,6 +2,7 @@ package app.simple.felicity.adapters.ui.lists.genres
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterGenresBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -36,8 +37,8 @@ class AdapterGenres(private val list: List<Genre>) : androidx.recyclerview.widge
 
     inner class Holder(private val binding: AdapterGenresBinding) : VerticalListViewHolder(binding.root) {
         fun bind(genre: Genre) {
-            binding.name.text = genre.name
-            binding.cover.loadGenreCover(genre)
+            binding.name.text = genre.name ?: context.getString(R.string.unknown)
+            binding.cover.loadGenreCover(genre, skipCache = true)
 
             binding.container.setOnClickListener {
                 callbacks?.onGenreClicked(genre, it)

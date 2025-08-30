@@ -6,7 +6,6 @@ import app.simple.felicity.manager.SharedPreferences
 object GenresPreferences {
 
     const val GRID_SIZE = "genres_grid_size"
-    const val GRID_SPACING = "genres_grid_spacing"
     const val SHOW_GENRE_COVERS = "show_genre_covers"
 
     // -------------------------------------------------------------------------------------------- //
@@ -26,5 +25,15 @@ object GenresPreferences {
 
     fun setGridSize(size: Int) {
         SharedPreferences.getSharedPreferences().edit { putInt(GRID_SIZE, size) }
+    }
+
+    // -------------------------------------------------------------------------------------------- //
+
+    fun isGenreCoversEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(SHOW_GENRE_COVERS, true)
+    }
+
+    fun setGenreCoversEnabled(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(SHOW_GENRE_COVERS, enabled) }
     }
 }

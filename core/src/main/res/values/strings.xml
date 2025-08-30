@@ -33,6 +33,7 @@
     <string name="x_albums">%1$d Albums</string>
     <string name="x_songs">%1$d Songs</string>
     <string name="x_artists">%1$d Artists</string>
+    <string name="x_genres">%1$d Genres</string>
     <string name="no_songs">No Songs</string>
     <string name="albums_in_genre">Albums in %1$s</string>
     <string name="artists_in_genre">Artists in %1$s</string>
@@ -114,4 +115,5 @@
     <string name="effects">Effects</string>
     <string name="shadow_effect">Shadow Effect</string>
     <string name="font">Font</string>
+    <string name="show_genre_cover">Show Genre Cover</string>
 </resources>

@@ -25,6 +25,7 @@ class DialogGenreMenu : ScopedBottomSheetFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         setGridSizeValue()
+        binding.genreCover.isChecked = GenresPreferences.isGenreCoversEnabled()
 
         binding.gridSize.setOnClickListener { it ->
             PopupGenreGridSizeMenu(
@@ -59,6 +60,10 @@ class DialogGenreMenu : ScopedBottomSheetFragment() {
                     }
             ).show()
         }
+
+        binding.genreCover.setOnCheckedChangeListener { switch, bool ->
+            GenresPreferences.setGenreCoversEnabled(bool)
+        }
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
@@ -66,9 +71,6 @@ class DialogGenreMenu : ScopedBottomSheetFragment() {
         when (key) {
             GenresPreferences.GRID_SIZE -> {
                 setGridSizeValue()
-            }
-            GenresPreferences.GRID_SPACING -> {
-                // Handle grid spacing change if needed
             }
             GenresPreferences.SHOW_GENRE_COVERS -> {
                 // Handle show genre covers change if needed

@@ -17,7 +17,7 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentGenresBinding
 import app.simple.felicity.databinding.HeaderGenresBinding
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
-import app.simple.felicity.decorations.itemdecorations.GridSpacingItemDecoration
+import app.simple.felicity.decorations.utils.RecyclerViewUtils.clearDecorations
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.genres.DialogGenreMenu.Companion.showGenreMenu
 import app.simple.felicity.extensions.fragments.ScopedFragment
@@ -34,6 +34,7 @@ class Genres : ScopedFragment() {
     private lateinit var headerBinding: HeaderGenresBinding
 
     private lateinit var gridLayoutManager: GridLayoutManager
+    private lateinit var adapterGenres: AdapterGenres
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
 
@@ -52,22 +53,19 @@ class Genres : ScopedFragment() {
 
         genresViewModel.getGenresData().observe(viewLifecycleOwner) { genres ->
             Log.d(TAG, "onViewCreated: Genres: ${genres.size}")
-            val adapter = AdapterGenres(genres)
-            adapter.setHasStableIds(true)
+            adapterGenres = AdapterGenres(genres)
+            adapterGenres.setHasStableIds(true)
 
             gridLayoutManager = GridLayoutManager(requireContext(), GenresPreferences.getGridSize())
             binding.recyclerView.layoutManager = gridLayoutManager
 
-            binding.recyclerView.addItemDecoration(GridSpacingItemDecoration(
-                    gridLayoutManager.spanCount,
-                    resources.getDimensionPixelOffset(R.dimen.padding_15),
-                    resources.getDimensionPixelOffset(R.dimen.padding_15),
-                    true,
-                    0))
-            binding.recyclerView.setHasFixedSize(true)
-            binding.recyclerView.adapter = adapter
+            binding.recyclerView.clearDecorations()
 
-            adapter.setCallbackListener(object : GeneralAdapterCallbacks {
+
+            binding.recyclerView.setHasFixedSize(true)
+            binding.recyclerView.adapter = adapterGenres
+
+            adapterGenres.setCallbackListener(object : GeneralAdapterCallbacks {
                 override fun onMenuClicked(view: View) {
                     childFragmentManager.showGenreMenu()
                 }
@@ -77,6 +75,8 @@ class Genres : ScopedFragment() {
                     openFragment(GenrePage.newInstance(genre), GenrePage.TAG)
                 }
             })
+
+            headerBinding.count.text = getString(R.string.x_genres, genres.size)
 
             headerBinding.menu.setOnClickListener {
                 childFragmentManager.showGenreMenu()
@@ -100,8 +100,8 @@ class Genres : ScopedFragment() {
                 gridLayoutManager.spanCount = GenresPreferences.getGridSize()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
-            GenresPreferences.GRID_SPACING -> {
-
+            GenresPreferences.SHOW_GENRE_COVERS -> {
+                adapterGenres.notifyDataSetChanged()
             }
         }
     }
