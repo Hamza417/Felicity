@@ -11,6 +11,8 @@ development process.
 I am taking my time developing it because I want it to exceed my own expectations and by that I mean
 the quality of the software. I hope you are patient enough until the first few results :)
 
+The project will be developed under the codename Felicity, the final name maybe updated in the future.
+
 ## Update
 
 10 Jan 2025: I have managed to make the file processing insanely fast and solved the file reading
