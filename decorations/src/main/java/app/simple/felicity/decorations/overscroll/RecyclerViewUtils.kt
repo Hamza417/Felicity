@@ -8,6 +8,7 @@ object RecyclerViewUtils {
 
     const val TYPE_HEADER = 0
     const val TYPE_ITEM = 1
+    const val TYPE_ITEM_CARD = 3
     const val TYPE_DIVIDER = 2
 
     private fun RecyclerView.smoothScrollToCenteredPosition(position: Int) {

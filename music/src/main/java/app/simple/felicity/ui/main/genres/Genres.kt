@@ -14,6 +14,7 @@ import androidx.transition.TransitionManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.genres.AdapterGenres
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
+import app.simple.felicity.core.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.databinding.FragmentGenresBinding
 import app.simple.felicity.databinding.HeaderGenresBinding
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
@@ -21,6 +22,7 @@ import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.genres.DialogGenreMenu.Companion.showGenreMenu
 import app.simple.felicity.dialogs.genres.DialogGenreSort.Companion.showGenresSortDialog
 import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.popups.genres.PopupGenreGridSizeMenu
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.viewmodels.main.genres.GenresViewModel
@@ -97,6 +99,39 @@ class Genres : ScopedFragment() {
                 childFragmentManager.showGenresSortDialog()
             }
 
+            setGridSizeValue()
+            headerBinding.gridSize.setOnClickListener { button ->
+                PopupGenreGridSizeMenu(
+                        container = requireContainerView(),
+                        anchorView = button,
+                        menuItems = listOf(R.string.one,
+                                           R.string.two,
+                                           R.string.three,
+                                           R.string.four,
+                                           R.string.five,
+                                           R.string.six),
+                        menuIcons = listOf(R.drawable.ic_one_16,
+                                           R.drawable.ic_two_16dp,
+                                           R.drawable.ic_three_16dp,
+                                           R.drawable.ic_four_16dp,
+                                           R.drawable.ic_five_16dp,
+                                           R.drawable.ic_six_16dp),
+                        onMenuItemClick = {
+                            when (it) {
+                                R.string.one -> GenresPreferences.setGridSize(GenresPreferences.GRID_SIZE_ONE)
+                                R.string.two -> GenresPreferences.setGridSize(GenresPreferences.GRID_SIZE_TWO)
+                                R.string.three -> GenresPreferences.setGridSize(GenresPreferences.GRID_SIZE_THREE)
+                                R.string.four -> GenresPreferences.setGridSize(GenresPreferences.GRID_SIZE_FOUR)
+                                R.string.five -> GenresPreferences.setGridSize(GenresPreferences.GRID_SIZE_FIVE)
+                                R.string.six -> GenresPreferences.setGridSize(GenresPreferences.GRID_SIZE_SIX)
+                            }
+                        },
+                        onDismiss = {
+
+                        }
+                ).show()
+            }
+
             view.startTransitionOnPreDraw()
         }
     }
@@ -105,6 +140,7 @@ class Genres : ScopedFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             GenresPreferences.GRID_SIZE -> {
+                setGridSizeValue()
                 Log.d(TAG, "onSharedPreferenceChanged: Grid Size Changed")
                 binding.recyclerView.forEach {
                     if (it is ImageView) {
@@ -117,6 +153,41 @@ class Genres : ScopedFragment() {
             }
             GenresPreferences.SHOW_GENRE_COVERS -> {
                 adapterGenres.notifyDataSetChanged()
+            }
+        }
+    }
+
+    private fun setGridSizeValue() {
+        // Set the grid size value based on user preferences
+        val gridSize = GenresPreferences.getGridSize()
+        when (gridSize) {
+            GenresPreferences.GRID_SIZE_ONE -> {
+                headerBinding.gridSize.text = getString(R.string.one)
+                headerBinding.gridSize.setStartDrawable(R.drawable.ic_one_16)
+            }
+            GenresPreferences.GRID_SIZE_TWO -> {
+                headerBinding.gridSize.text = getString(R.string.two)
+                headerBinding.gridSize.setStartDrawable(R.drawable.ic_two_16dp)
+            }
+            GenresPreferences.GRID_SIZE_THREE -> {
+                headerBinding.gridSize.text = getString(R.string.three)
+                headerBinding.gridSize.setStartDrawable(R.drawable.ic_three_16dp)
+            }
+            GenresPreferences.GRID_SIZE_FOUR -> {
+                headerBinding.gridSize.text = getString(R.string.four)
+                headerBinding.gridSize.setStartDrawable(R.drawable.ic_four_16dp)
+            }
+            GenresPreferences.GRID_SIZE_FIVE -> {
+                headerBinding.gridSize.text = getString(R.string.five)
+                headerBinding.gridSize.setStartDrawable(R.drawable.ic_five_16dp)
+            }
+            GenresPreferences.GRID_SIZE_SIX -> {
+                headerBinding.gridSize.text = getString(R.string.six)
+                headerBinding.gridSize.setStartDrawable(R.drawable.ic_six_16dp)
+            }
+            else -> {
+                headerBinding.gridSize.text = getString(R.string.two) // Default to two columns
+                headerBinding.gridSize.setStartDrawable(R.drawable.ic_two_16dp)
             }
         }
     }
