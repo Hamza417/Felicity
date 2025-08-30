@@ -103,6 +103,8 @@ class ArtFlow @JvmOverloads constructor(
                 if (tapped != null) {
                     val centered = renderer.centeredIndex()
                     if (tapped == centered) {
+                        // trigger ripple on center tap
+                        queueEvent { renderer.triggerRipple(tapped) }
                         coverClickListener?.onCenteredCoverClick(tapped, renderer.getUriAt(tapped))
                     } else {
                         queueEvent { renderer.scrollToIndex(tapped, smooth = true) }
@@ -149,6 +151,12 @@ class ArtFlow @JvmOverloads constructor(
 
     fun snapToNearest() {
         queueEvent { renderer.snapToNearest() }
+        requestRender()
+    }
+
+    // Manually trigger a ripple from a specific origin index; defaults to current center
+    fun triggerRipple(originIndex: Int? = null) {
+        queueEvent { renderer.triggerRipple(originIndex ?: renderer.centeredIndex()) }
         requestRender()
     }
 

@@ -22,6 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
+import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.exp
@@ -29,6 +30,7 @@ import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 class ArtFlowRenderer(
         private val glView: GLSurfaceView,
@@ -128,6 +130,21 @@ class ArtFlowRenderer(
     private var reflectionGap = 0.05f          // vertical gap below main cover (in scaled quad units)
     private val reflectionScale = 0.65f        // relative height of reflection
     private val reflectionStrength = 0.55f     // max brightness/alpha of reflection
+
+    // Ripple animation state & parameters
+    @Volatile
+    private var rippleActive = false
+    @Volatile
+    private var rippleOriginIndex = 0
+    @Volatile
+    private var rippleStartNanos = 0L
+    @Volatile
+    private var rippleElapsedSec = 0f
+    @Volatile
+    private var rippleTotalDuration = 0f
+    private var rippleAmplitude = -0.05f        // +10% scale pulse
+    private var ripplePulseDuration = 0.32f    // seconds per item pulse
+    private var rippleSpeed = 8f              // items per second (propagation speed)
 
     // Texture management
     private val targetMaxDim = 512 // px max dimension for covers
@@ -312,7 +329,8 @@ class ArtFlowRenderer(
         val rotEase = smoothstep(0f, 0.18f, absOff)
         val depthFactor = if (depthParallaxEnabled) -absOff * zSpread * rotEase else 0f
         val sideFactor = (1f - (1f - sideScale) * min(1f, absOff))
-        val scale = currentBaseScale * sideFactor
+        val rippleMul = if (rippleActive) rippleScaleAtIndex(index, rippleElapsedSec) else 1f
+        val scale = currentBaseScale * sideFactor * rippleMul
         val brightness = globalAlpha // apply global alpha as brightness multiplier
 
         Matrix.setIdentityM(model, 0)
@@ -628,7 +646,7 @@ class ArtFlowRenderer(
 
     private fun notifyScrollChanged(force: Boolean = false) {
         val off = scrollOffset
-        if (force || off.isNaN().not() && (lastNotifiedOffset.isNaN() || kotlin.math.abs(off - lastNotifiedOffset) > 0.0005f)) {
+        if (force || off.isNaN().not() && (lastNotifiedOffset.isNaN() || abs(off - lastNotifiedOffset) > 0.0005f)) {
             lastNotifiedOffset = off
             mainHandler.post {
                 for (l in scrollListeners) l.onScrollOffsetChanged(off)
@@ -655,6 +673,40 @@ class ArtFlowRenderer(
         }
     }
 
+    // Start a ripple from the current centered item (or a provided origin index)
+    fun triggerRipple(originIndex: Int = centeredIndex()) {
+        if (uris.isEmpty()) return
+        val last = uris.lastIndex
+        val origin = originIndex.coerceIn(0, last)
+        rippleOriginIndex = origin
+        rippleStartNanos = System.nanoTime()
+        rippleElapsedSec = 0f
+        val maxDist = max(origin, last - origin).toFloat()
+        rippleTotalDuration = maxDist / rippleSpeed + ripplePulseDuration
+        rippleActive = true
+        glView.requestRender()
+    }
+
+    // Optional helper to call from a tap: triggers ripple only if center item was tapped
+    fun onTap(x: Float, y: Float): Boolean {
+        val idx = if (verticalOrientation) pickIndexAtScreenY(y) else pickIndexAtScreenX(x)
+        return if (idx != null && idx == centeredIndex()) {
+            triggerRipple(idx)
+            true
+        } else false
+    }
+
+    // Computes per-item ripple scale multiplier at time t (seconds since ripple start)
+    private fun rippleScaleAtIndex(index: Int, t: Float): Float {
+        if (!rippleActive) return 1f
+        val d = abs(index - rippleOriginIndex).toFloat()
+        val tHit = d / rippleSpeed
+        val u = (t - tHit) / ripplePulseDuration
+        if (u <= 0f || u >= 1f) return 1f
+        val s = sin(PI.toFloat() * u) // 0..1..0
+        return 1f + rippleAmplitude * s
+    }
+
     // ----- GLSurfaceView.Renderer -----
     override fun onDrawFrame(unused: GL10?) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
@@ -666,9 +718,18 @@ class ArtFlowRenderer(
         if (lastFrameNanos == 0L) lastFrameNanos = now
         val dt = ((now - lastFrameNanos).coerceAtMost(100_000_000L)) / 1_000_000_000f
         lastFrameNanos = now
+
+        // advance ripple timeline
+        if (rippleActive) {
+            rippleElapsedSec = if (rippleStartNanos != 0L) ((now - rippleStartNanos) / 1_000_000_000f) else 0f
+            if (rippleElapsedSec >= rippleTotalDuration) {
+                rippleActive = false
+            }
+        }
+
         snapTarget?.let { target ->
             val delta = target - scrollOffset
-            val ad = kotlin.math.abs(delta)
+            val ad = abs(delta)
             if (ad < 0.00008f) {
                 scrollOffset = target
                 snapTarget = null
@@ -699,6 +760,9 @@ class ArtFlowRenderer(
             drawItem(i, tex, offset)
         }
         queueGL { recycleFarTexturesFloat(centerF) }
+
+        // keep drawing while the ripple is active
+        if (rippleActive) glView.requestRender()
     }
 
     private fun schedulePrefetch(centerF: Float) {
