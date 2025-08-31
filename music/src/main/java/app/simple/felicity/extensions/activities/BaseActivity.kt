@@ -12,13 +12,11 @@ import android.util.Log
 import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import androidx.palette.graphics.Palette
 import app.simple.felicity.core.constants.ThemeConstants
 import app.simple.felicity.engine.services.ExoPlayerService
 import app.simple.felicity.glide.songcover.SongCoverUtils.fetchBitmap
@@ -35,6 +33,7 @@ import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.managers.ThemeUtils
 import app.simple.felicity.theme.themes.Theme
+import app.simple.felicity.theme.tools.MonetPalette
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Dispatchers
@@ -113,23 +112,13 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         lifecycleScope.launch(Dispatchers.Default) {
             if (AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER) {
                 val song = MediaManager.getCurrentSong() ?: return@launch
-                val bitmap = song.fetchBitmap(applicationContext)
-                val palette = bitmap?.let { Palette.from(it).generate() } ?: return@launch
+                val bitmap = song.fetchBitmap(applicationContext)!!
                 val albumArtAccent = AlbumArt()
+                val monetAccents = MonetPalette(bitmap)
 
-                fun clampLuminance(color: Int, minLuminance: Float = 0.2f, maxLuminance: Float = 0.8f): Int {
-                    val hsl = FloatArray(3)
-                    ColorUtils.colorToHSL(color, hsl)
-                    hsl[2] = hsl[2].coerceIn(minLuminance, maxLuminance)
-                    return ColorUtils.HSLToColor(hsl)
-                }
+                albumArtAccent.primaryAccentColor = monetAccents.accent1_500
+                albumArtAccent.secondaryAccentColor = monetAccents.accent1_300
 
-                albumArtAccent.primaryAccentColor = clampLuminance(
-                        palette.getDominantColor(ThemeManager.accent.primaryAccentColor)
-                )
-                albumArtAccent.secondaryAccentColor = clampLuminance(
-                        palette.getMutedColor(ThemeManager.accent.secondaryAccentColor)
-                )
                 withContext(Dispatchers.Main) {
                     ThemeManager.accent = albumArtAccent
                     Log.d(TAG, "Album art palette generated: ${albumArtAccent.hexes}")
