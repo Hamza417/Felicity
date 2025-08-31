@@ -1,17 +1,20 @@
 package app.simple.felicity.decorations.artflow
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.GLUtils
 import android.opengl.Matrix
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.Size
+import app.simple.felicity.core.helpers.ImageHelper.toBitmap
+import app.simple.felicity.decoration.R
 import app.simple.felicity.preferences.CarouselPreferences
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -553,9 +556,19 @@ class ArtFlowRenderer(
 
     // ----- Bitmap decode helpers -----
     @Suppress("SameParameterValue")
-    @SuppressLint("NewApi")
-    private fun decodeScaled(uri: Uri, maxDim: Int): Bitmap? {
-        return context.contentResolver.loadThumbnail(uri, Size(maxDim, maxDim), null)
+    private fun decodeScaled(uri: Uri, maxDim: Int): Bitmap {
+        try {
+            return (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                context.contentResolver.loadThumbnail(uri, Size(maxDim, maxDim), null)
+            } else {
+                context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                    BitmapFactory.decodeFileDescriptor(pfd.fileDescriptor)
+                }
+            })!!
+        } catch (e: Exception) {
+            Log.w("ArtFlow", "Decode failed for $uri: ${e.message}")
+            return R.drawable.ic_felicity_full_art.toBitmap(context)
+        }
     }
 
     // ----- GL texture helpers (run on GL thread) -----

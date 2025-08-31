@@ -15,7 +15,9 @@ import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.Transformation
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
+import java.io.FileNotFoundException
 
 object SongCoverUtils {
     fun ImageView.loadSongCover(
@@ -89,10 +91,18 @@ object SongCoverUtils {
     }
 
     fun Song.fetchBitmap(context: Context): Bitmap? {
-        return Glide.with(context)
-            .asBitmap()
-            .load(this)
-            .submit()
-            .get()
+        try {
+            return Glide.with(context)
+                .asBitmap()
+                .load(this)
+                .submit()
+                .get()
+        } catch (e: FileNotFoundException) {
+            e.printStackTrace()
+            return null
+        } catch (e: GlideException) {
+            e.printStackTrace()
+            return null
+        }
     }
 }

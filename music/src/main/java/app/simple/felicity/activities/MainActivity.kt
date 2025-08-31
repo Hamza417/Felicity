@@ -80,7 +80,9 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         lifecycleScope.launch {
             MediaManager.songPositionFlow.collect { position ->
                 PlayerPreferences.setLastSongPosition(position)
-                miniPlayerBinding.pager.setCurrentItem(position, true)
+                if (miniPlayerBinding.pager.currentItem != position) {
+                    miniPlayerBinding.pager.setCurrentItem(position, true)
+                }
                 generateAlbumArtPalette()
             }
         }

@@ -39,6 +39,7 @@ import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.FileNotFoundException
 
 open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener, ThemeChangedListener {
 
@@ -111,17 +112,23 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     protected fun generateAlbumArtPalette() {
         lifecycleScope.launch(Dispatchers.Default) {
             if (AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER) {
-                val song = MediaManager.getCurrentSong() ?: return@launch
-                val bitmap = song.fetchBitmap(applicationContext)!!
-                val albumArtAccent = AlbumArt()
-                val monetAccents = MonetPalette(bitmap)
+                try {
+                    val song = MediaManager.getCurrentSong() ?: return@launch
+                    val bitmap = song.fetchBitmap(applicationContext) ?: return@launch
+                    val albumArtAccent = AlbumArt()
+                    val monetAccents = MonetPalette(bitmap)
 
-                albumArtAccent.primaryAccentColor = monetAccents.accent1_500
-                albumArtAccent.secondaryAccentColor = monetAccents.accent1_300
+                    albumArtAccent.primaryAccentColor = monetAccents.accent1_500
+                    albumArtAccent.secondaryAccentColor = monetAccents.accent1_300
 
-                withContext(Dispatchers.Main) {
-                    ThemeManager.accent = albumArtAccent
-                    Log.d(TAG, "Album art palette generated: ${albumArtAccent.hexes}")
+                    withContext(Dispatchers.Main) {
+                        ThemeManager.accent = albumArtAccent
+                        Log.d(TAG, "Album art palette generated: ${albumArtAccent.hexes}")
+                    }
+                } catch (e: NullPointerException) {
+                    e.printStackTrace()
+                } catch (e: FileNotFoundException) {
+                    e.printStackTrace()
                 }
             }
         }
