@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.miniplayer.AdapterMiniPlayer
+import app.simple.felicity.adapters.ui.miniplayer.AdapterMiniPlayer.Companion.MiniPlayerAdapterCallbacks
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.databinding.ActivityMainBinding
 import app.simple.felicity.databinding.MiniplayerBinding
@@ -23,6 +24,7 @@ import app.simple.felicity.ui.main.home.ArtFlowHome
 import app.simple.felicity.ui.main.home.CarouselHome
 import app.simple.felicity.ui.main.home.SimpleHome
 import app.simple.felicity.ui.main.home.SpannedHome
+import app.simple.felicity.ui.player.DefaultPlayer
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -90,6 +92,19 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                 } else {
                     miniPlayerBinding.pager.setCurrentItem(0, false)
                 }
+
+                adapterMiniPlayer.setCallbacks(object : MiniPlayerAdapterCallbacks {
+                    override fun onOpenPlayer() {
+                        supportFragmentManager.beginTransaction()
+                            .replace(R.id.app_container, DefaultPlayer.newInstance(), DefaultPlayer.TAG)
+                            .addToBackStack(DefaultPlayer.TAG)
+                            .commit()
+                    }
+
+                    override fun onOpenPopupPlayer() {
+
+                    }
+                })
             }
         }
 

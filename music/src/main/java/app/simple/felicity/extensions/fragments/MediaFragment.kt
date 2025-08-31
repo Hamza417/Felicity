@@ -98,7 +98,10 @@ open class MediaFragment : ScopedFragment() {
 
             override fun onPause(owner: LifecycleOwner) {
                 super.onPause(owner)
-                miniPlayerCallbacks?.onShowMiniPlayer()
+                // Don't force-show during configuration changes; preserve current state
+                if (requireActivity().isChangingConfigurations.not()) {
+                    miniPlayerCallbacks?.onShowMiniPlayer()
+                }
             }
         })
     }

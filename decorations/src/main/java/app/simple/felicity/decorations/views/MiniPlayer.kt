@@ -55,6 +55,9 @@ class MiniPlayer @JvmOverloads constructor(
     private var pendingRestoreTranslationY: Float? = null
     private var pendingRestoreFraction: Float? = null
 
+    // When true, ignore RecyclerView-driven updates until next IDLE
+    private var suppressAutoFromRecyclerUntilIdle: Boolean = false
+
     init {
         // Inflate base container layout (root is <merge/>)
         LayoutInflater.from(context).inflate(R.layout.miniplayer_view, this, true)
@@ -87,8 +90,52 @@ class MiniPlayer @JvmOverloads constructor(
     fun <T : ViewBinding> getContent(): T? = currentBinding as? T
 
     // region Hide/Show animation
-    fun show(animated: Boolean = true) = animateTranslationY(0f, animated)
-    fun hide(animated: Boolean = true) = animateTranslationY(hideDistance, animated)
+    fun show(animated: Boolean = true) {
+        // Ensure no conflicting animations
+        animate().cancel()
+        // Make this view visible in case it was set to GONE/INVISIBLE
+        isVisible = true
+        alpha = 1f
+        // Clear any pending restore so explicit command wins
+        pendingRestoreFraction = null
+        pendingRestoreTranslationY = null
+        // Prevent RecyclerView listeners from immediately overriding this explicit command
+        suppressAutoFromRecyclerUntilIdle = true
+        // Defer until laid out to get correct hideDistance
+        if (height == 0) {
+            addOnLayoutChangeListener(object : OnLayoutChangeListener {
+                override fun onLayoutChange(v: View?, left: Int, top: Int, right: Int, bottom: Int,
+                                            oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
+                    removeOnLayoutChangeListener(this)
+                    show(animated)
+                }
+            })
+            return
+        }
+        animateTranslationY(0f, animated)
+    }
+
+    fun hide(animated: Boolean = true) {
+        animate().cancel()
+        // Keep part of layout; we hide by translating, not by visibility
+        isVisible = true
+        pendingRestoreFraction = null
+        pendingRestoreTranslationY = null
+        // Prevent RecyclerView listeners from immediately overriding this explicit command
+        suppressAutoFromRecyclerUntilIdle = true
+        if (height == 0) {
+            addOnLayoutChangeListener(object : OnLayoutChangeListener {
+                override fun onLayoutChange(v: View?, left: Int, top: Int, right: Int, bottom: Int,
+                                            oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
+                    removeOnLayoutChangeListener(this)
+                    hide(animated)
+                }
+            })
+            return
+        }
+        animateTranslationY(hideDistance, animated)
+    }
+    // endregion
 
     @Suppress("unused")
     /** Public API for the attacher to move the view with scroll delta. */
@@ -106,17 +153,21 @@ class MiniPlayer @JvmOverloads constructor(
     private fun animateTranslationY(target: Float, animated: Boolean) {
         if (!animated) {
             translationY = target
+            // Allow RecyclerView-driven updates again after explicit movement completes
+            suppressAutoFromRecyclerUntilIdle = false
             return
         }
         animate().translationY(target)
             .setDuration(animDuration)
             .setInterpolator(animInterpolator)
+            .withEndAction { suppressAutoFromRecyclerUntilIdle = false }
             .start()
     }
 
     // Move the container incrementally with scroll delta and clamp within [0, hideDistance]
     private fun updateForScrollDelta(dy: Int) {
         if (height == 0) return // not laid out yet
+        if (suppressAutoFromRecyclerUntilIdle) return // honor explicit show/hide until idle
         // Cancel any ongoing animation for responsive drag-follow
         animate().cancel()
         val target = (translationY + dy).coerceIn(0f, hideDistance)
@@ -202,7 +253,6 @@ class MiniPlayer @JvmOverloads constructor(
         pendingRestoreFraction = null
         pendingRestoreTranslationY = null
     }
-    // endregion
 
     // region RecyclerView attach API (active)
     @Suppress("unused")
@@ -222,6 +272,11 @@ class MiniPlayer @JvmOverloads constructor(
 
             override fun onScrollStateChanged(rv: RecyclerView, newState: Int) {
                 super.onScrollStateChanged(rv, newState)
+                // Lift suppression only when user starts dragging; keep it during IDLE/SETTLING to let explicit show/hide complete
+                if (suppressAutoFromRecyclerUntilIdle && newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    suppressAutoFromRecyclerUntilIdle = false
+                }
+                if (suppressAutoFromRecyclerUntilIdle) return
                 when (newState) {
                     RecyclerView.SCROLL_STATE_IDLE -> {
                         // Preserve fully hidden/shown states; only snap if in-between
@@ -252,6 +307,8 @@ class MiniPlayer @JvmOverloads constructor(
         }
         recyclerView.addOnScrollListener(listener)
         attached[recyclerView] = listener
+        // Ensure we start responsive to scroll immediately on (re)attach
+        suppressAutoFromRecyclerUntilIdle = false
     }
 
     /** Detach from the given RecyclerViews. */
@@ -270,11 +327,17 @@ class MiniPlayer @JvmOverloads constructor(
         attached.forEach { (rv, listener) -> rv.removeOnScrollListener(listener) }
         attached.clear()
     }
-    // endregion
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // Ensure we don't carry suppression across fragment/activity transitions
+        suppressAutoFromRecyclerUntilIdle = false
+    }
 
     override fun onDetachedFromWindow() {
         detachFromAllRecyclerViews()
-
+        // Clear any suppression to avoid sticky state on reattach
+        suppressAutoFromRecyclerUntilIdle = false
         super.onDetachedFromWindow()
     }
 
@@ -300,5 +363,4 @@ class MiniPlayer @JvmOverloads constructor(
             override fun newArray(size: Int): Array<SavedState?> = arrayOfNulls(size)
         }
     }
-    // endregion
 }
