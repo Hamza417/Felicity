@@ -24,7 +24,10 @@ import app.simple.felicity.decoration.R
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.theme.models.Accent
+import app.simple.felicity.theme.themes.Theme
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -33,7 +36,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr), SharedPreferences.OnSharedPreferenceChangeListener {
+) : View(context, attrs, defStyleAttr), SharedPreferences.OnSharedPreferenceChangeListener, ThemeChangedListener {
 
     interface OnSeekChangeListener {
         fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean)
@@ -303,10 +306,12 @@ class FelicitySeekbar @JvmOverloads constructor(
             smudgeColor = progressColor
             thumbShadowColor = progressColor
             pressRingColor = progressColor
+            thumbShadowColor = progressColor
             defaultIndicatorColor = ThemeManager.accent.secondaryAccentColor
             setThumbCornerRadius(AppearancePreferences.getCornerRadius())
             // Ensure paints reflect theme-updated colors
             applyPaintColors()
+            setupSmudgeAndShadow()
         }
     }
 
@@ -704,6 +709,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         super.onAttachedToWindow()
         if (isInEditMode.not()) {
             registerSharedPreferenceChangeListener()
+            ThemeManager.addListener(this)
         }
     }
 
@@ -713,6 +719,16 @@ class FelicitySeekbar @JvmOverloads constructor(
         }
     }
 
+    override fun onThemeChanged(theme: Theme, animate: Boolean) {
+        super.onThemeChanged(theme, animate)
+        applyThemeProps()
+    }
+
+    override fun onAccentChanged(accent: Accent) {
+        super.onAccentChanged(accent)
+        applyThemeProps()
+    }
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         unregisterSharedPreferenceChangeListener()
@@ -720,5 +736,6 @@ class FelicitySeekbar @JvmOverloads constructor(
         progressAnimator?.cancel()
         pressRingAnimator?.cancel()
         if (springAnimation.isRunning) springAnimation.cancel()
+        ThemeManager.removeListener(this)
     }
 }

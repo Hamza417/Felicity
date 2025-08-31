@@ -1,6 +1,7 @@
 package app.simple.felicity.theme.managers
 
 import android.os.Build
+import app.simple.felicity.theme.accents.AlbumArt
 import app.simple.felicity.theme.accents.Felicity
 import app.simple.felicity.theme.accents.GrapeFruit
 import app.simple.felicity.theme.accents.MaterialYouAccent
@@ -65,6 +66,7 @@ object ThemeManager {
         val list = mutableListOf<Accent>()
 
         list.add(Felicity())
+        list.add(AlbumArt())
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             list.add(MaterialYouAccent())

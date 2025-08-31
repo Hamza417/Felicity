@@ -25,6 +25,7 @@ import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.shared.utils.ConditionUtils.invert
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
+import app.simple.felicity.theme.models.Accent
 
 @Suppress("unused")
 open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
@@ -230,6 +231,12 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
                 invalidate()
             }
         }
+    }
+
+    override fun onAccentChanged(accent: Accent) {
+        super.onAccentChanged(accent)
+        setTextColor(animate = true)
+        setDrawableTint(animate = true)
     }
 
     companion object {

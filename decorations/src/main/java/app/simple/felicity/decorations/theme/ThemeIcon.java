@@ -19,6 +19,7 @@ import app.simple.felicity.preferences.AccessibilityPreferences;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
+import app.simple.felicity.theme.models.Accent;
 import app.simple.felicity.theme.themes.Theme;
 
 public class ThemeIcon extends AppCompatImageView implements ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
@@ -105,6 +106,12 @@ public class ThemeIcon extends AppCompatImageView implements ThemeChangedListene
     @Override
     public void onThemeChanged(@NonNull Theme theme, boolean animate) {
         setTintColor(tintMode, animate);
+    }
+    
+    @Override
+    public void onAccentChanged(@NonNull Accent accent) {
+        ThemeChangedListener.super.onAccentChanged(accent);
+        setTintColor(tintMode, true);
     }
     
     @Override

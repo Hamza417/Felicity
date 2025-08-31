@@ -12,19 +12,23 @@ import android.util.Log
 import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import androidx.palette.graphics.Palette
 import app.simple.felicity.core.constants.ThemeConstants
 import app.simple.felicity.engine.services.ExoPlayerService
+import app.simple.felicity.glide.songcover.SongCoverUtils.fetchBitmap
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.database.instances.LastSongDatabase
 import app.simple.felicity.repository.managers.MediaManager
+import app.simple.felicity.theme.accents.AlbumArt
 import app.simple.felicity.theme.accents.Felicity
 import app.simple.felicity.theme.data.MaterialYou.presetMaterialYouDynamicColors
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
@@ -102,6 +106,35 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                 Log.d(TAG, "No last songs found in the database")
             }
 
+        }
+    }
+
+    protected fun generateAlbumArtPalette() {
+        lifecycleScope.launch(Dispatchers.Default) {
+            if (AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER) {
+                val song = MediaManager.getCurrentSong() ?: return@launch
+                val bitmap = song.fetchBitmap(applicationContext)
+                val palette = bitmap?.let { Palette.from(it).generate() } ?: return@launch
+                val albumArtAccent = AlbumArt()
+
+                fun clampLuminance(color: Int, minLuminance: Float = 0.2f, maxLuminance: Float = 0.8f): Int {
+                    val hsl = FloatArray(3)
+                    ColorUtils.colorToHSL(color, hsl)
+                    hsl[2] = hsl[2].coerceIn(minLuminance, maxLuminance)
+                    return ColorUtils.HSLToColor(hsl)
+                }
+
+                albumArtAccent.primaryAccentColor = clampLuminance(
+                        palette.getDominantColor(ThemeManager.accent.primaryAccentColor)
+                )
+                albumArtAccent.secondaryAccentColor = clampLuminance(
+                        palette.getMutedColor(ThemeManager.accent.secondaryAccentColor)
+                )
+                withContext(Dispatchers.Main) {
+                    ThemeManager.accent = albumArtAccent
+                    Log.d(TAG, "Album art palette generated: ${albumArtAccent.hexes}")
+                }
+            }
         }
     }
 

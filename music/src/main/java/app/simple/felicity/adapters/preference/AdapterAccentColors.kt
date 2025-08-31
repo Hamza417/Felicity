@@ -1,5 +1,6 @@
 package app.simple.felicity.adapters.preference
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
@@ -29,6 +30,7 @@ class AdapterAccentColors : RecyclerView.Adapter<VerticalListViewHolder>() {
         }
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
         when (holder) {
             is Header -> {

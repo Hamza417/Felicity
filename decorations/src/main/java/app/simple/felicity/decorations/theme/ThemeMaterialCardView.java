@@ -14,6 +14,7 @@ import androidx.annotation.NonNull;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
+import app.simple.felicity.theme.models.Accent;
 import app.simple.felicity.theme.themes.Theme;
 
 public class ThemeMaterialCardView extends MaterialCardView implements ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
@@ -53,6 +54,12 @@ public class ThemeMaterialCardView extends MaterialCardView implements ThemeChan
     @Override
     public void onThemeChanged(@NonNull Theme theme, boolean animate) {
         setBackground(animate);
+    }
+    
+    @Override
+    public void onAccentChanged(@NonNull Accent accent) {
+        ThemeChangedListener.super.onAccentChanged(accent);
+        setRipple();
     }
     
     @Override

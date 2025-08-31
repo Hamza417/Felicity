@@ -1,5 +1,7 @@
 package app.simple.felicity.glide.songcover
 
+import android.content.Context
+import android.graphics.Bitmap
 import android.widget.ImageView
 import app.simple.felicity.R
 import app.simple.felicity.glide.transformation.Blur
@@ -26,7 +28,7 @@ object SongCoverUtils {
             darken: Boolean = false,
             crop: Boolean = true
     ) {
-        val transformations = mutableListOf<Transformation<android.graphics.Bitmap>>()
+        val transformations = mutableListOf<Transformation<Bitmap>>()
 
         if (crop) {
             transformations.add(CenterCrop())
@@ -84,5 +86,13 @@ object SongCoverUtils {
                     Darken(0.4F)
             )
             .into(this)
+    }
+
+    fun Song.fetchBitmap(context: Context): Bitmap? {
+        return Glide.with(context)
+            .asBitmap()
+            .load(this)
+            .submit()
+            .get()
     }
 }

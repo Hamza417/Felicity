@@ -25,8 +25,7 @@ object ThemeUtils {
 
     private fun lightBars(window: Window) {
         WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = true
-        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightNavigationBars =
-            !AppearancePreferences.isAccentOnNavigationBar()
+        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightNavigationBars = true
     }
 
     private fun darkBars(window: Window) {

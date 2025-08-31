@@ -25,6 +25,7 @@ import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.themes.Theme
 import java.util.Objects
 
@@ -361,6 +362,13 @@ class BleedingIcon : AppCompatImageView, ThemeChangedListener, SharedPreferences
 
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
         setTintColor(tintMode, animate)
+    }
+
+    override fun onAccentChanged(accent: Accent) {
+        super.onAccentChanged(accent)
+        if (tintMode == 2) {
+            setTintColor(tintMode, true)
+        }
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
