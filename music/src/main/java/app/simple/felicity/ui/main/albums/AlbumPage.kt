@@ -53,6 +53,7 @@ class AlbumPage : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        binding.recyclerView.requireAttachedMiniPlayer()
         postponeEnterTransition()
 
         Log.d(TAG, "onViewCreated: ArtistPage for artist: ${album.name}")

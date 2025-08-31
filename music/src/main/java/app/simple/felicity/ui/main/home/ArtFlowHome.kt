@@ -49,6 +49,7 @@ class ArtFlowHome : MediaFragment() {
         postponeEnterTransition()
         requireLightBarIcons()
         binding.recyclerView.setBackgroundColor(Color.BLACK)
+        binding.recyclerView.requireAttachedMiniPlayer()
 
         binding.sideBar.attachToRecyclerView(binding.recyclerView)
         binding.sideBar.setCenterItemsVertically(true)

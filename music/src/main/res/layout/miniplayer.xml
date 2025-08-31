@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal">
+
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/pager"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="64dp" />
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        android:id="@+id/previous"
+        android:layout_width="@dimen/icon_size_40"
+        android:layout_height="@dimen/icon_size_40"
+        android:layout_gravity="center_vertical"
+        android:src="@drawable/ic_skip_previous"
+        app:buttonTintType="regular" />
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        android:id="@+id/playPause"
+        android:layout_width="@dimen/icon_size_40"
+        android:layout_height="@dimen/icon_size_40"
+        android:layout_gravity="center_vertical"
+        android:src="@drawable/ic_play"
+        app:buttonTintType="regular" />
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        android:id="@+id/next"
+        android:layout_width="@dimen/icon_size_40"
+        android:layout_height="@dimen/icon_size_40"
+        android:layout_gravity="center_vertical"
+        android:src="@drawable/ic_skip_next"
+        app:buttonTintType="regular" />
+
+</LinearLayout>

@@ -44,6 +44,7 @@ class Songs : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.recyclerView.itemAnimator = FlipItemAnimator()
+        binding.recyclerView.requireAttachedMiniPlayer()
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         SlideFastScroller.attach(binding.recyclerView)

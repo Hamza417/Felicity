@@ -20,14 +20,14 @@ import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.genres.DialogGenreMenu.Companion.showGenreMenu
 import app.simple.felicity.dialogs.genres.DialogGenreSort.Companion.showGenresSortDialog
-import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.popups.genres.PopupGenreGridSizeMenu
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.viewmodels.main.genres.GenresViewModel
 import com.bumptech.glide.Glide
 
-class Genres : ScopedFragment() {
+class Genres : MediaFragment() {
 
     private val genresViewModel: GenresViewModel by viewModels({ requireActivity() })
 
@@ -50,6 +50,7 @@ class Genres : ScopedFragment() {
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         SlideFastScroller.attach(binding.recyclerView)
+        binding.recyclerView.requireAttachedMiniPlayer()
         postponeEnterTransition()
 
         genresViewModel.getGenresData().observe(viewLifecycleOwner) { genres ->

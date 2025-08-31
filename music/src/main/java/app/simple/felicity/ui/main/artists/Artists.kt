@@ -37,6 +37,7 @@ class Artists : MediaFragment() {
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         SlideFastScroller.attach(binding.recyclerView)
+        binding.recyclerView.requireAttachedMiniPlayer()
         postponeEnterTransition()
 
         artistViewModel.getArtists().observe(viewLifecycleOwner) {

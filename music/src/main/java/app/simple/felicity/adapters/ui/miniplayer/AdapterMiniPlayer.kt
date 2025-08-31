@@ -7,7 +7,7 @@ import app.simple.felicity.databinding.AdapterMiniPlayerAlbumArtBinding
 import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
 import app.simple.felicity.repository.models.Song
 
-class AdapterMiniPlayerArtPager(private val list: List<Song>) : RecyclerView.Adapter<AdapterMiniPlayerArtPager.Holder>() {
+class AdapterMiniPlayer(private val list: List<Song>) : RecyclerView.Adapter<AdapterMiniPlayer.Holder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
         val binding = AdapterMiniPlayerAlbumArtBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -16,7 +16,9 @@ class AdapterMiniPlayerArtPager(private val list: List<Song>) : RecyclerView.Ada
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
         val song = list[position]
-        holder.binding.albumArt.loadSongCover(song, crop = true)
+        holder.binding.albumArt.loadSongCover(song, crop = true, blur = false)
+        holder.binding.title.text = song.title
+        holder.binding.artist.text = song.artist
     }
 
     override fun getItemCount(): Int {

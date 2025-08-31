@@ -48,6 +48,7 @@ class GenrePage : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        binding.recyclerView.requireAttachedMiniPlayer()
 
         genreViewerViewModel.getData().observe(viewLifecycleOwner) { data ->
             Log.i(TAG, "onViewCreated: Received songs for genre: ${genre.name}, count: ${data.songs}")

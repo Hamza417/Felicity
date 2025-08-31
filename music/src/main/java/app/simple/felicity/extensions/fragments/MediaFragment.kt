@@ -6,6 +6,7 @@ import android.view.View
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.database.instances.LastSongDatabase
@@ -98,6 +99,20 @@ open class MediaFragment : ScopedFragment() {
             override fun onPause(owner: LifecycleOwner) {
                 super.onPause(owner)
                 miniPlayerCallbacks?.onShowMiniPlayer()
+            }
+        })
+    }
+
+    protected fun RecyclerView.requireAttachedMiniPlayer() {
+        viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) {
+                super.onStart(owner)
+                miniPlayerCallbacks?.onAttachMiniPlayer(this@requireAttachedMiniPlayer)
+            }
+
+            override fun onPause(owner: LifecycleOwner) {
+                super.onPause(owner)
+                miniPlayerCallbacks?.onDetachMiniPlayer(this@requireAttachedMiniPlayer)
             }
         })
     }

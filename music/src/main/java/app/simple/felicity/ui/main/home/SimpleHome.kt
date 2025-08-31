@@ -36,6 +36,7 @@ class SimpleHome : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         postponeEnterTransition()
+        recyclerView.requireAttachedMiniPlayer()
 
         homeViewModel!!.getHomeData().observe(viewLifecycleOwner) { list ->
             recyclerView.adapter = AdapterSimpleHome(list)

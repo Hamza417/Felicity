@@ -42,6 +42,7 @@ class SpannedHome : MediaFragment() {
         postponeEnterTransition()
         requireLightBarIcons()
         binding.recyclerView.setBackgroundColor(Color.BLACK)
+        binding.recyclerView.requireAttachedMiniPlayer()
 
         homeViewModel.getData().observe(viewLifecycleOwner) { it ->
             val adapter = AdapterGridHome(it)

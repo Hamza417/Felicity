@@ -43,6 +43,7 @@ class DefaultAlbums : MediaFragment() {
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         SlideFastScroller.attach(binding.recyclerView)
+        binding.recyclerView.requireAttachedMiniPlayer()
 
         albumsViewModel.getAlbums().observe(viewLifecycleOwner) {
             adapterDefaultAlbums = AdapterDefaultAlbums(it)

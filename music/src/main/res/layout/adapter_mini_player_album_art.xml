@@ -1,5 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.views.SquareImageView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/album_art"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent" />
+    android:layout_height="match_parent"
+    android:orientation="horizontal">
+
+    <ImageView
+        android:id="@+id/album_art"
+        android:layout_width="64dp"
+        android:layout_gravity="center_vertical"
+        android:layout_height="64dp" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_gravity="center_vertical"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/text_size_14"
+            android:layout_marginHorizontal="@dimen/padding_5"
+            android:ellipsize="marquee"
+            android:singleLine="true"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:maxLines="1"
+            app:appFontStyle="bold"
+            app:textColorStyle="primary" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/artist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:singleLine="true"
+            android:layout_marginHorizontal="@dimen/padding_5"
+            android:textSize="@dimen/text_size_12"
+            app:appFontStyle="regular"
+            app:textColorStyle="secondary" />
+
+    </LinearLayout>
+
+</LinearLayout>

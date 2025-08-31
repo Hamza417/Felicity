@@ -42,6 +42,7 @@ class CarouselHome : MediaFragment() {
             val adapter = AdapterCarouselHome(data)
             binding?.recyclerView?.adapter = adapter
             binding?.recyclerView?.setHasFixedSize(true)
+            binding?.recyclerView?.requireAttachedMiniPlayer()
 
             view.startTransitionOnPreDraw()
 

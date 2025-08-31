@@ -55,6 +55,9 @@ object MediaManager {
         this.songs = songs
         currentSongPosition = position
         playCurrent()
+        CoroutineScope(Dispatchers.Main).launch {
+            _songListFlow.emit(songs)
+        }
     }
 
     fun getSongs(): List<Song> = songs
