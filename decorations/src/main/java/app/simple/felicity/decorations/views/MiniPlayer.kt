@@ -2,6 +2,8 @@ package app.simple.felicity.decorations.views
 
 import android.animation.TimeInterpolator
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.os.Parcel
 import android.os.Parcelable
 import android.util.AttributeSet
@@ -57,6 +59,12 @@ class MiniPlayer @JvmOverloads constructor(
 
     // When true, ignore RecyclerView-driven updates until next IDLE
     private var suppressAutoFromRecyclerUntilIdle: Boolean = false
+    private var isManuallyControlled: Boolean = false
+
+    private val resetManualControlHandler = Handler(Looper.getMainLooper())
+    private val resetManualControlRunnable = Runnable {
+        isManuallyControlled = false
+    }
 
     init {
         // Inflate base container layout (root is <merge/>)
@@ -101,6 +109,7 @@ class MiniPlayer @JvmOverloads constructor(
         pendingRestoreTranslationY = null
         // Prevent RecyclerView listeners from immediately overriding this explicit command
         suppressAutoFromRecyclerUntilIdle = true
+        isManuallyControlled = true
         // Defer until laid out to get correct hideDistance
         if (height == 0) {
             addOnLayoutChangeListener(object : OnLayoutChangeListener {
@@ -123,6 +132,7 @@ class MiniPlayer @JvmOverloads constructor(
         pendingRestoreTranslationY = null
         // Prevent RecyclerView listeners from immediately overriding this explicit command
         suppressAutoFromRecyclerUntilIdle = true
+        isManuallyControlled = true
         if (height == 0) {
             addOnLayoutChangeListener(object : OnLayoutChangeListener {
                 override fun onLayoutChange(v: View?, left: Int, top: Int, right: Int, bottom: Int,
@@ -155,19 +165,27 @@ class MiniPlayer @JvmOverloads constructor(
             translationY = target
             // Allow RecyclerView-driven updates again after explicit movement completes
             suppressAutoFromRecyclerUntilIdle = false
+            // Delay resetting manual control to prevent immediate scroll interference
+            resetManualControlHandler.removeCallbacks(resetManualControlRunnable)
+            resetManualControlHandler.postDelayed(resetManualControlRunnable, 500)
             return
         }
         animate().translationY(target)
             .setDuration(animDuration)
             .setInterpolator(animInterpolator)
-            .withEndAction { suppressAutoFromRecyclerUntilIdle = false }
+            .withEndAction {
+                suppressAutoFromRecyclerUntilIdle = false
+                // Delay resetting manual control to prevent immediate scroll interference
+                resetManualControlHandler.removeCallbacks(resetManualControlRunnable)
+                resetManualControlHandler.postDelayed(resetManualControlRunnable, 500)
+            }
             .start()
     }
 
     // Move the container incrementally with scroll delta and clamp within [0, hideDistance]
     private fun updateForScrollDelta(dy: Int) {
         if (height == 0) return // not laid out yet
-        if (suppressAutoFromRecyclerUntilIdle) return // honor explicit show/hide until idle
+        if (suppressAutoFromRecyclerUntilIdle || isManuallyControlled) return // honor explicit show/hide
         // Cancel any ongoing animation for responsive drag-follow
         animate().cancel()
         val target = (translationY + dy).coerceIn(0f, hideDistance)
@@ -272,11 +290,15 @@ class MiniPlayer @JvmOverloads constructor(
 
             override fun onScrollStateChanged(rv: RecyclerView, newState: Int) {
                 super.onScrollStateChanged(rv, newState)
-                // Lift suppression only when user starts dragging; keep it during IDLE/SETTLING to let explicit show/hide complete
+                // Don't lift suppression or allow scroll behavior if manually controlled
+                if (isManuallyControlled) return
+
+                // Lift suppression only when user starts dragging and not manually controlled
                 if (suppressAutoFromRecyclerUntilIdle && newState == RecyclerView.SCROLL_STATE_DRAGGING) {
                     suppressAutoFromRecyclerUntilIdle = false
                 }
                 if (suppressAutoFromRecyclerUntilIdle) return
+
                 when (newState) {
                     RecyclerView.SCROLL_STATE_IDLE -> {
                         // Preserve fully hidden/shown states; only snap if in-between
@@ -332,12 +354,16 @@ class MiniPlayer @JvmOverloads constructor(
         super.onAttachedToWindow()
         // Ensure we don't carry suppression across fragment/activity transitions
         suppressAutoFromRecyclerUntilIdle = false
+        resetManualControlHandler.removeCallbacks(resetManualControlRunnable)
+        isManuallyControlled = false
     }
 
     override fun onDetachedFromWindow() {
         detachFromAllRecyclerViews()
         // Clear any suppression to avoid sticky state on reattach
         suppressAutoFromRecyclerUntilIdle = false
+        resetManualControlHandler.removeCallbacks(resetManualControlRunnable)
+        isManuallyControlled = false
         super.onDetachedFromWindow()
     }
 

@@ -6,6 +6,7 @@ import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
+import androidx.viewpager2.widget.ViewPager2
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.miniplayer.AdapterMiniPlayer
@@ -45,9 +46,11 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         binding.miniPlayer.setContent(miniPlayerBinding) { binding ->
             binding.pager.offscreenPageLimit = 1
             binding.pager.registerOnPageChangeCallback(object : OnPageChangeCallback() {
-                override fun onPageSelected(position: Int) {
-                    super.onPageSelected(position)
-                    MediaManager.updatePosition(position)
+                override fun onPageScrollStateChanged(state: Int) {
+                    super.onPageScrollStateChanged(state)
+                    if (state == ViewPager2.SCROLL_STATE_IDLE) {
+                        MediaManager.updatePosition(binding.pager.currentItem)
+                    }
                 }
             })
             binding.next.setOnClickListener {
