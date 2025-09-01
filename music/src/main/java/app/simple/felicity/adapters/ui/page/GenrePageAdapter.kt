@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
+import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
 import app.simple.felicity.databinding.AdapterHeaderGenrePageBinding
@@ -18,16 +19,15 @@ import app.simple.felicity.glide.genres.GenreCoverUtils.loadGenreCover
 import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.CollectionPageData
-import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
 import com.bumptech.glide.Glide
 
-class GenreDetailsAdapter(private val data: CollectionPageData, private val genre: Genre) :
+class GenrePageAdapter(private val data: CollectionPageData, private val genre: Genre) :
         RecyclerView.Adapter<VerticalListViewHolder>() {
 
-    private var genreSongsAdapterListener: GenreSongsAdapterListener? = null
+    private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
@@ -55,28 +55,25 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
             is Header -> {
                 holder.binding.apply {
                     name.text = genre.name ?: holder.context.getString(R.string.unknown)
-                    //                    songs.text = holder.context.getString(R.string.x_songs, data.songs.size)
-                    //                    albums.text = holder.context.getString(R.string.x_albums, data.albums.size)
-                    //                    artists.text = holder.context.getString(R.string.x_artists, data.artists.size)
                     songs.text = data.songs.size.toString()
                     artists.text = data.artists.size.toString()
                     albums.text = data.albums.size.toString()
                     totalTime.text = data.songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
-                    poster.loadGenreCover(genre, roundedCorners = false, blur = false)
+                    poster.loadGenreCover(genre, roundedCorners = false, blur = false, skipCache = true)
 
                     menu.setOnClickListener {
-                        genreSongsAdapterListener?.onMenuClicked(it)
+                        generalAdapterCallbacks?.onMenuClicked(it)
                     }
                 }
             }
             is Albums -> {
-                /* no-op */
+
             }
             is Holder -> {
                 holder.bind(data.songs[position - 1]) // Adjust for header
 
                 holder.binding.container.setOnClickListener {
-                    genreSongsAdapterListener?.onSongClick(data.songs, position - SONGS_POSITION, holder.binding.albumArt)
+                    generalAdapterCallbacks?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.albumArt)
                 }
             }
         }
@@ -130,6 +127,12 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
                 val adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, data.albums))
                 binding.title.text = binding.title.context.getString(R.string.albums_in_genre, genre.name ?: context.getString(R.string.unknown))
                 binding.recyclerView.adapter = adapter
+
+                adapter.setAdapterCarouselCallbacks(object : AdapterCarouselItems.Companion.AdapterCarouselCallbacks {
+                    override fun onClicked(view: View, position: Int) {
+                        generalAdapterCallbacks?.onAlbumClicked(data.albums, position, view)
+                    }
+                })
             } else {
                 binding.title.visibility = View.GONE
                 binding.recyclerView.visibility = View.GONE
@@ -147,7 +150,7 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
 
                 adapter.setAdapterCarouselCallbacks(object : AdapterCarouselItems.Companion.AdapterCarouselCallbacks {
                     override fun onClicked(view: View, position: Int) {
-                        genreSongsAdapterListener?.onArtistClicked(data.artists[position])
+                        generalAdapterCallbacks?.onArtistClicked(data.artists[position], position, view)
                     }
                 })
             } else {
@@ -160,29 +163,21 @@ class GenreDetailsAdapter(private val data: CollectionPageData, private val genr
     inner class Header(val binding: AdapterHeaderGenrePageBinding) : VerticalListViewHolder(binding.root) {
         init {
             binding.play.setOnClickListener {
-                genreSongsAdapterListener?.onPlayClick(data.songs, bindingAdapterPosition)
+                generalAdapterCallbacks?.onPlayClicked(data.songs, bindingAdapterPosition)
             }
             binding.shuffle.setOnClickListener {
-                genreSongsAdapterListener?.onShuffleClick(data.songs, bindingAdapterPosition)
+                generalAdapterCallbacks?.onShuffleClicked(data.songs, bindingAdapterPosition)
             }
         }
     }
 
-    fun setGenreSongsAdapterListener(listener: GenreSongsAdapterListener) {
-        genreSongsAdapterListener = listener
+    fun setCallbacks(generalAdapterCallbacks: GeneralAdapterCallbacks) {
+        this.generalAdapterCallbacks = generalAdapterCallbacks
     }
 
     companion object {
         private const val TAG = "GenreSongsAdapter"
         private const val EXTRA_ROWS = 3 // Header, Albums, Artists
         private const val SONGS_POSITION = 1 // Position of songs in the adapter
-
-        interface GenreSongsAdapterListener {
-            fun onSongClick(songs: List<Song>, position: Int, view: View)
-            fun onPlayClick(songs: List<Song>, position: Int = 0)
-            fun onShuffleClick(songs: List<Song>, position: Int = 0)
-            fun onArtistClicked(artist: Artist)
-            fun onMenuClicked(view: View)
-        }
     }
 }

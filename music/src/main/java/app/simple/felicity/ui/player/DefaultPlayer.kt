@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,6 +11,7 @@ import app.simple.felicity.core.utils.NumberUtils
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
+import app.simple.felicity.decorations.utils.CoverUtils
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
@@ -39,7 +39,7 @@ class DefaultPlayer : MediaFragment() {
             override fun loadBitmap(position: Int): Bitmap? {
                 val song = MediaManager.getSongAt(position)!!
                 val uri = SongUtils.getArtworkUri(requireContext(), song.albumId, song.id) ?: Uri.EMPTY
-                return requireContentResolver().loadThumbnail(uri, Size(SIZE, SIZE), null)
+                return CoverUtils.getAlbumArtBitmap(requireContext(), uri, SIZE)
             }
         })
 

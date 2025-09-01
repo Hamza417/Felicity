@@ -33,7 +33,9 @@ public class ThemeRecyclerView extends RecyclerView implements ThemeChangedListe
     }
     
     private void init() {
-        setBackground(false);
+        if (!isInEditMode()) {
+            setBackground(false);
+        }
     }
     
     @Override

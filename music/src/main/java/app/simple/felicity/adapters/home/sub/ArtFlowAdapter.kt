@@ -6,7 +6,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterArtFlowBinding
-import app.simple.felicity.glide.Util.AudioCoverUtils.loadArtCover
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist

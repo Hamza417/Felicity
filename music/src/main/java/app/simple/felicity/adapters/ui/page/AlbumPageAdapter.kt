@@ -25,7 +25,7 @@ import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
 import com.bumptech.glide.Glide
 
-class AlbumDetailsAdapter(private val data: CollectionPageData, private val album: Album) :
+class AlbumPageAdapter(private val data: CollectionPageData, private val album: Album) :
         RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var listener: GeneralAdapterCallbacks? = null
@@ -65,14 +65,13 @@ class AlbumDetailsAdapter(private val data: CollectionPageData, private val albu
                     albums.text = data.albums.size.toString()
                     artists.text = data.artists.size.toString()
                     totalTime.text = data.songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
-                    // poster.loadFromDescriptor(data.songs.first().uri, roundedCorners = false, blur = false, skipCache = true)
 
                     artFlow.visible(false)
                     artFlow.setSliderAdapter(ArtistArtFlowAdapter(ArtFlowData(R.string.songs, data.songs)))
                 }
             }
             is Songs -> {
-                holder.bind(data.songs[position - 1]) // Adjust for header
+                holder.bind(data.songs[position - EXTRA_ROWS]) // Adjust for header
 
                 holder.binding.container.setOnClickListener {
                     listener?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.albumArt)
@@ -97,13 +96,13 @@ class AlbumDetailsAdapter(private val data: CollectionPageData, private val albu
             0 -> {
                 RecyclerViewUtils.TYPE_HEADER
             }
-            data.songs.size.plus(1) -> {
+            1 -> {
                 RecyclerViewUtils.TYPE_ALBUMS
             }
-            data.songs.size.plus(2) -> {
+            2 -> {
                 RecyclerViewUtils.TYPE_ARTISTS
             }
-            data.songs.size.plus(3) -> {
+            3 -> {
                 RecyclerViewUtils.TYPE_GENRES
             }
             else -> {
@@ -203,6 +202,6 @@ class AlbumDetailsAdapter(private val data: CollectionPageData, private val albu
     companion object {
         private const val TAG = "GenreSongsAdapter"
         private const val EXTRA_ROWS = 4 // Header, Albums, Artists, Genres
-        private const val SONGS_POSITION = 1 // Position of songs in the adapter
+        private const val SONGS_POSITION = 4 // Position of songs in the adapter
     }
 }

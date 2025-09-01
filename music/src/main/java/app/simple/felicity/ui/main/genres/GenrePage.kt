@@ -7,16 +7,19 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
-import app.simple.felicity.adapters.ui.page.GenreDetailsAdapter
+import app.simple.felicity.adapters.ui.page.GenrePageAdapter
+import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentViewerGenresBinding
 import app.simple.felicity.decorations.itemdecorations.SongHolderSpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.popups.PopupGenreMenu
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.repository.constants.BundleConstants
+import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
+import app.simple.felicity.ui.main.albums.AlbumPage
 import app.simple.felicity.ui.main.artists.ArtistPage
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.main.genres.GenreViewerViewModel
@@ -52,31 +55,35 @@ class GenrePage : MediaFragment() {
 
         genreViewerViewModel.getData().observe(viewLifecycleOwner) { data ->
             Log.i(TAG, "onViewCreated: Received songs for genre: ${genre.name}, count: ${data.songs}")
-            val adapter = GenreDetailsAdapter(data, genre)
+            val adapter = GenrePageAdapter(data, genre)
             binding.recyclerView.addItemDecoration(SongHolderSpacingItemDecoration(
                     AppearancePreferences.DEFAULT_SPACING.toInt(),
                     AppearancePreferences.getListSpacing().toInt()))
             binding.recyclerView.adapter = adapter
 
-            adapter.setGenreSongsAdapterListener(object : GenreDetailsAdapter.Companion.GenreSongsAdapterListener {
-                override fun onSongClick(songs: List<Song>, position: Int, view: View) {
+            adapter.setCallbacks(object : GeneralAdapterCallbacks {
+                override fun onSongClicked(songs: List<Song>, position: Int, view: View) {
                     Log.i(TAG, "onSongClick: Song clicked in genre: ${genre.name}, position: $position")
                     setMediaItems(songs, position)
                 }
 
-                override fun onPlayClick(songs: List<Song>, position: Int) {
+                override fun onPlayClicked(songs: List<Song>, position: Int) {
                     Log.i(TAG, "onPlayClick: Play button clicked for genre: ${genre.name}, position: $position")
                     setMediaItems(songs, position)
                 }
 
-                override fun onShuffleClick(songs: List<Song>, position: Int) {
+                override fun onShuffleClicked(songs: List<Song>, position: Int) {
                     Log.i(TAG, "onShuffleClick: Shuffle button clicked for genre: ${genre.name}, position: $position")
                     setMediaItems(songs.shuffled(), position)
                 }
 
-                override fun onArtistClicked(artist: Artist) {
+                override fun onArtistClicked(artist: Artist, position: Int, view: View) {
                     Log.i(TAG, "onArtistClicked: Artist clicked in genre: ${genre.name}, artist: ${artist.name}")
                     openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
+                }
+
+                override fun onAlbumClicked(albums: List<Album>, position: Int, view: View) {
+                    openFragment(AlbumPage.newInstance(albums[position]), AlbumPage.TAG)
                 }
 
                 override fun onMenuClicked(view: View) {

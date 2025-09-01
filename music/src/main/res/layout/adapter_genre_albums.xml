@@ -5,10 +5,6 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
-    <app.simple.felicity.decorations.theme.ThemeDivider
-        android:layout_width="match_parent"
-        android:layout_height="1px" />
-
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
         android:id="@+id/title"
         android:layout_width="match_parent"
@@ -29,5 +25,9 @@
         android:layout_height="wrap_content"
         app:navigationPaddingRequired="false"
         app:statusPaddingRequired="false" />
+
+    <app.simple.felicity.decorations.theme.ThemeDivider
+        android:layout_width="match_parent"
+        android:layout_height="1px" />
 
 </LinearLayout>

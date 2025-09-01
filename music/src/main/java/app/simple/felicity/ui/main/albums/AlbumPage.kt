@@ -8,7 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
-import app.simple.felicity.adapters.ui.page.AlbumDetailsAdapter
+import app.simple.felicity.adapters.ui.page.AlbumPageAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentPageArtistBinding
 import app.simple.felicity.decorations.itemdecorations.SongHolderSpacingItemDecoration
@@ -60,7 +60,7 @@ class AlbumPage : MediaFragment() {
 
         albumViewerViewModel.getData().observe(viewLifecycleOwner) { data ->
             Log.i(TAG, "onViewCreated: Received songs for genre: ${album.name}, count: ${data.songs}")
-            val adapter = AlbumDetailsAdapter(data, album)
+            val adapter = AlbumPageAdapter(data, album)
             binding.recyclerView.addItemDecoration(SongHolderSpacingItemDecoration(48, AppearancePreferences.getListSpacing().toInt()))
             binding.recyclerView.adapter = adapter
 

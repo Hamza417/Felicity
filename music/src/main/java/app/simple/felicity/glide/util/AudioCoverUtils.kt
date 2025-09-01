@@ -1,4 +1,4 @@
-package app.simple.felicity.glide.Util
+package app.simple.felicity.glide.util
 
 import android.widget.ImageView
 import app.simple.felicity.R

@@ -3,7 +3,7 @@ package app.simple.felicity.adapters.home.sub
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import app.simple.felicity.databinding.AdapterHeaderArtFlowBinding
-import app.simple.felicity.glide.Util.AudioCoverUtils.loadArtCover
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.models.ArtFlowData
 import com.smarteist.autoimageslider.SliderViewAdapter
 
