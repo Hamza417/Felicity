@@ -25,6 +25,7 @@ import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.shared.utils.ConditionUtils.invert
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
+import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 
 @Suppress("unused")
@@ -104,13 +105,13 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
         if (isInEditMode.invert()) {
             registerSharedPreferenceChangeListener()
         }
-        app.simple.felicity.theme.managers.ThemeManager.addListener(this)
+        ThemeManager.addListener(this)
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         unregisterSharedPreferenceChangeListener()
-        app.simple.felicity.theme.managers.ThemeManager.removeListener(this)
+        ThemeManager.removeListener(this)
     }
 
     override fun onThemeChanged(theme: app.simple.felicity.theme.themes.Theme, animate: Boolean) {
@@ -126,22 +127,22 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
     private fun setTextColor(animate: Boolean) {
         if (animate) {
             when (colorMode) {
-                HEADER -> this.animateColorChange(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.headerTextColor)
-                PRIMARY -> this.animateColorChange(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.primaryTextColor)
-                SECONDARY -> this.animateColorChange(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.secondaryTextColor)
-                TERTIARY -> this.animateColorChange(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.tertiaryTextColor)
-                QUATERNARY -> this.animateColorChange(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.quaternaryTextColor)
-                ACCENT -> this.animateColorChange(app.simple.felicity.theme.managers.ThemeManager.accent.primaryAccentColor)
+                HEADER -> this.animateColorChange(ThemeManager.theme.textViewTheme.headerTextColor)
+                PRIMARY -> this.animateColorChange(ThemeManager.theme.textViewTheme.primaryTextColor)
+                SECONDARY -> this.animateColorChange(ThemeManager.theme.textViewTheme.secondaryTextColor)
+                TERTIARY -> this.animateColorChange(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+                QUATERNARY -> this.animateColorChange(ThemeManager.theme.textViewTheme.quaternaryTextColor)
+                ACCENT -> this.animateColorChange(ThemeManager.accent.primaryAccentColor)
                 WHITE -> this.animateColorChange(Color.WHITE)
             }
         } else {
             when (colorMode) {
-                HEADER -> setTextColor(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.headerTextColor)
-                PRIMARY -> setTextColor(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.primaryTextColor)
-                SECONDARY -> setTextColor(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.secondaryTextColor)
-                TERTIARY -> setTextColor(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.tertiaryTextColor)
-                QUATERNARY -> setTextColor(app.simple.felicity.theme.managers.ThemeManager.theme.textViewTheme.quaternaryTextColor)
-                ACCENT -> setTextColor(app.simple.felicity.theme.managers.ThemeManager.accent.primaryAccentColor)
+                HEADER -> setTextColor(ThemeManager.theme.textViewTheme.headerTextColor)
+                PRIMARY -> setTextColor(ThemeManager.theme.textViewTheme.primaryTextColor)
+                SECONDARY -> setTextColor(ThemeManager.theme.textViewTheme.secondaryTextColor)
+                TERTIARY -> setTextColor(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+                QUATERNARY -> setTextColor(ThemeManager.theme.textViewTheme.quaternaryTextColor)
+                ACCENT -> setTextColor(ThemeManager.accent.primaryAccentColor)
                 WHITE -> setTextColor(ColorStateList.valueOf(Color.WHITE))
             }
         }
@@ -150,16 +151,16 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
     private fun setDrawableTint(animate: Boolean) {
         if (animate) {
             when (drawableTintMode) {
-                DRAWABLE_ACCENT -> animateDrawableColorChange(lastDrawableColor, app.simple.felicity.theme.managers.ThemeManager.accent.primaryAccentColor)
-                DRAWABLE_REGULAR -> animateDrawableColorChange(lastDrawableColor, app.simple.felicity.theme.managers.ThemeManager.theme.iconTheme.regularIconColor)
-                DRAWABLE_SECONDARY -> animateDrawableColorChange(lastDrawableColor, app.simple.felicity.theme.managers.ThemeManager.theme.iconTheme.secondaryIconColor)
+                DRAWABLE_ACCENT -> animateDrawableColorChange(lastDrawableColor, ThemeManager.accent.primaryAccentColor)
+                DRAWABLE_REGULAR -> animateDrawableColorChange(lastDrawableColor, ThemeManager.theme.iconTheme.regularIconColor)
+                DRAWABLE_SECONDARY -> animateDrawableColorChange(lastDrawableColor, ThemeManager.theme.iconTheme.secondaryIconColor)
                 DRAWABLE_WARNING -> animateDrawableColorChange(lastDrawableColor, Color.RED)
             }
         } else {
             when (drawableTintMode) {
-                DRAWABLE_ACCENT -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(app.simple.felicity.theme.managers.ThemeManager.accent.primaryAccentColor))
-                DRAWABLE_REGULAR -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(app.simple.felicity.theme.managers.ThemeManager.theme.iconTheme.regularIconColor))
-                DRAWABLE_SECONDARY -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(app.simple.felicity.theme.managers.ThemeManager.theme.iconTheme.secondaryIconColor))
+                DRAWABLE_ACCENT -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(ThemeManager.accent.primaryAccentColor))
+                DRAWABLE_REGULAR -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(ThemeManager.theme.iconTheme.regularIconColor))
+                DRAWABLE_SECONDARY -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(ThemeManager.theme.iconTheme.secondaryIconColor))
                 DRAWABLE_WARNING -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(Color.RED))
             }
         }
@@ -169,9 +170,9 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
 
     private fun setLastDrawableColor() {
         lastDrawableColor = when (drawableTintMode) {
-            DRAWABLE_ACCENT -> app.simple.felicity.theme.managers.ThemeManager.accent.primaryAccentColor
-            DRAWABLE_REGULAR -> app.simple.felicity.theme.managers.ThemeManager.theme.iconTheme.regularIconColor
-            DRAWABLE_SECONDARY -> app.simple.felicity.theme.managers.ThemeManager.theme.iconTheme.secondaryIconColor
+            DRAWABLE_ACCENT -> ThemeManager.accent.primaryAccentColor
+            DRAWABLE_REGULAR -> ThemeManager.theme.iconTheme.regularIconColor
+            DRAWABLE_SECONDARY -> ThemeManager.theme.iconTheme.secondaryIconColor
             DRAWABLE_WARNING -> Color.RED
             else -> Color.GRAY
         }

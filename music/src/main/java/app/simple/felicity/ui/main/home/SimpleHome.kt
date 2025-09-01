@@ -11,7 +11,7 @@ import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
 import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
-import app.simple.felicity.ui.main.albums.DefaultAlbums
+import app.simple.felicity.ui.main.albums.Albums
 import app.simple.felicity.ui.main.artists.Artists
 import app.simple.felicity.ui.main.genres.Genres
 import app.simple.felicity.ui.main.preferences.Preferences
@@ -49,7 +49,7 @@ class SimpleHome : MediaFragment() {
                         }
 
                         R.string.albums -> {
-                            openFragment(DefaultAlbums.newInstance(), DefaultAlbums.TAG)
+                            openFragment(Albums.newInstance(), Albums.TAG)
                         }
 
                         R.string.artists -> {

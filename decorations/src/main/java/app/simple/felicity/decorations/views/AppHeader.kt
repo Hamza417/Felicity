@@ -94,6 +94,7 @@ class AppHeader @JvmOverloads constructor(
                 statusBarPaddingApplied = true
             }
         }
+
         addOnLayoutChangeListener(layoutChangeListener)
     }
 

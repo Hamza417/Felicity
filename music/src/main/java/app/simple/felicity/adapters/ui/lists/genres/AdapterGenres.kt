@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
+import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterGenresBinding
 import app.simple.felicity.databinding.AdapterGenresListBinding
 import app.simple.felicity.decorations.overscroll.RecyclerViewUtils
@@ -57,7 +58,7 @@ class AdapterGenres(private val list: List<Genre>) : RecyclerView.Adapter<Vertic
     }
 
     override fun getItemViewType(position: Int): Int {
-        return if (GenresPreferences.getGridSize() == GenresPreferences.GRID_SIZE_ONE) {
+        return if (GenresPreferences.getGridSize() == CommonPreferencesConstants.GRID_SIZE_ONE) {
             RecyclerViewUtils.TYPE_ITEM
         } else {
             RecyclerViewUtils.TYPE_ITEM_CARD

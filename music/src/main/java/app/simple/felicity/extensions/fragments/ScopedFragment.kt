@@ -283,7 +283,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
     }
 
     protected fun requireContainerView(): ViewGroup {
-        return requireActivity().findViewById(R.id.app_container)
+        return requireActivity().findViewById(R.id.main_container)
     }
 
     protected fun requireContentResolver(): ContentResolver {

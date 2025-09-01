@@ -1,6 +1,9 @@
 package app.simple.felicity.preferences
 
 import androidx.core.content.edit
+import app.simple.felicity.constants.CommonPreferencesConstants
+import app.simple.felicity.constants.CommonPreferencesConstants.ACCENDING
+import app.simple.felicity.constants.CommonPreferencesConstants.BY_NAME
 import app.simple.felicity.manager.SharedPreferences
 
 object GenresPreferences {
@@ -12,22 +15,8 @@ object GenresPreferences {
 
     // -------------------------------------------------------------------------------------------- //
 
-    const val GRID_SIZE_ONE = 1
-    const val GRID_SIZE_TWO = 2
-    const val GRID_SIZE_THREE = 3
-    const val GRID_SIZE_FOUR = 4
-    const val GRID_SIZE_FIVE = 5
-    const val GRID_SIZE_SIX = 6
-
-    const val BY_NAME = 0
-
-    const val ACCENDING = 0
-    const val DESCENDING = 1
-
-    // -------------------------------------------------------------------------------------------- //
-
     fun getGridSize(): Int {
-        return SharedPreferences.getSharedPreferences().getInt(GRID_SIZE, GRID_SIZE_TWO)
+        return SharedPreferences.getSharedPreferences().getInt(GRID_SIZE, CommonPreferencesConstants.GRID_SIZE_ONE)
     }
 
     fun setGridSize(size: Int) {

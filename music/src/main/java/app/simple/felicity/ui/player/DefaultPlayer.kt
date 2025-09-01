@@ -39,6 +39,7 @@ class DefaultPlayer : MediaFragment() {
             override fun loadBitmap(position: Int): Bitmap? {
                 val song = MediaManager.getSongAt(position)!!
                 val uri = SongUtils.getArtworkUri(requireContext(), song.albumId, song.id) ?: Uri.EMPTY
+                Log.i(TAG, "Loading album art for position $position, uri: $uri")
                 return CoverUtils.getAlbumArtBitmap(requireContext(), uri, SIZE)
             }
         })
@@ -79,7 +80,9 @@ class DefaultPlayer : MediaFragment() {
     override fun onPositionChanged(position: Int) {
         super.onPositionChanged(position)
         Log.i(TAG, "Position changed to $position")
-        binding.pager.setCurrentItem(position, true)
+        if (binding.pager.getCurrentItem() != position) {
+            binding.pager.setCurrentItem(position, true)
+        }
         binding.count.text = buildString {
             append(position + 1)
             append("/")

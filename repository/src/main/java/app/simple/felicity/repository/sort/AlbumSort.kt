@@ -1,41 +1,43 @@
 package app.simple.felicity.repository.sort
 
 import android.widget.TextView
+import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.core.R
 import app.simple.felicity.preferences.AlbumPreferences
+import app.simple.felicity.repository.models.Album
 
 object AlbumSort {
 
-    fun List<app.simple.felicity.repository.models.Album>.sorted(): List<app.simple.felicity.repository.models.Album> {
+    fun List<Album>.sorted(): List<Album> {
         return when (AlbumPreferences.getAlbumSort()) {
-            AlbumPreferences.BY_ALBUM_NAME -> when (AlbumPreferences.getSortingStyle()) {
-                AlbumPreferences.ACCENDING -> sortedBy { it.name }
-                AlbumPreferences.DESCENDING -> sortedByDescending { it.name }
+            CommonPreferencesConstants.BY_ALBUM_NAME -> when (AlbumPreferences.getSortingStyle()) {
+                CommonPreferencesConstants.ACCENDING -> sortedBy { it.name }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.name }
                 else -> this
             }
-            AlbumPreferences.BY_ARTIST -> when (AlbumPreferences.getSortingStyle()) {
-                AlbumPreferences.ACCENDING -> sortedBy { it.artist }
-                AlbumPreferences.DESCENDING -> sortedByDescending { it.artist }
+            CommonPreferencesConstants.BY_ARTIST -> when (AlbumPreferences.getSortingStyle()) {
+                CommonPreferencesConstants.ACCENDING -> sortedBy { it.artist }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.artist }
                 else -> this
             }
-            AlbumPreferences.BY_NUMBER_OF_SONGS -> when (AlbumPreferences.getSortingStyle()) {
-                AlbumPreferences.ACCENDING -> sortedBy { it.songCount }
-                AlbumPreferences.DESCENDING -> sortedByDescending { it.songCount }
+            CommonPreferencesConstants.BY_NUMBER_OF_SONGS -> when (AlbumPreferences.getSortingStyle()) {
+                CommonPreferencesConstants.ACCENDING -> sortedBy { it.songCount }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.songCount }
                 else -> this
             }
-            AlbumPreferences.BY_YEAR -> when (AlbumPreferences.getSortingStyle()) {
-                AlbumPreferences.ACCENDING -> sortedBy { it.firstYear }
-                AlbumPreferences.DESCENDING -> sortedByDescending { it.firstYear }
+            CommonPreferencesConstants.BY_YEAR -> when (AlbumPreferences.getSortingStyle()) {
+                CommonPreferencesConstants.ACCENDING -> sortedBy { it.firstYear }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.firstYear }
                 else -> this
             }
-            AlbumPreferences.BY_FIRST_YEAR -> when (AlbumPreferences.getSortingStyle()) {
-                AlbumPreferences.ACCENDING -> sortedBy { it.firstYear }
-                AlbumPreferences.DESCENDING -> sortedByDescending { it.firstYear }
+            CommonPreferencesConstants.BY_FIRST_YEAR -> when (AlbumPreferences.getSortingStyle()) {
+                CommonPreferencesConstants.ACCENDING -> sortedBy { it.firstYear }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.firstYear }
                 else -> this
             }
-            AlbumPreferences.BY_LAST_YEAR -> when (AlbumPreferences.getSortingStyle()) {
-                AlbumPreferences.ACCENDING -> sortedBy { it.lastYear }
-                AlbumPreferences.DESCENDING -> sortedByDescending { it.lastYear }
+            CommonPreferencesConstants.BY_LAST_YEAR -> when (AlbumPreferences.getSortingStyle()) {
+                CommonPreferencesConstants.ACCENDING -> sortedBy { it.lastYear }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.lastYear }
                 else -> this
             }
             else -> this
@@ -44,20 +46,20 @@ object AlbumSort {
 
     fun TextView.setCurrentSortStyle() {
         text = when (AlbumPreferences.getAlbumSort()) {
-            AlbumPreferences.BY_ALBUM_NAME -> context.getString(R.string.name)
-            AlbumPreferences.BY_ARTIST -> context.getString(R.string.artist)
-            AlbumPreferences.BY_NUMBER_OF_SONGS -> context.getString(R.string.number_of_songs)
-            AlbumPreferences.BY_YEAR -> context.getString(R.string.year)
-            AlbumPreferences.BY_FIRST_YEAR -> context.getString(R.string.first_year)
-            AlbumPreferences.BY_LAST_YEAR -> context.getString(R.string.last_year)
+            CommonPreferencesConstants.BY_ALBUM_NAME -> context.getString(R.string.name)
+            CommonPreferencesConstants.BY_ARTIST -> context.getString(R.string.artist)
+            CommonPreferencesConstants.BY_NUMBER_OF_SONGS -> context.getString(R.string.number_of_songs)
+            CommonPreferencesConstants.BY_YEAR -> context.getString(R.string.year)
+            CommonPreferencesConstants.BY_FIRST_YEAR -> context.getString(R.string.first_year)
+            CommonPreferencesConstants.BY_LAST_YEAR -> context.getString(R.string.last_year)
             else -> context.getString(R.string.unknown)
         }
     }
 
     fun TextView.setCurrentSortOrder() {
         text = when (AlbumPreferences.getSortingStyle()) {
-            AlbumPreferences.ACCENDING -> context.getString(R.string.normal)
-            AlbumPreferences.DESCENDING -> context.getString(R.string.reversed)
+            CommonPreferencesConstants.ACCENDING -> context.getString(R.string.normal)
+            CommonPreferencesConstants.DESCENDING -> context.getString(R.string.reversed)
             else -> context.getString(R.string.unknown)
         }
     }

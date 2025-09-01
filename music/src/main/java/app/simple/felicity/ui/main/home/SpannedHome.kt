@@ -20,7 +20,7 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.ui.main.albums.AlbumPage
-import app.simple.felicity.ui.main.albums.DefaultAlbums
+import app.simple.felicity.ui.main.albums.Albums
 import app.simple.felicity.ui.main.artists.ArtistPage
 import app.simple.felicity.ui.main.artists.Artists
 import app.simple.felicity.ui.main.genres.Genres
@@ -83,7 +83,7 @@ class SpannedHome : MediaFragment() {
                             openFragment(Songs.newInstance(), Songs.TAG)
                         }
                         R.string.albums -> {
-                            openFragment(DefaultAlbums.newInstance(), DefaultAlbums.TAG)
+                            openFragment(Albums.newInstance(), Albums.TAG)
                         }
                         R.string.artists -> {
                             openFragment(Artists.newInstance(), Artists.TAG)

@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
+import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.DialogSortGenresBinding
 import app.simple.felicity.extensions.fragments.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.GenresPreferences
@@ -22,22 +23,22 @@ class DialogGenreSort : ScopedBottomSheetFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         when (GenresPreferences.getSortStyle()) {
-            GenresPreferences.BY_NAME -> binding.name.isChecked = true
+            CommonPreferencesConstants.BY_NAME -> binding.name.isChecked = true
         }
 
-        binding.normal.isChecked = GenresPreferences.getSortOrder() == GenresPreferences.ACCENDING
-        binding.reversed.isChecked = GenresPreferences.getSortOrder() == GenresPreferences.DESCENDING
+        binding.normal.isChecked = GenresPreferences.getSortOrder() == CommonPreferencesConstants.ACCENDING
+        binding.reversed.isChecked = GenresPreferences.getSortOrder() == CommonPreferencesConstants.DESCENDING
 
         binding.sortByChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             when (checkedIds.firstOrNull()) {
-                binding.name.id -> GenresPreferences.setSortStyle(GenresPreferences.BY_NAME)
+                binding.name.id -> GenresPreferences.setSortStyle(CommonPreferencesConstants.BY_NAME)
             }
         }
 
         binding.sortingStyleChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             when (checkedIds.firstOrNull()) {
-                binding.normal.id -> GenresPreferences.setSortOrder(GenresPreferences.ACCENDING)
-                binding.reversed.id -> GenresPreferences.setSortOrder(GenresPreferences.DESCENDING)
+                binding.normal.id -> GenresPreferences.setSortOrder(CommonPreferencesConstants.ACCENDING)
+                binding.reversed.id -> GenresPreferences.setSortOrder(CommonPreferencesConstants.DESCENDING)
             }
         }
     }

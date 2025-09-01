@@ -37,7 +37,7 @@ import kotlin.math.pow
 import kotlin.math.roundToLong
 import kotlin.math.sign
 
-abstract class SharedScrollViewPopup @JvmOverloads constructor(
+open class SharedScrollViewPopup @JvmOverloads constructor(
         private val container: ViewGroup,
         private val anchorView: View,
         private val menuItems: List<Int>, // String resource IDs
@@ -389,5 +389,7 @@ abstract class SharedScrollViewPopup @JvmOverloads constructor(
     }
 
     // Optional hook
-    abstract fun onPopupCreated(scrollView: NestedScrollView, contentLayout: LinearLayout)
+    open fun onPopupCreated(scrollView: NestedScrollView, contentLayout: LinearLayout) {
+
+    }
 }

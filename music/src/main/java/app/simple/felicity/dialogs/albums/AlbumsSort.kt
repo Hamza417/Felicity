@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
+import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.DialogSortAlbumsBinding
 import app.simple.felicity.extensions.fragments.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.AlbumPreferences
@@ -23,23 +24,23 @@ class AlbumsSort : ScopedBottomSheetFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         when (AlbumPreferences.getAlbumSort()) {
-            AlbumPreferences.BY_ALBUM_NAME -> binding.title.isChecked = true
-            AlbumPreferences.BY_ARTIST -> binding.artist.isChecked = true
-            AlbumPreferences.BY_FIRST_YEAR -> binding.firstYear.isChecked = true
-            AlbumPreferences.BY_LAST_YEAR -> binding.lastYear.isChecked = true
-            AlbumPreferences.BY_NUMBER_OF_SONGS -> binding.numberOfSongs.isChecked = true
+            CommonPreferencesConstants.BY_ALBUM_NAME -> binding.title.isChecked = true
+            CommonPreferencesConstants.BY_ARTIST -> binding.artist.isChecked = true
+            CommonPreferencesConstants.BY_FIRST_YEAR -> binding.firstYear.isChecked = true
+            CommonPreferencesConstants.BY_LAST_YEAR -> binding.lastYear.isChecked = true
+            CommonPreferencesConstants.BY_NUMBER_OF_SONGS -> binding.numberOfSongs.isChecked = true
         }
 
-        binding.normal.isChecked = AlbumPreferences.getSortingStyle() == AlbumPreferences.ACCENDING
-        binding.reversed.isChecked = AlbumPreferences.getSortingStyle() == AlbumPreferences.DESCENDING
+        binding.normal.isChecked = AlbumPreferences.getSortingStyle() == CommonPreferencesConstants.ACCENDING
+        binding.reversed.isChecked = AlbumPreferences.getSortingStyle() == CommonPreferencesConstants.DESCENDING
 
         binding.sortByChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             when (checkedIds.firstOrNull()) {
-                binding.title.id -> AlbumPreferences.setAlbumSort(AlbumPreferences.BY_ALBUM_NAME)
-                binding.artist.id -> AlbumPreferences.setAlbumSort(AlbumPreferences.BY_ARTIST)
-                binding.numberOfSongs.id -> AlbumPreferences.setAlbumSort(AlbumPreferences.BY_NUMBER_OF_SONGS)
-                binding.firstYear.id -> AlbumPreferences.setAlbumSort(AlbumPreferences.BY_FIRST_YEAR)
-                binding.lastYear.id -> AlbumPreferences.setAlbumSort(AlbumPreferences.BY_LAST_YEAR)
+                binding.title.id -> AlbumPreferences.setAlbumSort(CommonPreferencesConstants.BY_ALBUM_NAME)
+                binding.artist.id -> AlbumPreferences.setAlbumSort(CommonPreferencesConstants.BY_ARTIST)
+                binding.numberOfSongs.id -> AlbumPreferences.setAlbumSort(CommonPreferencesConstants.BY_NUMBER_OF_SONGS)
+                binding.firstYear.id -> AlbumPreferences.setAlbumSort(CommonPreferencesConstants.BY_FIRST_YEAR)
+                binding.lastYear.id -> AlbumPreferences.setAlbumSort(CommonPreferencesConstants.BY_LAST_YEAR)
             }
         }
 

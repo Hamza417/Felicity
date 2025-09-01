@@ -1,17 +1,35 @@
 package app.simple.felicity.repository.sort
 
+import android.widget.TextView
+import app.simple.felicity.constants.CommonPreferencesConstants
+import app.simple.felicity.core.R
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.models.Genre
 
 object GenreSort {
     fun List<Genre>.sorted(): List<Genre> {
         return when (GenresPreferences.getSortStyle()) {
-            GenresPreferences.BY_NAME -> when (GenresPreferences.getSortOrder()) {
-                GenresPreferences.ACCENDING -> sortedBy { it.name?.lowercase() }
-                GenresPreferences.DESCENDING -> sortedByDescending { it.name?.lowercase() }
+            CommonPreferencesConstants.BY_NAME -> when (GenresPreferences.getSortOrder()) {
+                CommonPreferencesConstants.ACCENDING -> sortedBy { it.name?.lowercase() }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.name?.lowercase() }
                 else -> this
             }
             else -> this
+        }
+    }
+
+    fun TextView.setCurrentSortStyle() {
+        text = when (GenresPreferences.getSortStyle()) {
+            CommonPreferencesConstants.BY_NAME -> context.getString(R.string.name)
+            else -> context.getString(R.string.unknown)
+        }
+    }
+
+    fun TextView.setCurrentSortOrder() {
+        text = when (GenresPreferences.getSortOrder()) {
+            CommonPreferencesConstants.ACCENDING -> context.getString(R.string.normal)
+            CommonPreferencesConstants.DESCENDING -> context.getString(R.string.reversed)
+            else -> context.getString(R.string.unknown)
         }
     }
 }
