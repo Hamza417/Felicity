@@ -10,6 +10,7 @@ object AlbumPreferences {
     const val ALBUM_SORT = "album_sort_"
     const val SORTING_STYLE = "album_sorting_style_"
     const val GRID_SIZE = "album_grid_size"
+    const val GRID_TYPE = "album_grid_type"
 
     // ----------------------------------------------------------------------------------------- //
 
@@ -47,5 +48,14 @@ object AlbumPreferences {
 
     fun setGridSize(size: Int) {
         SharedPreferences.getSharedPreferences().edit { putInt(GRID_SIZE, size) }
+    }
+
+    fun getGridType(): Int {
+        return SharedPreferences.getSharedPreferences()
+            .getInt(GRID_TYPE, CommonPreferencesConstants.GRID_TYPE_LIST)
+    }
+
+    fun setGridType(type: Int) {
+        SharedPreferences.getSharedPreferences().edit { putInt(GRID_TYPE, type) }
     }
 }

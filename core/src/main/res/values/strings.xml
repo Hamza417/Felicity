@@ -116,4 +116,7 @@
     <string name="shadow_effect">Shadow Effect</string>
     <string name="font">Font</string>
     <string name="show_genre_cover">Show Genre Cover</string>
+    <string name="list">List</string>
+    <string name="grid">Grid</string>
+    <string name="peristyle">Peristyle</string>
 </resources>

@@ -19,4 +19,8 @@ object CommonPreferencesConstants {
     const val GRID_SIZE_FOUR = 4
     const val GRID_SIZE_FIVE = 5
     const val GRID_SIZE_SIX = 6
+
+    const val GRID_TYPE_LIST = 0
+    const val GRID_TYPE_GRID = 1
+    const val GRID_TYPE_PERISTYLE = 2
 }

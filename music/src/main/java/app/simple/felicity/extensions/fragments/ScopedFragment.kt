@@ -92,7 +92,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         try {
             val transaction = requireActivity().supportFragmentManager.beginTransaction()
             transaction.setReorderingAllowed(true)
-            transaction.replace(R.id.app_container, fragment, tag)
+            transaction.replace(R.id.fragment_container, fragment, tag)
             if (tag.isNotNull()) {
                 transaction.addToBackStack(tag)
             }
@@ -101,7 +101,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         } catch (_: IllegalStateException) {
             val transaction = requireActivity().supportFragmentManager.beginTransaction()
             transaction.setReorderingAllowed(true)
-            transaction.replace(R.id.app_container, fragment, tag)
+            transaction.replace(R.id.fragment_container, fragment, tag)
             if (tag.isNotNull()) {
                 transaction.addToBackStack(tag)
             }
@@ -136,7 +136,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         try {
             val transaction = requireActivity().supportFragmentManager.beginTransaction()
             transaction.setReorderingAllowed(true)
-            transaction.replace(R.id.app_container, fragment, tag)
+            transaction.replace(R.id.fragment_container, fragment, tag)
             if (tag.isNotNull()) {
                 transaction.addToBackStack(tag)
             }
@@ -144,7 +144,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         } catch (e: IllegalStateException) {
             val transaction = requireActivity().supportFragmentManager.beginTransaction()
             transaction.setReorderingAllowed(true)
-            transaction.replace(R.id.app_container, fragment, tag)
+            transaction.replace(R.id.fragment_container, fragment, tag)
             if (tag.isNotNull()) {
                 transaction.addToBackStack(tag)
             }
@@ -283,7 +283,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
     }
 
     protected fun requireContainerView(): ViewGroup {
-        return requireActivity().findViewById(R.id.main_container)
+        return requireActivity().findViewById(R.id.app_container)
     }
 
     protected fun requireContentResolver(): ContentResolver {

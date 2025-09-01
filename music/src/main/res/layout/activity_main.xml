@@ -9,16 +9,16 @@
     FragmentContainerView.
 -->
 
-<app.simple.felicity.decorations.theme.ThemeFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.theme.ThemeCoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main_container"
+    android:id="@+id/app_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".activities.MainActivity"
     tools:parentTag="android.widget.FrameLayout">
 
-    <app.simple.felicity.decorations.theme.ThemeCoordinatorLayout
-        android:id="@+id/app_container"
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:id="@+id/fragment_container"
         android:clipChildren="false"
         android:clipToPadding="false"
         android:layout_width="match_parent"
@@ -30,4 +30,4 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom" />
 
-</app.simple.felicity.decorations.theme.ThemeFrameLayout>
+</app.simple.felicity.decorations.theme.ThemeCoordinatorLayout>

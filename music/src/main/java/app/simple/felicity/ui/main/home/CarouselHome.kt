@@ -17,7 +17,7 @@ import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.ui.app.ArtFlow
 import app.simple.felicity.ui.main.albums.AlbumPage
-import app.simple.felicity.ui.main.albums.PeristyleAlbums
+import app.simple.felicity.ui.main.albums.Albums
 import app.simple.felicity.ui.main.artists.ArtistPage
 import app.simple.felicity.ui.main.artists.PeristyleArtists
 import app.simple.felicity.ui.main.genres.GenrePage
@@ -88,7 +88,7 @@ class CarouselHome : MediaFragment() {
                                 openFragment(PeristyleArtists.newInstance(), PeristyleArtists.TAG)
                             }
                             is Album -> {
-                                openFragment(PeristyleAlbums.newInstance(), PeristyleAlbums.TAG)
+                                openFragment(Albums.newInstance(), Albums.TAG)
                             }
                             else -> {
                                 Log.w(TAG, "Unsupported item type clicked at position: $position")

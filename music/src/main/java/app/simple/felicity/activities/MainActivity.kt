@@ -132,23 +132,23 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         when (HomePreferences.getHomeInterface()) {
             HomePreferences.HOME_INTERFACE_CAROUSEL -> {
                 supportFragmentManager.beginTransaction()
-                    .replace(R.id.app_container, CarouselHome.newInstance(), CarouselHome.TAG)
+                    .replace(R.id.fragment_container, CarouselHome.newInstance(), CarouselHome.TAG)
                     .commit()
             }
 
             HomePreferences.HOME_INTERFACE_SPANNED -> {
                 supportFragmentManager.beginTransaction()
-                    .replace(R.id.app_container, SpannedHome.newInstance(), SpannedHome.TAG)
+                    .replace(R.id.fragment_container, SpannedHome.newInstance(), SpannedHome.TAG)
                     .commit()
             }
             HomePreferences.HOME_INTERFACE_ARTFLOW -> {
                 supportFragmentManager.beginTransaction()
-                    .replace(R.id.app_container, ArtFlowHome.newInstance(), ArtFlowHome.TAG)
+                    .replace(R.id.fragment_container, ArtFlowHome.newInstance(), ArtFlowHome.TAG)
                     .commit()
             }
             HomePreferences.HOME_INTERFACE_SIMPLE -> {
                 supportFragmentManager.beginTransaction()
-                    .replace(R.id.app_container, SimpleHome.newInstance(), SimpleHome.TAG)
+                    .replace(R.id.fragment_container, SimpleHome.newInstance(), SimpleHome.TAG)
                     .commit()
             }
         }

@@ -18,10 +18,10 @@ class SpacingRecyclerView : CustomVerticalRecyclerView {
     constructor(context: android.content.Context, attrs: android.util.AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
 
     init {
-        updateSpacing()
+        applySpacing()
     }
 
-    fun updateSpacing() {
+    fun applySpacing() {
         for (i in 0 until itemDecorationCount) {
             val decoration = getItemDecorationAt(i)
             if (decoration is SpacingItemDecoration) {
@@ -34,6 +34,16 @@ class SpacingRecyclerView : CustomVerticalRecyclerView {
                 SpacingItemDecoration(
                         AppearancePreferences.DEFAULT_SPACING.toInt(),
                         AppearancePreferences.getListSpacing().toInt()))
+    }
+
+    fun removeSpacing() {
+        for (i in 0 until itemDecorationCount) {
+            val decoration = getItemDecorationAt(i)
+            if (decoration is SpacingItemDecoration) {
+                removeItemDecoration(decoration)
+                break
+            }
+        }
     }
 
     fun beginDelayedTransition() {
@@ -68,7 +78,7 @@ class SpacingRecyclerView : CustomVerticalRecyclerView {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             AppearancePreferences.LIST_SPACING -> {
-                updateSpacing()
+                applySpacing()
             }
         }
     }

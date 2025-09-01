@@ -21,7 +21,7 @@ import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.app.ArtFlow
-import app.simple.felicity.ui.main.albums.PeristyleAlbums
+import app.simple.felicity.ui.main.albums.Albums
 import app.simple.felicity.ui.main.artists.PeristyleArtists
 import app.simple.felicity.ui.main.genres.GenrePage
 import app.simple.felicity.ui.main.genres.Genres
@@ -72,7 +72,7 @@ class ArtFlowHome : MediaFragment() {
                     openFragment(PeristyleArtists.newInstance(), PeristyleArtists.TAG)
                 }
                 decorationR.drawable.ic_album -> {
-                    openFragment(PeristyleAlbums.newInstance(), PeristyleAlbums.TAG)
+                    openFragment(Albums.newInstance(), Albums.TAG)
                 }
                 decorationR.drawable.ic_volume -> {
                     childFragmentManager.showVolumeKnob()
@@ -124,7 +124,7 @@ class ArtFlowHome : MediaFragment() {
                             openFragment(PeristyleArtists.newInstance(), PeristyleArtists.TAG)
                         }
                         R.string.albums -> {
-                            openFragment(PeristyleAlbums.newInstance(), PeristyleAlbums.TAG)
+                            openFragment(Albums.newInstance(), Albums.TAG)
                         }
                         R.string.genres -> {
                             openFragment(Genres.newInstance(), GenrePage.TAG)
