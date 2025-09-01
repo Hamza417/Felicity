@@ -94,6 +94,7 @@ class SlideFastScroller @JvmOverloads constructor(
     private var lightBindMode = false
     private var originalCacheSize = -1
     private var originalPrefetchCount = -1
+    private var lightBindExitPending = false // Prevent multiple exit calls
 
     // Batched scroll updates
     private var pendingScrollUpdate: Runnable? = null
@@ -202,28 +203,175 @@ class SlideFastScroller @JvmOverloads constructor(
         val rv = recyclerRef?.get() ?: return
         val adapter = rv.adapter
 
-        // Notify adapter to use light binding if it supports it
-        if (adapter is FastScrollOptimizedAdapter) {
-            adapter.setLightBindMode(true)
+        // Check for enhanced interface first, then fall back to basic interface
+        when {
+            adapter is FastScrollBindingController -> {
+                adapter.setLightBindMode(true)
+
+                // If adapter wants custom binding control, trigger rebind of visible items
+                if (adapter.shouldHandleCustomBinding()) {
+                    val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
+                    val firstVisible = layoutManager.findFirstVisibleItemPosition()
+                    val lastVisible = layoutManager.findLastVisibleItemPosition()
+
+                    if (firstVisible >= 0 && lastVisible >= 0 && firstVisible <= lastVisible) {
+                        // Trigger custom binding for visible items
+                        for (position in firstVisible..lastVisible) {
+                            val view = layoutManager.findViewByPosition(position)
+                            if (view != null) {
+                                val holder = rv.getChildViewHolder(view)
+                                if (holder != null) {
+                                    adapter.onBindViewHolder(holder, position, true)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            adapter is FastScrollOptimizedAdapter -> {
+                adapter.setLightBindMode(true)
+            }
         }
     }
 
     private fun exitLightBindMode() {
-        if (!lightBindMode) return
+        if (!lightBindMode || lightBindExitPending) return
         lightBindMode = false
+        lightBindExitPending = true
 
         val rv = recyclerRef?.get() ?: return
-        val adapter = rv.adapter
+        val adapter = rv.adapter ?: return
+        val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
 
-        if (adapter is FastScrollOptimizedAdapter) {
-            adapter.setLightBindMode(false)
-            // Refresh visible items to load full content
-            adapter.notifyItemRangeChanged(
-                    (rv.layoutManager as? LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0,
-                    ((rv.layoutManager as? LinearLayoutManager)?.findLastVisibleItemPosition() ?: 0) -
-                            ((rv.layoutManager as? LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0) + 1
-            )
+        when {
+            adapter is FastScrollBindingController -> {
+                adapter.setLightBindMode(false)
+
+                val firstVisible = layoutManager.findFirstVisibleItemPosition()
+                val lastVisible = layoutManager.findLastVisibleItemPosition()
+
+                if (firstVisible >= 0 && lastVisible >= 0 && firstVisible <= lastVisible) {
+                    if (adapter.shouldHandleCustomBinding()) {
+                        // Use custom binding to restore full content
+                        for (position in firstVisible..lastVisible) {
+                            val view = layoutManager.findViewByPosition(position)
+                            if (view != null) {
+                                val holder = rv.getChildViewHolder(view)
+                                if (holder != null) {
+                                    adapter.onBindViewHolder(holder, position, false)
+                                }
+                            }
+                        }
+                    } else {
+                        // Fall back to standard notification
+                        val itemCount = lastVisible - firstVisible + 1
+                        if (itemCount > 0) {
+                            adapter.notifyItemRangeChanged(firstVisible, itemCount)
+                        }
+                    }
+                }
+            }
+            adapter is FastScrollOptimizedAdapter -> {
+                adapter.setLightBindMode(false)
+
+                val firstVisible = layoutManager.findFirstVisibleItemPosition()
+                val lastVisible = layoutManager.findLastVisibleItemPosition()
+
+                if (firstVisible >= 0 && lastVisible >= 0 && firstVisible <= lastVisible) {
+                    val itemCount = lastVisible - firstVisible + 1
+                    if (itemCount > 0) {
+                        adapter.notifyItemRangeChanged(firstVisible, itemCount)
+                    }
+                }
+            }
+            else -> {
+                // For non-optimized adapters, force standard rebinding
+                val firstVisible = layoutManager.findFirstVisibleItemPosition()
+                val lastVisible = layoutManager.findLastVisibleItemPosition()
+
+                if (firstVisible >= 0 && lastVisible >= 0 && firstVisible <= lastVisible) {
+                    val itemCount = lastVisible - firstVisible + 1
+                    if (itemCount > 0) {
+                        adapter.notifyItemRangeChanged(firstVisible, itemCount)
+                    }
+                }
+            }
         }
+
+        // Reset the flag after a short delay
+        handler.postDelayed({ lightBindExitPending = false }, 100)
+    }
+
+    /**
+     * Immediately exit light bind mode without delays - used when finger is lifted
+     */
+    private fun exitLightBindModeImmediate() {
+        if (!lightBindMode || lightBindExitPending) return
+        lightBindMode = false
+        lightBindExitPending = true
+
+        val rv = recyclerRef?.get() ?: return
+        val adapter = rv.adapter ?: return
+        val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
+
+        when {
+            adapter is FastScrollBindingController -> {
+                adapter.setLightBindMode(false)
+
+                val firstVisible = layoutManager.findFirstVisibleItemPosition()
+                val lastVisible = layoutManager.findLastVisibleItemPosition()
+
+                if (firstVisible >= 0 && lastVisible >= 0 && firstVisible <= lastVisible) {
+                    if (adapter.shouldHandleCustomBinding()) {
+                        // Use custom binding to restore full content immediately
+                        for (position in firstVisible..lastVisible) {
+                            val view = layoutManager.findViewByPosition(position)
+                            if (view != null) {
+                                val holder = rv.getChildViewHolder(view)
+                                if (holder != null) {
+                                    adapter.onBindViewHolder(holder, position, false)
+                                }
+                            }
+                        }
+                    } else {
+                        // Force immediate rebinding of all visible items
+                        val itemCount = lastVisible - firstVisible + 1
+                        if (itemCount > 0) {
+                            adapter.notifyItemRangeChanged(firstVisible, itemCount)
+                        }
+                    }
+                }
+            }
+            adapter is FastScrollOptimizedAdapter -> {
+                adapter.setLightBindMode(false)
+
+                val firstVisible = layoutManager.findFirstVisibleItemPosition()
+                val lastVisible = layoutManager.findLastVisibleItemPosition()
+
+                if (firstVisible >= 0 && lastVisible >= 0 && firstVisible <= lastVisible) {
+                    // Force immediate rebinding of all visible items
+                    val itemCount = lastVisible - firstVisible + 1
+                    if (itemCount > 0) {
+                        adapter.notifyItemRangeChanged(firstVisible, itemCount)
+                    }
+                }
+            }
+            else -> {
+                // For non-optimized adapters, force immediate standard rebinding
+                val firstVisible = layoutManager.findFirstVisibleItemPosition()
+                val lastVisible = layoutManager.findLastVisibleItemPosition()
+
+                if (firstVisible >= 0 && lastVisible >= 0 && firstVisible <= lastVisible) {
+                    val itemCount = lastVisible - firstVisible + 1
+                    if (itemCount > 0) {
+                        adapter.notifyItemRangeChanged(firstVisible, itemCount)
+                    }
+                }
+            }
+        }
+
+        // Reset the flag immediately since we're doing synchronous binding
+        lightBindExitPending = false
     }
 
     /** Allow enabling drag even if adapter empty (mostly for testing). */
@@ -430,24 +578,24 @@ class SlideFastScroller @JvmOverloads constructor(
         performScrollToPosition(position)
     }
 
-    private fun performScrollToPosition(position: Int) {
+    private fun performScrollToPosition(position: Int, directPositioning: Boolean = false) {
         val rv = recyclerRef?.get() ?: return
         val count = rv.adapter?.itemCount ?: 0
         if (position < 0 || position >= count) return
 
-        if (position == lastAppliedPosition) return
+        if (position == lastAppliedPosition && !directPositioning) return
         lastAppliedPosition = position
 
         val layoutManager = rv.layoutManager as? LinearLayoutManager
-        if (layoutManager != null && smoothScrollEnabled && !dragging) {
-            // Use smooth scrolling when not dragging
+        if (layoutManager != null && smoothScrollEnabled && !dragging && !directPositioning) {
+            // Use smooth scrolling when not dragging and not doing direct positioning
             val smoothScroller = object : LinearSmoothScroller(context) {
                 override fun getVerticalSnapPreference(): Int = SNAP_TO_START
             }
             smoothScroller.targetPosition = position
             layoutManager.startSmoothScroll(smoothScroller)
         } else {
-            // Direct positioning for fast dragging
+            // Direct positioning for fast dragging or when explicitly requested
             if (indexOffsetCache.containsKey(position)) {
                 // Use cached offset for more accurate positioning
                 val offset = indexOffsetCache[position] ?: 0
@@ -527,6 +675,19 @@ class SlideFastScroller @JvmOverloads constructor(
                 if (hitTest(event.x, event.y, adapterCount)) {
                     parent?.requestDisallowInterceptTouchEvent(true)
                     dragging = true
+
+                    // Immediately stop any ongoing smooth scrolls
+                    rv?.stopScroll()
+                    val layoutManager = rv?.layoutManager as? LinearLayoutManager
+                    layoutManager?.let { lm ->
+                        // Cancel any pending smooth scroll operations
+                        try {
+                            lm.startSmoothScroll(null)
+                        } catch (e: Exception) {
+                            // Ignore - just trying to cancel
+                        }
+                    }
+
                     enterLightBindMode() // Enable light binding during drag
                     show(true)
                     removeCallbacks(autoHideRunnable)
@@ -549,12 +710,23 @@ class SlideFastScroller @JvmOverloads constructor(
                     dragging = false
                     parent?.requestDisallowInterceptTouchEvent(false)
 
-                    // Final precise snap
-                    val finalPosition = percentToAdapterPosition(percent)
-                    scheduleScrollToPosition(finalPosition, force = true)
+                    // Immediately stop any ongoing scrolls when finger is lifted
+                    rv?.stopScroll()
+                    val layoutManager = rv?.layoutManager as? LinearLayoutManager
+                    layoutManager?.let { lm ->
+                        try {
+                            lm.startSmoothScroll(null)
+                        } catch (e: Exception) {
+                            // Ignore
+                        }
+                    }
 
-                    // Exit light bind mode after a delay to let scroll settle
-                    handler.postDelayed({ exitLightBindMode() }, 200)
+                    // Final precise snap - use direct positioning to avoid smooth scroll
+                    val finalPosition = percentToAdapterPosition(percent)
+                    performScrollToPosition(finalPosition, directPositioning = true)
+
+                    // Immediately exit light bind mode and notify all visible holders
+                    exitLightBindModeImmediate()
 
                     scheduleAutoHide()
                     invalidate()
@@ -672,6 +844,29 @@ class SlideFastScroller @JvmOverloads constructor(
     // Interface for adapters to optimize binding during fast scroll
     interface FastScrollOptimizedAdapter {
         fun setLightBindMode(enabled: Boolean)
+    }
+
+    // Enhanced interface that provides more control over binding during fast scroll
+    interface FastScrollBindingController {
+        /**
+         * Called when light bind mode is enabled/disabled
+         * @param enabled true when fast scrolling starts, false when it ends
+         */
+        fun setLightBindMode(enabled: Boolean)
+
+        /**
+         * Called during fast scrolling to allow custom binding logic
+         * @param holder The ViewHolder being bound
+         * @param position The adapter position
+         * @param isLightBind true if this is during fast scrolling (light bind), false for normal bind
+         */
+        fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, isLightBind: Boolean)
+
+        /**
+         * Called to check if the adapter wants to handle binding itself during fast scroll
+         * @return true if adapter will handle binding via onBindViewHolder callback, false to use default behavior
+         */
+        fun shouldHandleCustomBinding(): Boolean
     }
 
     companion object {

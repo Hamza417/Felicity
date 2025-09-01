@@ -8,12 +8,13 @@ import app.simple.felicity.databinding.AdapterSongsBinding
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
+import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
 import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
 import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
 
 class SongsAdapter(initial: List<Song>, preInflate: Int = 0) :
-        RecyclerView.Adapter<SongsAdapter.Holder>(), SlideFastScroller.FastScrollOptimizedAdapter {
+        RecyclerView.Adapter<SongsAdapter.Holder>(), SlideFastScroller.FastScrollBindingController {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
     private var previousIndex = -1
@@ -45,26 +46,14 @@ class SongsAdapter(initial: List<Song>, preInflate: Int = 0) :
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
         val song = songs[position]
+
         if (lightBindMode.not()) {
             holder.bind(song)
-        } else {
-            holder.lightBind()
         }
 
         holder.binding.container.setOnClickListener {
             generalAdapterCallbacks?.onSongClicked(songs, holder.bindingAdapterPosition, it)
         }
-
-        holder.binding.container.setDefaultBackground(currentlyPlayingSong == song)
-    }
-
-    override fun onBindViewHolder(holder: Holder, position: Int, payloads: MutableList<Any>) {
-        if (payloads.contains(PAYLOAD_PLAYBACK_STATE)) {
-            val song = songs[position]
-            holder.binding.container.setDefaultBackground(currentlyPlayingSong == song)
-            return
-        }
-        super.onBindViewHolder(holder, position, payloads)
     }
 
     override fun getItemCount(): Int = songs.size
@@ -83,6 +72,18 @@ class SongsAdapter(initial: List<Song>, preInflate: Int = 0) :
         lightBindMode = enabled
     }
 
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, isLightBind: Boolean) {
+        if (holder is Holder) {
+            if (isLightBind.not()) {
+                holder.bind(songs[position])
+            }
+        }
+    }
+
+    override fun shouldHandleCustomBinding(): Boolean {
+        return true
+    }
+
     inner class Holder(val binding: AdapterSongsBinding) : VerticalListViewHolder(binding.root) {
         fun bind(song: Song) {
             binding.apply {
@@ -96,11 +97,13 @@ class SongsAdapter(initial: List<Song>, preInflate: Int = 0) :
                     generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, it)
                     true
                 }
+
+                binding.container.setDefaultBackground(currentlyPlayingSong == song)
             }
         }
 
-        fun lightBind() {
-
+        init {
+            binding.container.setSkeletonBackground(enable = lightBindMode)
         }
     }
 

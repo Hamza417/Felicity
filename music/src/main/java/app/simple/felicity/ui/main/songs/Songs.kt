@@ -13,7 +13,6 @@ import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.databinding.HeaderSongsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
-import app.simple.felicity.decorations.itemanimators.FlipItemAnimator
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.songs.SongMenu.Companion.showSongMenu
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
@@ -43,7 +42,6 @@ class Songs : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.recyclerView.itemAnimator = FlipItemAnimator()
         binding.recyclerView.requireAttachedMiniPlayer()
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
