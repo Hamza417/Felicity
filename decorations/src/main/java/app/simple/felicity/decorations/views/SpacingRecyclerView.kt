@@ -11,7 +11,7 @@ import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
 import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
 import app.simple.felicity.preferences.AppearancePreferences
 
-class SpacingRecyclerView : CustomVerticalRecyclerView {
+open class SpacingRecyclerView : CustomVerticalRecyclerView {
 
     constructor(context: android.content.Context) : super(context)
     constructor(context: android.content.Context, attrs: android.util.AttributeSet?) : super(context, attrs)

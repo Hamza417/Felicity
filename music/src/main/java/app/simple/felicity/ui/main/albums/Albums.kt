@@ -55,7 +55,6 @@ class Albums : MediaFragment() {
             gridLayoutManager = GridLayoutManager(requireContext(), AlbumPreferences.getGridSize())
             binding.recyclerView.layoutManager = gridLayoutManager
             adapterAlbums?.setHasStableIds(true)
-            binding.recyclerView.adapter = adapterAlbums
             headerBinding.count.text = getString(R.string.x_albums, it.size)
 
             adapterAlbums?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
@@ -136,6 +135,8 @@ class Albums : MediaFragment() {
                         }
                 ).show()
             }
+
+            binding.recyclerView.adapter = adapterAlbums
         }
     }
 
@@ -219,10 +220,9 @@ class Albums : MediaFragment() {
 
                 gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
                     override fun getSpanSize(position: Int): Int {
-                        val gridSize = AlbumPreferences.getGridSize()
-                        val blockSize = gridSize * 2
-                        val mod = position % (blockSize + 2)
-                        return if (mod == blockSize || mod == blockSize + 1) gridSize else 1
+                        val spanCount = maxOf(1, AlbumPreferences.getGridSize())
+                        val cycle = spanCount * 2 + 1 // 1 giant + 2 rows of grid
+                        return if (position % cycle == 0) spanCount else 1
                     }
                 }
 

@@ -4,12 +4,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <app.simple.felicity.decorations.views.SpacingRecyclerView
+    <app.simple.felicity.decorations.views.GridRecyclerView
         android:id="@+id/recycler_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:layoutAnimation="@anim/list_animation_controller"
+        android:layoutAnimation="@anim/grid_list_animation_controller"
         android:transitionName="@string/songs"
         app:fastScrollEnabled="false"
         app:isFadingEdgeRequired="false"
