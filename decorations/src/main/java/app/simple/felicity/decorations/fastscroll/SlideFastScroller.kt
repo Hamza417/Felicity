@@ -7,44 +7,41 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.drawable.Drawable
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.AttributeSet
 import android.util.DisplayMetrics
+import android.util.Log
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.DrawableRes
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decoration.R
 import app.simple.felicity.theme.managers.ThemeManager
 import java.lang.ref.WeakReference
-import kotlin.math.max
+import kotlin.math.abs
+import kotlin.math.floor
 import kotlin.math.min
 
-/**
- * A lightweight vertical slider (pill) fast scroller that:
- *  - Attaches as an overlay to a RecyclerView (added to its parent).
- *  - Displays a draggable pill along the right edge.
- *  - Dragging the pill scrolls the list using percentage (0f..1f) of total item count.
- *  - Observes RecyclerView scroll events to keep pill position in sync when user scrolls normally.
- *
- * Percentage mapping rules:
- *  - percent = (firstVisible + intraItemOffset) / (totalItems - 1) when totalItems > 1 else 0.
- *  - intraItemOffset adds smoothness based on first visible view's top offset.
- */
+// High-performance fast scroller with adapter index mapping, throttling, and prefetch optimization
 class SlideFastScroller @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
-        defStyleAttr: Int = 0
+        defStyleAttr: Int = 0,
 ) : View(context, attrs, defStyleAttr) {
 
     private var recyclerRef: WeakReference<RecyclerView>? = null
 
-    // Half-circle handle configuration
-    private val handleRadius = dp(28f) // visual radius (diameter = height)
+    // Handle (pill) configuration
+    private val handleRadius = dp(28f)
     private val minRadius = dp(22f)
     private val maxRadius = dp(40f)
     private val touchExtra = dp(12f)
@@ -60,7 +57,7 @@ class SlideFastScroller @JvmOverloads constructor(
         strokeCap = Paint.Cap.ROUND
     }
 
-    // Path + rect for internal half-circle rendering
+    // Path + rect for internal half-pill rendering
     private val handlePath = Path()
     private val circleRect = RectF()
 
@@ -73,6 +70,14 @@ class SlideFastScroller @JvmOverloads constructor(
     private var percent = 0f // 0..1
     private var dragging = false
     private var enabledWhileEmpty = false
+    private var currentAdapterPosition = -1
+    private var lastAppliedPosition = -1
+
+    // Legacy step-based fields (for compatibility)
+    private var stepScrollingEnabled = false // Disabled by default in favor of index mapping
+    private var stepPercent = 0.05f
+    private var jumpToPositionMode = false
+    private var lastAppliedStepIndex = -1
 
     // Animation / visibility
     private var visible = true
@@ -80,12 +85,49 @@ class SlideFastScroller @JvmOverloads constructor(
     private var visibilityAnimator: ValueAnimator? = null
     private val autoHideRunnable = Runnable { if (!dragging) hide(true) }
 
+    // Performance optimization fields
+    private val handler = Handler(Looper.getMainLooper())
+    private var lastUpdateTime = 0L
+    private val updateThrottleMs = getOptimalUpdateInterval() // Dynamic based on refresh rate
+    private var pendingScrollPosition = -1
+    private var smoothScrollEnabled = true
+    private var lightBindMode = false
+    private var originalCacheSize = -1
+    private var originalPrefetchCount = -1
+
+    // Batched scroll updates
+    private var pendingScrollUpdate: Runnable? = null
+    private val batchedScrollRunnable = Runnable {
+        val pos = pendingScrollPosition
+        if (pos >= 0) {
+            performScrollToPosition(pos)
+        }
+        pendingScrollUpdate = null
+    }
+
+    // Index-to-offset cache for variable height items
+    private val indexOffsetCache = mutableMapOf<Int, Int>()
+    private var cacheInvalidated = true
+
     private val scrollListener = object : RecyclerView.OnScrollListener() {
         override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
             if (!dragging) updatePercentFromRecycler()
             if (dy != 0) {
                 show(true)
                 scheduleAutoHide()
+                // Invalidate cache on scroll
+                if (cacheInvalidated) {
+                    cacheCurrentOffsets()
+                    cacheInvalidated = false
+                }
+            }
+        }
+
+        override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+            super.onScrollStateChanged(recyclerView, newState)
+            if (newState == RecyclerView.SCROLL_STATE_IDLE && lightBindMode) {
+                // Re-enable heavy binding after scroll settles
+                exitLightBindMode()
             }
         }
     }
@@ -94,8 +136,8 @@ class SlideFastScroller @JvmOverloads constructor(
         isClickable = false
         isFocusable = false
         setWillNotDraw(false)
-        alpha = 0f // start hidden until first scroll
-        translationX = handleRadius // off-screen to right partially
+        alpha = 0f
+        translationX = handleRadius
         visible = false
     }
 
@@ -104,6 +146,10 @@ class SlideFastScroller @JvmOverloads constructor(
         recyclerRef = WeakReference(recyclerView)
         recyclerView.removeOnScrollListener(scrollListener)
         recyclerView.addOnScrollListener(scrollListener)
+
+        // Configure prefetch optimization
+        setupPrefetching(recyclerView)
+
         val parent = recyclerView.parent
         if (parent is ViewGroup && parent.indexOfChild(this) == -1) {
             parent.addView(
@@ -111,7 +157,73 @@ class SlideFastScroller @JvmOverloads constructor(
                     ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             )
         }
-        post { updatePercentFromRecycler(); show(true); scheduleAutoHide() }
+        post {
+            updatePercentFromRecycler()
+            show(true)
+            scheduleAutoHide()
+        }
+    }
+
+    private fun setupPrefetching(recyclerView: RecyclerView) {
+        // Store original values
+        originalCacheSize = recyclerView.recycledViewPool.getRecycledViewCount(0)
+
+        // Increase cache size for better performance during fast scrolling
+        recyclerView.setItemViewCacheSize(20) // Default is usually 2
+
+        val layoutManager = recyclerView.layoutManager
+        if (layoutManager is LinearLayoutManager) {
+            originalPrefetchCount = layoutManager.initialPrefetchItemCount
+            layoutManager.initialPrefetchItemCount = 10 // Prefetch more items
+        }
+    }
+
+    private fun cacheCurrentOffsets() {
+        val rv = recyclerRef?.get() ?: return
+        val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
+
+        val first = layoutManager.findFirstVisibleItemPosition()
+        val last = layoutManager.findLastVisibleItemPosition()
+
+        if (first >= 0 && last >= 0) {
+            for (i in first..last) {
+                val view = layoutManager.findViewByPosition(i)
+                if (view != null) {
+                    indexOffsetCache[i] = view.top
+                }
+            }
+        }
+    }
+
+    private fun enterLightBindMode() {
+        if (lightBindMode) return
+        lightBindMode = true
+
+        val rv = recyclerRef?.get() ?: return
+        val adapter = rv.adapter
+
+        // Notify adapter to use light binding if it supports it
+        if (adapter is FastScrollOptimizedAdapter) {
+            adapter.setLightBindMode(true)
+        }
+    }
+
+    private fun exitLightBindMode() {
+        if (!lightBindMode) return
+        lightBindMode = false
+
+        val rv = recyclerRef?.get() ?: return
+        val adapter = rv.adapter
+
+        if (adapter is FastScrollOptimizedAdapter) {
+            adapter.setLightBindMode(false)
+            // Refresh visible items to load full content
+            adapter.notifyItemRangeChanged(
+                    (rv.layoutManager as? LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0,
+                    ((rv.layoutManager as? LinearLayoutManager)?.findLastVisibleItemPosition() ?: 0) -
+                            ((rv.layoutManager as? LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0) + 1
+            )
+        }
     }
 
     /** Allow enabling drag even if adapter empty (mostly for testing). */
@@ -127,8 +239,12 @@ class SlideFastScroller @JvmOverloads constructor(
     /** Programmatically set scroll percent and scroll list (clamped). */
     @Suppress("unused")
     fun setPercent(p: Float) {
-        val clamped = p.coerceIn(0f, 1f); if (clamped != percent) {
-            percent = clamped; scrollToPercent(clamped); invalidate()
+        val clamped = p.coerceIn(0f, 1f)
+        if (clamped != percent) {
+            percent = clamped
+            val position = percentToAdapterPosition(clamped)
+            scheduleScrollToPosition(position, force = true)
+            invalidate()
         }
     }
 
@@ -136,6 +252,30 @@ class SlideFastScroller @JvmOverloads constructor(
     @Suppress("unused")
     fun setAutoHideDelay(delayMillis: Long) {
         autoHideDelay = delayMillis
+    }
+
+    /** Enable or disable smooth scrolling to snapped positions. */
+    @Suppress("unused")
+    fun setSmoothScrollEnabled(enabled: Boolean) {
+        smoothScrollEnabled = enabled
+    }
+
+    /** Legacy: Enable or disable step-based scrolling. */
+    @Suppress("unused")
+    fun setStepScrollingEnabled(enabled: Boolean) {
+        stepScrollingEnabled = enabled
+    }
+
+    /** Legacy: Set the step size for step-based scrolling (default 5%). */
+    @Suppress("unused")
+    fun setStepPercent(percent: Float) {
+        stepPercent = percent.coerceIn(0.01f, 0.5f)
+    }
+
+    /** Legacy: Enable or disable jump-to-position mode for scrolling. */
+    @Suppress("unused")
+    fun setJumpToPositionMode(enabled: Boolean) {
+        jumpToPositionMode = enabled
     }
 
     /** Show the fast scroller, with optional animation. */
@@ -193,46 +333,127 @@ class SlideFastScroller @JvmOverloads constructor(
 
     private fun scrollToPercent(p: Float) {
         val rv = recyclerRef?.get() ?: return
-        val adapter = rv.adapter ?: return
-        val count = adapter.itemCount
-        if (count <= 0) return
-        val target = ((count - 1) * p).toInt().coerceIn(0, count - 1)
-        val lm = rv.layoutManager
-        if (lm is LinearLayoutManager) {
-            // Use scrollToPositionWithOffset for consistent placement.
-            lm.scrollToPositionWithOffset(target, 0)
-        } else {
-            rv.scrollToPosition(target)
-        }
+        // Pixel-based: compute target offset by percent of scrollable range, scrollBy delta.
+        val range = rv.computeVerticalScrollRange() - rv.computeVerticalScrollExtent()
+        if (range <= 0) return
+        val target = (p.coerceIn(0f, 1f) * range).toInt()
+        val current = rv.computeVerticalScrollOffset()
+        val dy = target - current
+        if (dy != 0) rv.scrollBy(0, dy)
     }
 
     private fun updatePercentFromRecycler() {
         val rv = recyclerRef?.get() ?: return
+        val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
         val adapter = rv.adapter ?: return
-        val total = adapter.itemCount
-        if (total <= 1) {
-            percent = 0f; invalidate(); return
+        val count = adapter.itemCount
+
+        if (count <= 1) {
+            percent = 0f
+            currentAdapterPosition = 0
+            invalidate()
+            return
         }
-        val lm = rv.layoutManager
-        if (lm is LinearLayoutManager && lm.orientation == RecyclerView.VERTICAL) {
-            val first = lm.findFirstVisibleItemPosition()
-            val firstView = lm.findViewByPosition(first)
-            if (first == RecyclerView.NO_POSITION || firstView == null) return
-            val itemHeight = max(1, firstView.height)
-            val offsetInside = (-firstView.top).toFloat() / itemHeight.toFloat()
-            val raw = (first + offsetInside) / (total - 1).toFloat()
-            val newPercent = raw.coerceIn(0f, 1f)
-            if (newPercent != percent) {
-                percent = newPercent; invalidate()
+
+        val firstVisible = layoutManager.findFirstVisibleItemPosition()
+        if (firstVisible < 0) return
+
+        val firstView = layoutManager.findViewByPosition(firstVisible)
+        val newPercent = if (firstView != null) {
+            val viewTop = firstView.top
+            val itemHeight = firstView.height.coerceAtLeast(1)
+            val offsetPercent = (-viewTop.toFloat() / itemHeight.toFloat()).coerceIn(0f, 1f)
+            ((firstVisible + offsetPercent) / (count - 1)).coerceIn(0f, 1f)
+        } else {
+            firstVisible.toFloat() / (count - 1).toFloat()
+        }
+
+        if (abs(newPercent - percent) > 0.001f) { // Avoid micro-updates
+            percent = newPercent
+            currentAdapterPosition = firstVisible
+            invalidate()
+        }
+    }
+
+    private fun applyStepForPercent(p: Float, force: Boolean = false) {
+        val rv = recyclerRef?.get() ?: return
+        val step = stepPercent.coerceIn(0.01f, 0.5f)
+        val maxIndex = floor(1f / step).toInt()
+        var idx = floor((p.coerceIn(0f, 0.9999f)) / step).toInt() // 0..maxIndex-1
+        if (idx < 0) idx = 0
+        if (idx >= maxIndex) idx = maxIndex - 1
+        if (!force && idx == lastAppliedStepIndex) return
+        lastAppliedStepIndex = idx
+        val snappedPercent = (idx * step).coerceIn(0f, 1f)
+        if (jumpToPositionMode) {
+            val count = rv.adapter?.itemCount ?: 0
+            if (count > 0) {
+                val pos = ((count - 1) * snappedPercent).toInt().coerceIn(0, count - 1)
+                rv.scrollToPosition(pos)
             }
         } else {
-            // Fallback: use computeVerticalScrollOffset / range for non-linear managers
-            val range = rv.computeVerticalScrollRange() - rv.computeVerticalScrollExtent()
-            val off = rv.computeVerticalScrollOffset()
-            val raw = if (range <= 0) 0f else off.toFloat() / range.toFloat()
-            val newPercent = raw.coerceIn(0f, 1f)
-            if (newPercent != percent) {
-                percent = newPercent; invalidate()
+            scrollToPercent(snappedPercent)
+        }
+    }
+
+    private fun percentToAdapterPosition(percent: Float): Int {
+        val rv = recyclerRef?.get() ?: return 0
+        val count = rv.adapter?.itemCount ?: 0
+        return if (count > 0) {
+            ((count - 1) * percent.coerceIn(0f, 1f)).toInt().coerceIn(0, count - 1)
+        } else 0
+    }
+
+    private fun adapterPositionToPercent(position: Int): Float {
+        val rv = recyclerRef?.get() ?: return 0f
+        val count = rv.adapter?.itemCount ?: 0
+        return if (count > 1) {
+            position.toFloat() / (count - 1).toFloat()
+        } else 0f
+    }
+
+    private fun scheduleScrollToPosition(position: Int, force: Boolean = false) {
+        if (!force && position == lastAppliedPosition) return
+
+        val currentTime = System.currentTimeMillis()
+        if (!force && currentTime - lastUpdateTime < updateThrottleMs) {
+            // Throttle updates - batch them at optimal refresh rate
+            pendingScrollPosition = position
+            if (pendingScrollUpdate == null) {
+                pendingScrollUpdate = batchedScrollRunnable
+                handler.postDelayed(batchedScrollRunnable, updateThrottleMs)
+            }
+            return
+        }
+
+        lastUpdateTime = currentTime
+        performScrollToPosition(position)
+    }
+
+    private fun performScrollToPosition(position: Int) {
+        val rv = recyclerRef?.get() ?: return
+        val count = rv.adapter?.itemCount ?: 0
+        if (position < 0 || position >= count) return
+
+        if (position == lastAppliedPosition) return
+        lastAppliedPosition = position
+
+        val layoutManager = rv.layoutManager as? LinearLayoutManager
+        if (layoutManager != null && smoothScrollEnabled && !dragging) {
+            // Use smooth scrolling when not dragging
+            val smoothScroller = object : LinearSmoothScroller(context) {
+                override fun getVerticalSnapPreference(): Int = SNAP_TO_START
+            }
+            smoothScroller.targetPosition = position
+            layoutManager.startSmoothScroll(smoothScroller)
+        } else {
+            // Direct positioning for fast dragging
+            if (indexOffsetCache.containsKey(position)) {
+                // Use cached offset for more accurate positioning
+                val offset = indexOffsetCache[position] ?: 0
+                layoutManager?.scrollToPositionWithOffset(position, offset)
+            } else {
+                rv.scrollToPosition(position)
             }
         }
     }
@@ -244,12 +465,13 @@ class SlideFastScroller @JvmOverloads constructor(
         val adapterEmpty = adapterCount <= 0
         if (adapterEmpty && !enabledWhileEmpty) return
         if (alpha <= 0f) return
-        val w = width.toFloat();
-        val h = height.toFloat(); if (w <= 0f || h <= 0f) return
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return
 
         val custom = handleDrawable != null
         if (custom) {
-            drawCustomHandle(canvas, adapterCount, w, h)
+            drawCustomHandle(canvas, w, h)
             return
         }
 
@@ -264,6 +486,7 @@ class SlideFastScroller @JvmOverloads constructor(
         handlePath.close()
         handlePaint.color = if (dragging) handleColorActive else handleColorInactive
         canvas.drawPath(handlePath, handlePaint)
+
         val ridgeCount = 3
         val ridgeSpacing = radius * 0.5f / (ridgeCount - 1)
         val ridgeMaxLength = radius * 1.05f
@@ -271,13 +494,13 @@ class SlideFastScroller @JvmOverloads constructor(
         val endBase = w - radius * 0.3f
         for (i in 0 until ridgeCount) {
             val ry = clampedCY - ridgeSpacing * (ridgeCount - 1) / 2f + i * ridgeSpacing
-            val shrinkFactor = 1f - 0.15f * (kotlin.math.abs(i - (ridgeCount - 1) / 2f))
+            val shrinkFactor = 1f - 0.15f * (abs(i - (ridgeCount - 1) / 2f))
             val endX = startX + ridgeMaxLength * shrinkFactor
             canvas.drawLine(startX, ry, min(endX, endBase), ry, ridgePaint)
         }
     }
 
-    private fun drawCustomHandle(canvas: Canvas, adapterCount: Int, w: Float, h: Float) {
+    private fun drawCustomHandle(canvas: Canvas, w: Float, h: Float) {
         val inactive = handleDrawable ?: return
         val active = handleDrawableActive
         val drawable = if (dragging) (active ?: inactive) else inactive
@@ -295,13 +518,16 @@ class SlideFastScroller @JvmOverloads constructor(
         val adapterCount = rv?.adapter?.itemCount ?: 0
         val adapterEmpty = adapterCount <= 0
         if (adapterEmpty && !enabledWhileEmpty) return false
+
         val w = width.toFloat()
-        val h = height.toFloat(); if (w == 0f || h == 0f) return false
+        val h = height.toFloat()
+        if (w == 0f || h == 0f) return false
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 if (hitTest(event.x, event.y, adapterCount)) {
                     parent?.requestDisallowInterceptTouchEvent(true)
                     dragging = true
+                    enterLightBindMode() // Enable light binding during drag
                     show(true)
                     removeCallbacks(autoHideRunnable)
                     updatePercentFromTouch(event.y, adapterCount)
@@ -322,9 +548,17 @@ class SlideFastScroller @JvmOverloads constructor(
                 if (dragging) {
                     dragging = false
                     parent?.requestDisallowInterceptTouchEvent(false)
+
+                    // Final precise snap
+                    val finalPosition = percentToAdapterPosition(percent)
+                    scheduleScrollToPosition(finalPosition, force = true)
+
+                    // Exit light bind mode after a delay to let scroll settle
+                    handler.postDelayed({ exitLightBindMode() }, 200)
+
                     scheduleAutoHide()
                     invalidate()
-                    performClick() // formalize end of interaction
+                    performClick()
                     return true
                 }
                 return false
@@ -358,31 +592,38 @@ class SlideFastScroller @JvmOverloads constructor(
     }
 
     private fun updatePercentFromTouch(y: Float, adapterCount: Int) {
-        val h = height.toFloat(); if (h <= 0f) return
+        val h = height.toFloat()
+        if (h <= 0f) return
+
         val custom = handleDrawable != null
-        if (custom) {
+        val newPercent = if (custom) {
             val inactive = handleDrawable ?: return
-            val intrinsicH = if (useIntrinsicSize && inactive.intrinsicHeight > 0) inactive.intrinsicHeight.toFloat() else dp(56f)
+            val intrinsicH = if (useIntrinsicSize && inactive.intrinsicHeight > 0) {
+                inactive.intrinsicHeight.toFloat()
+            } else dp(56f)
             val available = (h - intrinsicH).coerceAtLeast(1f)
             val clampedTop = y - intrinsicH / 2f
             val clamped = clampedTop.coerceIn(0f, h - intrinsicH)
-            val newPercent = (clamped / available).coerceIn(0f, 1f)
-            if (newPercent != percent) {
-                percent = newPercent; scrollToPercent(percent)
-            }
-            return
+            (clamped / available).coerceIn(0f, 1f)
+        } else {
+            val radius = computeRadius(adapterCount)
+            val available = (h - radius * 2f).coerceAtLeast(1f)
+            val clampedY = y.coerceIn(radius, h - radius)
+            (clampedY - radius) / available
         }
-        val radius = computeRadius(adapterCount)
-        val available = (h - radius * 2f).coerceAtLeast(1f)
-        val clampedY = y.coerceIn(radius, h - radius)
-        val newPercent = (clampedY - radius) / available
-        if (newPercent != percent) {
-            percent = newPercent; scrollToPercent(percent)
+
+        // Reduced threshold for high refresh rate devices to be more responsive
+        val threshold = if (updateThrottleMs <= 8L) 0.003f else 0.005f // More sensitive on 120Hz
+        if (abs(newPercent - percent) > threshold) {
+            percent = newPercent
+            val position = percentToAdapterPosition(newPercent)
+            scheduleScrollToPosition(position)
         }
     }
 
     private fun dp(value: Float): Float {
-        val metrics: DisplayMetrics = resources.displayMetrics; return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, metrics)
+        val metrics: DisplayMetrics = resources.displayMetrics
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, metrics)
     }
 
     private fun computeRadius(adapterCount: Int): Float = when {
@@ -393,6 +634,7 @@ class SlideFastScroller @JvmOverloads constructor(
     }
 
     /** Provide a custom drawable resource for the handle (used for both active & inactive). */
+    @Suppress("unused")
     fun setHandleDrawable(@DrawableRes resId: Int, useIntrinsic: Boolean = true) {
         val d = AppCompatResources.getDrawable(context, resId)
         handleDrawable = d
@@ -402,6 +644,7 @@ class SlideFastScroller @JvmOverloads constructor(
     }
 
     /** Provide separate inactive and active drawables. */
+    @Suppress("unused")
     fun setHandleDrawables(@DrawableRes inactiveResId: Int, @DrawableRes activeResId: Int, useIntrinsic: Boolean = true) {
         handleDrawable = AppCompatResources.getDrawable(context, inactiveResId)
         handleDrawableActive = AppCompatResources.getDrawable(context, activeResId)
@@ -410,6 +653,7 @@ class SlideFastScroller @JvmOverloads constructor(
     }
 
     /** Provide a custom drawable instance. */
+    @Suppress("unused")
     fun setHandleDrawable(drawable: Drawable?, drawableActive: Drawable? = null, useIntrinsic: Boolean = true) {
         handleDrawable = drawable
         handleDrawableActive = drawableActive
@@ -418,18 +662,56 @@ class SlideFastScroller @JvmOverloads constructor(
     }
 
     /** Remove any custom drawable and revert to internal rendering. */
+    @Suppress("unused")
     fun clearHandleDrawable() {
         handleDrawable = null
         handleDrawableActive = null
         invalidate()
     }
 
+    // Interface for adapters to optimize binding during fast scroll
+    interface FastScrollOptimizedAdapter {
+        fun setLightBindMode(enabled: Boolean)
+    }
+
     companion object {
         fun attach(recyclerView: RecyclerView): SlideFastScroller {
-            val scroller = SlideFastScroller(recyclerView.context); scroller.attachTo(recyclerView);
+            val scroller = SlideFastScroller(recyclerView.context)
+            scroller.attachTo(recyclerView)
             scroller.setHandleDrawable(R.drawable.ic_fast_thumb)
             scroller.handleDrawable?.setTint(ThemeManager.accent.primaryAccentColor)
             return scroller
+        }
+    }
+
+    private fun getOptimalUpdateInterval(): Long {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                // API 30+ - Use Display.getRefreshRate()
+                val display = context.display
+                val refreshRate = display.refreshRate
+                when {
+                    refreshRate >= 120f -> 8L  // 120Hz = ~8.33ms interval
+                    refreshRate >= 90f -> 11L  // 90Hz = ~11.1ms interval
+                    refreshRate >= 75f -> 13L  // 75Hz = ~13.3ms interval
+                    else -> 16L                // 60Hz = ~16.7ms interval
+                }
+            } else {
+                val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+
+                @Suppress("DEPRECATION")
+                val display = windowManager?.defaultDisplay
+                val refreshRate = display?.refreshRate ?: 60f
+                when {
+                    refreshRate >= 120f -> 8L
+                    refreshRate >= 90f -> 11L
+                    refreshRate >= 75f -> 13L
+                    else -> 16L
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SlideFastScroller", "Failed to get display refresh rate, defaulting to 60Hz", e)
+            16L // Fallback to 60Hz if detection fails
         }
     }
 }

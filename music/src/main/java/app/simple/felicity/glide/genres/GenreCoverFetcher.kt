@@ -10,6 +10,8 @@ import android.util.Size
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
 import androidx.core.net.toUri
+import app.simple.felicity.R
+import app.simple.felicity.core.helpers.ImageHelper.toBitmap
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.maps.GenreMap
 import app.simple.felicity.repository.models.Genre
@@ -17,6 +19,7 @@ import app.simple.felicity.repository.repositories.GenreRepository
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.data.DataFetcher
+import java.io.FileNotFoundException
 import java.util.Locale
 
 class GenreCoverFetcher internal constructor(private val context: Context, private val genre: Genre) : DataFetcher<Bitmap> {
@@ -49,12 +52,16 @@ class GenreCoverFetcher internal constructor(private val context: Context, priva
                 val bitmaps = mutableListOf<Bitmap>()
                 for (str in albumArts.take(count)) {
                     val uri = str.toUri()
-                    val bmp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        context.contentResolver.loadThumbnail(uri, Size(cellSize, cellSize), null)
-                    } else {
-                        context.contentResolver.openInputStream(uri)?.use { input ->
-                            BitmapFactory.decodeStream(input)
+                    val bmp = try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            context.contentResolver.loadThumbnail(uri, Size(cellSize, cellSize), null)
+                        } else {
+                            context.contentResolver.openInputStream(uri)?.use { input ->
+                                BitmapFactory.decodeStream(input)
+                            }
                         }
+                    } catch (e: FileNotFoundException) {
+                        R.drawable.ic_felicity_full_art.toBitmap(context)
                     }
                     bmp?.let { bitmaps.add(it) }
                 }
