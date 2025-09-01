@@ -8,7 +8,7 @@ import app.simple.felicity.manager.SharedPreferences
 
 object AlbumPreferences {
     const val ALBUM_SORT = "album_sort_"
-    const val SORTING_STYLE = "album_sorting_style_"
+    const val SORTING_STYLE = "_album_sorting_style__"
     const val GRID_SIZE = "album_grid_size"
     const val GRID_TYPE = "album_grid_type"
 
@@ -35,9 +35,9 @@ object AlbumPreferences {
             .getInt(SORTING_STYLE, ACCENDING)
     }
 
-    fun setSortingStyle(value: String) {
+    fun setSortingStyle(value: Int) {
         SharedPreferences.getSharedPreferences().edit {
-            putString(SORTING_STYLE, value)
+            putInt(SORTING_STYLE, value)
         }
     }
 

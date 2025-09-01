@@ -9,7 +9,6 @@ import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.DialogSortAlbumsBinding
 import app.simple.felicity.extensions.fragments.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.AlbumPreferences
-import app.simple.felicity.preferences.SongsPreferences
 
 class AlbumsSort : ScopedBottomSheetFragment() {
 
@@ -46,8 +45,8 @@ class AlbumsSort : ScopedBottomSheetFragment() {
 
         binding.sortingStyleChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             when (checkedIds.firstOrNull()) {
-                binding.normal.id -> AlbumPreferences.setSortingStyle(SongsPreferences.ACCENDING)
-                binding.reversed.id -> AlbumPreferences.setSortingStyle(SongsPreferences.DESCENDING)
+                binding.normal.id -> AlbumPreferences.setSortingStyle(CommonPreferencesConstants.ACCENDING)
+                binding.reversed.id -> AlbumPreferences.setSortingStyle(CommonPreferencesConstants.DESCENDING)
             }
         }
     }
