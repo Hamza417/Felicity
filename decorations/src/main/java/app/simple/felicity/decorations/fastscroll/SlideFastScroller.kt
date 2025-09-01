@@ -25,7 +25,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decoration.R
+import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.theme.models.Accent
 import java.lang.ref.WeakReference
 import kotlin.math.abs
 import kotlin.math.floor
@@ -36,7 +38,7 @@ class SlideFastScroller @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0,
-) : View(context, attrs, defStyleAttr) {
+) : View(context, attrs, defStyleAttr), ThemeChangedListener {
 
     private var recyclerRef: WeakReference<RecyclerView>? = null
 
@@ -841,6 +843,28 @@ class SlideFastScroller @JvmOverloads constructor(
         invalidate()
     }
 
+    override fun onAccentChanged(accent: Accent) {
+        super.onAccentChanged(accent)
+        handleDrawable?.setTint(accent.secondaryAccentColor)
+        handleDrawableActive?.setTint(accent.primaryAccentColor)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        ThemeManager.addListener(this)
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        visibilityAnimator?.cancel()
+        visibilityAnimator = null
+        removeCallbacks(autoHideRunnable)
+        removeCallbacks(batchedScrollRunnable)
+        val rv = recyclerRef?.get()
+        rv?.removeOnScrollListener(scrollListener)
+        ThemeManager.removeListener(this)
+    }
+
     // Interface for adapters to optimize binding during fast scroll
     interface FastScrollOptimizedAdapter {
         fun setLightBindMode(enabled: Boolean)
@@ -873,8 +897,9 @@ class SlideFastScroller @JvmOverloads constructor(
         fun attach(recyclerView: RecyclerView): SlideFastScroller {
             val scroller = SlideFastScroller(recyclerView.context)
             scroller.attachTo(recyclerView)
-            scroller.setHandleDrawable(R.drawable.ic_fast_thumb)
+            scroller.setHandleDrawable(R.drawable.ic_scroller_thumb)
             scroller.handleDrawable?.setTint(ThemeManager.accent.primaryAccentColor)
+            scroller.handleDrawableActive?.setTint(ThemeManager.accent.secondaryAccentColor)
             return scroller
         }
     }
