@@ -10,7 +10,6 @@
         android:layout_height="match_parent"
         android:clipToPadding="false"
         android:layoutAnimation="@anim/grid_list_animation_controller"
-        android:transitionName="@string/songs"
         app:fastScrollEnabled="false"
         app:isFadingEdgeRequired="false"
         app:statusPaddingRequired="false" />

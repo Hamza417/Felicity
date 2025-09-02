@@ -25,7 +25,7 @@
         app:textColorStyle="primary" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
-        android:id="@+id/count"
+        android:id="@+id/secondary_detail"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="10dp"
@@ -36,7 +36,7 @@
         app:textColorStyle="accent" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
-        android:id="@+id/artists"
+        android:id="@+id/tertiary_detail"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="10dp"

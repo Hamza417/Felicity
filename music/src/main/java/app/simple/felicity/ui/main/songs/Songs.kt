@@ -1,40 +1,47 @@
 package app.simple.felicity.ui.main.songs
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
+import androidx.recyclerview.widget.GridLayoutManager
+import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
-import app.simple.felicity.core.R
+import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.databinding.HeaderSongsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.songs.SongMenu.Companion.showSongMenu
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
-import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Song
+import app.simple.felicity.repository.sort.SongSort.setSongOrder
+import app.simple.felicity.repository.sort.SongSort.setSongSort
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 
-class Songs : MediaFragment() {
+class Songs : PanelFragment() {
 
     private lateinit var binding: FragmentSongsBinding
     private lateinit var headerBinding: HeaderSongsBinding
 
     private var songsAdapter: SongsAdapter? = null
+    private var gridLayoutManager: GridLayoutManager? = null
 
     private val songsViewModel: SongsViewModel by viewModels({ requireActivity() })
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentSongsBinding.inflate(inflater, container, false)
-        headerBinding = HeaderSongsBinding.inflate(inflater, binding.recyclerView, false)
+        headerBinding = HeaderSongsBinding.inflate(inflater, container, false)
 
         return binding.root
     }
@@ -47,23 +54,20 @@ class Songs : MediaFragment() {
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         SlideFastScroller.attach(binding.recyclerView)
 
-        songsViewModel.getSongs().observe(viewLifecycleOwner) {
-            val nav = SectionedFastScroller.attach(binding.recyclerView)
-            nav.setPositions(provideScrollPositionDataBasedOnSortStyle(it))
+        songsViewModel.getSongs().observe(viewLifecycleOwner) { songs ->
+            binding.recyclerView.requireAttachedSectionScroller(
+                    sections = provideScrollPositionDataBasedOnSortStyle(songs),
+                    header = binding.appHeader,
+                    view = headerBinding.scroll
+            )
 
-            nav.setOnPositionSelectedListener { position ->
-                binding.recyclerView.scrollToPosition(position.index)
-                if (position.index > 10) {
-                    binding.appHeader.hideHeader()
-                    binding.appHeader.resumeAutoBehavior()
-                } else {
-                    binding.appHeader.showHeader()
-                    binding.appHeader.resumeAutoBehavior()
-                }
+            if (gridLayoutManager == null) {
+                gridLayoutManager = GridLayoutManager(requireContext(), SongsPreferences.getGridSize(requireContext()))
+                binding.recyclerView.layoutManager = gridLayoutManager
             }
 
-            songsAdapter = SongsAdapter(it)
-            binding.recyclerView.adapter = songsAdapter
+            binding.recyclerView.setGridType(SongsPreferences.getGridType())
+            songsAdapter = SongsAdapter(songs)
 
             songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: List<Song>, position: Int, view: View?) {
@@ -75,29 +79,12 @@ class Songs : MediaFragment() {
                 }
             })
 
-            headerBinding.sortStyle.text = when (SongsPreferences.getSongSort()) {
-                SongsPreferences.BY_TITLE -> binding.root.context.getString(R.string.title)
-                SongsPreferences.BY_ARTIST -> binding.root.context.getString(R.string.artist)
-                SongsPreferences.BY_ALBUM -> binding.root.context.getString(R.string.album)
-                SongsPreferences.PATH -> binding.root.context.getString(R.string.path)
-                SongsPreferences.BY_DATE_ADDED -> binding.root.context.getString(R.string.date_added)
-                SongsPreferences.BY_DATE_MODIFIED -> binding.root.context.getString(R.string.date_added)
-                SongsPreferences.BY_DURATION -> binding.root.context.getString(R.string.duration)
-                SongsPreferences.BY_YEAR -> binding.root.context.getString(R.string.year)
-                SongsPreferences.BY_TRACK_NUMBER -> binding.root.context.getString(R.string.track_number)
-                SongsPreferences.BY_COMPOSER -> binding.root.context.getString(R.string.composer)
-                else -> binding.root.context.getString(R.string.unknown)
-            }
-
-            headerBinding.count.text = getString(R.string.x_songs, it.size)
-
-            headerBinding.sortOrder.text = when (SongsPreferences.getSortingStyle()) {
-                SongsPreferences.ACCENDING -> binding.root.context.getString(R.string.normal)
-                SongsPreferences.DESCENDING -> binding.root.context.getString(R.string.reversed)
-                else -> binding.root.context.getString(R.string.unknown)
-            }
-
-            headerBinding.hours.text = it.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+            headerBinding.sortStyle.setSongSort()
+            headerBinding.sortOrder.setSongOrder()
+            headerBinding.count.text = getString(R.string.x_songs, songs.size)
+            headerBinding.hours.text = songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+            headerBinding.gridSize.setGridSizeValue(SongsPreferences.getGridSize(requireContext()))
+            headerBinding.gridType.setGridTypeValue(SongsPreferences.getGridType())
 
             headerBinding.menu.setOnClickListener {
                 childFragmentManager.showSongsMenu()
@@ -111,9 +98,66 @@ class Songs : MediaFragment() {
                 childFragmentManager.showSongsSort()
             }
 
-            headerBinding.scroll.setOnClickListener {
-                nav.show()
+            headerBinding.gridSize.setOnClickListener { button ->
+                SharedScrollViewPopup(
+                        container = requireContainerView(),
+                        anchorView = button,
+                        menuItems = listOf(R.string.one,
+                                           R.string.two,
+                                           R.string.three,
+                                           R.string.four,
+                                           R.string.five,
+                                           R.string.six),
+                        menuIcons = listOf(R.drawable.ic_one_16,
+                                           R.drawable.ic_two_16dp,
+                                           R.drawable.ic_three_16dp,
+                                           R.drawable.ic_four_16dp,
+                                           R.drawable.ic_five_16dp,
+                                           R.drawable.ic_six_16dp),
+                        onMenuItemClick = {
+                            when (it) {
+                                R.string.one -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE, requireContext())
+                                R.string.two -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO, requireContext())
+                                R.string.three -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE, requireContext())
+                                R.string.four -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR, requireContext())
+                                R.string.five -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE, requireContext())
+                                R.string.six -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX, requireContext())
+                            }
+                        },
+                        onDismiss = {
+
+                        }
+                ).show()
             }
+
+            headerBinding.gridType.setOnClickListener { button ->
+                SharedScrollViewPopup(
+                        container = requireContainerView(),
+                        anchorView = button,
+                        menuItems = listOf(
+                                R.string.list,
+                                R.string.grid,
+                                R.string.peristyle,
+                        ),
+                        menuIcons = listOf(
+                                R.drawable.ic_list_16dp,
+                                R.drawable.ic_grid_16dp,
+                                R.drawable.ic_peristyle_16dp,
+                        ),
+                        onMenuItemClick = {
+                            when (it) {
+                                R.string.list -> SongsPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
+                                R.string.grid -> SongsPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
+                                R.string.peristyle -> SongsPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_PERISTYLE)
+                            }
+                        },
+                        onDismiss = {
+
+                        }
+                ).show()
+            }
+
+            binding.recyclerView.adapter = songsAdapter
         }
     }
 
@@ -124,7 +168,7 @@ class Songs : MediaFragment() {
 
     private fun provideScrollPositionDataBasedOnSortStyle(songs: List<Song>): List<SectionedFastScroller.Position> {
         return when (SongsPreferences.getSongSort()) {
-            SongsPreferences.BY_TITLE -> {
+            CommonPreferencesConstants.BY_TITLE -> {
                 val firstAlphabetToIndex = linkedMapOf<String, Int>()
                 songs.forEachIndexed { index, song ->
                     val firstChar = song.title?.firstOrNull()?.uppercaseChar()
@@ -141,7 +185,7 @@ class Songs : MediaFragment() {
                     SectionedFastScroller.Position(char, index)
                 }
             }
-            SongsPreferences.BY_ARTIST -> {
+            CommonPreferencesConstants.BY_ARTIST -> {
                 val firstAlphabetToIndex = linkedMapOf<Char, Int>()
                 songs.forEachIndexed { index, song ->
                     song.artist?.firstOrNull()?.uppercaseChar()?.let { firstChar ->
@@ -154,7 +198,7 @@ class Songs : MediaFragment() {
                     SectionedFastScroller.Position(char.toString(), index)
                 }
             }
-            SongsPreferences.BY_ALBUM -> {
+            CommonPreferencesConstants.BY_ALBUM -> {
                 val firstAlphabetToIndex = linkedMapOf<Char, Int>()
                 songs.forEachIndexed { index, song ->
                     song.album?.firstOrNull()?.uppercaseChar()?.let { firstChar ->
@@ -167,7 +211,7 @@ class Songs : MediaFragment() {
                     SectionedFastScroller.Position(char.toString(), index)
                 }
             }
-            SongsPreferences.BY_YEAR -> {
+            CommonPreferencesConstants.BY_YEAR -> {
                 val firstAlphabetToIndex = linkedMapOf<String, Int>()
                 songs.forEachIndexed { index, song ->
                     val key = song.year?.toString()?.takeIf { it.all { ch -> ch.isDigit() } } ?: "#"
@@ -191,6 +235,23 @@ class Songs : MediaFragment() {
                 firstAlphabetToIndex.map { (char, index) ->
                     SectionedFastScroller.Position(char.toString(), index)
                 }
+            }
+        }
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            SongsPreferences.GRID_SIZE_PORTRAIT, SongsPreferences.GRID_SIZE_LANDSCAPE -> {
+                headerBinding.gridSize.setGridSizeValue(SongsPreferences.getGridSize(requireContext()))
+                binding.recyclerView.beginDelayedTransition()
+                gridLayoutManager?.spanCount = SongsPreferences.getGridSize(requireContext())
+                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
+            }
+            SongsPreferences.GRID_TYPE -> {
+                binding.recyclerView.setGridType(SongsPreferences.getGridType())
+                binding.recyclerView.beginDelayedTransition()
+                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
         }
     }

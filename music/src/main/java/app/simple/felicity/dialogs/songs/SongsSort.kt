@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
+import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.DialogSortSongsBinding
 import app.simple.felicity.extensions.fragments.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.SongsPreferences
@@ -22,50 +23,40 @@ class SongsSort : ScopedBottomSheetFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         when (SongsPreferences.getSongSort()) {
-            SongsPreferences.BY_TITLE -> binding.title.isChecked = true
-            SongsPreferences.BY_ARTIST -> binding.artist.isChecked = true
-            SongsPreferences.BY_ALBUM -> binding.album.isChecked = true
-            SongsPreferences.PATH -> binding.path.isChecked = true
-            SongsPreferences.BY_DATE_ADDED -> binding.dateAdded.isChecked = true
-            SongsPreferences.BY_DATE_MODIFIED -> binding.dateModified.isChecked = true
-            SongsPreferences.BY_DURATION -> binding.duration.isChecked = true
-            SongsPreferences.BY_YEAR -> binding.year.isChecked = true
-            SongsPreferences.BY_TRACK_NUMBER -> binding.trackNumber.isChecked = true
-            SongsPreferences.BY_COMPOSER -> binding.composer.isChecked = true
-            // TODOs
-            // SongsPreferences.BY_DISC_NUMBER -> binding.discNumber.isChecked = true
-            // SongsPreferences.BY_PLAY_COUNT -> binding.playCount.isChecked = true
-            // SongsPreferences.BY_RATING -> binding.rating.isChecked = true
-            // SongsPreferences.BY_FAVORITE -> binding.favorite.isChecked = true
+            CommonPreferencesConstants.BY_TITLE -> binding.title.isChecked = true
+            CommonPreferencesConstants.BY_ARTIST -> binding.artist.isChecked = true
+            CommonPreferencesConstants.BY_ALBUM -> binding.album.isChecked = true
+            CommonPreferencesConstants.BY_PATH -> binding.path.isChecked = true
+            CommonPreferencesConstants.BY_DATE_ADDED -> binding.dateAdded.isChecked = true
+            CommonPreferencesConstants.BY_DATE_MODIFIED -> binding.dateModified.isChecked = true
+            CommonPreferencesConstants.BY_DURATION -> binding.duration.isChecked = true
+            CommonPreferencesConstants.BY_YEAR -> binding.year.isChecked = true
+            CommonPreferencesConstants.BY_TRACK_NUMBER -> binding.trackNumber.isChecked = true
+            CommonPreferencesConstants.BY_COMPOSER -> binding.composer.isChecked = true
         }
 
-        binding.normal.isChecked = SongsPreferences.getSortingStyle() == SongsPreferences.ACCENDING
-        binding.reversed.isChecked = SongsPreferences.getSortingStyle() == SongsPreferences.DESCENDING
+        binding.normal.isChecked = SongsPreferences.getSortingStyle() == CommonPreferencesConstants.ASCENDING
+        binding.reversed.isChecked = SongsPreferences.getSortingStyle() == CommonPreferencesConstants.DESCENDING
 
         binding.sortByChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             when (checkedIds.firstOrNull()) {
-                binding.title.id -> SongsPreferences.setSongSort(SongsPreferences.BY_TITLE)
-                binding.artist.id -> SongsPreferences.setSongSort(SongsPreferences.BY_ARTIST)
-                binding.album.id -> SongsPreferences.setSongSort(SongsPreferences.BY_ALBUM)
-                binding.path.id -> SongsPreferences.setSongSort(SongsPreferences.PATH)
-                binding.dateAdded.id -> SongsPreferences.setSongSort(SongsPreferences.BY_DATE_ADDED)
-                binding.dateModified.id -> SongsPreferences.setSongSort(SongsPreferences.BY_DATE_MODIFIED)
-                binding.duration.id -> SongsPreferences.setSongSort(SongsPreferences.BY_DURATION)
-                binding.year.id -> SongsPreferences.setSongSort(SongsPreferences.BY_YEAR)
-                binding.trackNumber.id -> SongsPreferences.setSongSort(SongsPreferences.BY_TRACK_NUMBER)
-                binding.composer.id -> SongsPreferences.setSongSort(SongsPreferences.BY_COMPOSER)
-                // TODOs
-                // binding.discNumber.id -> SongsPreferences.setSongSort(SongsPreferences.BY_DISC_NUMBER)
-                // binding.playCount.id -> SongsPreferences.setSongSort(SongsPreferences.BY_PLAY_COUNT)
-                // binding.rating.id -> SongsPreferences.setSongSort(SongsPreferences.BY_RATING)
-                // binding.favorite.id -> SongsPreferences.setSongSort(SongsPreferences.BY_FAVORITE)
+                binding.title.id -> SongsPreferences.setSongSort(CommonPreferencesConstants.BY_TITLE)
+                binding.artist.id -> SongsPreferences.setSongSort(CommonPreferencesConstants.BY_ARTIST)
+                binding.album.id -> SongsPreferences.setSongSort(CommonPreferencesConstants.BY_ALBUM)
+                binding.path.id -> SongsPreferences.setSongSort(CommonPreferencesConstants.BY_PATH)
+                binding.dateAdded.id -> SongsPreferences.setSongSort(CommonPreferencesConstants.BY_DATE_ADDED)
+                binding.dateModified.id -> SongsPreferences.setSongSort(CommonPreferencesConstants.BY_DATE_MODIFIED)
+                binding.duration.id -> SongsPreferences.setSongSort(CommonPreferencesConstants.BY_DURATION)
+                binding.year.id -> SongsPreferences.setSongSort(CommonPreferencesConstants.BY_YEAR)
+                binding.trackNumber.id -> SongsPreferences.setSongSort(CommonPreferencesConstants.BY_TRACK_NUMBER)
+                binding.composer.id -> SongsPreferences.setSongSort(CommonPreferencesConstants.BY_COMPOSER)
             }
         }
 
         binding.sortingStyleChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             when (checkedIds.firstOrNull()) {
-                binding.normal.id -> SongsPreferences.setSortingStyle(SongsPreferences.ACCENDING)
-                binding.reversed.id -> SongsPreferences.setSortingStyle(SongsPreferences.DESCENDING)
+                binding.normal.id -> SongsPreferences.setSortingStyle(CommonPreferencesConstants.ASCENDING)
+                binding.reversed.id -> SongsPreferences.setSortingStyle(CommonPreferencesConstants.DESCENDING)
             }
         }
     }

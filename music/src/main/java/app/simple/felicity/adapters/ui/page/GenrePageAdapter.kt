@@ -10,17 +10,14 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
 import app.simple.felicity.databinding.AdapterHeaderGenrePageBinding
-import app.simple.felicity.databinding.AdapterSongsBinding
+import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
-import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.genres.GenreCoverUtils.loadGenreCover
-import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.CollectionPageData
 import app.simple.felicity.repository.models.Genre
-import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
 import com.bumptech.glide.Glide
 
@@ -44,7 +41,7 @@ class GenrePageAdapter(private val data: CollectionPageData, private val genre: 
                         LayoutInflater.from(parent.context), parent, false))
             }
             else -> {
-                Holder(AdapterSongsBinding.inflate(
+                Songs(AdapterStyleListBinding.inflate(
                         LayoutInflater.from(parent.context), parent, false))
             }
         }
@@ -69,11 +66,11 @@ class GenrePageAdapter(private val data: CollectionPageData, private val genre: 
             is Albums -> {
 
             }
-            is Holder -> {
+            is Songs -> {
                 holder.bind(data.songs[position - 1]) // Adjust for header
 
                 holder.binding.container.setOnClickListener {
-                    generalAdapterCallbacks?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.albumArt)
+                    generalAdapterCallbacks?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.cover)
                 }
             }
         }
@@ -85,8 +82,8 @@ class GenrePageAdapter(private val data: CollectionPageData, private val genre: 
 
     override fun onViewRecycled(holder: VerticalListViewHolder) {
         super.onViewRecycled(holder)
-        if (holder is Holder) {
-            Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
+        if (holder is Songs) {
+            Glide.with(holder.binding.cover).clear(holder.binding.cover)
         }
     }
 
@@ -103,19 +100,6 @@ class GenrePageAdapter(private val data: CollectionPageData, private val genre: 
             }
             else -> {
                 RecyclerViewUtils.TYPE_ITEM
-            }
-        }
-    }
-
-    inner class Holder(val binding: AdapterSongsBinding) : VerticalListViewHolder(binding.root) {
-        fun bind(song: Song) {
-            binding.apply {
-                title.setTextOrUnknown(song.title)
-                artists.setTextOrUnknown(song.artist)
-                album.setTextOrUnknown(song.album)
-
-                albumArt.loadSongCover(song)
-                albumArt.transitionName = song.path
             }
         }
     }

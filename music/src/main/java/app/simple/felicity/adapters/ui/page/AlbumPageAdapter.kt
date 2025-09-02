@@ -12,16 +12,13 @@ import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.core.utils.ViewUtils.visible
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
 import app.simple.felicity.databinding.AdapterHeaderArtistPageBinding
-import app.simple.felicity.databinding.AdapterSongsBinding
+import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
-import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
-import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.CollectionPageData
 import app.simple.felicity.repository.models.Album
-import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
 import com.bumptech.glide.Glide
 
@@ -29,7 +26,6 @@ class AlbumPageAdapter(private val data: CollectionPageData, private val album: 
         RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var listener: GeneralAdapterCallbacks? = null
-    private var extraPositions = EXTRA_ROWS
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
@@ -50,7 +46,7 @@ class AlbumPageAdapter(private val data: CollectionPageData, private val album: 
                         LayoutInflater.from(parent.context), parent, false))
             }
             else -> {
-                Songs(AdapterSongsBinding.inflate(
+                Songs(AdapterStyleListBinding.inflate(
                         LayoutInflater.from(parent.context), parent, false))
             }
         }
@@ -74,7 +70,7 @@ class AlbumPageAdapter(private val data: CollectionPageData, private val album: 
                 holder.bind(data.songs[position - EXTRA_ROWS]) // Adjust for header
 
                 holder.binding.container.setOnClickListener {
-                    listener?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.albumArt)
+                    listener?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.cover)
                 }
             }
         }
@@ -87,7 +83,7 @@ class AlbumPageAdapter(private val data: CollectionPageData, private val album: 
     override fun onViewRecycled(holder: VerticalListViewHolder) {
         super.onViewRecycled(holder)
         if (holder is Songs) {
-            Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
+            Glide.with(holder.binding.cover).clear(holder.binding.cover)
         }
     }
 
@@ -107,19 +103,6 @@ class AlbumPageAdapter(private val data: CollectionPageData, private val album: 
             }
             else -> {
                 RecyclerViewUtils.TYPE_ITEM
-            }
-        }
-    }
-
-    inner class Songs(val binding: AdapterSongsBinding) : VerticalListViewHolder(binding.root) {
-        fun bind(song: Song) {
-            binding.apply {
-                title.setTextOrUnknown(song.title)
-                artists.setTextOrUnknown(song.artist)
-                album.setTextOrUnknown(song.album)
-
-                albumArt.loadSongCover(song)
-                albumArt.transitionName = song.path
             }
         }
     }

@@ -2,7 +2,7 @@ package app.simple.felicity.preferences
 
 import androidx.core.content.edit
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.constants.CommonPreferencesConstants.ACCENDING
+import app.simple.felicity.constants.CommonPreferencesConstants.ASCENDING
 import app.simple.felicity.constants.CommonPreferencesConstants.BY_NAME
 import app.simple.felicity.manager.SharedPreferences
 
@@ -46,7 +46,7 @@ object GenresPreferences {
     // -------------------------------------------------------------------------------------------- //
 
     fun getSortOrder(): Int {
-        return SharedPreferences.getSharedPreferences().getInt(SORT_ORDER, ACCENDING)
+        return SharedPreferences.getSharedPreferences().getInt(SORT_ORDER, ASCENDING)
     }
 
     fun setSortOrder(order: Int) {

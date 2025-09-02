@@ -3,7 +3,7 @@ package app.simple.felicity.preferences
 import android.content.Context
 import androidx.core.content.edit
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.constants.CommonPreferencesConstants.ACCENDING
+import app.simple.felicity.constants.CommonPreferencesConstants.ASCENDING
 import app.simple.felicity.constants.CommonPreferencesConstants.BY_ALBUM_NAME
 import app.simple.felicity.core.utils.BarHeight
 import app.simple.felicity.manager.SharedPreferences
@@ -35,7 +35,7 @@ object AlbumPreferences {
 
     fun getSortingStyle(): Int {
         return SharedPreferences.getSharedPreferences()
-            .getInt(SORTING_STYLE, ACCENDING)
+            .getInt(SORTING_STYLE, ASCENDING)
     }
 
     fun setSortingStyle(value: Int) {

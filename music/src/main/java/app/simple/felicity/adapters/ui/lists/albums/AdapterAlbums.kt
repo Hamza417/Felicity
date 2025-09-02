@@ -6,8 +6,8 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.databinding.AdapterAlbumsBinding
 import app.simple.felicity.databinding.AdapterStyleGridBinding
+import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.databinding.AdapterStylePeristyleBinding
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -38,7 +38,7 @@ class AdapterAlbums(initial: List<Album>) :
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
             CommonPreferencesConstants.GRID_TYPE_LIST -> {
-                ListHolder(AdapterAlbumsBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+                ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
             CommonPreferencesConstants.GRID_TYPE_GRID -> {
                 GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
@@ -81,7 +81,7 @@ class AdapterAlbums(initial: List<Album>) :
 
         when (holder) {
             is ListHolder -> {
-                Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
+                Glide.with(holder.binding.cover).clear(holder.binding.cover)
             }
             is GridHolder -> {
                 Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
@@ -123,17 +123,17 @@ class AdapterAlbums(initial: List<Album>) :
         return true
     }
 
-    inner class ListHolder(val binding: AdapterAlbumsBinding) : VerticalListViewHolder(binding.root) {
+    inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
         init {
             binding.container.setSkeletonBackground(enable = lightBindMode)
         }
 
         fun bind(album: Album) {
             binding.title.setTextOrUnknown(album.name)
-            binding.artists.setTextOrUnknown(album.artist)
-            binding.count.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
+            binding.tertiaryDetail.setTextOrUnknown(album.artist)
+            binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
 
-            binding.albumArt.loadAlbumCover(album)
+            binding.cover.loadAlbumCover(album)
 
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)
@@ -155,8 +155,8 @@ class AdapterAlbums(initial: List<Album>) :
 
         fun bind(album: Album) {
             binding.title.setTextOrUnknown(album.name)
-            binding.artists.setTextOrUnknown(album.artist)
-            binding.count.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
+            binding.tertiaryDetail.setTextOrUnknown(album.artist)
+            binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
 
             binding.albumArt.loadAlbumCover(album, skipCache = true)
 

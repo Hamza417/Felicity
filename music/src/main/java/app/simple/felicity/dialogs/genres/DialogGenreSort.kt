@@ -26,7 +26,7 @@ class DialogGenreSort : ScopedBottomSheetFragment() {
             CommonPreferencesConstants.BY_NAME -> binding.name.isChecked = true
         }
 
-        binding.normal.isChecked = GenresPreferences.getSortOrder() == CommonPreferencesConstants.ACCENDING
+        binding.normal.isChecked = GenresPreferences.getSortOrder() == CommonPreferencesConstants.ASCENDING
         binding.reversed.isChecked = GenresPreferences.getSortOrder() == CommonPreferencesConstants.DESCENDING
 
         binding.sortByChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
@@ -37,7 +37,7 @@ class DialogGenreSort : ScopedBottomSheetFragment() {
 
         binding.sortingStyleChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             when (checkedIds.firstOrNull()) {
-                binding.normal.id -> GenresPreferences.setSortOrder(CommonPreferencesConstants.ACCENDING)
+                binding.normal.id -> GenresPreferences.setSortOrder(CommonPreferencesConstants.ASCENDING)
                 binding.reversed.id -> GenresPreferences.setSortOrder(CommonPreferencesConstants.DESCENDING)
             }
         }

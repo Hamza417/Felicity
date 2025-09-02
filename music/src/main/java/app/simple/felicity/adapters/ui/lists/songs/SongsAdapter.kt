@@ -4,17 +4,21 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
-import app.simple.felicity.databinding.AdapterSongsBinding
+import app.simple.felicity.constants.CommonPreferencesConstants
+import app.simple.felicity.databinding.AdapterStyleGridBinding
+import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
+import app.simple.felicity.decorations.utils.ViewUtils.clearSkeletonBackground
 import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
 import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
+import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
 
-class SongsAdapter(initial: List<Song>, preInflate: Int = 0) :
-        RecyclerView.Adapter<SongsAdapter.Holder>(), SlideFastScroller.FastScrollBindingController {
+class SongsAdapter(initial: List<Song>) :
+        RecyclerView.Adapter<VerticalListViewHolder>(), SlideFastScroller.FastScrollBindingController {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
     private var previousIndex = -1
@@ -40,28 +44,59 @@ class SongsAdapter(initial: List<Song>, preInflate: Int = 0) :
         return songs[position].id
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-        return Holder(AdapterSongsBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
+        return when (viewType) {
+            CommonPreferencesConstants.GRID_TYPE_LIST -> {
+                ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            }
+            CommonPreferencesConstants.GRID_TYPE_GRID -> {
+                GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            }
+            else -> {
+                ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            }
+        }
     }
 
-    override fun onBindViewHolder(holder: Holder, position: Int) {
+    override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
         val song = songs[position]
 
-        if (lightBindMode.not()) {
-            holder.bind(song)
-        }
+        when (holder) {
+            is ListHolder -> {
+                if (lightBindMode.not()) {
+                    holder.bind(song)
+                }
 
-        holder.binding.container.setOnClickListener {
-            generalAdapterCallbacks?.onSongClicked(songs, holder.bindingAdapterPosition, it)
+                holder.binding.container.setOnClickListener {
+                    generalAdapterCallbacks?.onSongClicked(songs, holder.bindingAdapterPosition, it)
+                }
+            }
+            is GridHolder -> {
+                if (lightBindMode.not()) {
+                    holder.bind(song)
+                }
+
+                holder.binding.container.setOnClickListener {
+                    generalAdapterCallbacks?.onSongClicked(songs, holder.bindingAdapterPosition, it)
+                }
+            }
         }
     }
 
     override fun getItemCount(): Int = songs.size
 
-    override fun onViewRecycled(holder: Holder) {
+    override fun getItemViewType(position: Int): Int {
+        return SongsPreferences.getGridType()
+    }
+
+    override fun onViewRecycled(holder: VerticalListViewHolder) {
         holder.itemView.clearAnimation()
         super.onViewRecycled(holder)
-        Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
+        if (holder is ListHolder) {
+            Glide.with(holder.binding.cover).clear(holder.binding.cover)
+        } else if (holder is GridHolder) {
+            Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
+        }
     }
 
     fun setGeneralAdapterCallbacks(callbacks: GeneralAdapterCallbacks) {
@@ -73,7 +108,7 @@ class SongsAdapter(initial: List<Song>, preInflate: Int = 0) :
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, isLightBind: Boolean) {
-        if (holder is Holder) {
+        if (holder is ListHolder) {
             if (isLightBind.not()) {
                 holder.bind(songs[position])
             }
@@ -84,14 +119,14 @@ class SongsAdapter(initial: List<Song>, preInflate: Int = 0) :
         return true
     }
 
-    inner class Holder(val binding: AdapterSongsBinding) : VerticalListViewHolder(binding.root) {
+    inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
         fun bind(song: Song) {
             binding.apply {
                 title.setTextOrUnknown(song.title)
-                artists.setTextOrUnknown(song.artist)
-                album.setTextOrUnknown(song.album)
+                secondaryDetail.setTextOrUnknown(song.artist)
+                tertiaryDetail.setTextOrUnknown(song.album)
 
-                albumArt.loadSongCover(song)
+                cover.loadSongCover(song)
 
                 container.setOnLongClickListener {
                     generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, it)
@@ -99,6 +134,33 @@ class SongsAdapter(initial: List<Song>, preInflate: Int = 0) :
                 }
 
                 binding.container.setDefaultBackground(currentlyPlayingSong == song)
+            }
+        }
+
+        init {
+            binding.container.setSkeletonBackground(enable = lightBindMode)
+        }
+    }
+
+    inner class GridHolder(val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
+        fun bind(song: Song) {
+            binding.apply {
+                binding.title.setTextOrUnknown(song.title)
+                binding.secondaryDetail.setTextOrUnknown(song.artist)
+                binding.tertiaryDetail.setTextOrUnknown(song.album)
+
+                binding.albumArt.loadSongCover(song, skipCache = true)
+
+                binding.container.setOnLongClickListener {
+                    generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, it)
+                    true
+                }
+
+                binding.container.setOnClickListener {
+                    generalAdapterCallbacks?.onSongClicked(songs, bindingAdapterPosition, it)
+                }
+
+                binding.container.clearSkeletonBackground()
             }
         }
 

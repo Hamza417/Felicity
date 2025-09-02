@@ -10,7 +10,7 @@ object GenreSort {
     fun List<Genre>.sorted(): List<Genre> {
         return when (GenresPreferences.getSortStyle()) {
             CommonPreferencesConstants.BY_NAME -> when (GenresPreferences.getSortOrder()) {
-                CommonPreferencesConstants.ACCENDING -> sortedBy { it.name?.lowercase() }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.name?.lowercase() }
                 CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.name?.lowercase() }
                 else -> this
             }
@@ -27,7 +27,7 @@ object GenreSort {
 
     fun TextView.setCurrentSortOrder() {
         text = when (GenresPreferences.getSortOrder()) {
-            CommonPreferencesConstants.ACCENDING -> context.getString(R.string.normal)
+            CommonPreferencesConstants.ASCENDING -> context.getString(R.string.normal)
             CommonPreferencesConstants.DESCENDING -> context.getString(R.string.reversed)
             else -> context.getString(R.string.unknown)
         }

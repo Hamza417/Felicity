@@ -30,7 +30,7 @@ class AlbumsSort : ScopedBottomSheetFragment() {
             CommonPreferencesConstants.BY_NUMBER_OF_SONGS -> binding.numberOfSongs.isChecked = true
         }
 
-        binding.normal.isChecked = AlbumPreferences.getSortingStyle() == CommonPreferencesConstants.ACCENDING
+        binding.normal.isChecked = AlbumPreferences.getSortingStyle() == CommonPreferencesConstants.ASCENDING
         binding.reversed.isChecked = AlbumPreferences.getSortingStyle() == CommonPreferencesConstants.DESCENDING
 
         binding.sortByChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
@@ -45,7 +45,7 @@ class AlbumsSort : ScopedBottomSheetFragment() {
 
         binding.sortingStyleChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             when (checkedIds.firstOrNull()) {
-                binding.normal.id -> AlbumPreferences.setSortingStyle(CommonPreferencesConstants.ACCENDING)
+                binding.normal.id -> AlbumPreferences.setSortingStyle(CommonPreferencesConstants.ASCENDING)
                 binding.reversed.id -> AlbumPreferences.setSortingStyle(CommonPreferencesConstants.DESCENDING)
             }
         }

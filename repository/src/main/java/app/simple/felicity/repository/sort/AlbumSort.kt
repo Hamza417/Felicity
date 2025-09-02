@@ -11,32 +11,32 @@ object AlbumSort {
     fun List<Album>.sorted(): List<Album> {
         return when (AlbumPreferences.getAlbumSort()) {
             CommonPreferencesConstants.BY_ALBUM_NAME -> when (AlbumPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ACCENDING -> sortedBy { it.name }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.name }
                 CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.name }
                 else -> this
             }
             CommonPreferencesConstants.BY_ARTIST -> when (AlbumPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ACCENDING -> sortedBy { it.artist }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.artist }
                 CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.artist }
                 else -> this
             }
             CommonPreferencesConstants.BY_NUMBER_OF_SONGS -> when (AlbumPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ACCENDING -> sortedBy { it.songCount }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.songCount }
                 CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.songCount }
                 else -> this
             }
             CommonPreferencesConstants.BY_YEAR -> when (AlbumPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ACCENDING -> sortedBy { it.firstYear }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.firstYear }
                 CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.firstYear }
                 else -> this
             }
             CommonPreferencesConstants.BY_FIRST_YEAR -> when (AlbumPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ACCENDING -> sortedBy { it.firstYear }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.firstYear }
                 CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.firstYear }
                 else -> this
             }
             CommonPreferencesConstants.BY_LAST_YEAR -> when (AlbumPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ACCENDING -> sortedBy { it.lastYear }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.lastYear }
                 CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.lastYear }
                 else -> this
             }
@@ -58,7 +58,7 @@ object AlbumSort {
 
     fun TextView.setCurrentSortOrder() {
         text = when (AlbumPreferences.getSortingStyle()) {
-            CommonPreferencesConstants.ACCENDING -> context.getString(R.string.normal)
+            CommonPreferencesConstants.ASCENDING -> context.getString(R.string.normal)
             CommonPreferencesConstants.DESCENDING -> context.getString(R.string.reversed)
             else -> context.getString(R.string.unknown)
         }
