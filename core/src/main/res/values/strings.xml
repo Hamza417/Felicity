@@ -119,4 +119,8 @@
     <string name="list">List</string>
     <string name="grid">Grid</string>
     <string name="peristyle">Peristyle</string>
+    <string name="behavior">Behavior</string>
+    <string name="predictive_back">Predictive Back</string>
+    <string name="predictive_back_summary">Toggle predictive back behavior in the app.</string>
+    <string name="behavior_desc">Change how app components behave with one another.</string>
 </resources>

@@ -1,5 +1,6 @@
 package app.simple.felicity.extensions.activities
 
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
@@ -11,6 +12,8 @@ import android.os.StrictMode
 import android.util.Log
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.WindowCompat
@@ -23,6 +26,7 @@ import app.simple.felicity.glide.songcover.SongCoverUtils.fetchBitmap
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.database.instances.LastSongDatabase
 import app.simple.felicity.repository.managers.MediaManager
@@ -47,6 +51,8 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private lateinit var content: FrameLayout
 
+    private var predictiveBackCallback: OnBackInvokedCallback? = null
+
     override fun attachBaseContext(newBase: Context?) {
         app.simple.felicity.manager.SharedPreferences.init(newBase!!)
         registerSharedPreferenceChangeListener()
@@ -69,6 +75,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         enableNotchArea()
         makeAppFullScreen()
         initTheme()
+        applyPredictiveBackGesture()
     }
 
     private fun initMediaController() {
@@ -171,6 +178,36 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                     .build())
     }
 
+    private fun applyPredictiveBackGesture() {
+        if (BehaviourPreferences.isPredictiveBackEnabled()) {
+            enablePredictiveBack(this)
+        } else {
+            disablePredictiveBack(this) {
+                // Handle back press manually
+                onBackPressedDispatcher.onBackPressed()
+            }
+        }
+    }
+
+    private fun disablePredictiveBack(activity: Activity, onBack: () -> Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && predictiveBackCallback == null) {
+            predictiveBackCallback = OnBackInvokedCallback {
+                onBack()
+            }
+            activity.onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_OVERLAY,
+                    predictiveBackCallback!!
+            )
+        }
+    }
+
+    private fun enablePredictiveBack(activity: Activity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && predictiveBackCallback != null) {
+            activity.onBackInvokedDispatcher.unregisterOnBackInvokedCallback(predictiveBackCallback!!)
+            predictiveBackCallback = null
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         MediaManager.stopSeekPositionUpdates()
@@ -213,6 +250,9 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         when (key) {
             AppearancePreferences.ACCENT_COLOR -> {
                 initTheme()
+            }
+            BehaviourPreferences.PREDICTIVE_BACK -> {
+                applyPredictiveBackGesture()
             }
         }
     }

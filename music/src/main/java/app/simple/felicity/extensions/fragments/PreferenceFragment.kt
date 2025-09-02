@@ -1,5 +1,6 @@
 package app.simple.felicity.extensions.fragments
 
+import android.os.Build
 import android.widget.TextView
 import app.simple.felicity.R
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
@@ -10,6 +11,7 @@ import app.simple.felicity.models.SeekbarState
 import app.simple.felicity.popups.home.PopupHomeInterfaceMenu
 import app.simple.felicity.popups.songs.PopupSongsInterfaceMenu
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.ui.main.preferences.AccentColors
@@ -248,6 +250,31 @@ open class PreferenceFragment : ScopedFragment() {
         preferences.add(homeInterface)
         preferences.add(songsHeader)
         preferences.add(songInterface)
+
+        return preferences
+    }
+
+    protected fun createBehaviorPanel(): List<Preference> {
+        val preferences = mutableListOf<Preference>()
+
+        val predictiveBackToggle = Preference(
+                title = R.string.predictive_back,
+                summary = R.string.predictive_back_summary,
+                icon = R.drawable.ic_back_gesture,
+                type = PreferenceType.SWITCH,
+                valueProvider = {
+                    BehaviourPreferences.isPredictiveBackEnabled()
+                },
+                onPreferenceAction = { view, callback ->
+                    val isChecked = (view as FelicitySwitch).isChecked
+                    BehaviourPreferences.setPredictiveBack(isChecked)
+                    true
+                }
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            preferences.add(predictiveBackToggle)
+        }
 
         return preferences
     }

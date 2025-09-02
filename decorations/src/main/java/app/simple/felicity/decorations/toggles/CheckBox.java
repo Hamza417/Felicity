@@ -21,7 +21,6 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.preferences.AppearancePreferences;
-import app.simple.felicity.preferences.BehaviourPreferences;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;
@@ -114,7 +113,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         }
         
         if (!isInEditMode()) {
-            if (BehaviourPreferences.INSTANCE.areColoredShadowsOn()) {
+            if (AppearancePreferences.INSTANCE.getColoredIconShadows()) {
                 elevationColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
             } else {
                 elevationColor = Color.DKGRAY;
@@ -186,7 +185,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
             
             int endColor;
             
-            if (BehaviourPreferences.INSTANCE.areColoredShadowsOn()) {
+            if (AppearancePreferences.INSTANCE.getColoredIconShadows()) {
                 endColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
             } else {
                 endColor = Color.DKGRAY;
@@ -490,8 +489,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, @Nullable String key) {
         switch (key) {
             case AppearancePreferences.ACCENT_COLOR,
-                 AppearancePreferences.THEME,
-                 BehaviourPreferences.COLORED_SHADOWS -> {
+                 AppearancePreferences.THEME -> {
                 animateFinalState();
             }
         }

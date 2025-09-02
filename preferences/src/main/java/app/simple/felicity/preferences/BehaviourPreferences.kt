@@ -1,123 +1,55 @@
 package app.simple.felicity.preferences
 
+import androidx.core.content.edit
 import androidx.dynamicanimation.animation.SpringForce
 import app.simple.felicity.manager.SharedPreferences
 
 object BehaviourPreferences {
 
-    private const val dimWindows = "is_dimming_windows_on"
-    private const val blurWindow = "is_blurring_windows_on"
-    const val COLORED_SHADOWS = "are_colored_shadows_on"
-    private const val transition = "is_transition_on"
-    private const val arcAnimation = "is_animation_on"
-    private const val marquee = "is_marquee_on"
-    private const val skipLoading = "skip_main_loading_screen"
-    private const val ANIMATION_DURATION = "animation_duration"
-
-    const val transitionType = "panel_transition_type"
-    const val arcType = "arc_type"
-    const val stiffness = "scrolling_stiffness"
-    const val dampingRatio = "scrolling_damping_ratio"
+    const val PREDICTIVE_BACK = "predictive_back"
+    const val STIFFNESS = "scrolling_stiffness"
+    const val DAMPING_RATIO = "scrolling_damping_ratio"
+    private const val MARQUEE = "is_marquee_on"
 
     // ---------------------------------------------------------------------------------------------------------- //
 
-    fun setDimWindows(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(dimWindows, boolean).apply()
+    fun setPredictiveBack(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(PREDICTIVE_BACK, enabled) }
     }
 
-    fun isDimmingOn(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(dimWindows, true)
-    }
-
-    // ---------------------------------------------------------------------------------------------------------- //
-
-    fun setBlurWindows(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(blurWindow, boolean).apply()
-    }
-
-    fun isBlurringOn(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(blurWindow, false)
-    }
-
-    // ---------------------------------------------------------------------------------------------------------- //
-
-    fun setColoredShadows(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(COLORED_SHADOWS, boolean).apply()
-    }
-
-    fun areColoredShadowsOn(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(COLORED_SHADOWS, true)
-    }
-
-    // ---------------------------------------------------------------------------------------------------------- //
-
-    fun setTransitionOn(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(transition, boolean).apply()
-    }
-
-    fun isTransitionOn(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(transition, true)
-    }
-
-    // ---------------------------------------------------------------------------------------------------------- //
-
-    fun setArcAnimations(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(arcAnimation, boolean).apply()
-    }
-
-    fun isArcAnimationOn(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(arcAnimation, true)
-    }
-
-    // ---------------------------------------------------------------------------------------------------------- //
-
-    fun setMarquee(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(marquee, boolean).apply()
-    }
-
-    fun isMarqueeOn(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(marquee, true)
-    }
-
-    // ---------------------------------------------------------------------------------------------------------- //
-
-    fun setSkipLoadingMainScreenState(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(skipLoading, boolean).apply()
-    }
-
-    fun isSkipLoadingMainScreenState(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(skipLoading, false)
+    fun isPredictiveBackEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(PREDICTIVE_BACK, false)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setDampingRatio(value: Float) {
-        SharedPreferences.getSharedPreferences().edit().putFloat(dampingRatio, value).apply()
+        SharedPreferences.getSharedPreferences().edit { putFloat(DAMPING_RATIO, value) }
     }
 
     fun getDampingRatio(): Float {
         return SharedPreferences.getSharedPreferences()
-            .getFloat(dampingRatio, SpringForce.DAMPING_RATIO_NO_BOUNCY)
+            .getFloat(DAMPING_RATIO, SpringForce.DAMPING_RATIO_NO_BOUNCY)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setStiffness(value: Float) {
-        SharedPreferences.getSharedPreferences().edit().putFloat(stiffness, value).apply()
+        SharedPreferences.getSharedPreferences().edit { putFloat(STIFFNESS, value) }
     }
 
     fun getStiffness(): Float {
         return SharedPreferences.getSharedPreferences()
-            .getFloat(stiffness, SpringForce.STIFFNESS_LOW)
+            .getFloat(STIFFNESS, SpringForce.STIFFNESS_LOW)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //
 
-    fun setAnimationDuration(value: Long) {
-        SharedPreferences.getSharedPreferences().edit().putLong(ANIMATION_DURATION, value).apply()
+    fun setMarquee(boolean: Boolean) {
+        SharedPreferences.getSharedPreferences().edit().putBoolean(MARQUEE, boolean).apply()
     }
 
-    fun getAnimationDuration(): Long {
-        return SharedPreferences.getSharedPreferences().getLong(ANIMATION_DURATION, 500)
+    fun isMarqueeOn(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(MARQUEE, true)
     }
 }

@@ -16,14 +16,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.AppCompatImageView;
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator;
-
 import app.simple.felicity.decoration.R;
-import app.simple.felicity.preferences.BehaviourPreferences;
 import app.simple.felicity.theme.managers.ThemeManager;
 
 public class Loader extends AppCompatImageView {
     
-    private static long ANIMATION_DURATION = BehaviourPreferences.INSTANCE.getAnimationDuration() * 2;
+    private static long ANIMATION_DURATION = 500L;
     private ValueAnimator rotateAnimator;
     
     public Loader(@NonNull Context context, @Nullable AttributeSet attrs) {

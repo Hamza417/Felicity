@@ -46,6 +46,9 @@ class Preferences : ScopedFragment() {
                         R.string.user_interface -> {
                             openFragment(UserInterface.newInstance(), UserInterface.TAG)
                         }
+                        R.string.behavior -> {
+                            openFragment(Behavior.newInstance(), Behavior.TAG)
+                        }
                     }
                 }
             })

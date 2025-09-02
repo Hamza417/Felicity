@@ -4,14 +4,12 @@ import android.app.Application
 import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.DisplayMetrics
 import android.view.Gravity
 import android.view.View
-import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
@@ -49,18 +47,7 @@ open class ScopedDialogFragment : DialogFragment(), SharedPreferences.OnSharedPr
         @Suppress("deprecation")
         window.windowManager.defaultDisplay.getMetrics(displayMetrics)
 
-        if (app.simple.felicity.preferences.BehaviourPreferences.isDimmingOn()) {
-            dialog?.window?.setDimAmount(ViewUtils.dimAmount)
-        } else {
-            dialog?.window?.setDimAmount(0f)
-        }
-
-        if (app.simple.felicity.preferences.BehaviourPreferences.isBlurringOn()) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                window.attributes.blurBehindRadius = ViewUtils.blurRadius.toInt()
-            }
-        }
+        dialog?.window?.setDimAmount(ViewUtils.dimAmount)
 
         window.attributes.gravity = Gravity.CENTER
 

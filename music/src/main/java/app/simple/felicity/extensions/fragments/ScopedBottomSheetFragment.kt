@@ -2,13 +2,11 @@ package app.simple.felicity.extensions.fragments
 
 import android.app.Application
 import android.content.SharedPreferences
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
-import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.fragment.app.Fragment
 import app.simple.felicity.R
@@ -36,11 +34,7 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
 
         dialog?.window?.attributes?.windowAnimations = R.style.BottomDialogAnimation
 
-        if (app.simple.felicity.preferences.BehaviourPreferences.isDimmingOn()) {
-            dialog?.window?.setDimAmount(ViewUtils.dimAmount)
-        } else {
-            dialog?.window?.setDimAmount(0f)
-        }
+        dialog?.window?.setDimAmount(ViewUtils.dimAmount)
 
         dialog?.setOnShowListener { dialog ->
             /**
@@ -76,13 +70,6 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
                     // do nothing
                 }
             })
-        }
-
-        if (app.simple.felicity.preferences.BehaviourPreferences.isBlurringOn()) {
-            dialog?.window?.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                dialog?.window?.attributes?.blurBehindRadius = ViewUtils.blurRadius.toInt()
-            }
         }
     }
 
