@@ -1,15 +1,18 @@
 package app.simple.felicity.preferences
 
+import android.content.Context
 import androidx.core.content.edit
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.constants.CommonPreferencesConstants.ACCENDING
 import app.simple.felicity.constants.CommonPreferencesConstants.BY_ALBUM_NAME
+import app.simple.felicity.core.utils.BarHeight
 import app.simple.felicity.manager.SharedPreferences
 
 object AlbumPreferences {
     const val ALBUM_SORT = "album_sort_"
     const val SORTING_STYLE = "_album_sorting_style__"
-    const val GRID_SIZE = "album_grid_size"
+    const val GRID_SIZE_PORTRAIT = "album_grid_size"
+    const val GRID_SIZE_LANDSCAPE = "album_grid_size_landscape"
     const val GRID_TYPE = "album_grid_type"
 
     // ----------------------------------------------------------------------------------------- //
@@ -41,13 +44,22 @@ object AlbumPreferences {
         }
     }
 
-    fun getGridSize(): Int {
-        return SharedPreferences.getSharedPreferences()
-            .getInt(GRID_SIZE, CommonPreferencesConstants.GRID_SIZE_ONE)
+    fun getGridSize(context: Context): Int {
+        return if (BarHeight.isLandscape(context).not()) {
+            SharedPreferences.getSharedPreferences()
+                .getInt(GRID_SIZE_PORTRAIT, CommonPreferencesConstants.GRID_SIZE_ONE)
+        } else {
+            SharedPreferences.getSharedPreferences()
+                .getInt(GRID_SIZE_LANDSCAPE, CommonPreferencesConstants.GRID_SIZE_TWO)
+        }
     }
 
-    fun setGridSize(size: Int) {
-        SharedPreferences.getSharedPreferences().edit { putInt(GRID_SIZE, size) }
+    fun setGridSize(size: Int, context: Context) {
+        if (BarHeight.isLandscape(context).not()) {
+            SharedPreferences.getSharedPreferences().edit { putInt(GRID_SIZE_PORTRAIT, size) }
+        } else {
+            SharedPreferences.getSharedPreferences().edit { putInt(GRID_SIZE_LANDSCAPE, size) }
+        }
     }
 
     fun getGridType(): Int {

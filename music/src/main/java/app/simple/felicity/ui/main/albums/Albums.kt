@@ -52,7 +52,7 @@ class Albums : MediaFragment() {
 
         albumsViewModel.getAlbums().observe(viewLifecycleOwner) { it ->
             adapterAlbums = AdapterAlbums(it)
-            gridLayoutManager = GridLayoutManager(requireContext(), AlbumPreferences.getGridSize())
+            gridLayoutManager = GridLayoutManager(requireContext(), AlbumPreferences.getGridSize(requireContext()))
             binding.recyclerView.layoutManager = gridLayoutManager
             adapterAlbums?.setHasStableIds(true)
             headerBinding.count.text = getString(R.string.x_albums, it.size)
@@ -95,12 +95,12 @@ class Albums : MediaFragment() {
                                            R.drawable.ic_six_16dp),
                         onMenuItemClick = {
                             when (it) {
-                                R.string.one -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
-                                R.string.two -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
-                                R.string.three -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
-                                R.string.four -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
-                                R.string.five -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
-                                R.string.six -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
+                                R.string.one -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE, requireContext())
+                                R.string.two -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO, requireContext())
+                                R.string.three -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE, requireContext())
+                                R.string.four -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR, requireContext())
+                                R.string.five -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE, requireContext())
+                                R.string.six -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX, requireContext())
                             }
                         },
                         onDismiss = {
@@ -143,10 +143,10 @@ class Albums : MediaFragment() {
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
-            AlbumPreferences.GRID_SIZE -> {
+            AlbumPreferences.GRID_SIZE_PORTRAIT, AlbumPreferences.GRID_SIZE_LANDSCAPE -> {
                 setGridSizeValue()
                 binding.recyclerView.beginDelayedTransition()
-                gridLayoutManager?.spanCount = AlbumPreferences.getGridSize()
+                gridLayoutManager?.spanCount = AlbumPreferences.getGridSize(requireContext())
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             AlbumPreferences.GRID_TYPE -> {
@@ -158,7 +158,7 @@ class Albums : MediaFragment() {
     }
 
     private fun setGridSizeValue() {
-        val gridSize = AlbumPreferences.getGridSize()
+        val gridSize = AlbumPreferences.getGridSize(requireContext())
         when (gridSize) {
             CommonPreferencesConstants.GRID_SIZE_ONE -> {
                 headerBinding.gridSize.text = getString(R.string.one)
@@ -220,7 +220,7 @@ class Albums : MediaFragment() {
 
                 gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
                     override fun getSpanSize(position: Int): Int {
-                        val spanCount = maxOf(1, AlbumPreferences.getGridSize())
+                        val spanCount = maxOf(1, AlbumPreferences.getGridSize(requireContext()))
                         val cycle = spanCount * 2 + 1 // 1 giant + 2 rows of grid
                         return if (position % cycle == 0) spanCount else 1
                     }
