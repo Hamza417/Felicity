@@ -15,7 +15,8 @@ class ShimmerDrawable(
         private val baseColor: Int,
         private val highlightColor: Int,
         private val shimmerWidthFraction: Float,
-        private val duration: Long
+        private val duration: Long,
+        private val cornerRadius: Float = 0f // new property
 ) : Drawable() {
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -31,13 +32,20 @@ class ShimmerDrawable(
         if (shader == null) createShader(bounds.width(), bounds.height())
 
         shader?.let {
-            // Move the gradient diagonally
             val dx = (bounds.width() * 2) * animatedValue - bounds.width()
             val dy = (bounds.height() * 2) * animatedValue - bounds.height()
             matrix.setTranslate(dx, dy)
             it.setLocalMatrix(matrix)
             paint.shader = it
-            canvas.drawRect(bounds, paint)
+            canvas.drawRoundRect(
+                    bounds.left.toFloat(),
+                    bounds.top.toFloat(),
+                    bounds.right.toFloat(),
+                    bounds.bottom.toFloat(),
+                    cornerRadius,
+                    cornerRadius,
+                    paint
+            )
         }
     }
 

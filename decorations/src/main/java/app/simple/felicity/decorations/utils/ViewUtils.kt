@@ -3,6 +3,7 @@ package app.simple.felicity.decorations.utils
 import android.graphics.drawable.Drawable
 import android.view.View
 import app.simple.felicity.decorations.drawables.ShimmerDrawable
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.managers.ThemeManager
 
 object ViewUtils {
@@ -28,7 +29,11 @@ object ViewUtils {
         // Save previous background to restore later
         setTag(SKELETON_PREV_BG_KEY, background)
 
-        val shimmer = ShimmerDrawable(baseColor, highlightColor, shimmerWidthFraction, duration)
+        val shimmer = ShimmerDrawable(baseColor = baseColor,
+                                      highlightColor = highlightColor,
+                                      shimmerWidthFraction = shimmerWidthFraction,
+                                      duration = duration,
+                                      cornerRadius = AppearancePreferences.getCornerRadius())
         setTag(SKELETON_TAG_KEY, shimmer)
         background = shimmer
         shimmer.start()

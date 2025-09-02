@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.corners.DynamicCornerLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/container"
@@ -11,11 +11,6 @@
         android:id="@+id/album_art"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
         tools:ignore="ContentDescription" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -27,9 +22,6 @@
         android:maxLines="1"
         android:textSize="@dimen/text_size_16"
         app:appFontStyle="bold"
-        app:layout_constraintBottom_toTopOf="@+id/count"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/album_art"
         app:textColorStyle="primary" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -41,10 +33,6 @@
         android:maxLines="1"
         android:textSize="@dimen/desc_text_size"
         app:appFontStyle="regular"
-        app:layout_constraintBottom_toBottomOf="@+id/album_art"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/album_art"
-        app:layout_constraintTop_toTopOf="@+id/album_art"
         app:textColorStyle="accent" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -55,10 +43,8 @@
         android:ellipsize="end"
         android:maxLines="1"
         android:textSize="@dimen/desc_text_size"
+        android:layout_marginBottom="@dimen/padding_5"
         app:appFontStyle="regular"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/album_art"
-        app:layout_constraintTop_toBottomOf="@+id/count"
         app:textColorStyle="secondary" />
 
-</app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+</app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>

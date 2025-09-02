@@ -12,6 +12,7 @@ import app.simple.felicity.databinding.AdapterStylePeristyleBinding
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
+import app.simple.felicity.decorations.utils.ViewUtils.clearSkeletonBackground
 import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
 import app.simple.felicity.glide.albumcover.AlbumCoverUtils.loadAlbumCover
 import app.simple.felicity.preferences.AlbumPreferences
@@ -142,6 +143,8 @@ class AdapterAlbums(initial: List<Album>) :
             binding.container.setOnClickListener {
                 generalAdapterCallbacks?.onAlbumClicked(albums, bindingAdapterPosition, it)
             }
+
+            binding.container.clearSkeletonBackground()
         }
     }
 
@@ -165,6 +168,8 @@ class AdapterAlbums(initial: List<Album>) :
             binding.container.setOnClickListener {
                 generalAdapterCallbacks?.onAlbumClicked(albums, bindingAdapterPosition, it)
             }
+
+            binding.container.clearSkeletonBackground()
         }
     }
 
@@ -183,6 +188,8 @@ class AdapterAlbums(initial: List<Album>) :
             binding.container.setOnClickListener {
                 generalAdapterCallbacks?.onAlbumClicked(albums, bindingAdapterPosition, it)
             }
+
+            binding.container.clearSkeletonBackground()
         }
     }
 }
