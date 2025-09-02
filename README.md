@@ -15,17 +15,6 @@ The project will be developed under the codename Felicity, the final name maybe 
 future.
 
 ## Update
-
-10 Jan 2025: I have managed to make the file processing insanely fast and solved the file reading
-issues that I was facing. Here is the final log of the file processing:
-
-```java
-2025-01-10 15:05:38.128 5420-5577StandaloneCoroutine app.
-simple.felicity.dev D
-loadData:
-Time taken:00:06 for 1606files
-```
-
 16 July 2025: I have finalized the repository module and now beginning to work on engine and
 hopefully finish working on it before the end of this week
 
