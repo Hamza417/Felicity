@@ -11,7 +11,6 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.albums.AdapterAlbums
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.core.utils.DateUtils.getYear
 import app.simple.felicity.databinding.FragmentAlbumsBinding
 import app.simple.felicity.databinding.HeaderAlbumsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
@@ -204,27 +203,20 @@ class Albums : PanelFragment() {
                     SectionedFastScroller.Position(char.toString(), index)
                 }
             }
-            CommonPreferencesConstants.BY_FIRST_YEAR -> {
-                val firstAlphabetToIndex = linkedMapOf<String, Int>()
+            CommonPreferencesConstants.BY_FIRST_YEAR, CommonPreferencesConstants.BY_LAST_YEAR -> {
+                val yearToIndex = linkedMapOf<String, Int>()
                 albums.forEachIndexed { index, album ->
-                    val year = album.firstYear.getYear()
-                    if (!firstAlphabetToIndex.containsKey(year)) {
-                        firstAlphabetToIndex[year] = index
+                    val year = if (AlbumPreferences.getAlbumSort() == CommonPreferencesConstants.BY_FIRST_YEAR) {
+                        album.firstYear
+                    } else {
+                        album.lastYear
+                    }.toString()
+
+                    if (!yearToIndex.containsKey(year)) {
+                        yearToIndex[year] = index
                     }
                 }
-                return firstAlphabetToIndex.map { (year, index) ->
-                    SectionedFastScroller.Position(year, index)
-                }
-            }
-            CommonPreferencesConstants.BY_LAST_YEAR -> {
-                val firstAlphabetToIndex = linkedMapOf<String, Int>()
-                albums.forEachIndexed { index, album ->
-                    val year = album.lastYear.getYear()
-                    if (!firstAlphabetToIndex.containsKey(year)) {
-                        firstAlphabetToIndex[year] = index
-                    }
-                }
-                return firstAlphabetToIndex.map { (year, index) ->
+                return yearToIndex.map { (year, index) ->
                     SectionedFastScroller.Position(year, index)
                 }
             }
