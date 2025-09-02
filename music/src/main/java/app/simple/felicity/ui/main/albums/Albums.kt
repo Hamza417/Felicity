@@ -11,21 +11,22 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.albums.AdapterAlbums
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.core.utils.TextViewUtils.setStartDrawable
+import app.simple.felicity.core.utils.DateUtils.getYear
 import app.simple.felicity.databinding.FragmentAlbumsBinding
 import app.simple.felicity.databinding.HeaderAlbumsBinding
+import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.albums.AlbumsSort.Companion.showAlbumsSort
-import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.AlbumPreferences
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.sort.AlbumSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.AlbumSort.setCurrentSortStyle
 import app.simple.felicity.viewmodels.main.albums.AlbumsViewModel
 
-class Albums : MediaFragment() {
+class Albums : PanelFragment() {
 
     private lateinit var binding: FragmentAlbumsBinding
     private lateinit var headerBinding: HeaderAlbumsBinding
@@ -52,10 +53,17 @@ class Albums : MediaFragment() {
 
         albumsViewModel.getAlbums().observe(viewLifecycleOwner) { it ->
             adapterAlbums = AdapterAlbums(it)
-            gridLayoutManager = GridLayoutManager(requireContext(), AlbumPreferences.getGridSize(requireContext()))
-            binding.recyclerView.layoutManager = gridLayoutManager
+            if (gridLayoutManager == null) {
+                gridLayoutManager = GridLayoutManager(requireContext(), AlbumPreferences.getGridSize(requireContext()))
+                binding.recyclerView.layoutManager = gridLayoutManager
+            }
+            binding.recyclerView.setGridType(AlbumPreferences.getGridType())
             adapterAlbums?.setHasStableIds(true)
             headerBinding.count.text = getString(R.string.x_albums, it.size)
+            binding.recyclerView.requireAttachedSectionScroller(
+                    sections = provideScrollPositionDataBasedOnSortStyle(albums = it),
+                    header = binding.header,
+                    view = headerBinding.scroll)
 
             adapterAlbums?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onAlbumClicked(albums: List<Album>, position: Int, view: View?) {
@@ -73,9 +81,18 @@ class Albums : MediaFragment() {
 
             headerBinding.sortStyle.setCurrentSortStyle()
             headerBinding.sortOrder.setCurrentSortOrder()
+            headerBinding.scroll.hideOnUnfavorableSort(
+                    sorts = listOf(
+                            CommonPreferencesConstants.BY_ALBUM_NAME,
+                            CommonPreferencesConstants.BY_ARTIST,
+                            CommonPreferencesConstants.BY_FIRST_YEAR,
+                            CommonPreferencesConstants.BY_LAST_YEAR
+                    ),
+                    preference = AlbumPreferences.getAlbumSort()
+            )
 
-            setGridSizeValue()
-            setGridTypeValue()
+            headerBinding.gridSize.setGridSizeValue(AlbumPreferences.getGridSize(requireContext()))
+            headerBinding.gridType.setGridTypeValue(AlbumPreferences.getGridType())
 
             headerBinding.gridSize.setOnClickListener { button ->
                 SharedScrollViewPopup(
@@ -144,99 +161,78 @@ class Albums : MediaFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             AlbumPreferences.GRID_SIZE_PORTRAIT, AlbumPreferences.GRID_SIZE_LANDSCAPE -> {
-                setGridSizeValue()
+                headerBinding.gridSize.setGridSizeValue(AlbumPreferences.getGridSize(requireContext()))
                 binding.recyclerView.beginDelayedTransition()
                 gridLayoutManager?.spanCount = AlbumPreferences.getGridSize(requireContext())
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             AlbumPreferences.GRID_TYPE -> {
-                setGridTypeValue()
+                binding.recyclerView.setGridType(AlbumPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
         }
     }
 
-    private fun setGridSizeValue() {
-        val gridSize = AlbumPreferences.getGridSize(requireContext())
-        when (gridSize) {
-            CommonPreferencesConstants.GRID_SIZE_ONE -> {
-                headerBinding.gridSize.text = getString(R.string.one)
-                headerBinding.gridSize.setStartDrawable(R.drawable.ic_one_16)
-            }
-            CommonPreferencesConstants.GRID_SIZE_TWO -> {
-                headerBinding.gridSize.text = getString(R.string.two)
-                headerBinding.gridSize.setStartDrawable(R.drawable.ic_two_16dp)
-            }
-            CommonPreferencesConstants.GRID_SIZE_THREE -> {
-                headerBinding.gridSize.text = getString(R.string.three)
-                headerBinding.gridSize.setStartDrawable(R.drawable.ic_three_16dp)
-            }
-            CommonPreferencesConstants.GRID_SIZE_FOUR -> {
-                headerBinding.gridSize.text = getString(R.string.four)
-                headerBinding.gridSize.setStartDrawable(R.drawable.ic_four_16dp)
-            }
-            CommonPreferencesConstants.GRID_SIZE_FIVE -> {
-                headerBinding.gridSize.text = getString(R.string.five)
-                headerBinding.gridSize.setStartDrawable(R.drawable.ic_five_16dp)
-            }
-            CommonPreferencesConstants.GRID_SIZE_SIX -> {
-                headerBinding.gridSize.text = getString(R.string.six)
-                headerBinding.gridSize.setStartDrawable(R.drawable.ic_six_16dp)
-            }
-            else -> {
-                headerBinding.gridSize.text = getString(R.string.two) // Default to two columns
-                headerBinding.gridSize.setStartDrawable(R.drawable.ic_two_16dp)
-            }
-        }
-    }
-
-    fun setGridTypeValue() {
-        val gridType = AlbumPreferences.getGridType()
-        when (gridType) {
-            CommonPreferencesConstants.GRID_TYPE_LIST -> {
-                headerBinding.gridType.text = getString(R.string.list)
-                headerBinding.gridType.setStartDrawable(R.drawable.ic_list_16dp)
-
-                gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                    override fun getSpanSize(position: Int): Int = 1
-                }
-
-                binding.recyclerView.applySpacing()
-            }
-            CommonPreferencesConstants.GRID_TYPE_GRID -> {
-                headerBinding.gridType.text = getString(R.string.grid)
-                headerBinding.gridType.setStartDrawable(R.drawable.ic_grid_16dp)
-
-                gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                    override fun getSpanSize(position: Int): Int = 1
-                }
-
-                binding.recyclerView.applySpacing()
-            }
-            CommonPreferencesConstants.GRID_TYPE_PERISTYLE -> {
-                headerBinding.gridType.text = getString(R.string.peristyle)
-                headerBinding.gridType.setStartDrawable(R.drawable.ic_peristyle_16dp)
-
-                gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                    override fun getSpanSize(position: Int): Int {
-                        val spanCount = maxOf(1, AlbumPreferences.getGridSize(requireContext()))
-                        val cycle = spanCount * 2 + 1 // 1 giant + 2 rows of grid
-                        return if (position % cycle == 0) spanCount else 1
+    private fun provideScrollPositionDataBasedOnSortStyle(albums: List<Album>): List<SectionedFastScroller.Position> {
+        when (AlbumPreferences.getAlbumSort()) {
+            CommonPreferencesConstants.BY_ALBUM_NAME -> {
+                val firstAlphabetToIndex = linkedMapOf<String, Int>()
+                albums.forEachIndexed { index, album ->
+                    val firstChar = album.name?.firstOrNull()?.uppercaseChar()
+                    val key = if (firstChar != null && firstChar.isLetter()) {
+                        firstChar.toString()
+                    } else {
+                        "#"
+                    }
+                    if (!firstAlphabetToIndex.containsKey(key)) {
+                        firstAlphabetToIndex[key] = index
                     }
                 }
-
-                binding.recyclerView.removeSpacing()
+                return firstAlphabetToIndex.map { (char, index) ->
+                    SectionedFastScroller.Position(char, index)
+                }
             }
-            else -> {
-                headerBinding.gridType.text = getString(R.string.list) // Default to list
-                headerBinding.gridType.setStartDrawable(R.drawable.ic_list_16dp)
-
-                gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                    override fun getSpanSize(position: Int): Int = 1
+            CommonPreferencesConstants.BY_ARTIST -> {
+                val firstAlphabetToIndex = linkedMapOf<Char, Int>()
+                albums.forEachIndexed { index, album ->
+                    album.artist?.firstOrNull()?.uppercaseChar()?.let { firstChar ->
+                        if (firstChar.isLetter() && !firstAlphabetToIndex.containsKey(firstChar)) {
+                            firstAlphabetToIndex[firstChar] = index
+                        }
+                    }
+                }
+                return firstAlphabetToIndex.map { (char, index) ->
+                    SectionedFastScroller.Position(char.toString(), index)
+                }
+            }
+            CommonPreferencesConstants.BY_FIRST_YEAR -> {
+                val firstAlphabetToIndex = linkedMapOf<String, Int>()
+                albums.forEachIndexed { index, album ->
+                    val year = album.firstYear.getYear()
+                    if (!firstAlphabetToIndex.containsKey(year)) {
+                        firstAlphabetToIndex[year] = index
+                    }
+                }
+                return firstAlphabetToIndex.map { (year, index) ->
+                    SectionedFastScroller.Position(year, index)
+                }
+            }
+            CommonPreferencesConstants.BY_LAST_YEAR -> {
+                val firstAlphabetToIndex = linkedMapOf<String, Int>()
+                albums.forEachIndexed { index, album ->
+                    val year = album.lastYear.getYear()
+                    if (!firstAlphabetToIndex.containsKey(year)) {
+                        firstAlphabetToIndex[year] = index
+                    }
+                }
+                return firstAlphabetToIndex.map { (year, index) ->
+                    SectionedFastScroller.Position(year, index)
                 }
             }
         }
+
+        return emptyList()
     }
 
     companion object {
