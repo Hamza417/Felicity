@@ -47,6 +47,18 @@ class Preference {
         this.onPreferenceAction = onPreferenceAction
     }
 
+    constructor(@StringRes title: Int,
+                @StringRes summary: Int,
+                @DrawableRes icon: Int,
+                type: PreferenceType?,
+                onPreferenceAction: ((View, (Any?) -> Unit) -> Unit)?) {
+        this.title = title
+        this.summary = summary
+        this.icon = icon
+        this.type = type
+        this.onPreferenceAction = onPreferenceAction
+    }
+
     val valueAsStringProvider: String?
         get() = valueProvider?.get() as String?
 
