@@ -22,8 +22,10 @@ hopefully finish working on it before the end of this week
 
 20 Aug 2025: The UI components are almost done, I have also almost finished main design of the app.
 
-31 Aug 2025: Testing and fixes have reduced the crashes down to less than 1% and the coupling between UI components is incredibly good and smooth. 
-I have also tested 192KHz audio and it works by default in supported devices. I noticed it showed `ENCODING_PCM_16BIT`, I am not sure why yet.
+31 Aug 2025: Testing and fixes have reduced the crashes down to less than 1% and the coupling
+between UI components is incredibly good and smooth.
+I have also tested 192KHz audio and it works by default in supported devices. I noticed it showed
+`ENCODING_PCM_16BIT`, I am not sure why yet.
 
 ## Screenshots
 
@@ -34,7 +36,7 @@ Last Updated: 20 Aug 2025
 | ![](/screenshots/01.png) | ![](/screenshots/02.png) | ![](/screenshots/03.png) |
 | ![](/screenshots/04.png) | ![](/screenshots/05.png) | ![](/screenshots/06.png) |
 | ![](/screenshots/07.png) | ![](/screenshots/08.png) | ![](/screenshots/11.png) |
-| ![](/screenshots/12.png) | ![](/screenshots/13.png) |                          |
+| ![](/screenshots/12.png) | ![](/screenshots/13.png) | ![](/screenshots/14.png) |
 
 |                          |
 |--------------------------|
