@@ -16,10 +16,12 @@ import app.simple.felicity.databinding.ActivityMainBinding
 import app.simple.felicity.databinding.MiniplayerBinding
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.extensions.activities.BaseActivity
+import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
+import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.ui.main.home.ArtFlowHome
 import app.simple.felicity.ui.main.home.CarouselHome
@@ -101,10 +103,13 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
                 adapterMiniPlayer.setCallbacks(object : MiniPlayerAdapterCallbacks {
                     override fun onOpenPlayer() {
-                        supportFragmentManager.beginTransaction()
-                            .replace(R.id.app_container, DefaultPlayer.newInstance(), DefaultPlayer.TAG)
-                            .addToBackStack(DefaultPlayer.TAG)
-                            .commit()
+                        // Make top fragment open player
+                        // Based on app architecture, there will always be a fragment at the top
+                        // and mini player won't be visible in player panels
+                        val topFragment = supportFragmentManager.fragments.lastOrNull() as? ScopedFragment
+                        if (topFragment.isNotNull()) {
+                            topFragment?.openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
+                        }
                     }
 
                     override fun onOpenPopupPlayer() {

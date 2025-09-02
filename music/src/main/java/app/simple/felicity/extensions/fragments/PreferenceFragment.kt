@@ -61,7 +61,7 @@ open class PreferenceFragment : ScopedFragment() {
         )
 
         typeface.onPreferenceAction = { view, callback ->
-            openFragmentSlide(TypeFaceSelection.newInstance(), TypeFaceSelection.TAG)
+            openFragment(TypeFaceSelection.newInstance(), TypeFaceSelection.TAG)
             true
         }
 

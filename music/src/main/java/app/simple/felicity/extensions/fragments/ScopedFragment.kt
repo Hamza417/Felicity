@@ -78,39 +78,6 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
     }
 
     /**
-     * Open fragment using slide animation
-     *
-     * If the fragment does not need to be pushed into backstack
-     * leave the [tag] unattended
-     *
-     * @param fragment [Fragment]
-     * @param tag back stack tag for fragment
-     */
-    protected fun openFragmentSlide(fragment: ScopedFragment, tag: String? = null) {
-        setSlideTransitions()
-
-        try {
-            val transaction = requireActivity().supportFragmentManager.beginTransaction()
-            transaction.setReorderingAllowed(true)
-            transaction.replace(R.id.fragment_container, fragment, tag)
-            if (tag.isNotNull()) {
-                transaction.addToBackStack(tag)
-            }
-
-            transaction.commit()
-        } catch (_: IllegalStateException) {
-            val transaction = requireActivity().supportFragmentManager.beginTransaction()
-            transaction.setReorderingAllowed(true)
-            transaction.replace(R.id.fragment_container, fragment, tag)
-            if (tag.isNotNull()) {
-                transaction.addToBackStack(tag)
-            }
-
-            transaction.commitAllowingStateLoss()
-        }
-    }
-
-    /**
      * Open fragment using linear animation for shared element
      *
      * If the fragment does not need to be pushed into backstack
