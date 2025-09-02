@@ -61,11 +61,8 @@ class Songs : PanelFragment() {
                     view = headerBinding.scroll
             )
 
-            if (gridLayoutManager == null) {
-                gridLayoutManager = GridLayoutManager(requireContext(), SongsPreferences.getGridSize(requireContext()))
-                binding.recyclerView.layoutManager = gridLayoutManager
-            }
-
+            gridLayoutManager = GridLayoutManager(requireContext(), SongsPreferences.getGridSize(requireContext()))
+            binding.recyclerView.layoutManager = gridLayoutManager
             binding.recyclerView.setGridType(SongsPreferences.getGridType())
             songsAdapter = SongsAdapter(songs)
 

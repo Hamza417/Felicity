@@ -53,10 +53,8 @@ class Albums : PanelFragment() {
 
         albumsViewModel.getAlbums().observe(viewLifecycleOwner) { it ->
             adapterAlbums = AdapterAlbums(it)
-            if (gridLayoutManager == null) {
-                gridLayoutManager = GridLayoutManager(requireContext(), AlbumPreferences.getGridSize(requireContext()))
-                binding.recyclerView.layoutManager = gridLayoutManager
-            }
+            gridLayoutManager = GridLayoutManager(requireContext(), AlbumPreferences.getGridSize(requireContext()))
+            binding.recyclerView.layoutManager = gridLayoutManager
             binding.recyclerView.setGridType(AlbumPreferences.getGridType())
             adapterAlbums?.setHasStableIds(true)
             headerBinding.count.text = getString(R.string.x_albums, it.size)
