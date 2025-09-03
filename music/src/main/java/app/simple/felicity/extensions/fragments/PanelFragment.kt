@@ -24,31 +24,21 @@ open class PanelFragment : MediaFragment() {
         when (gridSize) {
             CommonPreferencesConstants.GRID_SIZE_ONE -> {
                 text = getString(R.string.one)
-                setStartDrawable(R.drawable.ic_one_16)
             }
             CommonPreferencesConstants.GRID_SIZE_TWO -> {
                 text = getString(R.string.two)
-                setStartDrawable(R.drawable.ic_two_16dp)
             }
             CommonPreferencesConstants.GRID_SIZE_THREE -> {
                 text = getString(R.string.three)
-                setStartDrawable(R.drawable.ic_three_16dp)
             }
             CommonPreferencesConstants.GRID_SIZE_FOUR -> {
                 text = getString(R.string.four)
-                setStartDrawable(R.drawable.ic_four_16dp)
             }
             CommonPreferencesConstants.GRID_SIZE_FIVE -> {
                 text = getString(R.string.five)
-                setStartDrawable(R.drawable.ic_five_16dp)
             }
             CommonPreferencesConstants.GRID_SIZE_SIX -> {
                 text = getString(R.string.six)
-                setStartDrawable(R.drawable.ic_six_16dp)
-            }
-            else -> {
-                text = getString(R.string.two) // Default to two columns
-                setStartDrawable(R.drawable.ic_two_16dp)
             }
         }
     }

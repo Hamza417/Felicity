@@ -129,6 +129,7 @@
                 android:drawablePadding="@dimen/padding_5"
                 android:textSize="@dimen/text_size_14"
                 app:appFontStyle="bold"
+                app:drawableStartCompat="@drawable/ic_grid_size_16dp"
                 app:drawableTintStyle="accent"
                 app:textColorStyle="tertiary" />
 
