@@ -12,6 +12,7 @@ import android.view.animation.DecelerateInterpolator
 import androidx.annotation.LayoutRes
 import androidx.annotation.MainThread
 import androidx.core.view.children
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
@@ -228,9 +229,15 @@ class AppHeader @JvmOverloads constructor(
         val firstChild = rv.getChildAt(0) ?: return
         val desiredTop = rv.paddingTop
         val currentTop = firstChild.top
-        val delta = desiredTop - currentTop
 
-        // If the first item is positioned above the padding area, we need to adjust
+        // Calculate item decoration offset for the first item
+        val itemDecorationOffset = getFirstItemDecorationTopOffset(rv, firstChild)
+
+        // The actual desired position should account for item decoration spacing
+        val adjustedDesiredTop = desiredTop + itemDecorationOffset
+        val delta = adjustedDesiredTop - currentTop
+
+        // If the first item is positioned above the adjusted padding area, we need to adjust
         if (delta > 0) {
             // Check if we're at or near the top of the list to avoid disrupting user scroll
             val scrollOffset = rv.computeVerticalScrollOffset()
@@ -239,6 +246,7 @@ class AppHeader @JvmOverloads constructor(
             val layoutManager = rv.layoutManager
             val firstVisiblePosition = when (layoutManager) {
                 is LinearLayoutManager -> layoutManager.findFirstVisibleItemPosition()
+                is GridLayoutManager -> layoutManager.findFirstVisibleItemPosition()
                 is StaggeredGridLayoutManager -> {
                     val positions = layoutManager.findFirstVisibleItemPositions(null)
                     positions.minOrNull() ?: -1
@@ -263,7 +271,9 @@ class AppHeader @JvmOverloads constructor(
                         // Re-check after layout and adjust if needed
                         val updatedFirstChild = rv.getChildAt(0)
                         if (updatedFirstChild != null) {
-                            val updatedDelta = rv.paddingTop - updatedFirstChild.top
+                            val updatedItemDecorationOffset = getFirstItemDecorationTopOffset(rv, updatedFirstChild)
+                            val updatedAdjustedDesiredTop = rv.paddingTop + updatedItemDecorationOffset
+                            val updatedDelta = updatedAdjustedDesiredTop - updatedFirstChild.top
                             if (updatedDelta > 0) {
                                 rv.scrollBy(0, -updatedDelta)
                             }
@@ -275,6 +285,37 @@ class AppHeader @JvmOverloads constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Calculate the top offset that should be applied to the first item due to item decorations.
+     * This accounts for spacing that gets applied after layout.
+     */
+    private fun getFirstItemDecorationTopOffset(rv: RecyclerView, firstChild: View): Int {
+        val tempRect = android.graphics.Rect()
+        var totalTopOffset = 0
+
+        // Iterate through all item decorations and calculate their contribution to top spacing
+        for (i in 0 until rv.itemDecorationCount) {
+            val decoration = rv.getItemDecorationAt(i)
+            val position = rv.getChildAdapterPosition(firstChild)
+
+            // Create a temporary state for calculation
+            val state = RecyclerView.State()
+
+            // Get the offsets this decoration would apply to the first item
+            tempRect.setEmpty()
+            decoration.getItemOffsets(tempRect, firstChild, rv, state)
+
+            // For the first item, we only care about top spacing
+            // Some decorations (like SongHolderSpacingItemDecoration) apply spacing to position 1
+            // Others (like SpacingItemDecoration) apply spacing to position 0
+            if (position <= 1) { // Cover both cases
+                totalTopOffset += tempRect.top
+            }
+        }
+
+        return totalTopOffset
     }
 
     private fun restoreRecyclerPaddingIfNeeded() {
