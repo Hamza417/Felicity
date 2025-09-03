@@ -13,7 +13,6 @@ import app.simple.felicity.core.utils.ViewUtils.visible
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.SpacingRecyclerView
-import app.simple.felicity.preferences.AlbumPreferences
 
 open class PanelFragment : MediaFragment() {
 
@@ -97,7 +96,7 @@ open class PanelFragment : MediaFragment() {
         }
     }
 
-    fun SpacingRecyclerView.setGridType(gridType: Int) {
+    fun SpacingRecyclerView.setGridType(gridType: Int, size: Int) {
         val gridLayoutManager = this.layoutManager as? GridLayoutManager
         when (gridType) {
             CommonPreferencesConstants.GRID_TYPE_LIST -> {
@@ -117,7 +116,7 @@ open class PanelFragment : MediaFragment() {
             CommonPreferencesConstants.GRID_TYPE_PERISTYLE -> {
                 gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
                     override fun getSpanSize(position: Int): Int {
-                        val spanCount = maxOf(1, AlbumPreferences.getGridSize(isLandscape))
+                        val spanCount = maxOf(1, size)
                         val cycle = spanCount * 2 + 1 // 1 giant + 2 rows of grid
                         return if (position % cycle == 0) spanCount else 1
                     }

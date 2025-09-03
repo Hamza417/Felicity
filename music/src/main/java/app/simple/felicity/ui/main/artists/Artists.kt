@@ -50,17 +50,17 @@ class Artists : PanelFragment() {
         binding.recyclerView.requireAttachedMiniPlayer()
         postponeEnterTransition()
 
-        artistViewModel.getArtists().observe(viewLifecycleOwner) {
+        artistViewModel.getArtists().observe(viewLifecycleOwner) { artists ->
             binding.recyclerView.requireAttachedSectionScroller(
-                    sections = provideScrollPositionDataBasedOnSortStyle(artists = it),
+                    sections = provideScrollPositionDataBasedOnSortStyle(artists = artists),
                     header = binding.header,
                     view = headerBinding.scroll)
 
             gridLayoutManager = GridLayoutManager(requireContext(), ArtistPreferences.getGridSize(isLandscape))
             binding.recyclerView.layoutManager = gridLayoutManager
             binding.recyclerView.setHasFixedSize(true)
-            binding.recyclerView.setGridType(ArtistPreferences.getGridType())
-            adapterArtists = AdapterArtists(it)
+            binding.recyclerView.setGridType(ArtistPreferences.getGridType(), ArtistPreferences.getGridSize(isLandscape))
+            adapterArtists = AdapterArtists(artists)
             binding.recyclerView.adapter = adapterArtists
 
             adapterArtists.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
@@ -69,7 +69,7 @@ class Artists : PanelFragment() {
                 }
             })
 
-            headerBinding.count.text = getString(R.string.x_artists, it.size)
+            headerBinding.count.text = getString(R.string.x_artists, artists.size)
             headerBinding.sortOrder.setCurrentSortOrder()
             headerBinding.sortStyle.setCurrentSortStyle()
 
@@ -186,7 +186,8 @@ class Artists : PanelFragment() {
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             ArtistPreferences.GRID_TYPE -> {
-                binding.recyclerView.setGridType(ArtistPreferences.getGridType())
+                binding.recyclerView.setGridType(ArtistPreferences.getGridType(), ArtistPreferences.getGridSize(isLandscape))
+                headerBinding.gridType.setGridTypeValue(ArtistPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }

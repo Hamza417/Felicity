@@ -54,7 +54,7 @@ class Albums : PanelFragment() {
             adapterAlbums = AdapterAlbums(it)
             gridLayoutManager = GridLayoutManager(requireContext(), AlbumPreferences.getGridSize(isLandscape))
             binding.recyclerView.layoutManager = gridLayoutManager
-            binding.recyclerView.setGridType(AlbumPreferences.getGridType())
+            binding.recyclerView.setGridType(AlbumPreferences.getGridType(), AlbumPreferences.getGridSize(isLandscape))
             adapterAlbums?.setHasStableIds(true)
             headerBinding.count.text = getString(R.string.x_albums, it.size)
             binding.recyclerView.requireAttachedSectionScroller(
@@ -164,7 +164,8 @@ class Albums : PanelFragment() {
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             AlbumPreferences.GRID_TYPE -> {
-                binding.recyclerView.setGridType(AlbumPreferences.getGridType())
+                binding.recyclerView.setGridType(AlbumPreferences.getGridType(), AlbumPreferences.getGridSize(isLandscape))
+                headerBinding.gridType.setGridTypeValue(AlbumPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }

@@ -1,9 +1,7 @@
 package app.simple.felicity.preferences
 
-import android.content.Context
 import androidx.core.content.edit
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.core.utils.BarHeight
 import app.simple.felicity.manager.SharedPreferences
 
 object SongsPreferences {
@@ -61,8 +59,8 @@ object SongsPreferences {
 
     // ----------------------------------------------------------------------------------------- //
 
-    fun getGridSize(context: Context): Int {
-        return if (BarHeight.isLandscape(context).not()) {
+    fun getGridSize(isLandscape: Boolean): Int {
+        return if (isLandscape.not()) {
             SharedPreferences.getSharedPreferences()
                 .getInt(GRID_SIZE_PORTRAIT, CommonPreferencesConstants.GRID_SIZE_ONE)
         } else {
@@ -71,8 +69,8 @@ object SongsPreferences {
         }
     }
 
-    fun setGridSize(size: Int, context: Context) {
-        if (BarHeight.isLandscape(context).not()) {
+    fun setGridSize(size: Int, isLandscape: Boolean) {
+        if (isLandscape.not()) {
             SharedPreferences.getSharedPreferences().edit { putInt(GRID_SIZE_PORTRAIT, size) }
         } else {
             SharedPreferences.getSharedPreferences().edit { putInt(GRID_SIZE_LANDSCAPE, size) }
