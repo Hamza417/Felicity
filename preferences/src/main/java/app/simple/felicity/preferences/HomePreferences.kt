@@ -5,23 +5,23 @@ import app.simple.felicity.manager.SharedPreferences
 
 object HomePreferences {
 
-    const val HOME_INTERFACE = "home_interface"
-    const val HOME_INTERFACE_SPANNED = "spanned"
-    const val HOME_INTERFACE_CAROUSEL = "carousel"
-    const val HOME_INTERFACE_ARTFLOW = "artflow"
-    const val HOME_INTERFACE_SIMPLE = "simple"
+    const val HOME_INTERFACE = "home_interface_"
+    const val HOME_INTERFACE_SPANNED = 2
+    const val HOME_INTERFACE_CAROUSEL = 1
+    const val HOME_INTERFACE_ARTFLOW = 3
+    const val HOME_INTERFACE_SIMPLE = 0
 
     // ---------------------------------------------------------------------------------------- //
 
-    fun getHomeInterface(): String {
+    fun getHomeInterface(): Int {
         return SharedPreferences.getSharedPreferences()
-            .getString(HOME_INTERFACE, HOME_INTERFACE_SPANNED) ?: HOME_INTERFACE_SPANNED
+            .getInt(HOME_INTERFACE, HOME_INTERFACE_SIMPLE)
     }
 
-    fun setHomeInterface(value: String) {
+    fun setHomeInterface(value: Int) {
         SharedPreferences.getSharedPreferences()
             .edit {
-                putString(HOME_INTERFACE, value)
+                putInt(HOME_INTERFACE, value)
             }
     }
 }

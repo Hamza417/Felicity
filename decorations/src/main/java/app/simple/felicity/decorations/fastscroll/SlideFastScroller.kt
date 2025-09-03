@@ -98,6 +98,11 @@ class SlideFastScroller @JvmOverloads constructor(
     private var originalPrefetchCount = -1
     private var lightBindExitPending = false // Prevent multiple exit calls
 
+    // Smooth scrolling support
+    private var smoothScrollingEnabled = true
+    private var totalScrollRange = 0
+    private var lastComputedScrollRange = 0L
+
     // Batched scroll updates
     private var pendingScrollUpdate: Runnable? = null
     private val batchedScrollRunnable = Runnable {
@@ -410,6 +415,12 @@ class SlideFastScroller @JvmOverloads constructor(
         smoothScrollEnabled = enabled
     }
 
+    /** Enable or disable pixel-based smooth scrolling during dragging. */
+    @Suppress("unused")
+    fun setSmoothScrollingEnabled(enabled: Boolean) {
+        smoothScrollingEnabled = enabled
+    }
+
     /** Legacy: Enable or disable step-based scrolling. */
     @Suppress("unused")
     fun setStepScrollingEnabled(enabled: Boolean) {
@@ -494,7 +505,6 @@ class SlideFastScroller @JvmOverloads constructor(
 
     private fun updatePercentFromRecycler() {
         val rv = recyclerRef?.get() ?: return
-        val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
         val adapter = rv.adapter ?: return
         val count = adapter.itemCount
 
@@ -505,23 +515,40 @@ class SlideFastScroller @JvmOverloads constructor(
             return
         }
 
-        val firstVisible = layoutManager.findFirstVisibleItemPosition()
-        if (firstVisible < 0) return
+        // Use pixel-based calculation for smoother tracking
+        val scrollRange = computeTotalScrollRange()
+        if (scrollRange > 0) {
+            val currentOffset = rv.computeVerticalScrollOffset()
+            val newPercent = (currentOffset.toFloat() / scrollRange.toFloat()).coerceIn(0f, 1f)
 
-        val firstView = layoutManager.findViewByPosition(firstVisible)
-        val newPercent = if (firstView != null) {
-            val viewTop = firstView.top
-            val itemHeight = firstView.height.coerceAtLeast(1)
-            val offsetPercent = (-viewTop.toFloat() / itemHeight.toFloat()).coerceIn(0f, 1f)
-            ((firstVisible + offsetPercent) / (count - 1)).coerceIn(0f, 1f)
+            if (abs(newPercent - percent) > 0.001f) {
+                percent = newPercent
+                // Update current position based on layout manager
+                val layoutManager = rv.layoutManager as? LinearLayoutManager
+                currentAdapterPosition = layoutManager?.findFirstVisibleItemPosition() ?: 0
+                invalidate()
+            }
         } else {
-            firstVisible.toFloat() / (count - 1).toFloat()
-        }
+            // Fall back to position-based calculation for edge cases
+            val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
+            val firstVisible = layoutManager.findFirstVisibleItemPosition()
+            if (firstVisible < 0) return
 
-        if (abs(newPercent - percent) > 0.001f) { // Avoid micro-updates
-            percent = newPercent
-            currentAdapterPosition = firstVisible
-            invalidate()
+            val firstView = layoutManager.findViewByPosition(firstVisible)
+            val newPercent = if (firstView != null) {
+                val viewTop = firstView.top
+                val itemHeight = firstView.height.coerceAtLeast(1)
+                val offsetPercent = (-viewTop.toFloat() / itemHeight.toFloat()).coerceIn(0f, 1f)
+                ((firstVisible + offsetPercent) / (count - 1)).coerceIn(0f, 1f)
+            } else {
+                firstVisible.toFloat() / (count - 1).toFloat()
+            }
+
+            if (abs(newPercent - percent) > 0.001f) {
+                percent = newPercent
+                currentAdapterPosition = firstVisible
+                invalidate()
+            }
         }
     }
 
@@ -605,6 +632,47 @@ class SlideFastScroller @JvmOverloads constructor(
             } else {
                 rv.scrollToPosition(position)
             }
+        }
+    }
+
+    private fun computeTotalScrollRange(): Int {
+        val rv = recyclerRef?.get() ?: return 0
+        val currentTime = System.currentTimeMillis()
+
+        // Cache the computation for performance
+        if (currentTime - lastComputedScrollRange < 500L && totalScrollRange > 0) {
+            return totalScrollRange
+        }
+
+        lastComputedScrollRange = currentTime
+        totalScrollRange = rv.computeVerticalScrollRange() - rv.computeVerticalScrollExtent()
+        return totalScrollRange.coerceAtLeast(0)
+    }
+
+    private fun scrollToPercentSmooth(targetPercent: Float) {
+        val rv = recyclerRef?.get() ?: return
+
+        if (!smoothScrollingEnabled) {
+            // Fall back to position-based scrolling
+            val position = percentToAdapterPosition(targetPercent)
+            scheduleScrollToPosition(position)
+            return
+        }
+
+        val scrollRange = computeTotalScrollRange()
+        if (scrollRange <= 0) {
+            // Fall back to position-based scrolling for empty or single-item lists
+            val position = percentToAdapterPosition(targetPercent)
+            scheduleScrollToPosition(position)
+            return
+        }
+
+        val currentOffset = rv.computeVerticalScrollOffset()
+        val targetOffset = (scrollRange * targetPercent.coerceIn(0f, 1f)).toInt()
+        val deltaY = targetOffset - currentOffset
+
+        if (abs(deltaY) > 0) {
+            rv.scrollBy(0, deltaY)
         }
     }
 
@@ -786,12 +854,18 @@ class SlideFastScroller @JvmOverloads constructor(
             (clampedY - radius) / available
         }
 
-        // Reduced threshold for high refresh rate devices to be more responsive
-        val threshold = if (updateThrottleMs <= 8L) 0.003f else 0.005f // More sensitive on 120Hz
+        // Use much smaller threshold during dragging for smoother updates
+        val threshold = if (dragging) 0.001f else (if (updateThrottleMs <= 8L) 0.003f else 0.005f)
         if (abs(newPercent - percent) > threshold) {
             percent = newPercent
-            val position = percentToAdapterPosition(newPercent)
-            scheduleScrollToPosition(position)
+
+            // During dragging, use smooth pixel-based scrolling instead of discrete positions
+            if (dragging) {
+                scrollToPercentSmooth(newPercent)
+            } else {
+                val position = percentToAdapterPosition(newPercent)
+                scheduleScrollToPosition(position)
+            }
         }
     }
 
