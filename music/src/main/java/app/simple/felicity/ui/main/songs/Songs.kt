@@ -61,9 +61,9 @@ class Songs : PanelFragment() {
                     view = headerBinding.scroll
             )
 
-            gridLayoutManager = GridLayoutManager(requireContext(), SongsPreferences.getGridSize(isLandscape))
+            gridLayoutManager = GridLayoutManager(requireContext(), SongsPreferences.getGridSize())
             binding.recyclerView.layoutManager = gridLayoutManager
-            binding.recyclerView.setGridType(SongsPreferences.getGridType(), SongsPreferences.getGridSize(isLandscape))
+            binding.recyclerView.setGridType(SongsPreferences.getGridType(), SongsPreferences.getGridSize())
             songsAdapter = SongsAdapter(songs)
 
             songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
@@ -80,7 +80,7 @@ class Songs : PanelFragment() {
             headerBinding.sortOrder.setSongOrder()
             headerBinding.count.text = getString(R.string.x_songs, songs.size)
             headerBinding.hours.text = songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
-            headerBinding.gridSize.setGridSizeValue(SongsPreferences.getGridSize(isLandscape))
+            headerBinding.gridSize.setGridSizeValue(SongsPreferences.getGridSize())
             headerBinding.gridType.setGridTypeValue(SongsPreferences.getGridType())
 
             headerBinding.menu.setOnClickListener {
@@ -113,12 +113,12 @@ class Songs : PanelFragment() {
                                            R.drawable.ic_six_16dp),
                         onMenuItemClick = {
                             when (it) {
-                                R.string.one -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE, isLandscape)
-                                R.string.two -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO, isLandscape)
-                                R.string.three -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE, isLandscape)
-                                R.string.four -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR, isLandscape)
-                                R.string.five -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE, isLandscape)
-                                R.string.six -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX, isLandscape)
+                                R.string.one -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
+                                R.string.two -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
+                                R.string.three -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
+                                R.string.four -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
+                                R.string.five -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
+                                R.string.six -> SongsPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
                             }
                         },
                         onDismiss = {
@@ -240,13 +240,13 @@ class Songs : PanelFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             SongsPreferences.GRID_SIZE_PORTRAIT, SongsPreferences.GRID_SIZE_LANDSCAPE -> {
-                headerBinding.gridSize.setGridSizeValue(SongsPreferences.getGridSize(isLandscape))
+                headerBinding.gridSize.setGridSizeValue(SongsPreferences.getGridSize())
                 binding.recyclerView.beginDelayedTransition()
-                gridLayoutManager?.spanCount = SongsPreferences.getGridSize(isLandscape)
+                gridLayoutManager?.spanCount = SongsPreferences.getGridSize()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
-            SongsPreferences.GRID_TYPE -> {
-                binding.recyclerView.setGridType(SongsPreferences.getGridType(), SongsPreferences.getGridSize(isLandscape))
+            SongsPreferences.GRID_TYPE_PORTRAIT, SongsPreferences.GRID_TYPE_LANDSCAPE -> {
+                binding.recyclerView.setGridType(SongsPreferences.getGridType(), SongsPreferences.getGridSize())
                 headerBinding.gridType.setGridTypeValue(SongsPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)

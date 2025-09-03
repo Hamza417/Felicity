@@ -52,9 +52,9 @@ class Albums : PanelFragment() {
 
         albumsViewModel.getAlbums().observe(viewLifecycleOwner) { it ->
             adapterAlbums = AdapterAlbums(it)
-            gridLayoutManager = GridLayoutManager(requireContext(), AlbumPreferences.getGridSize(isLandscape))
+            gridLayoutManager = GridLayoutManager(requireContext(), AlbumPreferences.getGridSize())
             binding.recyclerView.layoutManager = gridLayoutManager
-            binding.recyclerView.setGridType(AlbumPreferences.getGridType(), AlbumPreferences.getGridSize(isLandscape))
+            binding.recyclerView.setGridType(AlbumPreferences.getGridType(), AlbumPreferences.getGridSize())
             adapterAlbums?.setHasStableIds(true)
             headerBinding.count.text = getString(R.string.x_albums, it.size)
             binding.recyclerView.requireAttachedSectionScroller(
@@ -88,7 +88,7 @@ class Albums : PanelFragment() {
                     preference = AlbumPreferences.getAlbumSort()
             )
 
-            headerBinding.gridSize.setGridSizeValue(AlbumPreferences.getGridSize(isLandscape))
+            headerBinding.gridSize.setGridSizeValue(AlbumPreferences.getGridSize())
             headerBinding.gridType.setGridTypeValue(AlbumPreferences.getGridType())
 
             headerBinding.gridSize.setOnClickListener { button ->
@@ -109,12 +109,12 @@ class Albums : PanelFragment() {
                                            R.drawable.ic_six_16dp),
                         onMenuItemClick = {
                             when (it) {
-                                R.string.one -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE, isLandscape)
-                                R.string.two -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO, isLandscape)
-                                R.string.three -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE, isLandscape)
-                                R.string.four -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR, isLandscape)
-                                R.string.five -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE, isLandscape)
-                                R.string.six -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX, isLandscape)
+                                R.string.one -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
+                                R.string.two -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
+                                R.string.three -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
+                                R.string.four -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
+                                R.string.five -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
+                                R.string.six -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
                             }
                         },
                         onDismiss = {
@@ -158,13 +158,13 @@ class Albums : PanelFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             AlbumPreferences.GRID_SIZE_PORTRAIT, AlbumPreferences.GRID_SIZE_LANDSCAPE -> {
-                headerBinding.gridSize.setGridSizeValue(AlbumPreferences.getGridSize(isLandscape))
+                headerBinding.gridSize.setGridSizeValue(AlbumPreferences.getGridSize())
                 binding.recyclerView.beginDelayedTransition()
-                gridLayoutManager?.spanCount = AlbumPreferences.getGridSize(isLandscape)
+                gridLayoutManager?.spanCount = AlbumPreferences.getGridSize()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
-            AlbumPreferences.GRID_TYPE -> {
-                binding.recyclerView.setGridType(AlbumPreferences.getGridType(), AlbumPreferences.getGridSize(isLandscape))
+            AlbumPreferences.GRID_TYPE_PORTRAIT, AlbumPreferences.GRID_TYPE_LANDSCAPE -> {
+                binding.recyclerView.setGridType(AlbumPreferences.getGridType(), AlbumPreferences.getGridSize())
                 headerBinding.gridType.setGridTypeValue(AlbumPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)

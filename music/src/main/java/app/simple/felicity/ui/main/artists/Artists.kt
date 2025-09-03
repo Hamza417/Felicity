@@ -56,10 +56,10 @@ class Artists : PanelFragment() {
                     header = binding.header,
                     view = headerBinding.scroll)
 
-            gridLayoutManager = GridLayoutManager(requireContext(), ArtistPreferences.getGridSize(isLandscape))
+            gridLayoutManager = GridLayoutManager(requireContext(), ArtistPreferences.getGridSize())
             binding.recyclerView.layoutManager = gridLayoutManager
             binding.recyclerView.setHasFixedSize(true)
-            binding.recyclerView.setGridType(ArtistPreferences.getGridType(), ArtistPreferences.getGridSize(isLandscape))
+            binding.recyclerView.setGridType(ArtistPreferences.getGridType(), ArtistPreferences.getGridSize())
             adapterArtists = AdapterArtists(artists)
             binding.recyclerView.adapter = adapterArtists
 
@@ -86,7 +86,7 @@ class Artists : PanelFragment() {
                 childFragmentManager.showArtistsSort()
             }
 
-            headerBinding.gridSize.setGridSizeValue(ArtistPreferences.getGridSize(isLandscape))
+            headerBinding.gridSize.setGridSizeValue(ArtistPreferences.getGridSize())
             headerBinding.gridType.setGridTypeValue(ArtistPreferences.getGridType())
 
             headerBinding.gridSize.setOnClickListener { button ->
@@ -107,12 +107,12 @@ class Artists : PanelFragment() {
                                            R.drawable.ic_six_16dp),
                         onMenuItemClick = {
                             when (it) {
-                                R.string.one -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE, isLandscape)
-                                R.string.two -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO, isLandscape)
-                                R.string.three -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE, isLandscape)
-                                R.string.four -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR, isLandscape)
-                                R.string.five -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE, isLandscape)
-                                R.string.six -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX, isLandscape)
+                                R.string.one -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
+                                R.string.two -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
+                                R.string.three -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
+                                R.string.four -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
+                                R.string.five -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
+                                R.string.six -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
                             }
                         },
                         onDismiss = {
@@ -180,13 +180,13 @@ class Artists : PanelFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             ArtistPreferences.GRID_SIZE_PORTRAIT, ArtistPreferences.GRID_SIZE_LANDSCAPE -> {
-                headerBinding.gridSize.setGridSizeValue(ArtistPreferences.getGridSize(isLandscape))
+                headerBinding.gridSize.setGridSizeValue(ArtistPreferences.getGridSize())
                 binding.recyclerView.beginDelayedTransition()
-                gridLayoutManager.spanCount = ArtistPreferences.getGridSize(isLandscape)
+                gridLayoutManager.spanCount = ArtistPreferences.getGridSize()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
-            ArtistPreferences.GRID_TYPE -> {
-                binding.recyclerView.setGridType(ArtistPreferences.getGridType(), ArtistPreferences.getGridSize(isLandscape))
+            ArtistPreferences.GRID_TYPE_PORTRAIT, ArtistPreferences.GRID_TYPE_LANDSCAPE -> {
+                binding.recyclerView.setGridType(ArtistPreferences.getGridType(), ArtistPreferences.getGridSize())
                 headerBinding.gridType.setGridTypeValue(ArtistPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)

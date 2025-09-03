@@ -21,6 +21,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import app.simple.felicity.core.constants.ThemeConstants
+import app.simple.felicity.core.singletons.AppOrientation
+import app.simple.felicity.core.utils.BarHeight
 import app.simple.felicity.engine.services.ExoPlayerService
 import app.simple.felicity.glide.songcover.SongCoverUtils.fetchBitmap
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
@@ -65,6 +67,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
             presetMaterialYouDynamicColors()
         }
 
+        AppOrientation.setOrientation(BarHeight.isLandscape(this))
         content = findViewById(android.R.id.content)
         ThemeManager.addListener(this)
         ThemeUtils.setAppTheme(resources)

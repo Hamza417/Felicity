@@ -4,6 +4,7 @@ import androidx.core.content.edit
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.constants.CommonPreferencesConstants.ASCENDING
 import app.simple.felicity.constants.CommonPreferencesConstants.BY_ALBUM_NAME
+import app.simple.felicity.core.singletons.AppOrientation
 import app.simple.felicity.manager.SharedPreferences
 
 object AlbumPreferences {
@@ -11,7 +12,8 @@ object AlbumPreferences {
     const val SORTING_STYLE = "_album_sorting_style__"
     const val GRID_SIZE_PORTRAIT = "album_grid_size"
     const val GRID_SIZE_LANDSCAPE = "album_grid_size_landscape"
-    const val GRID_TYPE = "album_grid_type"
+    const val GRID_TYPE_PORTRAIT = "album_grid_type_portrait"
+    const val GRID_TYPE_LANDSCAPE = "album_grid_type_landscape"
 
     // ----------------------------------------------------------------------------------------- //
 
@@ -42,8 +44,8 @@ object AlbumPreferences {
         }
     }
 
-    fun getGridSize(isLandscape: Boolean): Int {
-        return if (isLandscape.not()) {
+    fun getGridSize(): Int {
+        return if (AppOrientation.isLandscape().not()) {
             SharedPreferences.getSharedPreferences()
                 .getInt(GRID_SIZE_PORTRAIT, CommonPreferencesConstants.GRID_SIZE_ONE)
         } else {
@@ -52,8 +54,8 @@ object AlbumPreferences {
         }
     }
 
-    fun setGridSize(size: Int, isLandscape: Boolean) {
-        if (isLandscape.not()) {
+    fun setGridSize(size: Int) {
+        if (AppOrientation.isLandscape().not()) {
             SharedPreferences.getSharedPreferences().edit { putInt(GRID_SIZE_PORTRAIT, size) }
         } else {
             SharedPreferences.getSharedPreferences().edit { putInt(GRID_SIZE_LANDSCAPE, size) }
@@ -61,11 +63,20 @@ object AlbumPreferences {
     }
 
     fun getGridType(): Int {
-        return SharedPreferences.getSharedPreferences()
-            .getInt(GRID_TYPE, CommonPreferencesConstants.GRID_TYPE_LIST)
+        return if (AppOrientation.isLandscape().not()) {
+            SharedPreferences.getSharedPreferences()
+                .getInt(GRID_TYPE_PORTRAIT, CommonPreferencesConstants.GRID_TYPE_LIST)
+        } else {
+            SharedPreferences.getSharedPreferences()
+                .getInt(GRID_TYPE_LANDSCAPE, CommonPreferencesConstants.GRID_TYPE_LIST)
+        }
     }
 
     fun setGridType(type: Int) {
-        SharedPreferences.getSharedPreferences().edit { putInt(GRID_TYPE, type) }
+        if (AppOrientation.isLandscape().not()) {
+            SharedPreferences.getSharedPreferences().edit { putInt(GRID_TYPE_PORTRAIT, type) }
+        } else {
+            SharedPreferences.getSharedPreferences().edit { putInt(GRID_TYPE_LANDSCAPE, type) }
+        }
     }
 }
