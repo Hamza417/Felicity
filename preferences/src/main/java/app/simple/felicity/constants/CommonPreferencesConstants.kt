@@ -22,6 +22,7 @@ object CommonPreferencesConstants {
     const val BY_TRACK_NUMBER = 12
     const val BY_COMPOSER = 13
     const val BY_PATH = 14
+    const val BY_NUMBER_OF_ALBUMS = 15
 
     // Grid size constants
     const val GRID_SIZE_ONE = 1

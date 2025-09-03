@@ -223,6 +223,8 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
     }
 
     override fun setAdapter(adapter: Adapter<*>?) {
+        clearAnimation()
+
         try {
             adapter?.stateRestorationPolicy = Adapter.StateRestorationPolicy.ALLOW
         } catch (e: UnsupportedOperationException) {

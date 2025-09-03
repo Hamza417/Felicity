@@ -123,4 +123,5 @@
     <string name="predictive_back">Predictive Back</string>
     <string name="predictive_back_summary">Toggle predictive back behavior in the app.</string>
     <string name="behavior_desc">Change how app components behave with one another.</string>
+    <string name="number_of_albums">Number of Albums</string>
 </resources>
