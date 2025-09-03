@@ -36,6 +36,13 @@ class SectionedFastScroller @JvmOverloads constructor(
         defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
+    interface VisibilityListener {
+        fun onShowStart() {}
+        fun onShowEnd() {}
+        fun onHideStart() {}
+        fun onHideEnd() {}
+    }
+
     data class Position(val label: String, val index: Int)
 
     private var recyclerRef: WeakReference<RecyclerView>? = null
@@ -83,6 +90,12 @@ class SectionedFastScroller @JvmOverloads constructor(
 
     private var lastOrientation = -1
 
+    private var visibilityListener: VisibilityListener? = null
+
+    fun setVisibilityListener(listener: VisibilityListener?) {
+        visibilityListener = listener
+    }
+
     init {
         alpha = 0f
         scaleX = 0.92f
@@ -117,6 +130,7 @@ class SectionedFastScroller @JvmOverloads constructor(
 
     fun show(animated: Boolean = true) {
         if (isShowing) return
+        visibilityListener?.onShowStart()
         isShowing = true
         visibility = VISIBLE
         // Prep starting state for in animation
@@ -135,11 +149,11 @@ class SectionedFastScroller @JvmOverloads constructor(
     fun hide(animated: Boolean = true) {
         if (!isShowing && fadeScaleAnimator == null) return // Already hidden and no running anim
 
+        visibilityListener?.onHideStart()
         animateOut(animated)
 
-        if (isShowing) {
-            isShowing = false
-        }
+        // Defer flipping isShowing until the animation actually ends so content can animate out.
+        // If not animated, animateOut will set isShowing=false immediately.
     }
 
     fun toggle() = if (isShowing) hide() else show()
@@ -147,8 +161,11 @@ class SectionedFastScroller @JvmOverloads constructor(
     private fun animateIn(animated: Boolean) {
         fadeScaleAnimator?.cancel()
         if (!animated) {
-            alpha = 1f; scaleX = 1f; scaleY = 1f; return
+            alpha = 1f; scaleX = 1f; scaleY = 1f
+            visibilityListener?.onShowEnd()
+            return
         }
+        var wasCanceled = false
         fadeScaleAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = animationDurationShow
             interpolator = DecelerateInterpolator()
@@ -159,6 +176,18 @@ class SectionedFastScroller @JvmOverloads constructor(
                 scaleX = s; scaleY = s
                 invalidate()
             }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationCancel(animation: Animator) {
+                    wasCanceled = true
+                }
+
+                override fun onAnimationEnd(animation: Animator) {
+                    fadeScaleAnimator = null
+                    if (!wasCanceled && isShowing) {
+                        visibilityListener?.onShowEnd()
+                    }
+                }
+            })
             start()
         }
     }
@@ -166,7 +195,10 @@ class SectionedFastScroller @JvmOverloads constructor(
     private fun animateOut(animated: Boolean) {
         fadeScaleAnimator?.cancel()
         if (!animated) {
-            alpha = 0f; scaleX = outScaleEnd; scaleY = outScaleEnd; visibility = GONE; return
+            // Immediately hide and reset state
+            isShowing = false
+            visibilityListener?.onHideEnd()
+            return
         }
         // Ensure starting baseline (might be mid-animation)
         if (scaleX != 1f && scaleX < 1f) {
@@ -185,12 +217,19 @@ class SectionedFastScroller @JvmOverloads constructor(
                 invalidate()
             }
             addListener(object : AnimatorListenerAdapter() {
+                private var wasCanceled = false
+                override fun onAnimationCancel(animation: Animator) {
+                    wasCanceled = true
+                }
                 override fun onAnimationEnd(animation: Animator) {
-                    if (!isShowing) {
+                    if (!wasCanceled) {
+                        // Now mark hidden and reset visibility/state
+                        isShowing = false
                         visibility = GONE
                         alpha = 0f
                         scaleX = 1f
                         scaleY = 1f
+                        visibilityListener?.onHideEnd()
                     }
 
                     fadeScaleAnimator = null

@@ -93,14 +93,14 @@ open class MediaFragment : ScopedFragment() {
         viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 super.onStart(owner)
-                miniPlayerCallbacks?.onHideMiniPlayer()
+                hideMiniPlayer()
             }
 
             override fun onPause(owner: LifecycleOwner) {
                 super.onPause(owner)
                 // Don't force-show during configuration changes; preserve current state
                 if (requireActivity().isChangingConfigurations.not()) {
-                    miniPlayerCallbacks?.onShowMiniPlayer()
+                    showMiniPlayer()
                 }
             }
         })
@@ -118,6 +118,14 @@ open class MediaFragment : ScopedFragment() {
                 miniPlayerCallbacks?.onDetachMiniPlayer(this@requireAttachedMiniPlayer)
             }
         })
+    }
+
+    protected fun showMiniPlayer() {
+        miniPlayerCallbacks?.onShowMiniPlayer()
+    }
+
+    protected fun hideMiniPlayer() {
+        miniPlayerCallbacks?.onHideMiniPlayer()
     }
 
     open fun onPlaybackStateChanged(state: Int) {

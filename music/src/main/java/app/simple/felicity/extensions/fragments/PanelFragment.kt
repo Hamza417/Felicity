@@ -57,9 +57,9 @@ open class PanelFragment : MediaFragment() {
             sections: List<SectionedFastScroller.Position>,
             header: AppHeader,
             view: View) {
-        val nav = SectionedFastScroller.attach(this)
-        nav.setPositions(sections)
-        nav.setOnPositionSelectedListener { position ->
+        val sectionedFastScroller = SectionedFastScroller.attach(this)
+        sectionedFastScroller.setPositions(sections)
+        sectionedFastScroller.setOnPositionSelectedListener { position ->
             this.scrollToPosition(position.index)
             if (position.index > 10) {
                 header.hideHeader()
@@ -70,8 +70,20 @@ open class PanelFragment : MediaFragment() {
             header.resumeAutoBehavior()
         }
 
+        sectionedFastScroller.setVisibilityListener(object : SectionedFastScroller.VisibilityListener {
+            override fun onShowStart() {
+                super.onShowStart()
+                hideMiniPlayer()
+            }
+
+            override fun onHideStart() {
+                super.onHideStart()
+                showMiniPlayer()
+            }
+        })
+
         view.setOnClickListener {
-            nav.show(animated = true)
+            sectionedFastScroller.show(animated = true)
         }
     }
 
