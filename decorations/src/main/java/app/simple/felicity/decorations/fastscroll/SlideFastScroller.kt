@@ -22,7 +22,6 @@ import android.view.animation.DecelerateInterpolator
 import androidx.annotation.DrawableRes
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.LinearSmoothScroller
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decoration.R
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
@@ -32,6 +31,7 @@ import java.lang.ref.WeakReference
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.min
+import androidx.recyclerview.widget.SnapHelper
 
 // High-performance fast scroller with adapter index mapping, throttling, and prefetch optimization
 class SlideFastScroller @JvmOverloads constructor(
@@ -105,6 +105,7 @@ class SlideFastScroller @JvmOverloads constructor(
 
     // Batched scroll updates
     private var pendingScrollUpdate: Runnable? = null
+    private var pendingPercentUpdate: Runnable? = null
     private val batchedScrollRunnable = Runnable {
         val pos = pendingScrollPosition
         if (pos >= 0) {
@@ -113,9 +114,22 @@ class SlideFastScroller @JvmOverloads constructor(
         pendingScrollUpdate = null
     }
 
+    // Smooth percent scroll runnable for continuous updates
+    private val batchedPercentRunnable = Runnable {
+        val rv = recyclerRef?.get()
+        if (rv != null && dragging) { // Only continue if still dragging
+            val targetPercent = percent
+            scrollToPercentSmooth(targetPercent)
+        }
+        pendingPercentUpdate = null
+    }
+
     // Index-to-offset cache for variable height items
     private val indexOffsetCache = mutableMapOf<Int, Int>()
     private var cacheInvalidated = true
+
+    // Reference to a SnapHelper (if attached) to disable auto-snapping during drag
+    private var detachedSnapHelper: SnapHelper? = null
 
     private val scrollListener = object : RecyclerView.OnScrollListener() {
         override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
@@ -516,7 +530,7 @@ class SlideFastScroller @JvmOverloads constructor(
         }
 
         // Use pixel-based calculation for smoother tracking
-        val scrollRange = computeTotalScrollRange()
+        val scrollRange = rv.computeVerticalScrollRange() - rv.computeVerticalScrollExtent()
         if (scrollRange > 0) {
             val currentOffset = rv.computeVerticalScrollOffset()
             val newPercent = (currentOffset.toFloat() / scrollRange.toFloat()).coerceIn(0f, 1f)
@@ -590,21 +604,8 @@ class SlideFastScroller @JvmOverloads constructor(
     }
 
     private fun scheduleScrollToPosition(position: Int, force: Boolean = false) {
-        if (!force && position == lastAppliedPosition) return
-
-        val currentTime = System.currentTimeMillis()
-        if (!force && currentTime - lastUpdateTime < updateThrottleMs) {
-            // Throttle updates - batch them at optimal refresh rate
-            pendingScrollPosition = position
-            if (pendingScrollUpdate == null) {
-                pendingScrollUpdate = batchedScrollRunnable
-                handler.postDelayed(batchedScrollRunnable, updateThrottleMs)
-            }
-            return
-        }
-
-        lastUpdateTime = currentTime
-        performScrollToPosition(position)
+        // REMOVED: No more deferred scrolling - call performScrollToPosition directly
+        performScrollToPosition(position, directPositioning = true)
     }
 
     private fun performScrollToPosition(position: Int, directPositioning: Boolean = false) {
@@ -616,61 +617,29 @@ class SlideFastScroller @JvmOverloads constructor(
         lastAppliedPosition = position
 
         val layoutManager = rv.layoutManager as? LinearLayoutManager
-        if (layoutManager != null && smoothScrollEnabled && !dragging && !directPositioning) {
-            // Use smooth scrolling when not dragging and not doing direct positioning
-            val smoothScroller = object : LinearSmoothScroller(context) {
-                override fun getVerticalSnapPreference(): Int = SNAP_TO_START
-            }
-            smoothScroller.targetPosition = position
-            layoutManager.startSmoothScroll(smoothScroller)
+        // Always use direct positioning (no smooth scrolling)
+        if (indexOffsetCache.containsKey(position)) {
+            val offset = indexOffsetCache[position] ?: 0
+            layoutManager?.scrollToPositionWithOffset(position, offset)
         } else {
-            // Direct positioning for fast dragging or when explicitly requested
-            if (indexOffsetCache.containsKey(position)) {
-                // Use cached offset for more accurate positioning
-                val offset = indexOffsetCache[position] ?: 0
-                layoutManager?.scrollToPositionWithOffset(position, offset)
-            } else {
-                rv.scrollToPosition(position)
-            }
+            rv.scrollToPosition(position)
         }
-    }
-
-    private fun computeTotalScrollRange(): Int {
-        val rv = recyclerRef?.get() ?: return 0
-        val currentTime = System.currentTimeMillis()
-
-        // Cache the computation for performance
-        if (currentTime - lastComputedScrollRange < 500L && totalScrollRange > 0) {
-            return totalScrollRange
-        }
-
-        lastComputedScrollRange = currentTime
-        totalScrollRange = rv.computeVerticalScrollRange() - rv.computeVerticalScrollExtent()
-        return totalScrollRange.coerceAtLeast(0)
     }
 
     private fun scrollToPercentSmooth(targetPercent: Float) {
         val rv = recyclerRef?.get() ?: return
 
-        if (!smoothScrollingEnabled) {
-            // Fall back to position-based scrolling
-            val position = percentToAdapterPosition(targetPercent)
-            scheduleScrollToPosition(position)
-            return
-        }
-
-        val scrollRange = computeTotalScrollRange()
+        // Always perform immediate pixel-based scroll (no smooth animation)
+        val scrollRange = rv.computeVerticalScrollRange() - rv.computeVerticalScrollExtent()
         if (scrollRange <= 0) {
-            // Fall back to position-based scrolling for empty or single-item lists
             val position = percentToAdapterPosition(targetPercent)
-            scheduleScrollToPosition(position)
+            performScrollToPosition(position, directPositioning = true)
             return
         }
 
         val currentOffset = rv.computeVerticalScrollOffset()
         val targetOffset = (scrollRange * targetPercent.coerceIn(0f, 1f)).toInt()
         val deltaY = targetOffset - currentOffset
-
         if (abs(deltaY) > 0) {
             rv.scrollBy(0, deltaY)
         }
@@ -746,6 +715,17 @@ class SlideFastScroller @JvmOverloads constructor(
                     parent?.requestDisallowInterceptTouchEvent(true)
                     dragging = true
 
+                    // Detach any SnapHelper to prevent auto-snapping while dragging
+                    if (detachedSnapHelper == null) {
+                        val snap = rv?.onFlingListener
+                        if (snap is SnapHelper) {
+                            try {
+                                snap.attachToRecyclerView(null)
+                                detachedSnapHelper = snap
+                            } catch (_: Exception) { /* ignore */ }
+                        }
+                    }
+
                     // Immediately stop any ongoing smooth scrolls
                     rv?.stopScroll()
                     val layoutManager = rv?.layoutManager as? LinearLayoutManager
@@ -753,9 +733,7 @@ class SlideFastScroller @JvmOverloads constructor(
                         // Cancel any pending smooth scroll operations
                         try {
                             lm.startSmoothScroll(null)
-                        } catch (e: Exception) {
-                            // Ignore - just trying to cancel
-                        }
+                        } catch (_: Exception) { /* ignore */ }
                     }
 
                     enterLightBindMode() // Enable light binding during drag
@@ -780,20 +758,15 @@ class SlideFastScroller @JvmOverloads constructor(
                     dragging = false
                     parent?.requestDisallowInterceptTouchEvent(false)
 
-                    // Immediately stop any ongoing scrolls when finger is lifted
-                    rv?.stopScroll()
-                    val layoutManager = rv?.layoutManager as? LinearLayoutManager
-                    layoutManager?.let { lm ->
-                        try {
-                            lm.startSmoothScroll(null)
-                        } catch (e: Exception) {
-                            // Ignore
-                        }
-                    }
+                    // Cancel ALL pending scroll operations immediately
+                    cancelAllPendingScrolls()
 
-                    // Final precise snap - use direct positioning to avoid smooth scroll
+                    // Final precise snap - use direct positioning (no smooth scroll)
                     val finalPosition = percentToAdapterPosition(percent)
                     performScrollToPosition(finalPosition, directPositioning = true)
+
+                    // Do NOT reattach SnapHelper to avoid any auto-snapping/scrolling after release
+                    detachedSnapHelper = null
 
                     // Immediately exit light bind mode and notify all visible holders
                     exitLightBindModeImmediate()
@@ -859,12 +832,20 @@ class SlideFastScroller @JvmOverloads constructor(
         if (abs(newPercent - percent) > threshold) {
             percent = newPercent
 
-            // During dragging, use smooth pixel-based scrolling instead of discrete positions
-            if (dragging) {
-                scrollToPercentSmooth(newPercent)
+            // Always use immediate pixel-based scrolling - NO DEFERRED OPERATIONS
+            val rv = recyclerRef?.get() ?: return
+            val scrollRange = rv.computeVerticalScrollRange() - rv.computeVerticalScrollExtent()
+            if (scrollRange > 0) {
+                val currentOffset = rv.computeVerticalScrollOffset()
+                val targetOffset = (scrollRange * newPercent.coerceIn(0f, 1f)).toInt()
+                val deltaY = targetOffset - currentOffset
+                if (abs(deltaY) > 0) {
+                    rv.scrollBy(0, deltaY)
+                }
             } else {
+                // Direct position scrolling for edge cases
                 val position = percentToAdapterPosition(newPercent)
-                scheduleScrollToPosition(position)
+                rv.scrollToPosition(position)
             }
         }
     }
@@ -934,7 +915,13 @@ class SlideFastScroller @JvmOverloads constructor(
         visibilityAnimator = null
         removeCallbacks(autoHideRunnable)
         removeCallbacks(batchedScrollRunnable)
+        removeCallbacks(batchedPercentRunnable)
+        cancelAllPendingScrolls() // Ensure all scroll operations are cancelled
         val rv = recyclerRef?.get()
+
+        // Do not reattach any previously detached SnapHelper to avoid future auto-snapping
+        detachedSnapHelper = null
+
         rv?.removeOnScrollListener(scrollListener)
         ThemeManager.removeListener(this)
     }
@@ -1006,6 +993,30 @@ class SlideFastScroller @JvmOverloads constructor(
         } catch (e: Exception) {
             Log.e("SlideFastScroller", "Failed to get display refresh rate, defaulting to 60Hz", e)
             16L // Fallback to 60Hz if detection fails
+        }
+    }
+
+    private fun cancelAllPendingScrolls() {
+        // Cancel all pending scroll operations
+        pendingScrollPosition = -1
+        pendingScrollUpdate?.let { handler.removeCallbacks(it) }
+        pendingScrollUpdate = null
+
+        pendingPercentUpdate?.let { handler.removeCallbacks(it) }
+        pendingPercentUpdate = null
+
+        // Stop RecyclerView scrolling
+        val rv = recyclerRef?.get()
+        rv?.stopScroll()
+
+        // Cancel any layout manager smooth scrolls
+        val layoutManager = rv?.layoutManager as? LinearLayoutManager
+        layoutManager?.let { lm ->
+            try {
+                lm.startSmoothScroll(null)
+            } catch (_: Exception) {
+                // Ignore - just trying to cancel
+            }
         }
     }
 }
