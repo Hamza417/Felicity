@@ -5,7 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.util.Size
-import app.simple.felicity.glide.artistcover.Constants
+import app.simple.felicity.glide.util.Constants
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.utils.AlbumUtils
 import com.bumptech.glide.Priority

@@ -16,7 +16,7 @@ import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselM
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.MediaFragment
-import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.popups.carousel.PopupSongsCarouselMenu
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
@@ -144,7 +144,7 @@ class ArtFlow : MediaFragment() {
         super.onSong(song)
         binding.title.text = song.title
         binding.artist.text = song.artist
-        binding.art.loadSongCover(song)
+        binding.art.loadArtCover(song)
     }
 
     override fun onPlaybackStateChanged(state: Int) {

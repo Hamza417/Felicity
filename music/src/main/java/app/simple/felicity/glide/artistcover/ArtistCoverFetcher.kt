@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.util.Size
+import app.simple.felicity.glide.util.Constants
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.utils.ArtistUtils
 import com.bumptech.glide.Priority

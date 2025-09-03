@@ -14,7 +14,7 @@ import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.decorations.utils.ViewUtils.clearSkeletonBackground
 import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
-import app.simple.felicity.glide.albumcover.AlbumCoverUtils.loadAlbumCover
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.preferences.AlbumPreferences
 import app.simple.felicity.repository.models.Album
 import com.bumptech.glide.Glide
@@ -133,7 +133,7 @@ class AdapterAlbums(initial: List<Album>) :
             binding.tertiaryDetail.setTextOrUnknown(album.artist)
             binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
 
-            binding.cover.loadAlbumCover(album)
+            binding.cover.loadArtCover(album)
 
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)
@@ -158,7 +158,7 @@ class AdapterAlbums(initial: List<Album>) :
             binding.tertiaryDetail.setTextOrUnknown(album.artist)
             binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
 
-            binding.albumArt.loadAlbumCover(album, skipCache = true)
+            binding.albumArt.loadArtCover(album, skipCache = true)
 
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)
@@ -179,7 +179,7 @@ class AdapterAlbums(initial: List<Album>) :
         }
 
         fun bind(album: Album) {
-            binding.albumArt.loadAlbumCover(album, crop = true, roundedCorners = false, blurShadow = false, skipCache = false)
+            binding.albumArt.loadArtCover(album, crop = true, roundedCorners = false, shadow = false, skipCache = false)
             binding.title.text = album.name
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)

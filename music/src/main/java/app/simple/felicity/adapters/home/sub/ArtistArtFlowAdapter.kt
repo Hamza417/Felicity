@@ -3,14 +3,9 @@ package app.simple.felicity.adapters.home.sub
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import app.simple.felicity.databinding.AdapterArtistArtFlowBinding
-import app.simple.felicity.glide.albumcover.AlbumCoverUtils.loadAlbumCover
-import app.simple.felicity.glide.artistcover.ArtistCoverUtils.loadArtistCover
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverUtils.loadFromDescriptor
-import app.simple.felicity.glide.genres.GenreCoverUtils.loadGenreCover
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.models.ArtFlowData
-import app.simple.felicity.repository.models.Album
-import app.simple.felicity.repository.models.Artist
-import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import com.smarteist.autoimageslider.SliderViewAdapter
 
@@ -35,14 +30,8 @@ class ArtistArtFlowAdapter(private val data: ArtFlowData<Any>)
                 is Song -> {
                     holder.binding.art.loadFromDescriptor(item.uri, roundedCorners = false, blur = false, skipCache = false, crop = true)
                 }
-                is Album -> {
-                    holder.binding.art.loadAlbumCover(item, roundedCorners = false, blurShadow = false, skipCache = false)
-                }
-                is Artist -> {
-                    holder.binding.art.loadArtistCover(item, roundedCorners = false, blur = false, skipCache = false)
-                }
-                is Genre -> {
-                    holder.binding.art.loadGenreCover(item, roundedCorners = false, blur = false, skipCache = false)
+                else -> {
+                    holder.binding.art.loadArtCover(item, roundedCorners = false, blur = false, skipCache = false)
                 }
             }
         }

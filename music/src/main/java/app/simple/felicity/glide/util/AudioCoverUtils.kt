@@ -17,7 +17,7 @@ import com.bumptech.glide.load.resource.bitmap.CenterCrop
 object AudioCoverUtils {
     fun ImageView.loadArtCover(
             item: Any,
-            shadows: Boolean = false,
+            shadow: Boolean = false,
             roundedCorners: Boolean = false,
             blur: Boolean = false,
             skipCache: Boolean = false,
@@ -29,7 +29,7 @@ object AudioCoverUtils {
 
         if (crop) transformations.add(CenterCrop())
         if (roundedCorners) transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt()))
-        if (shadows) {
+        if (shadow) {
             transformations.add(Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()))
 
             transformations.add(
@@ -44,7 +44,7 @@ object AudioCoverUtils {
 
         val glideRequest = Glide.with(this)
             .asBitmap()
-            .dontTransform()
+            .dontTransform() // This way we can apply our own transformations and skip the module specific ones
             .transform(*transformations.toTypedArray())
             .load(item)
             .error(R.drawable.ic_felicity)

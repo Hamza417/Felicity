@@ -12,7 +12,7 @@ import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.decorations.utils.ViewUtils.clearSkeletonBackground
 import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
-import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
@@ -126,7 +126,7 @@ class SongsAdapter(initial: List<Song>) :
                 secondaryDetail.setTextOrUnknown(song.artist)
                 tertiaryDetail.setTextOrUnknown(song.album)
 
-                cover.loadSongCover(song)
+                cover.loadArtCover(song)
 
                 container.setOnLongClickListener {
                     generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, it)
@@ -149,7 +149,7 @@ class SongsAdapter(initial: List<Song>) :
                 binding.secondaryDetail.setTextOrUnknown(song.artist)
                 binding.tertiaryDetail.setTextOrUnknown(song.album)
 
-                binding.albumArt.loadSongCover(song, skipCache = true)
+                binding.albumArt.loadArtCover(song, skipCache = true)
 
                 binding.container.setOnLongClickListener {
                     generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, it)

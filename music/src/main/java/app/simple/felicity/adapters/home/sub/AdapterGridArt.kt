@@ -8,10 +8,7 @@ import app.simple.felicity.core.R
 import app.simple.felicity.databinding.AdapterGridImageBinding
 import app.simple.felicity.databinding.AdapterGridPanelButtonBinding
 import app.simple.felicity.decorations.ripple.RippleUtils
-import app.simple.felicity.glide.albumcover.AlbumCoverUtils.loadAlbumCover
-import app.simple.felicity.glide.artistcover.ArtistCoverUtils.loadArtistCover
-import app.simple.felicity.glide.genres.GenreCoverUtils.loadGenreCover
-import app.simple.felicity.glide.songcover.SongCoverUtils.loadSongCover
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
@@ -38,6 +35,13 @@ class AdapterGridArt(private val data: ArtFlowData<Any>) :
                     val shuffledList = data.items.shuffled()
                     val item = shuffledList[position]
 
+                    holder.binding.art.loadArtCover(
+                            item = item,
+                            shadow = false,
+                            roundedCorners = false,
+                            skipCache = true,
+                            darken = true)
+
                     holder.binding.container.setOnClickListener {
                         if (data.items.isNotEmpty()) {
                             callbacks.onItemClicked(shuffledList, position)
@@ -46,42 +50,15 @@ class AdapterGridArt(private val data: ArtFlowData<Any>) :
 
                     when (item) {
                         is Song -> {
-                            holder.binding.art.loadSongCover(
-                                    song = item,
-                                    blurShadow = false,
-                                    roundedCorners = false,
-                                    skipCache = true,
-                                    darken = true)
-
                             holder.binding.title.text = item.title
                         }
                         is Album -> {
-                            holder.binding.art.loadAlbumCover(
-                                    album = item,
-                                    blurShadow = false,
-                                    roundedCorners = false,
-                                    skipCache = true,
-                                    darken = true)
-
                             holder.binding.title.text = item.artist
                         }
                         is Artist -> {
-                            holder.binding.art.loadArtistCover(
-                                    artist = item,
-                                    blur = false,
-                                    roundedCorners = false,
-                                    skipCache = true,
-                                    darken = true)
-
                             holder.binding.title.text = item.name
                         }
                         is Genre -> {
-                            holder.binding.art.loadGenreCover(
-                                    item,
-                                    blur = false,
-                                    roundedCorners = false,
-                                    skipCache = true)
-
                             holder.binding.title.text = item.name
                         }
                     }
