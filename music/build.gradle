@@ -98,9 +98,9 @@ dependencies {
     implementation 'com.github.Hamza417:renderscript-intrinsics-replacement-toolkit:4ae2409809'
 
     // Glide
-    implementation 'com.github.bumptech.glide:glide:4.16.0'
-    implementation 'com.github.bumptech.glide:okhttp3-integration:4.16.0'
-    ksp 'com.github.bumptech.glide:ksp:4.16.0'
+    implementation 'com.github.bumptech.glide:glide:5.0.4'
+    implementation 'com.github.bumptech.glide:okhttp3-integration:5.0.4'
+    ksp 'com.github.bumptech.glide:ksp:5.0.4'
 
     // Room
     implementation "androidx.room:room-ktx:2.7.2"

@@ -37,3 +37,4 @@
 -dontwarn java.lang.invoke.StringConcatFactory
 
 -keeppackagenames
+-dontobfuscate
