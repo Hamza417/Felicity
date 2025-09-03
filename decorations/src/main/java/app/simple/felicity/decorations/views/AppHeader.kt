@@ -6,12 +6,15 @@ import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.LayoutRes
 import androidx.annotation.MainThread
 import androidx.core.view.children
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import app.simple.felicity.core.utils.WindowUtil
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.theme.ThemeFrameLayout
@@ -134,7 +137,7 @@ class AppHeader @JvmOverloads constructor(
         if (view.parent == this) return // already set
         removeAllViews()
         contentView = view
-        addView(view, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        addView(view, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
         contentCreatedListener?.invoke(view)
         // Reapply padding since header height may change
         post { maybeApplyRecyclerPadding(force = true) }
@@ -210,19 +213,67 @@ class AppHeader @JvmOverloads constructor(
         }
         lastAppliedHeaderHeight = headerHeight
 
+        // Force proper positioning of items, especially when data loads instantly
         ensureListStartBelowPadding(rv)
-        rv.post { ensureListStartBelowPadding(rv) }
+
+        // Use multiple delayed attempts to ensure proper positioning
+        rv.post {
+            ensureListStartBelowPadding(rv)
+            // Second attempt after potential adapter notifications
+            rv.post { ensureListStartBelowPadding(rv) }
+        }
     }
 
     private fun ensureListStartBelowPadding(rv: RecyclerView) {
-        // Only adjust if list is at absolute top (no upward scroll history)
-        if (rv.computeVerticalScrollOffset() != 0 || rv.canScrollVertically(-1)) return
         val firstChild = rv.getChildAt(0) ?: return
         val desiredTop = rv.paddingTop
-        val delta = desiredTop - firstChild.top
+        val currentTop = firstChild.top
+        val delta = desiredTop - currentTop
+
+        // If the first item is positioned above the padding area, we need to adjust
         if (delta > 0) {
-            // Move content down so first item clears the top padding area
-            rv.scrollBy(0, -delta)
+            // Check if we're at or near the top of the list to avoid disrupting user scroll
+            val scrollOffset = rv.computeVerticalScrollOffset()
+
+            // Get first visible item position for more accurate checking
+            val layoutManager = rv.layoutManager
+            val firstVisiblePosition = when (layoutManager) {
+                is LinearLayoutManager -> layoutManager.findFirstVisibleItemPosition()
+                is StaggeredGridLayoutManager -> {
+                    val positions = layoutManager.findFirstVisibleItemPositions(null)
+                    positions.minOrNull() ?: -1
+                }
+                else -> -1
+            }
+
+            // Allow adjustment in these scenarios:
+            // 1. At absolute top with no scroll history
+            // 2. Very close to top (within adjustment range)
+            // 3. First item is visible (position 0) regardless of scroll state
+            val isAtTop = scrollOffset == 0 && !rv.canScrollVertically(-1)
+            val isNearTop = scrollOffset <= delta
+            val isFirstItemVisible = firstVisiblePosition == 0
+
+            if (isAtTop || isNearTop || isFirstItemVisible) {
+                // For instant loading scenarios, we might need to invalidate layout first
+                if (scrollOffset == 0 && firstVisiblePosition == 0 && (rv.adapter?.itemCount ?: 0) > 0) {
+                    // This is likely an instant loading scenario - force a layout pass
+                    rv.requestLayout()
+                    rv.post {
+                        // Re-check after layout and adjust if needed
+                        val updatedFirstChild = rv.getChildAt(0)
+                        if (updatedFirstChild != null) {
+                            val updatedDelta = rv.paddingTop - updatedFirstChild.top
+                            if (updatedDelta > 0) {
+                                rv.scrollBy(0, -updatedDelta)
+                            }
+                        }
+                    }
+                } else {
+                    // Normal case - just scroll to correct position
+                    rv.scrollBy(0, -delta)
+                }
+            }
         }
     }
 
