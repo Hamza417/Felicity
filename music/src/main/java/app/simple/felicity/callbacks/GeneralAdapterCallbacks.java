@@ -33,11 +33,11 @@ public interface GeneralAdapterCallbacks {
     
     }
     
-    default void onArtistClicked(@NonNull Artist artist, int position, @NonNull View view) {
+    default void onArtistClicked(@NonNull List <Artist> artist, int position, @NonNull View view) {
     
     }
     
-    default void onArtistLongClicked(@NonNull Artist artist, int position, @NonNull View view) {
+    default void onArtistLongClicked(@NonNull List <Artist> artist, int position, @NonNull View view) {
     
     }
     

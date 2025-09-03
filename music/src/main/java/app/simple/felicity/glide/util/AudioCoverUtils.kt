@@ -9,10 +9,6 @@ import app.simple.felicity.glide.transformation.Greyscale
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.transformation.RoundedCorners
 import app.simple.felicity.preferences.AppearancePreferences
-import app.simple.felicity.repository.models.Album
-import app.simple.felicity.repository.models.Artist
-import app.simple.felicity.repository.models.Genre
-import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.Transformation
 import com.bumptech.glide.load.engine.DiskCacheStrategy
@@ -46,35 +42,12 @@ object AudioCoverUtils {
         if (greyscale) transformations.add(Greyscale())
         if (darken) transformations.add(Darken(0.3F))
 
-        val glideRequest = when (item) {
-            is Song -> Glide.with(this)
-                .asBitmap()
-                .dontTransform()
-                .transform(*transformations.toTypedArray())
-                .load(item)
-                .error(R.drawable.ic_felicity)
-            is Album -> Glide.with(this)
-                .asBitmap()
-                .dontTransform()
-                .transform(*transformations.toTypedArray())
-                .load(item)
-                .error(R.drawable.ic_felicity)
-            is Artist -> Glide.with(this)
-                .asBitmap()
-                .dontTransform()
-                .transform(*transformations.toTypedArray())
-                .load(item)
-                .error(R.drawable.ic_felicity)
-            is Genre -> Glide.with(this)
-                .asBitmap()
-                .dontTransform()
-                .transform(*transformations.toTypedArray())
-                .load(item)
-                .error(R.drawable.ic_felicity)
-            else -> Glide.with(this)
-                .asBitmap()
-                .load(R.drawable.ic_felicity)
-        }
+        val glideRequest = Glide.with(this)
+            .asBitmap()
+            .dontTransform()
+            .transform(*transformations.toTypedArray())
+            .load(item)
+            .error(R.drawable.ic_felicity)
 
         val finalRequest = if (skipCache) {
             glideRequest.skipMemoryCache(true).diskCacheStrategy(DiskCacheStrategy.NONE)
@@ -83,5 +56,15 @@ object AudioCoverUtils {
         }
 
         finalRequest.into(this)
+    }
+
+    fun ImageView.loadPeristyleArtCover(item: Any) {
+        Glide.with(this)
+            .asBitmap()
+            .dontTransform()
+            .dontAnimate()
+            .transform(CenterCrop())
+            .load(item)
+            .into(this)
     }
 }

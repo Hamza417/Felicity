@@ -134,7 +134,7 @@ class GenrePageAdapter(private val data: CollectionPageData, private val genre: 
 
                 adapter.setAdapterCarouselCallbacks(object : AdapterCarouselItems.Companion.AdapterCarouselCallbacks {
                     override fun onClicked(view: View, position: Int) {
-                        generalAdapterCallbacks?.onArtistClicked(data.artists[position], position, view)
+                        generalAdapterCallbacks?.onArtistClicked(data.artists, position, view)
                     }
                 })
             } else {

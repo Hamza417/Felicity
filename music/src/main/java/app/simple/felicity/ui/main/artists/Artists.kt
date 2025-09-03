@@ -1,19 +1,22 @@
 package app.simple.felicity.ui.main.artists
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
+import androidx.recyclerview.widget.GridLayoutManager
+import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.artists.AdapterArtists
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.core.R
 import app.simple.felicity.databinding.FragmentArtistsBinding
 import app.simple.felicity.databinding.HeaderArtistsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.songs.ArtistsSort.Companion.showArtistsSort
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.ArtistPreferences
@@ -28,6 +31,8 @@ class Artists : PanelFragment() {
     private lateinit var headerBinding: HeaderArtistsBinding
 
     private lateinit var adapterArtists: AdapterArtists
+
+    private lateinit var gridLayoutManager: GridLayoutManager
 
     private val artistViewModel: ArtistsViewModel by viewModels({ requireActivity() })
 
@@ -51,12 +56,16 @@ class Artists : PanelFragment() {
                     header = binding.header,
                     view = headerBinding.scroll)
 
+            gridLayoutManager = GridLayoutManager(requireContext(), ArtistPreferences.getGridSize(isLandscape))
+            binding.recyclerView.layoutManager = gridLayoutManager
+            binding.recyclerView.setHasFixedSize(true)
+            binding.recyclerView.setGridType(ArtistPreferences.getGridType())
             adapterArtists = AdapterArtists(it)
             binding.recyclerView.adapter = adapterArtists
 
             adapterArtists.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
-                override fun onArtistClicked(artist: Artist, position: Int, view: View) {
-                    openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
+                override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {
+                    openFragment(ArtistPage.newInstance(artists[position]), ArtistPage.TAG)
                 }
             })
 
@@ -65,7 +74,7 @@ class Artists : PanelFragment() {
             headerBinding.sortStyle.setCurrentSortStyle()
 
             headerBinding.scroll.hideOnUnfavorableSort(
-                    listOf(CommonPreferencesConstants.BY_NUMBER_OF_SONGS, CommonPreferencesConstants.BY_NUMBER_OF_ALBUMS),
+                    listOf(CommonPreferencesConstants.BY_NAME),
                     ArtistPreferences.getArtistSort()
             )
 
@@ -75,6 +84,68 @@ class Artists : PanelFragment() {
 
             headerBinding.sortOrder.setOnClickListener {
                 childFragmentManager.showArtistsSort()
+            }
+
+            headerBinding.gridSize.setGridSizeValue(ArtistPreferences.getGridSize(isLandscape))
+            headerBinding.gridType.setGridTypeValue(ArtistPreferences.getGridType())
+
+            headerBinding.gridSize.setOnClickListener { button ->
+                SharedScrollViewPopup(
+                        container = requireContainerView(),
+                        anchorView = button,
+                        menuItems = listOf(R.string.one,
+                                           R.string.two,
+                                           R.string.three,
+                                           R.string.four,
+                                           R.string.five,
+                                           R.string.six),
+                        menuIcons = listOf(R.drawable.ic_one_16,
+                                           R.drawable.ic_two_16dp,
+                                           R.drawable.ic_three_16dp,
+                                           R.drawable.ic_four_16dp,
+                                           R.drawable.ic_five_16dp,
+                                           R.drawable.ic_six_16dp),
+                        onMenuItemClick = {
+                            when (it) {
+                                R.string.one -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE, isLandscape)
+                                R.string.two -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO, isLandscape)
+                                R.string.three -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE, isLandscape)
+                                R.string.four -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR, isLandscape)
+                                R.string.five -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE, isLandscape)
+                                R.string.six -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX, isLandscape)
+                            }
+                        },
+                        onDismiss = {
+
+                        }
+                ).show()
+            }
+
+            headerBinding.gridType.setOnClickListener { button ->
+                SharedScrollViewPopup(
+                        container = requireContainerView(),
+                        anchorView = button,
+                        menuItems = listOf(
+                                R.string.list,
+                                R.string.grid,
+                                R.string.peristyle,
+                        ),
+                        menuIcons = listOf(
+                                R.drawable.ic_list_16dp,
+                                R.drawable.ic_grid_16dp,
+                                R.drawable.ic_peristyle_16dp,
+                        ),
+                        onMenuItemClick = {
+                            when (it) {
+                                R.string.list -> ArtistPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
+                                R.string.grid -> ArtistPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
+                                R.string.peristyle -> ArtistPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_PERISTYLE)
+                            }
+                        },
+                        onDismiss = {
+
+                        }
+                ).show()
             }
 
             view.startTransitionOnPreDraw()
@@ -103,6 +174,23 @@ class Artists : PanelFragment() {
         }
 
         return emptyList()
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            ArtistPreferences.GRID_SIZE_PORTRAIT, ArtistPreferences.GRID_SIZE_LANDSCAPE -> {
+                headerBinding.gridSize.setGridSizeValue(ArtistPreferences.getGridSize(isLandscape))
+                binding.recyclerView.beginDelayedTransition()
+                gridLayoutManager.spanCount = ArtistPreferences.getGridSize(isLandscape)
+                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
+            }
+            ArtistPreferences.GRID_TYPE -> {
+                binding.recyclerView.setGridType(ArtistPreferences.getGridType())
+                binding.recyclerView.beginDelayedTransition()
+                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
+            }
+        }
     }
 
     companion object {

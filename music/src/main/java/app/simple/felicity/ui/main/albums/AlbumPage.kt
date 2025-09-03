@@ -80,9 +80,8 @@ class AlbumPage : MediaFragment() {
                     setMediaItems(songs.shuffled(), position)
                 }
 
-                override fun onArtistClicked(artist: Artist, position: Int, view: View) {
-                    Log.i(TAG, "onArtistClicked: Artist clicked: ${artist.name}")
-                    openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
+                override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {
+                    openFragment(ArtistPage.newInstance(artists[position]), ArtistPage.TAG)
                 }
 
                 override fun onAlbumClicked(albums: List<Album>, position: Int, view: View) {

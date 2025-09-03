@@ -142,7 +142,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
 
                 adapter.setAdapterCarouselCallbacks(object : AdapterCarouselItems.Companion.AdapterCarouselCallbacks {
                     override fun onClicked(view: View, position: Int) {
-                        listener?.onArtistClicked(data.artists[position], position, view)
+                        listener?.onArtistClicked(data.artists, position, view)
                     }
                 })
             } else {

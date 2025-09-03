@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.constants.CommonPreferencesConstants
+import app.simple.felicity.core.utils.BarHeight
 import app.simple.felicity.core.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.core.utils.ViewUtils.gone
 import app.simple.felicity.core.utils.ViewUtils.visible
@@ -15,6 +16,11 @@ import app.simple.felicity.decorations.views.SpacingRecyclerView
 import app.simple.felicity.preferences.AlbumPreferences
 
 open class PanelFragment : MediaFragment() {
+
+    protected val isLandscape: Boolean by lazy {
+        BarHeight.isLandscape(requireContext())
+    }
+
     protected fun AppCompatTextView.setGridSizeValue(gridSize: Int) {
         when (gridSize) {
             CommonPreferencesConstants.GRID_SIZE_ONE -> {
@@ -111,7 +117,7 @@ open class PanelFragment : MediaFragment() {
             CommonPreferencesConstants.GRID_TYPE_PERISTYLE -> {
                 gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
                     override fun getSpanSize(position: Int): Int {
-                        val spanCount = maxOf(1, AlbumPreferences.getGridSize(requireContext()))
+                        val spanCount = maxOf(1, AlbumPreferences.getGridSize(isLandscape))
                         val cycle = spanCount * 2 + 1 // 1 giant + 2 rows of grid
                         return if (position % cycle == 0) spanCount else 1
                     }
