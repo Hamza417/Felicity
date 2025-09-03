@@ -8,6 +8,7 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.preference.GenericPreferencesAdapter
 import app.simple.felicity.databinding.FragmentPreferenceAppearanceBinding
 import app.simple.felicity.databinding.HeaderPreferencesGenericBinding
+import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.PreferenceFragment
 
 class Appearance : PreferenceFragment() {
@@ -29,6 +30,7 @@ class Appearance : PreferenceFragment() {
         binding.header.setContentView(headerBinding.root)
         binding.recyclerView.setHasFixedSize(false)
         binding.recyclerView.adapter = GenericPreferencesAdapter(createAppearancePanel())
+        binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
     }
 
     companion object {

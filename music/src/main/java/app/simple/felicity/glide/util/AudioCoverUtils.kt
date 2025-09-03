@@ -8,6 +8,7 @@ import app.simple.felicity.glide.transformation.Darken
 import app.simple.felicity.glide.transformation.Greyscale
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.transformation.RoundedCorners
+import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.Transformation
@@ -56,6 +57,18 @@ object AudioCoverUtils {
         }
 
         finalRequest.into(this)
+    }
+
+    fun ImageView.loadArtCoverWithPayload(item: Any) {
+        loadArtCover(
+                item = item,
+                shadow = AlbumArtPreferences.isShadowEnabled(),
+                blur = false,
+                skipCache = true,
+                greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
+                darken = false,
+                crop = AlbumArtPreferences.isCropEnabled(),
+                roundedCorners = AlbumArtPreferences.isRoundedCornersEnabled())
     }
 
     fun ImageView.loadPeristyleArtCover(item: Any) {

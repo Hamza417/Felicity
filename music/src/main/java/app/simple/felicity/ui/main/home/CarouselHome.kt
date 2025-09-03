@@ -19,7 +19,7 @@ import app.simple.felicity.ui.app.ArtFlow
 import app.simple.felicity.ui.main.albums.AlbumPage
 import app.simple.felicity.ui.main.albums.Albums
 import app.simple.felicity.ui.main.artists.ArtistPage
-import app.simple.felicity.ui.main.artists.PeristyleArtists
+import app.simple.felicity.ui.main.artists.Artists
 import app.simple.felicity.ui.main.genres.GenrePage
 import app.simple.felicity.ui.main.genres.Genres
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
@@ -85,7 +85,7 @@ class CarouselHome : MediaFragment() {
                                 openFragment(Genres.newInstance(), Genres.TAG)
                             }
                             is Artist -> {
-                                openFragment(PeristyleArtists.newInstance(), PeristyleArtists.TAG)
+                                openFragment(Artists.newInstance(), Artists.TAG)
                             }
                             is Album -> {
                                 openFragment(Albums.newInstance(), Albums.TAG)

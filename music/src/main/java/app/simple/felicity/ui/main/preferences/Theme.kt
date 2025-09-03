@@ -7,11 +7,11 @@ import android.view.View
 import android.view.ViewGroup
 import app.simple.felicity.adapters.preference.AdapterTheme
 import app.simple.felicity.databinding.FragmentGenericRecyclerViewBinding
-import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.managers.ThemeUtils
 
-class Theme : ScopedFragment() {
+class Theme : MediaFragment() {
 
     private lateinit var binding: FragmentGenericRecyclerViewBinding
 
@@ -25,6 +25,7 @@ class Theme : ScopedFragment() {
         postponeEnterTransition()
         binding.recyclerView.adapter = AdapterTheme()
         view.startTransitionOnPreDraw()
+        requireHiddenMiniPlayer()
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {

@@ -2,4 +2,5 @@
 <resources>
 
     <string name="shadow_effect_summary">Toggle shadow effects on some icons and album arts throughout the app.</string>
+    <string name="rounded_corners">Rounded Corners</string>
 </resources>

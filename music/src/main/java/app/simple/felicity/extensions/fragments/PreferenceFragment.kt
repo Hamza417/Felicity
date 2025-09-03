@@ -1,6 +1,8 @@
 package app.simple.felicity.extensions.fragments
 
 import android.os.Build
+import android.os.Bundle
+import android.view.View
 import android.widget.TextView
 import app.simple.felicity.R
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
@@ -10,6 +12,7 @@ import app.simple.felicity.models.Preference
 import app.simple.felicity.models.SeekbarState
 import app.simple.felicity.popups.home.PopupHomeInterfaceMenu
 import app.simple.felicity.popups.songs.PopupSongsInterfaceMenu
+import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.HomePreferences
@@ -19,7 +22,12 @@ import app.simple.felicity.ui.main.preferences.Theme
 import app.simple.felicity.ui.main.preferences.TypeFaceSelection
 import java.util.function.Supplier
 
-open class PreferenceFragment : ScopedFragment() {
+open class PreferenceFragment : MediaFragment() {
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        requireHiddenMiniPlayer()
+    }
 
     protected fun createAppearancePanel(): List<Preference> {
         val preferences = mutableListOf<Preference>()
@@ -112,12 +120,69 @@ open class PreferenceFragment : ScopedFragment() {
                 icon = R.drawable.ic_shadow,
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
-                    val isChecked = (view as FelicitySwitch).isChecked
-                    AppearancePreferences.setIconShadows(isChecked)
+                    AppearancePreferences.setShadowEffect((view as FelicitySwitch).isChecked)
                     true
                 },
                 valueProvider = Supplier {
-                    AppearancePreferences.isIconShadowsOn()
+                    AppearancePreferences.isShadowEffectOn()
+                }
+        )
+
+        val albumArt = Preference(type = PreferenceType.SUB_HEADER, title = R.string.album_art)
+
+        val albumArtShadows = Preference(
+                title = R.string.shadows,
+                summary = R.string.album_art_shadows_summary,
+                icon = R.drawable.ic_shadow,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AlbumArtPreferences.setShadowEnabled((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    AppearancePreferences.isShadowEffectOn()
+                }
+        )
+
+        val albumArtCorners = Preference(
+                title = R.string.rounded_corners,
+                summary = R.string.album_art_rounded_corners_summary,
+                icon = R.drawable.ic_corner,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AlbumArtPreferences.setRoundedCornersEnabled((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    AlbumArtPreferences.isRoundedCornersEnabled()
+                }
+        )
+
+        val albumArtCrop = Preference(
+                title = R.string.crop,
+                summary = R.string.album_art_crop_summary,
+                icon = R.drawable.ic_crop,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AlbumArtPreferences.setCropEnabled((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    AlbumArtPreferences.isCropEnabled()
+                }
+        )
+
+        val albumArtGreyscale = Preference(
+                title = R.string.greyscale,
+                summary = R.string.album_art_greyscale_summary,
+                icon = R.drawable.ic_invert,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AlbumArtPreferences.setGreyscaleEnabled((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    AlbumArtPreferences.isGreyscaleEnabled()
                 }
         )
 
@@ -131,6 +196,11 @@ open class PreferenceFragment : ScopedFragment() {
         preferences.add(spacing)
         preferences.add(effects)
         preferences.add(shadowEffectToggle)
+        preferences.add(albumArt)
+        preferences.add(albumArtShadows)
+        preferences.add(albumArtCorners)
+        preferences.add(albumArtCrop)
+        preferences.add(albumArtGreyscale)
 
         return preferences
     }

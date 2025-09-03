@@ -9,8 +9,8 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
+import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterArtFlowHome
-import app.simple.felicity.core.R
 import app.simple.felicity.databinding.FragmentHomeArtflowBinding
 import app.simple.felicity.decorations.flowsidemenu.FelicitySideBar
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolder
@@ -22,13 +22,12 @@ import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.app.ArtFlow
 import app.simple.felicity.ui.main.albums.Albums
-import app.simple.felicity.ui.main.artists.PeristyleArtists
+import app.simple.felicity.ui.main.artists.Artists
 import app.simple.felicity.ui.main.genres.GenrePage
 import app.simple.felicity.ui.main.genres.Genres
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 import kotlinx.coroutines.FlowPreview
-import app.simple.felicity.decoration.R as decorationR
 
 class ArtFlowHome : MediaFragment() {
 
@@ -55,29 +54,29 @@ class ArtFlowHome : MediaFragment() {
         binding.sideBar.setCenterItemsVertically(true)
         binding.sideBar.setItemStyle(backgroundColor = ThemeManager.theme.viewGroupTheme.backgroundColor)
         binding.sideBar.setItems(listOf(
-                FelicitySideBar.SidebarItem(decorationR.drawable.ic_song),
-                FelicitySideBar.SidebarItem(decorationR.drawable.ic_artist),
-                FelicitySideBar.SidebarItem(decorationR.drawable.ic_album),
-                FelicitySideBar.SidebarItem(decorationR.drawable.ic_volume),
-                FelicitySideBar.SidebarItem(decorationR.drawable.ic_play)
+                FelicitySideBar.SidebarItem(R.drawable.ic_song),
+                FelicitySideBar.SidebarItem(R.drawable.ic_artist),
+                FelicitySideBar.SidebarItem(R.drawable.ic_album),
+                FelicitySideBar.SidebarItem(R.drawable.ic_volume),
+                FelicitySideBar.SidebarItem(R.drawable.ic_play)
         ))
 
         binding.sideBar.setOnItemClickListener { id, view ->
             Log.d(TAG, "Sidebar item clicked with id: $id")
             when (id) {
-                decorationR.drawable.ic_song -> {
+                R.drawable.ic_song -> {
                     openFragment(ArtFlow.newInstance(), ArtFlow.TAG)
                 }
-                decorationR.drawable.ic_artist -> {
-                    openFragment(PeristyleArtists.newInstance(), PeristyleArtists.TAG)
+                R.drawable.ic_artist -> {
+                    openFragment(Artists.newInstance(), Artists.TAG)
                 }
-                decorationR.drawable.ic_album -> {
+                R.drawable.ic_album -> {
                     openFragment(Albums.newInstance(), Albums.TAG)
                 }
-                decorationR.drawable.ic_volume -> {
+                R.drawable.ic_volume -> {
                     childFragmentManager.showVolumeKnob()
                 }
-                decorationR.drawable.ic_play -> {
+                R.drawable.ic_play -> {
                     openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
                 }
                 else -> {
@@ -121,7 +120,7 @@ class ArtFlowHome : MediaFragment() {
                             openFragment(ArtFlow.newInstance(), ArtFlow.TAG)
                         }
                         R.string.artists -> {
-                            openFragment(PeristyleArtists.newInstance(), PeristyleArtists.TAG)
+                            openFragment(Artists.newInstance(), Artists.TAG)
                         }
                         R.string.albums -> {
                             openFragment(Albums.newInstance(), Albums.TAG)

@@ -6,9 +6,9 @@ import android.view.View
 import android.view.ViewGroup
 import app.simple.felicity.adapters.preference.AdapterAccentColors
 import app.simple.felicity.databinding.FragmentGenericRecyclerViewBinding
-import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.extensions.fragments.MediaFragment
 
-class AccentColors : ScopedFragment() {
+class AccentColors : MediaFragment() {
 
     private lateinit var binding: FragmentGenericRecyclerViewBinding
 
@@ -20,6 +20,7 @@ class AccentColors : ScopedFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         postponeEnterTransition()
+        requireHiddenMiniPlayer()
 
         binding.recyclerView.adapter = AdapterAccentColors()
 

@@ -103,7 +103,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         setMinimumWidth(getResources().getDimensionPixelSize(R.dimen.checkbox_dimensions));
         
         if (!isInEditMode()) {
-            if (AppearancePreferences.INSTANCE.getColoredIconShadows()) {
+            if (AppearancePreferences.INSTANCE.isShadowEffectOn()) {
                 shadowRadius = 10F;
             } else {
                 shadowRadius = 0F;
@@ -113,7 +113,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         }
         
         if (!isInEditMode()) {
-            if (AppearancePreferences.INSTANCE.getColoredIconShadows()) {
+            if (AppearancePreferences.INSTANCE.isShadowEffectOn()) {
                 elevationColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
             } else {
                 elevationColor = Color.DKGRAY;
@@ -185,7 +185,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
             
             int endColor;
             
-            if (AppearancePreferences.INSTANCE.getColoredIconShadows()) {
+            if (AppearancePreferences.INSTANCE.isShadowEffectOn()) {
                 endColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
             } else {
                 endColor = Color.DKGRAY;

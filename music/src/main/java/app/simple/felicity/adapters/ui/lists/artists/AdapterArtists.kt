@@ -14,7 +14,7 @@ import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.decorations.utils.ViewUtils.clearSkeletonBackground
 import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
-import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.glide.util.AudioCoverUtils.loadPeristyleArtCover
 import app.simple.felicity.preferences.ArtistPreferences
 import app.simple.felicity.repository.models.Artist
@@ -118,8 +118,7 @@ class AdapterArtists(private val artists: List<Artist>) :
             binding.title.setTextOrUnknown(artist.name)
             binding.tertiaryDetail.setTextOrUnknown(artist.name)
             binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, artist.trackCount, artist.trackCount))
-
-            binding.cover.loadArtCover(artist)
+            binding.cover.loadArtCoverWithPayload(item = artist)
 
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onArtistLongClicked(artists, bindingAdapterPosition, it)
@@ -143,8 +142,7 @@ class AdapterArtists(private val artists: List<Artist>) :
             binding.title.setTextOrUnknown(artist.name)
             binding.tertiaryDetail.setTextOrUnknown(artist.name)
             binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, artist.trackCount, artist.trackCount))
-
-            binding.albumArt.loadArtCover(artist, skipCache = true)
+            binding.albumArt.loadArtCoverWithPayload(item = artist)
 
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onArtistLongClicked(artists, bindingAdapterPosition, it)

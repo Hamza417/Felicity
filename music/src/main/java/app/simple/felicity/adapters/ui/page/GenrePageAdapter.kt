@@ -14,7 +14,7 @@ import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
-import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.CollectionPageData
 import app.simple.felicity.repository.models.Genre
@@ -56,7 +56,7 @@ class GenrePageAdapter(private val data: CollectionPageData, private val genre: 
                     artists.text = data.artists.size.toString()
                     albums.text = data.albums.size.toString()
                     totalTime.text = data.songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
-                    poster.loadArtCover(genre, roundedCorners = false, blur = false, skipCache = true)
+                    poster.loadArtCoverWithPayload(genre)
 
                     menu.setOnClickListener {
                         generalAdapterCallbacks?.onMenuClicked(it)

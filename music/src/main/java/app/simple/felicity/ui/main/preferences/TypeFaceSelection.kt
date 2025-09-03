@@ -6,9 +6,9 @@ import android.view.View
 import android.view.ViewGroup
 import app.simple.felicity.adapters.preference.AdapterTypeface
 import app.simple.felicity.databinding.FragmentGenericRecyclerViewBinding
-import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.extensions.fragments.MediaFragment
 
-class TypeFaceSelection : ScopedFragment() {
+class TypeFaceSelection : MediaFragment() {
 
     private lateinit var binding: FragmentGenericRecyclerViewBinding
 
@@ -25,6 +25,7 @@ class TypeFaceSelection : ScopedFragment() {
         binding.recyclerView.scheduleLayoutAnimation()
 
         view.startTransitionOnPreDraw()
+        requireHiddenMiniPlayer()
     }
 
     override fun getTransitionType(): TransitionType {

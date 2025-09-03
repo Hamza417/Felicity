@@ -10,11 +10,11 @@ import app.simple.felicity.adapters.preference.AdapterPreference
 import app.simple.felicity.adapters.preference.AdapterPreference.Companion.AdapterPreferenceCallbacks
 import app.simple.felicity.databinding.FragmentPreferencesBinding
 import app.simple.felicity.databinding.HeaderPreferencesBinding
-import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.viewmodels.main.preferences.PreferencesViewModel
 import app.simple.felicity.viewmodels.main.preferences.PreferencesViewModel.Companion.Preference
 
-class Preferences : ScopedFragment() {
+class Preferences : MediaFragment() {
 
     private lateinit var binding: FragmentPreferencesBinding
     private lateinit var headerBinding: HeaderPreferencesBinding
@@ -32,6 +32,7 @@ class Preferences : ScopedFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        requireHiddenMiniPlayer()
 
         preferencesViewModel.getPreferences().observe(viewLifecycleOwner) { preferences ->
             adapter = AdapterPreference(preferences)

@@ -14,7 +14,8 @@ import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.decorations.utils.ViewUtils.clearSkeletonBackground
 import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
-import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
+import app.simple.felicity.glide.util.AudioCoverUtils.loadPeristyleArtCover
 import app.simple.felicity.preferences.AlbumPreferences
 import app.simple.felicity.repository.models.Album
 import com.bumptech.glide.Glide
@@ -132,8 +133,7 @@ class AdapterAlbums(initial: List<Album>) :
             binding.title.setTextOrUnknown(album.name)
             binding.tertiaryDetail.setTextOrUnknown(album.artist)
             binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
-
-            binding.cover.loadArtCover(album)
+            binding.cover.loadArtCoverWithPayload(album)
 
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)
@@ -157,8 +157,7 @@ class AdapterAlbums(initial: List<Album>) :
             binding.title.setTextOrUnknown(album.name)
             binding.tertiaryDetail.setTextOrUnknown(album.artist)
             binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
-
-            binding.albumArt.loadArtCover(album, skipCache = true)
+            binding.albumArt.loadArtCoverWithPayload(album)
 
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)
@@ -179,7 +178,7 @@ class AdapterAlbums(initial: List<Album>) :
         }
 
         fun bind(album: Album) {
-            binding.albumArt.loadArtCover(album, crop = true, roundedCorners = false, shadow = false, skipCache = false)
+            binding.albumArt.loadPeristyleArtCover(album)
             binding.title.text = album.name
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)

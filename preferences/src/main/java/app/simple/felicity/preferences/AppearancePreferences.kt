@@ -1,5 +1,6 @@
 package app.simple.felicity.preferences
 
+import android.annotation.SuppressLint
 import android.os.Build
 import androidx.core.content.edit
 import app.simple.felicity.core.constants.ThemeConstants
@@ -9,12 +10,10 @@ object AppearancePreferences {
 
     const val APP_CORNER_RADIUS = "view_corner_radius"
     const val LIST_SPACING = "list_spacing"
-    private const val ICON_SHADOWS = "icon_shadows"
     private const val LAST_LIGHT_THEME = "last_light_theme"
     private const val LAST_DARK_THEME = "last_dark_theme"
-    private const val COLORED_ICON_SHADOWS = "icon_shadows_colored"
+    private const val SHADOW_EFFECT = "shadow_effect"
 
-    const val IS_CUSTOM_COLOR = "is_custom_color"
     const val THEME = "current_app_theme"
     const val ACCENT_COLOR = "app_accent_color"
     const val APP_FONT = "type_face"
@@ -47,6 +46,7 @@ object AppearancePreferences {
      * 3 - System
      * 4 - Day/Night
      */
+    @SuppressLint("UseKtx")
     fun setTheme(value: Int): Boolean {
         return getSharedPreferences().edit().putInt(THEME, value).commit()
     }
@@ -79,7 +79,7 @@ object AppearancePreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setLastLightTheme(value: Int) {
-        getSharedPreferences().edit().putInt(LAST_LIGHT_THEME, value).apply()
+        getSharedPreferences().edit { putInt(LAST_LIGHT_THEME, value) }
     }
 
     fun getLastLightTheme(): Int {
@@ -88,6 +88,7 @@ object AppearancePreferences {
 
     // ---------------------------------------------------------------------------------------------------------- //
 
+    @SuppressLint("UseKtx")
     fun setAppFont(font: String): Boolean {
         return getSharedPreferences().edit().putString(APP_FONT, font).commit()
     }
@@ -99,8 +100,9 @@ object AppearancePreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setCornerRadius(radius: Float) {
-        getSharedPreferences().edit().putFloat(APP_CORNER_RADIUS, if (radius < 1F) 1F else radius)
-            .apply()
+        getSharedPreferences().edit {
+            putFloat(APP_CORNER_RADIUS, if (radius < 1F) 1F else radius)
+        }
     }
 
     fun getCornerRadius(): Float {
@@ -109,22 +111,12 @@ object AppearancePreferences {
 
     // ---------------------------------------------------------------------------------------------------------- //
 
-    fun setIconShadows(boolean: Boolean) {
-        getSharedPreferences().edit { putBoolean(ICON_SHADOWS, boolean) }
+    fun setShadowEffect(boolean: Boolean) {
+        getSharedPreferences().edit { putBoolean(SHADOW_EFFECT, boolean) }
     }
 
-    fun isIconShadowsOn(): Boolean {
-        return getSharedPreferences().getBoolean(ICON_SHADOWS, true)
-    }
-
-    // ---------------------------------------------------------------------------------------------------------- //
-
-    fun setColoredIconShadowsState(boolean: Boolean) {
-        getSharedPreferences().edit { putBoolean(COLORED_ICON_SHADOWS, boolean) }
-    }
-
-    fun getColoredIconShadows(): Boolean {
-        return getSharedPreferences().getBoolean(COLORED_ICON_SHADOWS, true)
+    fun isShadowEffectOn(): Boolean {
+        return getSharedPreferences().getBoolean(SHADOW_EFFECT, true)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //

@@ -124,4 +124,12 @@
     <string name="predictive_back_summary">Toggle predictive back behavior in the app.</string>
     <string name="behavior_desc">Change how app components behave with one another.</string>
     <string name="number_of_albums">Number of Albums</string>
+    <string name="album_art">Album Art</string>
+    <string name="shadows">Shadows</string>
+    <string name="album_art_shadows_summary">Toggle shadows below the album arts.</string>
+    <string name="album_art_rounded_corners_summary">Toggle corner radius on album arts. If enabled the Corner Radius value is used to round the corners.</string>
+    <string name="crop">Crop</string>
+    <string name="album_art_crop_summary">Crop album art into square dimensions or show original image with intrinsic aspect ratio.</string>
+    <string name="greyscale">Greyscale</string>
+    <string name="album_art_greyscale_summary">Make album arts greyscale.</string>
 </resources>

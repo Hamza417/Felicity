@@ -1,15 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.theme.ThemeLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.theme.ThemeFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
-
-    <app.simple.felicity.decorations.views.AppHeader
-        android:id="@+id/header"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:headerContentLayout="@layout/header_preferences_generic" />
 
     <app.simple.felicity.decorations.views.SpacingRecyclerView
         android:id="@+id/recycler_view"
@@ -23,4 +17,10 @@
         app:navigationPaddingRequired="true"
         app:statusPaddingRequired="false" />
 
-</app.simple.felicity.decorations.theme.ThemeLinearLayout>
+    <app.simple.felicity.decorations.views.AppHeader
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:headerContentLayout="@layout/header_preferences_generic" />
+
+</app.simple.felicity.decorations.theme.ThemeFrameLayout>

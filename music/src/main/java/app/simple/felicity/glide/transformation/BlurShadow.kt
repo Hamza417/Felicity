@@ -13,6 +13,9 @@ import androidx.annotation.ColorInt
 import androidx.annotation.ColorRes
 import androidx.annotation.IntDef
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.scale
+import app.simple.felicity.preferences.AppearancePreferences
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import com.bumptech.glide.util.Util
@@ -142,7 +145,7 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
     }
 
     override fun transform(pool: BitmapPool, source: Bitmap, outWidth: Int, outHeight: Int): Bitmap {
-        val bitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(source.width, source.height)
         val shadow: Bitmap
 
         //Calculate Shadow Offset
@@ -151,7 +154,7 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
 
         //Create Shadow Paint
         val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            colorFilter = if (app.simple.felicity.preferences.AppearancePreferences.getColoredIconShadows()) {
+            colorFilter = if (AppearancePreferences.isShadowEffectOn()) {
                 ColorMatrixColorFilter(ColorMatrix().apply {
                     setScale(SHADOW_SCALE_RGB, SHADOW_SCALE_RGB, SHADOW_SCALE_RGB, SHADOW_SCALE_ALPHA)
                 })
@@ -163,10 +166,10 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
 
         if (blurRadius <= MAX_BLUR_RADIUS) {
             //Apply Blur
-            shadow = if (app.simple.felicity.preferences.AppearancePreferences.isIconShadowsOn()) {
+            shadow = if (AppearancePreferences.isShadowEffectOn()) {
                 Toolkit.blur(source, blurRadius.toInt())
             } else {
-                Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
+                createBitmap(source.width, source.height)
             }
 
             //Draw to Canvas
@@ -179,13 +182,13 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
             val scaleFactor = MAX_BLUR_RADIUS / blurRadius
             @Suppress("UNUSED_VARIABLE") val scaledWidth = 1.coerceAtLeast((source.width.toFloat() * scaleFactor).roundToInt())
             @Suppress("UNUSED_VARIABLE") val scaledHeight = 1.coerceAtLeast((source.height.toFloat() * scaleFactor).roundToInt())
-            val scaled = Bitmap.createScaledBitmap(source, source.width, source.height, true)
+            val scaled = source.scale(source.width, source.height)
 
             //Apply Blur
-            shadow = if (app.simple.felicity.preferences.AppearancePreferences.isIconShadowsOn()) {
+            shadow = if (AppearancePreferences.isShadowEffectOn()) {
                 Toolkit.blur(scaled, MAX_BLUR_RADIUS.toInt())
             } else {
-                Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
+                createBitmap(source.width, source.height)
             }
 
             //Draw to Canvas

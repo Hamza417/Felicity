@@ -10,7 +10,7 @@ import app.simple.felicity.databinding.AdapterGenresBinding
 import app.simple.felicity.databinding.AdapterGenresListBinding
 import app.simple.felicity.decorations.overscroll.RecyclerViewUtils
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.models.Genre
 
@@ -68,7 +68,7 @@ class AdapterGenres(private val list: List<Genre>) : RecyclerView.Adapter<Vertic
     inner class Holder(private val binding: AdapterGenresBinding) : VerticalListViewHolder(binding.root) {
         fun bind(genre: Genre) {
             binding.name.text = genre.name ?: context.getString(R.string.unknown)
-            binding.cover.loadArtCover(genre, skipCache = true)
+            binding.cover.loadArtCoverWithPayload(genre)
 
             binding.container.setOnClickListener {
                 callbacks?.onGenreClicked(genre, it)
@@ -79,7 +79,7 @@ class AdapterGenres(private val list: List<Genre>) : RecyclerView.Adapter<Vertic
     inner class ListHolder(private val binding: AdapterGenresListBinding) : VerticalListViewHolder(binding.root) {
         fun bind(genre: Genre) {
             binding.name.text = genre.name ?: context.getString(R.string.unknown)
-            binding.cover.loadArtCover(genre, skipCache = true)
+            binding.cover.loadArtCoverWithPayload(genre)
 
             binding.container.setOnClickListener {
                 callbacks?.onGenreClicked(genre, it)
