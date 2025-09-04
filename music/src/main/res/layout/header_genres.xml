@@ -114,6 +114,20 @@
                 android:drawablePadding="@dimen/padding_5"
                 android:textSize="@dimen/text_size_14"
                 app:appFontStyle="bold"
+                app:drawableStartCompat="@drawable/ic_grid_size_16dp"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="tertiary" />
+
+            <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+                android:id="@+id/grid_type"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:padding="@dimen/padding_5"
+                android:layout_marginHorizontal="@dimen/padding_10"
+                android:drawablePadding="@dimen/padding_5"
+                android:textSize="@dimen/text_size_14"
+                app:appFontStyle="bold"
                 app:drawableTintStyle="accent"
                 app:textColorStyle="tertiary" />
 

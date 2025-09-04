@@ -6,21 +6,27 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.databinding.AdapterGenresBinding
+import app.simple.felicity.core.utils.ViewUtils.gone
 import app.simple.felicity.databinding.AdapterGenresListBinding
-import app.simple.felicity.decorations.overscroll.RecyclerViewUtils
+import app.simple.felicity.databinding.AdapterStyleGridBinding
+import app.simple.felicity.databinding.AdapterStylePeristyleBinding
+import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
+import app.simple.felicity.glide.util.AudioCoverUtils.loadPeristyleArtCover
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.models.Genre
 
-class AdapterGenres(private val list: List<Genre>) : RecyclerView.Adapter<VerticalListViewHolder>() {
+class AdapterGenres(private val list: List<Genre>) :
+        RecyclerView.Adapter<VerticalListViewHolder>(), SlideFastScroller.FastScrollBindingController {
 
     private var callbacks: GeneralAdapterCallbacks? = null
+    private var isLightBindMode: Boolean = false
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
-            RecyclerViewUtils.TYPE_ITEM -> {
+            CommonPreferencesConstants.GRID_TYPE_LIST -> {
                 ListHolder(
                         AdapterGenresListBinding.inflate(
                                 LayoutInflater.from(parent.context),
@@ -29,9 +35,18 @@ class AdapterGenres(private val list: List<Genre>) : RecyclerView.Adapter<Vertic
                         )
                 )
             }
-            RecyclerViewUtils.TYPE_ITEM_CARD -> {
-                Holder(
-                        AdapterGenresBinding.inflate(
+            CommonPreferencesConstants.GRID_TYPE_GRID -> {
+                GridHolder(
+                        AdapterStyleGridBinding.inflate(
+                                LayoutInflater.from(parent.context),
+                                parent,
+                                false
+                        )
+                )
+            }
+            CommonPreferencesConstants.GRID_TYPE_PERISTYLE -> {
+                GridHolder(
+                        AdapterStyleGridBinding.inflate(
                                 LayoutInflater.from(parent.context),
                                 parent,
                                 false
@@ -43,9 +58,12 @@ class AdapterGenres(private val list: List<Genre>) : RecyclerView.Adapter<Vertic
     }
 
     override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
-        when (holder) {
-            is Holder -> holder.bind(list[position])
-            is ListHolder -> holder.bind(list[position])
+        if (isLightBindMode.not()) {
+            when (holder) {
+                is GridHolder -> holder.bind(list[position])
+                is ListHolder -> holder.bind(list[position])
+                is PeristyleHolder -> holder.bind(list[position])
+            }
         }
     }
 
@@ -58,21 +76,23 @@ class AdapterGenres(private val list: List<Genre>) : RecyclerView.Adapter<Vertic
     }
 
     override fun getItemViewType(position: Int): Int {
-        return if (GenresPreferences.getGridSize() == CommonPreferencesConstants.GRID_SIZE_ONE) {
-            RecyclerViewUtils.TYPE_ITEM
-        } else {
-            RecyclerViewUtils.TYPE_ITEM_CARD
-        }
+        return GenresPreferences.getGridType()
     }
 
-    inner class Holder(private val binding: AdapterGenresBinding) : VerticalListViewHolder(binding.root) {
+    inner class GridHolder(private val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
         fun bind(genre: Genre) {
-            binding.name.text = genre.name ?: context.getString(R.string.unknown)
-            binding.cover.loadArtCoverWithPayload(genre)
+            binding.title.text = genre.name ?: context.getString(R.string.unknown)
+            binding.albumArt.loadArtCoverWithPayload(genre)
+            binding.tertiaryDetail.gone(false)
+            binding.secondaryDetail.gone(false)
 
             binding.container.setOnClickListener {
                 callbacks?.onGenreClicked(genre, it)
             }
+        }
+
+        init {
+            binding.container.setSkeletonBackground(isLightBindMode)
         }
     }
 
@@ -85,9 +105,44 @@ class AdapterGenres(private val list: List<Genre>) : RecyclerView.Adapter<Vertic
                 callbacks?.onGenreClicked(genre, it)
             }
         }
+
+        init {
+            binding.container.setSkeletonBackground(isLightBindMode)
+        }
+    }
+
+    inner class PeristyleHolder(private val binding: AdapterStylePeristyleBinding) : VerticalListViewHolder(binding.root) {
+        fun bind(genre: Genre) {
+            binding.title.text = genre.name ?: context.getString(R.string.unknown)
+            binding.albumArt.loadPeristyleArtCover(genre)
+
+            binding.container.setOnClickListener {
+                callbacks?.onGenreClicked(genre, it)
+            }
+        }
+
+        init {
+            binding.container.setSkeletonBackground(isLightBindMode)
+        }
     }
 
     fun setCallbackListener(listener: GeneralAdapterCallbacks) {
         this.callbacks = listener
+    }
+
+    override fun setLightBindMode(enabled: Boolean) {
+        isLightBindMode = enabled
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, isLightBind: Boolean) {
+        if (isLightBindMode) {
+            return
+        }
+
+        onBindViewHolder(holder as VerticalListViewHolder, position)
+    }
+
+    override fun shouldHandleCustomBinding(): Boolean {
+        return true
     }
 }

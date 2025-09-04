@@ -118,7 +118,7 @@ class AdapterArtists(private val artists: List<Artist>) :
 
         fun bind(artist: Artist) {
             binding.title.setTextOrUnknown(artist.name)
-            binding.tertiaryDetail.setTextOrUnknown(artist.name)
+            binding.tertiaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_albums, artist.albumCount, artist.albumCount))
             binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, artist.trackCount, artist.trackCount))
             binding.cover.loadArtCoverWithPayload(item = artist)
 
