@@ -23,6 +23,7 @@ import androidx.annotation.DrawableRes
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.SnapHelper
 import app.simple.felicity.decoration.R
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
@@ -31,7 +32,6 @@ import java.lang.ref.WeakReference
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.min
-import androidx.recyclerview.widget.SnapHelper
 
 // High-performance fast scroller with adapter index mapping, throttling, and prefetch optimization
 class SlideFastScroller @JvmOverloads constructor(
@@ -89,7 +89,6 @@ class SlideFastScroller @JvmOverloads constructor(
 
     // Performance optimization fields
     private val handler = Handler(Looper.getMainLooper())
-    private var lastUpdateTime = 0L
     private val updateThrottleMs = getOptimalUpdateInterval() // Dynamic based on refresh rate
     private var pendingScrollPosition = -1
     private var smoothScrollEnabled = true
@@ -97,6 +96,14 @@ class SlideFastScroller @JvmOverloads constructor(
     private var originalCacheSize = -1
     private var originalPrefetchCount = -1
     private var lightBindExitPending = false // Prevent multiple exit calls
+
+    // Delayed full-bind while dragging
+    private val delayedFullBindDelay = 200L
+    private val delayedFullBindRunnable = Runnable {
+        if (dragging && lightBindMode) {
+            exitLightBindMode()
+        }
+    }
 
     // Smooth scrolling support
     private var smoothScrollingEnabled = true
@@ -259,6 +266,8 @@ class SlideFastScroller @JvmOverloads constructor(
         if (!lightBindMode || lightBindExitPending) return
         lightBindMode = false
         lightBindExitPending = true
+        // Cancel any pending delayed full-bind trigger
+        handler.removeCallbacks(delayedFullBindRunnable)
 
         val rv = recyclerRef?.get() ?: return
         val adapter = rv.adapter ?: return
@@ -330,6 +339,8 @@ class SlideFastScroller @JvmOverloads constructor(
         if (!lightBindMode || lightBindExitPending) return
         lightBindMode = false
         lightBindExitPending = true
+        // Cancel any pending delayed full-bind trigger
+        handler.removeCallbacks(delayedFullBindRunnable)
 
         val rv = recyclerRef?.get() ?: return
         val adapter = rv.adapter ?: return
@@ -700,6 +711,11 @@ class SlideFastScroller @JvmOverloads constructor(
         drawable.draw(canvas)
     }
 
+    private fun scheduleDelayedFullBind() {
+        handler.removeCallbacks(delayedFullBindRunnable)
+        handler.postDelayed(delayedFullBindRunnable, delayedFullBindDelay)
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val rv = recyclerRef?.get()
         val adapterCount = rv?.adapter?.itemCount ?: 0
@@ -740,6 +756,8 @@ class SlideFastScroller @JvmOverloads constructor(
                     show(true)
                     removeCallbacks(autoHideRunnable)
                     updatePercentFromTouch(event.y, adapterCount)
+                    // Schedule full bind if user pauses while still holding
+                    scheduleDelayedFullBind()
                     invalidate()
                     return true
                 }
@@ -748,6 +766,12 @@ class SlideFastScroller @JvmOverloads constructor(
             MotionEvent.ACTION_MOVE -> {
                 if (dragging) {
                     updatePercentFromTouch(event.y, adapterCount)
+                    // If we previously exited, re-enter light bind on movement
+                    if (!lightBindMode && !lightBindExitPending) {
+                        enterLightBindMode()
+                    }
+                    // Reschedule delayed full bind on continued movement
+                    scheduleDelayedFullBind()
                     invalidate()
                     return true
                 }
@@ -768,6 +792,8 @@ class SlideFastScroller @JvmOverloads constructor(
                     // Do NOT reattach SnapHelper to avoid any auto-snapping/scrolling after release
                     detachedSnapHelper = null
 
+                    // Cancel any pending delayed full-bind and exit immediately
+                    handler.removeCallbacks(delayedFullBindRunnable)
                     // Immediately exit light bind mode and notify all visible holders
                     exitLightBindModeImmediate()
 
@@ -916,6 +942,8 @@ class SlideFastScroller @JvmOverloads constructor(
         removeCallbacks(autoHideRunnable)
         removeCallbacks(batchedScrollRunnable)
         removeCallbacks(batchedPercentRunnable)
+        // Cancel delayed full-bind callback as well
+        handler.removeCallbacks(delayedFullBindRunnable)
         cancelAllPendingScrolls() // Ensure all scroll operations are cancelled
         val rv = recyclerRef?.get()
 
