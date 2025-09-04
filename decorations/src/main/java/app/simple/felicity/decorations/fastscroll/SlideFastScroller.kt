@@ -992,7 +992,7 @@ class SlideFastScroller @JvmOverloads constructor(
         fun attach(recyclerView: RecyclerView): SlideFastScroller {
             val scroller = SlideFastScroller(recyclerView.context)
             scroller.attachTo(recyclerView)
-            scroller.setHandleDrawable(R.drawable.ic_scroller_thumb)
+            scroller.setHandleDrawable(R.drawable.ic_scroll_thumb)
             scroller.handleDrawable?.setTint(ThemeManager.accent.primaryAccentColor)
             scroller.handleDrawableActive?.setTint(ThemeManager.accent.secondaryAccentColor)
             return scroller
