@@ -6,12 +6,12 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
+import app.simple.felicity.core.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.databinding.AdapterStyleGridBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.databinding.AdapterStylePeristyleBinding
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.decorations.utils.ViewUtils.clearSkeletonBackground
 import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload

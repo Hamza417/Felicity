@@ -1,6 +1,8 @@
 package app.simple.felicity.extensions.fragments
 
 import android.view.View
+import android.view.animation.AlphaAnimation
+import android.view.animation.Animation
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -50,7 +52,13 @@ open class PanelFragment : MediaFragment() {
         val sectionedFastScroller = SectionedFastScroller.attach(this)
         sectionedFastScroller.setPositions(sections)
         sectionedFastScroller.setOnPositionSelectedListener { position ->
-            this.scrollToPosition(position.index)
+            val layoutManager = this.layoutManager as? GridLayoutManager ?: return@setOnPositionSelectedListener
+            val recyclerViewHeight = this.height
+            val itemView = layoutManager.findViewByPosition(position.index)
+            val itemHeight = itemView?.height ?: 0
+            val offset = (recyclerViewHeight / 2) - (paddingTop + itemHeight / 2)
+            layoutManager.scrollToPositionWithOffset(position.index, paddingTop)
+
             if (position.index > 10) {
                 header.hideHeader()
             } else {
@@ -58,6 +66,31 @@ open class PanelFragment : MediaFragment() {
             }
 
             header.resumeAutoBehavior()
+
+            post {
+                val currentSectionIndex = sections.indexOf(position)
+                val nextIndex = if (currentSectionIndex + 1 < sections.size) {
+                    sections[currentSectionIndex + 1].index
+                } else {
+                    sections.last().index
+                }
+
+                for (i in position.index until nextIndex) {
+                    try {
+                        val itemView = layoutManager.findViewByPosition(i)
+                        itemView?.let { view ->
+                            val blink = AlphaAnimation(1f, 0f).apply {
+                                duration = 300
+                                repeatCount = 3 // 2 blinks
+                                repeatMode = Animation.REVERSE
+                            }
+                            view.startAnimation(blink)
+                        }
+                    } catch (_: IndexOutOfBoundsException) {
+                        // Ignore
+                    }
+                }
+            }
         }
 
         sectionedFastScroller.setVisibilityListener(object : SectionedFastScroller.VisibilityListener {

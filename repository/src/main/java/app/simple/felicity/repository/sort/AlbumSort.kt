@@ -25,11 +25,6 @@ object AlbumSort {
                 CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.songCount }
                 else -> this
             }
-            CommonPreferencesConstants.BY_YEAR -> when (AlbumPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ASCENDING -> sortedBy { it.firstYear }
-                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.firstYear }
-                else -> this
-            }
             CommonPreferencesConstants.BY_FIRST_YEAR -> when (AlbumPreferences.getSortingStyle()) {
                 CommonPreferencesConstants.ASCENDING -> sortedBy { it.firstYear }
                 CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.firstYear }

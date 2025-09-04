@@ -3,7 +3,11 @@ package app.simple.felicity.repository.utils
 import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
+import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.net.toUri
+import app.simple.felicity.core.R
+import app.simple.felicity.repository.models.Album
+import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 
 object AlbumUtils {
     fun getAlbumCover(context: Context, albumId: Long): Uri? {
@@ -28,6 +32,22 @@ object AlbumUtils {
             }
 
             artPath?.toUri()
+        }
+    }
+
+    fun AppCompatTextView.setAlbumFlag(album: Album) {
+        text = buildString {
+            append(resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
+
+            if (album.firstYear.isNotZero()) {
+                append(" | ")
+                append(album.firstYear)
+            }
+
+            if (album.lastYear.isNotZero() && album.firstYear != album.lastYear) {
+                append(" | ")
+                append(album.lastYear)
+            }
         }
     }
 }
