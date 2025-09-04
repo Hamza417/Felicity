@@ -124,7 +124,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:padding="@dimen/padding_5"
-                android:layout_marginStart="@dimen/padding_10"
+                android:layout_marginHorizontal="@dimen/padding_10"
                 android:drawablePadding="@dimen/padding_5"
                 android:textSize="@dimen/text_size_14"
                 app:appFontStyle="bold"
