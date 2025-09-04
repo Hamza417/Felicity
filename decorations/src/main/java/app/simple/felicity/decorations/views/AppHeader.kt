@@ -91,10 +91,7 @@ class AppHeader @JvmOverloads constructor(
                     setPadding(paddingLeft, height + paddingTop, paddingRight, paddingBottom)
                     // Header height changed due to inset; reapply list padding
                     post { maybeApplyRecyclerPadding(force = true) }
-                } else {
-                    // Already applied status bar padding, no need to reapply
                 }
-
                 statusBarPaddingApplied = true
             }
         }
@@ -226,6 +223,17 @@ class AppHeader @JvmOverloads constructor(
     }
 
     private fun ensureListStartBelowPadding(rv: RecyclerView) {
+        // Avoid interfering with active user drag/fast-scroll; only adjust when idle
+        if (rv.scrollState != RecyclerView.SCROLL_STATE_IDLE || rv.isComputingLayout) {
+            // Try again shortly when things settle
+            rv.post {
+                if (rv.scrollState == RecyclerView.SCROLL_STATE_IDLE && !rv.isComputingLayout) {
+                    ensureListStartBelowPadding(rv)
+                }
+            }
+            return
+        }
+
         val firstChild = rv.getChildAt(0) ?: return
         val desiredTop = rv.paddingTop
         val currentTop = firstChild.top
@@ -268,7 +276,8 @@ class AppHeader @JvmOverloads constructor(
                     // This is likely an instant loading scenario - force a layout pass
                     rv.requestLayout()
                     rv.post {
-                        // Re-check after layout and adjust if needed
+                        // Re-check after layout and adjust if needed (still only if idle)
+                        if (rv.scrollState != RecyclerView.SCROLL_STATE_IDLE || rv.isComputingLayout) return@post
                         val updatedFirstChild = rv.getChildAt(0)
                         if (updatedFirstChild != null) {
                             val updatedItemDecorationOffset = getFirstItemDecorationTopOffset(rv, updatedFirstChild)
@@ -280,8 +289,10 @@ class AppHeader @JvmOverloads constructor(
                         }
                     }
                 } else {
-                    // Normal case - just scroll to correct position
-                    rv.scrollBy(0, -delta)
+                    // Normal case - just scroll to correct position (only if idle)
+                    if (rv.scrollState == RecyclerView.SCROLL_STATE_IDLE && !rv.isComputingLayout) {
+                        rv.scrollBy(0, -delta)
+                    }
                 }
             }
         }
