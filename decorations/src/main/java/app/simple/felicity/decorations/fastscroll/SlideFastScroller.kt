@@ -154,8 +154,8 @@ class SlideFastScroller @JvmOverloads constructor(
 
         override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
             super.onScrollStateChanged(recyclerView, newState)
-            if (newState == RecyclerView.SCROLL_STATE_IDLE && lightBindMode) {
-                // Re-enable heavy binding after scroll settles
+            if (newState == RecyclerView.SCROLL_STATE_IDLE && lightBindMode && !dragging) {
+                // Re-enable heavy binding after scroll settles and user is not dragging
                 exitLightBindMode()
             }
         }
@@ -738,7 +738,8 @@ class SlideFastScroller @JvmOverloads constructor(
                             try {
                                 snap.attachToRecyclerView(null)
                                 detachedSnapHelper = snap
-                            } catch (_: Exception) { /* ignore */ }
+                            } catch (_: Exception) { /* ignore */
+                            }
                         }
                     }
 
@@ -749,7 +750,8 @@ class SlideFastScroller @JvmOverloads constructor(
                         // Cancel any pending smooth scroll operations
                         try {
                             lm.startSmoothScroll(null)
-                        } catch (_: Exception) { /* ignore */ }
+                        } catch (_: Exception) { /* ignore */
+                        }
                     }
 
                     enterLightBindMode() // Enable light binding during drag
@@ -802,6 +804,7 @@ class SlideFastScroller @JvmOverloads constructor(
                     performClick()
                     return true
                 }
+
                 return false
             }
         }
@@ -867,11 +870,14 @@ class SlideFastScroller @JvmOverloads constructor(
                 val deltaY = targetOffset - currentOffset
                 if (abs(deltaY) > 0) {
                     rv.scrollBy(0, deltaY)
+                    // Ensure there's no residual fling or settling from programmatic scroll
+                    rv.stopScroll()
                 }
             } else {
                 // Direct position scrolling for edge cases
                 val position = percentToAdapterPosition(newPercent)
                 rv.scrollToPosition(position)
+                rv.stopScroll()
             }
         }
     }
