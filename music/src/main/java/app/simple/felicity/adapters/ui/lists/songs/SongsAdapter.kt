@@ -92,10 +92,13 @@ class SongsAdapter(initial: List<Song>) :
     override fun onViewRecycled(holder: VerticalListViewHolder) {
         holder.itemView.clearAnimation()
         super.onViewRecycled(holder)
-        if (holder is ListHolder) {
-            Glide.with(holder.binding.cover).clear(holder.binding.cover)
-        } else if (holder is GridHolder) {
-            Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
+        when (holder) {
+            is ListHolder -> {
+                Glide.with(holder.binding.cover).clear(holder.binding.cover)
+            }
+            is GridHolder -> {
+                Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
+            }
         }
     }
 
@@ -108,9 +111,18 @@ class SongsAdapter(initial: List<Song>) :
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, isLightBind: Boolean) {
-        if (holder is ListHolder) {
-            if (isLightBind.not()) {
-                holder.bind(songs[position])
+        lightBindMode = isLightBind
+
+        when (holder) {
+            is ListHolder -> {
+                if (isLightBind.not()) {
+                    holder.bind(songs[position])
+                }
+            }
+            is GridHolder -> {
+                if (isLightBind.not()) {
+                    holder.bind(songs[position])
+                }
             }
         }
     }

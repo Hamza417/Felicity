@@ -87,6 +87,8 @@ class AdapterArtists(private val artists: List<Artist>) :
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, isLightBind: Boolean) {
+        lightBindMode = isLightBind
+
         if (holder is VerticalListViewHolder) {
             if (isLightBind.not()) {
                 val album = artists[position]
