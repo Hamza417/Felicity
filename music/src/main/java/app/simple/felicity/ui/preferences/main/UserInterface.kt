@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.main.preferences
+package app.simple.felicity.ui.preferences.main
 
 import android.os.Bundle
 import android.view.LayoutInflater

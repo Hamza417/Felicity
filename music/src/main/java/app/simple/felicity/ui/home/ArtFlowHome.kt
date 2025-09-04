@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.main.home
+package app.simple.felicity.ui.home
 
 import android.annotation.SuppressLint
 import android.graphics.Color
@@ -20,11 +20,11 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
-import app.simple.felicity.ui.app.ArtFlow
-import app.simple.felicity.ui.main.albums.Albums
-import app.simple.felicity.ui.main.artists.Artists
-import app.simple.felicity.ui.main.genres.GenrePage
-import app.simple.felicity.ui.main.genres.Genres
+import app.simple.felicity.ui.pages.GenrePage
+import app.simple.felicity.ui.panels.Albums
+import app.simple.felicity.ui.panels.ArtFlow
+import app.simple.felicity.ui.panels.Artists
+import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 import kotlinx.coroutines.FlowPreview

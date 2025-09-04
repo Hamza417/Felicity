@@ -17,9 +17,9 @@ import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.SongsPreferences
-import app.simple.felicity.ui.main.preferences.AccentColors
-import app.simple.felicity.ui.main.preferences.Theme
-import app.simple.felicity.ui.main.preferences.TypeFaceSelection
+import app.simple.felicity.ui.preferences.sub.AccentColors
+import app.simple.felicity.ui.preferences.sub.Themes
+import app.simple.felicity.ui.preferences.sub.TypeFaces
 import java.util.function.Supplier
 
 open class PreferenceFragment : MediaFragment() {
@@ -34,13 +34,13 @@ open class PreferenceFragment : MediaFragment() {
 
         val colors = Preference(type = PreferenceType.SUB_HEADER, title = R.string.colors)
 
-        val theme = Preference(
+        val themes = Preference(
                 title = R.string.theme,
                 summary = R.string.theme_summary,
                 icon = R.drawable.ic_invert,
                 type = PreferenceType.PANEL,
                 onPreferenceAction = { view, callback ->
-                    openFragment(Theme.newInstance(), Theme.TAG)
+                    openFragment(Themes.newInstance(), Themes.TAG)
                     true
                 }
         )
@@ -67,7 +67,7 @@ open class PreferenceFragment : MediaFragment() {
                 icon = R.drawable.ic_text_fields,
                 type = PreferenceType.PANEL,
                 onPreferenceAction = { view, callback ->
-                    openFragment(TypeFaceSelection.newInstance(), TypeFaceSelection.TAG)
+                    openFragment(TypeFaces.newInstance(), TypeFaces.TAG)
                     true
                 }
         )
@@ -187,7 +187,7 @@ open class PreferenceFragment : MediaFragment() {
         )
 
         preferences.add(colors)
-        preferences.add(theme)
+        preferences.add(themes)
         preferences.add(accentColor)
         preferences.add(font)
         preferences.add(typeface)

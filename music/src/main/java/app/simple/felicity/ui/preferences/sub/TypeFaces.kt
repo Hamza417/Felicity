@@ -1,14 +1,14 @@
-package app.simple.felicity.ui.main.preferences
+package app.simple.felicity.ui.preferences.sub
 
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import app.simple.felicity.adapters.preference.AdapterAccentColors
+import app.simple.felicity.adapters.preference.AdapterTypeface
 import app.simple.felicity.databinding.FragmentGenericRecyclerViewBinding
 import app.simple.felicity.extensions.fragments.MediaFragment
 
-class AccentColors : MediaFragment() {
+class TypeFaces : MediaFragment() {
 
     private lateinit var binding: FragmentGenericRecyclerViewBinding
 
@@ -20,11 +20,12 @@ class AccentColors : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         postponeEnterTransition()
-        requireHiddenMiniPlayer()
 
-        binding.recyclerView.adapter = AdapterAccentColors()
+        binding.recyclerView.adapter = AdapterTypeface()
+        binding.recyclerView.scheduleLayoutAnimation()
 
         view.startTransitionOnPreDraw()
+        requireHiddenMiniPlayer()
     }
 
     override fun getTransitionType(): TransitionType {
@@ -32,10 +33,13 @@ class AccentColors : MediaFragment() {
     }
 
     companion object {
-        fun newInstance(): AccentColors {
-            return AccentColors()
+        fun newInstance(): TypeFaces {
+            val args = Bundle()
+            val fragment = TypeFaces()
+            fragment.arguments = args
+            return fragment
         }
 
-        const val TAG = "AccentColors"
+        const val TAG = "TypeFaces"
     }
 }

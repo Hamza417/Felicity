@@ -8,12 +8,13 @@ import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
-import androidx.fragment.app.Fragment
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import app.simple.felicity.R
+import app.simple.felicity.activities.MainActivity
 import app.simple.felicity.core.utils.ViewUtils
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
-import app.simple.felicity.ui.main.preferences.Preferences
 import com.google.android.material.R.id.design_bottom_sheet
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -31,6 +32,7 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        requireHiddenMiniPlayer()
 
         dialog?.window?.attributes?.windowAnimations = R.style.BottomDialogAnimation
 
@@ -73,6 +75,23 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
         }
     }
 
+    protected fun requireHiddenMiniPlayer() {
+        viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) {
+                super.onStart(owner)
+                (requireActivity() as MainActivity).onHideMiniPlayer()
+            }
+
+            override fun onPause(owner: LifecycleOwner) {
+                super.onPause(owner)
+                // Don't force-show during configuration changes; preserve current state
+                if (requireActivity().isChangingConfigurations.not()) {
+                    (requireActivity() as MainActivity).onShowMiniPlayer()
+                }
+            }
+        })
+    }
+
     override fun onResume() {
         super.onResume()
         registerSharedPreferenceChangeListener()
@@ -84,7 +103,7 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
     }
 
     /**
-     * Called when any preferences is changed using [getSharedPreferences]
+     * Called when any preferences is changed using [app.simple.felicity.manager.SharedPreferences.getSharedPreferences]
      *
      * Override this to get any preferences change events inside
      * the fragment
@@ -99,34 +118,9 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
         return requireActivity().application
     }
 
-    /**
-     * Open fragment using slide animation
-     *
-     * If the fragment does not need to be pushed into backstack
-     * leave the [tag] unattended
-     *
-     * @param fragment [Fragment]
-     * @param tag back stack tag for fragment
-     */
-    protected fun openFragmentSlide(fragment: ScopedFragment, tag: String? = null) {
-        try {
-            (parentFragment as ScopedFragment).clearReEnterTransition()
-            (parentFragment as ScopedFragment).clearExitTransition()
-        } catch (e: java.lang.NullPointerException) {
-            Log.e("ScopedBottomSheetFragment", "openFragmentSlide: ${e.message}")
-        }
-
-        requireActivity().supportFragmentManager.beginTransaction()
-            .setReorderingAllowed(true)
-            .setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left, R.anim.enter_from_left, R.anim.exit_to_right)
-            .replace(R.id.app_container, fragment, tag)
-            .addToBackStack(tag)
-            .commit()
-    }
-
     protected fun openAppSettings() {
         try {
-            openFragmentSlide(Preferences.newInstance(), Preferences.TAG)
+            (parentFragment as ScopedFragment).openPreferencesPanel()
         } catch (e: Exception) {
             Log.e("ScopedBottomSheetFragment", "openAppSettings: ${e.message}")
         }

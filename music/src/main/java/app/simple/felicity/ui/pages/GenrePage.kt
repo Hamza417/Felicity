@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.main.genres
+package app.simple.felicity.ui.pages
 
 import android.os.Bundle
 import android.util.Log
@@ -19,8 +19,6 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
-import app.simple.felicity.ui.main.albums.AlbumPage
-import app.simple.felicity.ui.main.artists.ArtistPage
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.main.genres.GenreViewerViewModel
 import dagger.hilt.android.AndroidEntryPoint

@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.app
+package app.simple.felicity.ui.panels
 
 import android.net.Uri
 import android.os.Bundle
@@ -10,7 +10,6 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.core.utils.WindowUtil
 import app.simple.felicity.databinding.FragmentCoverflowBinding
-import app.simple.felicity.decorations.artflow.ArtFlow.OnCoverClickListener
 import app.simple.felicity.decorations.artflow.ArtFlowRenderer
 import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselMenu
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
@@ -76,7 +75,7 @@ class ArtFlow : MediaFragment() {
                 }
             })
 
-            binding.coverflow.setOnCoverClickListener(object : OnCoverClickListener {
+            binding.coverflow.setOnCoverClickListener(object : app.simple.felicity.decorations.artflow.ArtFlow.OnCoverClickListener {
                 override fun onCenteredCoverClick(index: Int, uri: Uri?) {
                     songsViewModel.setCarouselPosition(index)
                     val sorted = songs.values.toList().sorted()
@@ -136,7 +135,7 @@ class ArtFlow : MediaFragment() {
         }
 
         binding.miniplayerContainer.setOnClickListener {
-            openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
+            openFragment(DefaultPlayer.Companion.newInstance(), DefaultPlayer.Companion.TAG)
         }
     }
 

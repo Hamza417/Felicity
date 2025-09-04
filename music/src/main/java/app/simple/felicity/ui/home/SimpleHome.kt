@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.main.home
+package app.simple.felicity.ui.home
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -11,10 +11,10 @@ import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
 import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
-import app.simple.felicity.ui.main.albums.Albums
-import app.simple.felicity.ui.main.artists.Artists
-import app.simple.felicity.ui.main.genres.Genres
-import app.simple.felicity.ui.main.preferences.Preferences
+import app.simple.felicity.ui.panels.Albums
+import app.simple.felicity.ui.panels.Artists
+import app.simple.felicity.ui.panels.Genres
+import app.simple.felicity.ui.panels.Preferences
 import app.simple.felicity.viewmodels.main.home.SimpleHomeViewModel
 import app.simple.felicity.viewmodels.main.home.SimpleHomeViewModel.Companion.Element
 

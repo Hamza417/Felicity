@@ -22,8 +22,9 @@ import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceC
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.theme.managers.ThemeUtils
-import app.simple.felicity.ui.app.ArtFlow
-import app.simple.felicity.ui.main.songs.Songs
+import app.simple.felicity.ui.panels.ArtFlow
+import app.simple.felicity.ui.panels.Preferences
+import app.simple.felicity.ui.panels.Songs
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -134,6 +135,10 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
 
     internal fun clearReEnterTransition() {
         reenterTransition = null
+    }
+
+    internal fun openPreferencesPanel() {
+        openFragment(Preferences.newInstance(), Preferences.TAG)
     }
 
     fun clearTransitions() {

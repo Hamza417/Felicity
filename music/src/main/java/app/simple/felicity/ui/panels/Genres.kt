@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.main.genres
+package app.simple.felicity.ui.panels
 
 import android.content.SharedPreferences
 import android.os.Bundle
@@ -25,6 +25,7 @@ import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.sort.GenreSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.GenreSort.setCurrentSortStyle
+import app.simple.felicity.ui.pages.GenrePage
 import app.simple.felicity.viewmodels.main.genres.GenresViewModel
 
 class Genres : PanelFragment() {
@@ -49,7 +50,7 @@ class Genres : PanelFragment() {
         super.onViewCreated(view, savedInstanceState)
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-        SlideFastScroller.attach(binding.recyclerView)
+        SlideFastScroller.Companion.attach(binding.recyclerView)
         binding.recyclerView.requireAttachedMiniPlayer()
         postponeEnterTransition()
 

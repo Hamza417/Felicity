@@ -23,10 +23,10 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
-import app.simple.felicity.ui.main.home.ArtFlowHome
-import app.simple.felicity.ui.main.home.CarouselHome
-import app.simple.felicity.ui.main.home.SimpleHome
-import app.simple.felicity.ui.main.home.SpannedHome
+import app.simple.felicity.ui.home.ArtFlowHome
+import app.simple.felicity.ui.home.CarouselHome
+import app.simple.felicity.ui.home.SimpleHome
+import app.simple.felicity.ui.home.SpannedHome
 import app.simple.felicity.ui.player.DefaultPlayer
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch

@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.main.artists
+package app.simple.felicity.ui.panels
 
 import android.content.SharedPreferences
 import android.os.Bundle
@@ -23,6 +23,7 @@ import app.simple.felicity.preferences.ArtistPreferences
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.sort.ArtistSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.ArtistSort.setCurrentSortStyle
+import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.viewmodels.main.artists.ArtistsViewModel
 
 class Artists : PanelFragment() {
@@ -46,7 +47,7 @@ class Artists : PanelFragment() {
         super.onViewCreated(view, savedInstanceState)
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-        SlideFastScroller.attach(binding.recyclerView)
+        SlideFastScroller.Companion.attach(binding.recyclerView)
         binding.recyclerView.requireAttachedMiniPlayer()
         postponeEnterTransition()
 

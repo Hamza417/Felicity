@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.main.songs
+package app.simple.felicity.ui.panels
 
 import android.content.SharedPreferences
 import android.os.Bundle
@@ -52,7 +52,7 @@ class Songs : PanelFragment() {
         binding.recyclerView.requireAttachedMiniPlayer()
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-        SlideFastScroller.attach(binding.recyclerView)
+        SlideFastScroller.Companion.attach(binding.recyclerView)
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) { songs ->
             binding.recyclerView.requireAttachedSectionScroller(

@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.main.albums
+package app.simple.felicity.ui.panels
 
 import android.content.SharedPreferences
 import android.os.Bundle
@@ -23,6 +23,7 @@ import app.simple.felicity.preferences.AlbumPreferences
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.sort.AlbumSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.AlbumSort.setCurrentSortStyle
+import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.viewmodels.main.albums.AlbumsViewModel
 
 class Albums : PanelFragment() {
@@ -47,7 +48,7 @@ class Albums : PanelFragment() {
 
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-        SlideFastScroller.attach(binding.recyclerView)
+        SlideFastScroller.Companion.attach(binding.recyclerView)
         binding.recyclerView.requireAttachedMiniPlayer()
 
         albumsViewModel.getAlbums().observe(viewLifecycleOwner) { it ->

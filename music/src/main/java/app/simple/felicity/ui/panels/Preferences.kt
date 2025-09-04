@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.main.preferences
+package app.simple.felicity.ui.panels
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -7,12 +7,13 @@ import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.adapters.preference.AdapterPreference
-import app.simple.felicity.adapters.preference.AdapterPreference.Companion.AdapterPreferenceCallbacks
 import app.simple.felicity.databinding.FragmentPreferencesBinding
 import app.simple.felicity.databinding.HeaderPreferencesBinding
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.ui.preferences.main.Appearance
+import app.simple.felicity.ui.preferences.main.Behavior
+import app.simple.felicity.ui.preferences.main.UserInterface
 import app.simple.felicity.viewmodels.main.preferences.PreferencesViewModel
-import app.simple.felicity.viewmodels.main.preferences.PreferencesViewModel.Companion.Preference
 
 class Preferences : MediaFragment() {
 
@@ -38,8 +39,8 @@ class Preferences : MediaFragment() {
             adapter = AdapterPreference(preferences)
             binding.recyclerView.adapter = adapter
 
-            adapter?.setAdapterPreferenceCallbacks(object : AdapterPreferenceCallbacks {
-                override fun onPreferenceClicked(preference: Preference, position: Int, view: View) {
+            adapter?.setAdapterPreferenceCallbacks(object : AdapterPreference.Companion.AdapterPreferenceCallbacks {
+                override fun onPreferenceClicked(preference: PreferencesViewModel.Companion.Preference, position: Int, view: View) {
                     when (preference.title) {
                         R.string.appearance -> {
                             openFragment(Appearance.newInstance(), Appearance.TAG)

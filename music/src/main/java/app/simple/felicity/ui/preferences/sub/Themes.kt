@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.main.preferences
+package app.simple.felicity.ui.preferences.sub
 
 import android.content.SharedPreferences
 import android.os.Bundle
@@ -11,7 +11,7 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.managers.ThemeUtils
 
-class Theme : MediaFragment() {
+class Themes : MediaFragment() {
 
     private lateinit var binding: FragmentGenericRecyclerViewBinding
 
@@ -41,9 +41,9 @@ class Theme : MediaFragment() {
     }
 
     companion object {
-        fun newInstance(): Theme {
+        fun newInstance(): Themes {
             val args = Bundle()
-            val fragment = Theme()
+            val fragment = Themes()
             fragment.arguments = args
             return fragment
         }

@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.main.home
+package app.simple.felicity.ui.home
 
 import android.os.Bundle
 import android.util.Log
@@ -15,13 +15,13 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
-import app.simple.felicity.ui.app.ArtFlow
-import app.simple.felicity.ui.main.albums.AlbumPage
-import app.simple.felicity.ui.main.albums.Albums
-import app.simple.felicity.ui.main.artists.ArtistPage
-import app.simple.felicity.ui.main.artists.Artists
-import app.simple.felicity.ui.main.genres.GenrePage
-import app.simple.felicity.ui.main.genres.Genres
+import app.simple.felicity.ui.pages.AlbumPage
+import app.simple.felicity.ui.pages.ArtistPage
+import app.simple.felicity.ui.pages.GenrePage
+import app.simple.felicity.ui.panels.Albums
+import app.simple.felicity.ui.panels.ArtFlow
+import app.simple.felicity.ui.panels.Artists
+import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 
 class CarouselHome : MediaFragment() {
