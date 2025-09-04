@@ -162,7 +162,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
-            android:layout_weight=".9" />
+            android:layout_weight=".9"
+            app:felicityThumbRadius="@dimen/padding_10"
+            app:felicityThumbRingWidth="@dimen/padding_10"
+            app:felicityTrackHeight="@dimen/padding_10" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
             android:id="@+id/duration"

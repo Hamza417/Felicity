@@ -1,6 +1,7 @@
 package app.simple.felicity.repository.managers
 
 import android.util.Log
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
@@ -8,22 +9,34 @@ import app.simple.felicity.repository.models.Song
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlin.math.max
 
 object MediaManager {
 
     private const val TAG = "MediaManager"
+
+    // Single app-scoped Main dispatcher scope to avoid leaking ad-hoc scopes
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     private var mediaController: MediaController? = null
+
+    // Backing store for the queue provided by UI/db. Treat as read-only outside.
     private var songs: List<Song> = emptyList()
+
+    // Current queue index. Setter also emits to observers when valid.
     private var currentSongPosition: Int = 0
         set(value) {
             if (value in songs.indices) {
                 field = value
-                CoroutineScope(Dispatchers.Main).launch {
+                // Emit position change to observers on the manager scope
+                scope.launch {
                     _songPositionFlow.emit(value)
                 }
             } else {
@@ -33,39 +46,37 @@ object MediaManager {
 
     private var seekJob: Job? = null
 
+    // Flows are mutable internally but exposed as read-only to callers.
     private val _songListFlow = MutableSharedFlow<List<Song>>(replay = 1)
     private val _songPositionFlow = MutableSharedFlow<Int>(replay = 1)
     private val _songSeekPositionFlow = MutableSharedFlow<Long>(replay = 1)
     private val _playbackStateFlow = MutableSharedFlow<Int>(replay = 1)
 
-    val songListFlow = _songListFlow
-    val songPositionFlow = _songPositionFlow
-    val songSeekPositionFlow = _songSeekPositionFlow
-    val playbackStateFlow = _playbackStateFlow
+    val songListFlow: SharedFlow<List<Song>> = _songListFlow.asSharedFlow()
+    val songPositionFlow: SharedFlow<Int> = _songPositionFlow.asSharedFlow()
+    val songSeekPositionFlow: SharedFlow<Long> = _songSeekPositionFlow.asSharedFlow()
+    val playbackStateFlow: SharedFlow<Int> = _playbackStateFlow.asSharedFlow()
 
     fun setMediaController(controller: MediaController) {
         mediaController = controller
     }
 
     fun clearMediaController() {
+        stopSeekPositionUpdates()
         mediaController = null
     }
 
-    fun setSongs(songs: List<Song>, position: Int = 0) {
+    /**
+     * Provide a new queue to the controller and notify UI. Position is clamped to valid range.
+     * Note: Emission order between list and position is not strictly guaranteed due to coroutines,
+     * but replay=1 on both flows ensures UI will observe the latest of each.
+     */
+    fun setSongs(songs: List<Song>, position: Int = 0, startPositionMs: Long = 0L) {
         this.songs = songs
-        currentSongPosition = position
-        playCurrent()
-        CoroutineScope(Dispatchers.Main).launch {
-            _songListFlow.emit(songs)
-        }
-    }
+        val clampedPosition = if (songs.isEmpty()) 0 else position.coerceIn(0, songs.size - 1)
+        currentSongPosition = clampedPosition
 
-    fun getSongs(): List<Song> = songs
-
-    fun getCurrentSong(): Song? = songs.getOrNull(currentSongPosition)
-
-    private fun playCurrent() {
-        mediaController?.let { controller ->
+        if (songs.isNotEmpty()) {
             val mediaItems = songs.map { song ->
                 MediaItem.Builder()
                     .setMediaId(song.id.toString())
@@ -78,32 +89,57 @@ object MediaManager {
                     )
                     .build()
             }
-            controller.setMediaItems(mediaItems, currentSongPosition, 0L)
-            controller.prepare()
-            // controller.play()
 
+            mediaController?.setMediaItems(mediaItems, currentSongPosition, startPositionMs)
+            mediaController?.prepare()
             startSeekPositionUpdates()
+        } else {
+            // Clear controller playlist if applicable and keep UI state consistent
+            mediaController?.clearMediaItems()
+            mediaController?.stop()
+            stopSeekPositionUpdates()
+            scope.launch { _songPositionFlow.emit(0) }
+        }
+
+        scope.launch {
+            _songListFlow.emit(this@MediaManager.songs)
         }
     }
 
+    fun getSongs(): List<Song> = songs
+
+    fun getCurrentSong(): Song? = songs.getOrNull(currentSongPosition)
+
+    fun playCurrent() {
+        mediaController?.seekToDefaultPosition(currentSongPosition)
+        mediaController?.play()
+        startSeekPositionUpdates()
+    }
+
     fun playSong(song: Song) {
-        val index = songs.indexOf(song)
+        // Prefer matching by stable id to avoid issues with data class equality or different instances
+        val index = songs.indexOfFirst { it.id == song.id }
         if (index != -1) {
             currentSongPosition = index
             playCurrent()
+        } else {
+            Log.w(TAG, "playSong: Song not found in current list: ${song.id}")
         }
     }
 
     fun pause() {
         mediaController?.pause()
+        stopSeekPositionUpdates()
     }
 
     fun play() {
         mediaController?.play()
+        startSeekPositionUpdates()
     }
 
     fun stop() {
         mediaController?.stop()
+        stopSeekPositionUpdates()
     }
 
     fun flipState() {
@@ -129,11 +165,18 @@ object MediaManager {
     }
 
     fun getSeekPosition(): Long {
-        return mediaController?.currentPosition ?: 0L
+        val position = mediaController?.currentPosition ?: 0L
+        val duration = getDuration()
+        // Clamp to [0, duration] when duration is known
+        return if (duration > 0L) position.coerceIn(0L, duration) else max(0L, position)
     }
 
     fun seekTo(position: Long) {
-        mediaController?.seekTo(position)
+        val duration = getDuration()
+        val clamped = if (duration > 0L) position.coerceIn(0L, duration) else max(0L, position)
+        mediaController?.seekTo(clamped)
+        // Optimistically emit the new seek position for responsive UI
+        scope.launch { _songSeekPositionFlow.emit(clamped) }
     }
 
     fun getCurrentPosition(): Int {
@@ -153,8 +196,15 @@ object MediaManager {
         }
     }
 
+    /**
+     * Prefer controller duration when available; fallback to model.
+     */
     fun getDuration(): Long {
-        return getCurrentSong()?.duration ?: 0L
+        val controllerDuration = mediaController?.duration ?: C.TIME_UNSET
+        return when {
+            controllerDuration != C.TIME_UNSET && controllerDuration >= 0L -> controllerDuration
+            else -> getCurrentSong()?.duration ?: 0L
+        }
     }
 
     fun getSongAt(position: Int): Song? {
@@ -166,12 +216,15 @@ object MediaManager {
         }
     }
 
+    /**
+     * Emit seek position periodically while playing to keep UI in sync.
+     */
     fun startSeekPositionUpdates(intervalMs: Long = 1000L) {
         seekJob?.cancel()
-        seekJob = CoroutineScope(Dispatchers.Default).launch {
+        seekJob = scope.launch {
             var lastEmittedPosition: Long? = null
             while (isActive) {
-                val position = withContext(Dispatchers.Main) { getSeekPosition() }
+                val position = getSeekPosition()
                 if (position != lastEmittedPosition) {
                     _songSeekPositionFlow.emit(position)
                     lastEmittedPosition = position
@@ -186,10 +239,16 @@ object MediaManager {
         seekJob = null
     }
 
+    /**
+     * Service can push controller state here; we also drive seek updates based on it.
+     */
     fun notifyPlaybackState(state: Int) {
-        CoroutineScope(Dispatchers.Main).launch {
+        scope.launch {
             _playbackStateFlow.emit(state)
         }
+        // Keep position updates in sync with playback state, if controller present
+        val isPlaying = mediaController?.isPlaying == true
+        if (isPlaying) startSeekPositionUpdates() else stopSeekPositionUpdates()
     }
 
     // Notify UI about current media item index changes originating from the player/service without reconfiguring playback

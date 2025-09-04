@@ -109,7 +109,8 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                 withContext(Dispatchers.Main) {
                     MediaManager.setSongs(
                             songs = lastSongs,
-                            position = PlayerPreferences.getLastSongPosition())
+                            position = PlayerPreferences.getLastSongPosition(),
+                            startPositionMs = PlayerPreferences.getLastSongSeek())
                     MediaManager.seekTo(PlayerPreferences.getLastSongSeek())
                 }
             } else {

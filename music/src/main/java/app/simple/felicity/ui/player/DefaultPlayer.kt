@@ -98,11 +98,12 @@ class DefaultPlayer : MediaFragment() {
         binding.info.text = song.path
         binding.duration.text = NumberUtils.getFormattedTime(song.duration)
         binding.seekbar.setMax(song.duration.toFloat())
+        binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
     }
 
     override fun onSeekChanged(seek: Long) {
         super.onSeekChanged(seek)
-        binding.seekbar.setProgress(seek.toFloat(), false)
+        binding.seekbar.setProgress(seek.toFloat(), false, animate = true)
         binding.currentTime.text = NumberUtils.getFormattedTime(seek)
     }
 
