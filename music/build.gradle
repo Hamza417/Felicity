@@ -65,11 +65,11 @@ dependencies {
 
     // AndroidX
     implementation 'androidx.fragment:fragment-ktx:1.8.9'
-    implementation 'androidx.activity:activity-ktx:1.10.1'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.9.3'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.3'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.9.3'
-    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.9.3'
+    implementation 'androidx.activity:activity-ktx:1.11.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.9.4'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.9.4'
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.9.4'
     implementation 'androidx.documentfile:documentfile:1.1.0'
     implementation 'androidx.media:media:1.7.1'
     implementation 'androidx.security:security-crypto:1.1.0'
@@ -98,12 +98,12 @@ dependencies {
     implementation 'com.github.Hamza417:renderscript-intrinsics-replacement-toolkit:4ae2409809'
 
     // Glide
-    implementation 'com.github.bumptech.glide:glide:5.0.4'
-    implementation 'com.github.bumptech.glide:okhttp3-integration:5.0.4'
-    ksp 'com.github.bumptech.glide:ksp:5.0.4'
+    implementation 'com.github.bumptech.glide:glide:5.0.5'
+    implementation 'com.github.bumptech.glide:okhttp3-integration:5.0.5'
+    ksp 'com.github.bumptech.glide:ksp:5.0.5'
 
     // Room
-    implementation "androidx.room:room-ktx:2.7.2"
-    ksp "androidx.room:room-compiler:2.7.2"
-    androidTestImplementation "androidx.room:room-testing:2.7.2"
+    implementation "androidx.room:room-ktx:2.8.0"
+    ksp "androidx.room:room-compiler:2.8.0"
+    androidTestImplementation "androidx.room:room-testing:2.8.0"
 }
