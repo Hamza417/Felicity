@@ -16,7 +16,9 @@ import app.simple.felicity.databinding.ActivityMainBinding
 import app.simple.felicity.databinding.MiniplayerBinding
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.extensions.activities.BaseActivity
+import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
@@ -182,7 +184,19 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     }
 
     override fun onShowMiniPlayer() {
-        binding.miniPlayer.show(animated = true)
+        if (supportFragmentManager.fragments.last() is MediaFragment) {
+            val currentFragment = supportFragmentManager
+                .fragments
+                .lastOrNull { it.isVisible }
+
+            val visible = (currentFragment as? MiniPlayerPolicy)?.wantsMiniPlayerVisible ?: true
+
+            if (visible) {
+                binding.miniPlayer.show(animated = true)
+            }
+        } else {
+            binding.miniPlayer.show(animated = true)
+        }
     }
 
     override fun onAttachMiniPlayer(recyclerView: RecyclerView?) {

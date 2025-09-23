@@ -8,6 +8,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
+import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.database.instances.LastSongDatabase
 import app.simple.felicity.repository.database.instances.SongStatDatabase
@@ -18,7 +19,9 @@ import app.simple.felicity.repository.utils.SongUtils.createSongStat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-open class MediaFragment : ScopedFragment() {
+open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
+
+    private var shouldShowMiniPlayer = true
 
     private val miniPlayerCallbacks: MiniPlayerCallbacks?
         get() = requireActivity() as? MiniPlayerCallbacks
@@ -93,6 +96,7 @@ open class MediaFragment : ScopedFragment() {
         viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 super.onStart(owner)
+                shouldShowMiniPlayer = false
                 hideMiniPlayer()
             }
 
@@ -100,6 +104,7 @@ open class MediaFragment : ScopedFragment() {
                 super.onPause(owner)
                 // Don't force-show during configuration changes; preserve current state
                 if (requireActivity().isChangingConfigurations.not()) {
+                    shouldShowMiniPlayer = true
                     showMiniPlayer()
                 }
             }
@@ -143,6 +148,9 @@ open class MediaFragment : ScopedFragment() {
     open fun onSeekChanged(seek: Long) {
         Log.d(TAG, "Seek changed: $seek")
     }
+
+    override val wantsMiniPlayerVisible: Boolean
+        get() = shouldShowMiniPlayer
 
     companion object {
         private const val TAG = "MediaFragment"
