@@ -18,12 +18,12 @@ dependencies {
     implementation project(':shared')
 
     // Room
-    implementation "androidx.room:room-ktx:2.8.0"
-    ksp "androidx.room:room-compiler:2.8.0"
-    androidTestImplementation "androidx.room:room-testing:2.8.0"
+    implementation "androidx.room:room-ktx:2.8.3"
+    ksp "androidx.room:room-compiler:2.8.3"
+    androidTestImplementation "androidx.room:room-testing:2.8.3"
 
-    implementation "com.google.dagger:hilt-android:2.57.1"
-    ksp "com.google.dagger:hilt-android-compiler:2.57.1"
+    implementation "com.google.dagger:hilt-android:2.57.2"
+    ksp "com.google.dagger:hilt-android-compiler:2.57.2"
 
     implementation 'net.jthink:jaudiotagger:3.0.1'
 
