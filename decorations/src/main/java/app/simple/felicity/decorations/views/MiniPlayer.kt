@@ -291,7 +291,7 @@ class MiniPlayer @JvmOverloads constructor(
 
     // region RecyclerView attach API (active)
     @Suppress("unused")
-    /** Attach to one or more RecyclerViews to auto hide/show on scroll. */
+            /** Attach to one or more RecyclerViews to auto hide/show on scroll. */
     fun attachToRecyclerViews(vararg recyclerViews: RecyclerView) {
         recyclerViews.forEach { attachToRecyclerView(it) }
     }
@@ -432,9 +432,14 @@ class MiniPlayer @JvmOverloads constructor(
         var fraction: Float = -1f
 
         constructor(superState: Parcelable?) : super(superState)
+
         constructor(source: Parcel) : super(source) {
             translationY = source.readFloat()
-            fraction = try { source.readFloat() } catch (e: Exception) { -1f }
+            fraction = try {
+                source.readFloat()
+            } catch (_: Exception) {
+                -1f
+            }
         }
 
         override fun writeToParcel(out: Parcel, flags: Int) {
