@@ -666,7 +666,7 @@ class ArtFlowRenderer(
         lastFrameNanos = now
         snapTarget?.let { target ->
             val delta = target - scrollOffset
-            val ad = kotlin.math.abs(delta)
+            val ad = abs(delta)
             if (ad < 0.00008f) {
                 scrollOffset = target
                 snapTarget = null

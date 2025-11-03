@@ -34,7 +34,7 @@ class MiniPlayer @JvmOverloads constructor(
 
     private val card: ThemeMaterialCardView
 
-    // Reintroduce internal RecyclerView attach/detach support
+    // Internal RecyclerView attach/detach support
     private val attached: MutableMap<RecyclerView, RecyclerView.OnScrollListener> = mutableMapOf()
 
     private val animDuration = 180L
@@ -42,7 +42,7 @@ class MiniPlayer @JvmOverloads constructor(
     private val showInterpolator = DecelerateInterpolator()
     private val hideInterpolator = AccelerateInterpolator()
 
-    // Consider near-zero or near-hideDistance as stable states
+    // Treat near-zero or near-hideDistance as stable states
     private val epsilon = 1f
 
     private val hideDistance: Float
@@ -53,13 +53,17 @@ class MiniPlayer @JvmOverloads constructor(
 
     private var currentBinding: ViewBinding? = null
 
-    // Preserve/restoration support
+    // State preservation/restoration helpers
     private var pendingRestoreTranslationY: Float? = null
     private var pendingRestoreFraction: Float? = null
 
     // When true, ignore RecyclerView-driven updates until next IDLE
     private var suppressAutoFromRecyclerUntilIdle: Boolean = false
     private var isManuallyControlled: Boolean = false
+
+    // Tracks whether an immersive drag started in a non-scrollable list; avoids
+    // auto-showing on spurious IDLE events (e.g., when switching panels and attaching a new RV)
+    private var hadImmersiveDrag: Boolean = false
 
     private val resetManualControlHandler = Handler(Looper.getMainLooper())
     private val resetManualControlRunnable = Runnable {
@@ -87,7 +91,7 @@ class MiniPlayer @JvmOverloads constructor(
         onViewCreated(binding)
     }
 
-    /** Remove current content view, if any. */
+    /** Remove the current content view, if any. */
     fun removeContent() {
         if (card.isNotEmpty()) card.removeAllViews()
         currentBinding = null
@@ -104,13 +108,13 @@ class MiniPlayer @JvmOverloads constructor(
         // Make this view visible in case it was set to GONE/INVISIBLE
         isVisible = true
         alpha = 1f
-        // Clear any pending restore so explicit command wins
+        // Clear any pending restore so an explicit command wins
         pendingRestoreFraction = null
         pendingRestoreTranslationY = null
         // Prevent RecyclerView listeners from immediately overriding this explicit command
         suppressAutoFromRecyclerUntilIdle = true
         isManuallyControlled = true
-        // Defer until laid out to get correct hideDistance
+        // Defer until laid out to get the correct hideDistance
         if (height == 0) {
             addOnLayoutChangeListener(object : OnLayoutChangeListener {
                 override fun onLayoutChange(v: View?, left: Int, top: Int, right: Int, bottom: Int,
@@ -126,7 +130,7 @@ class MiniPlayer @JvmOverloads constructor(
 
     fun hide(animated: Boolean = true) {
         animate().cancel()
-        // Keep part of layout; we hide by translating, not by visibility
+        // Keep in layout; hide by translating, not by changing visibility
         isVisible = true
         pendingRestoreFraction = null
         pendingRestoreTranslationY = null
@@ -148,13 +152,13 @@ class MiniPlayer @JvmOverloads constructor(
     // endregion
 
     @Suppress("unused")
-    /** Public API for the attacher to move the view with scroll delta. */
+            /** Public API for the attacher to move the view with a scroll delta. */
     fun offsetBy(dy: Int) {
         updateForScrollDelta(dy)
     }
 
     @Suppress("unused")
-    /** Snap helpers for attacher */
+            /** Snap helpers for the attacher */
     fun snapToShown(animated: Boolean = true) = animateTranslationY(0f, animated)
 
     @Suppress("unused")
@@ -163,7 +167,7 @@ class MiniPlayer @JvmOverloads constructor(
     private fun animateTranslationY(target: Float, animated: Boolean) {
         if (!animated) {
             translationY = target
-            // Allow RecyclerView-driven updates again after explicit movement completes
+            // Allow RecyclerView-driven updates again after an explicit movement completes
             suppressAutoFromRecyclerUntilIdle = false
             // Delay resetting manual control to prevent immediate scroll interference
             resetManualControlHandler.removeCallbacks(resetManualControlRunnable)
@@ -182,7 +186,7 @@ class MiniPlayer @JvmOverloads constructor(
             .start()
     }
 
-    // Move the container incrementally with scroll delta and clamp within [0, hideDistance]
+    // Move the container incrementally with the scroll delta and clamp within [0, hideDistance]
     private fun updateForScrollDelta(dy: Int) {
         if (height == 0) return // not laid out yet
         if (suppressAutoFromRecyclerUntilIdle || isManuallyControlled) return // honor explicit show/hide
@@ -196,7 +200,7 @@ class MiniPlayer @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (h > 0) {
-            // If size changed, preserve relative offset to keep hidden state intact
+            // Preserve relative offset to keep hidden state intact
             if (oldh > 0 && translationY > 0f) {
                 val bm = (layoutParams as? MarginLayoutParams)?.bottomMargin ?: 0
                 val oldHideDistance = oldh.toFloat() + bm
@@ -206,7 +210,7 @@ class MiniPlayer @JvmOverloads constructor(
                     if (newTy != translationY) translationY = newTy
                 }
             }
-            // Apply any pending restore after layout is ready
+            // Apply any pending restore after the layout is ready
             applyPendingTranslationIfPossible()
         }
     }
@@ -228,9 +232,9 @@ class MiniPlayer @JvmOverloads constructor(
     override fun onRestoreInstanceState(state: Parcelable?) {
         if (state is SavedState) {
             super.onRestoreInstanceState(state.superState)
-            // Prefer restoring by fraction so hidden stays hidden even if height changes
+            // Prefer restoring by fraction so hidden stays hidden even if the height changes
             pendingRestoreFraction = state.fraction.takeIf { it in 0f..1f }
-            // Fallback to absolute translation if fraction isn't valid
+            // Fallback to absolute translation if the fraction isn't valid
             if (pendingRestoreFraction == null) pendingRestoreTranslationY = state.translationY
             applyPendingTranslationIfPossible()
         } else {
@@ -272,6 +276,19 @@ class MiniPlayer @JvmOverloads constructor(
         pendingRestoreTranslationY = null
     }
 
+    // Detect if a RecyclerView can actually scroll vertically
+    private fun isRecyclerVerticallyScrollable(rv: RecyclerView): Boolean {
+        // Use fast checks via canScrollVertically; fall back to range/extent
+        if (rv.canScrollVertically(1) || rv.canScrollVertically(-1)) return true
+        return try {
+            val extent = rv.computeVerticalScrollExtent()
+            val range = rv.computeVerticalScrollRange()
+            range > extent
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     // region RecyclerView attach API (active)
     @Suppress("unused")
     /** Attach to one or more RecyclerViews to auto hide/show on scroll. */
@@ -285,15 +302,51 @@ class MiniPlayer @JvmOverloads constructor(
         val listener = object : RecyclerView.OnScrollListener() {
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(rv, dx, dy)
+                // Ignore auto-hide/show if the list cannot actually scroll
+                if (!isRecyclerVerticallyScrollable(rv)) return
                 updateForScrollDelta(dy)
             }
 
             override fun onScrollStateChanged(rv: RecyclerView, newState: Int) {
                 super.onScrollStateChanged(rv, newState)
-                // Don't lift suppression or allow scroll behavior if manually controlled
+                // Do not lift suppression or allow scroll behavior if manually controlled
                 if (isManuallyControlled) return
 
-                // Lift suppression only when user starts dragging and not manually controlled
+                val scrollable = isRecyclerVerticallyScrollable(rv)
+
+                // For non-scrollable lists: provide a transient immersive hide on drag and animate back on settle/idle
+                if (!scrollable) {
+                    when (newState) {
+                        RecyclerView.SCROLL_STATE_DRAGGING -> {
+                            hadImmersiveDrag = true
+                            if (!isFullyHidden()) {
+                                animate().translationY(hideDistance)
+                                    .setDuration(250)
+                                    .setInterpolator(hideInterpolator)
+                                    .start()
+                            }
+                        }
+                        RecyclerView.SCROLL_STATE_SETTLING, RecyclerView.SCROLL_STATE_IDLE -> {
+                            // Only animate back if an actual user drag happened
+                            if (hadImmersiveDrag && !isFullyShown()) {
+                                animate().translationY(0f)
+                                    .setDuration(250)
+                                    .setInterpolator(showInterpolator)
+                                    .withEndAction { hadImmersiveDrag = false }
+                                    .start()
+                            } else if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                                // Clear the flag on idle to avoid a sticky state
+                                hadImmersiveDrag = false
+                            }
+                        }
+                    }
+
+                    // Ensure suppression doesn't get stuck
+                    suppressAutoFromRecyclerUntilIdle = false
+                    return
+                }
+
+                // Lift suppression only when the user starts dragging and this isn't manually controlled
                 if (suppressAutoFromRecyclerUntilIdle && newState == RecyclerView.SCROLL_STATE_DRAGGING) {
                     suppressAutoFromRecyclerUntilIdle = false
                 }
@@ -317,6 +370,7 @@ class MiniPlayer @JvmOverloads constructor(
                         }
                     }
                     RecyclerView.SCROLL_STATE_DRAGGING -> {
+                        // Only auto-hide on drag if the list can actually scroll
                         if (isFullyShown()) {
                             animate().translationY(hideDistance)
                                 .setDuration(250)
@@ -329,8 +383,10 @@ class MiniPlayer @JvmOverloads constructor(
         }
         recyclerView.addOnScrollListener(listener)
         attached[recyclerView] = listener
-        // Ensure we start responsive to scroll immediately on (re)attach
+        // Start responsive to scroll immediately on (re)attach
         suppressAutoFromRecyclerUntilIdle = false
+
+        // Do not force a show on attach; preserve current state across panels
     }
 
     /** Detach from the given RecyclerViews. */
@@ -352,18 +408,21 @@ class MiniPlayer @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        // Ensure we don't carry suppression across fragment/activity transitions
+        // Do not carry suppression across fragment/activity transitions
         suppressAutoFromRecyclerUntilIdle = false
         resetManualControlHandler.removeCallbacks(resetManualControlRunnable)
         isManuallyControlled = false
+        // Do not reset translationY; preserve current state. Also reset immersive flag.
+        hadImmersiveDrag = false
     }
 
     override fun onDetachedFromWindow() {
         detachFromAllRecyclerViews()
-        // Clear any suppression to avoid sticky state on reattach
+        // Clear any suppression to avoid a sticky state on reattach
         suppressAutoFromRecyclerUntilIdle = false
         resetManualControlHandler.removeCallbacks(resetManualControlRunnable)
         isManuallyControlled = false
+        hadImmersiveDrag = false
         super.onDetachedFromWindow()
     }
 
