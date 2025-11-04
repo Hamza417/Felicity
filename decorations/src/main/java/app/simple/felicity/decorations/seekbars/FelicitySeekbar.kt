@@ -95,6 +95,14 @@ class FelicitySeekbar @JvmOverloads constructor(
     private var thumbShadowRadius = 0f
     private var thumbShadowColor = progressColor
 
+    // Optional overrides for corner radii (rx=ry) of thumb fill only (ring follows thumb)
+    private var thumbCornerRadiusPxOverride: Float? = null
+
+    // Thumb shape selection: PILL or OVAL (circle/ellipse)
+    enum class ThumbShape { PILL, OVAL, CIRCLE }
+
+    private var thumbShape: ThumbShape = ThumbShape.CIRCLE
+
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val thumbRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
@@ -251,6 +259,14 @@ class FelicitySeekbar @JvmOverloads constructor(
                 thumbShadowRadius = getDimension(R.styleable.FelicitySeekbar_felicityThumbShadowRadius, 6f * d)
                 thumbShadowColor = getColor(R.styleable.FelicitySeekbar_felicityThumbShadowColor, thumbShadowColor)
                 defaultIndicatorColor = getColor(R.styleable.FelicitySeekbar_felicityDefaultIndicatorColor, thumbRingColor)
+                // New: read thumb shape enum (0=pill, 1=oval, 2=circle)
+                if (hasValue(R.styleable.FelicitySeekbar_felicityThumbShape)) {
+                    thumbShape = when (getInt(R.styleable.FelicitySeekbar_felicityThumbShape, 0)) {
+                        1 -> ThumbShape.OVAL
+                        2 -> ThumbShape.CIRCLE
+                        else -> ThumbShape.PILL
+                    }
+                }
             } finally {
                 recycle()
             }
@@ -451,10 +467,13 @@ class FelicitySeekbar @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val hOut = horizontalOutset()
-        // Ensure full thumb fits horizontally: use half of pill width
-        val safeInset = thumbWidthPx / 2f
-        val left = paddingLeft.toFloat() + hOut + safeInset
-        val right = (width - paddingRight).toFloat() - hOut - safeInset
+        // Ensure full thumb fits horizontally: use per-shape half width for bounds
+        val baseSafeInset = when (thumbShape) {
+            ThumbShape.CIRCLE -> thumbRadiusPx
+            else -> thumbWidthPx / 2f
+        }
+        val left = paddingLeft.toFloat() + hOut + baseSafeInset
+        val right = (width - paddingRight).toFloat() - hOut - baseSafeInset
         if (right <= left) return
         val centerY = height / 2f + if (smudgeEnabled) smudgeOffsetY else 0f
         val trackRadius = trackHeightPx / 2f
@@ -473,69 +492,119 @@ class FelicitySeekbar @JvmOverloads constructor(
             canvas.drawRoundRect(progressRect, trackRadius, trackRadius, progressPaint)
         }
 
-        // Default indicator: draw on top of progress so it's always visible; only if default is set within range
+        // Default indicator
         if (hasDefaultSet) {
             val df = valueToFraction(defaultProgress).coerceIn(0f, 1f)
             val dx = left + (right - left) * df
             val halfW = defaultIndicatorWidthPx / 2f
-            // Indicator height equals track height for a clean tick; rounded ends to look like a tiny capsule
             defaultIndicatorRect.set(dx - halfW, trackRect.top, dx + halfW, trackRect.bottom)
             defaultIndicatorPaint.color = defaultIndicatorColor
             canvas.drawRoundRect(defaultIndicatorRect, halfW, halfW, defaultIndicatorPaint)
         }
 
-        // Thumb (pill-shaped)
+        // Thumb
         val cx = progressRight
         val cy = trackRect.centerY()
         val scaledR = thumbRadiusPx * thumbScale
         val scaledHalfW = (thumbWidthPx / 2f) * thumbScale
 
-        // Outer rect for shadow and overall silhouette
+        // Outer rect for oval/pill
         thumbOuterRect.set(cx - scaledHalfW, cy - scaledR, cx + scaledHalfW, cy + scaledR)
 
-        val baseThumbCornerR = min(thumbCornerRadiusPxOverride ?: scaledR, min(scaledR, scaledHalfW))
+        when (thumbShape) {
+            ThumbShape.OVAL -> {
+                if (thumbShadowRadius > 0f) {
+                    canvas.drawOval(thumbOuterRect, thumbShadowPaint)
+                }
+                if (thumbInnerColor != Color.TRANSPARENT) {
+                    thumbInnerRect.set(thumbOuterRect)
+                    val inset = thumbRingWidthPx / 2f
+                    thumbInnerRect.inset(inset, inset)
+                    canvas.drawOval(thumbInnerRect, thumbInnerPaint)
+                }
+                thumbStrokeRect.set(thumbOuterRect)
+                val strokeInset = thumbRingWidthPx / 2f
+                thumbStrokeRect.inset(strokeInset, strokeInset)
+                canvas.drawOval(thumbStrokeRect, thumbRingPaint)
 
-        if (thumbShadowRadius > 0f) {
-            canvas.drawRoundRect(thumbOuterRect, baseThumbCornerR, baseThumbCornerR, thumbShadowPaint)
-        }
+                if (pressRingProgress > 0f) {
+                    val extra = pressRingOutsetPx * pressRingProgress
+                    thumbPressRingRect.set(thumbOuterRect)
+                    thumbPressRingRect.inset(-extra, -extra)
+                    val alpha = (0.35f * pressRingProgress * 255).toInt().coerceIn(0, 255)
+                    thumbPressRingPaint.color = (pressRingColor and 0x00FFFFFF) or (alpha shl 24)
+                    thumbPressRingPaint.strokeWidth = pressRingStrokePx
+                    canvas.drawOval(thumbPressRingRect, thumbPressRingPaint)
+                }
+            }
+            ThumbShape.PILL -> {
+                val baseThumbCornerR = min(thumbCornerRadiusPxOverride ?: scaledR, min(scaledR, scaledHalfW))
 
-        // Inner fill (beneath the ring)
-        if (thumbInnerColor != Color.TRANSPARENT) {
-            thumbInnerRect.set(thumbOuterRect)
-            val inset = thumbRingWidthPx / 2f
-            thumbInnerRect.inset(inset, inset)
-            val innerR = max(0f, baseThumbCornerR - inset)
-            canvas.drawRoundRect(thumbInnerRect, innerR, innerR, thumbInnerPaint)
-        }
+                if (thumbShadowRadius > 0f) {
+                    canvas.drawRoundRect(thumbOuterRect, baseThumbCornerR, baseThumbCornerR, thumbShadowPaint)
+                }
+                if (thumbInnerColor != Color.TRANSPARENT) {
+                    thumbInnerRect.set(thumbOuterRect)
+                    val inset = thumbRingWidthPx / 2f
+                    thumbInnerRect.inset(inset, inset)
+                    val innerR = max(0f, baseThumbCornerR - inset)
+                    canvas.drawRoundRect(thumbInnerRect, innerR, innerR, thumbInnerPaint)
+                }
+                thumbStrokeRect.set(thumbOuterRect)
+                val strokeInset = thumbRingWidthPx / 2f
+                thumbStrokeRect.inset(strokeInset, strokeInset)
+                val baseRingCornerR = baseThumbCornerR // ring follows thumb shape strictly
+                val ringR = max(0f, baseRingCornerR - strokeInset)
+                canvas.drawRoundRect(thumbStrokeRect, ringR, ringR, thumbRingPaint)
 
-        // Stroke ring (always drawn around thumb to define shape)
-        thumbStrokeRect.set(thumbOuterRect)
-        val strokeInset = thumbRingWidthPx / 2f
-        thumbStrokeRect.inset(strokeInset, strokeInset)
-        val baseRingCornerR = baseThumbCornerR // ring follows thumb shape strictly
-        val ringR = max(0f, baseRingCornerR - strokeInset)
-        canvas.drawRoundRect(thumbStrokeRect, ringR, ringR, thumbRingPaint)
+                if (pressRingProgress > 0f) {
+                    val extra = pressRingOutsetPx * pressRingProgress
+                    thumbPressRingRect.set(thumbOuterRect)
+                    thumbPressRingRect.inset(-extra, -extra)
+                    val pressRingCornerR = baseRingCornerR + extra // + (pressRingStrokePx / 2f)
+                    val alpha = (0.35f * pressRingProgress * 255).toInt().coerceIn(0, 255)
+                    thumbPressRingPaint.color = (pressRingColor and 0x00FFFFFF) or (alpha shl 24)
+                    thumbPressRingPaint.strokeWidth = pressRingStrokePx
+                    canvas.drawRoundRect(thumbPressRingRect, pressRingCornerR, pressRingCornerR, thumbPressRingPaint)
+                }
+            }
+            ThumbShape.CIRCLE -> {
+                // Shadow
+                if (thumbShadowRadius > 0f) {
+                    canvas.drawCircle(cx, cy, scaledR, thumbShadowPaint)
+                }
+                // Fill
+                if (thumbInnerColor != Color.TRANSPARENT) {
+                    val inset = thumbRingWidthPx / 2f
+                    val innerRadius = max(0f, scaledR - inset)
+                    canvas.drawCircle(cx, cy, innerRadius, thumbInnerPaint)
+                }
+                // Stroke ring
+                val strokeInset = thumbRingWidthPx / 2f
+                val ringRadius = max(0f, scaledR - strokeInset)
+                canvas.drawCircle(cx, cy, ringRadius, thumbRingPaint)
 
-        // MD2-style press ring (appears/animates on touch) — draw last so it's above progress/track
-        if (pressRingProgress > 0f) {
-            val extra = pressRingOutsetPx * pressRingProgress
-            thumbPressRingRect.set(thumbOuterRect)
-            // Expand outwards by extra to keep same shape proportion
-            thumbPressRingRect.inset(-extra, -extra)
-            // Corner radius scales with expansion, plus a tiny offset to keep corners uniformly round
-            val pressRingCornerR = baseRingCornerR + extra // + (pressRingStrokePx / 2f)
-            val alpha = (0.35f * pressRingProgress * 255).toInt().coerceIn(0, 255)
-            thumbPressRingPaint.color = (pressRingColor and 0x00FFFFFF) or (alpha shl 24)
-            thumbPressRingPaint.strokeWidth = pressRingStrokePx
-            canvas.drawRoundRect(thumbPressRingRect, pressRingCornerR, pressRingCornerR, thumbPressRingPaint)
+                // Press ring
+                if (pressRingProgress > 0f) {
+                    val extra = pressRingOutsetPx * pressRingProgress
+                    val prRadius = scaledR + extra
+                    val alpha = (0.35f * pressRingProgress * 255).toInt().coerceIn(0, 255)
+                    thumbPressRingPaint.color = (pressRingColor and 0x00FFFFFF) or (alpha shl 24)
+                    thumbPressRingPaint.strokeWidth = pressRingStrokePx
+                    canvas.drawCircle(cx, cy, prRadius, thumbPressRingPaint)
+                }
+            }
         }
     }
 
     private fun isPointOnThumb(x: Float, y: Float): Boolean {
         val hOut = horizontalOutset()
-        val safeInset = thumbWidthPx / 2f
-        val left = paddingLeft.toFloat() + hOut + safeInset
-        val right = (width - paddingRight).toFloat() - hOut - safeInset
+        val baseSafeInset = when (thumbShape) {
+            ThumbShape.CIRCLE -> thumbRadiusPx
+            else -> thumbWidthPx / 2f
+        }
+        val left = paddingLeft.toFloat() + hOut + baseSafeInset
+        val right = (width - paddingRight).toFloat() - hOut - baseSafeInset
         if (right <= left) return false
         val progressX = left + (right - left) * valueToFraction(progressInternal).coerceIn(0f, 1f)
         val cy = height / 2f + if (smudgeEnabled) smudgeOffsetY else 0f
@@ -543,16 +612,28 @@ class FelicitySeekbar @JvmOverloads constructor(
         val dy = y - cy
         val halfH = thumbRadiusPx * thumbScale
         val halfW = (thumbWidthPx / 2f) * thumbScale
-        val cornerR = min(thumbCornerRadiusPxOverride ?: halfH, min(halfH, halfW))
-        val bodyHalfW = max(0f, halfW - cornerR)
-        // Inside central rectangle of rounded-rect
-        if (abs(dx) <= bodyHalfW && abs(dy) <= halfH) return true
-        // Check circular caps centered at +/- bodyHalfW
-        val leftCx = -bodyHalfW
-        val rightCx = bodyHalfW
-        val dlx = dx - leftCx
-        val drx = dx - rightCx
-        return (dlx * dlx + dy * dy <= cornerR * cornerR) || (drx * drx + dy * dy <= cornerR * cornerR)
+
+        return when (thumbShape) {
+            ThumbShape.OVAL -> {
+                val a = halfW
+                val b = halfH
+                if (a <= 0f || b <= 0f) false else (dx * dx) / (a * a) + (dy * dy) / (b * b) <= 1f
+            }
+            ThumbShape.PILL -> {
+                val cornerR = min(thumbCornerRadiusPxOverride ?: halfH, min(halfH, halfW))
+                val bodyHalfW = max(0f, halfW - cornerR)
+                if (abs(dx) <= bodyHalfW && abs(dy) <= halfH) true else {
+                    val leftCx = -bodyHalfW
+                    val rightCx = bodyHalfW
+                    val dlx = dx - leftCx
+                    val drx = dx - rightCx
+                    (dlx * dlx + dy * dy <= cornerR * cornerR) || (drx * drx + dy * dy <= cornerR * cornerR)
+                }
+            }
+            ThumbShape.CIRCLE -> {
+                dx * dx + dy * dy <= halfH * halfH
+            }
+        }
     }
 
     // Deprecated: no-op to keep binary/source compatibility; press ring provides feedback instead
@@ -604,9 +685,12 @@ class FelicitySeekbar @JvmOverloads constructor(
                 } else {
                     // fast animate to tap position
                     val hOut = horizontalOutset()
-                    val safeInset = thumbWidthPx / 2f
-                    val left = paddingLeft.toFloat() + hOut + safeInset
-                    val right = (width - paddingRight).toFloat() - hOut - safeInset
+                    val baseSafeInset = when (thumbShape) {
+                        ThumbShape.CIRCLE -> thumbRadiusPx
+                        else -> thumbWidthPx / 2f
+                    }
+                    val left = paddingLeft.toFloat() + hOut + baseSafeInset
+                    val right = (width - paddingRight).toFloat() - hOut - baseSafeInset
                     val clamped = min(max(event.x, left), right)
                     val fraction = (clamped - left) / (right - left)
                     val newProgress = fractionToValue(fraction).coerceIn(minProgress, maxProgress)
@@ -640,9 +724,12 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     private fun updateFromTouch(x: Float, fromUser: Boolean) {
         val hOut = horizontalOutset()
-        val safeInset = thumbWidthPx / 2f // ensure full thumb fits inside view bounds
-        val left = paddingLeft.toFloat() + hOut + safeInset
-        val right = (width - paddingRight).toFloat() - hOut - safeInset
+        val baseSafeInset = when (thumbShape) {
+            ThumbShape.CIRCLE -> thumbRadiusPx
+            else -> thumbWidthPx / 2f
+        }
+        val left = paddingLeft.toFloat() + hOut + baseSafeInset
+        val right = (width - paddingRight).toFloat() - hOut - baseSafeInset
         if (right <= left) return
         val clamped = min(max(x, left), right)
         val fraction = (clamped - left) / (right - left)
@@ -651,57 +738,26 @@ class FelicitySeekbar @JvmOverloads constructor(
         setProgress(newProgress, fromUser, animate = false)
     }
 
-    fun setColors(@ColorInt track: Int = trackColor,
-                  @ColorInt progress: Int = progressColor,
-                  @ColorInt ring: Int = thumbRingColor,
-                  @ColorInt inner: Int = thumbInnerColor) {
-        trackColor = track
-        progressColor = progress
-        thumbRingColor = ring
-        thumbInnerColor = inner
-        pressRingColor = progress
-        applyPaintColors()
-        invalidate()
+    // Thumb shape public API
+    fun setThumbShape(shape: ThumbShape) {
+        if (thumbShape != shape) {
+            thumbShape = shape
+            invalidate()
+        }
     }
 
-    fun setSmudge(enabled: Boolean, radius: Float = smudgeRadius, color: Int = smudgeColor, offsetY: Float = smudgeOffsetY) {
-        smudgeEnabled = enabled
-        smudgeRadius = radius
-        smudgeColor = color
-        smudgeOffsetY = offsetY
-        setupSmudgeAndShadow()
-        requestLayout()
-        invalidate()
-    }
-
-    fun setThumbShadow(radius: Float, color: Int = thumbShadowColor) {
-        thumbShadowRadius = radius
-        thumbShadowColor = color
-        setupSmudgeAndShadow()
-        invalidate()
-    }
-
-    // Optional overrides for corner radii (rx=ry) of thumb fill only (ring follows thumb)
-    private var thumbCornerRadiusPxOverride: Float? = null
-
-    // Public API: set/get corner radius for thumb fill (rx==ry)
-    fun setThumbCornerRadius(radius: Float) {
-        thumbCornerRadiusPxOverride = max(0f, radius).coerceAtLeast(thumbRadiusPx)
-        invalidate()
-    }
-
-    fun getThumbCornerRadius(): Float? = thumbCornerRadiusPxOverride
-
-    // Convenience: clear thumb override (reverts to pill radius)
-    fun clearThumbCornerRadiusOverride() {
-        thumbCornerRadiusPxOverride = null
-        invalidate()
-    }
+    fun getThumbShape(): ThumbShape = thumbShape
 
     // configure default indicator color
     fun setDefaultIndicatorColor(@ColorInt color: Int) {
         defaultIndicatorColor = color
         defaultIndicatorPaint.color = color
+        invalidate()
+    }
+
+    // Public API for pill corner radius override used by theme prefs
+    fun setThumbCornerRadius(radius: Float) {
+        thumbCornerRadiusPxOverride = max(0f, radius)
         invalidate()
     }
 

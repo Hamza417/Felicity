@@ -180,6 +180,12 @@
         <attr name="felicityThumbShadowColor" format="color|reference" />
         <!-- New: color of small default-value indicator drawn on top of progress -->
         <attr name="felicityDefaultIndicatorColor" format="color|reference" />
+        <!-- New: choose thumb shape -->
+        <attr name="felicityThumbShape" format="enum">
+            <enum name="pill" value="0" />
+            <enum name="oval" value="1" />
+            <enum name="circle" value="2" />
+        </attr>
     </declare-styleable>
 
     <declare-styleable name="FelicitySwitch">
