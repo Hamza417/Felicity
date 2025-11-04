@@ -22,7 +22,7 @@ class DefaultPlayer : MediaFragment() {
 
     private lateinit var binding: FragmentDefaultPlayerBinding
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentDefaultPlayerBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -36,10 +36,9 @@ class DefaultPlayer : MediaFragment() {
                 return MediaManager.getSongs().size
             }
 
-            override fun loadBitmap(position: Int): Bitmap? {
+            override fun loadBitmap(position: Int): Bitmap {
                 val song = MediaManager.getSongAt(position)!!
                 val uri = SongUtils.getArtworkUri(requireContext(), song.albumId, song.id) ?: Uri.EMPTY
-                Log.i(TAG, "Loading album art for position $position, uri: $uri")
                 return CoverUtils.getAlbumArtBitmap(requireContext(), uri, SIZE)
             }
         })

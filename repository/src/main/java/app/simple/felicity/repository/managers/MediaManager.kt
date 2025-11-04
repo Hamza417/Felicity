@@ -5,6 +5,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
+import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.models.Song
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,6 +60,8 @@ object MediaManager {
 
     fun setMediaController(controller: MediaController) {
         mediaController = controller
+        // If controller is already playing when set, ensure seek updates are running
+        if (controller.isPlaying) startSeekPositionUpdates() else stopSeekPositionUpdates()
     }
 
     fun clearMediaController() {
@@ -129,7 +132,8 @@ object MediaManager {
 
     fun pause() {
         mediaController?.pause()
-        stopSeekPositionUpdates()
+        // Do not stop seek updates; keep them running so UI stays in sync while paused
+        // stopSeekPositionUpdates()
     }
 
     fun play() {
@@ -246,9 +250,20 @@ object MediaManager {
         scope.launch {
             _playbackStateFlow.emit(state)
         }
-        // Keep position updates in sync with playback state, if controller present
-        val isPlaying = mediaController?.isPlaying == true
-        if (isPlaying) startSeekPositionUpdates() else stopSeekPositionUpdates()
+        // Keep seek updates running for PLAYING, PAUSED, and BUFFERING
+        when (state) {
+            MediaConstants.PLAYBACK_PLAYING -> startSeekPositionUpdates()
+            MediaConstants.PLAYBACK_PAUSED -> startSeekPositionUpdates()
+            MediaConstants.PLAYBACK_BUFFERING -> {
+                // Keep existing job running; position may still be valid
+            }
+            MediaConstants.PLAYBACK_STOPPED,
+            MediaConstants.PLAYBACK_ENDED,
+            MediaConstants.PLAYBACK_ERROR -> stopSeekPositionUpdates()
+            else -> {
+                // No-op
+            }
+        }
     }
 
     // Notify UI about current media item index changes originating from the player/service without reconfiguring playback
