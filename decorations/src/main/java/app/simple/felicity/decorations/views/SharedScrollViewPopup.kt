@@ -1,6 +1,5 @@
 package app.simple.felicity.decorations.views
 
-import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.util.TypedValue
@@ -57,49 +56,6 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
     private var translationXAnimation: SpringAnimation? = null
     private var translationYAnimation: SpringAnimation? = null
 
-    // Wiggle/interaction state (composed with idle float)
-    private var wiggleTx = 0f
-    private var wiggleTy = 0f
-    private var wiggleScale = 1f
-
-    // Idle floating state
-    private var idleTy = 0f
-    private var idleAnimator: ValueAnimator? = null
-    private var idleStartRunnable: Runnable? = null
-
-    // Public speed control for idle float: 1.0 = normal, >1 = faster, <1 = slower
-    var idleFloatSpeed: Float = 0.6f
-        set(value) {
-            field = value.coerceIn(0.25f, 4f)
-            // If running, restarts with new speed for immediate effect
-            if (idleAnimator != null) restartIdleFloat()
-        }
-
-    // Custom properties to spring wiggle values (not raw view properties)
-    private val WIGGLE_TRANSLATION_X = object : FloatPropertyCompat<View>("wiggle_tx") {
-        override fun getValue(view: View): Float = wiggleTx
-        override fun setValue(view: View, value: Float) {
-            wiggleTx = value
-            applyCombinedTransform(view)
-        }
-    }
-
-    private val WIGGLE_TRANSLATION_Y = object : FloatPropertyCompat<View>("wiggle_ty") {
-        override fun getValue(view: View): Float = wiggleTy
-        override fun setValue(view: View, value: Float) {
-            wiggleTy = value
-            applyCombinedTransform(view)
-        }
-    }
-
-    private val WIGGLE_SCALE = object : FloatPropertyCompat<View>("wiggle_scale") {
-        override fun getValue(view: View): Float = wiggleScale
-        override fun setValue(view: View, value: Float) {
-            wiggleScale = value
-            applyCombinedTransform(view)
-        }
-    }
-
     companion object {
         private const val TRANSITION_NAME = "shared_element_popup_transition"
         private const val DURATION = 350L
@@ -133,10 +89,6 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
 
             setOnTouchListener { v, event ->
                 when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        // Pauses idle float immediately on interaction
-                        stopIdleFloat()
-                    }
                     MotionEvent.ACTION_MOVE -> {
                         if (isInitialTouch) {
                             initialX = event.rawX
@@ -147,50 +99,55 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
                             translationYAnimation?.cancel()
                             scaleXAnimation?.cancel()
                             scaleYAnimation?.cancel()
-
-                            // Pauses idle float as interaction begins
-                            stopIdleFloat()
                         }
 
                         val dx = event.rawX - initialX
                         val dy = event.rawY - initialY
 
-                        // Sensitivity damping
+                        // Sensitivity dampening
                         val dampX = dx * MAX_FINGER_DISTANCE
                         val dampY = dy * MAX_FINGER_DISTANCE
 
-                        // Normalizes to [0,1] by max wiggle threshold
+                        // Normalize to [0,1] by max wiggle threshold
                         val nx = (abs(dampX) / MAX_WIGGLE_THRESHOLD).coerceAtMost(1f)
                         val ny = (abs(dampY) / MAX_WIGGLE_THRESHOLD).coerceAtMost(1f)
 
-                        // Decay easing function
+                        // Your existing decay easing function
                         val easedX = easeOutDecay(nx) * MAX_WIGGLE_THRESHOLD * sign(dampX)
                         val easedY = easeOutDecay(ny) * MAX_WIGGLE_THRESHOLD * sign(dampY)
 
-                        // Applies eased wiggle translation (composed with idle)
-                        wiggleTx = easedX
-                        wiggleTy = easedY
+                        // Apply eased wiggle translation
+                        v.translationX = easedX
+                        v.translationY = easedY
 
-                        // Calculates scale adjustment based on overall wiggle intensity
-                        // Uses max(nx, ny) as overall intensity
+                        // Calculate scale adjustment based on the total wiggle intensity
+                        // For example, take the max of nx and ny as overall intensity
                         val intensity = max(nx, ny)
-                        val minScale = 0.85f
-                        val easedScaleFactor = 1f - (easeOutDecay(intensity) * (1f - minScale))
-                        wiggleScale = easedScaleFactor
 
-                        applyCombinedTransform(v)
+                        // Define scale range (e.g., shrink to 0.95 and grow to 1.05)
+                        val minScale = 0.85f
+                        // val maxScale = 1.15f
+
+                        // Map intensity 0..1 to scale range using easing (can reuse easeOutDecay)
+                        // When intensity is 0, scale = 1f (normal), when 1 -> scale near minScale or maxScale
+                        // val scaleRange = maxScale - minScale
+
+                        // Example: scale varies between 1 and minScale (a squeeze)
+                        val easedScaleFactor = 1f - (easeOutDecay(intensity) * (1f - minScale))
+                        // or if you want a slight oscillation around 1, you could do:
+                        // val easedScaleFactor = minScale + scaleRange * easeOutDecay(intensity)
+
+                        v.scaleX = easedScaleFactor
+                        v.scaleY = easedScaleFactor
                     }
 
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        // Animates wiggle back to rest; idle resumes after a short delay
-                        translationXAnimation = startSpringAnimation(v, WIGGLE_TRANSLATION_X, 0f, wiggleTx)
-                        translationYAnimation = startSpringAnimation(v, WIGGLE_TRANSLATION_Y, 0f, wiggleTy)
-                        scaleXAnimation = startSpringAnimation(v, WIGGLE_SCALE, 1f, wiggleScale)
-                        scaleYAnimation = scaleXAnimation // mirrors scale value
+                        translationXAnimation = startSpringAnimation(v, SpringAnimation.TRANSLATION_X, 0f, v.translationX)
+                        translationYAnimation = startSpringAnimation(v, SpringAnimation.TRANSLATION_Y, 0f, v.translationY)
+                        scaleXAnimation = startSpringAnimation(v, SpringAnimation.SCALE_X, 1f, v.scaleX)
+                        scaleYAnimation = startSpringAnimation(v, SpringAnimation.SCALE_Y, 1f, v.scaleY)
 
                         isInitialTouch = true
-
-                        scheduleIdleFloatRestart()
                     }
                 }
 
@@ -198,7 +155,7 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
             }
         }
 
-        // Menu container
+        // Menu list container
         val linearLayout = LinearLayout(container.context).apply {
             layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -207,7 +164,7 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
             orientation = LinearLayout.VERTICAL
         }
 
-        // Creates menu items dynamically
+        // Create menu items dynamically
         menuItems.forEach { resId ->
             val tv = DynamicRippleTextView(container.context).apply {
                 val horizontalPadding = (8 * resources.displayMetrics.density).toInt()
@@ -288,7 +245,7 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
         val popupWidth = popupScrollView.measuredWidth
         val popupHeight = popupScrollView.measuredHeight
 
-        // Defines max height as container height * 2/3 (or full container height)
+        // Define max height as container height * 2/3 (or full container height if you want)
         val maxHeight = (container.height * 2f / 3f).toInt()
 
         val finalHeight = if (popupHeight > maxHeight) {
@@ -314,7 +271,7 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
 
         popupScrollView.layoutParams = params
 
-        // Adds directly to container
+        // Add directly to container
         popupContainer = popupScrollView
         container.addView(popupContainer)
 
@@ -334,22 +291,6 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
             interpolator = INTERPOLATOR
         }
 
-        // Starts idle float after the opening transform completes
-        transform.addListener(object : Transition.TransitionListener {
-            override fun onTransitionEnd(transition: Transition) {
-                // Prepares a restart runnable tied to this view
-                idleStartRunnable = Runnable { startIdleFloat() }
-                // Adds a small delay for a natural feel
-                popupContainer.postDelayed({ startIdleFloat() }, 250L)
-                transform.removeListener(this)
-            }
-
-            override fun onTransitionStart(transition: Transition) {}
-            override fun onTransitionCancel(transition: Transition) {}
-            override fun onTransitionPause(transition: Transition) {}
-            override fun onTransitionResume(transition: Transition) {}
-        })
-
         popupContainer.post {
             popupContainer.visibility = View.VISIBLE
             TransitionManager.beginDelayedTransition(container, transform)
@@ -364,9 +305,6 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
         isDismissing = true
         backCallback?.remove()
         backCallback = null
-
-        // Ensures idle float is stopped and reset
-        stopIdleFloat(reset = true)
 
         val reverseTransform = MaterialContainerTransform().apply {
             startView = popupContainer
@@ -448,70 +386,6 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
 
     fun easeOutDecay(normalized: Float): Float {
         return 1f - (1f - normalized).pow(5)
-    }
-
-    // Composes wiggle and idle transforms for a single, clean effect
-    private fun applyCombinedTransform(view: View) {
-        view.translationX = wiggleTx
-        view.translationY = wiggleTy + idleTy
-        view.scaleX = wiggleScale
-        view.scaleY = wiggleScale
-    }
-
-    private fun scheduleIdleFloatRestart(delay: Long = 1200L) {
-        if (!::popupContainer.isInitialized) return
-        idleStartRunnable?.let { popupContainer.removeCallbacks(it) }
-        val runnable = Runnable { startIdleFloat() }
-        idleStartRunnable = runnable
-        popupContainer.postDelayed(runnable, delay)
-    }
-
-    private fun startIdleFloat() {
-        if (!::popupContainer.isInitialized) return
-        if (isDismissing) return
-        if (idleAnimator?.isRunning == true) return
-
-        // Smooth sine-wave float: independent amplitude and speed controls
-        val density = popupContainer.resources.displayMetrics.density
-        val amplitudePx = (1.5f + (Math.random().toFloat() * 1.5f)) * density // ~1.5dp..3dp
-        val baseDurationMs = (900L + (Math.random() * 400L)).toLong() // ~0.9s..1.3s
-        val speed = idleFloatSpeed.coerceIn(0.25f, 4f)
-        val durationMs = (baseDurationMs / speed).toLong().coerceAtLeast(250L)
-
-        // Phase goes 0..2π, linear; value = sin(phase) * amplitude
-        idleAnimator = ValueAnimator.ofFloat(0f, (Math.PI * 2).toFloat()).apply {
-            this.duration = durationMs
-            interpolator = android.view.animation.LinearInterpolator()
-            repeatCount = ValueAnimator.INFINITE
-            repeatMode = ValueAnimator.RESTART
-            addUpdateListener { animator ->
-                val phase = animator.animatedValue as Float
-                idleTy = kotlin.math.sin(phase.toDouble()).toFloat() * amplitudePx
-                applyCombinedTransform(popupContainer)
-            }
-            start()
-        }
-    }
-
-    private fun stopIdleFloat(reset: Boolean = false) {
-        idleStartRunnable?.let { runnable ->
-            if (::popupContainer.isInitialized) popupContainer.removeCallbacks(runnable)
-        }
-        idleAnimator?.cancel()
-        idleAnimator = null
-        if (reset) {
-            idleTy = 0f
-            if (::popupContainer.isInitialized) applyCombinedTransform(popupContainer)
-        }
-    }
-
-    private fun restartIdleFloat() {
-        idleAnimator?.cancel()
-        idleAnimator = null
-        // Resets offset to avoid any visual jump
-        idleTy = 0f
-        if (::popupContainer.isInitialized) applyCombinedTransform(popupContainer)
-        startIdleFloat()
     }
 
     // Optional hook
