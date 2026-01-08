@@ -14,6 +14,7 @@ import app.simple.felicity.decorations.utils.ViewUtils.clearSkeletonBackground
 import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.SongsPreferences
+import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
 
@@ -26,11 +27,16 @@ class SongsAdapter(initial: List<Song>) :
     private var songs = mutableListOf<Song>().apply { addAll(initial) }
     private var lightBindMode = false
 
+    init {
+        setHasStableIds(true)
+    }
+
     var currentlyPlayingSong: Song? = null
         set(value) {
             val oldIndex = previousIndex
             field = value
-            val newIndex = value?.let { songs.indexOf(it) } ?: -1
+            // Prefer lookup by id to avoid relying on Song.equals() implementation.
+            val newIndex = value?.let { v -> songs.indexOfFirst { it.id == v.id } } ?: -1
             if (newIndex != -1) {
                 notifyItemChanged(newIndex, PAYLOAD_PLAYBACK_STATE)
             }
@@ -63,6 +69,9 @@ class SongsAdapter(initial: List<Song>) :
 
         when (holder) {
             is ListHolder -> {
+                // Always update selection state, even during light binds.
+                holder.bindSelectionState(song)
+
                 if (lightBindMode.not()) {
                     holder.bind(song)
                 }
@@ -72,6 +81,9 @@ class SongsAdapter(initial: List<Song>) :
                 }
             }
             is GridHolder -> {
+                // Always update selection state, even during light binds.
+                holder.bindSelectionState(song)
+
                 if (lightBindMode.not()) {
                     holder.bind(song)
                 }
@@ -81,6 +93,20 @@ class SongsAdapter(initial: List<Song>) :
                 }
             }
         }
+    }
+
+    override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int, payloads: MutableList<Any>) {
+        if (payloads.contains(PAYLOAD_PLAYBACK_STATE)) {
+            // Playback/selection state changed; update only the minimal UI.
+            val song = songs[position]
+            when (holder) {
+                is ListHolder -> holder.bindSelectionState(song)
+                is GridHolder -> holder.bindSelectionState(song)
+            }
+            return
+        }
+
+        super.onBindViewHolder(holder, position, payloads)
     }
 
     override fun getItemCount(): Int = songs.size
@@ -113,15 +139,20 @@ class SongsAdapter(initial: List<Song>) :
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, isLightBind: Boolean) {
         lightBindMode = isLightBind
 
+        val song = songs[position]
+
         when (holder) {
             is ListHolder -> {
+                // Light bind must still refresh selection, otherwise stale highlights appear.
+                holder.bindSelectionState(song)
                 if (isLightBind.not()) {
-                    holder.bind(songs[position])
+                    holder.bind(song)
                 }
             }
             is GridHolder -> {
+                holder.bindSelectionState(song)
                 if (isLightBind.not()) {
-                    holder.bind(songs[position])
+                    holder.bind(song)
                 }
             }
         }
@@ -132,19 +163,22 @@ class SongsAdapter(initial: List<Song>) :
     }
 
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
+        fun bindSelectionState(song: Song) {
+            binding.container.isSelected = MediaManager.getCurrentSongId() == song.id
+        }
+
         fun bind(song: Song) {
             binding.apply {
                 title.setTextOrUnknown(song.title)
                 secondaryDetail.setTextOrUnknown(song.artist)
                 tertiaryDetail.setTextOrUnknown(song.album)
                 cover.loadArtCoverWithPayload(song)
+                bindSelectionState(song)
 
                 container.setOnLongClickListener {
                     generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, it)
                     true
                 }
-
-                binding.container.setDefaultBackground(currentlyPlayingSong == song)
             }
         }
 
@@ -154,6 +188,10 @@ class SongsAdapter(initial: List<Song>) :
     }
 
     inner class GridHolder(val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
+        fun bindSelectionState(song: Song) {
+            binding.container.isSelected = MediaManager.getCurrentSongId() == song.id
+        }
+
         fun bind(song: Song) {
             binding.apply {
                 binding.title.setTextOrUnknown(song.title)
@@ -161,6 +199,8 @@ class SongsAdapter(initial: List<Song>) :
                 binding.tertiaryDetail.setTextOrUnknown(song.album)
 
                 binding.albumArt.loadArtCoverWithPayload(song)
+
+                bindSelectionState(song)
 
                 binding.container.setOnLongClickListener {
                     generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, it)

@@ -23,6 +23,7 @@ import app.simple.felicity.theme.models.Accent;
 public class DynamicRippleConstraintLayout extends ConstraintLayout implements SharedPreferences.OnSharedPreferenceChangeListener, ThemeChangedListener {
     
     private float radius = 0;
+    private boolean isSelected = false;
     
     public DynamicRippleConstraintLayout(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -37,7 +38,7 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
     private void init() {
         if (!isInEditMode()) {
             radius = AppearancePreferences.INSTANCE.getCornerRadius();
-            setDefaultBackground(false);
+            setDefaultBackground(isSelected);
         }
     }
     
@@ -51,9 +52,7 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
     public void setDefaultBackground(boolean selected) {
         if (selected) {
             setBackgroundTintList(null);
-            setBackgroundTintList(ColorStateList.valueOf(ColorUtils.INSTANCE.changeAlpha(
-                    ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(),
-                    25)));
+            setBackgroundTintList(ColorStateList.valueOf(ColorUtils.INSTANCE.changeAlpha(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(), 25)));
             
             LayoutBackground.setBackground(getContext(), this, null, radius);
         } else {
@@ -136,5 +135,14 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
     public void setRadius(float radius) {
         this.radius = radius;
         setDefaultBackground(isSelected());
+    }
+    
+    public boolean isSelected() {
+        return isSelected;
+    }
+    
+    public void setSelected(boolean selected) {
+        isSelected = selected;
+        setDefaultBackground(selected);
     }
 }
