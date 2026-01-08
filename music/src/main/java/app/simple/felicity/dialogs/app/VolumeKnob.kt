@@ -12,7 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentManager
 import app.simple.felicity.databinding.DialogVolumeKnobBinding
 import app.simple.felicity.decorations.knobs.simple.RotaryKnobListener
-import app.simple.felicity.extensions.fragments.ScopedBottomSheetFragment
+import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import kotlin.math.roundToInt
 
 class VolumeKnob : ScopedBottomSheetFragment() {

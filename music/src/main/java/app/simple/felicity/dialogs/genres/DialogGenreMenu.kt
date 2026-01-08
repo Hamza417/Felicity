@@ -7,7 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import app.simple.felicity.databinding.DialogGenreMenuBinding
-import app.simple.felicity.extensions.fragments.ScopedBottomSheetFragment
+import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.GenresPreferences
 
 class DialogGenreMenu : ScopedBottomSheetFragment() {

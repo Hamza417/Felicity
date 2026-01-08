@@ -8,7 +8,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogHomeMenuBinding
-import app.simple.felicity.extensions.fragments.ScopedBottomSheetFragment
+import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.HomePreferences
 
 class HomeMenu : ScopedBottomSheetFragment() {

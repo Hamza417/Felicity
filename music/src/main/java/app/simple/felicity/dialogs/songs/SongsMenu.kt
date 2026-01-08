@@ -8,8 +8,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogSongsMenuBinding
-import app.simple.felicity.extensions.fragments.ScopedBottomSheetFragment
-import app.simple.felicity.popups.songs.PopupSongsInterfaceMenu
+import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.SongsPreferences
 
 class SongsMenu : ScopedBottomSheetFragment() {

@@ -72,7 +72,7 @@ class Songs : PanelFragment() {
                 }
 
                 override fun onSongLongClicked(songs: List<Song>, position: Int, view: View?) {
-                    childFragmentManager.showSongMenu(songs[position])
+                    childFragmentManager.showSongMenu(songs, songs[position].id)
                 }
             })
 

@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import app.simple.felicity.databinding.DialogCarouselSettingsBinding
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
-import app.simple.felicity.extensions.fragments.ScopedBottomSheetFragment
+import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.CarouselPreferences
 
 class CarouselMenu : ScopedBottomSheetFragment() {

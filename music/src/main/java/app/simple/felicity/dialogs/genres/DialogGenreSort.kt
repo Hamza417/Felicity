@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.DialogSortGenresBinding
-import app.simple.felicity.extensions.fragments.ScopedBottomSheetFragment
+import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.GenresPreferences
 
 class DialogGenreSort : ScopedBottomSheetFragment() {
