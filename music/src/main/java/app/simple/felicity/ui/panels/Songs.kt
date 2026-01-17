@@ -52,7 +52,8 @@ class Songs : PanelFragment() {
         binding.recyclerView.requireAttachedMiniPlayer()
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-        SlideFastScroller.attach(binding.recyclerView)
+        SlideFastScroller.attach(binding.recyclerView).setFadeToIdleMode(true)
+
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) { songs ->
             binding.recyclerView.requireAttachedSectionScroller(

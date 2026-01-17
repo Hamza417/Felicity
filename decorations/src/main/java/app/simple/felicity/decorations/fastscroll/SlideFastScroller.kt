@@ -85,7 +85,10 @@ class SlideFastScroller @JvmOverloads constructor(
     private var visible = true
     private var autoHideDelay = 1500L
     private var visibilityAnimator: ValueAnimator? = null
-    private val autoHideRunnable = Runnable { if (!dragging) hide(true) }
+    private var fadeToIdleMode = false // If true, fade to idleAlpha instead of hiding completely
+    private var idleAlpha = 0.2f // Alpha when idle (only used if fadeToIdleMode is true)
+    private var isIdle = false // Track if currently in idle/dimmed state to prevent flooding show() calls
+    private val autoHideRunnable = Runnable { if (!dragging) fadeToIdle(true) }
 
     // Performance optimization fields
     private val handler = Handler(Looper.getMainLooper())
@@ -434,6 +437,25 @@ class SlideFastScroller @JvmOverloads constructor(
         autoHideDelay = delayMillis
     }
 
+    /**
+     * Enable or disable fade-to-idle mode.
+     * When enabled, the scroller fades to a dim alpha (idleAlpha) instead of hiding completely.
+     * This allows users to always see scroll position indicator without obstructing the view.
+     */
+    @Suppress("unused")
+    fun setFadeToIdleMode(enabled: Boolean) {
+        fadeToIdleMode = enabled
+    }
+
+    /**
+     * Set the alpha value when idle (only used if fadeToIdleMode is enabled).
+     * @param alpha Alpha value between 0f and 1f (default is 0.2f)
+     */
+    @Suppress("unused")
+    fun setIdleAlpha(alpha: Float) {
+        idleAlpha = alpha.coerceIn(0f, 1f)
+    }
+
     /** Enable or disable smooth scrolling to snapped positions. */
     @Suppress("unused")
     fun setSmoothScrollEnabled(enabled: Boolean) {
@@ -466,8 +488,11 @@ class SlideFastScroller @JvmOverloads constructor(
 
     /** Show the fast scroller, with optional animation. */
     fun show(animated: Boolean) {
-        if (visible) return
+        // In fadeToIdleMode, only animate if we're coming from idle state
+        val needsAlphaAnimation = fadeToIdleMode && isIdle
+        if (visible && !needsAlphaAnimation) return
         visible = true
+        isIdle = false
         visibilityAnimator?.cancel()
         if (!animated) {
             alpha = 1f
@@ -492,6 +517,7 @@ class SlideFastScroller @JvmOverloads constructor(
     fun hide(animated: Boolean) {
         if (!visible) return
         visible = false
+        isIdle = true
         visibilityAnimator?.cancel()
         if (!animated) {
             alpha = 0f
@@ -506,6 +532,41 @@ class SlideFastScroller @JvmOverloads constructor(
                     val f = va.animatedFraction
                     alpha = startAlpha * (1f - f)
                     translationX = startTx + (handleRadius - startTx) * f
+                }
+                start()
+            }
+        }
+    }
+
+    /**
+     * Fade to idle state - either hides completely or fades to idleAlpha based on fadeToIdleMode.
+     * @param animated Whether to animate the transition
+     */
+    private fun fadeToIdle(animated: Boolean) {
+        if (!fadeToIdleMode) {
+            // Use traditional hide behavior
+            hide(animated)
+            return
+        }
+
+        // Already idle, no need to animate again
+        if (isIdle) return
+
+        isIdle = true
+        // Fade to idle alpha while keeping position visible
+        visibilityAnimator?.cancel()
+        if (!animated) {
+            alpha = idleAlpha
+            // Keep translationX at 0 so handle remains visible
+        } else {
+            val startAlpha = alpha
+            visibilityAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 260L
+                interpolator = DecelerateInterpolator()
+                addUpdateListener { va ->
+                    val f = va.animatedFraction
+                    // Interpolate from current alpha to idleAlpha
+                    alpha = startAlpha + (idleAlpha - startAlpha) * f
                 }
                 start()
             }
