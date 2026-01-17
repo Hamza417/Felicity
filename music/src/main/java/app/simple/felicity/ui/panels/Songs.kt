@@ -15,7 +15,6 @@ import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.databinding.HeaderSongsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
-import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.songs.SongMenu.Companion.showSongMenu
@@ -52,8 +51,7 @@ class Songs : PanelFragment() {
         binding.recyclerView.requireAttachedMiniPlayer()
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-        SlideFastScroller.attach(binding.recyclerView).setFadeToIdleMode(true)
-
+        binding.recyclerView.attachSlideFastScroller()
 
         songsViewModel.getSongs().observe(viewLifecycleOwner) { songs ->
             binding.recyclerView.requireAttachedSectionScroller(

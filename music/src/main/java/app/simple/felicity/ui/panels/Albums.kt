@@ -14,7 +14,6 @@ import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentAlbumsBinding
 import app.simple.felicity.databinding.HeaderAlbumsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
-import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.albums.AlbumsSort.Companion.showAlbumsSort
@@ -48,7 +47,7 @@ class Albums : PanelFragment() {
 
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-        SlideFastScroller.Companion.attach(binding.recyclerView)
+        binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
 
         albumsViewModel.getAlbums().observe(viewLifecycleOwner) { it ->

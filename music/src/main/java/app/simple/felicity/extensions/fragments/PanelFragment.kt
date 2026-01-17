@@ -13,6 +13,7 @@ import app.simple.felicity.core.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.core.utils.ViewUtils.gone
 import app.simple.felicity.core.utils.ViewUtils.visible
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
+import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.SpacingRecyclerView
 
@@ -167,6 +168,17 @@ open class PanelFragment : MediaFragment() {
             visible(animate = true)
         } else {
             gone(animate = true)
+        }
+    }
+
+    /**
+     * Attaches a SlideFastScroller to the RecyclerView.
+     */
+    protected fun RecyclerView.attachSlideFastScroller() {
+        SlideFastScroller.attach(this).apply {
+            setFadeToIdleMode(enabled = true)
+            setEnabledWhileEmpty(enable = false)
+            setIdleAlpha(0.25F)
         }
     }
 }

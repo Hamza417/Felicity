@@ -14,7 +14,6 @@ import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentArtistsBinding
 import app.simple.felicity.databinding.HeaderArtistsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
-import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.songs.ArtistsSort.Companion.showArtistsSort
@@ -47,7 +46,7 @@ class Artists : PanelFragment() {
         super.onViewCreated(view, savedInstanceState)
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-        SlideFastScroller.Companion.attach(binding.recyclerView)
+        binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
         postponeEnterTransition()
 

@@ -15,7 +15,6 @@ import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentGenresBinding
 import app.simple.felicity.databinding.HeaderGenresBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
-import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.genres.DialogGenreMenu.Companion.showGenreMenu
@@ -50,7 +49,7 @@ class Genres : PanelFragment() {
         super.onViewCreated(view, savedInstanceState)
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-        SlideFastScroller.Companion.attach(binding.recyclerView)
+        binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
         postponeEnterTransition()
 
