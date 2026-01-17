@@ -3,6 +3,7 @@ package app.simple.felicity.decorations.fastscroll
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
@@ -24,6 +25,7 @@ import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SnapHelper
+import app.simple.felicity.core.utils.ColorUtils.blendColors
 import app.simple.felicity.decoration.R
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
@@ -492,11 +494,21 @@ class SlideFastScroller @JvmOverloads constructor(
         val needsAlphaAnimation = fadeToIdleMode && isIdle
         if (visible && !needsAlphaAnimation) return
         visible = true
+        val wasIdle = isIdle
         isIdle = false
         visibilityAnimator?.cancel()
+
+        val accentColor = ThemeManager.accent.primaryAccentColor
+        val idleColor = Color.LTGRAY
+
         if (!animated) {
             alpha = 1f
             translationX = 0f
+            if (wasIdle && fadeToIdleMode) {
+                handleDrawable?.setTint(accentColor)
+                handlePaint.color = accentColor
+                invalidate()
+            }
         } else {
             val startAlpha = alpha
             val startTx = translationX
@@ -507,6 +519,13 @@ class SlideFastScroller @JvmOverloads constructor(
                     val f = va.animatedFraction
                     alpha = startAlpha + (1f - startAlpha) * f
                     translationX = startTx + (0f - startTx) * f
+                    // Animate color back from gray to accent if coming from idle
+                    if (wasIdle && fadeToIdleMode) {
+                        val blendedColor = blendColors(idleColor, accentColor, f)
+                        handleDrawable?.setTint(blendedColor)
+                        handlePaint.color = blendedColor
+                        invalidate()
+                    }
                 }
                 start()
             }
@@ -555,9 +574,15 @@ class SlideFastScroller @JvmOverloads constructor(
         isIdle = true
         // Fade to idle alpha while keeping position visible
         visibilityAnimator?.cancel()
+
+        val idleColor = Color.LTGRAY
+        val startColor = ThemeManager.accent.primaryAccentColor
+
         if (!animated) {
             alpha = idleAlpha
-            // Keep translationX at 0 so handle remains visible
+            handleDrawable?.setTint(idleColor)
+            handlePaint.color = idleColor
+            invalidate()
         } else {
             val startAlpha = alpha
             visibilityAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -567,6 +592,11 @@ class SlideFastScroller @JvmOverloads constructor(
                     val f = va.animatedFraction
                     // Interpolate from current alpha to idleAlpha
                     alpha = startAlpha + (idleAlpha - startAlpha) * f
+                    // Interpolate color from accent to light gray
+                    val blendedColor = blendColors(startColor, idleColor, f)
+                    handleDrawable?.setTint(blendedColor)
+                    handlePaint.color = blendedColor
+                    invalidate()
                 }
                 start()
             }

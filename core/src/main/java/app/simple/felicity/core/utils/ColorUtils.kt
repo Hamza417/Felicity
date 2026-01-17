@@ -234,4 +234,21 @@ object ColorUtils {
         }
         colorAnim.start()
     }
+
+    /**
+     * Blend two colors based on a ratio.
+     * @param colorFrom Starting color
+     * @param colorTo Ending color
+     * @param ratio Blend ratio (0 = colorFrom, 1 = colorTo)
+     * @return Blended color
+     */
+    @ColorInt
+    fun blendColors(@ColorInt colorFrom: Int, @ColorInt colorTo: Int, ratio: Float): Int {
+        val inverseRatio = 1f - ratio
+        val a = (Color.alpha(colorFrom) * inverseRatio + Color.alpha(colorTo) * ratio).toInt()
+        val r = (Color.red(colorFrom) * inverseRatio + Color.red(colorTo) * ratio).toInt()
+        val g = (Color.green(colorFrom) * inverseRatio + Color.green(colorTo) * ratio).toInt()
+        val b = (Color.blue(colorFrom) * inverseRatio + Color.blue(colorTo) * ratio).toInt()
+        return Color.argb(a, r, g, b)
+    }
 }
