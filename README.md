@@ -27,6 +27,8 @@ between UI components is incredibly good and smooth.
 I have also tested 192KHz audio and it works by default in supported devices. I noticed it showed
 `ENCODING_PCM_16BIT`, I am not sure why yet.
 
+17 Jan 2026: Felicity's development was halted again due to some issues and a pre-alpha is scheduled to be released in the next 4 weeks. I am trying to get on schedule as early as possible.
+
 ## Screenshots
 
 Last Updated: 20 Aug 2025
