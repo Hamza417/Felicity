@@ -30,7 +30,7 @@ class ArtFlow : MediaFragment() {
     private lateinit var binding: FragmentCoverflowBinding
     private val songsViewModel: SongsViewModel by viewModels({ requireActivity() })
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentCoverflowBinding.inflate(inflater, container, false)
         return binding.root
     }

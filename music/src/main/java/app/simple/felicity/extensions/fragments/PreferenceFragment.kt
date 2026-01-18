@@ -7,6 +7,7 @@ import android.widget.TextView
 import app.simple.felicity.R
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.toggles.FelicitySwitch
+import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.models.Preference
 import app.simple.felicity.models.SeekbarState
@@ -213,7 +214,7 @@ open class PreferenceFragment : MediaFragment() {
         val songInterface = Preference(
                 title = R.string.change_songs_interface,
                 summary = R.string.change_songs_interface_summary,
-                icon = app.simple.felicity.decoration.R.drawable.ic_song,
+                icon = R.drawable.ic_song,
                 type = PreferenceType.POPUP,
                 valueProvider = {
                     when (SongsPreferences.getSongsInterface()) {
@@ -257,7 +258,7 @@ open class PreferenceFragment : MediaFragment() {
         val homeInterface = Preference(
                 title = R.string.change_home_interface,
                 summary = R.string.change_home_interface_summary,
-                icon = app.simple.felicity.decoration.R.drawable.ic_felicity_full,
+                icon = R.drawable.ic_felicity_full,
                 type = PreferenceType.POPUP,
                 valueProvider = {
                     when (HomePreferences.getHomeInterface()) {
@@ -314,6 +315,46 @@ open class PreferenceFragment : MediaFragment() {
     protected fun createBehaviorPanel(): List<Preference> {
         val preferences = mutableListOf<Preference>()
 
+        // List Preference
+        val listHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.list)
+
+        val fastScrollBehavior = Preference(
+                title = R.string.fast_scroll_behavior,
+                summary = R.string.fast_scroll_behavior_summary,
+                icon = R.drawable.ic_swipe_vertical,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (BehaviourPreferences.getFastScrollBehavior()) {
+                        BehaviourPreferences.HIDE_FAST_SCROLLBAR -> getString(R.string.hide)
+                        BehaviourPreferences.FADE_FAST_SCROLLBAR -> getString(R.string.fade)
+                        else -> getString(R.string.app_name)
+                    }
+                },
+                onPreferenceAction = { view, callback ->
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(R.string.hide, R.string.fade),
+                            menuIcons = listOf(R.drawable.ic_hide_16dp, R.drawable.ic_opacity_16dp),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.hide -> {
+                                        BehaviourPreferences.setFastScrollBehavior(BehaviourPreferences.HIDE_FAST_SCROLLBAR)
+                                        (view as TextView).text = getString(R.string.hide)
+                                    }
+                                    R.string.fade -> {
+                                        BehaviourPreferences.setFastScrollBehavior(BehaviourPreferences.FADE_FAST_SCROLLBAR)
+                                        (view as TextView).text = getString(R.string.fade)
+                                    }
+                                }
+                            },
+                            onDismiss = {
+
+                            }
+                    ).show()
+                }
+        )
+
         val predictiveBackToggle = Preference(
                 title = R.string.predictive_back,
                 summary = R.string.predictive_back_summary,
@@ -329,6 +370,8 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        preferences.add(listHeader)
+        preferences.add(fastScrollBehavior)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             preferences.add(predictiveBackToggle)
         }

@@ -16,7 +16,7 @@ class Appearance : PreferenceFragment() {
     private lateinit var binding: FragmentPreferenceAppearanceBinding
     private lateinit var headerBinding: HeaderPreferencesGenericBinding
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentPreferenceAppearanceBinding.inflate(inflater, container, false)
         headerBinding = HeaderPreferencesGenericBinding.inflate(inflater, container, false)
 

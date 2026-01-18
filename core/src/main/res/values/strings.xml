@@ -132,4 +132,8 @@
     <string name="album_art_crop_summary">Crop album art into square dimensions or show original image with intrinsic aspect ratio.</string>
     <string name="greyscale">Greyscale</string>
     <string name="album_art_greyscale_summary">Make album arts greyscale.</string>
+    <string name="fast_scroll_behavior">Fast Scroller Behavior</string>
+    <string name="fast_scroll_behavior_summary">Hide or fade fast scroller.</string>
+    <string name="hide">Hide</string>
+    <string name="fade">Fade</string>
 </resources>

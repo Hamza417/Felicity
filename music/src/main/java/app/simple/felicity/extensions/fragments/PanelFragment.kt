@@ -16,6 +16,7 @@ import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.SpacingRecyclerView
+import app.simple.felicity.preferences.BehaviourPreferences
 
 open class PanelFragment : MediaFragment() {
 
@@ -176,9 +177,9 @@ open class PanelFragment : MediaFragment() {
      */
     protected fun RecyclerView.attachSlideFastScroller() {
         SlideFastScroller.attach(this).apply {
-            setFadeToIdleMode(enabled = true)
+            setFadeToIdleMode(enabled = BehaviourPreferences.getFastScrollBehavior() == BehaviourPreferences.FADE_FAST_SCROLLBAR)
             setEnabledWhileEmpty(enable = false)
-            setIdleAlpha(0.25F)
+            setIdleAlpha(0.4F)
         }
     }
 }

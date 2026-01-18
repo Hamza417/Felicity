@@ -10,6 +10,10 @@ object BehaviourPreferences {
     const val STIFFNESS = "scrolling_stiffness"
     const val DAMPING_RATIO = "scrolling_damping_ratio"
     private const val MARQUEE = "is_marquee_on"
+    private const val FAST_SCROLL_BEHAVIOR = "fast_scroll_behavior"
+
+    const val HIDE_FAST_SCROLLBAR = 0
+    const val FADE_FAST_SCROLLBAR = 1
 
     // ---------------------------------------------------------------------------------------------------------- //
 
@@ -46,10 +50,25 @@ object BehaviourPreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setMarquee(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(MARQUEE, boolean).apply()
+        SharedPreferences.getSharedPreferences().edit {
+            putBoolean(MARQUEE, boolean)
+        }
     }
 
     fun isMarqueeOn(): Boolean {
         return SharedPreferences.getSharedPreferences().getBoolean(MARQUEE, true)
+    }
+
+    // ---------------------------------------------------------------------------------------------------------- //
+
+    fun setFastScrollBehavior(behavior: Int) {
+        SharedPreferences.getSharedPreferences().edit {
+            putInt(FAST_SCROLL_BEHAVIOR, behavior)
+        }
+    }
+
+    fun getFastScrollBehavior(): Int {
+        return SharedPreferences.getSharedPreferences()
+            .getInt(FAST_SCROLL_BEHAVIOR, FADE_FAST_SCROLLBAR)
     }
 }
