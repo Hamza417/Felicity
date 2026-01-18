@@ -7,7 +7,6 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
-import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
 import app.simple.felicity.databinding.AdapterHeaderGenrePageBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
@@ -18,6 +17,7 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.CollectionPageData
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.theme.managers.ThemeManager
 import com.bumptech.glide.Glide
 

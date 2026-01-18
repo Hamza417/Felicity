@@ -1,4 +1,4 @@
-package app.simple.felicity.core.utils
+package app.simple.felicity.shared.utils
 
 import android.animation.ValueAnimator
 import android.content.Context
@@ -14,6 +14,7 @@ import androidx.annotation.ColorInt
 import androidx.annotation.Size
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatTextView
+import androidx.core.graphics.ColorUtils
 import androidx.core.math.MathUtils
 import androidx.core.widget.TextViewCompat
 import com.google.android.material.animation.ArgbEvaluatorCompat
@@ -145,9 +146,9 @@ object ColorUtils {
             return color
         }
         val colorWithFullAlpha: Int =
-            androidx.core.graphics.ColorUtils.setAlphaComponent(color, 255)
+            ColorUtils.setAlphaComponent(color, 255)
         val hsl = FloatArray(3)
-        androidx.core.graphics.ColorUtils.colorToHSL(colorWithFullAlpha, hsl)
+        ColorUtils.colorToHSL(colorWithFullAlpha, hsl)
         if (hsl[1] > minDesaturation) {
             hsl[1] = MathUtils.clamp(
                     hsl[1] - amount,
@@ -155,8 +156,8 @@ object ColorUtils {
                     1f
             )
         }
-        val desaturatedColorWithFullAlpha: Int = androidx.core.graphics.ColorUtils.HSLToColor(hsl)
-        return androidx.core.graphics.ColorUtils.setAlphaComponent(
+        val desaturatedColorWithFullAlpha: Int = ColorUtils.HSLToColor(hsl)
+        return ColorUtils.setAlphaComponent(
                 desaturatedColorWithFullAlpha,
                 originalAlpha
         )

@@ -3,9 +3,9 @@ package app.simple.felicity.extensions.livedata
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.MutableLiveData
-import app.simple.felicity.core.utils.StackTraceUtils
 import app.simple.felicity.repository.database.instances.StackTraceDatabase
 import app.simple.felicity.repository.models.normal.StackTrace
+import app.simple.felicity.shared.utils.StackTraceUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

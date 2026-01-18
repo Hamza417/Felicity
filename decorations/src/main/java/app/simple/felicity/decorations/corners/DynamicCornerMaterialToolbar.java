@@ -7,7 +7,7 @@ import com.google.android.material.appbar.MaterialToolbar;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import app.simple.felicity.core.utils.ViewUtils;
+import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.managers.ThemeManager;
 
 public class DynamicCornerMaterialToolbar extends MaterialToolbar {

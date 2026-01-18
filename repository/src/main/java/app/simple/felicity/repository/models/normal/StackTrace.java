@@ -7,8 +7,7 @@ import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
-
-import app.simple.felicity.core.utils.StackTraceUtils;
+import app.simple.felicity.shared.utils.StackTraceUtils;
 
 @Entity(tableName = "stacktrace")
 public class StackTrace implements Parcelable {

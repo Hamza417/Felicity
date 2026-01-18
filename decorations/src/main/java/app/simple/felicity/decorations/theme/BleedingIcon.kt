@@ -19,10 +19,10 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.withSave
 import androidx.core.graphics.withTranslation
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
-import app.simple.felicity.core.helpers.ImageHelper
 import app.simple.felicity.decoration.R
 import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.shared.helpers.ImageHelper
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent

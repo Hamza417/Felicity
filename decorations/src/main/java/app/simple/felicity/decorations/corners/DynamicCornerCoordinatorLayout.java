@@ -5,10 +5,9 @@ import android.util.AttributeSet;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decorations.theme.ThemeCoordinatorLayout;
+import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.managers.ThemeManager;
-import app.simple.felicity.theme.themes.Theme;
 
 public class DynamicCornerCoordinatorLayout extends ThemeCoordinatorLayout {
     public DynamicCornerCoordinatorLayout(@NonNull Context context, @Nullable AttributeSet attrs) {

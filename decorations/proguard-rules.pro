@@ -20,8 +20,8 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
--dontwarn app.simple.felicity.core.utils.ColorUtils
--dontwarn app.simple.felicity.core.utils.ViewUtils
+-dontwarn app.simple.felicity.shared.utils.ColorUtils
+-dontwarn app.simple.felicity.shared.utils.ViewUtils
 -dontwarn app.simple.felicity.preferences.AccessibilityPreferences
 -dontwarn app.simple.felicity.preferences.AppearancePreferences
 -dontwarn app.simple.felicity.preferences.BehaviourPreferences

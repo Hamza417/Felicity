@@ -10,8 +10,6 @@ import androidx.dynamicanimation.animation.DynamicAnimation
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
-import app.simple.felicity.core.utils.BarHeight
-import app.simple.felicity.core.utils.WindowUtil
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.itemdecorations.DividerItemDecoration
@@ -20,7 +18,9 @@ import app.simple.felicity.decorations.utils.RecyclerViewUtils.flingTranslationM
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.overScrollTranslationMagnitude
 import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.shared.utils.ConditionUtils.invert
+import app.simple.felicity.shared.utils.WindowUtil
 import app.simple.felicity.theme.managers.ThemeManager
 
 /**

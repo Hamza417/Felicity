@@ -6,7 +6,6 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.core.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.databinding.AdapterStyleGridBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.databinding.AdapterStylePeristyleBinding
@@ -18,6 +17,7 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.glide.util.AudioCoverUtils.loadPeristyleArtCover
 import app.simple.felicity.preferences.ArtistPreferences
 import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.shared.utils.TextViewUtils.setTextOrUnknown
 
 class AdapterArtists(private val artists: List<Artist>) :
         RecyclerView.Adapter<VerticalListViewHolder>(), SlideFastScroller.FastScrollBindingController {

@@ -1,4 +1,4 @@
-package app.simple.felicity.core.helpers
+package app.simple.felicity.shared.helpers
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -20,7 +20,7 @@ import android.widget.ImageView
 import androidx.annotation.FloatRange
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
-import app.simple.felicity.core.R
+import app.simple.felicity.shared.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

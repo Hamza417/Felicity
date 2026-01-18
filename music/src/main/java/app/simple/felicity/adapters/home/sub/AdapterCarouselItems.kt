@@ -5,7 +5,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
-import app.simple.felicity.core.utils.ViewUtils.gone
 import app.simple.felicity.databinding.AdapterCarouselBinding
 import app.simple.felicity.decorations.overscroll.HorizontalListViewHolder
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
@@ -14,6 +13,7 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
+import app.simple.felicity.shared.utils.ViewUtils.gone
 
 class AdapterCarouselItems(private val data: ArtFlowData<Any>) : RecyclerView.Adapter<AdapterCarouselItems.Holder>() {
 

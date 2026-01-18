@@ -22,7 +22,6 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import app.simple.felicity.core.constants.ThemeConstants
 import app.simple.felicity.core.singletons.AppOrientation
-import app.simple.felicity.core.utils.BarHeight
 import app.simple.felicity.engine.services.ExoPlayerService
 import app.simple.felicity.glide.songcover.SongCoverUtils.fetchBitmap
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
@@ -32,6 +31,7 @@ import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.database.instances.LastSongDatabase
 import app.simple.felicity.repository.managers.MediaManager
+import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.theme.accents.AlbumArt
 import app.simple.felicity.theme.accents.Felicity
 import app.simple.felicity.theme.data.MaterialYou.presetMaterialYouDynamicColors

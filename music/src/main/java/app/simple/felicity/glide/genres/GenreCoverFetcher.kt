@@ -11,11 +11,11 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
 import androidx.core.net.toUri
 import app.simple.felicity.R
-import app.simple.felicity.core.helpers.ImageHelper.toBitmap
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.maps.GenreMap
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.repositories.GenreRepository
+import app.simple.felicity.shared.helpers.ImageHelper.toBitmap
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.data.DataFetcher

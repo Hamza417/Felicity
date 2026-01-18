@@ -9,7 +9,6 @@ import android.widget.EdgeEffect
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import app.simple.felicity.core.utils.BarHeight
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.padding.Utils
 import app.simple.felicity.decorations.theme.ThemeRecyclerView
@@ -17,6 +16,7 @@ import app.simple.felicity.decorations.utils.RecyclerViewUtils.flingTranslationM
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.overScrollRotationMagnitude
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.overScrollTranslationMagnitude
 import app.simple.felicity.preferences.AccessibilityPreferences
+import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.shared.utils.ConditionUtils.invert
 import kotlin.math.abs
 import kotlin.math.pow

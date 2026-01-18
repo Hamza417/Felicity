@@ -1,4 +1,4 @@
-package app.simple.felicity.core.utils
+package app.simple.felicity.shared.utils
 
 import android.view.View
 import androidx.core.view.ViewCompat

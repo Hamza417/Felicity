@@ -3,9 +3,9 @@ package app.simple.felicity.decorations.corners;
 import android.content.Context;
 import android.util.AttributeSet;
 
-import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decorations.theme.ThemeMaterialCardView;
 import app.simple.felicity.preferences.AppearancePreferences;
+import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.managers.ThemeManager;
 
 public class DynamicCornerMaterialCardView extends ThemeMaterialCardView {

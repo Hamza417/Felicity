@@ -6,8 +6,8 @@ import android.view.Window
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
-import app.simple.felicity.core.utils.CalendarUtils
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.shared.utils.CalendarUtils
 import app.simple.felicity.theme.constants.ThemeConstants
 import app.simple.felicity.theme.themes.dark.AMOLED
 import app.simple.felicity.theme.themes.dark.DarkTheme

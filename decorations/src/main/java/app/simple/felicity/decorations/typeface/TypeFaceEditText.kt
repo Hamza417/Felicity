@@ -11,12 +11,12 @@ import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
 import androidx.annotation.ColorInt
 import androidx.appcompat.widget.AppCompatEditText
-import app.simple.felicity.core.utils.ColorUtils
-import app.simple.felicity.core.utils.ColorUtils.animateColorChange
-import app.simple.felicity.core.utils.TextViewUtils.setDrawableTint
 import app.simple.felicity.decoration.R
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.shared.utils.ColorUtils
+import app.simple.felicity.shared.utils.ColorUtils.animateColorChange
 import app.simple.felicity.shared.utils.ConditionUtils.invert
+import app.simple.felicity.shared.utils.TextViewUtils.setDrawableTint
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 

@@ -16,8 +16,8 @@ import android.widget.ImageView
 import android.widget.RelativeLayout
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
-import app.simple.felicity.core.helpers.ImageHelper.toBitmapDrawable
 import app.simple.felicity.decoration.R
+import app.simple.felicity.shared.helpers.ImageHelper.toBitmapDrawable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

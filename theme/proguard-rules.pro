@@ -19,5 +19,5 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
--dontwarn app.simple.felicity.core.utils.CalendarUtils
+-dontwarn app.simple.felicity.shared.utils.CalendarUtils
 -dontwarn app.simple.felicity.preferences.AppearancePreferences

@@ -8,9 +8,9 @@ import android.util.AttributeSet;
 import com.google.android.material.shape.CornerFamily;
 import com.google.android.material.shape.ShapeAppearanceModel;
 
-import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decorations.typeface.TypeFace;
 import app.simple.felicity.preferences.AppearancePreferences;
+import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.managers.ThemeManager;
 
 public class Chip extends com.google.android.material.chip.Chip {

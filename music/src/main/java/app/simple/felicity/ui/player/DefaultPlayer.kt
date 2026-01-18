@@ -7,7 +7,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import app.simple.felicity.core.utils.NumberUtils
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
@@ -17,6 +16,7 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.repository.utils.SongUtils
+import app.simple.felicity.shared.utils.NumberUtils
 
 class DefaultPlayer : MediaFragment() {
 

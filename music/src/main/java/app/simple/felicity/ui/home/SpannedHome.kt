@@ -8,10 +8,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import androidx.fragment.app.viewModels
+import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterGridHome
 import app.simple.felicity.adapters.home.main.AdapterGridHome.Companion.AdapterSpannedHomeCallbacks
 import app.simple.felicity.adapters.home.sub.AdapterGridArt
-import app.simple.felicity.core.R
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.randomViewHolder
 import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu

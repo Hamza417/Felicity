@@ -8,8 +8,7 @@ import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
-import app.simple.felicity.core.utils.ColorUtils;
+import app.simple.felicity.shared.utils.ColorUtils;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.themes.Theme;

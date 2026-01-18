@@ -8,7 +8,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
-import app.simple.felicity.core.utils.WindowUtil
 import app.simple.felicity.databinding.FragmentCoverflowBinding
 import app.simple.felicity.decorations.artflow.ArtFlowRenderer
 import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselMenu
@@ -22,6 +21,7 @@ import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.repository.sort.SongSort.sorted
 import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
+import app.simple.felicity.shared.utils.WindowUtil
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 

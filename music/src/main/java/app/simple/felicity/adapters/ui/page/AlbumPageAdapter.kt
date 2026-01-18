@@ -8,8 +8,6 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
 import app.simple.felicity.adapters.home.sub.ArtistArtFlowAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
-import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
-import app.simple.felicity.core.utils.ViewUtils.visible
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
 import app.simple.felicity.databinding.AdapterHeaderArtistPageBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
@@ -19,6 +17,8 @@ import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.CollectionPageData
 import app.simple.felicity.repository.models.Album
+import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
+import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.theme.managers.ThemeManager
 import com.bumptech.glide.Glide
 

@@ -1,4 +1,4 @@
-package app.simple.felicity.core.utils
+package app.simple.felicity.shared.utils
 
 import android.content.Context
 import android.graphics.Bitmap

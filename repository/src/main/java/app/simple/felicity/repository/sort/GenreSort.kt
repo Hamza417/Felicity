@@ -2,9 +2,9 @@ package app.simple.felicity.repository.sort
 
 import android.widget.TextView
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.core.R
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.shared.R
 
 object GenreSort {
     fun List<Genre>.sorted(): List<Genre> {

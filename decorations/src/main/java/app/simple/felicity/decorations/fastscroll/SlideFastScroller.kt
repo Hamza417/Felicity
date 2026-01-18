@@ -25,8 +25,8 @@ import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SnapHelper
-import app.simple.felicity.core.utils.ColorUtils.blendColors
 import app.simple.felicity.decoration.R
+import app.simple.felicity.shared.utils.ColorUtils.blendColors
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent

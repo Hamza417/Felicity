@@ -5,8 +5,8 @@ import android.net.Uri
 import android.provider.MediaStore
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.net.toUri
-import app.simple.felicity.core.R
 import app.simple.felicity.repository.models.Album
+import app.simple.felicity.shared.R
 import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 
 object AlbumUtils {

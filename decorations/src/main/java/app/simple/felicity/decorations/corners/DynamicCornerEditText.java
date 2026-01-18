@@ -6,8 +6,8 @@ import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decorations.typeface.TypeFaceEditText;
+import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.themes.Theme;
 

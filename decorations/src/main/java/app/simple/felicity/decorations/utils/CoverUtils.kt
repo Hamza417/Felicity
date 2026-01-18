@@ -8,8 +8,8 @@ import android.os.Build
 import android.util.Log
 import android.util.Size
 import androidx.annotation.DrawableRes
-import app.simple.felicity.core.helpers.ImageHelper.toBitmap
 import app.simple.felicity.decoration.R
+import app.simple.felicity.shared.helpers.ImageHelper.toBitmap
 
 object CoverUtils {
     fun getAlbumArtBitmap(context: Context, uri: Uri, dimension: Int, @DrawableRes defaultArt: Int = R.drawable.ic_felicity_full_art): Bitmap {

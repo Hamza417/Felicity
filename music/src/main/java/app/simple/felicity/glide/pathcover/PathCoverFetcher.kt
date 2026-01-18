@@ -2,8 +2,8 @@ package app.simple.felicity.glide.pathcover
 
 import android.graphics.Bitmap
 import app.simple.felicity.R
-import app.simple.felicity.core.utils.BitmapUtils.toBitmap
 import app.simple.felicity.repository.helpers.AlbumArtHelper.getAlbumArt
+import app.simple.felicity.shared.utils.BitmapUtils.toBitmap
 import app.simple.felicity.utils.FileUtils.toFile
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource

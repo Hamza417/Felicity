@@ -11,7 +11,6 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.core.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.databinding.HeaderSongsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
@@ -25,6 +24,7 @@ import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.repository.sort.SongSort.setSongOrder
 import app.simple.felicity.repository.sort.SongSort.setSongSort
+import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 

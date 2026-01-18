@@ -3,8 +3,8 @@ package app.simple.felicity.repository.helpers
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
-import app.simple.felicity.core.utils.BitmapUtils.resizeToMaxSize
 import app.simple.felicity.preferences.ConfigurationPreferences
+import app.simple.felicity.shared.utils.BitmapUtils.resizeToMaxSize
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.images.Artwork
 import java.io.File

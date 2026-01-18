@@ -5,7 +5,7 @@ import androidx.core.graphics.Insets
 import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
-import app.simple.felicity.core.utils.ViewUtils.onDimensions
+import app.simple.felicity.shared.utils.ViewUtils.onDimensions
 import kotlin.math.abs
 
 /**

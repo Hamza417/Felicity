@@ -5,7 +5,6 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.core.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.databinding.AdapterStyleGridBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
@@ -16,6 +15,7 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Song
+import app.simple.felicity.shared.utils.TextViewUtils.setTextOrUnknown
 import com.bumptech.glide.Glide
 
 class SongsAdapter(initial: List<Song>) :

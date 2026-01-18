@@ -4,12 +4,12 @@ import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
-import app.simple.felicity.core.utils.ViewUtils
 import app.simple.felicity.databinding.AdapterAccentColorsBinding
 import app.simple.felicity.databinding.AdapterPreferenceHeaderBinding
 import app.simple.felicity.decorations.overscroll.RecyclerViewUtils
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.shared.utils.ViewUtils
 import app.simple.felicity.theme.managers.ThemeManager
 
 class AdapterAccentColors : RecyclerView.Adapter<VerticalListViewHolder>() {

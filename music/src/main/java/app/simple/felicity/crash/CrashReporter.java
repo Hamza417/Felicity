@@ -12,10 +12,10 @@ import java.util.Objects;
 
 import androidx.annotation.NonNull;
 import app.simple.felicity.activities.CrashReporterActivity;
-import app.simple.felicity.core.utils.StackTraceUtils;
 import app.simple.felicity.preferences.CrashPreferences;
 import app.simple.felicity.repository.database.instances.StackTraceDatabase;
 import app.simple.felicity.repository.models.normal.StackTrace;
+import app.simple.felicity.shared.utils.StackTraceUtils;
 
 /*
  * Ref: https://stackoverflow.com/questions/601503/how-do-i-obtain-crash-data-from-my-android-application

@@ -16,9 +16,9 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
-import app.simple.felicity.core.utils.WindowUtil
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.theme.ThemeFrameLayout
+import app.simple.felicity.shared.utils.WindowUtil
 import kotlin.math.max
 import kotlin.math.min
 

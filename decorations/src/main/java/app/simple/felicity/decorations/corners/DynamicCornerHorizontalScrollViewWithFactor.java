@@ -4,8 +4,8 @@ import android.content.Context;
 import android.util.AttributeSet;
 
 import androidx.annotation.Nullable;
-import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decorations.theme.ThemeHorizontalScrollView;
+import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.managers.ThemeManager;
 
 public class DynamicCornerHorizontalScrollViewWithFactor extends ThemeHorizontalScrollView {

@@ -12,10 +12,10 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import app.simple.felicity.R
 import app.simple.felicity.activities.MainActivity
-import app.simple.felicity.core.utils.ViewUtils
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.shared.utils.ViewUtils
 import com.google.android.material.R.id.design_bottom_sheet
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog

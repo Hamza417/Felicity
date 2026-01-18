@@ -2,9 +2,9 @@ package app.simple.felicity.repository.sort
 
 import android.widget.TextView
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.core.R
 import app.simple.felicity.preferences.AlbumPreferences
 import app.simple.felicity.repository.models.Album
+import app.simple.felicity.shared.R
 
 object AlbumSort {
 

@@ -6,7 +6,6 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.core.utils.ViewUtils.gone
 import app.simple.felicity.databinding.AdapterGenresListBinding
 import app.simple.felicity.databinding.AdapterStyleGridBinding
 import app.simple.felicity.databinding.AdapterStylePeristyleBinding
@@ -17,6 +16,7 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.glide.util.AudioCoverUtils.loadPeristyleArtCover
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.shared.utils.ViewUtils.gone
 
 class AdapterGenres(private val list: List<Genre>) :
         RecyclerView.Adapter<VerticalListViewHolder>(), SlideFastScroller.FastScrollBindingController {

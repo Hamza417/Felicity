@@ -14,11 +14,11 @@ import android.widget.FrameLayout
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import app.simple.felicity.R
-import app.simple.felicity.core.utils.BarHeight
-import app.simple.felicity.core.utils.ViewUtils
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.shared.utils.BarHeight
+import app.simple.felicity.shared.utils.ViewUtils
 
 open class ScopedDialogFragment : DialogFragment(), SharedPreferences.OnSharedPreferenceChangeListener {
 

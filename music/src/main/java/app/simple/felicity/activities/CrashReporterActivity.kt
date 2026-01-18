@@ -6,7 +6,6 @@ import android.os.Bundle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
-import app.simple.felicity.core.utils.ProcessUtils
 import app.simple.felicity.decorations.ripple.DynamicRippleTextView
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.extensions.activities.BaseActivity
@@ -15,6 +14,7 @@ import app.simple.felicity.preferences.CrashPreferences
 import app.simple.felicity.repository.database.instances.StackTraceDatabase
 import app.simple.felicity.repository.models.normal.StackTrace
 import app.simple.felicity.shared.utils.ConditionUtils.invert
+import app.simple.felicity.shared.utils.ProcessUtils
 import app.simple.felicity.utils.DateUtils.toDate
 import app.simple.felicity.viewmodels.misc.ErrorViewModel
 import kotlinx.coroutines.Dispatchers
@@ -121,7 +121,7 @@ class CrashReporterActivity : BaseActivity() {
     private fun saveTraceToDataBase(trace: String?) {
         lifecycleScope.launch(Dispatchers.IO) {
             ProcessUtils.ensureNotOnMainThread {
-                kotlin.runCatching {
+                runCatching {
                     val stackTrace =
                         StackTrace(
                             trace,

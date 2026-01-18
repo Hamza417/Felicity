@@ -5,8 +5,8 @@ import android.util.AttributeSet;
 import android.widget.LinearLayout;
 
 import androidx.annotation.Nullable;
-import app.simple.felicity.core.utils.ViewUtils;
 import app.simple.felicity.decorations.theme.ThemeLinearLayout;
+import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.managers.ThemeManager;
 
 public class DynamicCornerLinearLayoutWithFactor extends ThemeLinearLayout {

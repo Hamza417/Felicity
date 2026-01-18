@@ -1,6 +1,5 @@
-package app.simple.felicity.core.utils
+package app.simple.felicity.shared.utils
 
-import android.graphics.Color
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import android.text.Html
@@ -16,8 +15,9 @@ import android.view.View
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatEditText
 import androidx.appcompat.widget.AppCompatTextView
+import androidx.core.graphics.toColorInt
 import androidx.core.widget.addTextChangedListener
-import app.simple.felicity.core.R
+import app.simple.felicity.shared.R
 
 object TextViewUtils {
 
@@ -36,7 +36,7 @@ object TextViewUtils {
                     /**
                      * use this to change the link color
                      */
-                    textPaint.color = Color.parseColor("#2e86c1")
+                    textPaint.color = "#2e86c1".toColorInt()
 
                     /**
                      * Toggle below value to enable/disable

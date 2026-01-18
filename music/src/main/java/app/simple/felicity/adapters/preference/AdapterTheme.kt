@@ -6,8 +6,6 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
-import app.simple.felicity.core.utils.ViewUtils.invisible
-import app.simple.felicity.core.utils.ViewUtils.visible
 import app.simple.felicity.databinding.AdapterDividerBinding
 import app.simple.felicity.databinding.AdapterPreferenceHeaderBinding
 import app.simple.felicity.databinding.AdapterThemeBinding
@@ -15,6 +13,8 @@ import app.simple.felicity.decorations.overscroll.RecyclerViewUtils
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.shared.utils.ConditionUtils.isZero
+import app.simple.felicity.shared.utils.ViewUtils.invisible
+import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.theme.constants.ThemeConstants
 
 class AdapterTheme : RecyclerView.Adapter<VerticalListViewHolder>() {

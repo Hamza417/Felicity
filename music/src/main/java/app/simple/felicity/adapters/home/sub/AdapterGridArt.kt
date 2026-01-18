@@ -4,7 +4,7 @@ import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import app.simple.felicity.core.R
+import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterGridImageBinding
 import app.simple.felicity.databinding.AdapterGridPanelButtonBinding
 import app.simple.felicity.decorations.ripple.RippleUtils
