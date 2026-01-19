@@ -19,16 +19,12 @@ import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.interfaces.MiniPlayerPolicy
-import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
-import app.simple.felicity.ui.home.ArtFlowHome
-import app.simple.felicity.ui.home.CarouselHome
-import app.simple.felicity.ui.home.SimpleHome
-import app.simple.felicity.ui.home.SpannedHome
+import app.simple.felicity.ui.launcher.Setup
 import app.simple.felicity.ui.player.DefaultPlayer
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -136,29 +132,33 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     }
 
     private fun setHomePanel() {
-        when (HomePreferences.getHomeInterface()) {
-            HomePreferences.HOME_INTERFACE_CAROUSEL -> {
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, CarouselHome.newInstance(), CarouselHome.TAG)
-                    .commit()
-            }
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragment_container, Setup.newInstance(), Setup.TAG)
+            .commit()
 
-            HomePreferences.HOME_INTERFACE_SPANNED -> {
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, SpannedHome.newInstance(), SpannedHome.TAG)
-                    .commit()
-            }
-            HomePreferences.HOME_INTERFACE_ARTFLOW -> {
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, ArtFlowHome.newInstance(), ArtFlowHome.TAG)
-                    .commit()
-            }
-            HomePreferences.HOME_INTERFACE_SIMPLE -> {
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, SimpleHome.newInstance(), SimpleHome.TAG)
-                    .commit()
-            }
-        }
+        //        when (HomePreferences.getHomeInterface()) {
+        //            HomePreferences.HOME_INTERFACE_CAROUSEL -> {
+        //                supportFragmentManager.beginTransaction()
+        //                    .replace(R.id.fragment_container, CarouselHome.newInstance(), CarouselHome.TAG)
+        //                    .commit()
+        //            }
+        //
+        //            HomePreferences.HOME_INTERFACE_SPANNED -> {
+        //                supportFragmentManager.beginTransaction()
+        //                    .replace(R.id.fragment_container, SpannedHome.newInstance(), SpannedHome.TAG)
+        //                    .commit()
+        //            }
+        //            HomePreferences.HOME_INTERFACE_ARTFLOW -> {
+        //                supportFragmentManager.beginTransaction()
+        //                    .replace(R.id.fragment_container, ArtFlowHome.newInstance(), ArtFlowHome.TAG)
+        //                    .commit()
+        //            }
+        //            HomePreferences.HOME_INTERFACE_SIMPLE -> {
+        //                supportFragmentManager.beginTransaction()
+        //                    .replace(R.id.fragment_container, SimpleHome.newInstance(), SimpleHome.TAG)
+        //                    .commit()
+        //            }
+        //        }
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
