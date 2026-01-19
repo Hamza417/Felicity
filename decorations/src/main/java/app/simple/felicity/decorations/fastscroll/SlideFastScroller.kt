@@ -351,64 +351,79 @@ class SlideFastScroller @JvmOverloads constructor(
         val adapter = rv.adapter ?: return
         val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
 
-        when {
-            adapter is FastScrollBindingController -> {
-                adapter.setLightBindMode(false)
+        // First, notify adapter that light bind mode is off
+        when (adapter) {
+            is FastScrollBindingController -> adapter.setLightBindMode(false)
+            is FastScrollOptimizedAdapter -> adapter.setLightBindMode(false)
+        }
 
-                val firstVisible = layoutManager.findFirstVisibleItemPosition()
-                val lastVisible = layoutManager.findLastVisibleItemPosition()
+        // Wait for RecyclerView to settle before rebinding
+        rv.post {
+            // Re-check state in case things changed
+            if (lightBindExitPending) {
+                forceRebindVisibleItems(rv, layoutManager, adapter)
+                lightBindExitPending = false
+            }
+        }
+    }
 
-                if (firstVisible >= 0 && lastVisible >= 0 && firstVisible <= lastVisible) {
-                    if (adapter.shouldHandleCustomBinding()) {
-                        // Use custom binding to restore full content immediately
-                        for (position in firstVisible..lastVisible) {
-                            val view = layoutManager.findViewByPosition(position)
-                            if (view != null) {
-                                val holder = rv.getChildViewHolder(view)
-                                if (holder != null) {
-                                    adapter.onBindViewHolder(holder, position, false)
-                                }
+    /**
+     * Forces rebinding of all visible items after fast scroll ends.
+     * Uses extended range to catch items that may have been missed during fast scroll.
+     */
+    private fun forceRebindVisibleItems(
+            rv: RecyclerView,
+            layoutManager: LinearLayoutManager,
+            adapter: RecyclerView.Adapter<*>
+    ) {
+        val firstVisible = layoutManager.findFirstVisibleItemPosition()
+        val lastVisible = layoutManager.findLastVisibleItemPosition()
+
+        if (firstVisible < 0 || lastVisible < 0 || firstVisible > lastVisible) return
+
+        val itemCount = adapter.itemCount
+
+        // Extend range by a few items on each side to catch edge cases
+        // This helps with items that become visible during the rebind process
+        val extendedFirst = (firstVisible - 2).coerceAtLeast(0)
+        val extendedLast = (lastVisible + 2).coerceAtMost(itemCount - 1)
+
+        when (adapter) {
+            is FastScrollBindingController -> {
+                if (adapter.shouldHandleCustomBinding()) {
+                    // Use custom binding to restore full content immediately
+                    for (position in firstVisible..lastVisible) {
+                        val view = layoutManager.findViewByPosition(position)
+                        if (view != null) {
+                            val holder = rv.getChildViewHolder(view)
+                            if (holder != null) {
+                                adapter.onBindViewHolder(holder, position, false)
                             }
                         }
-                    } else {
-                        // Force immediate rebinding of all visible items
-                        val itemCount = lastVisible - firstVisible + 1
-                        if (itemCount > 0) {
-                            adapter.notifyItemRangeChanged(firstVisible, itemCount)
-                        }
                     }
-                }
-            }
-            adapter is FastScrollOptimizedAdapter -> {
-                adapter.setLightBindMode(false)
-
-                val firstVisible = layoutManager.findFirstVisibleItemPosition()
-                val lastVisible = layoutManager.findLastVisibleItemPosition()
-
-                if (firstVisible >= 0 && lastVisible >= 0 && firstVisible <= lastVisible) {
-                    // Force immediate rebinding of all visible items
-                    val itemCount = lastVisible - firstVisible + 1
-                    if (itemCount > 0) {
-                        adapter.notifyItemRangeChanged(firstVisible, itemCount)
+                    // For extended range items not currently visible, use notifyItemRangeChanged
+                    if (extendedFirst < firstVisible) {
+                        adapter.notifyItemRangeChanged(extendedFirst, firstVisible - extendedFirst)
+                    }
+                    if (extendedLast > lastVisible) {
+                        adapter.notifyItemRangeChanged(lastVisible + 1, extendedLast - lastVisible)
+                    }
+                } else {
+                    // Use notifyItemRangeChanged for the extended range
+                    val count = extendedLast - extendedFirst + 1
+                    if (count > 0) {
+                        adapter.notifyItemRangeChanged(extendedFirst, count)
                     }
                 }
             }
             else -> {
-                // For non-optimized adapters, force immediate standard rebinding
-                val firstVisible = layoutManager.findFirstVisibleItemPosition()
-                val lastVisible = layoutManager.findLastVisibleItemPosition()
-
-                if (firstVisible >= 0 && lastVisible >= 0 && firstVisible <= lastVisible) {
-                    val itemCount = lastVisible - firstVisible + 1
-                    if (itemCount > 0) {
-                        adapter.notifyItemRangeChanged(firstVisible, itemCount)
-                    }
+                // For non-optimized adapters, force rebinding of extended range
+                val count = extendedLast - extendedFirst + 1
+                if (count > 0) {
+                    adapter.notifyItemRangeChanged(extendedFirst, count)
                 }
             }
         }
-
-        // Reset the flag immediately since we're doing synchronous binding
-        lightBindExitPending = false
     }
 
     /** Allow enabling drag even if adapter empty (mostly for testing). */
