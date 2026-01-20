@@ -121,7 +121,6 @@
                 android:id="@+id/grant_post_notifications"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/padding_15"
                 android:orientation="vertical"
                 android:padding="@dimen/panel_item_padding">
 
@@ -157,6 +156,54 @@
 
             </app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>
 
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/padding_15"
+                android:paddingHorizontal="@dimen/panel_item_padding"
+                android:text="@string/optional"
+                app:appFontStyle="medium"
+                app:textColorStyle="accent" />
+
+            <app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout
+                android:id="@+id/grant_manage_all_files"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/panel_item_padding">
+
+                <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:drawablePadding="5dp"
+                    android:gravity="center_vertical"
+                    android:text="@string/manage_all_files"
+                    android:textSize="@dimen/text_size_14"
+                    app:appFontStyle="bold"
+                    app:drawableTintStyle="accent"
+                    app:textColorStyle="primary" />
+
+                <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                    android:id="@+id/status_manage_all_files"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="@string/not_granted"
+                    android:textSize="@dimen/text_size_12"
+                    app:appFontStyle="regular"
+                    app:textColorStyle="accent" />
+
+                <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="@string/desc_manage_all_files"
+                    android:textSize="@dimen/text_size_12"
+                    app:appFontStyle="regular"
+                    app:textColorStyle="tertiary" />
+
+            </app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>
+
         </LinearLayout>
 
     </app.simple.felicity.decorations.padding.PaddingAwareNestedScrollView>
@@ -168,7 +215,7 @@
         android:clipToPadding="false"
         android:elevation="@dimen/app_views_elevation"
         android:orientation="horizontal"
-        android:padding="@dimen/padding_10">
+        android:padding="@dimen/padding_15">
 
         <app.simple.felicity.decorations.toggles.CheckBox
             android:id="@+id/show_again_checkbox"
@@ -195,7 +242,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:clickable="false"
-            android:padding="@dimen/padding_10"
+            android:padding="@dimen/padding_15"
             android:text="@string/start_app_now"
             android:textSize="@dimen/popup_text_size"
             app:appFontStyle="bold"
@@ -207,7 +254,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:clickable="false"
-            android:padding="@dimen/padding_10"
+            android:padding="@dimen/padding_15"
             android:text="@string/skip"
             android:textSize="@dimen/popup_text_size"
             app:appFontStyle="bold"

@@ -12,7 +12,6 @@ import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
-import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
 
@@ -84,7 +83,9 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         check.setStyle(Paint.Style.FILL);
         
         checkedIcon = ContextCompat.getDrawable(getContext(), R.drawable.ic_check);
-        checkedIcon.setTint(Color.WHITE);
+        if (checkedIcon != null) {
+            checkedIcon.setTint(Color.WHITE);
+        }
         
         if (!isInEditMode()) {
             cornerRadius = AppearancePreferences.INSTANCE.getCornerRadius() / 4F;
@@ -92,7 +93,12 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
             cornerRadius = 10;
         }
         
-        backgroundColor = ThemeManager.INSTANCE.getTheme().getSwitchTheme().getSwitchOffColor();
+        if (!isInEditMode()) {
+            backgroundColor = ThemeManager.INSTANCE.getTheme().getSwitchTheme().getSwitchOffColor();
+        } else {
+            backgroundColor = Color.LTGRAY;
+        }
+        
         duration = getResources().getInteger(R.integer.animation_duration);
         
         setLayoutParams(new LayoutParams(
@@ -201,7 +207,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         } else {
             animator = ValueAnimator.ofFloat(1, 0);
             animator.setDuration(duration);
-            animator.setInterpolator(new AccelerateInterpolator());
+            animator.setInterpolator(new DecelerateInterpolator());
             animator.addUpdateListener(animation -> {
                 float value = (float) animation.getAnimatedValue();
                 // checkRect.set(x - (x * value), y - (y * value), x + (x * value), y + (y * value));
@@ -217,7 +223,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
             colorAnimator = ValueAnimator.ofArgb(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(),
                     ThemeManager.INSTANCE.getTheme().getSwitchTheme().getSwitchOffColor());
             colorAnimator.setDuration(duration);
-            colorAnimator.setInterpolator(new AccelerateInterpolator());
+            colorAnimator.setInterpolator(new DecelerateInterpolator());
             colorAnimator.addUpdateListener(animation -> {
                 backgroundColor = (int) animation.getAnimatedValue();
                 invalidate();
@@ -225,7 +231,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
             
             elevationAnimator = ValueAnimator.ofArgb(elevationColor, Color.TRANSPARENT);
             elevationAnimator.setDuration(duration);
-            elevationAnimator.setInterpolator(new AccelerateInterpolator());
+            elevationAnimator.setInterpolator(new DecelerateInterpolator());
             elevationAnimator.addUpdateListener(animation -> {
                 elevationColor = (int) animation.getAnimatedValue();
                 invalidate();
@@ -251,7 +257,9 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
                     (int) (x + (x * checkIconRatio * 1)),
                     (int) (y + (y * checkIconRatio * 1)));
         } else {
-            backgroundColor = ThemeManager.INSTANCE.getTheme().getSwitchTheme().getSwitchOffColor();
+            if (!isInEditMode()) {
+                backgroundColor = ThemeManager.INSTANCE.getTheme().getSwitchTheme().getSwitchOffColor();
+            }
             elevationColor = Color.TRANSPARENT;
             // shadowRadius = 0F;
             checkedIcon.setAlpha(0);
@@ -487,10 +495,12 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
     
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, @Nullable String key) {
-        switch (key) {
-            case AppearancePreferences.ACCENT_COLOR,
-                 AppearancePreferences.THEME -> {
-                animateFinalState();
+        if (key != null) {
+            switch (key) {
+                case AppearancePreferences.ACCENT_COLOR,
+                     AppearancePreferences.THEME -> {
+                    animateFinalState();
+                }
             }
         }
     }

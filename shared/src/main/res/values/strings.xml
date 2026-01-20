@@ -143,10 +143,14 @@
     <string name="desc_setup">Before moving ahead it is recommended to perform the necessary actions to make sure all the features of the app work.</string>
     <string name="required">Required</string>
     <string name="read_external_storage">Read/Write External Storage</string>
+    <string name="granted">Granted</string>
     <string name="not_granted">Not Granted</string>
     <string name="desc_read_external_storage">Required to fetch media information from the device\'s external storage.</string>
     <string name="post_notifications">Post Notifications</string>
     <string name="desc_post_notifications">Required to show media player and other necessary notifications.</string>
+    <string name="optional">Optional</string>
+    <string name="manage_all_files">Manage All Files</string>
+    <string name="desc_manage_all_files">Required to delete, rename, or modify audio files and their metadata. Also needed to access sidecar files like subtitles (.srt), lyrics (.lrc), and cue sheets (.cue). Without this, modification features will be limited.</string>
     <string name="dont_show_again">Don\'t Show Again</string>
     <string name="start_app_now">Start App Now</string>
     <string name="skip">Skip</string>
