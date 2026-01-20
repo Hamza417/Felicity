@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-
-    <string name="shadow_effect_summary">Toggle shadow effects on some icons and album arts throughout the app.</string>
-    <string name="rounded_corners">Rounded Corners</string>
-    <string name="desc_data_collect">Felicity does not collect any data.</string>
-</resources>

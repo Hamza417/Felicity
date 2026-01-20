@@ -7,7 +7,7 @@
     <dimen name="switch_padding">5dp</dimen>
     <dimen name="switch_thumb_dimensions">20dp</dimen>
     <dimen name="button_size">50dp</dimen>
-    <dimen name="checkbox_dimensions">40dp</dimen>
+    <dimen name="checkbox_dimensions">20dp</dimen>
     <dimen name="prominent_threshold">72dp</dimen>
     <dimen name="seekbar_thumb_size">35dp</dimen>
     <dimen name="seekbar_stroke_size">6dp</dimen>
@@ -18,7 +18,6 @@
     <dimen name="app_views_elevation">30dp</dimen>
     <dimen name="panel_item_padding">20dp</dimen>
     <dimen name="header_padding">20dp</dimen>
-    <dimen name="preferences_title_text_size">14sp</dimen>
     <dimen name="dialog_padding">15dp</dimen>
     <dimen name="popup_text_size">16sp</dimen>
     <dimen name="desc_text_size">12sp</dimen>
