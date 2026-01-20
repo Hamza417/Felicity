@@ -103,6 +103,8 @@ class ArtFlow @JvmOverloads constructor(
                 if (tapped != null) {
                     val centered = renderer.centeredIndex()
                     if (tapped == centered) {
+                        // Trigger scale animation on center cover click
+                        queueEvent { renderer.triggerClickScale() }
                         coverClickListener?.onCenteredCoverClick(tapped, renderer.getUriAt(tapped))
                     } else {
                         queueEvent { renderer.scrollToIndex(tapped, smooth = true) }

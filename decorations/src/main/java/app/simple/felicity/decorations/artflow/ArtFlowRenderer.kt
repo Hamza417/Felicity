@@ -146,6 +146,13 @@ class ArtFlowRenderer(
     private val reflectionScale = 0.65f        // relative height of reflection
     private val reflectionStrength = 0.55f     // max brightness/alpha of reflection
 
+    // Click scale animation
+    @Volatile
+    private var clickScaleActive = false
+    private var clickScaleProgress = 0f  // 0 to 1
+    private val clickScaleDuration = 200f // milliseconds
+    private val clickScaleAmount = 0.92f  // scale down to 92% of original size
+
     // Texture management
     private val targetMaxDim = 512 // px max dimension for covers
 
@@ -396,13 +403,38 @@ class ArtFlowRenderer(
         depthParallaxEnabled = enabled
     }
 
+    /**
+     * Triggers a click scale animation on the center cover.
+     * The cover will briefly shrink and then return to normal size.
+     */
+    fun triggerClickScale() {
+        clickScaleProgress = 0f
+        clickScaleActive = true
+        glView.requestRender()
+    }
+
     // Drawing
     private fun drawItem(index: Int, tex: Int, offsetFromCenter: Float) {
         val absOff = abs(offsetFromCenter)
         val rotEase = smoothstep(0f, 0.18f, absOff)
         val depthFactor = if (depthParallaxEnabled) -absOff * zSpread * rotEase else 0f
         val sideFactor = (1f - (1f - sideScale) * min(1f, absOff))
-        val scale = currentBaseScale * sideFactor
+        var scale = currentBaseScale * sideFactor
+
+        // Apply click scale animation to center item
+        if (clickScaleActive && absOff < 0.5f) {
+            // Use a sine curve for smooth press-and-release effect
+            // Progress 0->0.5: scale down, 0.5->1: scale back up
+            val animScale = if (clickScaleProgress < 0.5f) {
+                // First half: scale down
+                1f - (1f - clickScaleAmount) * (clickScaleProgress * 2f)
+            } else {
+                // Second half: scale back up
+                clickScaleAmount + (1f - clickScaleAmount) * ((clickScaleProgress - 0.5f) * 2f)
+            }
+            scale *= animScale
+        }
+
         val brightness = globalAlpha // apply global alpha as brightness multiplier
 
         Matrix.setIdentityM(model, 0)
@@ -789,6 +821,19 @@ class ArtFlowRenderer(
                 isBouncing = false
             } else {
                 // Keep the animation going until we're done
+                glView.requestRender()
+            }
+        }
+
+        // Animate click scale effect
+        if (clickScaleActive) {
+            val dtMs = dt * 1000f
+            clickScaleProgress += dtMs / clickScaleDuration
+            if (clickScaleProgress >= 1f) {
+                clickScaleProgress = 1f
+                clickScaleActive = false
+            } else {
+                // Keep animating
                 glView.requestRender()
             }
         }
