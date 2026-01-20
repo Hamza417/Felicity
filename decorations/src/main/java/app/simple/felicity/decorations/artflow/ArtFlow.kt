@@ -15,6 +15,7 @@ import app.simple.felicity.decorations.artflow.ArtFlowRenderer.ScrollListener
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.CarouselPreferences
+import app.simple.felicity.shared.utils.ConditionUtils.invert
 
 class ArtFlow @JvmOverloads constructor(
         context: Context,
@@ -49,15 +50,26 @@ class ArtFlow @JvmOverloads constructor(
         //        holder.setFormat(android.graphics.PixelFormat.TRANSLUCENT)
         //        setZOrderOnTop(true)
         renderer = ArtFlowRenderer(this, context.applicationContext)
-        renderer.setZSpread(CarouselPreferences.getZSpread())
+        if (isInEditMode.invert()) {
+            renderer.setZSpread(CarouselPreferences.getZSpread())
+        } else {
+            renderer.setZSpread(0f)
+        }
         setRenderer(renderer)
         renderMode = RENDERMODE_CONTINUOUSLY
-        renderer.setReflectionGap(CarouselPreferences.getReflectionGap())
-        renderer.setSideScale(CarouselPreferences.getScale())
+        if (isInEditMode.invert()) {
+            renderer.setReflectionGap(CarouselPreferences.getReflectionGap())
+            renderer.setSideScale(CarouselPreferences.getScale())
+        } else {
+            renderer.setReflectionGap(0f)
+            renderer.setSideScale(1f)
+        }
 
         scroller = OverScroller(context)
 
-        registerSharedPreferenceChangeListener()
+        if (isInEditMode.invert()) {
+            registerSharedPreferenceChangeListener()
+        }
 
         gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
             override fun onDown(e: MotionEvent): Boolean {
