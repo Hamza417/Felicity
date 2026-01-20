@@ -8,7 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
-import app.simple.felicity.databinding.FragmentCoverflowBinding
+import app.simple.felicity.databinding.FragmentArtflowBinding
 import app.simple.felicity.decorations.artflow.ArtFlowRenderer
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselMenu
@@ -27,11 +27,11 @@ import app.simple.felicity.viewmodels.main.songs.SongsViewModel
 
 class ArtFlow : MediaFragment() {
 
-    private lateinit var binding: FragmentCoverflowBinding
+    private lateinit var binding: FragmentArtflowBinding
     private val songsViewModel: SongsViewModel by viewModels({ requireActivity() })
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        binding = FragmentCoverflowBinding.inflate(inflater, container, false)
+        binding = FragmentArtflowBinding.inflate(inflater, container, false)
         return binding.root
     }
 

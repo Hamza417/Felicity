@@ -34,7 +34,7 @@ class ArtFlowRenderer(
         private val context: Context
 ) : GLSurfaceView.Renderer {
 
-    // ----- Public state -----
+    // Public state
     @Volatile
     var scrollOffset = 0f
         private set
@@ -114,6 +114,24 @@ class ArtFlowRenderer(
     @Volatile
     private var snapTarget: Float? = null
 
+    // Overscroll effect
+    // Gives a satisfying bounce when you scroll past the edges.
+    // When the user drags beyond the first or last item, we let the content
+    // follow their finger but with increasing resistance.
+    // When they let go, it snaps back smoothly to the valid bounds.
+
+    private val maxOverscroll = 1.5f        // how far past the edge you can drag (in items)
+    private val overscrollResistance = 3f   // makes it harder to drag the further you go
+    private val overscrollBounceLambda = 12f // controls how fast it snaps back (higher = snappier)
+
+    @Volatile
+    private var overscrollAmount = 0f       // tracks how far past the edge we are
+    // negative = scrolled before first item
+    // positive = scrolled past last item
+
+    @Volatile
+    private var isBouncing = false          // true when we're animating the snap back
+
     // Layout knobs
     private val spacingLandscape = 1.2f
     private val spacingPortrait = 0.65f // tighter spacing in portrait
@@ -178,7 +196,7 @@ class ArtFlowRenderer(
     private val textures = ConcurrentHashMap<Int, Int>() // index -> GL texId
     private var glGeneration = 0
 
-    // ----- Public API -----
+    // Public API
     fun setUris(list: List<Uri>) {
         uris.clear()
         uris.addAll(list)
@@ -206,12 +224,85 @@ class ArtFlowRenderer(
     fun scrollBy(dxItems: Float) {
         if (uris.isEmpty()) return
         snapTarget = null
-        scrollOffset += dxItems * SCROLL_SENSITIVITY
-        scrollOffset = scrollOffset.coerceIn(0f, (uris.size - 1).toFloat())
+        isBouncing = false  // user is actively dragging, so stop any bounce animation
+
+        val delta = dxItems * SCROLL_SENSITIVITY
+        val minBound = 0f
+        val maxBound = (uris.size - 1).toFloat()
+
+        // If we're already in overscroll territory, handle it specially
+        // This is the key to making the overscroll feel natural
+        if (overscrollAmount != 0f) {
+            val newOverscroll = overscrollAmount + delta
+
+            // Check if user is dragging back toward the valid content
+            val pullingBack = (overscrollAmount < 0f && delta > 0f) || (overscrollAmount > 0f && delta < 0f)
+
+            if (pullingBack) {
+                // User is pulling back toward the content - let them!
+                // Check if they've pulled all the way back into bounds
+                if ((overscrollAmount < 0f && newOverscroll >= 0f) || (overscrollAmount > 0f && newOverscroll <= 0f)) {
+                    // They crossed back into valid territory
+                    overscrollAmount = 0f
+                    val remainingDelta = newOverscroll // leftover movement goes to normal scroll
+                    scrollOffset = (scrollOffset + remainingDelta).coerceIn(minBound, maxBound)
+                } else {
+                    // Still in overscroll, but getting closer to bounds
+                    overscrollAmount = newOverscroll.coerceIn(-maxOverscroll, maxOverscroll)
+                }
+            } else {
+                // User is pushing even further past the edge
+                // Apply resistance - the more they push, the harder it gets
+                val resistance = 1f + abs(overscrollAmount) * overscrollResistance
+                val resistedDelta = delta / resistance
+                overscrollAmount = (overscrollAmount + resistedDelta).coerceIn(-maxOverscroll, maxOverscroll)
+            }
+        } else {
+            // Normal scrolling - no overscroll active
+            val newScrollOffset = scrollOffset + delta
+
+            when {
+                // Trying to scroll before the first item
+                newScrollOffset < minBound -> {
+                    scrollOffset = minBound
+                    // Start the rubber band effect
+                    val overDelta = newScrollOffset - minBound
+                    overscrollAmount = overDelta.coerceIn(-maxOverscroll, 0f)
+                }
+                // Trying to scroll past the last item
+                newScrollOffset > maxBound -> {
+                    scrollOffset = maxBound
+                    // Start the rubber band effect
+                    val overDelta = newScrollOffset - maxBound
+                    overscrollAmount = overDelta.coerceIn(0f, maxOverscroll)
+                }
+                // Normal case - within bounds
+                else -> {
+                    scrollOffset = newScrollOffset
+                }
+            }
+        }
+
         val center = centeredIndex().toFloat()
         requestPrefetch(center)
         queueGL { recycleFarTexturesFloat(scrollOffset) }
     }
+
+    /**
+     * Call this when the user lifts their finger to trigger the snap-back animation.
+     * The overscroll will spring back to the edge smoothly.
+     */
+    fun endScroll() {
+        if (overscrollAmount != 0f) {
+            isBouncing = true
+        }
+    }
+
+    /**
+     * Check if we're currently stretched past the edges.
+     * Used by the view to detect when a fling should stop early.
+     */
+    fun isOverscrolling(): Boolean = overscrollAmount != 0f
 
     private var placeholderTex = 0
 
@@ -220,7 +311,7 @@ class ArtFlowRenderer(
         queueGL { deleteAllTextures() }
     }
 
-    // ----- GLSurfaceView.Renderer -----
+    // GLSurfaceView.Renderer
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0f, 0f, 0f, 0f)
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
@@ -257,7 +348,7 @@ class ArtFlowRenderer(
     private var lastNotifiedCenteredIndex = -1
     private var snappingNotified = false
 
-    // ----- Vertical drag (carousel pitch & offset) -----
+    // Vertical drag (carousel pitch & offset)
     private val maxDragYOffset = 0.35f
     private val maxDragPitchDeg = 10f
 
@@ -305,7 +396,7 @@ class ArtFlowRenderer(
         depthParallaxEnabled = enabled
     }
 
-    // ----- Drawing -----
+    // Drawing
     private fun drawItem(index: Int, tex: Int, offsetFromCenter: Float) {
         val absOff = abs(offsetFromCenter)
         val rotEase = smoothstep(0f, 0.18f, absOff)
@@ -375,6 +466,7 @@ class ArtFlowRenderer(
         GLES20.glDisableVertexAttribArray(aUV)
     }
 
+    @Suppress("SameParameterValue")
     private fun smoothstep(edge0: Float, edge1: Float, x: Float): Float {
         if (edge0 == edge1) return 1f
         val t = ((x - edge0) / (edge1 - edge0)).coerceIn(0f, 1f)
@@ -476,7 +568,7 @@ class ArtFlowRenderer(
         return id
     }
 
-    // ----- Prefetch & Recycling -----
+    // Prefetch & Recycling
     private fun requestPrefetch(centerF: Float) {
         schedulePrefetch(centerF)
     }
@@ -488,6 +580,7 @@ class ArtFlowRenderer(
             decodeExecutor.execute {
                 try {
                     val bmp = decodeScaled(uris[index], targetMaxDim)
+                    @Suppress("SENSELESS_COMPARISON")
                     if (bmp != null) {
                         queueGL {
                             val texId = createTextureFromBitmap(bmp)
@@ -550,13 +643,13 @@ class ArtFlowRenderer(
         }
     }
 
-    // ----- Bitmap decode helpers -----
+    // Bitmap decode helpers
     @Suppress("SameParameterValue")
     private fun decodeScaled(uri: Uri, maxDim: Int): Bitmap {
         return CoverUtils.getAlbumArtBitmap(context, uri, maxDim)
     }
 
-    // ----- GL texture helpers (run on GL thread) -----
+    // GL texture helpers (run on GL thread)
     private fun createTextureFromBitmap(bmp: Bitmap): Int {
         val texIdArr = IntArray(1)
         GLES20.glGenTextures(1, texIdArr, 0)
@@ -626,7 +719,7 @@ class ArtFlowRenderer(
 
     private fun notifyScrollChanged(force: Boolean = false) {
         val off = scrollOffset
-        if (force || off.isNaN().not() && (lastNotifiedOffset.isNaN() || kotlin.math.abs(off - lastNotifiedOffset) > 0.0005f)) {
+        if (force || off.isNaN().not() && (lastNotifiedOffset.isNaN() || abs(off - lastNotifiedOffset) > 0.0005f)) {
             lastNotifiedOffset = off
             mainHandler.post {
                 for (l in scrollListeners) l.onScrollOffsetChanged(off)
@@ -653,7 +746,7 @@ class ArtFlowRenderer(
         }
     }
 
-    // ----- GLSurfaceView.Renderer -----
+    // GLSurfaceView.Renderer
     override fun onDrawFrame(unused: GL10?) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
         if (uris.isEmpty()) return
@@ -683,9 +776,28 @@ class ArtFlowRenderer(
             if (abs(dy) > 0.0001f) currentDragYOffset += dy * (1f - exp(-dragEasingLambda * dt)) else currentDragYOffset = targetDragYOffset
             if (abs(dp) > 0.0001f) currentDragPitch += dp * (1f - exp(-dragEasingLambda * dt)) else currentDragPitch = targetDragPitch
         }
+
+        // Animate the overscroll snap-back
+        // When the user lets go while overscrolled, this smoothly springs back to the edge
+        // Uses exponential decay for that natural, physics-y feel
+        if (isBouncing && overscrollAmount != 0f) {
+            val bounceFactor = 1f - exp(-overscrollBounceLambda * dt)
+            overscrollAmount -= overscrollAmount * bounceFactor
+            if (abs(overscrollAmount) < 0.001f) {
+                // Close enough to zero - snap to exactly zero and stop bouncing
+                overscrollAmount = 0f
+                isBouncing = false
+            } else {
+                // Keep the animation going until we're done
+                glView.requestRender()
+            }
+        }
+
         if (scrollOffset != prevOffset) notifyScrollChanged()
-        val centerF = scrollOffset
-        schedulePrefetch(centerF)
+        // The visual position includes the overscroll offset
+        // This is what makes the content appear to stretch past the edges
+        val centerF = scrollOffset + overscrollAmount
+        schedulePrefetch(scrollOffset) // but prefetch based on actual position, not the visual offset
         val lastIndex = uris.lastIndex
         val visStart = max(0, floor(centerF - visibleRadius).toInt())
         val visEnd = min(lastIndex, ceil(centerF + visibleRadius).toInt())

@@ -179,6 +179,8 @@ class ArtFlow @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val handled = gestureDetector.onTouchEvent(event)
         if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+            // User lifted their finger - if we're overscrolled, let it snap back
+            queueEvent { renderer.endScroll() }
             if (scroller.isFinished) renderer.snapToNearest()
             queueEvent { renderer.endVerticalDrag() }
         }
@@ -208,11 +210,22 @@ class ArtFlow @JvmOverloads constructor(
             lastFlingCoord = curr
             renderer.scrollBy(dx)
             requestRender()
-            choreographer.postFrameCallback(this)
+
+            // If the fling carried us past the edge, stop immediately and bounce back
+            // This prevents the fling from fighting with the overscroll effect
+            if (renderer.isOverscrolling()) {
+                scroller.abortAnimation()
+                queueEvent { renderer.endScroll() }
+                requestRender()
+                stopAnimating()
+            } else {
+                choreographer.postFrameCallback(this)
+            }
         } else {
+            // Fling finished naturally - trigger bounce-back in case we're at the edge
+            queueEvent { renderer.endScroll() }
             renderer.snapToNearest()
             requestRender()
-            // Keep one more frame for settling, then stop
             stopAnimating()
         }
     }
