@@ -66,7 +66,7 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
     companion object {
         private const val DURATION = 400L
         private const val SCRIM_COLOR = "#66000000" // Reduced from 99 to 66 for subtler dim
-        const val DEFAULT_WIDTH_RATIO = 0.90f // 90% of screen width
+        const val DEFAULT_WIDTH_RATIO = 0.80f // 80% of screen width
         private const val CONTENT_SCALE_X_START = 0.9f // Scale in from 90% X (like Inure)
         private const val CONTENT_SCALE_Y_START = 0.8f // Scale in from 80% Y (like Inure)
 

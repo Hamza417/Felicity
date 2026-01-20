@@ -78,10 +78,14 @@ class Songs : PanelFragment() {
                             container = requireContainerView(),
                             sourceImageView = view as ImageView,
                             inflateBinding = DialogSongMenuBinding::inflate,
-                            targetImageViewProvider = { it.albumArt })
-                        .onViewCreated { dialogBinding ->
-                            dialogBinding.albumArt.loadArtCoverWithPayload(songs[position])
-                            dialogBinding.play.setOnClickListener {
+                            targetImageViewProvider = { it.cover })
+                        .onViewCreated { binding ->
+                            binding.cover.loadArtCoverWithPayload(songs[position])
+                            binding.title.text = songs[position].title
+                            binding.secondaryDetail.text = songs[position].artist
+                            binding.tertiaryDetail.text = songs[position].album
+
+                            binding.play.setOnClickListener {
                                 val pos = songs.indexOfFirst { it.id == songs[position].id }.coerceAtLeast(0)
                                 setMediaItems(songs, pos)
                             }
