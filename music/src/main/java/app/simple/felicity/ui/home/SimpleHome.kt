@@ -8,7 +8,7 @@ import androidx.lifecycle.ViewModelProvider
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterSimpleHome
 import app.simple.felicity.databinding.FragmentHomeSimpleBinding
-import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
+import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.ui.panels.Albums
@@ -20,14 +20,12 @@ import app.simple.felicity.viewmodels.main.home.SimpleHomeViewModel.Companion.El
 
 class SimpleHome : MediaFragment() {
 
-    private lateinit var recyclerView: CustomVerticalRecyclerView
+    private lateinit var binding: FragmentHomeSimpleBinding
 
     private var homeViewModel: SimpleHomeViewModel? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        val binding = FragmentHomeSimpleBinding.inflate(inflater, container, false)
-
-        recyclerView = binding.recyclerView
+        binding = FragmentHomeSimpleBinding.inflate(inflater, container, false)
         homeViewModel = ViewModelProvider(requireActivity())[SimpleHomeViewModel::class.java]
 
         return binding.root
@@ -36,12 +34,13 @@ class SimpleHome : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         postponeEnterTransition()
-        recyclerView.requireAttachedMiniPlayer()
+        binding.recyclerView.requireAttachedMiniPlayer()
+        binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
 
         homeViewModel!!.getHomeData().observe(viewLifecycleOwner) { list ->
-            recyclerView.adapter = AdapterSimpleHome(list)
+            binding.recyclerView.adapter = AdapterSimpleHome(list)
 
-            (recyclerView.adapter as AdapterSimpleHome).setAdapterSimpleHomeCallbacks(object : AdapterSimpleHome.Companion.AdapterSimpleHomeCallbacks {
+            (binding.recyclerView.adapter as AdapterSimpleHome).setAdapterSimpleHomeCallbacks(object : AdapterSimpleHome.Companion.AdapterSimpleHomeCallbacks {
                 override fun onItemClicked(element: Element, position: Int, view: View) {
                     when (element.titleResId) {
                         R.string.songs -> {

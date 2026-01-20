@@ -110,7 +110,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                     override fun onOpenPlayer() {
                         // Make top fragment open player
                         // Based on app architecture, there will always be a fragment at the top
-                        // and mini player won't be visible in player panels
+                        // and mini player won't/shouldn't be visible in player panels
                         val topFragment = supportFragmentManager.fragments.lastOrNull() as? ScopedFragment
                         if (topFragment.isNotNull()) {
                             topFragment?.openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
