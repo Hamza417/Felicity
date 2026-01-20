@@ -10,12 +10,12 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentCoverflowBinding
 import app.simple.felicity.decorations.artflow.ArtFlowRenderer
+import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselMenu
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
-import app.simple.felicity.popups.carousel.PopupSongsCarouselMenu
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Song
@@ -101,7 +101,7 @@ class ArtFlow : MediaFragment() {
             }
 
             binding.menu.setOnClickListener {
-                PopupSongsCarouselMenu(
+                SharedScrollViewPopup(
                         container = requireContainerView(),
                         anchorView = it,
                         menuItems = listOf(R.string.carousel_settings, R.string.songs_settings),

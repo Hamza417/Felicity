@@ -15,6 +15,7 @@ import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.setPadding
 import androidx.core.widget.NestedScrollView
 import androidx.dynamicanimation.animation.FloatPropertyCompat
@@ -232,6 +233,13 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
         container.getLocationInWindow(containerLocation)
 
         val marginPx = (MARGIN * container.resources.displayMetrics.density).toInt()
+
+        // Get system bar insets (status bar and navigation bar heights)
+        val windowInsets = ViewCompat.getRootWindowInsets(container)
+        val systemBarsInsets = windowInsets?.getInsets(WindowInsetsCompat.Type.systemBars())
+        val statusBarHeight = systemBarsInsets?.top ?: 0
+        val navigationBarHeight = systemBarsInsets?.bottom ?: 0
+
         val anchorX = anchorLocation[0] - containerLocation[0]
         val anchorY = anchorLocation[1] - containerLocation[1]
         val anchorWidth = anchorView.width
@@ -258,7 +266,11 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
         var topMargin = anchorY + anchorHeight / 2 - min(popupHeight, maxHeight) / 2
 
         leftMargin = max(marginPx, min(leftMargin, container.width - popupWidth - marginPx))
-        topMargin = max(marginPx, min(topMargin, container.height - min(popupHeight, maxHeight) - marginPx))
+
+        // Include status bar height for top margin and navigation bar height for bottom margin
+        val topMarginMin = marginPx + statusBarHeight
+        val bottomMarginMin = marginPx + navigationBarHeight
+        topMargin = max(topMarginMin, min(topMargin, container.height - min(popupHeight, maxHeight) - bottomMarginMin))
 
         val params = CoordinatorLayout.LayoutParams(
                 popupWidth,
