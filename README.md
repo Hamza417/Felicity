@@ -31,7 +31,7 @@ I have also tested 192KHz audio and it works by default in supported devices. I 
 
 ## Screenshots
 
-Last Updated: 20 Aug 2025
+Last Updated: 20 Jan 2026
 
 |                          |                          |                          |
 |--------------------------|--------------------------|--------------------------|
@@ -39,6 +39,7 @@ Last Updated: 20 Aug 2025
 | ![](/screenshots/04.png) | ![](/screenshots/05.png) | ![](/screenshots/06.png) |
 | ![](/screenshots/07.png) | ![](/screenshots/08.png) | ![](/screenshots/11.png) |
 | ![](/screenshots/12.png) | ![](/screenshots/13.png) | ![](/screenshots/14.png) |
+| ![](/screenshots/15.png) |                          |                          |
 
 |                          |
 |--------------------------|
