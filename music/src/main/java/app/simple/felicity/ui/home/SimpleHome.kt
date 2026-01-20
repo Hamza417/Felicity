@@ -9,9 +9,9 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterSimpleHome
 import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.ui.panels.Albums
+import app.simple.felicity.ui.panels.ArtFlow
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.panels.Preferences
@@ -66,8 +66,15 @@ class SimpleHome : MediaFragment() {
                     }
                 }
 
-                override fun onMenuClicked(view: View) {
-                    childFragmentManager.showHomeMenu()
+                override fun onCarouselClicked(element: Element, position: Int, view: View) {
+                    when (element.titleResId) {
+                        R.string.songs -> {
+                            openFragment(ArtFlow.newInstance(), ArtFlow.TAG)
+                        }
+                        else -> {
+                            // Handle other cases or show a message
+                        }
+                    }
                 }
             })
 
