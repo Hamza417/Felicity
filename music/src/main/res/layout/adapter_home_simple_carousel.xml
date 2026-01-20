@@ -28,12 +28,12 @@
 
     <app.simple.felicity.decorations.theme.ThemeDivider
         android:layout_width="1px"
-        android:layout_marginHorizontal="@dimen/padding_10"
+        android:layout_marginHorizontal="@dimen/padding_20"
         android:layout_height="match_parent" />
 
     <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
         android:id="@+id/carousel"
-        android:layout_width="@dimen/icon_size_30"
+        android:layout_width="@dimen/icon_size_40"
         android:layout_height="@dimen/icon_size_30"
         android:src="@drawable/ic_carousel"
         app:buttonTintType="regular" />

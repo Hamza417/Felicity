@@ -112,7 +112,7 @@ class SongsAdapter(initial: List<Song>) : FastScrollAdapter<VerticalListViewHold
             binding.cover.loadArtCoverWithPayload(song)
             bindSelectionState(song)
             binding.container.setOnLongClickListener {
-                generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, it)
+                generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, binding.cover)
                 true
             }
             binding.container.setOnClickListener {

@@ -5,21 +5,24 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
+import app.simple.felicity.databinding.DialogSongMenuBinding
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.databinding.HeaderSongsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
+import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
-import app.simple.felicity.dialogs.songs.SongMenu.Companion.showSongMenu
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.repository.sort.SongSort.setSongOrder
@@ -70,8 +73,27 @@ class Songs : PanelFragment() {
                     setMediaItems(songs, position)
                 }
 
-                override fun onSongLongClicked(songs: List<Song>, position: Int, view: View?) {
-                    childFragmentManager.showSongMenu(songs, songs[position].id)
+                override fun onSongLongClicked(songs: List<Song>, position: Int, view: View) {
+                    val binding = DialogSongMenuBinding.inflate(layoutInflater)
+                    SimpleSharedImageDialog.Builder(
+                            container = requireContainerView(),
+                            sourceImageView = view as ImageView,
+                            inflateBinding = DialogSongMenuBinding::inflate,
+                            targetImageViewProvider = { it.albumArt })
+                        .onViewCreated { dialogBinding ->
+                            dialogBinding.albumArt.loadArtCoverWithPayload(songs[position])
+                            dialogBinding.play.setOnClickListener {
+                                val pos = songs.indexOfFirst { it.id == songs[position].id }.coerceAtLeast(0)
+                                setMediaItems(songs, pos)
+                                it.post { }
+                            }
+                            // Setup other menu options similarly
+                        }
+                        .onDismiss {
+                            // Handle dismiss if needed
+                        }
+                        .build()
+                        .show()
                 }
             })
 
