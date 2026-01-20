@@ -84,7 +84,6 @@ class Songs : PanelFragment() {
                             dialogBinding.play.setOnClickListener {
                                 val pos = songs.indexOfFirst { it.id == songs[position].id }.coerceAtLeast(0)
                                 setMediaItems(songs, pos)
-                                it.post { }
                             }
                         }
                         .build()

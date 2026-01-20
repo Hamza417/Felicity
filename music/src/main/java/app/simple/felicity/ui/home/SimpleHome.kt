@@ -15,6 +15,7 @@ import app.simple.felicity.ui.panels.ArtFlow
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.panels.Preferences
+import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.viewmodels.main.home.SimpleHomeViewModel
 import app.simple.felicity.viewmodels.main.home.SimpleHomeViewModel.Companion.Element
 
@@ -44,7 +45,7 @@ class SimpleHome : MediaFragment() {
                 override fun onItemClicked(element: Element, position: Int, view: View) {
                     when (element.titleResId) {
                         R.string.songs -> {
-                            navigateToSongsFragment()
+                            openFragment(Songs.newInstance(), Songs.TAG)
                         }
 
                         R.string.albums -> {

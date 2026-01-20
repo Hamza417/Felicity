@@ -58,7 +58,6 @@
     <string name="carousel">Carousel</string>
     <string name="simple">Simple</string>
     <string name="recommended">Recommended</string>
-    <string name="change_songs_interface">Change Songs Interface</string>
     <string name="title">Title</string>
     <string name="album">Album</string>
     <string name="artist">Artist</string>
@@ -82,7 +81,6 @@
     <string name="user_interface_desc">Change user interface of the various panels in the app.</string>
     <string name="corner_radius">Corner Radius</string>
     <string name="corner_radius_summary">Change corner radius of the interface components in the app.</string>
-    <string name="change_songs_interface_summary">Change default songs interface to a different one.</string>
     <string name="change_home_interface_summary">Change default home interface to a different one.</string>
     <string name="home">Home</string>
     <string name="reflection_gap">Reflection Gap</string>

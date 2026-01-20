@@ -19,12 +19,9 @@ import app.simple.felicity.decorations.transitions.SeekableSharedAxisZTransition
 import app.simple.felicity.decorations.transitions.SeekableSlideTransition
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
-import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.theme.managers.ThemeUtils
-import app.simple.felicity.ui.panels.ArtFlow
 import app.simple.felicity.ui.panels.Preferences
-import app.simple.felicity.ui.panels.Songs
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -277,17 +274,6 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                 lifecycleOwner = viewLifecycleOwner,
                 window = requireActivity().window,
                 resources = requireContext().resources)
-    }
-
-    protected fun navigateToSongsFragment() {
-        when (SongsPreferences.getSongsInterface()) {
-            SongsPreferences.SONG_INTERFACE_FELICITY -> {
-                openFragment(Songs.newInstance(), Songs.TAG)
-            }
-            SongsPreferences.SONG_INTERFACE_FLOW -> {
-                openFragment(ArtFlow.newInstance(), ArtFlow.TAG)
-            }
-        }
     }
 
     protected open fun getTransitionType(): TransitionType = TransitionType.SHARED_AXIS

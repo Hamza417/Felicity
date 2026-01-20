@@ -7,31 +7,12 @@ import app.simple.felicity.manager.SharedPreferences
 
 object SongsPreferences {
 
-    const val SONGS_INTERFACE = "songs_interface"
     const val SONG_SORT = "song_sort_"
     const val SORTING_STYLE = "song_sorting_style_"
     const val GRID_SIZE_PORTRAIT = "songs_grid_size_portrait"
     const val GRID_SIZE_LANDSCAPE = "songs_grid_size_landscape"
     const val GRID_TYPE_PORTRAIT = "songs_grid_type_portrait"
     const val GRID_TYPE_LANDSCAPE = "songs_grid_type_landscape"
-
-    // ----------------------------------------------------------------------------------------- //
-
-    const val SONG_INTERFACE_FELICITY = "felicity"
-    const val SONG_INTERFACE_FLOW = "flow"
-
-    // ----------------------------------------------------------------------------------------- //
-
-    fun getSongsInterface(): String {
-        return SharedPreferences.getSharedPreferences()
-            .getString(SONGS_INTERFACE, SONG_INTERFACE_FELICITY) ?: SONG_INTERFACE_FELICITY
-    }
-
-    fun setSongsInterface(value: String) {
-        SharedPreferences.getSharedPreferences().edit {
-            putString(SONGS_INTERFACE, value)
-        }
-    }
 
     // ----------------------------------------------------------------------------------------- //
 

@@ -12,12 +12,10 @@ import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.models.Preference
 import app.simple.felicity.models.SeekbarState
 import app.simple.felicity.popups.home.PopupHomeInterfaceMenu
-import app.simple.felicity.popups.songs.PopupSongsInterfaceMenu
 import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.HomePreferences
-import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.ui.preferences.sub.AccentColors
 import app.simple.felicity.ui.preferences.sub.Themes
 import app.simple.felicity.ui.preferences.sub.TypeFaces
@@ -209,50 +207,6 @@ open class PreferenceFragment : MediaFragment() {
     protected fun createUserInterfacePanel(): List<Preference> {
         val preferences = mutableListOf<Preference>()
 
-        val songsHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.songs)
-
-        val songInterface = Preference(
-                title = R.string.change_songs_interface,
-                summary = R.string.change_songs_interface_summary,
-                icon = R.drawable.ic_song,
-                type = PreferenceType.POPUP,
-                valueProvider = {
-                    when (SongsPreferences.getSongsInterface()) {
-                        SongsPreferences.SONG_INTERFACE_FELICITY -> getString(R.string.app_name)
-                        SongsPreferences.SONG_INTERFACE_FLOW -> getString(R.string.artflow)
-                        else -> getString(R.string.app_name)
-                    }
-                },
-                onPreferenceAction = { view, callback ->
-                    PopupSongsInterfaceMenu(
-                            container = requireContainerView(),
-                            anchorView = view,
-                            menuItems = listOf(R.string.app_name,
-                                               R.string.artflow
-                            ),
-                            menuIcons = listOf(
-                                    R.drawable.ic_list_16dp,
-                                    R.drawable.ic_flow_16dp,
-                            ),
-                            onMenuItemClick = {
-                                when (it) {
-                                    R.string.app_name -> {
-                                        SongsPreferences.setSongsInterface(SongsPreferences.SONG_INTERFACE_FELICITY)
-                                        (view as TextView).text = getString(R.string.app_name)
-                                    }
-                                    R.string.artflow -> {
-                                        SongsPreferences.setSongsInterface(SongsPreferences.SONG_INTERFACE_FLOW)
-                                        (view as TextView).text = getString(R.string.artflow)
-                                    }
-                                }
-                            },
-                            onDismiss = {
-
-                            }
-                    ).show()
-                }
-        )
-
         val homeHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.home)
 
         val homeInterface = Preference(
@@ -306,8 +260,6 @@ open class PreferenceFragment : MediaFragment() {
 
         preferences.add(homeHeader)
         preferences.add(homeInterface)
-        preferences.add(songsHeader)
-        preferences.add(songInterface)
 
         return preferences
     }

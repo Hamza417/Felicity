@@ -6,10 +6,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
-import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogSongsMenuBinding
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
-import app.simple.felicity.preferences.SongsPreferences
 
 class SongsMenu : ScopedBottomSheetFragment() {
 
@@ -22,31 +20,12 @@ class SongsMenu : ScopedBottomSheetFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        setSongsInterfaceType()
-
-        binding.changeSongsInterface.setOnClickListener { it ->
-
-        }
-    }
-
-    private fun setSongsInterfaceType() {
-        when (SongsPreferences.getSongsInterface()) {
-            SongsPreferences.SONG_INTERFACE_FELICITY -> {
-                binding.changeSongsInterface.text = getString(R.string.app_name)
-            }
-            SongsPreferences.SONG_INTERFACE_FLOW -> {
-                binding.changeSongsInterface.text = getString(R.string.artflow)
-            }
-        }
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
-            SongsPreferences.SONGS_INTERFACE -> {
-                setSongsInterfaceType()
-            }
+
         }
     }
 
