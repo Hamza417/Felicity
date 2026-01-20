@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.net.toUri
 import app.simple.felicity.R
+import app.simple.felicity.activities.MainActivity
 import app.simple.felicity.databinding.FragmentSetupBinding
 import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
@@ -70,6 +71,14 @@ class Setup : MediaFragment() {
         binding.grantManageAllFiles.setOnClickListener {
             requestManageAllFilesPermission()
         }
+
+        binding.startAppNow.setOnClickListener {
+            if (areRequiredPermissionsGranted()) {
+                proceedToHome()
+            }
+        }
+
+        updateStartButtonState()
     }
 
     override fun onResume() {
@@ -77,6 +86,21 @@ class Setup : MediaFragment() {
         updateStoragePermissionStatus()
         updateNotificationPermissionStatus()
         updateManageAllFilesPermissionStatus()
+        updateStartButtonState()
+    }
+
+    private fun areRequiredPermissionsGranted(): Boolean {
+        return isReadMediaAudioPermissionGranted() && isPostNotificationsPermissionGranted()
+    }
+
+    private fun updateStartButtonState() {
+        val enabled = areRequiredPermissionsGranted()
+        binding.startAppNow.isClickable = enabled
+        binding.startAppNow.alpha = if (enabled) 1.0f else 0.5f
+    }
+
+    private fun proceedToHome() {
+        (requireActivity() as? MainActivity)?.showHome()
     }
 
     private fun requestStoragePermission() {
@@ -109,6 +133,7 @@ class Setup : MediaFragment() {
         } else {
             binding.statusUsageAccess.setText(R.string.not_granted)
         }
+        updateStartButtonState()
     }
 
     private fun updateNotificationPermissionStatus() {
@@ -117,6 +142,7 @@ class Setup : MediaFragment() {
         } else {
             binding.statusPostNotifications.setText(R.string.not_granted)
         }
+        updateStartButtonState()
     }
 
     private fun requestManageAllFilesPermission() {

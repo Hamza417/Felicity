@@ -14,16 +14,23 @@ import app.simple.felicity.adapters.ui.miniplayer.AdapterMiniPlayer.Companion.Mi
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.databinding.ActivityMainBinding
 import app.simple.felicity.databinding.MiniplayerBinding
+import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
+import app.simple.felicity.decorations.utils.PermissionUtils.isReadMediaAudioPermissionGranted
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.interfaces.MiniPlayerPolicy
+import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
+import app.simple.felicity.ui.home.ArtFlowHome
+import app.simple.felicity.ui.home.CarouselHome
+import app.simple.felicity.ui.home.SimpleHome
+import app.simple.felicity.ui.home.SpannedHome
 import app.simple.felicity.ui.launcher.Setup
 import app.simple.felicity.ui.player.DefaultPlayer
 import dagger.hilt.android.AndroidEntryPoint
@@ -132,33 +139,45 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     }
 
     private fun setHomePanel() {
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fragment_container, Setup.newInstance(), Setup.TAG)
-            .commit()
+        // Check if all required permissions are granted
+        val allPermissionsGranted = isReadMediaAudioPermissionGranted() &&
+                isPostNotificationsPermissionGranted()
 
-        //        when (HomePreferences.getHomeInterface()) {
-        //            HomePreferences.HOME_INTERFACE_CAROUSEL -> {
-        //                supportFragmentManager.beginTransaction()
-        //                    .replace(R.id.fragment_container, CarouselHome.newInstance(), CarouselHome.TAG)
-        //                    .commit()
-        //            }
-        //
-        //            HomePreferences.HOME_INTERFACE_SPANNED -> {
-        //                supportFragmentManager.beginTransaction()
-        //                    .replace(R.id.fragment_container, SpannedHome.newInstance(), SpannedHome.TAG)
-        //                    .commit()
-        //            }
-        //            HomePreferences.HOME_INTERFACE_ARTFLOW -> {
-        //                supportFragmentManager.beginTransaction()
-        //                    .replace(R.id.fragment_container, ArtFlowHome.newInstance(), ArtFlowHome.TAG)
-        //                    .commit()
-        //            }
-        //            HomePreferences.HOME_INTERFACE_SIMPLE -> {
-        //                supportFragmentManager.beginTransaction()
-        //                    .replace(R.id.fragment_container, SimpleHome.newInstance(), SimpleHome.TAG)
-        //                    .commit()
-        //            }
-        //        }
+        if (!allPermissionsGranted) {
+            // Show Setup screen first to request permissions
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, Setup.newInstance(), Setup.TAG)
+                .commit()
+        } else {
+            // All permissions granted, go directly to Home
+            showHome()
+        }
+    }
+
+    fun showHome() {
+        when (HomePreferences.getHomeInterface()) {
+            HomePreferences.HOME_INTERFACE_CAROUSEL -> {
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, CarouselHome.newInstance(), CarouselHome.TAG)
+                    .commit()
+            }
+
+            HomePreferences.HOME_INTERFACE_SPANNED -> {
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, SpannedHome.newInstance(), SpannedHome.TAG)
+                    .commit()
+            }
+            HomePreferences.HOME_INTERFACE_ARTFLOW -> {
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, ArtFlowHome.newInstance(), ArtFlowHome.TAG)
+                    .commit()
+            }
+            HomePreferences.HOME_INTERFACE_SIMPLE -> {
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, SimpleHome.newInstance(), SimpleHome.TAG)
+                    .commit()
+            }
+        }
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
