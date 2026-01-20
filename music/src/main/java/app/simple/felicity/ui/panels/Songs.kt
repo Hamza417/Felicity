@@ -74,7 +74,6 @@ class Songs : PanelFragment() {
                 }
 
                 override fun onSongLongClicked(songs: List<Song>, position: Int, view: View) {
-                    val binding = DialogSongMenuBinding.inflate(layoutInflater)
                     SimpleSharedImageDialog.Builder(
                             container = requireContainerView(),
                             sourceImageView = view as ImageView,
@@ -87,10 +86,6 @@ class Songs : PanelFragment() {
                                 setMediaItems(songs, pos)
                                 it.post { }
                             }
-                            // Setup other menu options similarly
-                        }
-                        .onDismiss {
-                            // Handle dismiss if needed
                         }
                         .build()
                         .show()
