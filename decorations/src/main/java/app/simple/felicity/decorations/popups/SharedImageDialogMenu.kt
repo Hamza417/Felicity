@@ -10,6 +10,7 @@ import android.graphics.Outline
 import android.graphics.Rect
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.PathInterpolator
@@ -77,6 +78,9 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
     fun show() {
         if (isShowing) return
         isShowing = true
+
+        // Cancel any ongoing touch events on parent to prevent accidental scrolling
+        cancelParentTouchEvent()
 
         binding = inflateBinding(LayoutInflater.from(container.context), null, false)
         targetImageView = targetImageViewProvider(binding)
@@ -425,6 +429,29 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         onDismiss?.invoke()
         isDismissing = false
         isShowing = false
+    }
+
+    /**
+     * Cancels any ongoing touch events on the parent view hierarchy.
+     * This prevents accidental scrolling when the dialog is launched via long press.
+     */
+    private fun cancelParentTouchEvent() {
+        val cancelEvent = MotionEvent.obtain(
+                System.currentTimeMillis(),
+                System.currentTimeMillis(),
+                MotionEvent.ACTION_CANCEL,
+                0f, 0f, 0
+        )
+
+        // Dispatch cancel event to source view's parent hierarchy
+        sourceImageView.parent?.let { parent ->
+            (parent as? ViewGroup)?.dispatchTouchEvent(cancelEvent)
+        }
+
+        // Also dispatch to the container
+        container.dispatchTouchEvent(cancelEvent)
+
+        cancelEvent.recycle()
     }
 
     private fun setupBackPressListener() {
