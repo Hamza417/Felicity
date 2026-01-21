@@ -3,6 +3,7 @@ package app.simple.felicity.decorations.lrc.view;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
@@ -53,6 +54,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private static final float FLING_FRICTION = 1.5f; // Friction for fling animation
     private static final float TEXT_SIZE_SPRING_STIFFNESS = SpringForce.STIFFNESS_MEDIUM; // Text size animation stiffness
     private static final float TEXT_SIZE_SPRING_DAMPING = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Text size animation damping
+    private static final float MAX_BLUR_RADIUS = 15f; // Maximum blur radius at edges (in pixels)
     private static final int DEFAULT_NORMAL_COLOR = Color.GRAY;
     private static final int DEFAULT_CURRENT_COLOR = Color.WHITE;
     private static final String DEFAULT_EMPTY_TEXT = "No lyrics";
@@ -244,11 +246,27 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             // Apply animated text size
             paint.setTextSize(animatedSize);
             
+            // Calculate and apply blur based on distance from center (proportional to fade)
+            if (enableFade) {
+                float blurAmount = calculateBlurAmount(y, getHeight());
+                if (blurAmount > 0) {
+                    paint.setMaskFilter(new BlurMaskFilter(blurAmount, BlurMaskFilter.Blur.NORMAL));
+                } else {
+                    paint.setMaskFilter(null);
+                }
+            } else {
+                paint.setMaskFilter(null);
+            }
+            
             // Calculate X position based on alignment
             float x = calculateXPosition(text, paint);
             
             canvas.drawText(text, x, y, paint);
         }
+        
+        // Clear mask filters
+        normalPaint.setMaskFilter(null);
+        currentPaint.setMaskFilter(null);
         
         // Restore original paint sizes
         normalPaint.setTextSize(normalTextSize);
@@ -290,6 +308,33 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         );
         fadePaint.setShader(bottomGradient);
         canvas.drawRect(0, height - fadeLength, width, height, fadePaint);
+    }
+    
+    /**
+     * Calculate blur amount based on Y position
+     * Returns blur radius (0 = no blur, MAX_BLUR_RADIUS = maximum blur)
+     * Blur is proportional to fade effect
+     */
+    private float calculateBlurAmount(float y, int viewHeight) {
+        float blurAmount = 0f;
+        
+        // Top edge blur (within fadeLength from top)
+        if (y < fadeLength) {
+            // Calculate how far into the fade zone we are (0 = top edge, 1 = end of fade)
+            float fadeProgress = y / fadeLength;
+            // Invert so blur is strongest at edge: (1 - fadeProgress)
+            blurAmount = (1f - fadeProgress) * MAX_BLUR_RADIUS;
+        }
+        // Bottom edge blur (within fadeLength from bottom)
+        else if (y > viewHeight - fadeLength) {
+            // Calculate how far into the bottom fade zone we are
+            float distanceFromBottom = viewHeight - y;
+            float fadeProgress = distanceFromBottom / fadeLength;
+            // Blur is strongest at edge
+            blurAmount = (1f - fadeProgress) * MAX_BLUR_RADIUS;
+        }
+        
+        return blurAmount;
     }
     
     /**
