@@ -1,6 +1,5 @@
 package app.simple.felicity.decorations.lrc.view;
 
-import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -55,7 +54,6 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private static final int DEFAULT_NORMAL_COLOR = Color.GRAY;
     private static final int DEFAULT_CURRENT_COLOR = Color.WHITE;
     private static final String DEFAULT_EMPTY_TEXT = "No lyrics";
-    private static final long SCROLL_ANIMATION_DURATION = 300;
     private static final long AUTO_SCROLL_DELAY = 3000; // 3 seconds after manual scroll
     // Data
     private LrcData lrcData;
@@ -81,10 +79,10 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private float targetScrollY = 0f;
     private boolean isUserScrolling = false;
     private boolean isAutoScrollEnabled = true;
-    private ValueAnimator scrollAnimator;
     private float scrollMultiplier;
     private float maxOverscrollDistance;
-    private SpringAnimation springAnimation;
+    private SpringAnimation springAnimation; // For overscroll snap-back
+    private SpringAnimation scrollSpringAnimation; // For auto-scroll
     private FlingAnimation flingAnimation;
     private boolean isInOverscroll = false;
     // Auto scroll resume
@@ -404,21 +402,45 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Animate scroll to target position
+     * Animate scroll to target position using Spring animation
      */
     private void animateScroll(float from, float to) {
-        if (scrollAnimator != null && scrollAnimator.isRunning()) {
-            scrollAnimator.cancel();
+        // Cancel any existing scroll spring animation
+        if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
+            scrollSpringAnimation.cancel();
         }
         
-        scrollAnimator = ValueAnimator.ofFloat(from, to);
-        scrollAnimator.setDuration(SCROLL_ANIMATION_DURATION);
-        scrollAnimator.setInterpolator(new DecelerateInterpolator());
-        scrollAnimator.addUpdateListener(animation -> {
-            scrollY = (float) animation.getAnimatedValue();
+        // Also cancel spring/fling if they're running (user interaction)
+        if (springAnimation != null && springAnimation.isRunning()) {
+            springAnimation.cancel();
+        }
+        if (flingAnimation != null && flingAnimation.isRunning()) {
+            flingAnimation.cancel();
+        }
+        
+        // Create a holder for the scroll position
+        FloatValueHolder holder = new FloatValueHolder();
+        holder.setValue(from);
+        
+        // Use Spring animation for natural, smooth scrolling
+        scrollSpringAnimation = new SpringAnimation(holder, holder.getProperty());
+        scrollSpringAnimation.setSpring(new SpringForce(to)
+                .setStiffness(SpringForce.STIFFNESS_LOW) // Smooth, gentle scroll
+                .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY)); // No bounce for auto-scroll
+        
+        scrollSpringAnimation.addUpdateListener((animation, value, velocity) -> {
+            scrollY = value;
             invalidate();
         });
-        scrollAnimator.start();
+        
+        scrollSpringAnimation.addEndListener((animation, canceled, value, velocity) -> {
+            if (!canceled) {
+                scrollY = to;
+                invalidate();
+            }
+        });
+        
+        scrollSpringAnimation.start();
     }
     
     @SuppressLint ("ClickableViewAccessibility")
@@ -644,8 +666,14 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.targetScrollY = 0f;
         this.isUserScrolling = false;
         removeCallbacks(autoScrollRunnable);
-        if (scrollAnimator != null) {
-            scrollAnimator.cancel();
+        if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
+            scrollSpringAnimation.cancel();
+        }
+        if (springAnimation != null && springAnimation.isRunning()) {
+            springAnimation.cancel();
+        }
+        if (flingAnimation != null && flingAnimation.isRunning()) {
+            flingAnimation.cancel();
         }
         invalidate();
     }
@@ -708,8 +736,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             removeCallbacks(autoScrollRunnable);
             
             // Immediately cancel all animations
-            if (scrollAnimator != null && scrollAnimator.isRunning()) {
-                scrollAnimator.cancel();
+            if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
+                scrollSpringAnimation.cancel();
             }
             if (springAnimation != null && springAnimation.isRunning()) {
                 springAnimation.cancel();
