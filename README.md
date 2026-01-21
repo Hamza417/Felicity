@@ -15,6 +15,7 @@ The project will be developed under the codename Felicity, the final name maybe 
 future.
 
 ## Update
+
 16 July 2025: I have finalized the repository module and now beginning to work on engine and
 hopefully finish working on it before the end of this week
 
@@ -27,11 +28,12 @@ between UI components is incredibly good and smooth.
 I have also tested 192KHz audio and it works by default in supported devices. I noticed it showed
 `ENCODING_PCM_16BIT`, I am not sure why yet.
 
-17 Jan 2026: Felicity's development was halted again due to some issues and a pre-alpha is scheduled to be released in the next 4 weeks. I am trying to get on schedule as early as possible.
+17 Jan 2026: Felicity's development was halted again due to some issues and a pre-alpha is scheduled
+to be released in the next 4 weeks. I am trying to get on schedule as early as possible.
 
 ## Screenshots
 
-Last Updated: 20 Jan 2026
+Last Updated: 22 Jan 2026
 
 |                          |                          |                          |
 |--------------------------|--------------------------|--------------------------|
@@ -39,7 +41,7 @@ Last Updated: 20 Jan 2026
 | ![](/screenshots/04.png) | ![](/screenshots/05.png) | ![](/screenshots/06.png) |
 | ![](/screenshots/07.png) | ![](/screenshots/08.png) | ![](/screenshots/11.png) |
 | ![](/screenshots/12.png) | ![](/screenshots/13.png) | ![](/screenshots/14.png) |
-| ![](/screenshots/15.png) |                          |                          |
+| ![](/screenshots/15.png) | ![](/screenshots/16.png) |                          |
 
 |                          |
 |--------------------------|

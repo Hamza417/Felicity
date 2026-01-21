@@ -20,6 +20,8 @@ import android.view.View;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.OverScroller;
 
+import java.util.HashMap;
+
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -78,7 +80,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private String emptyText;
     private float fadeLength;
     private boolean enableFade = true;
-    private final java.util.HashMap <Integer, SpringAnimation> textSizeAnimations = new java.util.HashMap <>();
+    private final HashMap <Integer, SpringAnimation> textSizeAnimations = new java.util.HashMap <>();
     private int previousLineIndex = -1;
     // Scrolling
     private OverScroller scroller;
@@ -153,7 +155,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         currentPaint.setColor(currentTextColor);
         currentPaint.setFakeBoldText(true);
         if (!isInEditMode()) {
-            currentPaint.setTypeface(TypeFace.INSTANCE.getBoldTypeFace(context));
+            currentPaint.setTypeface(TypeFace.INSTANCE.getMediumTypeFace(context));
         }
         
         // Initialize fade paint for vertical gradient effect
