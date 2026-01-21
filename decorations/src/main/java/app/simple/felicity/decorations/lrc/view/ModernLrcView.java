@@ -40,14 +40,20 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private static final int DEFAULT_NORMAL_COLOR = Color.GRAY;
     private static final int DEFAULT_CURRENT_COLOR = Color.WHITE;
     private static final String DEFAULT_EMPTY_TEXT = "No lyrics";
-    private static final long SCROLL_ANIMATION_DURATION = 300;
     private static final long AUTO_SCROLL_DELAY = 3000; // 3 seconds after manual scroll
     // Data
     private LrcData lrcData;
     private int currentLineIndex = -1;
+    private static final float SCROLL_DAMPING = 0.15f; // Damping factor for smooth scrolling
+    private int nextLineIndex = -1;
+    private float lineTransitionProgress = 0f; // 0.0 to 1.0 for smooth transition
+    private long currentTime = 0;
+    private long lastSyncTime = 0; // Last time we received from updateTime()
+    private long animationStartTime = 0; // System time when animation frame started
     // Paint objects
     private TextPaint normalPaint;
     private TextPaint currentPaint;
+    private boolean isContinuousAnimationRunning = false;
     // Styling properties
     private float normalTextSize;
     private float currentTextSize;
@@ -61,9 +67,31 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private GestureDetector gestureDetector;
     private float scrollY = 0f;
     private float targetScrollY = 0f;
+    // Continuous animation runnable for smooth scrolling
+    private final Runnable continuousAnimationRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isContinuousAnimationRunning && !isUserScrolling && isAutoScrollEnabled) {
+                // Calculate predicted time based on elapsed system time since last sync
+                long currentSystemTime = System.currentTimeMillis();
+                long elapsedSinceSync = currentSystemTime - animationStartTime;
+                long predictedTime = lastSyncTime + elapsedSinceSync;
+                
+                // Update transition progress based on predicted time
+                updateTransitionProgress(predictedTime);
+                
+                // Update smooth scroll based on current progress
+                updateSmoothScroll();
+                
+                invalidate();
+                postOnAnimation(this);
+            }
+        }
+    };
     private boolean isUserScrolling = false;
     private boolean isAutoScrollEnabled = true;
     private ValueAnimator scrollAnimator;
+    private TextPaint transitionPaint; // For smooth color/size transitions
     // Auto scroll resume
     private final Runnable autoScrollRunnable = () -> {
         isUserScrolling = false;
@@ -71,6 +99,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             scrollToLine(currentLineIndex);
         }
     };
+    private float previousTargetScrollY = 0f; // Track previous target for smooth transitions
     // Callbacks
     private OnLrcClickListener onLrcClickListener;
     
@@ -124,6 +153,12 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             currentPaint.setTypeface(TypeFace.INSTANCE.getBoldTypeFace(context));
         }
         
+        // Initialize transition paint
+        transitionPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        if (!isInEditMode()) {
+            transitionPaint.setTypeface(TypeFace.INSTANCE.getMediumTypeFace(context));
+        }
+        
         updateTextAlignment();
         
         // Initialize scroller
@@ -174,8 +209,18 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                 continue;
             }
             
-            // Choose paint based on whether this is the current line
-            TextPaint paint = (i == currentLineIndex) ? currentPaint : normalPaint;
+            // Choose paint and apply smooth transitions
+            TextPaint paint;
+            if (i == currentLineIndex) {
+                // Current line fading out
+                paint = getTransitionPaint(currentPaint, normalPaint, lineTransitionProgress);
+            } else if (i == nextLineIndex) {
+                // Next line fading in
+                paint = getTransitionPaint(normalPaint, currentPaint, lineTransitionProgress);
+            } else {
+                // Normal line
+                paint = normalPaint;
+            }
             
             // Calculate X position based on alignment
             float x = calculateXPosition(text, paint);
@@ -185,24 +230,89 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
+     * Get interpolated paint between two paints based on progress
+     */
+    private TextPaint getTransitionPaint(TextPaint fromPaint, TextPaint toPaint, float progress) {
+        // Use ease-in-out for smoother size transitions
+        float smoothProgress = easeInOutCubic(progress);
+        transitionPaint.setTextSize(interpolate(fromPaint.getTextSize(), toPaint.getTextSize(), smoothProgress));
+        transitionPaint.setColor(interpolateColor(fromPaint.getColor(), toPaint.getColor(), progress));
+        transitionPaint.setFakeBoldText(progress > 0.5f ? toPaint.isFakeBoldText() : fromPaint.isFakeBoldText());
+        return transitionPaint;
+    }
+    
+    /**
+     * Linear interpolation between two values
+     */
+    private float interpolate(float start, float end, float progress) {
+        return start + (end - start) * progress;
+    }
+    
+    /**
+     * Ease-in-out cubic interpolation for smoother animations
+     */
+    private float easeInOutCubic(float t) {
+        if (t < 0.5f) {
+            return 4 * t * t * t;
+        } else {
+            float f = (2 * t - 2);
+            return 0.5f * f * f * f + 1;
+        }
+    }
+    
+    /**
+     * Interpolate between two colors
+     */
+    private int interpolateColor(int startColor, int endColor, float progress) {
+        int startA = (startColor >> 24) & 0xff;
+        int startR = (startColor >> 16) & 0xff;
+        int startG = (startColor >> 8) & 0xff;
+        int startB = startColor & 0xff;
+        
+        int endA = (endColor >> 24) & 0xff;
+        int endR = (endColor >> 16) & 0xff;
+        int endG = (endColor >> 8) & 0xff;
+        int endB = endColor & 0xff;
+        
+        int a = (int) (startA + (endA - startA) * progress);
+        int r = (int) (startR + (endR - startR) * progress);
+        int g = (int) (startG + (endG - startG) * progress);
+        int b = (int) (startB + (endB - startB) * progress);
+        
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+    
+    /**
      * Calculate cumulative Y offset for a given line
+     * Uses average line height for stable scrolling while allowing visual size transitions
      */
     private float getLineOffset(int lineIndex) {
         float offset = 0f;
         
+        // Use a consistent average line height for spacing calculations
+        // This prevents size changes from affecting scroll position stability
+        float avgLineHeight = (normalTextSize + currentTextSize) / 2f;
+        
+        // Calculate base offset using consistent spacing
         for (int i = 0; i < lineIndex; i++) {
-            if (i == currentLineIndex) {
-                offset += currentTextSize + lineSpacing;
-            } else {
-                offset += normalTextSize + lineSpacing;
-            }
+            offset += avgLineHeight + lineSpacing;
         }
         
         // Add half height of current line to center it
-        if (lineIndex == currentLineIndex) {
-            offset += currentTextSize / 2f;
-        } else {
-            offset += normalTextSize / 2f;
+        offset += avgLineHeight / 2f;
+        
+        // Apply fine adjustment based on actual size transitions
+        // This creates smooth visual size changes without affecting scroll stability
+        if (lineIndex == currentLineIndex || lineIndex == nextLineIndex) {
+            float actualHeight;
+            if (lineIndex == currentLineIndex) {
+                actualHeight = interpolate(currentTextSize, normalTextSize, lineTransitionProgress);
+            } else {
+                actualHeight = interpolate(normalTextSize, currentTextSize, lineTransitionProgress);
+            }
+            // Add small offset adjustment to keep visual centering smooth
+            float adjustment = (actualHeight - avgLineHeight) * 0.5f;
+            offset += adjustment;
         }
         
         return offset;
@@ -212,15 +322,14 @@ public class ModernLrcView extends View implements ThemeChangedListener {
      * Calculate X position based on alignment
      */
     private float calculateXPosition(String text, TextPaint paint) {
-        switch (textAlignment) {
-            case LEFT:
-                return getPaddingLeft();
-            case RIGHT:
-                return getWidth() - getPaddingRight();
-            case CENTER:
-            default:
-                return getWidth() / 2f;
-        }
+        return switch (textAlignment) {
+            case LEFT ->
+                    getPaddingLeft();
+            case RIGHT ->
+                    getWidth() - getPaddingRight();
+            default ->
+                    getWidth() / 2f;
+        };
     }
     
     /**
@@ -237,6 +346,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         };
         normalPaint.setTextAlign(align);
         currentPaint.setTextAlign(align);
+        transitionPaint.setTextAlign(align);
     }
     
     /**
@@ -251,7 +361,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Update current playback time
+     * Update current playback time - acts as a sync point to correct drift
      */
     public void updateTime(long timeInMillis) {
         if (lrcData == null || lrcData.isEmpty()) {
@@ -261,18 +371,79 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         // Apply offset if present
         timeInMillis += lrcData.getOffset();
         
-        // Find the current line based on time
-        int newLineIndex = findLineIndexByTime(timeInMillis);
+        // Store the sync time and reset animation reference
+        lastSyncTime = timeInMillis;
+        animationStartTime = System.currentTimeMillis();
         
-        if (newLineIndex != currentLineIndex) {
-            currentLineIndex = newLineIndex;
-            
-            if (!isUserScrolling && isAutoScrollEnabled) {
-                scrollToLine(currentLineIndex);
-            }
-            
-            invalidate();
+        // Update transition progress (this will also update line indices)
+        updateTransitionProgress(timeInMillis);
+        
+        // Start continuous animation if not already running
+        if (!isContinuousAnimationRunning && !isUserScrolling && isAutoScrollEnabled) {
+            startContinuousAnimation();
         }
+    }
+    
+    /**
+     * Update transition progress based on time (can be called with predicted time)
+     */
+    private void updateTransitionProgress(long timeInMillis) {
+        if (lrcData == null) {
+            lineTransitionProgress = 0f;
+            return;
+        }
+        
+        // Find what the indices should be based on current time
+        int expectedCurrentLine = findLineIndexByTime(timeInMillis);
+        int expectedNextLine = (expectedCurrentLine >= 0 && expectedCurrentLine < lrcData.size() - 1)
+                ? expectedCurrentLine + 1
+                : -1;
+        
+        // Detect line change and update indices smoothly
+        if (expectedCurrentLine != currentLineIndex) {
+            // Line changed - update indices
+            currentLineIndex = expectedCurrentLine;
+            nextLineIndex = expectedNextLine;
+        } else if (expectedNextLine != nextLineIndex) {
+            nextLineIndex = expectedNextLine;
+        }
+        
+        // Calculate smooth transition progress between current and next line
+        if (currentLineIndex >= 0 && nextLineIndex >= 0) {
+            LrcEntry currentEntry = lrcData.getEntries().get(currentLineIndex);
+            LrcEntry nextEntry = lrcData.getEntries().get(nextLineIndex);
+            
+            long currentStartTime = currentEntry.getTimeInMillis();
+            long nextStartTime = nextEntry.getTimeInMillis();
+            long duration = nextStartTime - currentStartTime;
+            
+            if (duration > 0) {
+                long elapsed = timeInMillis - currentStartTime;
+                lineTransitionProgress = Math.max(0f, Math.min(1f, (float) elapsed / duration));
+            } else {
+                lineTransitionProgress = 0f;
+            }
+        } else {
+            lineTransitionProgress = 0f;
+        }
+    }
+    
+    /**
+     * Start continuous frame-by-frame animation
+     */
+    private void startContinuousAnimation() {
+        if (!isContinuousAnimationRunning) {
+            isContinuousAnimationRunning = true;
+            postOnAnimation(continuousAnimationRunnable);
+        }
+    }
+    
+    /**
+     * Stop continuous animation
+     */
+    private void stopContinuousAnimation() {
+        isContinuousAnimationRunning = false;
+        removeCallbacks(continuousAnimationRunnable);
     }
     
     /**
@@ -297,7 +468,36 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Scroll to specific line with animation
+     * Update smooth scrolling based on transition progress
+     */
+    private void updateSmoothScroll() {
+        if (currentLineIndex < 0) {
+            return;
+        }
+        
+        // Calculate target scroll position based on transition between current and next line
+        float currentLineOffset = getLineOffset(currentLineIndex);
+        
+        if (nextLineIndex >= 0 && lineTransitionProgress > 0) {
+            // Interpolate scroll position between current and next line
+            float nextLineOffset = getLineOffset(nextLineIndex);
+            targetScrollY = interpolate(currentLineOffset, nextLineOffset, lineTransitionProgress);
+        } else {
+            targetScrollY = currentLineOffset;
+        }
+        
+        // Smoothly interpolate scrollY towards targetScrollY to prevent jerks
+        // This creates fluid motion even when line indices change
+        float delta = targetScrollY - scrollY;
+        if (Math.abs(delta) > 0.5f) {
+            scrollY += delta * SCROLL_DAMPING;
+        } else {
+            scrollY = targetScrollY;
+        }
+    }
+    
+    /**
+     * Scroll to specific line (used for manual navigation)
      */
     private void scrollToLine(int lineIndex) {
         if (lineIndex < 0 || lrcData == null || lineIndex >= lrcData.size()) {
@@ -309,7 +509,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Animate scroll to target position
+     * Animate scroll to target position (used for manual navigation)
      */
     private void animateScroll(float from, float to) {
         if (scrollAnimator != null && scrollAnimator.isRunning()) {
@@ -317,7 +517,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         }
         
         scrollAnimator = ValueAnimator.ofFloat(from, to);
-        scrollAnimator.setDuration(SCROLL_ANIMATION_DURATION);
+        scrollAnimator.setDuration(300);
         scrollAnimator.setInterpolator(new DecelerateInterpolator());
         scrollAnimator.addUpdateListener(animation -> {
             scrollY = (float) animation.getAnimatedValue();
@@ -337,8 +537,14 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         
         if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
             if (isUserScrolling) {
-                // Resume auto-scrolling after delay
-                postDelayed(autoScrollRunnable, AUTO_SCROLL_DELAY);
+                // Resume auto-scrolling and continuous animation after delay
+                postDelayed(() -> {
+                    isUserScrolling = false;
+                    if (isAutoScrollEnabled && currentLineIndex >= 0) {
+                        scrollToLine(currentLineIndex);
+                        startContinuousAnimation();
+                    }
+                }, AUTO_SCROLL_DELAY);
             }
         }
         
@@ -424,9 +630,15 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     public void reset() {
         this.lrcData = null;
         this.currentLineIndex = -1;
+        this.nextLineIndex = -1;
+        this.lineTransitionProgress = 0f;
+        this.currentTime = 0;
+        this.lastSyncTime = 0;
+        this.animationStartTime = 0;
         this.scrollY = 0f;
         this.targetScrollY = 0f;
         this.isUserScrolling = false;
+        stopContinuousAnimation();
         removeCallbacks(autoScrollRunnable);
         if (scrollAnimator != null) {
             scrollAnimator.cancel();
@@ -488,8 +700,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private class GestureListener extends GestureDetector.SimpleOnGestureListener {
         
         @Override
-        public boolean onDown(MotionEvent e) {
+        public boolean onDown(@NonNull MotionEvent e) {
             removeCallbacks(autoScrollRunnable);
+            stopContinuousAnimation();
             if (scrollAnimator != null && scrollAnimator.isRunning()) {
                 scrollAnimator.cancel();
             }
@@ -500,7 +713,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         }
         
         @Override
-        public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+        public boolean onScroll(MotionEvent e1, @NonNull MotionEvent e2, float distanceX, float distanceY) {
             isUserScrolling = true;
             scrollY += distanceY;
             
@@ -517,7 +730,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         }
         
         @Override
-        public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+        public boolean onFling(MotionEvent e1, @NonNull MotionEvent e2, float velocityX, float velocityY) {
             scroller.fling(
                     0, (int) scrollY,
                     0, (int) -velocityY,
@@ -529,7 +742,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         }
         
         @Override
-        public boolean onSingleTapConfirmed(MotionEvent e) {
+        public boolean onSingleTapConfirmed(@NonNull MotionEvent e) {
             if (onLrcClickListener != null && currentLineIndex >= 0 && lrcData != null) {
                 LrcEntry entry = lrcData.getEntries().get(currentLineIndex);
                 onLrcClickListener.onLrcClick(entry.getTimeInMillis(), entry.getText());
