@@ -6,7 +6,11 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.Shader;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -37,6 +41,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private static final float DEFAULT_TEXT_SIZE = 22f; // sp
     private static final float DEFAULT_CURRENT_TEXT_SIZE = 28f; // sp
     private static final float DEFAULT_LINE_SPACING = 16f; // dp
+    private static final float DEFAULT_FADE_LENGTH = 140f; // dp - length of vertical fade
     private static final int DEFAULT_NORMAL_COLOR = Color.GRAY;
     private static final int DEFAULT_CURRENT_COLOR = Color.WHITE;
     private static final String DEFAULT_EMPTY_TEXT = "No lyrics";
@@ -48,6 +53,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     // Paint objects
     private TextPaint normalPaint;
     private TextPaint currentPaint;
+    private Paint fadePaint;
     // Styling properties
     private float normalTextSize;
     private float currentTextSize;
@@ -56,6 +62,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private int currentTextColor;
     private Alignment textAlignment = Alignment.LEFT;
     private String emptyText;
+    private float fadeLength;
+    private boolean enableFade = true;
     // Scrolling
     private OverScroller scroller;
     private GestureDetector gestureDetector;
@@ -92,6 +100,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         normalTextSize = sp2px(context, DEFAULT_TEXT_SIZE);
         currentTextSize = sp2px(context, DEFAULT_CURRENT_TEXT_SIZE);
         lineSpacing = dp2px(context, DEFAULT_LINE_SPACING);
+        fadeLength = dp2px(context, DEFAULT_FADE_LENGTH);
         normalTextColor = DEFAULT_NORMAL_COLOR;
         currentTextColor = DEFAULT_CURRENT_COLOR;
         emptyText = DEFAULT_EMPTY_TEXT;
@@ -123,6 +132,10 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         if (!isInEditMode()) {
             currentPaint.setTypeface(TypeFace.INSTANCE.getBoldTypeFace(context));
         }
+        
+        // Initialize fade paint for vertical gradient effect
+        fadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        fadePaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
         
         updateTextAlignment();
         
@@ -169,6 +182,12 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         
         int entryCount = lrcData.size();
         
+        // Use hardware layer for fade effect
+        int layerId = -1;
+        if (enableFade) {
+            layerId = canvas.saveLayer(0, 0, getWidth(), getHeight(), null);
+        }
+        
         // Save canvas state and apply clipping to respect padding
         canvas.save();
         canvas.clipRect(
@@ -201,6 +220,40 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         
         // Restore canvas state
         canvas.restore();
+        
+        // Apply vertical fade effect
+        if (enableFade && fadeLength > 0) {
+            drawVerticalFade(canvas);
+            canvas.restoreToCount(layerId);
+        }
+    }
+    
+    /**
+     * Draw vertical fade gradient at top and bottom
+     */
+    private void drawVerticalFade(Canvas canvas) {
+        int width = getWidth();
+        int height = getHeight();
+        
+        // Top fade gradient (transparent to opaque black)
+        LinearGradient topGradient = new LinearGradient(
+                0, 0,
+                0, fadeLength,
+                0xFF000000, 0x00000000,
+                Shader.TileMode.CLAMP
+        );
+        fadePaint.setShader(topGradient);
+        canvas.drawRect(0, 0, width, fadeLength, fadePaint);
+        
+        // Bottom fade gradient (opaque black to transparent)
+        LinearGradient bottomGradient = new LinearGradient(
+                0, height - fadeLength,
+                0, height,
+                0x00000000, 0xFF000000,
+                Shader.TileMode.CLAMP
+        );
+        fadePaint.setShader(bottomGradient);
+        canvas.drawRect(0, height - fadeLength, width, height, fadePaint);
     }
     
     /**
@@ -442,6 +495,16 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         invalidate();
     }
     
+    public void setFadeEnabled(boolean enabled) {
+        this.enableFade = enabled;
+        invalidate();
+    }
+    
+    public void setFadeLength(float lengthInDp) {
+        this.fadeLength = dp2px(getContext(), lengthInDp);
+        invalidate();
+    }
+    
     public void setAutoScrollEnabled(boolean enabled) {
         this.isAutoScrollEnabled = enabled;
     }
@@ -513,7 +576,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private class GestureListener extends GestureDetector.SimpleOnGestureListener {
         
         @Override
-        public boolean onDown(MotionEvent e) {
+        public boolean onDown(@NonNull MotionEvent e) {
             removeCallbacks(autoScrollRunnable);
             if (scrollAnimator != null && scrollAnimator.isRunning()) {
                 scrollAnimator.cancel();
@@ -525,7 +588,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         }
         
         @Override
-        public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+        public boolean onScroll(MotionEvent e1, @NonNull MotionEvent e2, float distanceX, float distanceY) {
             isUserScrolling = true;
             scrollY += distanceY;
             
@@ -542,7 +605,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         }
         
         @Override
-        public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+        public boolean onFling(MotionEvent e1, @NonNull MotionEvent e2, float velocityX, float velocityY) {
             scroller.fling(
                     0, (int) scrollY,
                     0, (int) -velocityY,
@@ -554,7 +617,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         }
         
         @Override
-        public boolean onSingleTapConfirmed(MotionEvent e) {
+        public boolean onSingleTapConfirmed(@NonNull MotionEvent e) {
             if (onLrcClickListener != null && currentLineIndex >= 0 && lrcData != null) {
                 LrcEntry entry = lrcData.getEntries().get(currentLineIndex);
                 onLrcClickListener.onLrcClick(entry.getTimeInMillis(), entry.getText());
