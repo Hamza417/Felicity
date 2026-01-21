@@ -52,7 +52,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private static final float SPRING_STIFFNESS = SpringForce.STIFFNESS_LOW; // Spring stiffness for overscroll
     private static final float SPRING_DAMPING_RATIO = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Spring damping
     private static final float FLING_FRICTION = 1.5f; // Friction for fling animation
-    private static final float TEXT_SIZE_SPRING_STIFFNESS = SpringForce.STIFFNESS_MEDIUM; // Text size animation stiffness
+    private static final float TEXT_SIZE_SPRING_STIFFNESS = SpringForce.STIFFNESS_LOW; // Text size animation stiffness
     private static final float TEXT_SIZE_SPRING_DAMPING = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Text size animation damping
     private static final float MAX_BLUR_RADIUS = 15f; // Maximum blur radius at edges (in pixels)
     private static final int DEFAULT_NORMAL_COLOR = Color.GRAY;
@@ -170,6 +170,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         
         if (!isInEditMode()) {
             updateColorsFromTheme(ThemeManager.INSTANCE.getTheme());
+            updateColorsFromAccent(ThemeManager.INSTANCE.getAccent());
         }
     }
     
@@ -347,8 +348,14 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             return animatedSize;
         }
         
-        // No animation in progress, return static size
-        return (lineIndex == currentLineIndex) ? currentTextSize : normalTextSize;
+        // No animation in progress, return static size based on previous state
+        // Check if this was the previous current line
+        if (lineIndex == previousLineIndex) {
+            return currentTextSize; // It was highlighted, so it should be large
+        }
+        
+        // For all other cases, return normal size
+        return normalTextSize;
     }
     
     /**
@@ -357,6 +364,12 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private void animateTextSize(int lineIndex, float targetSize) {
         // Get current size (either animated or default)
         float currentSize = getAnimatedTextSize(lineIndex);
+        
+        // Skip animation if we're already at the target size
+        if (Math.abs(currentSize - targetSize) < 0.1f) {
+            animatedTextSizes.put(lineIndex, targetSize);
+            return;
+        }
         
         // Cancel any existing animation for this line
         SpringAnimation existingAnimation = textSizeAnimations.get(lineIndex);
@@ -820,6 +833,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     @Override
     public void onAccentChanged(@NonNull Accent accent) {
         ThemeChangedListener.super.onAccentChanged(accent);
+        updateColorsFromAccent(accent);
     }
     
     @Override
@@ -829,8 +843,11 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     private void updateColorsFromTheme(Theme theme) {
-        setCurrentTextColor(theme.getTextViewTheme().getPrimaryTextColor());
         setNormalTextColor(theme.getTextViewTheme().getTertiaryTextColor());
+    }
+    
+    private void updateColorsFromAccent(Accent accent) {
+        setCurrentTextColor(accent.getPrimaryAccentColor());
     }
     
     @Override
