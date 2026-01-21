@@ -51,6 +51,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private static final float SPRING_STIFFNESS = SpringForce.STIFFNESS_LOW; // Spring stiffness for overscroll
     private static final float SPRING_DAMPING_RATIO = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Spring damping
     private static final float FLING_FRICTION = 1.5f; // Friction for fling animation
+    private static final float TEXT_SIZE_SPRING_STIFFNESS = SpringForce.STIFFNESS_MEDIUM; // Text size animation stiffness
+    private static final float TEXT_SIZE_SPRING_DAMPING = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Text size animation damping
     private static final int DEFAULT_NORMAL_COLOR = Color.GRAY;
     private static final int DEFAULT_CURRENT_COLOR = Color.WHITE;
     private static final String DEFAULT_EMPTY_TEXT = "No lyrics";
@@ -58,6 +60,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     // Data
     private LrcData lrcData;
     private int currentLineIndex = -1;
+    // Text size animation
+    private final java.util.HashMap <Integer, Float> animatedTextSizes = new java.util.HashMap <>();
     // Paint objects
     private TextPaint normalPaint;
     private TextPaint currentPaint;
@@ -72,6 +76,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private String emptyText;
     private float fadeLength;
     private boolean enableFade = true;
+    private final java.util.HashMap <Integer, SpringAnimation> textSizeAnimations = new java.util.HashMap <>();
+    private int previousLineIndex = -1;
     // Scrolling
     private OverScroller scroller;
     private GestureDetector gestureDetector;
@@ -216,6 +222,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             LrcEntry entry = lrcData.getEntries().get(i);
             String text = entry.getText();
             
+            // Get animated text size for this line
+            float animatedSize = getAnimatedTextSize(i);
+            
             // Calculate Y position for this line
             float y = offsetY + getLineOffset(i);
             
@@ -224,14 +233,26 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                 continue;
             }
             
-            // Choose paint based on whether this is the current line
-            TextPaint paint = (i == currentLineIndex) ? currentPaint : normalPaint;
+            // Choose paint and set animated size
+            TextPaint paint;
+            if (i == currentLineIndex) {
+                paint = currentPaint;
+            } else {
+                paint = normalPaint;
+            }
+            
+            // Apply animated text size
+            paint.setTextSize(animatedSize);
             
             // Calculate X position based on alignment
             float x = calculateXPosition(text, paint);
             
             canvas.drawText(text, x, y, paint);
         }
+        
+        // Restore original paint sizes
+        normalPaint.setTextSize(normalTextSize);
+        currentPaint.setTextSize(currentTextSize);
         
         // Restore canvas state
         canvas.restore();
@@ -269,6 +290,62 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         );
         fadePaint.setShader(bottomGradient);
         canvas.drawRect(0, height - fadeLength, width, height, fadePaint);
+    }
+    
+    /**
+     * Get animated text size for a line
+     */
+    private float getAnimatedTextSize(int lineIndex) {
+        // Return animated size if it exists, otherwise return default size
+        Float animatedSize = animatedTextSizes.get(lineIndex);
+        if (animatedSize != null) {
+            return animatedSize;
+        }
+        
+        // No animation in progress, return static size
+        return (lineIndex == currentLineIndex) ? currentTextSize : normalTextSize;
+    }
+    
+    /**
+     * Animate text size change for a line
+     */
+    private void animateTextSize(int lineIndex, float targetSize) {
+        // Get current size (either animated or default)
+        float currentSize = getAnimatedTextSize(lineIndex);
+        
+        // Cancel any existing animation for this line
+        SpringAnimation existingAnimation = textSizeAnimations.get(lineIndex);
+        if (existingAnimation != null && existingAnimation.isRunning()) {
+            existingAnimation.cancel();
+        }
+        
+        // Create holder for text size animation
+        FloatValueHolder holder = new FloatValueHolder();
+        holder.setValue(currentSize);
+        
+        // Create spring animation for text size
+        SpringAnimation animation = new SpringAnimation(holder, holder.getProperty());
+        animation.setSpring(new SpringForce(targetSize)
+                .setStiffness(TEXT_SIZE_SPRING_STIFFNESS)
+                .setDampingRatio(TEXT_SIZE_SPRING_DAMPING));
+        
+        animation.addUpdateListener((anim, value, velocity) -> {
+            animatedTextSizes.put(lineIndex, value);
+            invalidate();
+        });
+        
+        animation.addEndListener((anim, canceled, value, velocity) -> {
+            if (!canceled) {
+                animatedTextSizes.put(lineIndex, targetSize);
+                // Clean up animation reference
+                textSizeAnimations.remove(lineIndex);
+                invalidate();
+            }
+        });
+        
+        // Store animation reference
+        textSizeAnimations.put(lineIndex, animation);
+        animation.start();
     }
     
     /**
@@ -358,7 +435,20 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         int newLineIndex = findLineIndexByTime(timeInMillis);
         
         if (newLineIndex != currentLineIndex) {
+            // Store previous line index
+            previousLineIndex = currentLineIndex;
             currentLineIndex = newLineIndex;
+            
+            // Animate text size changes
+            if (previousLineIndex >= 0 && previousLineIndex < lrcData.size()) {
+                // Animate previous line to normal size
+                animateTextSize(previousLineIndex, normalTextSize);
+            }
+            
+            if (currentLineIndex >= 0 && currentLineIndex < lrcData.size()) {
+                // Animate current line to large size
+                animateTextSize(currentLineIndex, currentTextSize);
+            }
             
             if (!isUserScrolling && isAutoScrollEnabled) {
                 scrollToLine(currentLineIndex);
