@@ -23,6 +23,10 @@ import android.widget.OverScroller;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.dynamicanimation.animation.FlingAnimation;
+import androidx.dynamicanimation.animation.FloatPropertyCompat;
+import androidx.dynamicanimation.animation.SpringAnimation;
+import androidx.dynamicanimation.animation.SpringForce;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.decorations.lrc.model.LrcData;
 import app.simple.felicity.decorations.lrc.model.LrcEntry;
@@ -42,6 +46,12 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private static final float DEFAULT_CURRENT_TEXT_SIZE = 28f; // sp
     private static final float DEFAULT_LINE_SPACING = 16f; // dp
     private static final float DEFAULT_FADE_LENGTH = 140f; // dp - length of vertical fade
+    private static final float DEFAULT_SCROLL_MULTIPLIER = 1f; // Accelerated scroll multiplier
+    private static final float DEFAULT_OVERSCROLL_DISTANCE = 250f; // dp - maximum overscroll distance
+    private static final float OVERSCROLL_DAMPING = 0.25f; // Rubber band damping factor (0-1)
+    private static final float SPRING_STIFFNESS = SpringForce.STIFFNESS_LOW; // Spring stiffness for overscroll
+    private static final float SPRING_DAMPING_RATIO = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Spring damping
+    private static final float FLING_FRICTION = 1.5f; // Friction for fling animation
     private static final int DEFAULT_NORMAL_COLOR = Color.GRAY;
     private static final int DEFAULT_CURRENT_COLOR = Color.WHITE;
     private static final String DEFAULT_EMPTY_TEXT = "No lyrics";
@@ -72,6 +82,11 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private boolean isUserScrolling = false;
     private boolean isAutoScrollEnabled = true;
     private ValueAnimator scrollAnimator;
+    private float scrollMultiplier;
+    private float maxOverscrollDistance;
+    private SpringAnimation springAnimation;
+    private FlingAnimation flingAnimation;
+    private boolean isInOverscroll = false;
     // Auto scroll resume
     private final Runnable autoScrollRunnable = () -> {
         isUserScrolling = false;
@@ -101,6 +116,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         currentTextSize = sp2px(context, DEFAULT_CURRENT_TEXT_SIZE);
         lineSpacing = dp2px(context, DEFAULT_LINE_SPACING);
         fadeLength = dp2px(context, DEFAULT_FADE_LENGTH);
+        scrollMultiplier = DEFAULT_SCROLL_MULTIPLIER;
+        maxOverscrollDistance = dp2px(context, DEFAULT_OVERSCROLL_DISTANCE);
         normalTextColor = DEFAULT_NORMAL_COLOR;
         currentTextColor = DEFAULT_CURRENT_COLOR;
         emptyText = DEFAULT_EMPTY_TEXT;
@@ -414,6 +431,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         boolean handled = gestureDetector.onTouchEvent(event);
         
         if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
+            // Snap back from overscroll if needed
+            snapBackFromOverscroll();
+            
             if (isUserScrolling) {
                 // Resume auto-scrolling after delay
                 postDelayed(autoScrollRunnable, AUTO_SCROLL_DELAY);
@@ -439,6 +459,74 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             return 0f;
         }
         return getLineOffset(lrcData.size() - 1);
+    }
+    
+    /**
+     * Apply rubber band damping to overscroll distance
+     * Uses a logarithmic damping curve for realistic feel
+     */
+    private float applyOverscrollDamping(float overscroll) {
+        // Use a damping formula: dampedDistance = maxDistance * (1 - e^(-overscroll / dampingFactor))
+        // This creates a logarithmic curve that asymptotically approaches maxOverscrollDistance
+        float dampingFactor = maxOverscrollDistance * OVERSCROLL_DAMPING;
+        return maxOverscrollDistance * (1f - (float) Math.exp(-overscroll / dampingFactor));
+    }
+    
+    /**
+     * Snap back from overscroll to valid bounds using Spring animation
+     */
+    private void snapBackFromOverscroll() {
+        float maxScroll = getMaxScrollY();
+        float targetY = scrollY;
+        
+        if (scrollY < 0) {
+            targetY = 0;
+        } else if (scrollY > maxScroll) {
+            targetY = maxScroll;
+        }
+        
+        // Only animate if we're actually in overscroll
+        if (targetY != scrollY) {
+            isInOverscroll = false;
+            
+            // Cancel any existing animations
+            if (springAnimation != null) {
+                springAnimation.cancel();
+            }
+            if (flingAnimation != null) {
+                flingAnimation.cancel();
+            }
+            
+            final float finalTargetY = targetY;
+            
+            // Create spring animation for natural bounce-back using FloatPropertyCompat
+            FloatValueHolder holder = new FloatValueHolder();
+            holder.setValue(scrollY);
+            
+            springAnimation = new SpringAnimation(holder, holder.getProperty());
+            springAnimation.setSpring(new SpringForce(finalTargetY)
+                    .setStiffness(SPRING_STIFFNESS)
+                    .setDampingRatio(SPRING_DAMPING_RATIO));
+            
+            springAnimation.addUpdateListener((animation, value, velocity) -> {
+                scrollY = value;
+                invalidate();
+            });
+            
+            springAnimation.addEndListener((animation, canceled, value, velocity) -> {
+                if (!canceled) {
+                    scrollY = finalTargetY;
+                    invalidate();
+                }
+            });
+            
+            springAnimation.start();
+        }
+    }
+    
+    public void setScrollMultiplier(float multiplier) {
+        this.scrollMultiplier = Math.max(0.1f, multiplier); // Ensure positive value
+        invalidate();
     }
     
     private float dp2px(Context context, float dp) {
@@ -503,6 +591,46 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     public void setFadeLength(float lengthInDp) {
         this.fadeLength = dp2px(getContext(), lengthInDp);
         invalidate();
+    }
+    
+    public void setMaxOverscrollDistance(float distanceInDp) {
+        this.maxOverscrollDistance = dp2px(getContext(), distanceInDp);
+        invalidate();
+    }
+    
+    /**
+     * FloatValueHolder for Spring and Fling animations
+     * Uses FloatPropertyCompat for proper DynamicAnimation support
+     */
+    private static class FloatValueHolder {
+        private final FloatPropertyCompat <FloatValueHolder> property;
+        private float value;
+        
+        FloatValueHolder() {
+            property = new FloatPropertyCompat <>("scrollY") {
+                @Override
+                public float getValue(FloatValueHolder object) {
+                    return object.value;
+                }
+                
+                @Override
+                public void setValue(FloatValueHolder object, float value) {
+                    object.value = value;
+                }
+            };
+        }
+        
+        float getValue() {
+            return value;
+        }
+        
+        void setValue(float value) {
+            this.value = value;
+        }
+        
+        FloatPropertyCompat <FloatValueHolder> getProperty() {
+            return property;
+        }
     }
     
     public void setAutoScrollEnabled(boolean enabled) {
@@ -578,41 +706,141 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         @Override
         public boolean onDown(@NonNull MotionEvent e) {
             removeCallbacks(autoScrollRunnable);
+            
+            // Immediately cancel all animations
             if (scrollAnimator != null && scrollAnimator.isRunning()) {
                 scrollAnimator.cancel();
+            }
+            if (springAnimation != null && springAnimation.isRunning()) {
+                springAnimation.cancel();
+            }
+            if (flingAnimation != null && flingAnimation.isRunning()) {
+                flingAnimation.cancel();
             }
             if (!scroller.isFinished()) {
                 scroller.abortAnimation();
             }
+            
+            // Reset overscroll state
+            isInOverscroll = false;
+            
             return true;
         }
         
         @Override
         public boolean onScroll(MotionEvent e1, @NonNull MotionEvent e2, float distanceX, float distanceY) {
             isUserScrolling = true;
-            scrollY += distanceY;
             
-            // Apply boundaries
+            // Cancel any ongoing spring or fling animations
+            if (springAnimation != null && springAnimation.isRunning()) {
+                springAnimation.cancel();
+            }
+            if (flingAnimation != null && flingAnimation.isRunning()) {
+                flingAnimation.cancel();
+            }
+            
+            // Get max scroll bounds
             float maxScroll = getMaxScrollY();
-            if (scrollY < 0) {
-                scrollY = 0;
-            } else if (scrollY > maxScroll) {
-                scrollY = maxScroll;
+            
+            // Apply scroll multiplier for base scrolling
+            float acceleratedDistance = distanceY * scrollMultiplier;
+            
+            // Calculate where we would be after applying the distance
+            float newScrollY = scrollY + acceleratedDistance;
+            
+            // Apply progressive resistance when trying to scroll beyond bounds
+            if (newScrollY < 0) {
+                // Trying to overscroll at top
+                float currentOverscroll = Math.abs(scrollY); // How far we already are in overscroll
+                float resistance = calculateDragResistance(currentOverscroll);
+                acceleratedDistance *= resistance; // Apply decay to the drag movement itself
+                isInOverscroll = true;
+            } else if (newScrollY > maxScroll) {
+                // Trying to overscroll at bottom
+                float currentOverscroll = scrollY - maxScroll; // How far we already are in overscroll
+                if (currentOverscroll < 0) {
+                    currentOverscroll = 0; // Just crossing the boundary
+                }
+                float resistance = calculateDragResistance(currentOverscroll);
+                acceleratedDistance *= resistance; // Apply decay to the drag movement itself
+                isInOverscroll = true;
+            } else {
+                // Within normal bounds - no resistance
+                isInOverscroll = false;
+            }
+            
+            // Apply the resistance-adjusted distance
+            scrollY += acceleratedDistance;
+            
+            // Hard cap at maximum overscroll distance (but don't jump there)
+            if (scrollY < -maxOverscrollDistance) {
+                scrollY = -maxOverscrollDistance;
+            } else if (scrollY > maxScroll + maxOverscrollDistance) {
+                scrollY = maxScroll + maxOverscrollDistance;
             }
             
             invalidate();
             return true;
         }
         
+        /**
+         * Calculate progressive drag resistance based on current overscroll distance
+         * Returns a multiplier between 0 and 1 that decreases as overscroll increases
+         */
+        private float calculateDragResistance(float currentOverscroll) {
+            // Use exponential decay: resistance = e^(-k * distance)
+            // This creates smooth, progressive resistance that gets stronger as you drag further
+            float k = 0.004f; // Decay rate - higher = faster resistance increase
+            float resistance = (float) Math.exp(-k * currentOverscroll);
+            
+            // Ensure minimum resistance of 5% to prevent complete lockup
+            return Math.max(0.05f, resistance);
+        }
+        
         @Override
         public boolean onFling(MotionEvent e1, @NonNull MotionEvent e2, float velocityX, float velocityY) {
-            scroller.fling(
-                    0, (int) scrollY,
-                    0, (int) -velocityY,
-                    0, 0,
-                    0, (int) getMaxScrollY()
-                          );
-            invalidate();
+            // Cancel any existing animations
+            if (springAnimation != null && springAnimation.isRunning()) {
+                springAnimation.cancel();
+            }
+            if (flingAnimation != null && flingAnimation.isRunning()) {
+                flingAnimation.cancel();
+            }
+            
+            // Apply scroll multiplier to fling velocity
+            float acceleratedVelocity = -velocityY * scrollMultiplier;
+            
+            // Create fling animation with custom friction
+            FloatValueHolder holder = new FloatValueHolder();
+            holder.setValue(scrollY);
+            
+            flingAnimation = new FlingAnimation(holder, holder.getProperty());
+            flingAnimation.setStartVelocity(acceleratedVelocity);
+            flingAnimation.setFriction(FLING_FRICTION);
+            
+            // Set min/max values for fling with overscroll
+            float maxScroll = getMaxScrollY();
+            flingAnimation.setMinValue(-maxOverscrollDistance);
+            flingAnimation.setMaxValue(maxScroll + maxOverscrollDistance);
+            
+            flingAnimation.addUpdateListener((animation, value, velocity) -> {
+                // Directly set the scroll position - no damping formula during fling
+                scrollY = value;
+                
+                // Track if we're in overscroll
+                isInOverscroll = scrollY < 0 || scrollY > maxScroll;
+                
+                invalidate();
+            });
+            
+            flingAnimation.addEndListener((animation, canceled, value, velocity) -> {
+                if (!canceled && isInOverscroll) {
+                    // Snap back from overscroll after fling ends
+                    snapBackFromOverscroll();
+                }
+            });
+            
+            flingAnimation.start();
             return true;
         }
         
