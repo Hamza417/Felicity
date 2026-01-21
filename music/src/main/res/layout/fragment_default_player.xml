@@ -207,6 +207,9 @@
             android:layout_gravity="center_vertical"
             android:layout_marginStart="5dp"
             android:layout_weight="1"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:maxLines="1"
+            android:ellipsize="marquee"
             android:drawablePadding="@dimen/padding_5"
             android:gravity="center_vertical"
             android:text="@string/app_name_full"
@@ -215,6 +218,14 @@
             app:drawableTintStyle="accent"
             app:textColorStyle="tertiary"
             tools:ignore="HardcodedText" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/lyrics"
+            android:layout_width="@dimen/button_size"
+            android:layout_height="@dimen/button_size"
+            android:layout_marginEnd="@dimen/padding_1"
+            android:src="@drawable/ic_lyrics"
+            app:buttonTintType="regular" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/repeat"

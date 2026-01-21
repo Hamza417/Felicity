@@ -74,6 +74,10 @@ class DefaultPlayer : MediaFragment() {
                 }
             }
         })
+
+        binding.lyrics.setOnClickListener {
+            openFragment(Lyrics.newInstance(), Lyrics.TAG)
+        }
     }
 
     override fun onPositionChanged(position: Int) {
