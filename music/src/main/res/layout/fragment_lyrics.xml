@@ -34,9 +34,9 @@
     <app.simple.felicity.decorations.lrc.view.ModernLrcView
         android:id="@+id/lrc"
         android:layout_width="match_parent"
+        android:paddingHorizontal="@dimen/padding_5"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginVertical="@dimen/padding_20"
-        app:lrcTextSize="@dimen/text_size_16" />
+        android:layout_marginVertical="@dimen/padding_20" />
 
 </app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>

@@ -34,9 +34,9 @@ import app.simple.felicity.theme.themes.Theme;
 public class ModernLrcView extends View implements ThemeChangedListener {
     
     // Default values
-    private static final float DEFAULT_TEXT_SIZE = 16f; // sp
-    private static final float DEFAULT_CURRENT_TEXT_SIZE = 20f; // sp
-    private static final float DEFAULT_LINE_SPACING = 24f; // dp
+    private static final float DEFAULT_TEXT_SIZE = 22f; // sp
+    private static final float DEFAULT_CURRENT_TEXT_SIZE = 28f; // sp
+    private static final float DEFAULT_LINE_SPACING = 16f; // dp
     private static final int DEFAULT_NORMAL_COLOR = Color.GRAY;
     private static final int DEFAULT_CURRENT_COLOR = Color.WHITE;
     private static final String DEFAULT_EMPTY_TEXT = "No lyrics";
@@ -54,7 +54,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private float lineSpacing;
     private int normalTextColor;
     private int currentTextColor;
-    private Alignment textAlignment = Alignment.CENTER;
+    private Alignment textAlignment = Alignment.LEFT;
     private String emptyText;
     // Scrolling
     private OverScroller scroller;
@@ -150,10 +150,17 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     private void drawEmptyText(Canvas canvas) {
+        // Save current alignment
+        Paint.Align savedAlign = normalPaint.getTextAlign();
+        
+        // Temporarily set to center for empty text
         normalPaint.setTextAlign(Paint.Align.CENTER);
         float x = getWidth() / 2f;
         float y = getHeight() / 2f - ((normalPaint.descent() + normalPaint.ascent()) / 2);
         canvas.drawText(emptyText, x, y, normalPaint);
+        
+        // Restore original alignment
+        normalPaint.setTextAlign(savedAlign);
     }
     
     private void drawLyrics(Canvas canvas) {
@@ -161,6 +168,15 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         float offsetY = centerY - scrollY;
         
         int entryCount = lrcData.size();
+        
+        // Save canvas state and apply clipping to respect padding
+        canvas.save();
+        canvas.clipRect(
+                getPaddingLeft(),
+                0,
+                getWidth() - getPaddingRight(),
+                getHeight()
+                       );
         
         for (int i = 0; i < entryCount; i++) {
             LrcEntry entry = lrcData.getEntries().get(i);
@@ -182,6 +198,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             
             canvas.drawText(text, x, y, paint);
         }
+        
+        // Restore canvas state
+        canvas.restore();
     }
     
     /**
@@ -212,15 +231,21 @@ public class ModernLrcView extends View implements ThemeChangedListener {
      * Calculate X position based on alignment
      */
     private float calculateXPosition(String text, TextPaint paint) {
-        switch (textAlignment) {
-            case LEFT:
-                return getPaddingLeft();
-            case RIGHT:
-                return getWidth() - getPaddingRight();
-            case CENTER:
-            default:
-                return getWidth() / 2f;
-        }
+        int paddingLeft = getPaddingLeft();
+        int paddingRight = getPaddingRight();
+        int availableWidth = getWidth() - paddingLeft - paddingRight;
+        
+        return switch (textAlignment) {
+            case LEFT ->
+                // Paint.Align.LEFT draws text starting from x, so x is the left edge
+                    paddingLeft;
+            case RIGHT ->
+                // Paint.Align.RIGHT draws text ending at x, so x is the right edge
+                    paddingLeft + availableWidth;
+            default ->
+                // Paint.Align.CENTER draws text centered at x
+                    paddingLeft + availableWidth / 2f;
+        };
     }
     
     /**
