@@ -6,7 +6,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.databinding.FragmentLyricsBinding
-import app.simple.felicity.decorations.lrc.LrcHelper
+import app.simple.felicity.decorations.lrc.parser.LrcParser
+import app.simple.felicity.decorations.lrc.parser.LyricsParseException
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Song
@@ -33,10 +34,25 @@ class Lyrics : MediaFragment() {
     private fun setupLyrics() {
         lifecycleScope.launch(Dispatchers.IO) {
             val path = MediaManager.getCurrentSong()?.path?.replaceAfterLast(".", "lrc")?.toFile()
-            val lrc = LrcHelper.parseLrcFromFile(path)
 
-            withContext(Dispatchers.Main) {
-                binding.lrc.setLrcData(lrc)
+            try {
+                if (path?.exists() == true) {
+                    val lrcContent = path.readText()
+                    val parser = LrcParser()
+                    val lrcData = parser.parse(lrcContent)
+
+                    withContext(Dispatchers.Main) {
+                        binding.lrc.setLrcData(lrcData)
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        binding.lrc.setEmptyText("No lyrics file found")
+                    }
+                }
+            } catch (e: LyricsParseException) {
+                withContext(Dispatchers.Main) {
+                    binding.lrc.setEmptyText("Failed to parse lyrics")
+                }
             }
         }
     }

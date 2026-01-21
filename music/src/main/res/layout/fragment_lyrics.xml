@@ -31,12 +31,12 @@
         app:appFontStyle="regular"
         app:textColorStyle="secondary" />
 
-    <app.simple.felicity.decorations.lrc.LrcView
+    <app.simple.felicity.decorations.lrc.view.ModernLrcView
         android:id="@+id/lrc"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:background="@android:color/transparent"
-        android:layout_marginVertical="@dimen/padding_20" />
+        android:layout_marginVertical="@dimen/padding_20"
+        app:lrcTextSize="@dimen/text_size_16" />
 
 </app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>
