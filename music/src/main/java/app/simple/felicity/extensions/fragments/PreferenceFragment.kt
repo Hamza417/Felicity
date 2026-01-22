@@ -239,15 +239,19 @@ open class PreferenceFragment : MediaFragment() {
                                 when (it) {
                                     R.string.spanned -> {
                                         HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_SPANNED)
+                                        (view as TextView).text = getString(R.string.spanned)
                                     }
                                     R.string.carousel -> {
                                         HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_CAROUSEL)
+                                        (view as TextView).text = getString(R.string.carousel)
                                     }
                                     R.string.artflow -> {
                                         HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_ARTFLOW)
+                                        (view as TextView).text = getString(R.string.artflow)
                                     }
                                     R.string.simple -> {
                                         HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_SIMPLE)
+                                        (view as TextView).text = getString(R.string.simple)
                                     }
                                 }
                             },

@@ -25,6 +25,7 @@ import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.ArtFlow
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Genres
+import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.viewmodels.main.home.HomeViewModel
 import kotlinx.coroutines.FlowPreview
@@ -65,7 +66,7 @@ class ArtFlowHome : MediaFragment() {
             Log.d(TAG, "Sidebar item clicked with id: $id")
             when (id) {
                 R.drawable.ic_song -> {
-                    openFragment(ArtFlow.newInstance(), ArtFlow.TAG)
+                    openFragment(Songs.newInstance(), Songs.TAG)
                 }
                 R.drawable.ic_artist -> {
                     openFragment(Artists.newInstance(), Artists.TAG)
@@ -135,7 +136,7 @@ class ArtFlowHome : MediaFragment() {
                 }
 
                 override fun onMenuClicked(view: View) {
-                    parentFragmentManager.showHomeMenu()
+                    childFragmentManager.showHomeMenu()
                 }
             })
 

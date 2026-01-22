@@ -119,6 +119,9 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
         return requireActivity().application
     }
 
+    /**
+     * Make sure the dialog is launched using childFragmentManager not parentFragmentManager.
+     */
     protected fun openAppSettings() {
         try {
             (parentFragment as ScopedFragment).openPreferencesPanel()

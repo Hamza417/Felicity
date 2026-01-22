@@ -14,7 +14,6 @@ import app.simple.felicity.adapters.home.main.AdapterGridHome.Companion.AdapterS
 import app.simple.felicity.adapters.home.sub.AdapterGridArt
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.randomViewHolder
-import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
@@ -32,7 +31,7 @@ class SpannedHome : MediaFragment() {
     private lateinit var binding: FragmentHomeSpannedBinding
     private val homeViewModel: HomeViewModel by viewModels({ requireActivity() })
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentHomeSpannedBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -53,7 +52,8 @@ class SpannedHome : MediaFragment() {
 
             adapter.setAdapterSpannedHomeCallbacks(object : AdapterSpannedHomeCallbacks {
                 override fun onMenuClicked(view: View) {
-                    parentFragmentManager.showHomeMenu()
+                    // childFragmentManager.showHomeMenu()
+                    openPreferencesPanel()
                 }
 
                 override fun onItemClicked(items: List<Any>, position: Int) {

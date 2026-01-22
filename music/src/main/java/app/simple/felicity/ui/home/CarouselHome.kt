@@ -100,7 +100,7 @@ class CarouselHome : MediaFragment() {
 
             adapter.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onMenuClicked(view: View) {
-                    parentFragmentManager.showHomeMenu()
+                    childFragmentManager.showHomeMenu()
                 }
 
                 override fun onSearchClicked(view: View) {
