@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentArtflowBinding
+import app.simple.felicity.decorations.artflow.ArtFlow.OnCoverClickListener
 import app.simple.felicity.decorations.artflow.ArtFlowRenderer
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselMenu
@@ -75,7 +76,7 @@ class ArtFlow : MediaFragment() {
                 }
             })
 
-            binding.coverflow.setOnCoverClickListener(object : app.simple.felicity.decorations.artflow.ArtFlow.OnCoverClickListener {
+            binding.coverflow.setOnCoverClickListener(object : OnCoverClickListener {
                 override fun onCenteredCoverClick(index: Int, uri: Uri?) {
                     songsViewModel.setCarouselPosition(index)
                     val sorted = songs.values.toList().sorted()
@@ -119,6 +120,18 @@ class ArtFlow : MediaFragment() {
                         },
                         onDismiss = {}
                 ).show()
+            }
+
+            binding.play.setOnLongClickListener {
+                val currentSong = MediaManager.getCurrentSong()
+                songs.keys.forEachIndexed { index, uri ->
+                    if (songs[uri] == currentSong) {
+                        binding.coverflow.scrollToIndex(index)
+                        return@forEachIndexed
+                    }
+                }
+
+                true
             }
         }
 
