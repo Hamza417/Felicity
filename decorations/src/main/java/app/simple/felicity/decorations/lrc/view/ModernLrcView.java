@@ -34,7 +34,9 @@ import androidx.dynamicanimation.animation.SpringForce;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.decorations.lrc.model.LrcData;
 import app.simple.felicity.decorations.lrc.model.LrcEntry;
+import app.simple.felicity.decorations.ripple.FelicityRippleDrawable;
 import app.simple.felicity.decorations.typeface.TypeFace;
+import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;
@@ -129,6 +131,12 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     // Callbacks
     private OnLrcClickListener onLrcClickListener;
     
+    // Ripple effect
+    private FelicityRippleDrawable rippleDrawable;
+    private int tappedLineIndex = -1;
+    private float rippleX = 0f;
+    private float rippleY = 0f;
+    
     public ModernLrcView(Context context) {
         this(context, null);
     }
@@ -193,6 +201,13 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         
         // Initialize gesture detector
         gestureDetector = new GestureDetector(context, new GestureListener());
+        
+        // Initialize ripple drawable
+        if (!isInEditMode()) {
+            rippleDrawable = new FelicityRippleDrawable(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
+            rippleDrawable.setCornerRadius(AppearancePreferences.INSTANCE.getCornerRadius());
+            rippleDrawable.setCallback(this);
+        }
         
         if (!isInEditMode()) {
             updateColorsFromTheme(ThemeManager.INSTANCE.getTheme());
@@ -287,6 +302,23 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                 }
             } else {
                 paint.setMaskFilter(null);
+            }
+            
+            // Draw ripple effect for tapped line (behind the text)
+            if (i == tappedLineIndex && rippleDrawable != null) {
+                float yOffset = y - (lineHeight / 2f);
+                int paddingLeft = getPaddingLeft();
+                int paddingRight = getPaddingRight();
+                int availableWidth = getWidth() - paddingLeft - paddingRight;
+                
+                // Set ripple bounds to cover the full width of the text area
+                rippleDrawable.setBounds(
+                        paddingLeft,
+                        (int) yOffset,
+                        paddingLeft + availableWidth,
+                        (int) (yOffset + lineHeight)
+                                        );
+                rippleDrawable.draw(canvas);
             }
             
             // Draw the wrapped text using StaticLayout
@@ -759,6 +791,36 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
+     * Find which line was tapped based on Y coordinate
+     */
+    private int findTappedLineIndex(float touchY) {
+        if (lrcData == null || lrcData.isEmpty()) {
+            return -1;
+        }
+        
+        float centerY = getHeight() / 2f;
+        float offsetY = centerY - scrollY;
+        
+        for (int i = 0; i < lrcData.size(); i++) {
+            float lineY = offsetY + getLineOffset(i);
+            
+            // Get layout height for this line
+            Float cachedHeight = layoutHeights.get(i);
+            float lineHeight = cachedHeight != null ? cachedHeight :
+                    (i == currentLineIndex ? currentTextSize : normalTextSize);
+            
+            float topBound = lineY - (lineHeight / 2f);
+            float bottomBound = lineY + (lineHeight / 2f);
+            
+            if (touchY >= topBound && touchY <= bottomBound) {
+                return i;
+            }
+        }
+        
+        return -1;
+    }
+    
+    /**
      * Scroll to specific line with animation
      */
     private void scrollToLine(int lineIndex) {
@@ -819,9 +881,34 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             return super.onTouchEvent(event);
         }
         
-        boolean handled = gestureDetector.onTouchEvent(event);
-        
-        if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
+        // Handle ripple effect based on touch events
+        int action = event.getAction();
+        if (action == MotionEvent.ACTION_DOWN) {
+            // Find which line was touched and show ripple immediately
+            int touchedIndex = findTappedLineIndex(event.getY());
+            if (touchedIndex >= 0) {
+                tappedLineIndex = touchedIndex;
+                rippleX = event.getX();
+                rippleY = event.getY();
+                
+                // Set hotspot and trigger ripple press state
+                if (rippleDrawable != null) {
+                    rippleDrawable.setHotspot(rippleX, rippleY);
+                    rippleDrawable.setState(new int[] {android.R.attr.state_pressed, android.R.attr.state_enabled});
+                    invalidate();
+                }
+            }
+        } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+            // Release ripple state
+            if (rippleDrawable != null) {
+                rippleDrawable.setState(new int[] {});
+                // Clear tapped line after ripple animation completes
+                postDelayed(() -> {
+                    tappedLineIndex = -1;
+                    invalidate();
+                }, 600);
+            }
+            
             // Snap back from overscroll if needed
             snapBackFromOverscroll();
             
@@ -829,7 +916,16 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                 // Resume auto-scrolling after delay
                 postDelayed(autoScrollRunnable, AUTO_SCROLL_DELAY);
             }
+        } else if (action == MotionEvent.ACTION_MOVE) {
+            // If user starts scrolling, cancel the ripple
+            if (isUserScrolling && rippleDrawable != null) {
+                rippleDrawable.setState(new int[] {});
+                tappedLineIndex = -1;
+                invalidate();
+            }
         }
+        
+        boolean handled = gestureDetector.onTouchEvent(event);
         
         return handled || super.onTouchEvent(event);
     }
@@ -1084,6 +1180,11 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     
     private void updateColorsFromAccent(Accent accent) {
         setCurrentTextColor(accent.getPrimaryAccentColor());
+        
+        // Update ripple color
+        if (rippleDrawable != null) {
+            rippleDrawable.setRippleColor(accent.getPrimaryAccentColor());
+        }
     }
     
     @Override
@@ -1091,6 +1192,20 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         super.onAttachedToWindow();
         if (!isInEditMode()) {
             ThemeManager.INSTANCE.addListener(this);
+        }
+    }
+    
+    @Override
+    protected boolean verifyDrawable(@NonNull android.graphics.drawable.Drawable who) {
+        return who == rippleDrawable || super.verifyDrawable(who);
+    }
+    
+    @Override
+    public void invalidateDrawable(@NonNull android.graphics.drawable.Drawable drawable) {
+        if (drawable == rippleDrawable) {
+            invalidate();
+        } else {
+            super.invalidateDrawable(drawable);
         }
     }
     
@@ -1122,6 +1237,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         @Override
         public boolean onDown(@NonNull MotionEvent e) {
             removeCallbacks(autoScrollRunnable);
+            
+            // Reset user scrolling flag
+            isUserScrolling = false;
             
             // Immediately cancel all animations
             if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
@@ -1262,6 +1380,22 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         
         @Override
         public boolean onSingleTapConfirmed(@NonNull MotionEvent e) {
+            // Find which line was tapped
+            int tappedIndex = findTappedLineIndex(e.getY());
+            
+            if (tappedIndex >= 0 && lrcData != null && tappedIndex < lrcData.size()) {
+                // Get the entry for the tapped line
+                LrcEntry entry = lrcData.getEntries().get(tappedIndex);
+                
+                // Notify listener to seek
+                if (onLrcClickListener != null) {
+                    onLrcClickListener.onLrcClick(entry.getTimeInMillis(), entry.getText());
+                }
+                
+                return true;
+            }
+            
+            // Fallback to old behavior if no specific line was tapped
             if (onLrcClickListener != null && currentLineIndex >= 0 && lrcData != null) {
                 LrcEntry entry = lrcData.getEntries().get(currentLineIndex);
                 onLrcClickListener.onLrcClick(entry.getTimeInMillis(), entry.getText());

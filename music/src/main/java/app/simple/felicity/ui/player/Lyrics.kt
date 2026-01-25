@@ -29,6 +29,12 @@ class Lyrics : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         requireHiddenMiniPlayer()
+
+        // Set up tap listener for seeking
+        binding.lrc.setOnLrcClickListener { timeInMillis, _ ->
+            // Seek to the tapped line's timestamp
+            MediaManager.seekTo(timeInMillis)
+        }
     }
 
     private fun setupLyrics() {
