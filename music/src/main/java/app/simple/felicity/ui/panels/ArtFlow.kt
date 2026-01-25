@@ -148,7 +148,7 @@ class ArtFlow : MediaFragment() {
         }
 
         binding.miniplayerContainer.setOnClickListener {
-            openFragment(DefaultPlayer.Companion.newInstance(), DefaultPlayer.Companion.TAG)
+            openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
         }
     }
 

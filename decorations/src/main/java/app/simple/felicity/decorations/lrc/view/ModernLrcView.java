@@ -11,6 +11,8 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Shader;
+import android.text.Layout;
+import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -64,6 +66,13 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     // Data
     private LrcData lrcData;
     private int currentLineIndex = -1;
+    
+    // Cache for wrapped text layouts
+    private final HashMap <Integer, StaticLayout> layoutCache = new HashMap <>();
+    
+    // Cache for layout heights (to properly calculate spacing)
+    private final HashMap <Integer, Float> layoutHeights = new HashMap <>();
+    
     // Text size animation
     private final java.util.HashMap <Integer, Float> animatedTextSizes = new java.util.HashMap <>();
     // Paint objects
@@ -177,7 +186,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     @Override
-    protected void onDraw(Canvas canvas) {
+    protected void onDraw(@NonNull Canvas canvas) {
         super.onDraw(canvas);
         
         if (lrcData == null || lrcData.isEmpty()) {
@@ -233,11 +242,6 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             // Calculate Y position for this line
             float y = offsetY + getLineOffset(i);
             
-            // Skip lines that are off-screen
-            if (y < -currentTextSize || y > getHeight() + currentTextSize) {
-                continue;
-            }
-            
             // Choose paint and set animated size
             TextPaint paint;
             if (i == currentLineIndex) {
@@ -248,6 +252,15 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             
             // Apply animated text size
             paint.setTextSize(animatedSize);
+            
+            // Get or create StaticLayout for this line
+            StaticLayout layout = getOrCreateLayout(text, paint, i);
+            
+            // Skip lines that are completely off-screen (accounting for multi-line height)
+            float lineHeight = layout.getHeight();
+            if (y < -lineHeight || y > getHeight() + lineHeight) {
+                continue;
+            }
             
             // Calculate and apply blur based on distance from center (proportional to fade)
             if (enableFade) {
@@ -261,10 +274,18 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                 paint.setMaskFilter(null);
             }
             
-            // Calculate X position based on alignment
-            float x = calculateXPosition(text, paint);
+            // Draw the wrapped text using StaticLayout
+            canvas.save();
             
-            canvas.drawText(text, x, y, paint);
+            // Calculate X position for the layout based on alignment
+            float x = calculateXPositionForLayout(layout, paint);
+            
+            // Position the text vertically (centered on y position)
+            float yOffset = y - (lineHeight / 2f);
+            canvas.translate(x, yOffset);
+            
+            layout.draw(canvas);
+            canvas.restore();
         }
         
         // Clear mask filters
@@ -410,47 +431,85 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     
     /**
      * Calculate cumulative Y offset for a given line
+     * Uses cached layout heights for accurate multi-line spacing
      */
     private float getLineOffset(int lineIndex) {
         float offset = 0f;
         
         for (int i = 0; i < lineIndex; i++) {
-            if (i == currentLineIndex) {
-                offset += currentTextSize + lineSpacing;
+            // Use cached layout height if available, otherwise fall back to text size
+            Float cachedHeight = layoutHeights.get(i);
+            if (cachedHeight != null) {
+                offset += cachedHeight + lineSpacing;
             } else {
-                offset += normalTextSize + lineSpacing;
+                // Fallback to text size if height not cached yet
+                if (i == currentLineIndex) {
+                    offset += currentTextSize + lineSpacing;
+                } else {
+                    offset += normalTextSize + lineSpacing;
+                }
             }
         }
         
         // Add half height of current line to center it
-        if (lineIndex == currentLineIndex) {
-            offset += currentTextSize / 2f;
+        Float currentHeight = layoutHeights.get(lineIndex);
+        if (currentHeight != null) {
+            offset += currentHeight / 2f;
         } else {
-            offset += normalTextSize / 2f;
+            // Fallback to text size
+            if (lineIndex == currentLineIndex) {
+                offset += currentTextSize / 2f;
+            } else {
+                offset += normalTextSize / 2f;
+            }
         }
         
         return offset;
     }
     
     /**
-     * Calculate X position based on alignment
+     * Get or create a StaticLayout for wrapped text
      */
-    private float calculateXPosition(String text, TextPaint paint) {
+    @SuppressWarnings ("unused")
+    private StaticLayout getOrCreateLayout(String text, TextPaint paint, int lineIndex) {
         int paddingLeft = getPaddingLeft();
         int paddingRight = getPaddingRight();
         int availableWidth = getWidth() - paddingLeft - paddingRight;
         
-        return switch (textAlignment) {
+        // During text size animation, we can't reliably cache, so always recreate
+        // For static states, we could cache based on lineIndex
+        // Since text size is animating frequently, we'll recreate for correctness
+        // A future optimization could cache based on (lineIndex, textSize) tuple
+        
+        Layout.Alignment alignment = switch (textAlignment) {
             case LEFT ->
-                // Paint.Align.LEFT draws text starting from x, so x is the left edge
-                    paddingLeft;
+                    Layout.Alignment.ALIGN_NORMAL;
             case RIGHT ->
-                // Paint.Align.RIGHT draws text ending at x, so x is the right edge
-                    paddingLeft + availableWidth;
+                    Layout.Alignment.ALIGN_OPPOSITE;
             default ->
-                // Paint.Align.CENTER draws text centered at x
-                    paddingLeft + availableWidth / 2f;
+                    Layout.Alignment.ALIGN_CENTER;
         };
+        
+        // Create StaticLayout for text wrapping
+        StaticLayout layout = StaticLayout.Builder.obtain(text, 0, text.length(), paint, availableWidth)
+                .setAlignment(alignment)
+                .setLineSpacing(0f, 1f)
+                .setIncludePad(false)
+                .build();
+        
+        // Cache the height for spacing calculations
+        layoutHeights.put(lineIndex, (float) layout.getHeight());
+        
+        return layout;
+    }
+    
+    /**
+     * Calculate X position for StaticLayout based on alignment
+     */
+    @SuppressWarnings ("unused")
+    private float calculateXPositionForLayout(StaticLayout layout, TextPaint paint) {
+        // StaticLayout handles alignment internally, so we just position it at the left padding
+        return getPaddingLeft();
     }
     
     /**
@@ -477,6 +536,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.currentLineIndex = -1;
         this.scrollY = 0f;
         this.targetScrollY = 0f;
+        this.layoutCache.clear();
+        this.layoutHeights.clear();
         invalidate();
     }
     
@@ -815,6 +876,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.scrollY = 0f;
         this.targetScrollY = 0f;
         this.isUserScrolling = false;
+        this.layoutCache.clear();
+        this.layoutHeights.clear();
         removeCallbacks(autoScrollRunnable);
         if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
             scrollSpringAnimation.cancel();
