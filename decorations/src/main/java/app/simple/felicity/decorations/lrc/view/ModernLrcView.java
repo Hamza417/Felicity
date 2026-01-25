@@ -68,10 +68,25 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private int currentLineIndex = -1;
     
     // Cache for wrapped text layouts
-    private final HashMap <Integer, StaticLayout> layoutCache = new HashMap <>();
+    private final HashMap<Integer, StaticLayout> layoutCache = new HashMap<>();
+    
+    // Cache for wrapped text layouts at normal size
+    private final HashMap<Integer, StaticLayout> normalLayoutCache = new HashMap<>();
+    
+    // Cache for wrapped text layouts at current (highlighted) size
+    private final HashMap<Integer, StaticLayout> currentLayoutCache = new HashMap<>();
     
     // Cache for layout heights (to properly calculate spacing)
-    private final HashMap <Integer, Float> layoutHeights = new HashMap <>();
+    private final HashMap<Integer, Float> layoutHeights = new HashMap<>();
+    
+    // Cache for pre-highlight heights (to restore original state)
+    private final HashMap<Integer, Float> preHighlightHeights = new HashMap<>();
+    
+    // Cache for animated heights (smoothly interpolated values for positioning)
+    private final HashMap <Integer, Float> animatedHeights = new HashMap <>();
+    
+    // Height animations
+    private final HashMap <Integer, SpringAnimation> heightAnimations = new HashMap <>();
     
     // Text size animation
     private final java.util.HashMap <Integer, Float> animatedTextSizes = new java.util.HashMap <>();
@@ -430,37 +445,88 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
+     * Animate height change smoothly
+     */
+    private void animateHeight(int lineIndex, float fromHeight, float toHeight) {
+        // Cancel any existing height animation for this line
+        SpringAnimation existingAnimation = heightAnimations.get(lineIndex);
+        if (existingAnimation != null && existingAnimation.isRunning()) {
+            existingAnimation.cancel();
+        }
+        
+        // Create holder for height animation
+        FloatValueHolder holder = new FloatValueHolder();
+        holder.setValue(fromHeight);
+        
+        // Create spring animation for height with very low stiffness for smooth, slow transition
+        SpringAnimation animation = new SpringAnimation(holder, holder.getProperty());
+        animation.setSpring(new SpringForce(toHeight)
+                .setStiffness(SpringForce.STIFFNESS_VERY_LOW) // Very slow, smooth transition
+                .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY));
+        
+        animation.addUpdateListener((anim, value, velocity) -> {
+            // Update animated height - this affects positioning
+            animatedHeights.put(lineIndex, value);
+            invalidate();
+        });
+        
+        animation.addEndListener((anim, canceled, value, velocity) -> {
+            if (!canceled) {
+                animatedHeights.put(lineIndex, toHeight);
+                // Clean up animation reference
+                heightAnimations.remove(lineIndex);
+                invalidate();
+            }
+        });
+        
+        // Store animation reference
+        heightAnimations.put(lineIndex, animation);
+        animation.start();
+    }
+    
+    /**
      * Calculate cumulative Y offset for a given line
-     * Uses cached layout heights for accurate multi-line spacing
+     * Uses animated heights for smooth positioning
      */
     private float getLineOffset(int lineIndex) {
         float offset = 0f;
         
         for (int i = 0; i < lineIndex; i++) {
-            // Use cached layout height if available, otherwise fall back to text size
-            Float cachedHeight = layoutHeights.get(i);
-            if (cachedHeight != null) {
-                offset += cachedHeight + lineSpacing;
+            // Use animated height for smooth positioning
+            Float animHeight = animatedHeights.get(i);
+            if (animHeight != null) {
+                offset += animHeight + lineSpacing;
             } else {
-                // Fallback to text size if height not cached yet
-                if (i == currentLineIndex) {
-                    offset += currentTextSize + lineSpacing;
+                // Fallback to cached height or text size
+                Float cachedHeight = layoutHeights.get(i);
+                if (cachedHeight != null) {
+                    offset += cachedHeight + lineSpacing;
                 } else {
-                    offset += normalTextSize + lineSpacing;
+                    // Ultimate fallback to text size if height not cached yet
+                    if (i == currentLineIndex) {
+                        offset += currentTextSize + lineSpacing;
+                    } else {
+                        offset += normalTextSize + lineSpacing;
+                    }
                 }
             }
         }
         
         // Add half height of current line to center it
-        Float currentHeight = layoutHeights.get(lineIndex);
-        if (currentHeight != null) {
-            offset += currentHeight / 2f;
+        Float animCurrentHeight = animatedHeights.get(lineIndex);
+        if (animCurrentHeight != null) {
+            offset += animCurrentHeight / 2f;
         } else {
-            // Fallback to text size
-            if (lineIndex == currentLineIndex) {
-                offset += currentTextSize / 2f;
+            Float currentHeight = layoutHeights.get(lineIndex);
+            if (currentHeight != null) {
+                offset += currentHeight / 2f;
             } else {
-                offset += normalTextSize / 2f;
+                // Fallback to text size
+                if (lineIndex == currentLineIndex) {
+                    offset += currentTextSize / 2f;
+                } else {
+                    offset += normalTextSize / 2f;
+                }
             }
         }
         
@@ -469,36 +535,99 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     
     /**
      * Get or create a StaticLayout for wrapped text
+     * Uses cached layouts at fixed sizes to avoid constant recreation
      */
-    @SuppressWarnings ("unused")
+    @SuppressWarnings("unused")
     private StaticLayout getOrCreateLayout(String text, TextPaint paint, int lineIndex) {
         int paddingLeft = getPaddingLeft();
         int paddingRight = getPaddingRight();
         int availableWidth = getWidth() - paddingLeft - paddingRight;
         
-        // During text size animation, we can't reliably cache, so always recreate
-        // For static states, we could cache based on lineIndex
-        // Since text size is animating frequently, we'll recreate for correctness
-        // A future optimization could cache based on (lineIndex, textSize) tuple
-        
         Layout.Alignment alignment = switch (textAlignment) {
-            case LEFT ->
-                    Layout.Alignment.ALIGN_NORMAL;
-            case RIGHT ->
-                    Layout.Alignment.ALIGN_OPPOSITE;
-            default ->
-                    Layout.Alignment.ALIGN_CENTER;
+            case LEFT -> Layout.Alignment.ALIGN_NORMAL;
+            case RIGHT -> Layout.Alignment.ALIGN_OPPOSITE;
+            default -> Layout.Alignment.ALIGN_CENTER;
         };
         
-        // Create StaticLayout for text wrapping
-        StaticLayout layout = StaticLayout.Builder.obtain(text, 0, text.length(), paint, availableWidth)
-                .setAlignment(alignment)
-                .setLineSpacing(0f, 1f)
-                .setIncludePad(false)
-                .build();
+        // Determine which size we're rendering at
+        boolean isCurrentLine = (lineIndex == currentLineIndex);
+        boolean isUsingCurrentSize = Math.abs(paint.getTextSize() - currentTextSize) < 1f;
         
-        // Cache the height for spacing calculations
-        layoutHeights.put(lineIndex, (float) layout.getHeight());
+        // Try to use cached layout
+        HashMap<Integer, StaticLayout> cache = isUsingCurrentSize ? currentLayoutCache : normalLayoutCache;
+        StaticLayout cachedLayout = cache.get(lineIndex);
+        
+        // If this line is transitioning from highlighted to normal, don't use cached layout
+        // Force recreation to ensure proper line count (e.g., 2 lines back to 1 line)
+        boolean isTransitioningToNormal = !isCurrentLine && previousLineIndex == lineIndex;
+        
+        if (cachedLayout != null && !isTransitioningToNormal) {
+            // Return cached layout
+            return cachedLayout;
+        }
+        
+        // Check if text will fit on one line at current size
+        float textWidth = paint.measureText(text);
+        boolean needsWrapping = textWidth > availableWidth;
+        
+        StaticLayout layout;
+        
+        if (!needsWrapping) {
+            // Text fits on one line - create single-line layout
+            layout = StaticLayout.Builder.obtain(text, 0, text.length(), paint, availableWidth)
+                    .setAlignment(alignment)
+                    .setLineSpacing(0f, 1f)
+                    .setIncludePad(false)
+                    .setMaxLines(1)
+                    .build();
+        } else {
+            // Text needs wrapping - create multi-line layout
+            layout = StaticLayout.Builder.obtain(text, 0, text.length(), paint, availableWidth)
+                    .setAlignment(alignment)
+                    .setLineSpacing(0f, 1f)
+                    .setIncludePad(false)
+                    .build();
+        }
+        
+        // Cache it
+        cache.put(lineIndex, layout);
+        
+        // Get height and check for changes
+        float newHeight = (float) layout.getHeight();
+        Float previousHeight = layoutHeights.get(lineIndex);
+        
+        // Save pre-highlight height when line is in normal state (not current)
+        if (!isCurrentLine && !preHighlightHeights.containsKey(lineIndex)) {
+            preHighlightHeights.put(lineIndex, newHeight);
+        }
+        
+        // If this line is being unhighlighted, restore to pre-highlight height
+        if (!isCurrentLine && previousLineIndex == lineIndex && preHighlightHeights.containsKey(lineIndex)) {
+            Float savedPreHeight = preHighlightHeights.get(lineIndex);
+            if (savedPreHeight != null) {
+                // Use the saved pre-highlight height as target
+                newHeight = savedPreHeight;
+            }
+        }
+        
+        // If layoutHeights was cleared but we still have an animated height, use that as the "previous"
+        if (previousHeight == null) {
+            previousHeight = animatedHeights.get(lineIndex);
+        }
+        
+        if (previousHeight != null && Math.abs(previousHeight - newHeight) > 1f) {
+            // Height changed - animate the transition from current animated height to new height
+            animateHeight(lineIndex, previousHeight, newHeight);
+        } else if (previousHeight == null) {
+            // First time ever - set directly without animation
+            animatedHeights.put(lineIndex, newHeight);
+        } else {
+            // Height hasn't changed significantly - just update the animated height
+            animatedHeights.put(lineIndex, newHeight);
+        }
+        
+        // Update cached height
+        layoutHeights.put(lineIndex, newHeight);
         
         return layout;
     }
@@ -537,7 +666,20 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.scrollY = 0f;
         this.targetScrollY = 0f;
         this.layoutCache.clear();
+        this.normalLayoutCache.clear();
+        this.currentLayoutCache.clear();
         this.layoutHeights.clear();
+        this.preHighlightHeights.clear();
+        this.animatedHeights.clear();
+        
+        // Cancel all height animations
+        for (SpringAnimation animation : heightAnimations.values()) {
+            if (animation.isRunning()) {
+                animation.cancel();
+            }
+        }
+        heightAnimations.clear();
+        
         invalidate();
     }
     
@@ -558,6 +700,22 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         if (newLineIndex != currentLineIndex) {
             // Store previous line index
             previousLineIndex = currentLineIndex;
+            
+            // Clear cached layouts and heights for lines that are changing state
+            // This forces recalculation and proper height animation
+            if (previousLineIndex >= 0) {
+                normalLayoutCache.remove(previousLineIndex);
+                currentLayoutCache.remove(previousLineIndex);
+                layoutHeights.remove(previousLineIndex);
+                // Don't remove animatedHeights yet - let animation complete naturally
+            }
+            if (newLineIndex >= 0) {
+                normalLayoutCache.remove(newLineIndex);
+                currentLayoutCache.remove(newLineIndex);
+                layoutHeights.remove(newLineIndex);
+                // Don't remove animatedHeights yet - let animation complete naturally
+            }
+            
             currentLineIndex = newLineIndex;
             
             // Animate text size changes
@@ -877,7 +1035,20 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.targetScrollY = 0f;
         this.isUserScrolling = false;
         this.layoutCache.clear();
+        this.normalLayoutCache.clear();
+        this.currentLayoutCache.clear();
         this.layoutHeights.clear();
+        this.preHighlightHeights.clear();
+        this.animatedHeights.clear();
+        
+        // Cancel all height animations
+        for (SpringAnimation animation : heightAnimations.values()) {
+            if (animation.isRunning()) {
+                animation.cancel();
+            }
+        }
+        heightAnimations.clear();
+        
         removeCallbacks(autoScrollRunnable);
         if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
             scrollSpringAnimation.cancel();
