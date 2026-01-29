@@ -152,4 +152,6 @@
     <string name="dont_show_again">Don\'t Show Again</string>
     <string name="start_app_now">Start App Now</string>
     <string name="skip">Skip</string>
+    <string name="audio">Audio</string>
+    <string name="audio_desc">Configure decoder, audio engine, and output quality.</string>
 </resources>

@@ -39,6 +39,11 @@ class PreferencesViewModel(application: Application) : WrappedViewModel(applicat
                             description = R.string.behavior_desc,
                             icon = R.drawable.ic_behavior
                     ),
+                    Preference(
+                            title = R.string.audio,
+                            description = R.string.audio_desc,
+                            icon = R.drawable.ic_volume_up
+                    ),
             )
 
             preference.postValue(preferences)
