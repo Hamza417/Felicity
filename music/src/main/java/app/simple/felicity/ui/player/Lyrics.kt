@@ -4,18 +4,21 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.databinding.FragmentLyricsBinding
+import app.simple.felicity.decorations.lrc.parser.LrcParser
+import app.simple.felicity.decorations.lrc.parser.LyricsParseException
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Song
-import app.simple.felicity.viewmodels.main.player.LyricsViewModel
+import app.simple.felicity.utils.FileUtils.toFile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class Lyrics : MediaFragment() {
 
     private lateinit var binding: FragmentLyricsBinding
-
-    private val lyricsViewModel: LyricsViewModel by viewModels({ requireActivity() })
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentLyricsBinding.inflate(inflater, container, false)
@@ -32,9 +35,31 @@ class Lyrics : MediaFragment() {
             // Seek to the tapped line's timestamp
             MediaManager.seekTo(timeInMillis)
         }
+    }
 
-        lyricsViewModel.getLrcData().observe(viewLifecycleOwner) { lrcData ->
-            binding.lrc.setLrcData(lrcData)
+    private fun setupLyrics() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val path = MediaManager.getCurrentSong()?.path?.replaceAfterLast(".", "lrc")?.toFile()
+
+            try {
+                if (path?.exists() == true) {
+                    val lrcContent = path.readText()
+                    val parser = LrcParser()
+                    val lrcData = parser.parse(lrcContent)
+
+                    withContext(Dispatchers.Main) {
+                        binding.lrc.setLrcData(lrcData)
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        binding.lrc.setEmptyText("No lyrics file found")
+                    }
+                }
+            } catch (e: LyricsParseException) {
+                withContext(Dispatchers.Main) {
+                    binding.lrc.setEmptyText("Failed to parse lyrics")
+                }
+            }
         }
     }
 
@@ -45,7 +70,7 @@ class Lyrics : MediaFragment() {
 
     override fun onSong(song: Song) {
         super.onSong(song)
-        lyricsViewModel.loadLrcData()
+        setupLyrics()
         binding.name.text = song.title
         binding.artist.text = song.artist
     }

@@ -48,8 +48,4 @@ object FileUtils {
     fun String.toFile(): File {
         return File(this)
     }
-
-    fun String.getFileName(): String {
-        return File(this).name
-    }
 }
