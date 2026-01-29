@@ -2,7 +2,6 @@
 // Use 'apply from: rootProject.file('common.gradle')' in your library build.gradle file
 
 // Only Project and Settings build scripts can contain plugins {} blocks
-apply plugin: 'org.jetbrains.kotlin.android'
 apply plugin: 'com.google.devtools.ksp'
 
 ext {
@@ -38,8 +37,10 @@ android {
         targetCompatibility JavaVersion.current()
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.current()
+    kotlin {
+        compilerOptions {
+            jvmTarget = "JVM_21"
+        }
     }
 }
 

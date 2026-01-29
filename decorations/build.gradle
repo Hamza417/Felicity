@@ -3,8 +3,11 @@ apply from: rootProject.file('common.gradle')
 
 android {
     namespace 'app.simple.felicity.decoration'
-    kotlinOptions {
-        freeCompilerArgs = ['-XXLanguage:+PropertyParamAnnotationDefaultTargetMode']
+
+    kotlin {
+        compilerOptions {
+            freeCompilerArgs.add("-XXLanguage:+PropertyParamAnnotationDefaultTargetMode")
+        }
     }
 }
 
@@ -17,7 +20,7 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     implementation 'androidx.viewpager2:viewpager2:1.1.0'
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
-    implementation 'androidx.databinding:viewbinding:8.13.0'
+    implementation 'androidx.databinding:viewbinding:9.0.0'
 
     api 'com.google.android.flexbox:flexbox:3.0.0'
     implementation 'com.github.duanhong169:drawabletoolbox:1.0.7'
