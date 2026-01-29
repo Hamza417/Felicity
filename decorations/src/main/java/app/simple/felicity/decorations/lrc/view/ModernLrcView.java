@@ -115,7 +115,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private float targetScrollY = 0f;
     private boolean isUserScrolling = false;
     private boolean isAutoScrollEnabled = true;
-    private boolean isTapSeek = false; // Flag to prevent auto-scroll after tap seek
+    private boolean isTapSeek = true; // Flag to prevent auto-scroll after tap seek
     private float scrollMultiplier;
     private float maxOverscrollDistance;
     private SpringAnimation springAnimation; // For overscroll snap-back
@@ -275,7 +275,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             
             // Choose paint and set animated size
             TextPaint paint;
-            if (i == currentLineIndex) {
+            // Don't highlight empty lines
+            if (i == currentLineIndex && text != null && !text.trim().isEmpty()) {
                 paint = currentPaint;
             } else {
                 paint = normalPaint;
@@ -417,6 +418,15 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         Float animatedSize = animatedTextSizes.get(lineIndex);
         if (animatedSize != null) {
             return animatedSize;
+        }
+        
+        // Check if this line is empty - empty lines should never be highlighted
+        if (lrcData != null && lineIndex >= 0 && lineIndex < lrcData.size()) {
+            LrcEntry entry = lrcData.getEntries().get(lineIndex);
+            String text = entry.getText();
+            if (text == null || text.trim().isEmpty()) {
+                return normalTextSize;
+            }
         }
         
         // No animation in progress, return static size based on previous state
@@ -758,8 +768,15 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             }
             
             if (currentLineIndex >= 0 && currentLineIndex < lrcData.size()) {
-                // Animate current line to large size
-                animateTextSize(currentLineIndex, currentTextSize);
+                // Animate current line to large size (only if not empty)
+                LrcEntry currentEntry = lrcData.getEntries().get(currentLineIndex);
+                String currentText = currentEntry.getText();
+                if (currentText != null && !currentText.trim().isEmpty()) {
+                    animateTextSize(currentLineIndex, currentTextSize);
+                } else {
+                    // For empty lines, keep normal text size
+                    animateTextSize(currentLineIndex, normalTextSize);
+                }
             }
             
             // Only auto-scroll if not user scrolling, auto-scroll is enabled, and not from a tap seek
