@@ -101,7 +101,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     // Thumb shape selection: PILL or OVAL (circle/ellipse)
     enum class ThumbShape { PILL, OVAL, CIRCLE }
 
-    private var thumbShape: ThumbShape = ThumbShape.CIRCLE
+    private var thumbShape: ThumbShape = ThumbShape.OVAL
 
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -271,6 +271,9 @@ class FelicitySeekbar @JvmOverloads constructor(
                 recycle()
             }
         }
+
+        // TODO - We are overriding thumb style, might need to change later otherwise thumbShape won't work
+        applyThumbPreferences()
 
         // If width is smaller than diameter, coerce to diameter to avoid inverted corners
         thumbWidthPx = max(thumbWidthPx, thumbRadiusPx * 2f)
@@ -761,6 +764,17 @@ class FelicitySeekbar @JvmOverloads constructor(
         invalidate()
     }
 
+    private fun applyThumbPreferences() {
+        if (isInEditMode.not()) {
+            val shape = AppearancePreferences.getSeekbarThumbStyle()
+            when (shape) {
+                AppearancePreferences.SEEKBAR_THUMB_PILL -> setThumbShape(ThumbShape.PILL)
+                AppearancePreferences.SEEKBAR_THUMB_CIRCLE -> setThumbShape(ThumbShape.CIRCLE)
+                else -> setThumbShape(ThumbShape.OVAL)
+            }
+        }
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         if (isInEditMode.not()) {
@@ -770,8 +784,13 @@ class FelicitySeekbar @JvmOverloads constructor(
     }
 
     override fun onSharedPreferenceChanged(p0: SharedPreferences?, p1: String?) {
-        if (p1 == AppearancePreferences.APP_CORNER_RADIUS) {
-            setThumbCornerRadius(AppearancePreferences.getCornerRadius())
+        when (p1) {
+            AppearancePreferences.APP_CORNER_RADIUS -> {
+                setThumbCornerRadius(AppearancePreferences.getCornerRadius())
+            }
+            AppearancePreferences.SEEKBAR_THUMB_STYLE -> {
+                applyThumbPreferences()
+            }
         }
     }
 

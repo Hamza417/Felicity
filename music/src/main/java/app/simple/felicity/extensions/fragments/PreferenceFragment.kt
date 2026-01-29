@@ -111,6 +111,49 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val thumbShape = Preference(
+                title = R.string.thumb_shape,
+                summary = R.string.thumb_shape_summary,
+                icon = R.drawable.ic_circle,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (AppearancePreferences.getSeekbarThumbStyle()) {
+                        AppearancePreferences.SEEKBAR_THUMB_OVAL -> getString(R.string.oval)
+                        AppearancePreferences.SEEKBAR_THUMB_PILL -> getString(R.string.pill)
+                        AppearancePreferences.SEEKBAR_THUMB_CIRCLE -> getString(R.string.circle)
+                        else -> getString(R.string.oval)
+                    }
+                },
+                onPreferenceAction = { view, callback ->
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(R.string.oval,
+                                               R.string.pill,
+                                               R.string.circle),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.oval -> {
+                                        AppearancePreferences.setSeekbarThumbStyle(AppearancePreferences.SEEKBAR_THUMB_OVAL)
+                                        (view as TextView).text = getString(R.string.oval)
+                                    }
+                                    R.string.pill -> {
+                                        AppearancePreferences.setSeekbarThumbStyle(AppearancePreferences.SEEKBAR_THUMB_PILL)
+                                        (view as TextView).text = getString(R.string.pill)
+                                    }
+                                    R.string.circle -> {
+                                        AppearancePreferences.setSeekbarThumbStyle(AppearancePreferences.SEEKBAR_THUMB_CIRCLE)
+                                        (view as TextView).text = getString(R.string.circle)
+                                    }
+                                }
+                            },
+                            onDismiss = {
+                                callback
+                            }
+                    ).show()
+                }
+        )
+
         val effects = Preference(type = PreferenceType.SUB_HEADER, title = R.string.effects)
 
         val shadowEffectToggle = Preference(
@@ -193,6 +236,7 @@ open class PreferenceFragment : MediaFragment() {
         preferences.add(header)
         preferences.add(cornerRadius)
         preferences.add(spacing)
+        preferences.add(thumbShape)
         preferences.add(effects)
         preferences.add(shadowEffectToggle)
         preferences.add(albumArt)
