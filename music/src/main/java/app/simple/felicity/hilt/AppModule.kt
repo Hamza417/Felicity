@@ -4,6 +4,7 @@ import android.content.Context
 import app.simple.felicity.repository.repositories.AlbumRepository
 import app.simple.felicity.repository.repositories.ArtistRepository
 import app.simple.felicity.repository.repositories.GenreRepository
+import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.repository.repositories.SongRepository
 import dagger.Module
 import dagger.Provides
@@ -37,5 +38,11 @@ object AppModule {
     @Singleton
     fun provideArtistRepository(@ApplicationContext context: Context): ArtistRepository {
         return ArtistRepository(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLrcRepository(@ApplicationContext context: Context): LrcRepository {
+        return LrcRepository(context)
     }
 }
