@@ -115,6 +115,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private float targetScrollY = 0f;
     private boolean isUserScrolling = false;
     private boolean isAutoScrollEnabled = true;
+    private boolean isTapSeek = false; // Flag to prevent auto-scroll after tap seek
     private float scrollMultiplier;
     private float maxOverscrollDistance;
     private SpringAnimation springAnimation; // For overscroll snap-back
@@ -761,9 +762,13 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                 animateTextSize(currentLineIndex, currentTextSize);
             }
             
-            if (!isUserScrolling && isAutoScrollEnabled) {
+            // Only auto-scroll if not user scrolling, auto-scroll is enabled, and not from a tap seek
+            if (!isUserScrolling && isAutoScrollEnabled && !isTapSeek) {
                 scrollToLine(currentLineIndex);
             }
+            
+            // Reset tap seek flag after processing
+            isTapSeek = false;
             
             invalidate();
         }
@@ -1387,6 +1392,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                 // Get the entry for the tapped line
                 LrcEntry entry = lrcData.getEntries().get(tappedIndex);
                 
+                // Set flag to prevent auto-scroll on the next updateTime call
+                isTapSeek = true;
+                
                 // Notify listener to seek
                 if (onLrcClickListener != null) {
                     onLrcClickListener.onLrcClick(entry.getTimeInMillis(), entry.getText());
@@ -1398,6 +1406,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             // Fallback to old behavior if no specific line was tapped
             if (onLrcClickListener != null && currentLineIndex >= 0 && lrcData != null) {
                 LrcEntry entry = lrcData.getEntries().get(currentLineIndex);
+                isTapSeek = true;
                 onLrcClickListener.onLrcClick(entry.getTimeInMillis(), entry.getText());
             }
             return true;
