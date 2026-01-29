@@ -10,7 +10,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
 import app.simple.felicity.R
 import app.simple.felicity.activities.MainActivity
-import app.simple.felicity.core.utils.StringUtils.appendAdditional
 import app.simple.felicity.databinding.FragmentSetupBinding
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isReadMediaAudioPermissionGranted
@@ -136,14 +135,12 @@ class Setup : MediaFragment() {
     }
 
     private fun updateUriPermissions() {
-        binding.paths.text = buildString {
-            requireContentResolver().persistedUriPermissions.reversed().forEach { permission ->
-                appendAdditional(DocumentFile.fromTreeUri(requireContext(), permission.uri)?.name
-                                     ?: permission.uri.toString())
-            }
-
-            if (isNotBlank()) {
-                appendAdditional(getString(R.string.tap_to_add_more))
+        binding.paths.text = ""
+        requireContentResolver().persistedUriPermissions.forEach { permission ->
+            binding.paths.text = buildString {
+                append(binding.paths.text)
+                append(", ")
+                append(DocumentFile.fromTreeUri(requireContext(), permission.uri)?.name ?: permission.uri.toString())
             }
         }
     }
