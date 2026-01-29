@@ -1,6 +1,7 @@
 package app.simple.felicity.ui.player
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -34,12 +35,18 @@ class Lyrics : MediaFragment() {
         }
 
         lyricsViewModel.getLrcData().observe(viewLifecycleOwner) { lrcData ->
-            binding.lrc.setLrcData(lrcData)
+            if (lrcData.isEmpty) {
+                Log.d(TAG, "No lyrics found for the current song.")
+                binding.lrc.reset()
+            } else {
+                binding.lrc.setLrcData(lrcData)
+            }
         }
     }
 
     override fun onSeekChanged(seek: Long) {
         super.onSeekChanged(seek)
+        lyricsViewModel.loadLrcData()
         binding.lrc.updateTime(seek)
     }
 
