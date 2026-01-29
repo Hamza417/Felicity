@@ -1,19 +1,24 @@
 package app.simple.felicity.engine.services
 
-import android.content.BroadcastReceiver
+import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.content.SharedPreferences
-import android.media.AudioAttributes
-import android.media.AudioFocusRequest
-import android.media.AudioManager
-import android.os.IBinder
+import android.os.Handler
 import android.util.Log
+import androidx.annotation.OptIn
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.audio.AudioRendererEventListener
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.audio.MediaCodecAudioRenderer
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import app.simple.felicity.manager.SharedPreferences.initRegisterSharedPreferenceChangeListener
@@ -21,181 +26,135 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.repositories.MediaStoreRepository
 
-class ExoPlayerService : MediaLibraryService(),
-                         AudioManager.OnAudioFocusChangeListener,
-                         SharedPreferences.OnSharedPreferenceChangeListener {
+@OptIn(UnstableApi::class)
+class ExoPlayerService : MediaLibraryService(), SharedPreferences.OnSharedPreferenceChangeListener {
 
-    private val becomingNoisyReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
-                Log.d(TAG, "onReceive: Audio becoming noisy, pausing playback")
-                val player = mediaSession?.player
-                if (player?.isPlaying == true) {
-                    player.pause()
-                    wasPlaying = true
-                }
-            }
-        }
-    }
-
-    private val audioBecomingNoisyFilter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
-
-    private var focusRequest: AudioFocusRequest? = null
     private var mediaSession: MediaLibrarySession? = null
+    private lateinit var player: ExoPlayer
     private var mediaStoreRepository: MediaStoreRepository? = null
-
-    private var wasPlaying = false
-
-    var callback: MediaLibrarySession.Callback = @UnstableApi
-    object : MediaLibrarySession.Callback {
-
-    }
-
-    override fun onBind(intent: Intent?): IBinder? {
-        return super.onBind(intent)
-    }
 
     override fun onCreate() {
         super.onCreate()
         Log.i(TAG, "onCreate: ExoPlayerService created")
+
         initRegisterSharedPreferenceChangeListener(applicationContext)
         mediaStoreRepository = MediaStoreRepository(this)
-        val player = ExoPlayer.Builder(this).build()
 
-        player.addListener(
-                object : Player.Listener {
-                    override fun onIsPlayingChanged(isPlaying: Boolean) {
-                        if (isPlaying) {
-                            MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
-                        } else {
-                            // Not playing because playback is paused, ended, suppressed, or the player
-                            // is buffering, stopped or failed. Check player.playWhenReady,
-                            // player.playbackState, player.playbackSuppressionReason and
-                            // player.playerError for details.
-                            when (player.playbackState) {
-                                Player.STATE_ENDED -> {
-                                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ENDED)
-                                }
-                                Player.STATE_BUFFERING -> {
-                                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_BUFFERING)
-                                }
-                                Player.STATE_READY -> {
-                                    if (player.playWhenReady) {
-                                        MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
-                                    } else {
-                                        MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
-                                    }
-                                }
-                                Player.STATE_IDLE -> {
-                                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_STOPPED)
-                                }
-                                else -> {
-                                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
-                                }
-                            }
-                        }
-                    }
+        // High-Res Audio Configuration (24/32-bit support)
+        val renderersFactory = object : DefaultRenderersFactory(this) {
+            override fun buildAudioRenderers(
+                    context: Context,
+                    extensionRendererMode: Int,
+                    mediaCodecSelector: MediaCodecSelector,
+                    enableDecoderFallback: Boolean,
+                    audioSink: AudioSink,
+                    eventHandler: Handler,
+                    eventListener: AudioRendererEventListener,
+                    out: ArrayList<Renderer>
+            ) {
+                val customSink = DefaultAudioSink.Builder(context)
+                    .setEnableFloatOutput(true) // 32-bit Float support
+                    .build()
 
-                    override fun onPlaybackStateChanged(playbackState: Int) {
-                        when (playbackState) {
-                            Player.STATE_BUFFERING -> MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_BUFFERING)
-                            Player.STATE_READY -> {
-                                if (player.playWhenReady) {
-                                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
-                                } else {
-                                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
-                                }
-                            }
-                            Player.STATE_ENDED -> MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ENDED)
-                            Player.STATE_IDLE -> MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_STOPPED)
-                        }
-                    }
+                out.add(MediaCodecAudioRenderer(context, mediaCodecSelector, enableDecoderFallback, eventHandler, eventListener, customSink))
+                super.buildAudioRenderers(context, extensionRendererMode, mediaCodecSelector, enableDecoderFallback, customSink, eventHandler, eventListener, out)
+            }
+        }
+        renderersFactory.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
 
-                    override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                        Log.e(TAG, "Player error: ${error.errorCodeName}", error)
-                        MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ERROR)
-                    }
-
-                    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                        // Update current position to match ExoPlayer's index so UI updates pager
-                        val index = player.currentMediaItemIndex
-                        MediaManager.notifyCurrentPosition(index)
-                    }
-
-                    override fun onEvents(player: Player, events: Player.Events) {
-                        super.onEvents(player, events)
-                    }
-                }
-        )
-
-        mediaSession = MediaLibrarySession.Builder(this, player, callback).setId("ExoPlayerServiceSession").build()
-
-        focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
-            .setAudioAttributes(AudioAttributes.Builder()
-                                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-            .setWillPauseWhenDucked(true)
-            .setOnAudioFocusChangeListener(this)
+        // Build Player with Internal Audio Management
+        player = ExoPlayer.Builder(this, renderersFactory)
+            .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                        .setUsage(C.USAGE_MEDIA)
+                        .build(),
+                    true // THIS HANDLES AUDIO FOCUS & NOISY AUTOMATICALLY
+            )
+            .setHandleAudioBecomingNoisy(true)
             .build()
 
-        registerReceiver(becomingNoisyReceiver, audioBecomingNoisyFilter)
+        player.addListener(playerListener)
+
+        // Initialize MediaSession (This triggers the system playback notification)
+        val sessionActivityIntent = packageManager.getLaunchIntentForPackage(packageName)?.let {
+            PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_IMMUTABLE)
+        }
+
+        mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback())
+            .setSessionActivity(sessionActivityIntent!!)
+            .setId("ExoPlayerServiceSession")
+            .build()
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
-        Log.d(TAG, "onGetSession: Returning media library session")
-        return mediaSession
-    }
+    private val playerListener = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            val format = player.audioFormat
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        super.onStartCommand(intent, flags, startId)
-        return START_STICKY
-    }
+            val encodingName = when (format?.pcmEncoding) {
+                C.ENCODING_PCM_16BIT -> "16-bit" // 2
+                C.ENCODING_PCM_FLOAT -> "32-bit Float" // 4
+                C.ENCODING_PCM_24BIT -> "24-bit" // 21 (High Res)
+                C.ENCODING_PCM_8BIT -> "8-bit" // 3
+                C.ENCODING_PCM_32BIT -> "32-bit" // 5
+                C.ENCODING_INVALID -> "Compressed/Unknown" // -1 (MP3/AAC pending)
+                else -> "Other (${format?.pcmEncoding})"
+            }
 
-    override fun onAudioFocusChange(focusChange: Int) {
-        val player = mediaSession?.player
+            Log.i(TAG, "Audio Engine: ${format?.sampleRate}Hz | Type: $encodingName")
 
-        when (focusChange) {
-            AudioManager.AUDIOFOCUS_GAIN -> {
-                // Resume playback or restore volume
-                player?.volume = 1.0f
-                if (wasPlaying) {
-                    player?.play()
-                    wasPlaying = false
+            if (isPlaying) {
+                MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
+            } else if (player.playbackState == Player.STATE_READY) {
+                MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
+            }
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            when (playbackState) {
+                Player.STATE_BUFFERING -> {
+                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_BUFFERING)
+                }
+                Player.STATE_READY -> {
+                    if (player.playWhenReady) MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
+                    else MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
+                }
+                Player.STATE_ENDED -> {
+                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ENDED)
+                }
+                Player.STATE_IDLE -> {
+                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_STOPPED)
                 }
             }
-            AudioManager.AUDIOFOCUS_LOSS,
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                // Pause playback and remember if it was playing
-                if (player?.isPlaying == true) {
-                    wasPlaying = true
-                    player.pause()
-                }
-            }
-            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK -> {
-                // Lower the volume for ducking
-                player?.volume = 0.2f
-            }
+        }
+
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            Log.e(TAG, "Player error: ${error.errorCodeName}", error)
+            MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ERROR)
+        }
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            MediaManager.notifyCurrentPosition(player.currentMediaItemIndex)
         }
     }
 
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = mediaSession
 
-    }
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {}
 
     override fun onDestroy() {
-        // Unregister receiver to avoid leaks
-        try {
-            unregisterReceiver(becomingNoisyReceiver)
-        } catch (e: Exception) {
-            Log.w(TAG, "Receiver already unregistered or not registered", e)
-        }
-
+        Log.i(TAG, "onDestroy: Cleaning up service")
         mediaSession?.run {
+            player.stop()
             player.release()
             release()
             mediaSession = null
         }
         super.onDestroy()
+    }
+
+    private inner class LibraryCallback : MediaLibrarySession.Callback {
+
     }
 
     companion object {

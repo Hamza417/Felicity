@@ -31,6 +31,11 @@ I have also tested 192KHz audio and it works by default in supported devices. I 
 17 Jan 2026: Felicity's development was halted again due to some issues and a pre-alpha is scheduled
 to be released in the next 4 weeks. I am trying to get on schedule as early as possible.
 
+29 Jan 2026: The app can now automatically go upto 32bit audio on supported devices. I have only
+pushed upto
+24bit as its max my device can output. I am finalizing the service and pre-alpha should be out in
+the next few days.
+
 ## Screenshots
 
 Last Updated: 22 Jan 2026
