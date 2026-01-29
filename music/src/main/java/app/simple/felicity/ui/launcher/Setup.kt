@@ -1,19 +1,15 @@
 package app.simple.felicity.ui.launcher
 
 import android.Manifest
-import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.net.toUri
 import app.simple.felicity.R
 import app.simple.felicity.activities.MainActivity
 import app.simple.felicity.databinding.FragmentSetupBinding
-import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isReadMediaAudioPermissionGranted
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -34,18 +30,6 @@ class Setup : MediaFragment() {
         updateNotificationPermissionStatus()
     }
 
-    private val manageExternalStorageLauncher = registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-    ) { _ ->
-        updateManageAllFilesPermissionStatus()
-    }
-
-    private val writeStoragePermissionLauncher = registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
-    ) { _ ->
-        updateManageAllFilesPermissionStatus()
-    }
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentSetupBinding.inflate(inflater, container, false)
 
@@ -58,7 +42,6 @@ class Setup : MediaFragment() {
 
         updateStoragePermissionStatus()
         updateNotificationPermissionStatus()
-        updateManageAllFilesPermissionStatus()
 
         binding.grantReadExternalStorage.setOnClickListener {
             requestStoragePermission()
@@ -66,10 +49,6 @@ class Setup : MediaFragment() {
 
         binding.grantPostNotifications.setOnClickListener {
             requestNotificationPermission()
-        }
-
-        binding.grantManageAllFiles.setOnClickListener {
-            requestManageAllFilesPermission()
         }
 
         binding.startAppNow.setOnClickListener {
@@ -85,7 +64,6 @@ class Setup : MediaFragment() {
         super.onResume()
         updateStoragePermissionStatus()
         updateNotificationPermissionStatus()
-        updateManageAllFilesPermissionStatus()
         updateStartButtonState()
     }
 
@@ -143,29 +121,6 @@ class Setup : MediaFragment() {
             binding.statusPostNotifications.setText(R.string.not_granted)
         }
         updateStartButtonState()
-    }
-
-    private fun requestManageAllFilesPermission() {
-        if (isManageExternalStoragePermissionGranted()) {
-            return
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                data = "package:${requireContext().packageName}".toUri()
-            }
-            manageExternalStorageLauncher.launch(intent)
-        } else {
-            writeStoragePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-        }
-    }
-
-    private fun updateManageAllFilesPermissionStatus() {
-        if (isManageExternalStoragePermissionGranted()) {
-            binding.statusManageAllFiles.setText(R.string.granted)
-        } else {
-            binding.statusManageAllFiles.setText(R.string.not_granted)
-        }
     }
 
     companion object {

@@ -177,14 +177,14 @@
                     android:layout_height="wrap_content"
                     android:drawablePadding="5dp"
                     android:gravity="center_vertical"
-                    android:text="@string/manage_all_files"
+                    android:text="@string/music_folder_access"
                     android:textSize="@dimen/text_size_14"
                     app:appFontStyle="bold"
                     app:drawableTintStyle="accent"
                     app:textColorStyle="primary" />
 
                 <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                    android:id="@+id/status_manage_all_files"
+                    android:id="@+id/paths"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="5dp"
@@ -197,7 +197,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="5dp"
-                    android:text="@string/desc_manage_all_files"
+                    android:text="@string/desc_folder_access"
                     android:textSize="@dimen/text_size_12"
                     app:appFontStyle="regular"
                     app:textColorStyle="tertiary" />
