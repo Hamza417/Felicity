@@ -706,8 +706,6 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     public void setLrcData(LrcData data) {
         this.lrcData = data;
         this.currentLineIndex = -1;
-        this.previousLineIndex = -1;
-        this.tappedLineIndex = -1;
         this.scrollY = 0f;
         this.targetScrollY = 0f;
         this.layoutCache.clear();
@@ -716,7 +714,6 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.layoutHeights.clear();
         this.preHighlightHeights.clear();
         this.animatedHeights.clear();
-        this.animatedTextSizes.clear();
         
         // Cancel all height animations
         for (SpringAnimation animation : heightAnimations.values()) {
@@ -724,17 +721,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                 animation.cancel();
             }
         }
-        
         heightAnimations.clear();
-        
-        // Cancel all text size animations
-        for (SpringAnimation animation : textSizeAnimations.values()) {
-            if (animation.isRunning()) {
-                animation.cancel();
-            }
-        }
-        
-        textSizeAnimations.clear();
         
         invalidate();
     }
@@ -1162,8 +1149,6 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     public void reset() {
         this.lrcData = null;
         this.currentLineIndex = -1;
-        this.previousLineIndex = -1;
-        this.tappedLineIndex = -1;
         this.scrollY = 0f;
         this.targetScrollY = 0f;
         this.isUserScrolling = false;
@@ -1173,7 +1158,6 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.layoutHeights.clear();
         this.preHighlightHeights.clear();
         this.animatedHeights.clear();
-        this.animatedTextSizes.clear();
         
         // Cancel all height animations
         for (SpringAnimation animation : heightAnimations.values()) {
@@ -1182,14 +1166,6 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             }
         }
         heightAnimations.clear();
-        
-        // Cancel all text size animations
-        for (SpringAnimation animation : textSizeAnimations.values()) {
-            if (animation.isRunning()) {
-                animation.cancel();
-            }
-        }
-        textSizeAnimations.clear();
         
         removeCallbacks(autoScrollRunnable);
         if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
@@ -1202,16 +1178,6 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             flingAnimation.cancel();
         }
         invalidate();
-    }
-    
-    /**
-     * Clear all lyrics data and reset the view.
-     * This method should be called when a song ends or when no LRC file is found.
-     * It clears all cached data, stops animations, and resets the view to its initial state.
-     */
-    public void clear() {
-        // Reuse the reset method which already does comprehensive cleanup
-        reset();
     }
     
     public void setOnLrcClickListener(OnLrcClickListener listener) {
