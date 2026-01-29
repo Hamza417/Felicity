@@ -166,7 +166,7 @@
                 app:textColorStyle="accent" />
 
             <app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout
-                android:id="@+id/grant_music_folder_access"
+                android:id="@+id/grant_manage_all_files"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"

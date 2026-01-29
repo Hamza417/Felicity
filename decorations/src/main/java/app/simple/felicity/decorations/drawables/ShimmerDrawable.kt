@@ -89,7 +89,6 @@ class ShimmerDrawable(
         invalidateSelf()
     }
 
-    @Deprecated("Deprecated in Java")
     override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
 
     override fun setColorFilter(colorFilter: ColorFilter?) {

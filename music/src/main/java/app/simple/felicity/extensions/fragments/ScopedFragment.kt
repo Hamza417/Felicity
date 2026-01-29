@@ -1,23 +1,17 @@
 package app.simple.felicity.extensions.fragments
 
-import android.app.Activity
 import android.content.ContentResolver
-import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.DocumentsContract
-import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsAnimation
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.IntegerRes
 import androidx.annotation.RequiresApi
-import androidx.core.net.toUri
 import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
 import app.simple.felicity.R
@@ -40,19 +34,6 @@ import kotlinx.coroutines.CoroutineScope
  * its purpose and importance
  */
 abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreferenceChangeListener {
-
-    private val openDirectoryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            result.data?.data?.let { uri ->
-                val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-
-                requireActivity().contentResolver.takePersistableUriPermission(uri, takeFlags)
-                Log.d(TAG, "Persisted URI permission for: $uri")
-                onUriPermissionGranted(uri.toString())
-            }
-        }
-    }
 
     /**
      * [ScopedFragment]'s own [Handler] instance
@@ -302,21 +283,6 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
             TransitionType.SHARED_AXIS -> setTransitions()
             TransitionType.SLIDE -> setSlideTransitions()
         }
-    }
-
-    open fun onUriPermissionGranted(uri: String) {
-        // Override to handle URI permission granted event
-    }
-
-    protected fun launchDirectoryPicker(initialUri: String? = null) {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-            if (initialUri != null) {
-                val uri = initialUri.toUri()
-                putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri)
-            }
-        }
-
-        openDirectoryLauncher.launch(intent)
     }
 
     enum class TransitionType {

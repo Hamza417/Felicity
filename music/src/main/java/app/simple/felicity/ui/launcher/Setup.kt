@@ -7,7 +7,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.documentfile.provider.DocumentFile
 import app.simple.felicity.R
 import app.simple.felicity.activities.MainActivity
 import app.simple.felicity.databinding.FragmentSetupBinding
@@ -58,10 +57,6 @@ class Setup : MediaFragment() {
             }
         }
 
-        binding.grantMusicFolderAccess.setOnClickListener {
-            launchDirectoryPicker()
-        }
-
         updateStartButtonState()
     }
 
@@ -70,7 +65,6 @@ class Setup : MediaFragment() {
         updateStoragePermissionStatus()
         updateNotificationPermissionStatus()
         updateStartButtonState()
-        updateUriPermissions()
     }
 
     private fun areRequiredPermissionsGranted(): Boolean {
@@ -127,22 +121,6 @@ class Setup : MediaFragment() {
             binding.statusPostNotifications.setText(R.string.not_granted)
         }
         updateStartButtonState()
-    }
-
-    override fun onUriPermissionGranted(uri: String) {
-        super.onUriPermissionGranted(uri)
-        updateUriPermissions()
-    }
-
-    private fun updateUriPermissions() {
-        binding.paths.text = ""
-        requireContentResolver().persistedUriPermissions.forEach { permission ->
-            binding.paths.text = buildString {
-                append(binding.paths.text)
-                append(", ")
-                append(DocumentFile.fromTreeUri(requireContext(), permission.uri)?.name ?: permission.uri.toString())
-            }
-        }
     }
 
     companion object {
