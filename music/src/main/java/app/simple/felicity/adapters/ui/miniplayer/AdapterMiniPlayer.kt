@@ -5,7 +5,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterMiniPlayerAlbumArtBinding
-import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
+import app.simple.felicity.glide.util.AudioCoverUtils.loadPeristyleArtCover
 import app.simple.felicity.repository.models.Song
 
 class AdapterMiniPlayer(private val list: List<Song>) : RecyclerView.Adapter<AdapterMiniPlayer.Holder>() {
@@ -19,7 +19,7 @@ class AdapterMiniPlayer(private val list: List<Song>) : RecyclerView.Adapter<Ada
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
         val song = list[position]
-        holder.binding.albumArt.loadArtCoverWithPayload(song)
+        holder.binding.albumArt.loadPeristyleArtCover(song)
         holder.binding.title.text = song.title
         holder.binding.artist.text = song.artist
 

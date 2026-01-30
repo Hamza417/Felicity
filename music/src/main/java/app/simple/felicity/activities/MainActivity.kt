@@ -60,12 +60,6 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                     }
                 }
             })
-            binding.next.setOnClickListener {
-                MediaManager.next()
-            }
-            binding.previous.setOnClickListener {
-                MediaManager.previous()
-            }
             binding.playPause.setOnClickListener {
                 MediaManager.flipState()
             }
@@ -128,10 +122,10 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             MediaManager.playbackStateFlow.collect { state ->
                 when (state) {
                     MediaConstants.PLAYBACK_PLAYING -> {
-                        miniPlayerBinding.playPause.setImageResource(R.drawable.ic_pause)
+                        miniPlayerBinding.playPause.setPlaying(playing = false, animate = true)
                     }
                     MediaConstants.PLAYBACK_PAUSED -> {
-                        miniPlayerBinding.playPause.setImageResource(R.drawable.ic_play)
+                        miniPlayerBinding.playPause.setPlaying(playing = true, animate = true)
                     }
                 }
             }
