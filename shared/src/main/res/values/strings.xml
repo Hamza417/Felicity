@@ -159,4 +159,9 @@
     <string name="oval">Oval</string>
     <string name="pill">Pill</string>
     <string name="circle">Circle</string>
+    <string name="decoder">Decoder</string>
+    <string name="system_hardware">System Hardware</string>
+    <string name="audio_pipeline">Audio Pipeline</string>
+    <string name="playback">Playback</string>
+    <string name="audio_pipeline_summary">Select the primary engine used to process audio data.</string>
 </resources>

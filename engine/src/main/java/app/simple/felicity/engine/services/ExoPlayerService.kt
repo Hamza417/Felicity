@@ -2,8 +2,8 @@ package app.simple.felicity.engine.services
 
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
-import android.os.Build
 import android.os.Handler
 import android.util.Log
 import androidx.annotation.OptIn
@@ -23,32 +23,35 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import app.simple.felicity.manager.SharedPreferences.initRegisterSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.repositories.MediaStoreRepository
 
+/**
+ * Service responsible for managing audio playback using ExoPlayer with dynamic decoder switching support.
+ */
 @OptIn(UnstableApi::class)
 class ExoPlayerService : MediaLibraryService(), SharedPreferences.OnSharedPreferenceChangeListener {
 
     private var mediaSession: MediaLibrarySession? = null
     private lateinit var player: ExoPlayer
     private var mediaStoreRepository: MediaStoreRepository? = null
+    private var renderersFactory: DefaultRenderersFactory? = null
 
     override fun onCreate() {
         super.onCreate()
         initRegisterSharedPreferenceChangeListener(applicationContext)
         mediaStoreRepository = MediaStoreRepository(this)
 
-        val renderersFactory = object : DefaultRenderersFactory(this) {
+        // Initialize the RenderersFactory once.
+        renderersFactory = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableOffload: Boolean): AudioSink {
                 val audioSink = DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(true) // Force 32-bit Internal Processing
                     .build()
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    audioSink.setOffloadMode(DefaultAudioSink.OFFLOAD_MODE_ENABLED_GAPLESS_NOT_REQUIRED)
-                }
-
+                audioSink.setOffloadMode(DefaultAudioSink.OFFLOAD_MODE_ENABLED_GAPLESS_NOT_REQUIRED)
                 return audioSink
             }
 
@@ -75,9 +78,35 @@ class ExoPlayerService : MediaLibraryService(), SharedPreferences.OnSharedPrefer
             }
         }
 
-        renderersFactory.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+        // Build the initial player instance
+        buildPlayer()
 
-        player = ExoPlayer.Builder(this, renderersFactory)
+        // Initialize MediaSession
+        val sessionActivityIntent = packageManager.getLaunchIntentForPackage(packageName)?.let {
+            PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_IMMUTABLE)
+        }
+
+        mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback())
+            .setSessionActivity(sessionActivityIntent!!)
+            .setId("ExoPlayerServiceSession")
+            .build()
+    }
+
+    /**
+     * configures the RenderersFactory based on user preferences and builds a new ExoPlayer instance.
+     * If a player already exists, it is released before creating the new one.
+     */
+    private fun buildPlayer() {
+        // Configure extension mode based on preferences
+        val extensionMode = if (AudioPreferences.getAudioDecoder() == AudioPreferences.FFMPEG) {
+            DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
+        } else {
+            DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
+        }
+        renderersFactory?.setExtensionRendererMode(extensionMode)
+
+        // Build new player instance
+        player = ExoPlayer.Builder(this, renderersFactory!!)
             .setAudioAttributes(
                     AudioAttributes.Builder()
                         .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -90,15 +119,35 @@ class ExoPlayerService : MediaLibraryService(), SharedPreferences.OnSharedPrefer
             .build()
 
         player.addListener(playerListener)
+    }
 
-        val sessionActivityIntent = packageManager.getLaunchIntentForPackage(packageName)?.let {
-            PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_IMMUTABLE)
+    /**
+     * Handles the dynamic switching of the audio decoder.
+     * Captures current playback state, rebuilds the player with new decoder settings,
+     * restores the state, and updates the active MediaSession.
+     */
+    private fun switchDecoder() {
+        val currentItem = player.currentMediaItem
+        val currentPos = player.currentPosition
+        val playWhenReady = player.playWhenReady
+
+        // Release the old player to free up codecs/resources
+        player.removeListener(playerListener)
+        player.release()
+
+        // Build the new player with updated Factory settings
+        buildPlayer()
+
+        // Restore state
+        if (currentItem != null) {
+            player.setMediaItem(currentItem)
+            player.seekTo(currentPos)
+            player.playWhenReady = playWhenReady
+            player.prepare()
         }
 
-        mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback())
-            .setSessionActivity(sessionActivityIntent!!)
-            .setId("ExoPlayerServiceSession")
-            .build()
+        // Update the session to point to the new player instance
+        mediaSession?.player = player
     }
 
     private val playerListener = object : Player.Listener {
@@ -146,7 +195,18 @@ class ExoPlayerService : MediaLibraryService(), SharedPreferences.OnSharedPrefer
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = mediaSession
 
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {}
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        if (key == AudioPreferences.AUDIO_DECODER) {
+            switchDecoder()
+        }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        if (!player.playWhenReady || player.mediaItemCount == 0) {
+            stopSelf()
+        }
+        super.onTaskRemoved(rootIntent)
+    }
 
     override fun onDestroy() {
         mediaStoreRepository = null

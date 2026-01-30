@@ -11,6 +11,7 @@ import app.simple.felicity.databinding.FragmentPreferencesBinding
 import app.simple.felicity.databinding.HeaderPreferencesBinding
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.ui.preferences.main.Appearance
+import app.simple.felicity.ui.preferences.main.Audio
 import app.simple.felicity.ui.preferences.main.Behavior
 import app.simple.felicity.ui.preferences.main.UserInterface
 import app.simple.felicity.viewmodels.main.preferences.PreferencesViewModel
@@ -24,7 +25,7 @@ class Preferences : MediaFragment() {
 
     private val preferencesViewModel: PreferencesViewModel by viewModels({ requireActivity() })
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentPreferencesBinding.inflate(inflater, container, false)
         headerBinding = HeaderPreferencesBinding.inflate(inflater, binding.recyclerView, false)
 
@@ -50,6 +51,9 @@ class Preferences : MediaFragment() {
                         }
                         R.string.behavior -> {
                             openFragment(Behavior.newInstance(), Behavior.TAG)
+                        }
+                        R.string.audio -> {
+                            openFragment(Audio.newInstance(), Audio.TAG)
                         }
                     }
                 }

@@ -14,6 +14,7 @@ import app.simple.felicity.models.SeekbarState
 import app.simple.felicity.popups.home.PopupHomeInterfaceMenu
 import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.ui.preferences.sub.AccentColors
@@ -375,6 +376,53 @@ open class PreferenceFragment : MediaFragment() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             preferences.add(predictiveBackToggle)
         }
+
+        return preferences
+    }
+
+    protected fun createAudioPanel(): List<Preference> {
+        val preferences = mutableListOf<Preference>()
+
+        val decoderHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.playback)
+
+        val currentDecoder = Preference(
+                title = R.string.audio_pipeline,
+                summary = R.string.audio_pipeline_summary,
+                icon = R.drawable.ic_memory,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (AudioPreferences.getAudioDecoder()) {
+                        AudioPreferences.LOCAL_DECODER -> getString(R.string.system_hardware)
+                        AudioPreferences.FFMPEG -> getString(R.string.ffmpeg)
+                        else -> getString(R.string.system_hardware)
+                    }
+                },
+                onPreferenceAction = { view, callback ->
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(R.string.system_hardware, R.string.ffmpeg),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.system_hardware -> {
+                                        AudioPreferences.setAudioDecoder(AudioPreferences.LOCAL_DECODER)
+                                        (view as TextView).text = getString(R.string.system_hardware)
+                                    }
+                                    R.string.ffmpeg -> {
+                                        AudioPreferences.setAudioDecoder(AudioPreferences.FFMPEG)
+                                        (view as TextView).text = getString(R.string.ffmpeg)
+                                    }
+                                }
+                            },
+                            onDismiss = {
+
+                            }
+                    ).show()
+                }
+        )
+
+        preferences.add(decoderHeader)
+        preferences.add(currentDecoder)
 
         return preferences
     }

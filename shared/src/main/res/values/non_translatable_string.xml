@@ -12,4 +12,5 @@
     <string name="json" translatable="false">.JSON</string>
     <string name="csv" translatable="false">.CSV</string>
     <string name="z_spread">z Spread</string>
+    <string name="ffmpeg">FFmpeg (Hi-Fi)</string>
 </resources>
