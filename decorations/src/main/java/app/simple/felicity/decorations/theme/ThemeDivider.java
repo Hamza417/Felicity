@@ -57,13 +57,17 @@ public class ThemeDivider extends View implements ThemeChangedListener {
     }
     
     private void setTint(boolean animate) {
-        if (animate) {
-            ColorUtils.INSTANCE.animateColorChange(
-                    this,
-                    ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getDividerColor());
+        if (isInEditMode()) {
+            setBackgroundTintList(ColorStateList.valueOf(Color.LTGRAY));
         } else {
-            setBackgroundTintList(ColorStateList
-                    .valueOf(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getDividerColor()));
+            if (animate) {
+                ColorUtils.INSTANCE.animateColorChange(
+                        this,
+                        ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getDividerColor());
+            } else {
+                setBackgroundTintList(ColorStateList
+                        .valueOf(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getDividerColor()));
+            }
         }
     }
 }
