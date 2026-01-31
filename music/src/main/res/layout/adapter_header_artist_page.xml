@@ -10,11 +10,7 @@
 
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <app.simple.felicity.decorations.views.SquareView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+        android:layout_height="256dp">
 
         <app.simple.felicity.decorations.views.FelicityImageSlider
             android:id="@+id/art_flow"
