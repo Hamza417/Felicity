@@ -22,7 +22,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import app.simple.felicity.core.constants.ThemeConstants
 import app.simple.felicity.core.singletons.AppOrientation
-import app.simple.felicity.engine.services.ExoPlayerService
+import app.simple.felicity.engine.services.FelicityPlayerService
 import app.simple.felicity.glide.songcover.SongCoverUtils.fetchBitmap
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
@@ -84,7 +84,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     private fun initMediaController() {
         val sessionToken =
             SessionToken(this,
-                         ComponentName(this, ExoPlayerService::class.java))
+                         ComponentName(this, FelicityPlayerService::class.java))
 
         controllerFuture =
             MediaController.Builder(this, sessionToken).buildAsync()

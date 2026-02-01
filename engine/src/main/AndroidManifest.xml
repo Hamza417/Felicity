@@ -17,7 +17,7 @@
         </receiver>
 
         <service
-            android:name="app.simple.felicity.engine.services.ExoPlayerService"
+            android:name="app.simple.felicity.engine.services.FelicityPlayerService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback"
             tools:ignore="ExportedService">

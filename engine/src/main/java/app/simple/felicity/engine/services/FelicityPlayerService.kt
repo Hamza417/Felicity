@@ -32,7 +32,7 @@ import app.simple.felicity.repository.repositories.MediaStoreRepository
  * Service responsible for managing audio playback using ExoPlayer with dynamic decoder switching support.
  */
 @OptIn(UnstableApi::class)
-class ExoPlayerService : MediaLibraryService(), SharedPreferences.OnSharedPreferenceChangeListener {
+class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedPreferenceChangeListener {
 
     private var mediaSession: MediaLibrarySession? = null
     private lateinit var player: ExoPlayer
@@ -162,6 +162,8 @@ class ExoPlayerService : MediaLibraryService(), SharedPreferences.OnSharedPrefer
                     else -> "Other (${format.pcmEncoding})"
                 }
                 Log.i(TAG, "Audio Engine: ${format.sampleRate}Hz | Output: $encodingName")
+                Log.i(TAG, "Song Info: Channels: ${format.channelCount}, Encoding: ${format.pcmEncoding}, Sample Rate: ${format.sampleRate}")
+                Log.i(TAG, "Playing song ${MediaManager.getCurrentSong()?.title} at encoding $encodingName and sample rate ${format.sampleRate}")
             }
 
             if (isPlaying) {
@@ -223,6 +225,6 @@ class ExoPlayerService : MediaLibraryService(), SharedPreferences.OnSharedPrefer
     private inner class LibraryCallback : MediaLibrarySession.Callback
 
     companion object {
-        private const val TAG = "ExoPlayerService"
+        private const val TAG = "FelicityPlayerService"
     }
 }

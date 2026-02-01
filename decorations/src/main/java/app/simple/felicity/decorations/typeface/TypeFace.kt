@@ -2,7 +2,6 @@ package app.simple.felicity.decorations.typeface
 
 import android.content.Context
 import android.graphics.Typeface
-import android.util.Log
 import androidx.core.content.res.ResourcesCompat
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.constants.TypeFaceConstants
@@ -122,7 +121,6 @@ object TypeFace {
 
     fun getTypeFace(appFont: String, style: Int, context: Context): Typeface? {
         var typeface: Typeface? = null
-        Log.d("TypeFace", "getTypeFace: appFont=$appFont, style=$style")
         when (appFont) {
             TypeFaceConstants.NOTOSANS -> {
                 notoSansMap[style]?.let {
