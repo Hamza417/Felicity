@@ -1,4 +1,4 @@
-package app.simple.felicity.shared.utils;
+package app.simple.felicity.core.framework;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -17,9 +17,9 @@ import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
-import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
+@SuppressWarnings ("Deprecation")
 public class SDCard {
     private static final String TAG = "SDCard";
     
@@ -28,7 +28,7 @@ public class SDCard {
      * to work with this app. If so, set KNOWNFILE to that filename. It will make our job easier.
      * Set it to null otherwise.
      */
-    private static final String KNOWN_FILE = null;
+    private static final String KNOWNFILE = null;
     
     /**
      * Common paths for microSD card.
@@ -105,7 +105,6 @@ public class SDCard {
     /**
      * Find path to removable SD card.
      */
-    @Nullable
     public static File findSdCardPath(Context context) {
         String[] mountFields;
         BufferedReader bufferedReader = null;
@@ -291,8 +290,7 @@ public class SDCard {
         }
         
         // If any directory contains our special test file, consider that the microSD card.
-        //noinspection ConstantValue
-        if (KNOWN_FILE != null) {
+        if (KNOWNFILE != null) {
             for (File dir : candidatePaths) {
                 log(String.format(Locale.ROOT, "findSdCardPath: Looking for known file in candidate path, %s", dir));
                 if (containsKnownFile(dir)) {
@@ -385,11 +383,11 @@ public class SDCard {
      * Assumes that dir exists and is a directory. (Is this a necessary assumption?)
      */
     private static boolean containsKnownFile(File dir) {
-        if (KNOWN_FILE == null) {
+        if (KNOWNFILE == null) {
             return false;
         }
         
-        File knownFile = new File(dir, KNOWN_FILE);
+        File knownFile = new File(dir, KNOWNFILE);
         return knownFile.exists();
     }
     
