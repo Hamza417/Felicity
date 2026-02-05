@@ -62,7 +62,7 @@ public class RemovableStorageDetector {
         for (StorageInfo info : allVolumes) {
             if (info.isRemovable() && info.isMounted()) {
                 removableVolumes.add(info);
-                logDebug("Found removable storage: " + info.getPath());
+                logDebug("Found removable storage: " + info.path());
             }
         }
         
@@ -87,7 +87,7 @@ public class RemovableStorageDetector {
         
         // Return the first removable storage found (usually the SD card)
         StorageInfo primaryRemovable = removableVolumes.get(0);
-        File path = primaryRemovable.getPath();
+        File path = primaryRemovable.path();
         
         if (path != null && path.exists() && path.canRead()) {
             logDebug("Primary removable storage: " + path.getAbsolutePath());
@@ -110,7 +110,7 @@ public class RemovableStorageDetector {
         List <File> paths = new ArrayList <>();
         
         for (StorageInfo info : removableVolumes) {
-            File path = info.getPath();
+            File path = info.path();
             if (path != null && path.exists() && path.canRead()) {
                 paths.add(path);
             }
@@ -183,9 +183,7 @@ public class RemovableStorageDetector {
             }
             
             // Get UUID if available
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                uuid = volume.getUuid();
-            }
+            uuid = volume.getUuid();
             
             boolean isMounted = Environment.MEDIA_MOUNTED.equals(state) ||
                     Environment.MEDIA_MOUNTED_READ_ONLY.equals(state);
@@ -280,15 +278,14 @@ public class RemovableStorageDetector {
     /**
      * Data class containing information about a storage volume.
      */
-    public static class StorageInfo {
-        private final File path;
-        private final boolean isRemovable;
-        private final boolean isPrimary;
-        private final boolean isMounted;
-        private final String description;
-        private final String uuid;
-        private final String state;
-        
+    public record StorageInfo(
+            File path,
+            boolean isRemovable,
+            boolean isPrimary,
+            boolean isMounted,
+            String description,
+            String uuid,
+            String state) {
         public StorageInfo(@Nullable File path, boolean isRemovable, boolean isPrimary,
                 boolean isMounted, @Nullable String description,
                 @Nullable String uuid, @Nullable String state) {
@@ -301,35 +298,27 @@ public class RemovableStorageDetector {
             this.state = state;
         }
         
+        @Override
         @Nullable
-        public File getPath() {
+        public File path() {
             return path;
         }
         
-        public boolean isRemovable() {
-            return isRemovable;
-        }
-        
-        public boolean isPrimary() {
-            return isPrimary;
-        }
-        
-        public boolean isMounted() {
-            return isMounted;
-        }
-        
+        @Override
         @Nullable
-        public String getDescription() {
+        public String description() {
             return description;
         }
         
+        @Override
         @Nullable
-        public String getUuid() {
+        public String uuid() {
             return uuid;
         }
         
+        @Override
         @Nullable
-        public String getState() {
+        public String state() {
             return state;
         }
         

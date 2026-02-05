@@ -54,7 +54,7 @@ fun Context.hasAccessibleSDCard(): Boolean {
 fun Context.getFirstAccessibleSDCard(): File? {
     return getRemovableStorageVolumes()
         .firstOrNull { it.isAccessible }
-        ?.path
+        ?.path()
 }
 
 /**
@@ -122,7 +122,7 @@ val RemovableStorageDetector.StorageInfo.isLowOnSpace: Boolean
  */
 fun RemovableStorageDetector.StorageInfo.toSummary(): String {
     return buildString {
-        append("Storage: ${path?.absolutePath ?: "unknown"}\n")
+        append("Storage: ${path()?.absolutePath ?: "unknown"}\n")
         append("Type: ${if (isRemovable) "Removable" else "Internal"}")
         if (isPrimary) append(" (Primary)")
         append("\n")
@@ -131,8 +131,8 @@ fun RemovableStorageDetector.StorageInfo.toSummary(): String {
         append("\n")
         append("Space: $freeSpaceFormatted free / $totalSpaceFormatted total ")
         append("(${String.format("%.1f", usagePercentage)}% used)")
-        if (description != null) {
-            append("\nDescription: $description")
+        if (description() != null) {
+            append("\nDescription: ${description()}")
         }
     }
 }
@@ -196,7 +196,7 @@ class KotlinStorageExample {
             .filter { it.isAccessible && it.isWritable }
 
         accessibleCards.forEach { info ->
-            info.path?.let { path ->
+            info.path()?.let { path ->
                 Log.d("Storage", "Accessible SD: ${path.absolutePath}")
                 Log.d("Storage", "Free: ${info.freeSpaceFormatted}")
             }
@@ -225,7 +225,7 @@ class KotlinStorageExample {
         context.getRemovableStorageVolumes().firstOrNull()?.let { info ->
             println("""
                 SD Card Information:
-                Path: ${info.path?.absolutePath}
+                Path: ${info.path()?.absolutePath}
                 Total: ${info.totalSpaceFormatted}
                 Free: ${info.freeSpaceFormatted}
                 Used: ${(info.totalSpace - info.freeSpace).formatBytes()}

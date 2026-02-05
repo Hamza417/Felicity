@@ -12,6 +12,7 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.miniplayer.AdapterMiniPlayer
 import app.simple.felicity.adapters.ui.miniplayer.AdapterMiniPlayer.Companion.MiniPlayerAdapterCallbacks
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
+import app.simple.felicity.core.framework.RemovableStorageExample
 import app.simple.felicity.databinding.ActivityMainBinding
 import app.simple.felicity.databinding.MiniplayerBinding
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
@@ -49,6 +50,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        RemovableStorageExample.getAllRemovableStorageExample(this)
         miniPlayerBinding = MiniplayerBinding.inflate(layoutInflater)
         binding.miniPlayer.setContent(miniPlayerBinding) { binding ->
             binding.pager.offscreenPageLimit = 1

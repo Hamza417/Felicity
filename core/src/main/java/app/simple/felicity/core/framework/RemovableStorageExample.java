@@ -56,14 +56,14 @@ public class RemovableStorageExample {
         
         Log.d(TAG, "=== All Storage Volumes ===");
         for (RemovableStorageDetector.StorageInfo info : allVolumes) {
-            Log.d(TAG, "Path: " + (info.getPath() != null ? info.getPath().getAbsolutePath() : "null"));
+            Log.d(TAG, "Path: " + (info.path() != null ? info.path().getAbsolutePath() : "null"));
             Log.d(TAG, "  Is Removable: " + info.isRemovable());
             Log.d(TAG, "  Is Primary: " + info.isPrimary());
             Log.d(TAG, "  Is Mounted: " + info.isMounted());
             Log.d(TAG, "  Is Accessible: " + info.isAccessible());
             Log.d(TAG, "  Is Writable: " + info.isWritable());
-            Log.d(TAG, "  Description: " + info.getDescription());
-            Log.d(TAG, "  State: " + info.getState());
+            Log.d(TAG, "  Description: " + info.description());
+            Log.d(TAG, "  State: " + info.state());
             Log.d(TAG, "  Total Space: " + formatBytes(info.getTotalSpace()));
             Log.d(TAG, "  Free Space: " + formatBytes(info.getFreeSpace()));
             Log.d(TAG, "  ---");
@@ -85,7 +85,7 @@ public class RemovableStorageExample {
         Log.d(TAG, "=== Removable Storage Volumes ===");
         for (RemovableStorageDetector.StorageInfo info : removableVolumes) {
             if (info.isAccessible()) {
-                File path = info.getPath();
+                File path = info.path();
                 Log.d(TAG, "SD Card: " + path.getAbsolutePath());
                 Log.d(TAG, "  Free: " + formatBytes(info.getFreeSpace()) +
                         " / Total: " + formatBytes(info.getTotalSpace()));
