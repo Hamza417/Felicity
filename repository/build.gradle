@@ -21,7 +21,7 @@ dependencies {
     ksp "androidx.room:room-compiler:2.8.4"
     androidTestImplementation "androidx.room:room-testing:2.8.4"
 
-    implementation "com.google.dagger:hilt-android:2.59"
+    implementation "com.google.dagger:hilt-android:2.59.1"
     ksp "com.google.dagger:hilt-android-compiler:2.59"
 
     implementation 'net.jthink:jaudiotagger:3.0.1'
