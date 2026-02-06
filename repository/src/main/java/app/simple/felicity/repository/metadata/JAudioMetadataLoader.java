@@ -1,4 +1,4 @@
-package app.simple.felicity.repository.loaders;
+package app.simple.felicity.repository.metadata;
 
 import org.jaudiotagger.audio.AudioFile;
 import org.jaudiotagger.audio.AudioFileIO;

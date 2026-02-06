@@ -1,4 +1,4 @@
-package app.simple.felicity.core.framework;
+package app.simple.felicity.shared.storage;
 
 import android.content.Context;
 import android.util.Log;

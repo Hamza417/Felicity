@@ -5,7 +5,7 @@ import android.os.storage.StorageManager
 import android.os.storage.StorageVolume
 import android.util.Log
 import androidx.annotation.RequiresApi
-import app.simple.felicity.core.framework.RemovableStorageDetector
+import app.simple.felicity.shared.storage.RemovableStorageDetector
 import java.io.File
 
 /**

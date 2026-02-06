@@ -12,7 +12,6 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.miniplayer.AdapterMiniPlayer
 import app.simple.felicity.adapters.ui.miniplayer.AdapterMiniPlayer.Companion.MiniPlayerAdapterCallbacks
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
-import app.simple.felicity.core.framework.RemovableStorageExample
 import app.simple.felicity.databinding.ActivityMainBinding
 import app.simple.felicity.databinding.MiniplayerBinding
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
@@ -26,6 +25,7 @@ import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
+import app.simple.felicity.shared.storage.RemovableStorageExample
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.ui.home.ArtFlowHome

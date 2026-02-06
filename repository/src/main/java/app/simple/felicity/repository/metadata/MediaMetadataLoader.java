@@ -1,4 +1,4 @@
-package app.simple.felicity.repository.loaders;
+package app.simple.felicity.repository.metadata;
 
 import android.media.MediaMetadataRetriever;
 import android.os.Build;
