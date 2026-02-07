@@ -863,7 +863,11 @@ class ArtFlowRenderer(
         val preEnd = min(lastIndex, ceil(centerF + prefetchRadius).toInt())
         if (preEnd < preStart) return
         val toLoad = mutableListOf<Int>()
-        for (i in preStart..preEnd) if (!textures.containsKey(i) && !inFlight.containsKey(i)) toLoad.add(i)
+        for (i in preStart..preEnd) {
+            if (!textures.containsKey(i) && !inFlight.containsKey(i)) {
+                toLoad.add(i)
+            }
+        }
         toLoad.sortBy { abs(it - centerF) }
         toLoad.forEach { enqueueLoad(it) }
     }
@@ -910,7 +914,12 @@ class ArtFlowRenderer(
                 if (ndcY > maxY) maxY = ndcY
             }
         }
-        if (minX <= maxX && minY <= maxY) synchronized(framePicks) { framePicks.add(CoverPick(index, minX, maxX, minY, maxY)) }
+
+        if (minX <= maxX && minY <= maxY) {
+            synchronized(framePicks) {
+                framePicks.add(CoverPick(index, minX, maxX, minY, maxY))
+            }
+        }
     }
 
     fun getUriAt(index: Int): Uri? = if (index in uris.indices) uris[index] else null
