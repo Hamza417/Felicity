@@ -41,18 +41,22 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             val storages = RemovableStorageDetector.getAllStorageVolumes(context)
             val dao = audioDatabase.audioDao()
 
+            Log.d(TAG, "Indexing existing audio files in the database...")
             // Create index of existing audio files in the database
-            dao?.getAllAudio()?.collect { audioList ->
-                audioList.forEach { audio ->
+            dao?.getAllAudioList().let { audioList ->
+                audioList?.forEach { audio ->
                     indexedMap[audio.path] = IndexedFile(audio.dateModified, audio.size)
                 }
             }
+
+            Log.d(TAG, "Indexing complete. Found ${indexedMap.size} existing audio files in the database.")
 
             // Collect all processing jobs
             val processingJobs = mutableListOf<Job>()
 
             storages.forEach { storage ->
                 val audioFiles = AudioScanner().getAudioFiles(storage.path!!)
+                Log.d(TAG, "Found ${audioFiles.size} audio files in ${storage.path}")
                 audioFiles.forEach { file ->
                     if (shouldProcess(file, indexedMap)) {
                         val processingJob = launch {

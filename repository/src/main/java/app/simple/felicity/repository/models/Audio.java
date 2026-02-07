@@ -265,7 +265,7 @@ public class Audio implements Parcelable {
         return size;
     }
     
-    public void setSize(int size) {
+    public void setSize(long size) {
         this.size = size;
     }
     

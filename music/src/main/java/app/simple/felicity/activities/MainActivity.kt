@@ -1,9 +1,11 @@
 package app.simple.felicity.activities
 
+import android.content.ServiceConnection
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
+import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
@@ -14,8 +16,8 @@ import app.simple.felicity.adapters.ui.miniplayer.AdapterMiniPlayer.Companion.Mi
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.databinding.ActivityMainBinding
 import app.simple.felicity.databinding.MiniplayerBinding
+import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
-import app.simple.felicity.decorations.utils.PermissionUtils.isReadMediaAudioPermissionGranted
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -25,7 +27,7 @@ import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
-import app.simple.felicity.shared.storage.RemovableStorageExample
+import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.ui.home.ArtFlowHome
@@ -34,6 +36,7 @@ import app.simple.felicity.ui.home.SimpleHome
 import app.simple.felicity.ui.home.SpannedHome
 import app.simple.felicity.ui.launcher.Setup
 import app.simple.felicity.ui.player.DefaultPlayer
+import app.simple.felicity.viewmodels.launcher.PermissionViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -45,12 +48,16 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
     private lateinit var adapterMiniPlayer: AdapterMiniPlayer
 
+    private var serviceConnection: ServiceConnection? = null
+    private var audioDatabaseService: AudioDatabaseService? = null
+
+    private val permissionViewModel by viewModels<PermissionViewModel>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        RemovableStorageExample.getAllRemovableStorageExample(this)
         miniPlayerBinding = MiniplayerBinding.inflate(layoutInflater)
         binding.miniPlayer.setContent(miniPlayerBinding) { binding ->
             binding.pager.offscreenPageLimit = 1
@@ -132,11 +139,28 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                 }
             }
         }
+
+        serviceConnection = object : ServiceConnection {
+            override fun onServiceConnected(name: android.content.ComponentName?, service: android.os.IBinder?) {
+                val binder = service as? AudioDatabaseService.AudioDatabaseBinder
+                audioDatabaseService = binder?.getService() ?: return
+            }
+
+            override fun onServiceDisconnected(name: android.content.ComponentName?) {
+                audioDatabaseService = null
+            }
+        }
+
+        permissionViewModel.getManageFilesPermissionState().observe(this) { granted ->
+            if (granted) {
+                audioDatabaseService?.refreshAudioFiles()
+            }
+        }
     }
 
     private fun setHomePanel() {
         // Check if all required permissions are granted
-        val allPermissionsGranted = isReadMediaAudioPermissionGranted() &&
+        val allPermissionsGranted = isManageExternalStoragePermissionGranted() &&
                 isPostNotificationsPermissionGranted()
 
         if (!allPermissionsGranted) {
@@ -173,6 +197,20 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                     .replace(R.id.fragment_container, SimpleHome.newInstance(), SimpleHome.TAG)
                     .commit()
             }
+        }
+    }
+
+    private fun startAudioDatabaseService() {
+        if (audioDatabaseService.isNull()) {
+            val intent = android.content.Intent(this, AudioDatabaseService::class.java)
+            bindService(intent, serviceConnection!!, BIND_AUTO_CREATE)
+        }
+    }
+
+    private fun stopAudioDatabaseService() {
+        if (audioDatabaseService.isNotNull()) {
+            unbindService(serviceConnection!!)
+            audioDatabaseService = null
         }
     }
 
@@ -224,5 +262,10 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         recyclerView?.let {
             binding.miniPlayer.detachFromRecyclerView(it)
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        startAudioDatabaseService()
     }
 }

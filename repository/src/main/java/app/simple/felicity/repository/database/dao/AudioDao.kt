@@ -15,6 +15,9 @@ interface AudioDao {
     @Query("SELECT * FROM audio ORDER BY title COLLATE NOCASE ASC")
     fun getAllAudio(): Flow<MutableList<Audio>>
 
+    @Query("SELECT * FROM audio ORDER BY title COLLATE NOCASE ASC")
+    fun getAllAudioList(): MutableList<Audio>
+
     // Get unique artists
     @Query("SELECT * FROM audio GROUP BY artist ORDER BY artist COLLATE NOCASE ASC")
     fun getAllArtists(): Flow<MutableList<Audio>>

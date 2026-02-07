@@ -48,6 +48,10 @@
                 android:value="" />
         </activity>
 
+        <service
+            android:name=".repository.services.AudioDatabaseService"
+            android:exported="false" />
+
     </application>
 
 </manifest>

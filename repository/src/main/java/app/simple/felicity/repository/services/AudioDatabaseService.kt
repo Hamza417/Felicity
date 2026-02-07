@@ -21,6 +21,10 @@ class AudioDatabaseService : Service() {
         return START_STICKY
     }
 
+    fun refreshAudioFiles() {
+        AudioDatabaseLoader(this).processAudioFiles()
+    }
+
     inner class AudioDatabaseBinder : Binder() {
         fun getService(): AudioDatabaseService = this@AudioDatabaseService
     }

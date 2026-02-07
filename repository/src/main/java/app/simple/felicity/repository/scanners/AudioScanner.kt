@@ -40,6 +40,8 @@ class AudioScanner() {
         if (!root.exists() || !root.isDirectory) {
             Log.e(TAG, "Invalid root directory: ${root.absolutePath}")
             return emptyList()
+        } else {
+            Log.d(TAG, "Scanning for audio files in: ${root.absolutePath}")
         }
 
         return collectAudio(root)

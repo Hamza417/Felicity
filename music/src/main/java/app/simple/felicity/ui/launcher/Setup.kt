@@ -10,16 +10,20 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.net.toUri
+import androidx.fragment.app.activityViewModels
 import app.simple.felicity.R
 import app.simple.felicity.activities.MainActivity
 import app.simple.felicity.databinding.FragmentSetupBinding
 import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.viewmodels.launcher.PermissionViewModel
 
 class Setup : MediaFragment() {
 
     private lateinit var binding: FragmentSetupBinding
+
+    private val permissionViewModel by activityViewModels<PermissionViewModel>()
 
     private val notificationPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestPermission()
@@ -130,6 +134,8 @@ class Setup : MediaFragment() {
         } else {
             binding.statusManageAllFiles.setText(R.string.not_granted)
         }
+
+        permissionViewModel.setManageFilesPermissionState(isManageExternalStoragePermissionGranted())
     }
 
     companion object {
