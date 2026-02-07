@@ -11,6 +11,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import javax.inject.Inject
@@ -143,9 +144,20 @@ class AudioDatabaseService : Service() {
     }
 
     override fun onDestroy() {
-        Log.d(TAG, "Service destroyed")
-        super.onDestroy()
+        Log.d(TAG, "Service destroyed - cleaning up")
+        // Cancel all ongoing operations before destroying
         audioDatabaseLoader.cleanup()
+        // Cancel the service scope
+        serviceScope.coroutineContext.cancel()
+        super.onDestroy()
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        Log.d(TAG, "Task removed - cleaning up and stopping service")
+        // App was swiped away from recent apps
+        audioDatabaseLoader.cleanup()
+        stopSelf()
+        super.onTaskRemoved(rootIntent)
     }
 
     inner class AudioDatabaseBinder : Binder() {

@@ -271,6 +271,6 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
     override fun onResume() {
         super.onResume()
-        AudioDatabaseService.startScan(this)
+        AudioDatabaseService.refreshScan(applicationContext)
     }
 }

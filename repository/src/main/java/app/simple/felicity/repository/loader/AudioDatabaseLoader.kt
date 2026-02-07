@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -19,6 +20,7 @@ import kotlinx.coroutines.sync.Semaphore
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.max
 
 @Singleton
@@ -30,9 +32,13 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         private const val MIN_SEMAPHORE_PERMITS = 4
 
         data class IndexedFile(val lastModified: Long, val size: Long)
-
-        private val indexedMap: HashMap<String, IndexedFile> = hashMapOf()
     }
+
+    // Instance-specific indexed map (not shared across instances)
+    private val indexedMap: HashMap<String, IndexedFile> = hashMapOf()
+
+    // Track all active processing jobs for proper cancellation
+    private val activeJobs = mutableListOf<Job>()
 
     // Supervisor job ensures that failure in one child doesn't cancel others
     private val supervisorJob = SupervisorJob()
@@ -73,19 +79,35 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
             Log.d(TAG, "Indexing complete. Found ${indexedMap.size} existing audio files in the database.")
 
-            // Collect all processing jobs
-            val processingJobs = mutableListOf<Job>()
+            // Clear any previous jobs and start fresh
+            synchronized(activeJobs) {
+                activeJobs.clear()
+            }
 
             storages.forEach { storage ->
+                // Check for cancellation before processing each storage
+                loaderScope.coroutineContext.ensureActive()
+
                 val audioFiles = AudioScanner().getAudioFiles(storage.path!!)
                 Log.d(TAG, "Found ${audioFiles.size} audio files in ${storage.path}")
+
                 audioFiles.forEach { file ->
+                    // Check for cancellation before processing each file
+                    loaderScope.coroutineContext.ensureActive()
+
                     if (shouldProcess(file)) {
                         val processingJob = loaderScope.launch {
                             semaphore.acquire()
                             try {
+                                // Check for cancellation before starting metadata extraction
+                                ensureActive()
+
                                 Log.d(TAG, "Processing: ${file.absolutePath}")
                                 val audio = file.extractMetadata()
+
+                                // Check for cancellation after metadata extraction
+                                ensureActive()
+
                                 if (audio == null) {
                                     Log.w(TAG, "Failed to extract metadata for: ${file.name}")
                                 } else {
@@ -94,6 +116,10 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                                     indexedMap[file.absolutePath] = IndexedFile(audio.dateModified, audio.size)
                                     Log.d(TAG, "Inserted and indexed: ${file.name}")
                                 }
+                            } catch (e: CancellationException) {
+                                // Coroutine was canceled - rethrow to propagate cancellation
+                                Log.d(TAG, "Processing canceled for: ${file.name}")
+                                throw e
                             } catch (e: Exception) {
                                 Log.e(TAG, "Error processing ${file.absolutePath}", e)
                             } finally {
@@ -101,17 +127,28 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                             }
                         }
 
-                        processingJobs.add(processingJob)
+                        synchronized(activeJobs) {
+                            activeJobs.add(processingJob)
+                        }
                     }
                 }
             }
 
             // Wait for all processing jobs to complete
-            processingJobs.joinAll()
+            val jobsToWait = synchronized(activeJobs) { activeJobs.toList() }
+            jobsToWait.joinAll()
             Log.d(TAG, "Audio file processing complete in ${(System.currentTimeMillis() - startTime) / 1000} seconds.")
+        } catch (e: CancellationException) {
+            // Scan was canceled - this is expected behavior
+            Log.d(TAG, "Audio file processing canceled")
+            throw e  // Rethrow to propagate cancellation
         } catch (e: Exception) {
             Log.e(TAG, "Error during audio file processing", e)
         } finally {
+            // Clear active jobs after completion
+            synchronized(activeJobs) {
+                activeJobs.clear()
+            }
             scanMutex.unlock()
         }
     }
@@ -123,10 +160,39 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
     /**
      * Cancel all ongoing operations and cleanup resources
+     * This ensures no background processes are left running
      */
     fun cleanup() {
+        Log.d(TAG, "Cleanup called - canceling all operations")
+
+        // Cancel all active processing jobs
+        synchronized(activeJobs) {
+            Log.d(TAG, "Canceling ${activeJobs.size} active jobs")
+            activeJobs.forEach { job ->
+                if (job.isActive) {
+                    job.cancel()
+                }
+            }
+            activeJobs.clear()
+        }
+
+        // Cancel the supervisor job (this will cancel the entire scope)
         supervisorJob.cancel()
+
+        // Clear the indexed map
         indexedMap.clear()
+
+        // Unlock the mutex if it's locked (in case cleanup is called during a scan)
+        if (scanMutex.isLocked) {
+            try {
+                scanMutex.unlock()
+            } catch (_: IllegalStateException) {
+                // Mutex wasn't locked by this thread, ignore
+                Log.w(TAG, "Attempted to unlock mutex but it wasn't locked by this thread")
+            }
+        }
+
+        Log.d(TAG, "Cleanup complete - all operations canceled")
     }
 
     private fun shouldProcess(file: File): Boolean {
