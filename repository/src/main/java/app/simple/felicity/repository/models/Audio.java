@@ -42,7 +42,7 @@ public class Audio implements Parcelable {
     @Nullable
     private String album;
     @ColumnInfo (name = "size")
-    private int size;
+    private long size;
     @ColumnInfo (name = "author")
     @Nullable
     private String author;
@@ -132,7 +132,7 @@ public class Audio implements Parcelable {
         dest.writeString(path);
         dest.writeInt(track);
         dest.writeString(author);
-        dest.writeInt(size);
+        dest.writeLong(size);
         dest.writeString(albumArtist);
         dest.writeString(year);
         dest.writeLong(bitrate);
@@ -261,7 +261,7 @@ public class Audio implements Parcelable {
         this.year = year;
     }
     
-    public int getSize() {
+    public long getSize() {
         return size;
     }
     
@@ -533,7 +533,7 @@ public class Audio implements Parcelable {
         result = 31 * result + (path != null ? path.hashCode() : 0);
         result = 31 * result + track;
         result = 31 * result + (author != null ? author.hashCode() : 0);
-        result = 31 * result + size;
+        result = 31 * result + Long.hashCode(size);
         result = 31 * result + (albumArtist != null ? albumArtist.hashCode() : 0);
         result = 31 * result + (year != null ? year.hashCode() : 0);
         result = 31 * result + Long.hashCode(bitrate);

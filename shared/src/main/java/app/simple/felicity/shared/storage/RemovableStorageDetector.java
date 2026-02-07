@@ -35,14 +35,9 @@ public class RemovableStorageDetector {
      */
     @NonNull
     public static List <StorageInfo> getAllStorageVolumes(@NonNull Context context) {
-        List <StorageInfo> storageInfoList = new ArrayList <>();
+        List <StorageInfo> storageInfoList;
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            storageInfoList = getStorageVolumesModern(context);
-        } else {
-            // Fallback for API < 24 (though your minSdk is 29)
-            storageInfoList = getStorageVolumesLegacy(context);
-        }
+        storageInfoList = getStorageVolumesModern(context);
         
         logDebug("Found " + storageInfoList.size() + " storage volumes");
         return storageInfoList;

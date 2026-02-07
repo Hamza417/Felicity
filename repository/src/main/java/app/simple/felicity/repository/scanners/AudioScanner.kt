@@ -3,7 +3,7 @@ package app.simple.felicity.repository.scanners
 import android.util.Log
 import java.io.File
 
-private class AudioScanner() {
+class AudioScanner() {
 
     companion object {
         private const val TAG = "AudioScanner"

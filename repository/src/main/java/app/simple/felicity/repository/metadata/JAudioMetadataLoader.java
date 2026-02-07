@@ -19,16 +19,61 @@ public class JAudioMetadataLoader {
     private final File file;
     private final AudioFile audioFile;
     
-    public JAudioMetadataLoader(File file) throws CannotReadException, TagException, InvalidAudioFrameException, ReadOnlyFileException, IOException {
+    private JAudioMetadataLoader(File file) throws CannotReadException, TagException, InvalidAudioFrameException, ReadOnlyFileException, IOException {
         this.file = file;
         this.audioFile = AudioFileIO.read(file);
     }
     
-    public JAudioMetadataLoader(String path) throws CannotReadException, TagException, InvalidAudioFrameException, ReadOnlyFileException, IOException {
-        this(new File(path));
+    /**
+     * Load audio metadata from a file and return a populated Audio object.
+     *
+     * @param file The audio file to load metadata from
+     * @return Audio object with metadata populated from the file
+     * @throws CannotReadException        if the file cannot be read
+     * @throws TagException               if there's an error reading tags
+     * @throws InvalidAudioFrameException if the audio frame is invalid
+     * @throws ReadOnlyFileException      if the file is read-only
+     * @throws IOException                if there's an I/O error
+     */
+    public static Audio loadFromFile(File file) throws CannotReadException, TagException, InvalidAudioFrameException, ReadOnlyFileException, IOException {
+        JAudioMetadataLoader loader = new JAudioMetadataLoader(file);
+        return loader.createAudio();
     }
     
-    public void setAudioMetadata(Audio audio) {
+    /**
+     * Load audio metadata from a file path and return a populated Audio object.
+     *
+     * @param path The path to the audio file
+     * @return Audio object with metadata populated from the file
+     * @throws CannotReadException        if the file cannot be read
+     * @throws TagException               if there's an error reading tags
+     * @throws InvalidAudioFrameException if the audio frame is invalid
+     * @throws ReadOnlyFileException      if the file is read-only
+     * @throws IOException                if there's an I/O error
+     */
+    public static Audio loadFromFile(String path) throws CannotReadException, TagException, InvalidAudioFrameException, ReadOnlyFileException, IOException {
+        return loadFromFile(new File(path));
+    }
+    
+    /**
+     * Populate an existing Audio object with metadata from the file.
+     * This method is provided for backward compatibility.
+     *
+     * @deprecated Use {@link #loadFromFile(File)} instead
+     */
+    @Deprecated
+    public static void populateAudio(File file, Audio audio) throws CannotReadException, TagException, InvalidAudioFrameException, ReadOnlyFileException, IOException {
+        JAudioMetadataLoader loader = new JAudioMetadataLoader(file);
+        loader.setAudioMetadata(audio);
+    }
+    
+    private Audio createAudio() {
+        Audio audio = new Audio();
+        setAudioMetadata(audio);
+        return audio;
+    }
+    
+    private void setAudioMetadata(Audio audio) {
         audio.setName(file.getName());
         audio.setPath(file.getAbsolutePath());
         audio.setAlbum(getAlbum());

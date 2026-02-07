@@ -13,20 +13,55 @@ public class MediaMetadataLoader {
     private final File file;
     private final MediaMetadataRetriever retriever;
     
-    public MediaMetadataLoader(File file) {
+    private MediaMetadataLoader(File file) {
         this.file = file;
         this.retriever = new MediaMetadataRetriever();
         this.retriever.setDataSource(file.getAbsolutePath());
     }
     
-    public MediaMetadataLoader(String path) {
-        this(new File(path));
+    /**
+     * Load audio metadata from a file and return a populated Audio object.
+     *
+     * @param file The audio file to load metadata from
+     * @return Audio object with metadata populated from the file
+     */
+    public static Audio loadFromFile(File file) {
+        MediaMetadataLoader loader = new MediaMetadataLoader(file);
+        return loader.createAudio();
+    }
+    
+    /**
+     * Load audio metadata from a file path and return a populated Audio object.
+     *
+     * @param path The path to the audio file
+     * @return Audio object with metadata populated from the file
+     */
+    public static Audio loadFromFile(String path) {
+        return loadFromFile(new File(path));
+    }
+    
+    /**
+     * Populate an existing Audio object with metadata from the file.
+     * This method is provided for backward compatibility.
+     *
+     * @deprecated Use {@link #loadFromFile(File)} instead
+     */
+    @Deprecated
+    public static void populateAudio(File file, Audio audio) {
+        MediaMetadataLoader loader = new MediaMetadataLoader(file);
+        loader.setAudioMetadata(audio);
+    }
+    
+    private Audio createAudio() {
+        Audio audio = new Audio();
+        setAudioMetadata(audio);
+        return audio;
     }
     
     /**
      * @noinspection DataFlowIssue
      */
-    public void setAudioMetadata(Audio audio) {
+    private void setAudioMetadata(Audio audio) {
         audio.setName(file.getName());
         audio.setPath(file.getAbsolutePath());
         audio.setAlbum(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM));
@@ -59,10 +94,10 @@ public class MediaMetadataLoader {
             audio.setBitPerSample(0);
         }
         
-        audio.setId(generateId(audio));
+        audio.setId(generateId());
     }
     
-    private long generateId(Audio audio) {
-        return FileUtils.INSTANCE.generateXXHash64(new File(audio.getPath()), Integer.MAX_VALUE);
+    private long generateId() {
+        return FileUtils.INSTANCE.generateXXHash64(file, Integer.MAX_VALUE);
     }
 }

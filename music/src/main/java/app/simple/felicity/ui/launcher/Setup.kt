@@ -15,18 +15,11 @@ import app.simple.felicity.activities.MainActivity
 import app.simple.felicity.databinding.FragmentSetupBinding
 import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
-import app.simple.felicity.decorations.utils.PermissionUtils.isReadMediaAudioPermissionGranted
 import app.simple.felicity.extensions.fragments.MediaFragment
 
 class Setup : MediaFragment() {
 
     private lateinit var binding: FragmentSetupBinding
-
-    private val storagePermissionLauncher = registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
-    ) { _ ->
-        updateStoragePermissionStatus()
-    }
 
     private val notificationPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestPermission()
@@ -56,13 +49,8 @@ class Setup : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
         requireHiddenMiniPlayer()
 
-        updateStoragePermissionStatus()
         updateNotificationPermissionStatus()
         updateManageAllFilesPermissionStatus()
-
-        binding.grantReadExternalStorage.setOnClickListener {
-            requestStoragePermission()
-        }
 
         binding.grantPostNotifications.setOnClickListener {
             requestNotificationPermission()
@@ -83,14 +71,13 @@ class Setup : MediaFragment() {
 
     override fun onResume() {
         super.onResume()
-        updateStoragePermissionStatus()
         updateNotificationPermissionStatus()
         updateManageAllFilesPermissionStatus()
         updateStartButtonState()
     }
 
     private fun areRequiredPermissionsGranted(): Boolean {
-        return isReadMediaAudioPermissionGranted() && isPostNotificationsPermissionGranted()
+        return isPostNotificationsPermissionGranted() && isManageExternalStoragePermissionGranted()
     }
 
     private fun updateStartButtonState() {
@@ -103,20 +90,6 @@ class Setup : MediaFragment() {
         (requireActivity() as? MainActivity)?.showHome()
     }
 
-    private fun requestStoragePermission() {
-        if (isReadMediaAudioPermissionGranted()) {
-            return
-        }
-
-        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_AUDIO
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        }
-
-        storagePermissionLauncher.launch(permission)
-    }
-
     private fun requestNotificationPermission() {
         if (isPostNotificationsPermissionGranted()) {
             return
@@ -125,15 +98,6 @@ class Setup : MediaFragment() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
-    }
-
-    private fun updateStoragePermissionStatus() {
-        if (isReadMediaAudioPermissionGranted()) {
-            binding.statusUsageAccess.setText(R.string.granted)
-        } else {
-            binding.statusUsageAccess.setText(R.string.not_granted)
-        }
-        updateStartButtonState()
     }
 
     private fun updateNotificationPermissionStatus() {

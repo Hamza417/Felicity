@@ -79,45 +79,6 @@
                 app:textColorStyle="accent" />
 
             <app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout
-                android:id="@+id/grant_read_external_storage"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/panel_item_padding">
-
-                <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:drawablePadding="5dp"
-                    android:gravity="center_vertical"
-                    android:text="@string/read_external_storage"
-                    android:textSize="@dimen/text_size_14"
-                    app:appFontStyle="bold"
-                    app:drawableTintStyle="accent"
-                    app:textColorStyle="primary" />
-
-                <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                    android:id="@+id/status_usage_access"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="5dp"
-                    android:text="@string/not_granted"
-                    android:textSize="@dimen/text_size_12"
-                    app:appFontStyle="regular"
-                    app:textColorStyle="accent" />
-
-                <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="5dp"
-                    android:text="@string/desc_read_external_storage"
-                    android:textSize="@dimen/text_size_12"
-                    app:appFontStyle="regular"
-                    app:textColorStyle="tertiary" />
-
-            </app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>
-
-            <app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout
                 android:id="@+id/grant_post_notifications"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -155,15 +116,6 @@
                     app:textColorStyle="tertiary" />
 
             </app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>
-
-            <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/padding_15"
-                android:paddingHorizontal="@dimen/panel_item_padding"
-                android:text="@string/optional"
-                app:appFontStyle="medium"
-                app:textColorStyle="accent" />
 
             <app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout
                 android:id="@+id/grant_manage_all_files"
