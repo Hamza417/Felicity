@@ -96,6 +96,8 @@ public class JAudioMetadataLoader {
         audio.setSamplingRate(getSamplingRate());
         audio.setBitPerSample(getBitPerSample());
         audio.setId(generateId());
+        audio.setSize(file.length());
+        audio.setDateModified(file.lastModified());
     }
     
     private String getAudioFileTag(FieldKey tag) {

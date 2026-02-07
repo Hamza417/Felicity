@@ -7,6 +7,7 @@ import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.metadata.MetaDataHelper.extractMetadata
 import app.simple.felicity.repository.scanners.AudioScanner
 import app.simple.felicity.shared.storage.RemovableStorageDetector
+import app.simple.felicity.shared.utils.ProcessUtils.checkNotMainThread
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -15,7 +16,6 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -49,6 +49,8 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     }
 
     suspend fun processAudioFiles() {
+        checkNotMainThread()
+
         // Use mutex to prevent multiple scans from running in parallel
         if (!scanMutex.tryLock()) {
             Log.w(TAG, "Scan already in progress, skipping...")
@@ -62,13 +64,10 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             val dao = audioDatabase.audioDao()
 
             Log.d(TAG, "Indexing existing audio files in the database...")
-            // Clear and rebuild index of existing audio files in the database
-            withContext(Dispatchers.IO) {
-                indexedMap.clear() // Clear stale entries from previous scans
-                dao?.getAllAudioList().let { audioList ->
-                    audioList?.forEach { audio ->
-                        indexedMap[audio.path] = IndexedFile(audio.dateModified, audio.size)
-                    }
+            // Create index of existing audio files in the database
+            dao?.getAllAudioList().let { audioList ->
+                audioList?.forEach { audio ->
+                    indexedMap[audio.path] = IndexedFile(audio.dateModified, audio.size)
                 }
             }
 
@@ -87,9 +86,13 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                             try {
                                 Log.d(TAG, "Processing: ${file.absolutePath}")
                                 val audio = file.extractMetadata()
-                                audio?.let {
-                                    dao?.insert(it)
-                                    Log.d(TAG, "Inserted: ${file.absolutePath}")
+                                if (audio == null) {
+                                    Log.w(TAG, "Failed to extract metadata for: ${file.name}")
+                                } else {
+                                    Log.d(TAG, "Metadata extracted for ${file.name}: size=${audio.size}, dateModified=${audio.dateModified}")
+                                    dao?.insert(audio)
+                                    indexedMap[file.absolutePath] = IndexedFile(audio.dateModified, audio.size)
+                                    Log.d(TAG, "Inserted and indexed: ${file.name}")
                                 }
                             } catch (e: Exception) {
                                 Log.e(TAG, "Error processing ${file.absolutePath}", e)
@@ -127,10 +130,25 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     }
 
     private fun shouldProcess(file: File): Boolean {
-        val existing = indexedMap[file.absolutePath] ?: return true   // new file
+        val existing = indexedMap[file.absolutePath]
 
-        if (existing.size != file.length()) return true          // changed
-        if (existing.lastModified != file.lastModified()) return true
+        if (existing == null) {
+            Log.d(TAG, "New file (not in index): ${file.name}")
+            return true   // new file
+        }
+
+        val fileSize = file.length()
+        val fileModified = file.lastModified()
+
+        if (existing.size != fileSize) {
+            Log.d(TAG, "Size changed for ${file.name}: DB=${existing.size}, File=$fileSize")
+            return true          // changed
+        }
+
+        if (existing.lastModified != fileModified) {
+            Log.d(TAG, "Modified time changed for ${file.name}: DB=${existing.lastModified}, File=$fileModified")
+            return true
+        }
 
         return false                                             // unchanged → skip
     }

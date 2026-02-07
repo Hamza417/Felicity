@@ -35,4 +35,11 @@ object ProcessUtils {
             block()
         }
     }
+
+    // throw exception if called on main thread
+    fun checkNotMainThread() {
+        check(Thread.currentThread() != Looper.getMainLooper().thread) {
+            "This function cannot be called on main thread"
+        }
+    }
 }

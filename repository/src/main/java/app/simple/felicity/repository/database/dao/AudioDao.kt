@@ -51,7 +51,7 @@ interface AudioDao {
      * Insert [Audio] item
      * into the table
      */
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(audio: Audio)
 
     /**
