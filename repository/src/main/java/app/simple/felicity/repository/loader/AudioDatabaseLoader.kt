@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import java.io.File
 import javax.inject.Inject
-import kotlin.math.min
+import kotlin.math.max
 
 @WorkerThread
 class AudioDatabaseLoader @Inject constructor(private val context: Context) {
@@ -30,7 +30,9 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     }
 
     private val loaderJobs: MutableSet<Job> = mutableSetOf()
-    private val semaphore = Semaphore(min(MIN_SEMAPHORE_PERMITS, Runtime.getRuntime().availableProcessors()))
+
+    // Use max() to ensure we use at least MIN_SEMAPHORE_PERMITS, even if fewer processors are available
+    private val semaphore = Semaphore(max(MIN_SEMAPHORE_PERMITS, Runtime.getRuntime().availableProcessors()))
 
     private val audioDatabase: AudioDatabase by lazy {
         AudioDatabase.getInstance(context)!!
@@ -38,6 +40,8 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
     fun processAudioFiles() {
         val job = CoroutineScope(Dispatchers.IO).launch {
+            val startTime = System.currentTimeMillis()
+            Log.d(TAG, "Starting audio file processing...")
             val storages = RemovableStorageDetector.getAllStorageVolumes(context)
             val dao = audioDatabase.audioDao()
 
@@ -80,6 +84,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
             // Wait for all processing jobs to complete
             processingJobs.joinAll()
+            Log.d(TAG, "Audio file processing complete in ${(System.currentTimeMillis() - startTime) / 1000} seconds.")
         }
 
         loaderJobs.add(job)

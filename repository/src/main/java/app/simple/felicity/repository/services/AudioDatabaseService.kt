@@ -5,12 +5,18 @@ import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
 import app.simple.felicity.repository.loader.AudioDatabaseLoader
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class AudioDatabaseService : Service() {
+
+    @Inject
+    lateinit var audioDatabaseLoader: AudioDatabaseLoader
 
     override fun onCreate() {
         super.onCreate()
-        AudioDatabaseLoader(this).processAudioFiles()
+        audioDatabaseLoader.processAudioFiles()
     }
 
     override fun onBind(intent: Intent?): IBinder {
@@ -22,7 +28,7 @@ class AudioDatabaseService : Service() {
     }
 
     fun refreshAudioFiles() {
-        AudioDatabaseLoader(this).processAudioFiles()
+        audioDatabaseLoader.processAudioFiles()
     }
 
     inner class AudioDatabaseBinder : Binder() {

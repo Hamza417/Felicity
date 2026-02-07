@@ -1,6 +1,7 @@
 package app.simple.felicity.hilt
 
 import android.content.Context
+import app.simple.felicity.repository.loader.AudioDatabaseLoader
 import app.simple.felicity.repository.repositories.AlbumRepository
 import app.simple.felicity.repository.repositories.ArtistRepository
 import app.simple.felicity.repository.repositories.GenreRepository
@@ -37,5 +38,11 @@ object AppModule {
     @Singleton
     fun provideArtistRepository(@ApplicationContext context: Context): ArtistRepository {
         return ArtistRepository(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAudioDatabaseLoader(@ApplicationContext context: Context): AudioDatabaseLoader {
+        return AudioDatabaseLoader(context)
     }
 }
