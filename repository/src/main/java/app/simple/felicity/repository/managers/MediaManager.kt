@@ -1,12 +1,13 @@
 package app.simple.felicity.repository.managers
 
 import android.util.Log
+import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import app.simple.felicity.repository.constants.MediaConstants
-import app.simple.felicity.repository.models.Song
+import app.simple.felicity.repository.models.Audio
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.File
 import kotlin.math.max
 
 object MediaManager {
@@ -29,7 +31,7 @@ object MediaManager {
     private var mediaController: MediaController? = null
 
     // Backing store for the queue provided by UI/db. Treat as read-only outside.
-    private var songs: List<Song> = emptyList()
+    private var songs: List<Audio> = emptyList()
 
     // Current queue index. Setter also emits to observers when valid.
     private var currentSongPosition: Int = 0
@@ -48,12 +50,12 @@ object MediaManager {
     private var seekJob: Job? = null
 
     // Flows are mutable internally but exposed as read-only to callers.
-    private val _songListFlow = MutableSharedFlow<List<Song>>(replay = 1)
+    private val _songListFlow = MutableSharedFlow<List<Audio>>(replay = 1)
     private val _songPositionFlow = MutableSharedFlow<Int>(replay = 1)
     private val _songSeekPositionFlow = MutableSharedFlow<Long>(replay = 1)
     private val _playbackStateFlow = MutableSharedFlow<Int>(replay = 1)
 
-    val songListFlow: SharedFlow<List<Song>> = _songListFlow.asSharedFlow()
+    val songListFlow: SharedFlow<List<Audio>> = _songListFlow.asSharedFlow()
     val songPositionFlow: SharedFlow<Int> = _songPositionFlow.asSharedFlow()
     val songSeekPositionFlow: SharedFlow<Long> = _songSeekPositionFlow.asSharedFlow()
     val playbackStateFlow: SharedFlow<Int> = _playbackStateFlow.asSharedFlow()
@@ -74,20 +76,22 @@ object MediaManager {
      * Note: Emission order between list and position is not strictly guaranteed due to coroutines,
      * but replay=1 on both flows ensures UI will observe the latest of each.
      */
-    fun setSongs(songs: List<Song>, position: Int = 0, startPositionMs: Long = 0L) {
-        this.songs = songs
-        val clampedPosition = if (songs.isEmpty()) 0 else position.coerceIn(0, songs.size - 1)
+    fun setSongs(audios: List<Audio>, position: Int = 0, startPositionMs: Long = 0L) {
+        this.songs = audios
+        val clampedPosition = if (audios.isEmpty()) 0 else position.coerceIn(0, audios.size - 1)
         currentSongPosition = clampedPosition
 
-        if (songs.isNotEmpty()) {
-            val mediaItems = songs.map { song ->
+        if (audios.isNotEmpty()) {
+            val mediaItems = audios.map { audio ->
+                // Convert file path to URI since Audio model only has path property
+                val uri = File(audio.path).toUri()
                 MediaItem.Builder()
-                    .setMediaId(song.id.toString())
-                    .setUri(song.uri)
+                    .setMediaId(audio.id.toString())
+                    .setUri(uri)
                     .setMediaMetadata(
                             MediaMetadata.Builder()
-                                .setArtist(song.artist)
-                                .setTitle(song.title)
+                                .setArtist(audio.artist)
+                                .setTitle(audio.title)
                                 .build()
                     )
                     .build()
@@ -109,9 +113,9 @@ object MediaManager {
         }
     }
 
-    fun getSongs(): List<Song> = songs
+    fun getSongs(): List<Audio> = songs
 
-    fun getCurrentSong(): Song? = songs.getOrNull(currentSongPosition)
+    fun getCurrentSong(): Audio? = songs.getOrNull(currentSongPosition)
 
     fun playCurrent() {
         mediaController?.seekToDefaultPosition(currentSongPosition)
@@ -119,14 +123,14 @@ object MediaManager {
         startSeekPositionUpdates()
     }
 
-    fun playSong(song: Song) {
+    fun playSong(audio: Audio) {
         // Prefer matching by stable id to avoid issues with data class equality or different instances
-        val index = songs.indexOfFirst { it.id == song.id }
+        val index = songs.indexOfFirst { it.id == audio.id }
         if (index != -1) {
             currentSongPosition = index
             playCurrent()
         } else {
-            Log.w(TAG, "playSong: Song not found in current list: ${song.id}")
+            Log.w(TAG, "playSong: Audio not found in current list: ${audio.id}")
         }
     }
 
@@ -211,7 +215,7 @@ object MediaManager {
         }
     }
 
-    fun getSongAt(position: Int): Song? {
+    fun getSongAt(position: Int): Audio? {
         return if (position in songs.indices) {
             songs[position]
         } else {

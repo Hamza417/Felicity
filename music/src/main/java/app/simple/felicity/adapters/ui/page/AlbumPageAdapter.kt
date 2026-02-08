@@ -70,7 +70,7 @@ class AlbumPageAdapter(private val data: CollectionPageData, private val album: 
                 holder.bind(data.songs[position - EXTRA_ROWS]) // Adjust for header
 
                 holder.binding.container.setOnClickListener {
-                    listener?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.cover)
+                    // listener?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.cover)
                 }
             }
         }

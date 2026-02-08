@@ -6,9 +6,9 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterMiniPlayerAlbumArtBinding
 import app.simple.felicity.glide.util.AudioCoverUtils.loadPeristyleArtCover
-import app.simple.felicity.repository.models.Song
+import app.simple.felicity.repository.models.Audio
 
-class AdapterMiniPlayer(private val list: List<Song>) : RecyclerView.Adapter<AdapterMiniPlayer.Holder>() {
+class AdapterMiniPlayer(private val list: List<Audio>) : RecyclerView.Adapter<AdapterMiniPlayer.Holder>() {
 
     private var callbacks: MiniPlayerAdapterCallbacks? = null
 

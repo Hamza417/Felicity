@@ -24,7 +24,7 @@ import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.SongsPreferences
-import app.simple.felicity.repository.models.Song
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.sort.SongSort.setSongOrder
 import app.simple.felicity.repository.sort.SongSort.setSongSort
 import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
@@ -69,11 +69,11 @@ class Songs : PanelFragment() {
             songsAdapter = SongsAdapter(songs)
 
             songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
-                override fun onSongClicked(songs: List<Song>, position: Int, view: View?) {
+                override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
                     setMediaItems(songs, position)
                 }
 
-                override fun onSongLongClicked(songs: List<Song>, position: Int, view: View) {
+                override fun onSongLongClicked(songs: MutableList<Audio>, position: Int, view: View) {
                     SimpleSharedImageDialog.Builder(
                             container = requireContainerView(),
                             sourceImageView = view as ImageView,
@@ -177,12 +177,12 @@ class Songs : PanelFragment() {
         }
     }
 
-    override fun onSong(song: Song) {
-        super.onSong(song)
-        songsAdapter?.currentlyPlayingSong = song
+    override fun onSong(audio: Audio) {
+        super.onSong(audio)
+        songsAdapter?.currentlyPlayingSong = audio
     }
 
-    private fun provideScrollPositionDataBasedOnSortStyle(songs: List<Song>): List<SectionedFastScroller.Position> {
+    private fun provideScrollPositionDataBasedOnSortStyle(songs: List<Audio>): List<SectionedFastScroller.Position> {
         return when (SongsPreferences.getSongSort()) {
             CommonPreferencesConstants.BY_TITLE -> {
                 val firstAlphabetToIndex = linkedMapOf<String, Int>()

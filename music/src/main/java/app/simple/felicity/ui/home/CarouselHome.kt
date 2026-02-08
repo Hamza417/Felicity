@@ -52,7 +52,7 @@ class CarouselHome : MediaFragment() {
                     if (data[position].items.isNotEmpty()) {
                         when (data[position].items[0]) {
                             is Song -> {
-                                setMediaItems(data[position].items.filterIsInstance<Song>(), itemPosition)
+                                // setMediaItems(data[position].items.filterIsInstance<Song>(), itemPosition)
                             }
                             is Genre -> {
                                 val genre = data[position].items.filterIsInstance<Genre>()[itemPosition]

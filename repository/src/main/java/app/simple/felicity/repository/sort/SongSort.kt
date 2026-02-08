@@ -3,12 +3,12 @@ package app.simple.felicity.repository.sort
 import androidx.appcompat.widget.AppCompatTextView
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.preferences.SongsPreferences
-import app.simple.felicity.repository.models.Song
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.R
 
 object SongSort {
 
-    fun List<Song>.sorted(): List<Song> {
+    fun List<Audio>.sorted(): List<Audio> {
         return when (SongsPreferences.getSongSort()) {
             CommonPreferencesConstants.BY_TITLE -> when (SongsPreferences.getSortingStyle()) {
                 CommonPreferencesConstants.ASCENDING -> sortedBy { it.title }
@@ -64,7 +64,7 @@ object SongSort {
         }
     }
 
-    fun List<Song>.sort(): List<Song> {
+    fun List<Audio>.sort(): List<Audio> {
         return sorted()
     }
 

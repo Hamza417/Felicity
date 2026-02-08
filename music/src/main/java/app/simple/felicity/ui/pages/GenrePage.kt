@@ -17,6 +17,7 @@ import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.utils.ParcelUtils.parcelable
@@ -60,19 +61,19 @@ class GenrePage : MediaFragment() {
             binding.recyclerView.adapter = adapter
 
             adapter.setCallbacks(object : GeneralAdapterCallbacks {
-                override fun onSongClicked(songs: List<Song>, position: Int, view: View) {
+                override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
                     Log.i(TAG, "onSongClick: Song clicked in genre: ${genre.name}, position: $position")
                     setMediaItems(songs, position)
                 }
 
                 override fun onPlayClicked(songs: List<Song>, position: Int) {
                     Log.i(TAG, "onPlayClick: Play button clicked for genre: ${genre.name}, position: $position")
-                    setMediaItems(songs, position)
+                    // setMediaItems(songs, position)
                 }
 
                 override fun onShuffleClicked(songs: List<Song>, position: Int) {
                     Log.i(TAG, "onShuffleClick: Shuffle button clicked for genre: ${genre.name}, position: $position")
-                    setMediaItems(songs.shuffled(), position)
+                    // setMediaItems(songs.shuffled(), position)
                 }
 
                 override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {

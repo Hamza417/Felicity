@@ -2,7 +2,6 @@ package app.simple.felicity.ui.panels
 
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -19,8 +18,7 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
-import app.simple.felicity.repository.models.Song
-import app.simple.felicity.repository.sort.SongSort.sorted
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 import app.simple.felicity.shared.utils.WindowUtil
 import app.simple.felicity.ui.player.DefaultPlayer
@@ -79,9 +77,9 @@ class ArtFlow : MediaFragment() {
             binding.coverflow.setOnCoverClickListener(object : OnCoverClickListener {
                 override fun onCenteredCoverClick(index: Int, uri: Uri?) {
                     songsViewModel.setCarouselPosition(index)
-                    val sorted = songs.values.toList().sorted()
-                    Log.d(TAG, "onCenteredCoverClick: Playing ${sorted[index].title} at index $index")
-                    setMediaItems(sorted, index)
+                    //                    val sorted = songs.values.toList().sorted()
+                    //                    Log.d(TAG, "onCenteredCoverClick: Playing ${sorted[index].title} at index $index")
+                    //                    setMediaItems(sorted, index)
                 }
 
                 override fun onSideCoverSelected(index: Int, uri: Uri?) {
@@ -152,11 +150,11 @@ class ArtFlow : MediaFragment() {
         }
     }
 
-    override fun onSong(song: Song) {
-        super.onSong(song)
-        binding.title.text = song.title
-        binding.artist.text = song.artist
-        binding.art.loadArtCoverWithPayload(song)
+    override fun onSong(audio: Audio) {
+        super.onSong(audio)
+        binding.title.text = audio.title
+        binding.artist.text = audio.artist
+        binding.art.loadArtCoverWithPayload(audio)
     }
 
     override fun onPlaybackStateChanged(state: Int) {

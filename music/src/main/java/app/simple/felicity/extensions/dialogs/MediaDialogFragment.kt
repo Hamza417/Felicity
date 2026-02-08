@@ -17,7 +17,7 @@ abstract class MediaDialogFragment : ScopedBottomSheetFragment() {
     protected fun setMediaItems(songs: List<Song>, position: Int = 0) {
         PlayerPreferences.setLastSongPosition(position)
         PlayerPreferences.setLastSongId(songs.getOrNull(position)?.id ?: -1L)
-        MediaManager.setSongs(songs, position)
+        // MediaManager.setSongs(songs, position)
         MediaManager.play()
         createSongHistoryDatabase(songs)
         createStatForSong(songs[position])

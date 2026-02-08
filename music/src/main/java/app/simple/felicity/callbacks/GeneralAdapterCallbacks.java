@@ -8,6 +8,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 import app.simple.felicity.repository.models.Album;
 import app.simple.felicity.repository.models.Artist;
+import app.simple.felicity.repository.models.Audio;
 import app.simple.felicity.repository.models.Genre;
 import app.simple.felicity.repository.models.Song;
 
@@ -17,11 +18,11 @@ public interface GeneralAdapterCallbacks {
     
     }
     
-    default void onSongClicked(List <Song> songs, int position, View view) {
+    default void onSongClicked(List <Audio> songs, int position, View view) {
     
     }
     
-    default void onSongLongClicked(List <Song> songs, int position, View view) {
+    default void onSongLongClicked(List <Audio> songs, int position, View view) {
     
     }
     

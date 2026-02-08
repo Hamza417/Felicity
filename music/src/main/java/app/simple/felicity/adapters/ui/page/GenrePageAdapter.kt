@@ -70,7 +70,7 @@ class GenrePageAdapter(private val data: CollectionPageData, private val genre: 
                 holder.bind(data.songs[position - 1]) // Adjust for header
 
                 holder.binding.container.setOnClickListener {
-                    generalAdapterCallbacks?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.cover)
+                    // generalAdapterCallbacks?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.cover)
                 }
             }
         }

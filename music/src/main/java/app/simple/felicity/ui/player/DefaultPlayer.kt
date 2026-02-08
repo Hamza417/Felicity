@@ -14,7 +14,7 @@ import app.simple.felicity.decorations.utils.CoverUtils
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
-import app.simple.felicity.repository.models.Song
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.SongUtils
 import app.simple.felicity.shared.utils.NumberUtils
 
@@ -93,14 +93,14 @@ class DefaultPlayer : MediaFragment() {
         }
     }
 
-    override fun onSong(song: Song) {
-        super.onSong(song)
-        binding.title.text = song.title
-        binding.artist.text = song.artist
-        binding.album.text = song.album
-        binding.info.text = song.path
-        binding.duration.text = NumberUtils.getFormattedTime(song.duration)
-        binding.seekbar.setMax(song.duration.toFloat())
+    override fun onSong(audio: Audio) {
+        super.onSong(audio)
+        binding.title.text = audio.title
+        binding.artist.text = audio.artist
+        binding.album.text = audio.album
+        binding.info.text = audio.path
+        binding.duration.text = NumberUtils.getFormattedTime(audio.duration)
+        binding.seekbar.setMax(audio.duration.toFloat())
         binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
     }
 

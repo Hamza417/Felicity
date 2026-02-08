@@ -4,6 +4,7 @@ import android.content.Context
 import app.simple.felicity.repository.loader.AudioDatabaseLoader
 import app.simple.felicity.repository.repositories.AlbumRepository
 import app.simple.felicity.repository.repositories.ArtistRepository
+import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.GenreRepository
 import app.simple.felicity.repository.repositories.SongRepository
 import dagger.Module
@@ -44,5 +45,11 @@ object AppModule {
     @Singleton
     fun provideAudioDatabaseLoader(@ApplicationContext context: Context): AudioDatabaseLoader {
         return AudioDatabaseLoader(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAudioRepository(@ApplicationContext context: Context): AudioRepository {
+        return AudioRepository(context)
     }
 }

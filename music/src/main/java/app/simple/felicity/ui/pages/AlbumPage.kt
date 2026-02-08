@@ -18,6 +18,7 @@ import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.utils.ParcelUtils.parcelable
@@ -63,19 +64,19 @@ class AlbumPage : MediaFragment() {
             binding.recyclerView.adapter = adapter
 
             adapter.setArtistAdapterListener(object : GeneralAdapterCallbacks {
-                override fun onSongClicked(songs: List<Song>, position: Int, view: View) {
+                override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
                     Log.i(TAG, "onSongClick: Song clicked in artist: ${album.name}, position: $position")
                     setMediaItems(songs, position)
                 }
 
                 override fun onPlayClicked(songs: List<Song>, position: Int) {
                     Log.i(TAG, "onPlayClick: Play button clicked for artist: ${album.name}, position: $position")
-                    setMediaItems(songs, position)
+                    // setMediaItems(songs, position)
                 }
 
                 override fun onShuffleClicked(songs: List<Song>, position: Int) {
                     Log.i(TAG, "onShuffleClick: Shuffle button clicked for artist: ${album.name}, position: $position")
-                    setMediaItems(songs.shuffled(), position)
+                    // setMediaItems(songs.shuffled(), position)
                 }
 
                 override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {
@@ -102,7 +103,7 @@ class AlbumPage : MediaFragment() {
                                 when (it) {
                                     R.string.play -> {
                                         Log.i(TAG, "onMenuItemClick: Play clicked for artist: ${album.name}")
-                                        setMediaItems(data.songs, 0)
+                                        // setMediaItems(data.songs, 0)
                                     }
                                     R.string.shuffle -> {
                                         Log.i(TAG, "onMenuItemClick: Shuffle clicked for artist: ${album.name}")

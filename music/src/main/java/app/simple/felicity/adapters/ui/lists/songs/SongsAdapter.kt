@@ -13,21 +13,21 @@ import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.managers.MediaManager
-import app.simple.felicity.repository.models.Song
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.TextViewUtils.setTextOrUnknown
 import com.bumptech.glide.Glide
 
-class SongsAdapter(initial: List<Song>) : FastScrollAdapter<VerticalListViewHolder>() {
+class SongsAdapter(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHolder>() {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
     private var previousIndex = -1
-    private var songs = mutableListOf<Song>().apply { addAll(initial) }
+    private var songs = mutableListOf<Audio>().apply { addAll(initial) }
 
     init {
         setHasStableIds(true)
     }
 
-    var currentlyPlayingSong: Song? = null
+    var currentlyPlayingSong: Audio? = null
         set(value) {
             val oldIndex = previousIndex
             field = value
@@ -95,11 +95,11 @@ class SongsAdapter(initial: List<Song>) : FastScrollAdapter<VerticalListViewHold
     }
 
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
-        fun bindSelectionState(song: Song) {
+        fun bindSelectionState(song: Audio) {
             binding.container.isSelected = MediaManager.getCurrentSongId() == song.id
         }
 
-        fun bind(song: Song, isLightBind: Boolean) {
+        fun bind(song: Audio, isLightBind: Boolean) {
             if (isLightBind) {
                 binding.container.setSkeletonBackground(enable = true)
                 bindSelectionState(song)
@@ -122,11 +122,11 @@ class SongsAdapter(initial: List<Song>) : FastScrollAdapter<VerticalListViewHold
     }
 
     inner class GridHolder(val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
-        fun bindSelectionState(song: Song) {
+        fun bindSelectionState(song: Audio) {
             binding.container.isSelected = MediaManager.getCurrentSongId() == song.id
         }
 
-        fun bind(song: Song, isLightBind: Boolean) {
+        fun bind(song: Audio, isLightBind: Boolean) {
             if (isLightBind) {
                 binding.container.setSkeletonBackground(enable = true)
                 bindSelectionState(song)
@@ -147,7 +147,6 @@ class SongsAdapter(initial: List<Song>) : FastScrollAdapter<VerticalListViewHold
             }
         }
     }
-
 
     companion object {
         private const val PAYLOAD_PLAYBACK_STATE = "payload_playing_state"

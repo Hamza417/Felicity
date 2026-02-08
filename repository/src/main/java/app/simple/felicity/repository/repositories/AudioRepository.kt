@@ -1,0 +1,226 @@
+package app.simple.felicity.repository.repositories
+
+import android.content.Context
+import androidx.sqlite.db.SimpleSQLiteQuery
+import app.simple.felicity.repository.database.instances.AudioDatabase
+import app.simple.felicity.repository.models.Audio
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * Repository for managing Audio data from the local database.
+ * Provides methods to query, insert, delete, and manipulate audio records.
+ */
+@Singleton
+class AudioRepository @Inject constructor(
+        @param:ApplicationContext private val context: Context
+) {
+
+    private val audioDatabase: AudioDatabase by lazy {
+        AudioDatabase.getInstance(context)!!
+    }
+
+    /**
+     * Get all audio files from the database as a Flow
+     * Sorted by title in ascending order
+     */
+    fun getAllAudio(): Flow<MutableList<Audio>> {
+        return audioDatabase.audioDao()?.getAllAudio()
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Get all audio files from the database as a list
+     * Sorted by title in ascending order
+     */
+    suspend fun getAllAudioList(): MutableList<Audio> = withContext(Dispatchers.IO) {
+        audioDatabase.audioDao()?.getAllAudioList()
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Get all unique artists from the database as a Flow
+     * Grouped by artist name and sorted in ascending order
+     */
+    fun getAllArtists(): Flow<MutableList<Audio>> {
+        return audioDatabase.audioDao()?.getAllArtists()
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Get all unique albums from the database as a Flow
+     * Grouped by album name and sorted in ascending order
+     */
+    fun getAllAlbums(): Flow<MutableList<Audio>> {
+        return audioDatabase.audioDao()?.getAllAlbums()
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Get recent audio files from the database as a Flow
+     * Returns the 25 most recently added audio files
+     */
+    fun getRecentAudio(): Flow<MutableList<Audio>> {
+        return audioDatabase.audioDao()?.getRecentAudio()
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Get all audio files by a specific artist as a Flow
+     * @param artist The name of the artist
+     * @return Flow of audio files by the specified artist, sorted by title
+     */
+    fun getAudioByArtist(artist: String): Flow<MutableList<Audio>> {
+        return audioDatabase.audioDao()?.getAudioByArtist(artist)
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Get audio ID by file path
+     * @param path The file path of the audio
+     * @return The ID of the audio file
+     */
+    suspend fun getAudioIdByPath(path: String): Long = withContext(Dispatchers.IO) {
+        audioDatabase.audioDao()?.getAudioIdByPath(path)
+            ?: throw IllegalStateException("AudioDao is null or audio not found")
+    }
+
+    /**
+     * Execute a raw SQL query on the audio database
+     * @param query The SQL query string
+     * @param args Optional query arguments
+     * @return List of audio files matching the query
+     */
+    suspend fun executeRawQuery(query: String, args: Array<Any>? = null): MutableList<Audio> = withContext(Dispatchers.IO) {
+        val sqlQuery = SimpleSQLiteQuery(query, args)
+        audioDatabase.audioDao()?.getQueriedData(sqlQuery)
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Insert an audio file into the database
+     * @param audio The audio object to insert
+     */
+    suspend fun insertAudio(audio: Audio) = withContext(Dispatchers.IO) {
+        audioDatabase.audioDao()?.insert(audio)
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Insert multiple audio files into the database
+     * @param audioList List of audio objects to insert
+     */
+    suspend fun insertAudioBatch(audioList: List<Audio>) = withContext(Dispatchers.IO) {
+        audioList.forEach { audio ->
+            audioDatabase.audioDao()?.insert(audio)
+        }
+    }
+
+    /**
+     * Delete an audio file from the database
+     * @param audio The audio object to delete
+     */
+    suspend fun deleteAudio(audio: Audio) = withContext(Dispatchers.IO) {
+        audioDatabase.audioDao()?.delete(audio)
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Delete all audio files from the database (nuke the table)
+     */
+    suspend fun clearAllAudio() = withContext(Dispatchers.IO) {
+        audioDatabase.audioDao()?.nukeTable()
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Check if the database is initialized and accessible
+     * @return true if the database is ready to use
+     */
+    fun isDatabaseReady(): Boolean {
+        return try {
+            audioDatabase.isOpen && audioDatabase.audioDao() != null
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Get the count of audio files in the database
+     * @return The total number of audio files
+     */
+    suspend fun getAudioCount(): Int = withContext(Dispatchers.IO) {
+        audioDatabase.audioDao()?.getAllAudioList()?.size ?: 0
+    }
+
+    /**
+     * Search audio files by title
+     * @param title The title or partial title to search for
+     * @return List of audio files matching the search criteria
+     */
+    suspend fun searchByTitle(title: String): MutableList<Audio> = withContext(Dispatchers.IO) {
+        val query = "SELECT * FROM audio WHERE title LIKE ? ORDER BY title COLLATE NOCASE ASC"
+        val args = arrayOf<Any>("%$title%")
+        executeRawQuery(query, args)
+    }
+
+    /**
+     * Search audio files by artist
+     * @param artist The artist name or partial name to search for
+     * @return List of audio files matching the search criteria
+     */
+    suspend fun searchByArtist(artist: String): MutableList<Audio> = withContext(Dispatchers.IO) {
+        val query = "SELECT * FROM audio WHERE artist LIKE ? ORDER BY title COLLATE NOCASE ASC"
+        val args = arrayOf<Any>("%$artist%")
+        executeRawQuery(query, args)
+    }
+
+    /**
+     * Search audio files by album
+     * @param album The album name or partial name to search for
+     * @return List of audio files matching the search criteria
+     */
+    suspend fun searchByAlbum(album: String): MutableList<Audio> = withContext(Dispatchers.IO) {
+        val query = "SELECT * FROM audio WHERE album LIKE ? ORDER BY title COLLATE NOCASE ASC"
+        val args = arrayOf<Any>("%$album%")
+        executeRawQuery(query, args)
+    }
+
+    /**
+     * Get audio files sorted by a specific column
+     * @param sortColumn The column to sort by (e.g., "title", "artist", "date_added")
+     * @param ascending Whether to sort in ascending order (true) or descending (false)
+     * @return List of sorted audio files
+     */
+    suspend fun getAudioSorted(sortColumn: String, ascending: Boolean = true): MutableList<Audio> = withContext(Dispatchers.IO) {
+        val order = if (ascending) "ASC" else "DESC"
+        val query = "SELECT * FROM audio ORDER BY $sortColumn COLLATE NOCASE $order"
+        executeRawQuery(query, null)
+    }
+
+    /**
+     * Get audio files by genre
+     * @param genre The genre name
+     * @return List of audio files in the specified genre
+     */
+    suspend fun getAudioByGenre(genre: String): MutableList<Audio> = withContext(Dispatchers.IO) {
+        val query = "SELECT * FROM audio WHERE genre = ? ORDER BY title COLLATE NOCASE ASC"
+        val args = arrayOf<Any>(genre)
+        executeRawQuery(query, args)
+    }
+
+    /**
+     * Get audio files by album ID
+     * @param albumId The album ID
+     * @return List of audio files in the specified album
+     */
+    suspend fun getAudioByAlbumId(albumId: Long): MutableList<Audio> = withContext(Dispatchers.IO) {
+        val query = "SELECT * FROM audio WHERE album_id = ? ORDER BY track ASC"
+        val args = arrayOf<Any>(albumId)
+        executeRawQuery(query, args)
+    }
+}

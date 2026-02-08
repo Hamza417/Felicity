@@ -59,7 +59,7 @@ class SpannedHome : MediaFragment() {
                 override fun onItemClicked(items: List<Any>, position: Int) {
                     when (items.first()) {
                         is Song -> {
-                            setMediaItems(items.filterIsInstance<Song>(), position)
+                            // setMediaItems(items.filterIsInstance<Song>(), position)
                         }
                         is Artist -> {
                             openFragment(ArtistPage.newInstance(items.filterIsInstance<Artist>()[position]), ArtistPage.TAG)

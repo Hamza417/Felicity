@@ -9,7 +9,7 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.databinding.FragmentLyricsBinding
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.managers.MediaManager
-import app.simple.felicity.repository.models.Song
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.viewmodels.main.player.LyricsViewModel
 
 class Lyrics : MediaFragment() {
@@ -50,11 +50,11 @@ class Lyrics : MediaFragment() {
         binding.lrc.updateTime(seek)
     }
 
-    override fun onSong(song: Song) {
-        super.onSong(song)
+    override fun onSong(audio: Audio) {
+        super.onSong(audio)
         lyricsViewModel.getLrcData()
-        binding.name.text = song.title
-        binding.artist.text = song.artist
+        binding.name.text = audio.title
+        binding.artist.text = audio.artist
     }
 
     companion object {

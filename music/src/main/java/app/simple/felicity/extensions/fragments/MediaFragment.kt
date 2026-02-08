@@ -13,6 +13,7 @@ import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.database.instances.LastSongDatabase
 import app.simple.felicity.repository.database.instances.SongStatDatabase
 import app.simple.felicity.repository.managers.MediaManager
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.repository.utils.SongUtils
 import app.simple.felicity.repository.utils.SongUtils.createSongStat
@@ -60,13 +61,13 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         }
     }
 
-    protected fun setMediaItems(songs: List<Song>, position: Int = 0) {
+    protected fun setMediaItems(songs: List<Audio>, position: Int = 0) {
         PlayerPreferences.setLastSongPosition(position)
         PlayerPreferences.setLastSongId(songs.getOrNull(position)?.id ?: -1L)
         MediaManager.setSongs(songs, position)
         MediaManager.play()
-        createSongHistoryDatabase(songs)
-        createStatForSong(songs[position])
+        // createSongHistoryDatabase(songs)
+        // createStatForSong(songs[position])
     }
 
     private fun createSongHistoryDatabase(songs: List<Song>) {
@@ -137,8 +138,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         Log.d(TAG, "Playback state changed: $state")
     }
 
-    open fun onSong(song: Song) {
-        Log.d(TAG, "New song played: ${song.title} by ${song.artist}")
+    open fun onSong(audio: Audio) {
+        Log.d(TAG, "New song played: ${audio.title} by ${audio.artist}")
     }
 
     open fun onPositionChanged(position: Int) {

@@ -11,7 +11,7 @@ import app.simple.felicity.databinding.HeaderPreferencesGenericBinding
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.PreferenceFragment
 
-class Audio : PreferenceFragment() {
+class Engine : PreferenceFragment() {
 
     private lateinit var binding: FragmentPreferenceAppearanceBinding
     private lateinit var headerBinding: HeaderPreferencesGenericBinding
@@ -34,13 +34,13 @@ class Audio : PreferenceFragment() {
     }
 
     companion object {
-        fun newInstance(): Audio {
+        fun newInstance(): Engine {
             val args = Bundle()
-            val fragment = Audio()
+            val fragment = Engine()
             fragment.arguments = args
             return fragment
         }
 
-        const val TAG = "Appearance"
+        const val TAG = "Engine"
     }
 }

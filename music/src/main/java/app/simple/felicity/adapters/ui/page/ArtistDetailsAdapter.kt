@@ -76,7 +76,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
                 holder.bind(data.songs[position - 1]) // Adjust for header
 
                 holder.binding.container.setOnClickListener {
-                    listener?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.cover)
+                    // listener?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.cover)
                 }
             }
         }
