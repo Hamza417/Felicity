@@ -5,7 +5,11 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.net.toUri
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentArtflowBinding
 import app.simple.felicity.decorations.artflow.ArtFlow.OnCoverClickListener
@@ -23,6 +27,7 @@ import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 import app.simple.felicity.shared.utils.WindowUtil
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
+import kotlinx.coroutines.launch
 
 class ArtFlow : MediaFragment() {
 
@@ -48,89 +53,98 @@ class ArtFlow : MediaFragment() {
             )
         }
 
-        songsViewModel.getSongAndArt().observe(viewLifecycleOwner) { songs ->
-            binding.coverflow.setUris(songs.keys.toList())
-            binding.coverflow.scrollToIndex(songsViewModel.getCarouselPosition()).also {
-                if (songsViewModel.getCarouselPosition().isNotZero()) {
-                    binding.coverflow.reloadTextures()
+        // Observe StateFlow with proper lifecycle handling for immediate updates
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                songsViewModel.songs.collect { audioList ->
+                    updateCarousel(audioList)
                 }
             }
+        }
 
-            binding.coverflow.addScrollListener(object : ArtFlowRenderer.ScrollListener {
-                override fun onCenteredIndexChanged(index: Int) {
-                    songsViewModel.setCarouselPosition(index)
-                }
-
-                override fun onScrollOffsetChanged(offset: Float) {
-
-                }
-
-                override fun onSnapFinished(finalIndex: Int) {
-
-                }
-
-                override fun onSnapStarted(targetIndex: Int) {
-
-                }
-            })
-
-            binding.coverflow.setOnCoverClickListener(object : OnCoverClickListener {
-                override fun onCenteredCoverClick(index: Int, uri: Uri?) {
-                    songsViewModel.setCarouselPosition(index)
-                    //                    val sorted = songs.values.toList().sorted()
-                    //                    Log.d(TAG, "onCenteredCoverClick: Playing ${sorted[index].title} at index $index")
-                    //                    setMediaItems(sorted, index)
-                }
-
-                override fun onSideCoverSelected(index: Int, uri: Uri?) {
-                    songsViewModel.setCarouselPosition(index)
-                }
-            })
-
-            binding.arrowLeft.setOnClickListener {
-                binding.coverflow.scrollToIndex(binding.coverflow.getCenteredIndex() - 10)
+        // Set up scroll listeners once (outside the collect block)
+        binding.coverflow.addScrollListener(object : ArtFlowRenderer.ScrollListener {
+            override fun onCenteredIndexChanged(index: Int) {
+                songsViewModel.setCarouselPosition(index)
             }
 
-            binding.arrowRight.setOnClickListener {
-                binding.coverflow.scrollToIndex(binding.coverflow.getCenteredIndex() + 10)
+            override fun onScrollOffsetChanged(offset: Float) {
+                // No-op
             }
 
-            binding.filter.setOnClickListener {
-                childFragmentManager.showSongsSort()
+            override fun onSnapFinished(finalIndex: Int) {
+                // No-op
             }
 
-            binding.menu.setOnClickListener {
-                SharedScrollViewPopup(
-                        container = requireContainerView(),
-                        anchorView = it,
-                        menuItems = listOf(R.string.carousel_settings, R.string.songs_settings),
-                        menuIcons = listOf(R.drawable.ic_carousel,
-                                           R.drawable.ic_song_16dp),
-                        onMenuItemClick = { id ->
-                            when (id) {
-                                R.string.songs_settings -> {
-                                    parentFragmentManager.showSongsMenu()
-                                }
-                                R.string.carousel_settings -> {
-                                    childFragmentManager.showCarouselMenu()
-                                }
+            override fun onSnapStarted(targetIndex: Int) {
+                // No-op
+            }
+        })
+
+        // Set up cover click listener once
+        binding.coverflow.setOnCoverClickListener(object : OnCoverClickListener {
+            override fun onCenteredCoverClick(index: Int, uri: Uri?) {
+                songsViewModel.setCarouselPosition(index)
+                // Uncomment when ready to enable playback from carousel
+                // viewLifecycleOwner.lifecycleScope.launch {
+                //     songsViewModel.songs.value.let { songs ->
+                //         if (index in songs.indices) {
+                //             setMediaItems(songs, index)
+                //         }
+                //     }
+                // }
+            }
+
+            override fun onSideCoverSelected(index: Int, uri: Uri?) {
+                songsViewModel.setCarouselPosition(index)
+            }
+        })
+
+        // Set up all click listeners once
+        binding.arrowLeft.setOnClickListener {
+            binding.coverflow.scrollToIndex(binding.coverflow.getCenteredIndex() - 10)
+        }
+
+        binding.arrowRight.setOnClickListener {
+            binding.coverflow.scrollToIndex(binding.coverflow.getCenteredIndex() + 10)
+        }
+
+        binding.filter.setOnClickListener {
+            childFragmentManager.showSongsSort()
+        }
+
+        binding.menu.setOnClickListener {
+            SharedScrollViewPopup(
+                    container = requireContainerView(),
+                    anchorView = it,
+                    menuItems = listOf(R.string.carousel_settings, R.string.songs_settings),
+                    menuIcons = listOf(R.drawable.ic_carousel,
+                                       R.drawable.ic_song_16dp),
+                    onMenuItemClick = { id ->
+                        when (id) {
+                            R.string.songs_settings -> {
+                                parentFragmentManager.showSongsMenu()
                             }
-                        },
-                        onDismiss = {}
-                ).show()
-            }
+                            R.string.carousel_settings -> {
+                                childFragmentManager.showCarouselMenu()
+                            }
+                        }
+                    },
+                    onDismiss = {}
+            ).show()
+        }
 
-            binding.play.setOnLongClickListener {
-                val currentSong = MediaManager.getCurrentSong()
-                songs.keys.forEachIndexed { index, uri ->
-                    if (songs[uri] == currentSong) {
+        binding.play.setOnLongClickListener {
+            val currentSong = MediaManager.getCurrentSong()
+            viewLifecycleOwner.lifecycleScope.launch {
+                songsViewModel.songs.value.forEachIndexed { index, audio ->
+                    if (audio.id == currentSong?.id) {
                         binding.coverflow.scrollToIndex(index)
                         return@forEachIndexed
                     }
                 }
-
-                true
             }
+            true
         }
 
         binding.play.setOnClickListener {
@@ -147,6 +161,25 @@ class ArtFlow : MediaFragment() {
 
         binding.miniplayerContainer.setOnClickListener {
             openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
+        }
+    }
+
+    /**
+     * Update carousel with new audio list
+     * Called when the Flow emits new data
+     */
+    private fun updateCarousel(audioList: List<Audio>) {
+        // Convert Audio list to URIs for coverflow
+        // Note: ArtFlow widget expects URIs, so we create URIs from file paths
+        val uris = audioList.map { audio ->
+            "file://${audio.path}".toUri()
+        }
+
+        binding.coverflow.setUris(uris)
+        binding.coverflow.scrollToIndex(songsViewModel.getCarouselPosition()).also {
+            if (songsViewModel.getCarouselPosition().isNotZero()) {
+                binding.coverflow.reloadTextures()
+            }
         }
     }
 

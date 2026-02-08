@@ -7,6 +7,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
@@ -30,6 +33,7 @@ import app.simple.felicity.repository.sort.SongSort.setSongSort
 import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.main.songs.SongsViewModel
+import kotlinx.coroutines.launch
 
 class Songs : PanelFragment() {
 
@@ -56,53 +60,56 @@ class Songs : PanelFragment() {
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.attachSlideFastScroller()
 
-        songsViewModel.getSongs().observe(viewLifecycleOwner) { songs ->
-            binding.recyclerView.requireAttachedSectionScroller(
-                    sections = provideScrollPositionDataBasedOnSortStyle(songs),
-                    header = binding.appHeader,
-                    view = headerBinding.scroll
-            )
+        // Initialize adapter and layout manager once
+        gridLayoutManager = GridLayoutManager(requireContext(), SongsPreferences.getGridSize())
+        binding.recyclerView.layoutManager = gridLayoutManager
+        binding.recyclerView.setGridType(SongsPreferences.getGridType(), SongsPreferences.getGridSize())
+        songsAdapter = SongsAdapter(emptyList())
 
-            gridLayoutManager = GridLayoutManager(requireContext(), SongsPreferences.getGridSize())
-            binding.recyclerView.layoutManager = gridLayoutManager
-            binding.recyclerView.setGridType(SongsPreferences.getGridType(), SongsPreferences.getGridSize())
-            songsAdapter = SongsAdapter(songs)
-
-            songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
-                override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
-                    setMediaItems(songs, position)
+        // Observe StateFlow with proper lifecycle handling for immediate updates
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                songsViewModel.songs.collect { audios ->
+                    updateSongsList(audios)
                 }
+            }
+        }
 
-                override fun onSongLongClicked(songs: MutableList<Audio>, position: Int, view: View) {
-                    SimpleSharedImageDialog.Builder(
-                            container = requireContainerView(),
-                            sourceImageView = view as ImageView,
-                            inflateBinding = DialogSongMenuBinding::inflate,
-                            targetImageViewProvider = { it.cover })
-                        .onViewCreated { binding ->
-                            binding.cover.loadArtCoverWithPayload(songs[position])
-                            binding.title.text = songs[position].title
-                            binding.secondaryDetail.text = songs[position].artist
-                            binding.tertiaryDetail.text = songs[position].album
+        // Set adapter callbacks once
+        songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
+            override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
+                setMediaItems(songs, position)
+            }
 
-                            binding.play.setOnClickListener {
-                                val pos = songs.indexOfFirst { it.id == songs[position].id }.coerceAtLeast(0)
-                                setMediaItems(songs, pos)
-                            }
+            override fun onSongLongClicked(audios: MutableList<Audio>, position: Int, view: View) {
+                SimpleSharedImageDialog.Builder(
+                        container = requireContainerView(),
+                        sourceImageView = view as ImageView,
+                        inflateBinding = DialogSongMenuBinding::inflate,
+                        targetImageViewProvider = { it.cover })
+                    .onViewCreated { binding ->
+                        binding.cover.loadArtCoverWithPayload(audios[position])
+                        binding.title.text = audios[position].title
+                        binding.secondaryDetail.text = audios[position].artist
+                        binding.tertiaryDetail.text = audios[position].album
+
+                        binding.play.setOnClickListener {
+                            val pos = audios.indexOfFirst { it.id == audios[position].id }.coerceAtLeast(0)
+                            setMediaItems(audios, pos)
                         }
-                        .build()
-                        .show()
-                }
-            })
+                    }
+                    .build()
+                    .show()
+            }
+        })
 
-            headerBinding.sortStyle.setSongSort()
-            headerBinding.sortOrder.setSongOrder()
-            headerBinding.count.text = getString(R.string.x_songs, songs.size)
-            headerBinding.hours.text = songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
-            headerBinding.gridSize.setGridSizeValue(SongsPreferences.getGridSize())
-            headerBinding.gridType.setGridTypeValue(SongsPreferences.getGridType())
+        // Set up header UI once
+        headerBinding.sortStyle.setSongSort()
+        headerBinding.sortOrder.setSongOrder()
+        headerBinding.gridSize.setGridSizeValue(SongsPreferences.getGridSize())
+        headerBinding.gridType.setGridTypeValue(SongsPreferences.getGridType())
 
-            headerBinding.menu.setOnClickListener {
+        headerBinding.menu.setOnClickListener {
                 childFragmentManager.showSongsMenu()
             }
 
@@ -173,8 +180,29 @@ class Songs : PanelFragment() {
                 ).show()
             }
 
-            binding.recyclerView.adapter = songsAdapter
-        }
+        binding.recyclerView.adapter = songsAdapter
+    }
+
+    /**
+     * Update songs list and header information
+     * This method is called whenever the Flow emits new data
+     */
+    private fun updateSongsList(songs: List<Audio>) {
+        // Update section scroller
+        binding.recyclerView.requireAttachedSectionScroller(
+                sections = provideScrollPositionDataBasedOnSortStyle(songs),
+                header = binding.appHeader,
+                view = headerBinding.scroll
+        )
+
+        // Update adapter with new data
+        songsAdapter?.updateSongs(songs)
+
+        // Update header counts
+        headerBinding.count.text = getString(R.string.x_songs, songs.size)
+        headerBinding.hours.text = songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+        headerBinding.sortStyle.setSongSort()
+        headerBinding.sortOrder.setSongOrder()
     }
 
     override fun onSong(audio: Audio) {
@@ -230,7 +258,7 @@ class Songs : PanelFragment() {
             CommonPreferencesConstants.BY_YEAR -> {
                 val firstAlphabetToIndex = linkedMapOf<String, Int>()
                 songs.forEachIndexed { index, song ->
-                    val key = song.year?.toString()?.takeIf { it.all { ch -> ch.isDigit() } } ?: "#"
+                    val key = song.year?.takeIf { it.all { ch -> ch.isDigit() } } ?: "#"
                     if (!firstAlphabetToIndex.containsKey(key)) {
                         firstAlphabetToIndex[key] = index
                     }

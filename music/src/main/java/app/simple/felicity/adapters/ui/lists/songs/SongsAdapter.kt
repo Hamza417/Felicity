@@ -2,6 +2,7 @@ package app.simple.felicity.adapters.ui.lists.songs
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterStyleGridBinding
@@ -92,6 +93,43 @@ class SongsAdapter(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
 
     fun setGeneralAdapterCallbacks(callbacks: GeneralAdapterCallbacks) {
         this.generalAdapterCallbacks = callbacks
+    }
+
+    /**
+     * Update the songs list with DiffUtil for efficient updates
+     * This is called when the Flow emits new data from the database
+     */
+    fun updateSongs(newSongs: List<Audio>) {
+        val diffCallback = SongsDiffCallback(songs, newSongs)
+        val diffResult = DiffUtil.calculateDiff(diffCallback)
+        songs.clear()
+        songs.addAll(newSongs)
+        diffResult.dispatchUpdatesTo(this)
+    }
+
+    /**
+     * DiffUtil callback for efficient list updates
+     */
+    private class SongsDiffCallback(
+            private val oldList: List<Audio>,
+            private val newList: List<Audio>
+    ) : DiffUtil.Callback() {
+        override fun getOldListSize(): Int = oldList.size
+        override fun getNewListSize(): Int = newList.size
+
+        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            return oldList[oldItemPosition].id == newList[newItemPosition].id
+        }
+
+        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            val oldSong = oldList[oldItemPosition]
+            val newSong = newList[newItemPosition]
+            return oldSong.title == newSong.title &&
+                    oldSong.artist == newSong.artist &&
+                    oldSong.album == newSong.album &&
+                    oldSong.duration == newSong.duration &&
+                    oldSong.path == newSong.path
+        }
     }
 
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {

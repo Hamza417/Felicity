@@ -2,10 +2,7 @@ package app.simple.felicity.viewmodels.main.songs
 
 import android.app.Application
 import android.content.SharedPreferences
-import android.net.Uri
 import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.SongsPreferences
@@ -14,6 +11,12 @@ import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.sort.SongSort.sorted
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -24,37 +27,26 @@ class SongsViewModel @Inject constructor(
 
     private var carouselPosition = 0
 
-    private val songs: MutableLiveData<List<Audio>> by lazy {
-        MutableLiveData<List<Audio>>().also {
-            loadData()
-        }
-    }
+    private val _songs = MutableStateFlow<List<Audio>>(emptyList())
+    val songs: StateFlow<List<Audio>> = _songs.asStateFlow()
 
-    private val songAndArt: MutableLiveData<Map<Uri, Audio>> by lazy {
-        MutableLiveData<Map<Uri, Audio>>().also {
-            loadSongAndArt()
-        }
-    }
-
-    fun getSongs(): LiveData<List<Audio>> {
-        return songs
-    }
-
-    fun getSongAndArt(): LiveData<Map<Uri, Audio>> {
-        return songAndArt
+    init {
+        loadData()
     }
 
     private fun loadData() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val songsList = audioRepository.getAllAudioList().sorted()
-            songs.postValue(songsList)
-            Log.d(TAG, "loadData: ${songsList.size} songs loaded")
-        }
-    }
-
-    private fun loadSongAndArt() {
-        viewModelScope.launch(Dispatchers.IO) {
-
+        viewModelScope.launch {
+            audioRepository.getAllAudio()
+                .map { audioList -> audioList.sorted() }
+                .catch { exception ->
+                    Log.e(TAG, "Error loading songs", exception)
+                    emit(emptyList())
+                }
+                .flowOn(Dispatchers.IO)
+                .collect { sortedSongs ->
+                    _songs.value = sortedSongs
+                    Log.d(TAG, "loadData: ${sortedSongs.size} songs loaded")
+                }
         }
     }
 
@@ -69,13 +61,8 @@ class SongsViewModel @Inject constructor(
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, s: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, s)
         when (s) {
-            SongsPreferences.SONG_SORT -> {
+            SongsPreferences.SONG_SORT, SongsPreferences.SORTING_STYLE -> {
                 loadData()
-                loadSongAndArt()
-            }
-            SongsPreferences.SORTING_STYLE -> {
-                loadData()
-                loadSongAndArt()
             }
         }
     }
