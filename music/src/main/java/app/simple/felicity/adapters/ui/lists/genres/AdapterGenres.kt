@@ -1,7 +1,9 @@
 package app.simple.felicity.adapters.ui.lists.genres
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
@@ -18,9 +20,13 @@ import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.shared.utils.ViewUtils.gone
 
-class AdapterGenres(private val list: List<Genre>) : FastScrollAdapter<VerticalListViewHolder>() {
+class AdapterGenres(private val list: MutableList<Genre>) : FastScrollAdapter<VerticalListViewHolder>() {
 
     private var callbacks: GeneralAdapterCallbacks? = null
+
+    init {
+        setHasStableIds(true)
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
@@ -101,5 +107,48 @@ class AdapterGenres(private val list: List<Genre>) : FastScrollAdapter<VerticalL
 
     fun setCallbackListener(listener: GeneralAdapterCallbacks) {
         this.callbacks = listener
+    }
+
+    /**
+     * Update the list of genres with DiffUtil for efficient updates
+     * This is called when the Flow emits new data from the database
+     */
+    fun updateList(newGenres: List<Genre>) {
+        Log.d(TAG, "updateList: Old size=${list.size}, New size=${newGenres.size}")
+        if (newGenres.isNotEmpty()) {
+            Log.d(TAG, "First new genre: id=${newGenres.first().id}, name=${newGenres.first().name}, songCount=${newGenres.first().songCount}")
+        }
+
+        val diffCallback = GenresDiffCallback(list, newGenres)
+        val diffResult = DiffUtil.calculateDiff(diffCallback)
+        list.clear()
+        list.addAll(newGenres)
+
+        Log.d(TAG, "After update: list.size=${list.size}")
+        diffResult.dispatchUpdatesTo(this)
+        Log.d(TAG, "DiffUtil updates dispatched")
+    }
+
+    companion object {
+        private const val TAG = "AdapterGenres"
+    }
+
+    /**
+     * DiffUtil callback for efficient list updates
+     */
+    private class GenresDiffCallback(
+            private val oldList: List<Genre>,
+            private val newList: List<Genre>
+    ) : DiffUtil.Callback() {
+        override fun getOldListSize(): Int = oldList.size
+        override fun getNewListSize(): Int = newList.size
+
+        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            return oldList[oldItemPosition].id == newList[newItemPosition].id
+        }
+
+        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            return oldList[oldItemPosition] == newList[newItemPosition]
+        }
     }
 }

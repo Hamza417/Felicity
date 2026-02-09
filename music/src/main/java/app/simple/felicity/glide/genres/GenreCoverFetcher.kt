@@ -12,6 +12,7 @@ import androidx.core.graphics.scale
 import androidx.core.net.toUri
 import app.simple.felicity.R
 import app.simple.felicity.preferences.GenresPreferences
+import app.simple.felicity.repository.covers.GenreCover
 import app.simple.felicity.repository.maps.GenreMap
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.repositories.GenreRepository
@@ -26,9 +27,16 @@ class GenreCoverFetcher internal constructor(private val context: Context, priva
     override fun loadData(priority: Priority, callback: DataFetcher.DataCallback<in Bitmap>) {
         when {
             GenresPreferences.isGenreCoversEnabled() -> {
-                callback.onDataReady(BitmapFactory.decodeResource(
-                        context.resources,
-                        GenreMap.getGenreImage(genre = (genre.name ?: "").lowercase(Locale.getDefault()))))
+                // Try to load from actual audio files first
+                val coverFromFiles = GenreCover.load(genre)
+                if (coverFromFiles != null) {
+                    callback.onDataReady(coverFromFiles)
+                } else {
+                    // Fallback to genre-mapped cover images
+                    callback.onDataReady(BitmapFactory.decodeResource(
+                            context.resources,
+                            GenreMap.getGenreImage(genre = (genre.name ?: "").lowercase(Locale.getDefault()))))
+                }
             }
             else -> {
                 val albumArts = GenreRepository(context).fetchAlbumArtUrisForGenre(genre.id, count = 9)

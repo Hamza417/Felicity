@@ -133,6 +133,35 @@ class AudioRepository @Inject constructor(
     }
 
     /**
+     * Get all genres with aggregated data including song counts and song paths.
+     * This method groups audio files by genre and creates proper Genre objects.
+     * @return Flow of genres with complete metadata
+     */
+    fun getAllGenresWithAggregation(): Flow<List<app.simple.felicity.repository.models.Genre>> {
+        return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
+            // Group audio files by genre name
+            audioList.groupBy { it.genre }
+                .mapNotNull { (genreName, songs) ->
+                    if (genreName.isNullOrEmpty()) return@mapNotNull null
+
+                    // Aggregate song paths from all songs in the genre
+                    val songPaths = songs.map { it.path }
+
+                    // Generate unique ID based on genre name
+                    val uniqueId = genreName.hashCode().toLong()
+
+                    app.simple.felicity.repository.models.Genre(
+                            id = uniqueId,
+                            name = genreName,
+                            songPaths = songPaths,
+                            songCount = songs.size
+                    )
+                }
+                .sortedBy { it.name?.lowercase() }
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
      * Get recent audio files from the database as a Flow
      * Returns the 25 most recently added audio files
      */

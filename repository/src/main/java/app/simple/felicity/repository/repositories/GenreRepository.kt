@@ -38,12 +38,7 @@ public class GenreRepository @Inject constructor(private val context: Context) {
             val nameCol = it.getColumnIndexOrThrow(MediaStore.Audio.Genres.NAME)
 
             while (it.moveToNext()) {
-                genres.add(
-                        Genre(
-                                id = it.getLong(idCol),
-                                name = it.getString(nameCol)
-                        )
-                )
+
             }
         }
 
@@ -363,12 +358,7 @@ public class GenreRepository @Inject constructor(private val context: Context) {
             val nameCol = it.getColumnIndexOrThrow(MediaStore.Audio.Genres.NAME)
 
             while (it.moveToNext()) {
-                genres.add(
-                        Genre(
-                                id = it.getLong(idCol),
-                                name = it.getString(nameCol)
-                        )
-                )
+
             }
         }
 
@@ -423,7 +413,7 @@ public class GenreRepository @Inject constructor(private val context: Context) {
                 )
                 memberCursor?.use { mc ->
                     if (mc.moveToFirst()) {
-                        genres.add(Genre(id = genreId, name = genreName))
+
                     }
                 }
             }
