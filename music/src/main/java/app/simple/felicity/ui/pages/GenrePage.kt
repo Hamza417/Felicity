@@ -19,7 +19,6 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
-import app.simple.felicity.repository.models.Song
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.viewer.GenreViewerViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -66,12 +65,12 @@ class GenrePage : MediaFragment() {
                     setMediaItems(songs, position)
                 }
 
-                override fun onPlayClicked(songs: List<Song>, position: Int) {
+                override fun onPlayClicked(audios: MutableList<Audio>, position: Int) {
                     Log.i(TAG, "onPlayClick: Play button clicked for genre: ${genre.name}, position: $position")
                     // setMediaItems(songs, position)
                 }
 
-                override fun onShuffleClicked(songs: List<Song>, position: Int) {
+                override fun onShuffleClicked(audios: MutableList<Audio>, position: Int) {
                     Log.i(TAG, "onShuffleClick: Shuffle button clicked for genre: ${genre.name}, position: $position")
                     // setMediaItems(songs.shuffled(), position)
                 }

@@ -60,7 +60,8 @@ class AlbumPageAdapter(private val data: CollectionPageData, private val album: 
                     songs.text = data.songs.size.toString()
                     albums.text = data.albums.size.toString()
                     artists.text = data.artists.size.toString()
-                    totalTime.text = data.songs.sumOf { it.duration }.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
+                    totalTime.text = data.songs.sumOf { it.duration }
+                        .toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
 
                     artFlow.visible(false)
                     artFlow.setSliderAdapter(ArtistArtFlowAdapter(ArtFlowData(R.string.songs, data.songs)))
@@ -70,7 +71,7 @@ class AlbumPageAdapter(private val data: CollectionPageData, private val album: 
                 holder.bind(data.songs[position - EXTRA_ROWS]) // Adjust for header
 
                 holder.binding.container.setOnClickListener {
-                    // listener?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.cover)
+                    listener?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.cover)
                 }
             }
         }

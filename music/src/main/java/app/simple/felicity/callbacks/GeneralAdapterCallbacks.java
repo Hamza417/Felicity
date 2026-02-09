@@ -10,7 +10,6 @@ import app.simple.felicity.repository.models.Album;
 import app.simple.felicity.repository.models.Artist;
 import app.simple.felicity.repository.models.Audio;
 import app.simple.felicity.repository.models.Genre;
-import app.simple.felicity.repository.models.Song;
 
 public interface GeneralAdapterCallbacks {
     
@@ -26,11 +25,11 @@ public interface GeneralAdapterCallbacks {
     
     }
     
-    default void onPlayClicked(List <Song> songs, int position) {
+    default void onPlayClicked(List <Audio> audios, int position) {
     
     }
     
-    default void onShuffleClicked(List <Song> songs, int position) {
+    default void onShuffleClicked(List <Audio> audios, int position) {
     
     }
     
