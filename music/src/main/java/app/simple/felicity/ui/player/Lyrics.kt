@@ -10,7 +10,7 @@ import app.simple.felicity.databinding.FragmentLyricsBinding
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.viewmodels.main.player.LyricsViewModel
+import app.simple.felicity.viewmodels.player.LyricsViewModel
 
 class Lyrics : MediaFragment() {
 

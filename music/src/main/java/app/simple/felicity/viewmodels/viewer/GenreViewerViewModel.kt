@@ -1,5 +1,6 @@
-package app.simple.felicity.viewmodels.main.genres
+package app.simple.felicity.viewmodels.viewer
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -60,7 +61,7 @@ class GenreViewerViewModel @AssistedInject constructor(
             val artists = results[2] as List<Artist>
 
             val end = System.currentTimeMillis()
-            android.util.Log.d("GenreViewerViewModel", "All fetches took ${end - start} ms")
+            Log.d("GenreViewerViewModel", "All fetches took ${end - start} ms")
 
             data.postValue(CollectionPageData(genreSongs, albums, artists))
         }

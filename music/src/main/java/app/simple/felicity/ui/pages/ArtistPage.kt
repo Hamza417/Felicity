@@ -21,7 +21,7 @@ import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.utils.ParcelUtils.parcelable
-import app.simple.felicity.viewmodels.main.artists.ArtistViewerViewModel
+import app.simple.felicity.viewmodels.viewer.ArtistViewerViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
 

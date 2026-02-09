@@ -27,7 +27,7 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.sort.AlbumSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.AlbumSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.AlbumPage
-import app.simple.felicity.viewmodels.main.albums.AlbumsViewModel
+import app.simple.felicity.viewmodels.panels.AlbumsViewModel
 import kotlinx.coroutines.launch
 
 class Albums : PanelFragment() {

@@ -24,7 +24,7 @@ import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.panels.Songs
-import app.simple.felicity.viewmodels.main.home.HomeViewModel
+import app.simple.felicity.viewmodels.panels.HomeViewModel
 
 class SpannedHome : MediaFragment() {
 

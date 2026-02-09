@@ -36,7 +36,7 @@ import app.simple.felicity.ui.home.SimpleHome
 import app.simple.felicity.ui.home.SpannedHome
 import app.simple.felicity.ui.launcher.Setup
 import app.simple.felicity.ui.player.DefaultPlayer
-import app.simple.felicity.viewmodels.launcher.PermissionViewModel
+import app.simple.felicity.viewmodels.setup.PermissionViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 

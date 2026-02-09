@@ -16,8 +16,8 @@ import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.panels.Preferences
 import app.simple.felicity.ui.panels.Songs
-import app.simple.felicity.viewmodels.main.home.SimpleHomeViewModel
-import app.simple.felicity.viewmodels.main.home.SimpleHomeViewModel.Companion.Element
+import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel
+import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Element
 
 class SimpleHome : MediaFragment() {
 

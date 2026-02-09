@@ -17,7 +17,7 @@ import app.simple.felicity.databinding.FragmentSetupBinding
 import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
 import app.simple.felicity.extensions.fragments.MediaFragment
-import app.simple.felicity.viewmodels.launcher.PermissionViewModel
+import app.simple.felicity.viewmodels.setup.PermissionViewModel
 
 class Setup : MediaFragment() {
 

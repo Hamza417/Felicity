@@ -27,7 +27,7 @@ import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.sort.ArtistSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.ArtistSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.ArtistPage
-import app.simple.felicity.viewmodels.main.artists.ArtistsViewModel
+import app.simple.felicity.viewmodels.panels.ArtistsViewModel
 import kotlinx.coroutines.launch
 
 class Artists : PanelFragment() {

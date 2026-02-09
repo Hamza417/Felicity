@@ -1,4 +1,4 @@
-package app.simple.felicity.viewmodels.main.preferences
+package app.simple.felicity.viewmodels.panels
 
 import android.app.Application
 import androidx.lifecycle.LiveData

@@ -1,4 +1,4 @@
-package app.simple.felicity.viewmodels.main.home
+package app.simple.felicity.viewmodels.panels
 
 import android.app.Application
 import android.util.Log

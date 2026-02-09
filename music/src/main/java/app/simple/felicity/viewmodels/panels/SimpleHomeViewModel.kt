@@ -1,4 +1,4 @@
-package app.simple.felicity.viewmodels.main.home
+package app.simple.felicity.viewmodels.panels
 
 import android.app.Application
 import androidx.lifecycle.LiveData
@@ -8,7 +8,6 @@ import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import app.simple.felicity.decoration.R as Decor
 
 class SimpleHomeViewModel(application: Application) : WrappedViewModel(application) {
 
@@ -26,12 +25,12 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
         viewModelScope.launch(Dispatchers.IO) {
             // Simulate data fetching
             val elements = listOf(
-                    Element(R.string.songs, Decor.drawable.ic_song),
-                    Element(R.string.albums, Decor.drawable.ic_album),
-                    Element(R.string.artists, Decor.drawable.ic_artist),
-                    Element(R.string.genres, Decor.drawable.ic_piano),
-                    Element(R.string.playlists, Decor.drawable.ic_list),
-                    Element(R.string.preferences, Decor.drawable.ic_settings)
+                    Element(R.string.songs, app.simple.felicity.decoration.R.drawable.ic_song),
+                    Element(R.string.albums, app.simple.felicity.decoration.R.drawable.ic_album),
+                    Element(R.string.artists, app.simple.felicity.decoration.R.drawable.ic_artist),
+                    Element(R.string.genres, app.simple.felicity.decoration.R.drawable.ic_piano),
+                    Element(R.string.playlists, app.simple.felicity.decoration.R.drawable.ic_list),
+                    Element(R.string.preferences, app.simple.felicity.decoration.R.drawable.ic_settings)
             )
 
             homeData.postValue(elements)

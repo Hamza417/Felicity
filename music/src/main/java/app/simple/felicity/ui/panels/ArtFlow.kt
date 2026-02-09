@@ -27,7 +27,7 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 import app.simple.felicity.shared.utils.WindowUtil
 import app.simple.felicity.ui.player.DefaultPlayer
-import app.simple.felicity.viewmodels.main.songs.SongsViewModel
+import app.simple.felicity.viewmodels.panels.SongsViewModel
 import kotlinx.coroutines.launch
 
 class ArtFlow : MediaFragment() {

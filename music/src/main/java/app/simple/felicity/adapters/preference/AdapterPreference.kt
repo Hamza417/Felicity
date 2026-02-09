@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterPreferenceBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.viewmodels.main.preferences.PreferencesViewModel.Companion.Preference
+import app.simple.felicity.viewmodels.panels.PreferencesViewModel.Companion.Preference
 
 class AdapterPreference(private val data: List<Preference>) : RecyclerView.Adapter<AdapterPreference.Holder>() {
 

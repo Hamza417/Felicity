@@ -32,7 +32,7 @@ import app.simple.felicity.repository.sort.SongSort.setSongOrder
 import app.simple.felicity.repository.sort.SongSort.setSongSort
 import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.theme.managers.ThemeManager
-import app.simple.felicity.viewmodels.main.songs.SongsViewModel
+import app.simple.felicity.viewmodels.panels.SongsViewModel
 import kotlinx.coroutines.launch
 
 class Songs : PanelFragment() {

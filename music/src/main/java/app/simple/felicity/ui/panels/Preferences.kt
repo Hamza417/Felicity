@@ -14,7 +14,7 @@ import app.simple.felicity.ui.preferences.main.Appearance
 import app.simple.felicity.ui.preferences.main.Behavior
 import app.simple.felicity.ui.preferences.main.Engine
 import app.simple.felicity.ui.preferences.main.UserInterface
-import app.simple.felicity.viewmodels.main.preferences.PreferencesViewModel
+import app.simple.felicity.viewmodels.panels.PreferencesViewModel
 
 class Preferences : MediaFragment() {
 

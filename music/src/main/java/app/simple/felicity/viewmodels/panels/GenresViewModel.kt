@@ -1,14 +1,14 @@
-package app.simple.felicity.viewmodels.main.albums
+package app.simple.felicity.viewmodels.panels
 
 import android.app.Application
 import android.content.SharedPreferences
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
-import app.simple.felicity.preferences.AlbumPreferences
-import app.simple.felicity.repository.models.Album
+import app.simple.felicity.preferences.GenresPreferences
+import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.repositories.AudioRepository
-import app.simple.felicity.repository.sort.AlbumSort.sorted
+import app.simple.felicity.repository.sort.GenreSort.sorted
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,13 +22,13 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class AlbumsViewModel @Inject constructor(
+class GenresViewModel @Inject constructor(
         application: Application,
         private val audioRepository: AudioRepository
 ) : WrappedViewModel(application) {
 
-    private val _albums = MutableStateFlow<List<Album>>(emptyList())
-    val albums: StateFlow<List<Album>> = _albums.asStateFlow()
+    private val _genres = MutableStateFlow<List<Genre>>(emptyList())
+    val genres: StateFlow<List<Genre>> = _genres.asStateFlow()
 
     init {
         loadData()
@@ -36,31 +36,32 @@ class AlbumsViewModel @Inject constructor(
 
     private fun loadData() {
         viewModelScope.launch {
-            audioRepository.getAllAlbumsWithAggregation()
-                .map { albumList -> albumList.sorted() }
+            audioRepository.getAllGenresWithAggregation()
+                .map { genreList -> genreList.sorted() }
                 .distinctUntilChanged()  // Prevent identical consecutive emissions
                 .catch { exception ->
-                    Log.e(TAG, "Error loading albums", exception)
+                    Log.e(TAG, "Error loading genres", exception)
                     emit(emptyList())
                 }
                 .flowOn(Dispatchers.IO)
-                .collect { sortedAlbums ->
-                    _albums.value = sortedAlbums
-                    Log.d(TAG, "loadData: ${sortedAlbums.size} albums loaded")
+                .collect { sortedGenres ->
+                    _genres.value = sortedGenres
+                    Log.d(TAG, "loadData: ${sortedGenres.size} genres loaded")
                 }
         }
     }
 
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
-            AlbumPreferences.ALBUM_SORT, AlbumPreferences.SORTING_STYLE -> {
+            GenresPreferences.GENRE_SORT_STYLE, GenresPreferences.SORT_ORDER -> {
+                Log.d(TAG, "onSharedPreferenceChanged: Sorting order changed, updating genres list")
                 loadData()
             }
         }
     }
 
     companion object {
-        private const val TAG = "AlbumsViewModel"
+        private const val TAG = "GenresViewModel"
     }
 }

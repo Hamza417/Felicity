@@ -1,4 +1,4 @@
-package app.simple.felicity.viewmodels.main.songs
+package app.simple.felicity.viewmodels.panels
 
 import android.app.Application
 import android.content.SharedPreferences

@@ -1,4 +1,4 @@
-package app.simple.felicity.viewmodels.launcher
+package app.simple.felicity.viewmodels.setup
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData

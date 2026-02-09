@@ -28,7 +28,7 @@ import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.sort.GenreSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.GenreSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.GenrePage
-import app.simple.felicity.viewmodels.main.genres.GenresViewModel
+import app.simple.felicity.viewmodels.panels.GenresViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
