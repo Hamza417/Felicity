@@ -1,11 +1,10 @@
 package app.simple.felicity.ui.panels
 
-import android.net.Uri
+import android.graphics.Bitmap
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.net.toUri
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -13,6 +12,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentArtflowBinding
 import app.simple.felicity.decorations.artflow.ArtFlow.OnCoverClickListener
+import app.simple.felicity.decorations.artflow.ArtFlowDataProvider
 import app.simple.felicity.decorations.artflow.ArtFlowRenderer
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselMenu
@@ -23,6 +23,7 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.utils.AudioUtils
 import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 import app.simple.felicity.shared.utils.WindowUtil
 import app.simple.felicity.ui.player.DefaultPlayer
@@ -83,7 +84,7 @@ class ArtFlow : MediaFragment() {
 
         // Set up cover click listener once
         binding.coverflow.setOnCoverClickListener(object : OnCoverClickListener {
-            override fun onCenteredCoverClick(index: Int, uri: Uri?) {
+            override fun onCenteredCoverClick(index: Int, itemId: Any?) {
                 songsViewModel.setCarouselPosition(index)
                 // Uncomment when ready to enable playback from carousel
                 // viewLifecycleOwner.lifecycleScope.launch {
@@ -95,7 +96,7 @@ class ArtFlow : MediaFragment() {
                 // }
             }
 
-            override fun onSideCoverSelected(index: Int, uri: Uri?) {
+            override fun onSideCoverSelected(index: Int, itemId: Any?) {
                 songsViewModel.setCarouselPosition(index)
             }
         })
@@ -165,17 +166,11 @@ class ArtFlow : MediaFragment() {
     }
 
     /**
-     * Update carousel with new audio list
-     * Called when the Flow emits new data
+     * Updates the carousel with a new list of audio items
      */
     private fun updateCarousel(audioList: List<Audio>) {
-        // Convert Audio list to URIs for coverflow
-        // Note: ArtFlow widget expects URIs, so we create URIs from file paths
-        val uris = audioList.map { audio ->
-            "file://${audio.path}".toUri()
-        }
-
-        binding.coverflow.setUris(uris)
+        val provider = AlbumArtProvider(audioList)
+        binding.coverflow.setDataProvider(provider)
         binding.coverflow.scrollToIndex(songsViewModel.getCarouselPosition()).also {
             if (songsViewModel.getCarouselPosition().isNotZero()) {
                 binding.coverflow.reloadTextures()
@@ -204,6 +199,16 @@ class ArtFlow : MediaFragment() {
 
     override fun getTransitionType(): TransitionType {
         return TransitionType.SLIDE
+    }
+
+    inner class AlbumArtProvider(private val audioList: List<Audio>) : ArtFlowDataProvider {
+        override fun getItemCount(): Int {
+            return audioList.size
+        }
+
+        override fun loadArtwork(index: Int, maxDimension: Int): Bitmap? {
+            return AudioUtils.loadAudioCover(audioList[index])
+        }
     }
 
     companion object {

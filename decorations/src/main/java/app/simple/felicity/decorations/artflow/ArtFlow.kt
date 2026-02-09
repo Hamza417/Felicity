@@ -3,7 +3,6 @@ package app.simple.felicity.decorations.artflow
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
-import android.net.Uri
 import android.opengl.GLSurfaceView
 import android.util.AttributeSet
 import android.util.Log
@@ -36,8 +35,8 @@ class ArtFlow @JvmOverloads constructor(
     private var verticalMode = false
 
     interface OnCoverClickListener {
-        fun onCenteredCoverClick(index: Int, uri: Uri?) {}
-        fun onSideCoverSelected(index: Int, uri: Uri?) {}
+        fun onCenteredCoverClick(index: Int, itemId: Any?) {}
+        fun onSideCoverSelected(index: Int, itemId: Any?) {}
     }
 
     fun setOnCoverClickListener(listener: OnCoverClickListener?) {
@@ -117,10 +116,10 @@ class ArtFlow @JvmOverloads constructor(
                     if (tapped == centered) {
                         // Trigger scale animation on center cover click
                         queueEvent { renderer.triggerClickScale() }
-                        coverClickListener?.onCenteredCoverClick(tapped, renderer.getUriAt(tapped))
+                        coverClickListener?.onCenteredCoverClick(tapped, renderer.getItemIdAt(tapped))
                     } else {
                         queueEvent { renderer.scrollToIndex(tapped, smooth = true) }
-                        coverClickListener?.onSideCoverSelected(tapped, renderer.getUriAt(tapped))
+                        coverClickListener?.onSideCoverSelected(tapped, renderer.getItemIdAt(tapped))
                     }
                     requestRender()
                     return true
@@ -141,15 +140,11 @@ class ArtFlow @JvmOverloads constructor(
         }
     }
 
-    fun setUris(uris: List<Uri>) {
-        queueEvent { renderer.setUris(uris) }
+    fun setDataProvider(provider: ArtFlowDataProvider) {
+        queueEvent { renderer.setDataProvider(provider) }
         requestRender()
     }
 
-    fun reloadTextures() {
-        queueEvent { renderer.forceReloadAll() }
-        requestRender()
-    }
 
     // Programmatic scroll APIs
     fun setScrollOffset(offset: Float, smooth: Boolean = false) {
@@ -169,7 +164,11 @@ class ArtFlow @JvmOverloads constructor(
     fun getScrollOffset(): Float = renderer.scrollOffset
     fun getCenteredIndex(): Int = renderer.centeredIndex()
 
-    // Listener pass-through
+    fun reloadTextures() {
+        queueEvent { renderer.forceReloadAll() }
+        requestRender()
+    }
+
     fun addScrollListener(listener: ScrollListener) {
         renderer.addScrollListener(listener)
     }

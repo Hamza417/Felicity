@@ -1,7 +1,6 @@
 package app.simple.felicity.ui.player
 
 import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -10,12 +9,11 @@ import android.view.ViewGroup
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
-import app.simple.felicity.decorations.utils.CoverUtils
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.utils.SongUtils
+import app.simple.felicity.repository.utils.AudioUtils
 import app.simple.felicity.shared.utils.NumberUtils
 
 class DefaultPlayer : MediaFragment() {
@@ -36,10 +34,8 @@ class DefaultPlayer : MediaFragment() {
                 return MediaManager.getSongs().size
             }
 
-            override fun loadBitmap(position: Int): Bitmap {
-                val song = MediaManager.getSongAt(position)!!
-                val uri = SongUtils.getArtworkUri(requireContext(), song.albumId, song.id) ?: Uri.EMPTY
-                return CoverUtils.getAlbumArtBitmap(requireContext(), uri, SIZE)
+            override fun loadBitmap(position: Int): Bitmap? {
+                return AudioUtils.loadAudioCover(MediaManager.getSongAt(position)!!)
             }
         })
 

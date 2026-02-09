@@ -9,6 +9,9 @@ import java.io.File
 
 object AudioUtils {
 
+    private const val TAG = "AudioUtils"
+    private const val ALBUM_ART_PATH = "/album_art.png"
+
     /**
      * Loads audio cover bitmap from multiple sources in order of efficiency:
      * 1. External image files in audio directory (folder.jpg, cover.jpg, etc.)
@@ -38,7 +41,8 @@ object AudioUtils {
             return embeddedArtwork
         }
 
-        return null
+        // If no artwork found, return null or a default placeholder
+        return loadEmptyAudioCover()
     }
 
     /**
@@ -128,6 +132,12 @@ object AudioUtils {
         return null
     }
 
-    private const val TAG = "AudioUtils"
+    private fun loadEmptyAudioCover(): Bitmap? {
+        val stream = AudioUtils::class.java.getResourceAsStream(ALBUM_ART_PATH) ?: return null
+        return try {
+            BitmapFactory.decodeStream(stream)
+        } catch (e: Exception) {
+            null
+        }
+    }
 }
-

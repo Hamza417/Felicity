@@ -2,7 +2,6 @@ package app.simple.felicity.decorations.artflow
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.net.Uri
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.GLUtils
@@ -10,7 +9,6 @@ import android.opengl.Matrix
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import app.simple.felicity.decorations.utils.CoverUtils
 import app.simple.felicity.preferences.CarouselPreferences
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -176,8 +174,6 @@ class ArtFlowRenderer(
     private lateinit var quadTB: FloatBuffer
     private lateinit var quadIB: ShortBuffer
 
-    // Data set
-    private val uris = mutableListOf<Uri>()
 
     // Picking structures
     private data class CoverPick(val index: Int, val minX: Float, val maxX: Float, val minY: Float, val maxY: Float)
@@ -203,14 +199,18 @@ class ArtFlowRenderer(
     private val textures = ConcurrentHashMap<Int, Int>() // index -> GL texId
     private var glGeneration = 0
 
+    // Data provider
+    @Volatile
+    private var dataProvider: ArtFlowDataProvider? = null
+
     // Public API
-    fun setUris(list: List<Uri>) {
-        uris.clear()
-        uris.addAll(list)
+    fun setDataProvider(provider: ArtFlowDataProvider) {
+        dataProvider = provider
         queueGL { deleteAllTextures() }
         notifyScrollChanged(force = true)
         requestPrefetch(scrollOffset)
     }
+
 
     fun configureRadii(visible: Int? = null, prefetch: Int? = null, keep: Int? = null) {
         visible?.let { visibleRadius = max(1, it) }
@@ -218,24 +218,34 @@ class ArtFlowRenderer(
         keep?.let { keepRadius = max(prefetchRadius, it) }
     }
 
-    fun centeredIndex(): Int = scrollOffset.roundToInt().coerceIn(0, max(0, uris.size - 1))
+    // Helper methods to get item count from provider
+    private fun getItemCount(): Int {
+        return dataProvider?.getItemCount() ?: 0
+    }
+
+    private fun isValidIndex(index: Int): Boolean {
+        val count = getItemCount()
+        return index in 0 until count
+    }
+
+    fun centeredIndex(): Int = scrollOffset.roundToInt().coerceIn(0, max(0, getItemCount() - 1))
 
     // Request a snap (does not jump immediately; animated in onDrawFrame)
     fun snapToNearest() {
-        if (uris.isEmpty()) return
-        val tgt = scrollOffset.roundToInt().coerceIn(0, max(0, uris.size - 1)).toFloat()
+        if (getItemCount() == 0) return
+        val tgt = scrollOffset.roundToInt().coerceIn(0, max(0, getItemCount() - 1)).toFloat()
         snapTarget = tgt
         snappingNotified = false
     }
 
     fun scrollBy(dxItems: Float) {
-        if (uris.isEmpty()) return
+        if (getItemCount() == 0) return
         snapTarget = null
         isBouncing = false  // user is actively dragging, so stop any bounce animation
 
         val delta = dxItems * SCROLL_SENSITIVITY
         val minBound = 0f
-        val maxBound = (uris.size - 1).toFloat()
+        val maxBound = (getItemCount() - 1).toFloat()
 
         // If we're already in overscroll territory, handle it specially
         // This is the key to making the overscroll feel natural
@@ -606,12 +616,12 @@ class ArtFlowRenderer(
     }
 
     private fun enqueueLoad(index: Int) {
-        if (index !in uris.indices) return
+        if (!isValidIndex(index)) return
         if (textures.containsKey(index)) return
         if (inFlight.putIfAbsent(index, true) == null) {
             decodeExecutor.execute {
                 try {
-                    val bmp = decodeScaled(uris[index], targetMaxDim)
+                    val bmp = dataProvider?.loadArtwork(index, targetMaxDim)
                     @Suppress("SENSELESS_COMPARISON")
                     if (bmp != null) {
                         queueGL {
@@ -677,9 +687,6 @@ class ArtFlowRenderer(
 
     // Bitmap decode helpers
     @Suppress("SameParameterValue")
-    private fun decodeScaled(uri: Uri, maxDim: Int): Bitmap {
-        return CoverUtils.getAlbumArtBitmap(context, uri, maxDim)
-    }
 
     // GL texture helpers (run on GL thread)
     private fun createTextureFromBitmap(bmp: Bitmap): Int {
@@ -731,8 +738,8 @@ class ArtFlowRenderer(
 
     // Programmatic setters
     fun setScrollOffset(offset: Float, smooth: Boolean = false) {
-        if (uris.isEmpty()) return
-        val clamped = offset.coerceIn(0f, (uris.size - 1).toFloat())
+        if (getItemCount() == 0) return
+        val clamped = offset.coerceIn(0f, (getItemCount() - 1).toFloat())
         if (smooth) {
             snapTarget = clamped
             snappingNotified = false
@@ -781,7 +788,7 @@ class ArtFlowRenderer(
     // GLSurfaceView.Renderer
     override fun onDrawFrame(unused: GL10?) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
-        if (uris.isEmpty()) return
+        if (getItemCount() == 0) return
         framePicks.clear()
         val prevOffset = scrollOffset
         val hadSnapTarget = snapTarget != null
@@ -843,7 +850,7 @@ class ArtFlowRenderer(
         // This is what makes the content appear to stretch past the edges
         val centerF = scrollOffset + overscrollAmount
         schedulePrefetch(scrollOffset) // but prefetch based on actual position, not the visual offset
-        val lastIndex = uris.lastIndex
+        val lastIndex = getItemCount() - 1
         val visStart = max(0, floor(centerF - visibleRadius).toInt())
         val visEnd = min(lastIndex, ceil(centerF + visibleRadius).toInt())
         for (i in visStart..visEnd) {
@@ -857,8 +864,8 @@ class ArtFlowRenderer(
     }
 
     private fun schedulePrefetch(centerF: Float) {
-        if (uris.isEmpty()) return
-        val lastIndex = uris.lastIndex
+        if (getItemCount() == 0) return
+        val lastIndex = getItemCount() - 1
         val preStart = max(0, floor(centerF - prefetchRadius).toInt())
         val preEnd = min(lastIndex, ceil(centerF + prefetchRadius).toInt())
         if (preEnd < preStart) return
@@ -885,7 +892,7 @@ class ArtFlowRenderer(
     }
 
     private fun capturePickBoundsForIndex(index: Int) {
-        if (index !in uris.indices) return
+        if (!isValidIndex(index)) return
         val corners = floatArrayOf(
                 -0.5f, 0.5f, 0f, 1f,
                 -0.5f, -0.5f, 0f, 1f,
@@ -922,7 +929,13 @@ class ArtFlowRenderer(
         }
     }
 
-    fun getUriAt(index: Int): Uri? = if (index in uris.indices) uris[index] else null
+    fun getItemIdAt(index: Int): Any? {
+        return if (isValidIndex(index)) {
+            dataProvider?.getItemId(index)
+        } else {
+            null
+        }
+    }
 
     fun pickIndexAtScreenX(x: Float): Int? {
         if (viewWidth == 0) return null
