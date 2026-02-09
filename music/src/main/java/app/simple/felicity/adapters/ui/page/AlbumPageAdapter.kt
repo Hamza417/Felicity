@@ -15,8 +15,8 @@ import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDe
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.models.ArtFlowData
-import app.simple.felicity.models.CollectionPageData
 import app.simple.felicity.repository.models.Album
+import app.simple.felicity.repository.models.CollectionPageData
 import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.theme.managers.ThemeManager
@@ -167,10 +167,10 @@ class AlbumPageAdapter(private val data: CollectionPageData, private val album: 
     inner class Header(val binding: AdapterHeaderArtistPageBinding) : VerticalListViewHolder(binding.root) {
         init {
             binding.play.setOnClickListener {
-                listener?.onPlayClicked(data.songs, bindingAdapterPosition)
+                // listener?.onPlayClicked(data.audios, bindingAdapterPosition)
             }
             binding.shuffle.setOnClickListener {
-                listener?.onShuffleClicked(data.songs, bindingAdapterPosition)
+                // listener?.onShuffleClicked(data.songs, bindingAdapterPosition)
             }
             binding.menu.setOnClickListener {
                 listener?.onMenuClicked(it)

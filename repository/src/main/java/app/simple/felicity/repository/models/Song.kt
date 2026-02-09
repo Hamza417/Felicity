@@ -9,6 +9,7 @@ import androidx.room.TypeConverters
 import app.simple.felicity.repository.database.coverters.UriTypeConverter
 import kotlinx.parcelize.Parcelize
 
+@Deprecated("Use Audio model instead of Song for better consistency and flexibility. Song will be removed in future versions.")
 @Parcelize
 @Entity(tableName = "songs")
 @TypeConverters(UriTypeConverter::class)

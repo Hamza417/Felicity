@@ -6,6 +6,7 @@ import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.CollectionPageData
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -158,6 +159,59 @@ class AudioRepository @Inject constructor(
                     )
                 }
                 .sortedBy { it.name?.lowercase() }
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Get all data for an album page including songs, artists, and genres.
+     * This method filters audio files by album name and aggregates related data.
+     * @param album The album to get data for
+     * @return Flow of CollectionPageData with audios, artists, and genres
+     */
+    fun getAlbumPageData(album: Album): Flow<CollectionPageData> {
+        return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
+            // Filter songs by album name (using album name instead of ID since we're using local DB)
+            val albumAudios = audioList.filter { it.album == album.name }
+
+            // Extract unique artists from album songs
+            val artistsMap = albumAudios.groupBy { it.artist }
+                .mapNotNull { (artistName, _) ->
+                    if (artistName.isNullOrEmpty()) return@mapNotNull null
+
+                    // Count unique albums by this artist in the entire collection
+                    val artistAllSongs = audioList.filter { it.artist == artistName }
+                    val uniqueAlbums = artistAllSongs.mapNotNull { it.album }.distinct().size
+
+                    Artist(
+                            id = artistName.hashCode().toLong(),
+                            name = artistName,
+                            albumCount = uniqueAlbums,
+                            trackCount = artistAllSongs.size,
+                            songPaths = artistAllSongs.map { it.path }
+                    )
+                }
+
+            // Extract unique genres from album songs
+            val genresMap = albumAudios.groupBy { it.genre }
+                .mapNotNull { (genreName, _) ->
+                    if (genreName.isNullOrEmpty()) return@mapNotNull null
+
+                    // Count all songs for this genre in the entire collection
+                    val genreAllSongs = audioList.filter { it.genre == genreName }
+
+                    app.simple.felicity.repository.models.Genre(
+                            id = genreName.hashCode().toLong(),
+                            name = genreName,
+                            songPaths = genreAllSongs.map { it.path },
+                            songCount = genreAllSongs.size
+                    )
+                }
+
+            CollectionPageData(
+                    songs = albumAudios,
+                    artists = artistsMap,
+                    genres = genresMap
+            )
         } ?: throw IllegalStateException("AudioDao is null")
     }
 

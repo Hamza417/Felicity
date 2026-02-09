@@ -1,6 +1,5 @@
 package app.simple.felicity.ui.pages
 
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -106,18 +105,7 @@ class ArtistPage : MediaFragment() {
 
                                     }
                                     R.string.send -> {
-                                        Log.i(TAG, "onMenuItemClick: Send clicked for artist: ${artist.name}")
-                                        val songUris = data.songs.mapNotNull { song ->
-                                            song.uri
-                                        }
 
-                                        val shareIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                                            type = "audio/*"
-                                            putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(songUris))
-                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                        }
-
-                                        startActivity(Intent.createChooser(shareIntent, "Share Songs"))
                                     }
                                 }
                             },

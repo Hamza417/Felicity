@@ -5,9 +5,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.simple.felicity.models.CollectionPageData
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.models.CollectionPageData
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.repository.repositories.ArtistRepository
@@ -63,7 +63,7 @@ class GenreViewerViewModel @AssistedInject constructor(
             val end = System.currentTimeMillis()
             Log.d("GenreViewerViewModel", "All fetches took ${end - start} ms")
 
-            data.postValue(CollectionPageData(genreSongs, albums, artists))
+            // data.postValue(CollectionPageData(genreSongs, albums, artists))
         }
     }
 

@@ -6,7 +6,11 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.net.toUri
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.page.AlbumPageAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
@@ -19,12 +23,13 @@ import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.CollectionPageData
 import app.simple.felicity.repository.models.Genre
-import app.simple.felicity.repository.models.Song
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.viewer.AlbumViewerViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class AlbumPage : MediaFragment() {
@@ -42,10 +47,10 @@ class AlbumPage : MediaFragment() {
 
     private val album: Album by lazy {
         requireArguments().parcelable(BundleConstants.ALBUM)
-            ?: throw IllegalArgumentException("Artist is required")
+            ?: throw IllegalArgumentException("Album is required")
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentPageArtistBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -55,83 +60,87 @@ class AlbumPage : MediaFragment() {
         binding.recyclerView.requireAttachedMiniPlayer()
         postponeEnterTransition()
 
-        Log.d(TAG, "onViewCreated: ArtistPage for artist: ${album.name}")
+        Log.d(TAG, "onViewCreated: AlbumPage for album: ${album.name}")
 
-        albumViewerViewModel.getData().observe(viewLifecycleOwner) { data ->
-            Log.i(TAG, "onViewCreated: Received songs for genre: ${album.name}, count: ${data.songs}")
-            val adapter = AlbumPageAdapter(data, album)
-            binding.recyclerView.addItemDecoration(SongHolderSpacingItemDecoration(48, AppearancePreferences.getListSpacing().toInt()))
-            binding.recyclerView.adapter = adapter
+        // Observe StateFlow with proper lifecycle handling
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                albumViewerViewModel.data.collect { data ->
+                    Log.i(TAG, "onViewCreated: Received data for album: ${album.name}")
+                    Log.i(TAG, "  - Audios: ${data.songs.size}")
+                    Log.i(TAG, "  - Artists: ${data.artists.size}")
+                    Log.i(TAG, "  - Genres: ${data.genres.size}")
 
-            adapter.setArtistAdapterListener(object : GeneralAdapterCallbacks {
-                override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
-                    Log.i(TAG, "onSongClick: Song clicked in artist: ${album.name}, position: $position")
-                    setMediaItems(songs, position)
+                    updateAlbumPage(data)
                 }
-
-                override fun onPlayClicked(songs: List<Song>, position: Int) {
-                    Log.i(TAG, "onPlayClick: Play button clicked for artist: ${album.name}, position: $position")
-                    // setMediaItems(songs, position)
-                }
-
-                override fun onShuffleClicked(songs: List<Song>, position: Int) {
-                    Log.i(TAG, "onShuffleClick: Shuffle button clicked for artist: ${album.name}, position: $position")
-                    // setMediaItems(songs.shuffled(), position)
-                }
-
-                override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {
-                    openFragment(ArtistPage.newInstance(artists[position]), ArtistPage.TAG)
-                }
-
-                override fun onAlbumClicked(albums: List<Album>, position: Int, view: View) {
-                    openFragment(newInstance(albums[position]), TAG)
-                }
-
-                override fun onGenreClicked(genre: Genre, view: View) {
-                    Log.i(TAG, "onGenreClicked: Genre clicked: ${genre.name}")
-                    openFragment(GenrePage.newInstance(genre), GenrePage.TAG)
-                }
-
-                override fun onMenuClicked(view: View) {
-                    Log.i(TAG, "onMenuClicked: Menu clicked for artist: ${album.name}")
-
-                    PopupArtistMenu(
-                            container = requireContainerView(),
-                            anchorView = view,
-                            menuItems = listOf(R.string.play, R.string.shuffle, R.string.send),
-                            onMenuItemClick = {
-                                when (it) {
-                                    R.string.play -> {
-                                        Log.i(TAG, "onMenuItemClick: Play clicked for artist: ${album.name}")
-                                        // setMediaItems(data.songs, 0)
-                                    }
-                                    R.string.shuffle -> {
-                                        Log.i(TAG, "onMenuItemClick: Shuffle clicked for artist: ${album.name}")
-                                    }
-                                    R.string.send -> {
-                                        Log.i(TAG, "onMenuItemClick: Send clicked for artist: ${album.name}")
-                                        val songUris = data.songs.mapNotNull { song ->
-                                            song.uri
-                                        }
-
-                                        val shareIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                                            setType("audio/*")
-                                            putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(songUris))
-                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                        }
-
-                                        startActivity(Intent.createChooser(shareIntent, "Share Songs"))
-                                    }
-                                }
-                            },
-                            menuIcons = listOf(R.drawable.ic_play, R.drawable.ic_shuffle, R.drawable.ic_send),
-                            onDismiss = { Log.d(TAG, "PopupArtistMenu dismissed") }
-                    ).show()
-                }
-            })
-
-            requireView().startTransitionOnPreDraw()
+            }
         }
+    }
+
+    private fun updateAlbumPage(data: CollectionPageData) {
+        val adapter = AlbumPageAdapter(data, album)
+        binding.recyclerView.addItemDecoration(SongHolderSpacingItemDecoration(48, AppearancePreferences.getListSpacing().toInt()))
+        binding.recyclerView.adapter = adapter
+
+        adapter.setArtistAdapterListener(object : GeneralAdapterCallbacks {
+            override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
+                Log.i(TAG, "onSongClick: Audio clicked in album: ${album.name}, position: $position")
+                setMediaItems(songs, position)
+            }
+
+            override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {
+                openFragment(ArtistPage.newInstance(artists[position]), ArtistPage.TAG)
+            }
+
+            override fun onAlbumClicked(albums: List<Album>, position: Int, view: View) {
+                openFragment(newInstance(albums[position]), TAG)
+            }
+
+            override fun onGenreClicked(genre: Genre, view: View) {
+                Log.i(TAG, "onGenreClicked: Genre clicked: ${genre.name}")
+                openFragment(GenrePage.newInstance(genre), GenrePage.TAG)
+            }
+
+            override fun onMenuClicked(view: View) {
+                Log.i(TAG, "onMenuClicked: Menu clicked for album: ${album.name}")
+
+                PopupArtistMenu(
+                        container = requireContainerView(),
+                        anchorView = view,
+                        menuItems = listOf(R.string.play, R.string.shuffle, R.string.send),
+                        onMenuItemClick = {
+                            when (it) {
+                                R.string.play -> {
+                                    Log.i(TAG, "onMenuItemClick: Play clicked for album: ${album.name}")
+                                    setMediaItems(data.songs.toMutableList(), 0)
+                                }
+                                R.string.shuffle -> {
+                                    Log.i(TAG, "onMenuItemClick: Shuffle clicked for album: ${album.name}")
+                                    setMediaItems(data.songs.shuffled().toMutableList(), 0)
+                                }
+                                R.string.send -> {
+                                    Log.i(TAG, "onMenuItemClick: Send clicked for album: ${album.name}")
+                                    val audioUris = data.songs.map { audio ->
+                                        java.io.File(audio.path).toUri()
+                                    }
+
+                                    val shareIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                                        setType("audio/*")
+                                        putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(audioUris))
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+
+                                    startActivity(Intent.createChooser(shareIntent, "Share Songs"))
+                                }
+                            }
+                        },
+                        menuIcons = listOf(R.drawable.ic_play, R.drawable.ic_shuffle, R.drawable.ic_send),
+                        onDismiss = { Log.d(TAG, "PopupArtistMenu dismissed") }
+                ).show()
+            }
+        })
+
+        requireView().startTransitionOnPreDraw()
     }
 
     companion object {

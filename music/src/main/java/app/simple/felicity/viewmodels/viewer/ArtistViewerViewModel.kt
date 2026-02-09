@@ -6,8 +6,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
-import app.simple.felicity.models.CollectionPageData
 import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.models.CollectionPageData
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.repository.repositories.AlbumRepository
 import app.simple.felicity.repository.repositories.ArtistRepository
@@ -54,13 +54,6 @@ class ArtistViewerViewModel @AssistedInject constructor(
             val albums = albumRepository.fetchAlbumsFromArtist(artist.id)
             val genres = genreRepository.fetchGenreByArtist(artist.id)
             val artists = artistRepository.fetchCollaboratorArtists(artist)
-
-            data.postValue(CollectionPageData(
-                    songs = songs,
-                    albums = albums,
-                    genres = genres,
-                    artists = artists,
-            ))
 
             loadSongImages(songs)
         }

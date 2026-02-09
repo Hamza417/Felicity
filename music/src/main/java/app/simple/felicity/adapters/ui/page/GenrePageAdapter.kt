@@ -15,7 +15,7 @@ import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.models.ArtFlowData
-import app.simple.felicity.models.CollectionPageData
+import app.simple.felicity.repository.models.CollectionPageData
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.theme.managers.ThemeManager
@@ -147,10 +147,10 @@ class GenrePageAdapter(private val data: CollectionPageData, private val genre: 
     inner class Header(val binding: AdapterHeaderGenrePageBinding) : VerticalListViewHolder(binding.root) {
         init {
             binding.play.setOnClickListener {
-                generalAdapterCallbacks?.onPlayClicked(data.songs, bindingAdapterPosition)
+                // generalAdapterCallbacks?.onPlayClicked(data.songs, bindingAdapterPosition)
             }
             binding.shuffle.setOnClickListener {
-                generalAdapterCallbacks?.onShuffleClicked(data.songs, bindingAdapterPosition)
+                // generalAdapterCallbacks?.onShuffleClicked(data.songs, bindingAdapterPosition)
             }
         }
     }

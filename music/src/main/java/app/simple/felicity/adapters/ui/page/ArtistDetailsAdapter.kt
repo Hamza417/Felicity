@@ -15,8 +15,8 @@ import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDe
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.models.ArtFlowData
-import app.simple.felicity.models.CollectionPageData
 import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.models.CollectionPageData
 import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.theme.managers.ThemeManager
@@ -76,7 +76,7 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
                 holder.bind(data.songs[position - 1]) // Adjust for header
 
                 holder.binding.container.setOnClickListener {
-                    // listener?.onSongClicked(data.songs, position - SONGS_POSITION, holder.binding.cover)
+                    // listener?.onSongClicked(data.audios, position - SONGS_POSITION, holder.binding.cover)
                 }
             }
         }
@@ -155,10 +155,10 @@ class ArtistDetailsAdapter(private val data: CollectionPageData, private val art
     inner class Header(val binding: AdapterHeaderArtistPageBinding) : VerticalListViewHolder(binding.root) {
         init {
             binding.play.setOnClickListener {
-                listener?.onPlayClicked(data.songs, bindingAdapterPosition)
+                // listener?.onPlayClicked(data.songs, bindingAdapterPosition)
             }
             binding.shuffle.setOnClickListener {
-                listener?.onShuffleClicked(data.songs, bindingAdapterPosition)
+                // listener?.onShuffleClicked(data.songs, bindingAdapterPosition)
             }
             binding.menu.setOnClickListener {
                 listener?.onMenuClicked(it)
