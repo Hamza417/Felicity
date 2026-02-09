@@ -2,37 +2,52 @@ package app.simple.felicity.viewmodels.main.artists
 
 import android.app.Application
 import android.content.SharedPreferences
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import android.util.Log
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.ArtistPreferences
 import app.simple.felicity.repository.models.Artist
-import app.simple.felicity.repository.repositories.ArtistRepository
+import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.sort.ArtistSort.sorted
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class ArtistsViewModel @Inject constructor(
         application: Application,
-        private val artistRepository: ArtistRepository) : WrappedViewModel(application) {
+        private val audioRepository: AudioRepository
+) : WrappedViewModel(application) {
 
-    private val albums: MutableLiveData<List<Artist>> by lazy {
-        MutableLiveData<List<Artist>>().also {
-            fetchArtists()
-        }
+    private val _artists = MutableStateFlow<MutableList<Artist>>(mutableListOf())
+    val artists: StateFlow<MutableList<Artist>> = _artists.asStateFlow()
+
+    init {
+        loadData()
     }
 
-    fun getArtists(): LiveData<List<Artist>> {
-        return albums
-    }
-
-    private fun fetchArtists() {
-        viewModelScope.launch(Dispatchers.IO) {
-            albums.postValue(artistRepository.fetchArtists().sorted())
+    private fun loadData() {
+        viewModelScope.launch {
+            audioRepository.getAllArtistsWithAggregation()
+                .map { artistList -> artistList.sorted() }
+                .distinctUntilChanged()  // Prevent identical consecutive emissions
+                .catch { exception ->
+                    Log.e(TAG, "Error loading artists", exception)
+                    emit(emptyList())
+                }
+                .flowOn(Dispatchers.IO)
+                .collect { sortedArtists ->
+                    _artists.value = sortedArtists as MutableList<Artist>
+                    Log.d(TAG, "loadData: ${sortedArtists.size} artists loaded")
+                }
         }
     }
 
@@ -40,8 +55,12 @@ class ArtistsViewModel @Inject constructor(
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             ArtistPreferences.ARTIST_SORT, ArtistPreferences.SORTING_STYLE -> {
-                fetchArtists()
+                loadData()
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "ArtistsViewModel"
     }
 }

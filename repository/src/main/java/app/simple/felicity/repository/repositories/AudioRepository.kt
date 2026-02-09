@@ -99,6 +99,35 @@ class AudioRepository @Inject constructor(
     }
 
     /**
+     * Get all artists with aggregated data including album counts and track counts.
+     * This method groups audio files by artist and creates proper Artist objects.
+     * @return Flow of artists with complete metadata
+     */
+    fun getAllArtistsWithAggregation(): Flow<List<app.simple.felicity.repository.models.Artist>> {
+        return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
+            // Group audio files by artist name
+            audioList.groupBy { it.artist }
+                .mapNotNull { (artistName, songs) ->
+                    if (artistName.isNullOrEmpty()) return@mapNotNull null
+
+                    // Count unique albums by this artist
+                    val uniqueAlbums = songs.mapNotNull { it.album }.distinct().size
+
+                    // Generate unique ID based on artist name
+                    val uniqueId = artistName.hashCode().toLong()
+
+                    app.simple.felicity.repository.models.Artist(
+                            id = uniqueId,
+                            name = artistName,
+                            albumCount = uniqueAlbums,
+                            trackCount = songs.size
+                    )
+                }
+                .sortedBy { it.name?.lowercase() }
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
      * Get recent audio files from the database as a Flow
      * Returns the 25 most recently added audio files
      */

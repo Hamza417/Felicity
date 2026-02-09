@@ -1,7 +1,9 @@
 package app.simple.felicity.adapters.ui.lists.artists
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
@@ -18,7 +20,7 @@ import app.simple.felicity.preferences.ArtistPreferences
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.shared.utils.TextViewUtils.setTextOrUnknown
 
-class AdapterArtists(private val artists: List<Artist>) : FastScrollAdapter<VerticalListViewHolder>() {
+class AdapterArtists(private val artists: MutableList<Artist>) : FastScrollAdapter<VerticalListViewHolder>() {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
 
@@ -63,6 +65,49 @@ class AdapterArtists(private val artists: List<Artist>) : FastScrollAdapter<Vert
 
     fun setGeneralAdapterCallbacks(callbacks: GeneralAdapterCallbacks) {
         this.generalAdapterCallbacks = callbacks
+    }
+
+    /**
+     * Update the list of artists with DiffUtil for efficient updates
+     * This is called when the Flow emits new data from the database
+     */
+    fun updateList(newArtists: List<Artist>) {
+        Log.d(TAG, "updateList: Old size=${artists.size}, New size=${newArtists.size}")
+        if (newArtists.isNotEmpty()) {
+            Log.d(TAG, "First new artist: id=${newArtists.first().id}, name=${newArtists.first().name}, trackCount=${newArtists.first().trackCount}")
+        }
+
+        val diffCallback = ArtistsDiffCallback(artists, newArtists)
+        val diffResult = DiffUtil.calculateDiff(diffCallback)
+        artists.clear()
+        artists.addAll(newArtists)
+
+        Log.d(TAG, "After update: artists.size=${artists.size}")
+        diffResult.dispatchUpdatesTo(this)
+        Log.d(TAG, "DiffUtil updates dispatched")
+    }
+
+    companion object {
+        private const val TAG = "AdapterArtists"
+    }
+
+    /**
+     * DiffUtil callback for efficient list updates
+     */
+    private class ArtistsDiffCallback(
+            private val oldList: List<Artist>,
+            private val newList: List<Artist>
+    ) : DiffUtil.Callback() {
+        override fun getOldListSize(): Int = oldList.size
+        override fun getNewListSize(): Int = newList.size
+
+        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            return oldList[oldItemPosition].id == newList[newItemPosition].id
+        }
+
+        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            return oldList[oldItemPosition] == newList[newItemPosition]
+        }
     }
 
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {

@@ -2,10 +2,14 @@ package app.simple.felicity.ui.panels
 
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.artists.AdapterArtists
@@ -24,19 +28,19 @@ import app.simple.felicity.repository.sort.ArtistSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.ArtistSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.viewmodels.main.artists.ArtistsViewModel
+import kotlinx.coroutines.launch
 
 class Artists : PanelFragment() {
 
     private lateinit var binding: FragmentArtistsBinding
     private lateinit var headerBinding: HeaderArtistsBinding
 
-    private lateinit var adapterArtists: AdapterArtists
-
-    private lateinit var gridLayoutManager: GridLayoutManager
+    private var adapterArtists: AdapterArtists? = null
+    private var gridLayoutManager: GridLayoutManager? = null
 
     private val artistViewModel: ArtistsViewModel by viewModels({ requireActivity() })
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentArtistsBinding.inflate(inflater, container, false)
         headerBinding = HeaderArtistsBinding.inflate(inflater, container, false)
         return binding.root
@@ -44,112 +48,157 @@ class Artists : PanelFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        Log.d(TAG, "onViewCreated: adapterArtists=${adapterArtists != null}")
+
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
-        postponeEnterTransition()
 
-        artistViewModel.getArtists().observe(viewLifecycleOwner) { artists ->
-            binding.recyclerView.requireAttachedSectionScroller(
-                    sections = provideScrollPositionDataBasedOnSortStyle(artists = artists),
-                    header = binding.header,
-                    view = headerBinding.scroll)
+        // Initialize layout manager once
+        gridLayoutManager = GridLayoutManager(requireContext(), ArtistPreferences.getGridSize())
+        binding.recyclerView.layoutManager = gridLayoutManager
+        binding.recyclerView.setGridType(ArtistPreferences.getGridType(), ArtistPreferences.getGridSize())
 
-            gridLayoutManager = GridLayoutManager(requireContext(), ArtistPreferences.getGridSize())
-            binding.recyclerView.layoutManager = gridLayoutManager
-            binding.recyclerView.setHasFixedSize(true)
-            binding.recyclerView.setGridType(ArtistPreferences.getGridType(), ArtistPreferences.getGridSize())
+        setupClickListeners()
+
+        // Observe StateFlow with proper lifecycle handling for immediate updates
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                artistViewModel.artists
+                    .collect { artists ->
+                        // Skip empty initial state, but allow empty updates after adapter exists
+                        if (artists.isNotEmpty()) {
+                            updateArtistsList(artists)
+                        } else if (adapterArtists != null) {
+                            // Allow empty list update if adapter already exists (e.g., after deletion)
+                            updateArtistsList(artists)
+                        }
+                    }
+            }
+        }
+    }
+
+    override fun onDestroyView() {
+        Log.d(TAG, "onDestroyView: Clearing adapter reference")
+        // Clear adapter reference when view is destroyed
+        adapterArtists = null
+        gridLayoutManager = null
+        super.onDestroyView()
+    }
+
+    private fun setupClickListeners() {
+        headerBinding.sortStyle.setOnClickListener {
+            childFragmentManager.showArtistsSort()
+        }
+
+        headerBinding.sortOrder.setOnClickListener {
+            childFragmentManager.showArtistsSort()
+        }
+
+        headerBinding.gridSize.setOnClickListener { button ->
+            SharedScrollViewPopup(
+                    container = requireContainerView(),
+                    anchorView = button,
+                    menuItems = listOf(R.string.one,
+                                       R.string.two,
+                                       R.string.three,
+                                       R.string.four,
+                                       R.string.five,
+                                       R.string.six),
+                    menuIcons = listOf(R.drawable.ic_one_16,
+                                       R.drawable.ic_two_16dp,
+                                       R.drawable.ic_three_16dp,
+                                       R.drawable.ic_four_16dp,
+                                       R.drawable.ic_five_16dp,
+                                       R.drawable.ic_six_16dp),
+                    onMenuItemClick = {
+                        when (it) {
+                            R.string.one -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
+                            R.string.two -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
+                            R.string.three -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
+                            R.string.four -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
+                            R.string.five -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
+                            R.string.six -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
+                        }
+                    },
+                    onDismiss = {
+
+                    }
+            ).show()
+        }
+
+        headerBinding.gridType.setOnClickListener { button ->
+            SharedScrollViewPopup(
+                    container = requireContainerView(),
+                    anchorView = button,
+                    menuItems = listOf(
+                            R.string.list,
+                            R.string.grid,
+                            R.string.peristyle,
+                    ),
+                    menuIcons = listOf(
+                            R.drawable.ic_list_16dp,
+                            R.drawable.ic_grid_16dp,
+                            R.drawable.ic_peristyle_16dp,
+                    ),
+                    onMenuItemClick = {
+                        when (it) {
+                            R.string.list -> ArtistPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
+                            R.string.grid -> ArtistPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
+                            R.string.peristyle -> ArtistPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_PERISTYLE)
+                        }
+                    },
+                    onDismiss = {
+
+                    }
+            ).show()
+        }
+    }
+
+    private fun updateArtistsList(artists: MutableList<Artist>) {
+        Log.d(TAG, "updateArtistsList: artists.size=${artists.size}, adapterArtists=${adapterArtists != null}, recyclerView.adapter=${binding.recyclerView.adapter != null}")
+
+        // Initialize adapter on first data arrival to preserve layout animations
+        if (adapterArtists == null) {
+            Log.d(TAG, "updateArtistsList: Creating new adapter with ${artists.size} artists")
             adapterArtists = AdapterArtists(artists)
-            binding.recyclerView.adapter = adapterArtists
-
-            adapterArtists.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
+            adapterArtists?.setHasStableIds(true)
+            adapterArtists?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {
                     openFragment(ArtistPage.newInstance(artists[position]), ArtistPage.TAG)
                 }
             })
+            binding.recyclerView.adapter = adapterArtists
+            Log.d(TAG, "updateArtistsList: Adapter attached to RecyclerView")
+        } else {
+            // Update existing adapter data
+            Log.d(TAG, "updateArtistsList: Updating existing adapter with ${artists.size} artists")
+            adapterArtists?.updateList(artists)
 
-            headerBinding.count.text = getString(R.string.x_artists, artists.size)
-            headerBinding.sortOrder.setCurrentSortOrder()
-            headerBinding.sortStyle.setCurrentSortStyle()
-
-            headerBinding.scroll.hideOnUnfavorableSort(
-                    listOf(CommonPreferencesConstants.BY_NAME),
-                    ArtistPreferences.getArtistSort()
-            )
-
-            headerBinding.sortStyle.setOnClickListener {
-                childFragmentManager.showArtistsSort()
+            // Re-attach adapter if RecyclerView lost its reference (e.g., after navigation)
+            if (binding.recyclerView.adapter == null) {
+                Log.d(TAG, "updateArtistsList: Re-attaching adapter to RecyclerView")
+                binding.recyclerView.adapter = adapterArtists
             }
-
-            headerBinding.sortOrder.setOnClickListener {
-                childFragmentManager.showArtistsSort()
-            }
-
-            headerBinding.gridSize.setGridSizeValue(ArtistPreferences.getGridSize())
-            headerBinding.gridType.setGridTypeValue(ArtistPreferences.getGridType())
-
-            headerBinding.gridSize.setOnClickListener { button ->
-                SharedScrollViewPopup(
-                        container = requireContainerView(),
-                        anchorView = button,
-                        menuItems = listOf(R.string.one,
-                                           R.string.two,
-                                           R.string.three,
-                                           R.string.four,
-                                           R.string.five,
-                                           R.string.six),
-                        menuIcons = listOf(R.drawable.ic_one_16,
-                                           R.drawable.ic_two_16dp,
-                                           R.drawable.ic_three_16dp,
-                                           R.drawable.ic_four_16dp,
-                                           R.drawable.ic_five_16dp,
-                                           R.drawable.ic_six_16dp),
-                        onMenuItemClick = {
-                            when (it) {
-                                R.string.one -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
-                                R.string.two -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
-                                R.string.three -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
-                                R.string.four -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
-                                R.string.five -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
-                                R.string.six -> ArtistPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
-                            }
-                        },
-                        onDismiss = {
-
-                        }
-                ).show()
-            }
-
-            headerBinding.gridType.setOnClickListener { button ->
-                SharedScrollViewPopup(
-                        container = requireContainerView(),
-                        anchorView = button,
-                        menuItems = listOf(
-                                R.string.list,
-                                R.string.grid,
-                                R.string.peristyle,
-                        ),
-                        menuIcons = listOf(
-                                R.drawable.ic_list_16dp,
-                                R.drawable.ic_grid_16dp,
-                                R.drawable.ic_peristyle_16dp,
-                        ),
-                        onMenuItemClick = {
-                            when (it) {
-                                R.string.list -> ArtistPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
-                                R.string.grid -> ArtistPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
-                                R.string.peristyle -> ArtistPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_PERISTYLE)
-                            }
-                        },
-                        onDismiss = {
-
-                        }
-                ).show()
-            }
-
-            view.startTransitionOnPreDraw()
         }
+
+        headerBinding.count.text = getString(R.string.x_artists, artists.size)
+        binding.recyclerView.requireAttachedSectionScroller(
+                sections = provideScrollPositionDataBasedOnSortStyle(artists = artists),
+                header = binding.header,
+                view = headerBinding.scroll)
+
+        headerBinding.sortStyle.setCurrentSortStyle()
+        headerBinding.sortOrder.setCurrentSortOrder()
+        headerBinding.scroll.hideOnUnfavorableSort(
+                sorts = listOf(CommonPreferencesConstants.BY_NAME),
+                preference = ArtistPreferences.getArtistSort()
+        )
+
+        headerBinding.gridSize.setGridSizeValue(ArtistPreferences.getGridSize())
+        headerBinding.gridType.setGridTypeValue(ArtistPreferences.getGridType())
     }
 
     private fun provideScrollPositionDataBasedOnSortStyle(artists: List<Artist>): List<SectionedFastScroller.Position> {
@@ -182,7 +231,7 @@ class Artists : PanelFragment() {
             ArtistPreferences.GRID_SIZE_PORTRAIT, ArtistPreferences.GRID_SIZE_LANDSCAPE -> {
                 headerBinding.gridSize.setGridSizeValue(ArtistPreferences.getGridSize())
                 binding.recyclerView.beginDelayedTransition()
-                gridLayoutManager.spanCount = ArtistPreferences.getGridSize()
+                gridLayoutManager?.spanCount = ArtistPreferences.getGridSize()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             ArtistPreferences.GRID_TYPE_PORTRAIT, ArtistPreferences.GRID_TYPE_LANDSCAPE -> {
