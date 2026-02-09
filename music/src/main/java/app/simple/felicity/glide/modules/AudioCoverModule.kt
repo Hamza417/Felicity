@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import app.simple.felicity.glide.albumcover.AlbumCoverLoader
 import app.simple.felicity.glide.artistcover.ArtistCoverLoader
+import app.simple.felicity.glide.audiocover.AudioCoverLoader
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverLoader
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverModel
 import app.simple.felicity.glide.genres.GenreCoverLoader
@@ -15,6 +16,7 @@ import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.Song
 import com.bumptech.glide.Glide
@@ -56,6 +58,7 @@ class AudioCoverModule : AppGlideModule() {
         registry.append(DescriptorCoverModel::class.java, InputStream::class.java, DescriptorCoverLoader.Factory())
         registry.append(Song::class.java, Bitmap::class.java, SongCoverLoader.Factory(context))
         registry.append(Album::class.java, Bitmap::class.java, AlbumCoverLoader.Factory(context))
+        registry.append(Audio::class.java, Bitmap::class.java, AudioCoverLoader.Factory(context))
         registry.append(Artist::class.java, Bitmap::class.java, ArtistCoverLoader.Factory(context))
         registry.append(Genre::class.java, Bitmap::class.java, GenreCoverLoader.Factory(context))
         registry.append(PathCoverModel::class.java, Bitmap::class.java, PathCoverLoader.Factory())
