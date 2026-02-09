@@ -11,9 +11,9 @@ import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.constants.MediaConstants
+import app.simple.felicity.repository.covers.AudioCover
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.utils.AudioUtils
 import app.simple.felicity.shared.utils.NumberUtils
 
 class DefaultPlayer : MediaFragment() {
@@ -35,7 +35,7 @@ class DefaultPlayer : MediaFragment() {
             }
 
             override fun loadBitmap(position: Int): Bitmap? {
-                return AudioUtils.loadAudioCover(MediaManager.getSongAt(position)!!)
+                return AudioCover.load(MediaManager.getSongAt(position)!!)
             }
         })
 

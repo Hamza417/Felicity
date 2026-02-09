@@ -12,11 +12,11 @@ import com.bumptech.glide.signature.ObjectKey
 
 class ArtistCoverLoader(private val context: Context) : ModelLoader<Artist, Bitmap> {
     override fun buildLoadData(model: Artist, width: Int, height: Int, options: Options): ModelLoader.LoadData<Bitmap> {
-        return ModelLoader.LoadData(ObjectKey(model), ArtistCoverFetcher(context, model))
+        return ModelLoader.LoadData(ObjectKey(model), ArtistCoverFetcher(model))
     }
 
     fun getResourceFetcher(model: Artist): DataFetcher<Bitmap> {
-        return ArtistCoverFetcher(context, model)
+        return ArtistCoverFetcher(model)
     }
 
     override fun handles(model: Artist): Boolean {

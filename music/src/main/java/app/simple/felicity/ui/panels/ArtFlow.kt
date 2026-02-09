@@ -21,9 +21,9 @@ import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.repository.constants.MediaConstants
+import app.simple.felicity.repository.covers.AudioCover
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.utils.AudioUtils
 import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 import app.simple.felicity.shared.utils.WindowUtil
 import app.simple.felicity.ui.player.DefaultPlayer
@@ -207,7 +207,7 @@ class ArtFlow : MediaFragment() {
         }
 
         override fun loadArtwork(index: Int, maxDimension: Int): Bitmap? {
-            return AudioUtils.loadAudioCover(audioList[index])
+            return AudioCover.load(audioList[index])
         }
     }
 

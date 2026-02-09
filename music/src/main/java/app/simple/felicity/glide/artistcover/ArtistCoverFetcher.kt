@@ -1,41 +1,41 @@
 package app.simple.felicity.glide.artistcover
 
-import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.os.Build
-import android.util.Size
-import app.simple.felicity.glide.util.Constants
+import android.util.Log
+import app.simple.felicity.repository.covers.ArtistCover
 import app.simple.felicity.repository.models.Artist
-import app.simple.felicity.repository.utils.ArtistUtils
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.data.DataFetcher
 import java.io.FileNotFoundException
 
-class ArtistCoverFetcher internal constructor(private val context: Context, private val artist: Artist) : DataFetcher<Bitmap> {
+/**
+ * Glide DataFetcher for loading artist cover artwork.
+ * Delegates to ArtistCover.load() for centralized artist cover loading logic.
+ */
+class ArtistCoverFetcher internal constructor(
+        private val artist: Artist
+) : DataFetcher<Bitmap> {
 
     override fun loadData(priority: Priority, callback: DataFetcher.DataCallback<in Bitmap>) {
-        val uri = ArtistUtils.getArtistArtworkUri(context, artist.id)
-            ?: throw FileNotFoundException("Could not find artwork URI for artist: $artist")
+        try {
+            // Delegate to ArtistCover for centralized artist cover loading
+            val bitmap = ArtistCover.load(artist)
+                ?: throw FileNotFoundException("Could not find artist artwork for: ${artist.name}")
 
-        val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            context.contentResolver.loadThumbnail(uri, Size(Constants.ART_SIZE, Constants.ART_SIZE), null)
-        } else {
-            context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
-                BitmapFactory.decodeFileDescriptor(pfd.fileDescriptor)
-            } ?: throw FileNotFoundException("Could not open file descriptor for URI: $uri")
+            callback.onDataReady(bitmap)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading artist cover for: ${artist.name}", e)
+            callback.onLoadFailed(e)
         }
-
-        callback.onDataReady(bitmap)
     }
 
     override fun cleanup() {
-        // Cleared
+        // No cleanup needed - ArtistUtils handles resource management
     }
 
     override fun cancel() {
-        // Probably already cleared
+        // No cancellation needed
     }
 
     override fun getDataClass(): Class<Bitmap> {
@@ -44,5 +44,9 @@ class ArtistCoverFetcher internal constructor(private val context: Context, priv
 
     override fun getDataSource(): DataSource {
         return DataSource.LOCAL
+    }
+
+    companion object {
+        private const val TAG = "ArtistCoverFetcher"
     }
 }

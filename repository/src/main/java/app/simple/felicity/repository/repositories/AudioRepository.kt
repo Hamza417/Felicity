@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.sqlite.db.SimpleSQLiteQuery
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Album
+import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -99,11 +100,11 @@ class AudioRepository @Inject constructor(
     }
 
     /**
-     * Get all artists with aggregated data including album counts and track counts.
+     * Get all artists with aggregated data including album counts, track counts, and song paths.
      * This method groups audio files by artist and creates proper Artist objects.
      * @return Flow of artists with complete metadata
      */
-    fun getAllArtistsWithAggregation(): Flow<List<app.simple.felicity.repository.models.Artist>> {
+    fun getAllArtistsWithAggregation(): Flow<List<Artist>> {
         return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
             // Group audio files by artist name
             audioList.groupBy { it.artist }
@@ -113,14 +114,18 @@ class AudioRepository @Inject constructor(
                     // Count unique albums by this artist
                     val uniqueAlbums = songs.mapNotNull { it.album }.distinct().size
 
+                    // Aggregate song paths from all songs by the artist
+                    val songPaths = songs.map { it.path }
+
                     // Generate unique ID based on artist name
                     val uniqueId = artistName.hashCode().toLong()
 
-                    app.simple.felicity.repository.models.Artist(
+                    Artist(
                             id = uniqueId,
                             name = artistName,
                             albumCount = uniqueAlbums,
-                            trackCount = songs.size
+                            trackCount = songs.size,
+                            songPaths = songPaths
                     )
                 }
                 .sortedBy { it.name?.lowercase() }
