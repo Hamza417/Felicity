@@ -9,8 +9,6 @@ import app.simple.felicity.glide.audiocover.AudioCoverLoader
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverLoader
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverModel
 import app.simple.felicity.glide.genres.GenreCoverLoader
-import app.simple.felicity.glide.pathcover.PathCoverLoader
-import app.simple.felicity.glide.pathcover.PathCoverModel
 import app.simple.felicity.glide.songcover.SongCoverLoader
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
@@ -61,6 +59,5 @@ class AudioCoverModule : AppGlideModule() {
         registry.append(Audio::class.java, Bitmap::class.java, AudioCoverLoader.Factory(context))
         registry.append(Artist::class.java, Bitmap::class.java, ArtistCoverLoader.Factory(context))
         registry.append(Genre::class.java, Bitmap::class.java, GenreCoverLoader.Factory(context))
-        registry.append(PathCoverModel::class.java, Bitmap::class.java, PathCoverLoader.Factory())
     }
 }
