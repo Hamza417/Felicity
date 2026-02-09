@@ -2,6 +2,7 @@ package app.simple.felicity.adapters.ui.lists.albums
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
@@ -69,6 +70,41 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
 
     fun setGeneralAdapterCallbacks(callbacks: GeneralAdapterCallbacks) {
         this.generalAdapterCallbacks = callbacks
+    }
+
+    fun getGeneralAdapterCallbacks(): GeneralAdapterCallbacks? {
+        return generalAdapterCallbacks
+    }
+
+    /**
+     * Update the adapter's list with new data using DiffUtil for efficiency.
+     * This is called when the Flow emits new data from the database
+     */
+    fun updateList(newAlbums: List<Album>) {
+        val diffCallback = AlbumsDiffCallback(albums, newAlbums)
+        val diffResult = DiffUtil.calculateDiff(diffCallback)
+        albums.clear()
+        albums.addAll(newAlbums)
+        diffResult.dispatchUpdatesTo(this)
+    }
+
+    /**
+     * DiffUtil callback for efficient list updates
+     */
+    private class AlbumsDiffCallback(
+            private val oldList: List<Album>,
+            private val newList: List<Album>
+    ) : DiffUtil.Callback() {
+        override fun getOldListSize(): Int = oldList.size
+        override fun getNewListSize(): Int = newList.size
+
+        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            return oldList[oldItemPosition].id == newList[newItemPosition].id
+        }
+
+        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            return oldList[oldItemPosition] == newList[newItemPosition]
+        }
     }
 
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {

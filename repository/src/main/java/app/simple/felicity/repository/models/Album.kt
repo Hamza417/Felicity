@@ -11,15 +11,17 @@ data class Album(
         val artistId: Long,
         val songCount: Int = 0,
         val firstYear: Long = 0,
-        val lastYear: Long = 0
+        val lastYear: Long = 0,
+        val songPaths: List<String> = emptyList()
 ) : Parcelable {
     override fun toString(): String {
         return "Album(id=$id, " +
                 "name=$name, " +
                 "artist=$artist, " +
                 "artistId=$artistId, " +
-                "songCount=$songCount)" +
-                "firstYear=$firstYear)" +
-                "lastYear=$lastYear)"
+                "songCount=$songCount, " +
+                "firstYear=$firstYear, " +
+                "lastYear=$lastYear, " +
+                "songPaths=${songPaths.size} paths)"
     }
 }

@@ -2,10 +2,14 @@ package app.simple.felicity.ui.panels
 
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.albums.AdapterAlbums
@@ -24,6 +28,7 @@ import app.simple.felicity.repository.sort.AlbumSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.AlbumSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.viewmodels.main.albums.AlbumsViewModel
+import kotlinx.coroutines.launch
 
 class Albums : PanelFragment() {
 
@@ -35,7 +40,7 @@ class Albums : PanelFragment() {
 
     private val albumsViewModel: AlbumsViewModel by viewModels({ requireActivity() })
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentAlbumsBinding.inflate(inflater, container, false)
         headerBinding = HeaderAlbumsBinding.inflate(inflater, container, false)
 
@@ -50,108 +55,137 @@ class Albums : PanelFragment() {
         binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
 
-        albumsViewModel.getAlbums().observe(viewLifecycleOwner) { it ->
-            adapterAlbums = AdapterAlbums(it)
-            gridLayoutManager = GridLayoutManager(requireContext(), AlbumPreferences.getGridSize())
-            binding.recyclerView.layoutManager = gridLayoutManager
-            binding.recyclerView.setGridType(AlbumPreferences.getGridType(), AlbumPreferences.getGridSize())
-            adapterAlbums?.setHasStableIds(true)
-            headerBinding.count.text = getString(R.string.x_albums, it.size)
-            binding.recyclerView.requireAttachedSectionScroller(
-                    sections = provideScrollPositionDataBasedOnSortStyle(albums = it),
-                    header = binding.header,
-                    view = headerBinding.scroll)
+        // Initialize layout manager once
+        gridLayoutManager = GridLayoutManager(requireContext(), AlbumPreferences.getGridSize())
+        binding.recyclerView.layoutManager = gridLayoutManager
+        binding.recyclerView.setGridType(AlbumPreferences.getGridType(), AlbumPreferences.getGridSize())
 
+        setupClickListeners()
+
+        // Observe StateFlow with proper lifecycle handling for immediate updates
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                albumsViewModel.albums
+                    .collect { albums ->
+                        // Skip empty initial state, but allow empty updates after adapter exists
+                        if (albums.isNotEmpty()) {
+                            updateAlbumsList(albums)
+                        } else if (adapterAlbums != null) {
+                            // Allow empty list update if adapter already exists (e.g., after deletion)
+                            updateAlbumsList(albums)
+                        }
+                    }
+            }
+        }
+    }
+
+    private fun setupClickListeners() {
+        headerBinding.sortStyle.setOnClickListener {
+            childFragmentManager.showAlbumsSort()
+        }
+
+        headerBinding.sortOrder.setOnClickListener {
+            childFragmentManager.showAlbumsSort()
+        }
+
+        headerBinding.gridSize.setOnClickListener { button ->
+            SharedScrollViewPopup(
+                    container = requireContainerView(),
+                    anchorView = button,
+                    menuItems = listOf(R.string.one,
+                                       R.string.two,
+                                       R.string.three,
+                                       R.string.four,
+                                       R.string.five,
+                                       R.string.six),
+                    menuIcons = listOf(R.drawable.ic_one_16,
+                                       R.drawable.ic_two_16dp,
+                                       R.drawable.ic_three_16dp,
+                                       R.drawable.ic_four_16dp,
+                                       R.drawable.ic_five_16dp,
+                                       R.drawable.ic_six_16dp),
+                    onMenuItemClick = {
+                        when (it) {
+                            R.string.one -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
+                            R.string.two -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
+                            R.string.three -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
+                            R.string.four -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
+                            R.string.five -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
+                            R.string.six -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
+                        }
+                    },
+                    onDismiss = {
+
+                    }
+            ).show()
+        }
+
+        headerBinding.gridType.setOnClickListener { button ->
+            SharedScrollViewPopup(
+                    container = requireContainerView(),
+                    anchorView = button,
+                    menuItems = listOf(
+                            R.string.list,
+                            R.string.grid,
+                            R.string.peristyle,
+                    ),
+                    menuIcons = listOf(
+                            R.drawable.ic_list_16dp,
+                            R.drawable.ic_grid_16dp,
+                            R.drawable.ic_peristyle_16dp,
+                    ),
+                    onMenuItemClick = {
+                        when (it) {
+                            R.string.list -> AlbumPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
+                            R.string.grid -> AlbumPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
+                            R.string.peristyle -> AlbumPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_PERISTYLE)
+                        }
+                    },
+                    onDismiss = {
+
+                    }
+            ).show()
+        }
+    }
+
+    private fun updateAlbumsList(albums: List<Album>) {
+        // Initialize adapter on first data arrival to preserve layout animations
+        if (adapterAlbums == null) {
+            Log.d(TAG, "updateAlbumsList: Initializing adapter with ${albums.size} albums")
+            adapterAlbums = AdapterAlbums(albums)
+            adapterAlbums?.setHasStableIds(true)
             adapterAlbums?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onAlbumClicked(albums: List<Album>, position: Int, view: View?) {
                     openFragment(AlbumPage.newInstance(albums[position]), AlbumPage.TAG)
                 }
             })
-
-            headerBinding.sortStyle.setOnClickListener {
-                childFragmentManager.showAlbumsSort()
-            }
-
-            headerBinding.sortOrder.setOnClickListener {
-                childFragmentManager.showAlbumsSort()
-            }
-
-            headerBinding.sortStyle.setCurrentSortStyle()
-            headerBinding.sortOrder.setCurrentSortOrder()
-            headerBinding.scroll.hideOnUnfavorableSort(
-                    sorts = listOf(
-                            CommonPreferencesConstants.BY_ALBUM_NAME,
-                            CommonPreferencesConstants.BY_ARTIST,
-                            CommonPreferencesConstants.BY_FIRST_YEAR,
-                            CommonPreferencesConstants.BY_LAST_YEAR
-                    ),
-                    preference = AlbumPreferences.getAlbumSort()
-            )
-
-            headerBinding.gridSize.setGridSizeValue(AlbumPreferences.getGridSize())
-            headerBinding.gridType.setGridTypeValue(AlbumPreferences.getGridType())
-
-            headerBinding.gridSize.setOnClickListener { button ->
-                SharedScrollViewPopup(
-                        container = requireContainerView(),
-                        anchorView = button,
-                        menuItems = listOf(R.string.one,
-                                           R.string.two,
-                                           R.string.three,
-                                           R.string.four,
-                                           R.string.five,
-                                           R.string.six),
-                        menuIcons = listOf(R.drawable.ic_one_16,
-                                           R.drawable.ic_two_16dp,
-                                           R.drawable.ic_three_16dp,
-                                           R.drawable.ic_four_16dp,
-                                           R.drawable.ic_five_16dp,
-                                           R.drawable.ic_six_16dp),
-                        onMenuItemClick = {
-                            when (it) {
-                                R.string.one -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
-                                R.string.two -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
-                                R.string.three -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
-                                R.string.four -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
-                                R.string.five -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
-                                R.string.six -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
-                            }
-                        },
-                        onDismiss = {
-
-                        }
-                ).show()
-            }
-
-            headerBinding.gridType.setOnClickListener { button ->
-                SharedScrollViewPopup(
-                        container = requireContainerView(),
-                        anchorView = button,
-                        menuItems = listOf(
-                                R.string.list,
-                                R.string.grid,
-                                R.string.peristyle,
-                        ),
-                        menuIcons = listOf(
-                                R.drawable.ic_list_16dp,
-                                R.drawable.ic_grid_16dp,
-                                R.drawable.ic_peristyle_16dp,
-                        ),
-                        onMenuItemClick = {
-                            when (it) {
-                                R.string.list -> AlbumPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
-                                R.string.grid -> AlbumPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
-                                R.string.peristyle -> AlbumPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_PERISTYLE)
-                            }
-                        },
-                        onDismiss = {
-
-                        }
-                ).show()
-            }
-
             binding.recyclerView.adapter = adapterAlbums
+        } else {
+            // Update existing adapter data
+            Log.d(TAG, "updateAlbumsList: Updating existing adapter with ${albums.size} albums")
+            adapterAlbums?.updateList(albums)
         }
+
+        headerBinding.count.text = getString(R.string.x_albums, albums.size)
+        binding.recyclerView.requireAttachedSectionScroller(
+                sections = provideScrollPositionDataBasedOnSortStyle(albums = albums),
+                header = binding.header,
+                view = headerBinding.scroll)
+
+        headerBinding.sortStyle.setCurrentSortStyle()
+        headerBinding.sortOrder.setCurrentSortOrder()
+        headerBinding.scroll.hideOnUnfavorableSort(
+                sorts = listOf(
+                        CommonPreferencesConstants.BY_ALBUM_NAME,
+                        CommonPreferencesConstants.BY_ARTIST,
+                        CommonPreferencesConstants.BY_FIRST_YEAR,
+                        CommonPreferencesConstants.BY_LAST_YEAR
+                ),
+                preference = AlbumPreferences.getAlbumSort()
+        )
+
+        headerBinding.gridSize.setGridSizeValue(AlbumPreferences.getGridSize())
+        headerBinding.gridType.setGridTypeValue(AlbumPreferences.getGridType())
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {

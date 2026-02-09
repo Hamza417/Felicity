@@ -3,10 +3,12 @@ package app.simple.felicity.repository.repositories
 import android.content.Context
 import androidx.sqlite.db.SimpleSQLiteQuery
 import app.simple.felicity.repository.database.instances.AudioDatabase
+import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Audio
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -58,6 +60,39 @@ class AudioRepository @Inject constructor(
     fun getAllAlbums(): Flow<MutableList<Audio>> {
         return audioDatabase.audioDao()?.getAllAlbums()
             ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Get all albums with aggregated data including song counts and file paths.
+     * This method groups audio files by album and creates proper Album objects.
+     * @return Flow of albums with complete metadata
+     */
+    fun getAllAlbumsWithAggregation(): Flow<List<Album>> {
+        return audioDatabase.audioDao()?.getAllAudioForAlbumAggregation()?.map { audioList ->
+            // Group audio files by album name
+            audioList.groupBy { it.album }
+                .mapNotNull { (albumName, songs) ->
+                    if (albumName.isNullOrEmpty()) return@mapNotNull null
+
+                    val firstSong = songs.firstOrNull() ?: return@mapNotNull null
+
+                    // Aggregate data from all songs in the album
+                    val songPaths = songs.map { it.path }
+                    val years = songs.mapNotNull { it.year?.toLongOrNull() }.filter { it > 0 }
+
+                    Album(
+                            id = firstSong.albumId,
+                            name = albumName,
+                            artist = firstSong.artist,
+                            artistId = 0, // Can be extracted from first song if needed
+                            songCount = songs.size,
+                            firstYear = years.minOrNull() ?: 0,
+                            lastYear = years.maxOrNull() ?: 0,
+                            songPaths = songPaths
+                    )
+                }
+                .sortedBy { it.name?.lowercase() }
+        } ?: throw IllegalStateException("AudioDao is null")
     }
 
     /**

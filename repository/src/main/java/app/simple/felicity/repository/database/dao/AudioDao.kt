@@ -26,6 +26,10 @@ interface AudioDao {
     @Query("SELECT * FROM audio GROUP BY album ORDER BY album COLLATE NOCASE ASC")
     fun getAllAlbums(): Flow<MutableList<Audio>>
 
+    // Get all audio files grouped by album for aggregation
+    @Query("SELECT * FROM audio ORDER BY album COLLATE NOCASE ASC, title COLLATE NOCASE ASC")
+    fun getAllAudioForAlbumAggregation(): Flow<MutableList<Audio>>
+
     // Get recent audio
     @Query("SELECT * FROM audio ORDER BY date_added DESC LIMIT 25")
     fun getRecentAudio(): Flow<MutableList<Audio>>
