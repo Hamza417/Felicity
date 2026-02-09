@@ -60,49 +60,37 @@ class Songs : PanelFragment() {
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.attachSlideFastScroller()
 
-        // Initialize adapter and layout manager once
+        // Initialize layout manager once
         gridLayoutManager = GridLayoutManager(requireContext(), SongsPreferences.getGridSize())
         binding.recyclerView.layoutManager = gridLayoutManager
         binding.recyclerView.setGridType(SongsPreferences.getGridType(), SongsPreferences.getGridSize())
-        songsAdapter = SongsAdapter(emptyList())
+
+        setupClickListeners()
 
         // Observe StateFlow with proper lifecycle handling for immediate updates
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 songsViewModel.songs.collect { audios ->
-                    updateSongsList(audios)
+                    // Skip empty initial state, but allow empty updates after adapter exists
+                    if (audios.isNotEmpty()) {
+                        updateSongsList(audios)
+                    } else if (songsAdapter != null) {
+                        // Allow empty list update if adapter already exists (e.g., after deletion)
+                        updateSongsList(audios)
+                    }
                 }
             }
         }
+    }
 
-        // Set adapter callbacks once
-        songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
-            override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
-                setMediaItems(songs, position)
-            }
+    override fun onDestroyView() {
+        // Clear adapter reference when view is destroyed
+        songsAdapter = null
+        gridLayoutManager = null
+        super.onDestroyView()
+    }
 
-            override fun onSongLongClicked(audios: MutableList<Audio>, position: Int, view: View) {
-                SimpleSharedImageDialog.Builder(
-                        container = requireContainerView(),
-                        sourceImageView = view as ImageView,
-                        inflateBinding = DialogSongMenuBinding::inflate,
-                        targetImageViewProvider = { it.cover })
-                    .onViewCreated { binding ->
-                        binding.cover.loadArtCoverWithPayload(audios[position])
-                        binding.title.text = audios[position].title
-                        binding.secondaryDetail.text = audios[position].artist
-                        binding.tertiaryDetail.text = audios[position].album
-
-                        binding.play.setOnClickListener {
-                            val pos = audios.indexOfFirst { it.id == audios[position].id }.coerceAtLeast(0)
-                            setMediaItems(audios, pos)
-                        }
-                    }
-                    .build()
-                    .show()
-            }
-        })
-
+    private fun setupClickListeners() {
         // Set up header UI once
         headerBinding.sortStyle.setSongSort()
         headerBinding.sortOrder.setSongOrder()
@@ -110,18 +98,18 @@ class Songs : PanelFragment() {
         headerBinding.gridType.setGridTypeValue(SongsPreferences.getGridType())
 
         headerBinding.menu.setOnClickListener {
-                childFragmentManager.showSongsMenu()
-            }
+            childFragmentManager.showSongsMenu()
+        }
 
-            headerBinding.sortStyle.setOnClickListener {
-                childFragmentManager.showSongsSort()
-            }
+        headerBinding.sortStyle.setOnClickListener {
+            childFragmentManager.showSongsSort()
+        }
 
-            headerBinding.sortOrder.setOnClickListener {
-                childFragmentManager.showSongsSort()
-            }
+        headerBinding.sortOrder.setOnClickListener {
+            childFragmentManager.showSongsSort()
+        }
 
-            headerBinding.gridSize.setOnClickListener { button ->
+        headerBinding.gridSize.setOnClickListener { button ->
                 SharedScrollViewPopup(
                         container = requireContainerView(),
                         anchorView = button,
@@ -153,7 +141,7 @@ class Songs : PanelFragment() {
                 ).show()
             }
 
-            headerBinding.gridType.setOnClickListener { button ->
+        headerBinding.gridType.setOnClickListener { button ->
                 SharedScrollViewPopup(
                         container = requireContainerView(),
                         anchorView = button,
@@ -179,8 +167,6 @@ class Songs : PanelFragment() {
                         }
                 ).show()
             }
-
-        binding.recyclerView.adapter = songsAdapter
     }
 
     /**
@@ -188,6 +174,47 @@ class Songs : PanelFragment() {
      * This method is called whenever the Flow emits new data
      */
     private fun updateSongsList(songs: List<Audio>) {
+        // Initialize adapter on first data arrival to preserve layout animations
+        if (songsAdapter == null) {
+            songsAdapter = SongsAdapter(songs)
+            songsAdapter?.setHasStableIds(true)
+            songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
+                override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
+                    setMediaItems(songs, position)
+                }
+
+                override fun onSongLongClicked(audios: MutableList<Audio>, position: Int, view: View) {
+                    SimpleSharedImageDialog.Builder(
+                            container = requireContainerView(),
+                            sourceImageView = view as ImageView,
+                            inflateBinding = DialogSongMenuBinding::inflate,
+                            targetImageViewProvider = { it.cover })
+                        .onViewCreated { binding ->
+                            binding.cover.loadArtCoverWithPayload(audios[position])
+                            binding.title.text = audios[position].title
+                            binding.secondaryDetail.text = audios[position].artist
+                            binding.tertiaryDetail.text = audios[position].album
+
+                            binding.play.setOnClickListener {
+                                val pos = audios.indexOfFirst { it.id == audios[position].id }.coerceAtLeast(0)
+                                setMediaItems(audios, pos)
+                            }
+                        }
+                        .build()
+                        .show()
+                }
+            })
+            binding.recyclerView.adapter = songsAdapter
+        } else {
+            // Update existing adapter data
+            songsAdapter?.updateSongs(songs)
+
+            // Re-attach adapter if RecyclerView lost its reference (e.g., after navigation)
+            if (binding.recyclerView.adapter == null) {
+                binding.recyclerView.adapter = songsAdapter
+            }
+        }
+
         // Update section scroller
         binding.recyclerView.requireAttachedSectionScroller(
                 sections = provideScrollPositionDataBasedOnSortStyle(songs),
@@ -195,8 +222,6 @@ class Songs : PanelFragment() {
                 view = headerBinding.scroll
         )
 
-        // Update adapter with new data
-        songsAdapter?.updateSongs(songs)
 
         // Update header counts
         headerBinding.count.text = getString(R.string.x_songs, songs.size)

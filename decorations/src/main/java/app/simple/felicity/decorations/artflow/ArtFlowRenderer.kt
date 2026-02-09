@@ -651,9 +651,6 @@ class ArtFlowRenderer(
         }
     }
 
-    // keep legacy call
-    private fun recycleFarTextures(center: Int) = recycleFarTexturesFloat(center.toFloat())
-
     // Placeholder texture (2x2 neutral gray gradient) to avoid gaps
     private fun ensurePlaceholderTexture() {
         if (placeholderTex != 0) return
@@ -684,9 +681,6 @@ class ArtFlowRenderer(
             placeholderTex = 0
         }
     }
-
-    // Bitmap decode helpers
-    @Suppress("SameParameterValue")
 
     // GL texture helpers (run on GL thread)
     private fun createTextureFromBitmap(bmp: Bitmap): Int {
