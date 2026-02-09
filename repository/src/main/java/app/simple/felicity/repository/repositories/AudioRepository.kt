@@ -80,11 +80,14 @@ class AudioRepository @Inject constructor(
                     val songPaths = songs.map { it.path }
                     val years = songs.mapNotNull { it.year?.toLongOrNull() }.filter { it > 0 }
 
+                    // Generate unique ID based on album name and artist to avoid collisions
+                    val uniqueId = "${albumName}_${firstSong.artist}".hashCode().toLong()
+
                     Album(
-                            id = firstSong.albumId,
+                            id = uniqueId,
                             name = albumName,
                             artist = firstSong.artist,
-                            artistId = 0, // Can be extracted from first song if needed
+                            artistId = 0,
                             songCount = songs.size,
                             firstYear = years.minOrNull() ?: 0,
                             lastYear = years.maxOrNull() ?: 0,

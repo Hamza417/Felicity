@@ -1,5 +1,6 @@
 package app.simple.felicity.adapters.ui.lists.albums
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
@@ -23,7 +24,13 @@ import com.bumptech.glide.Glide
 class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHolder>() {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
-    private var albums = mutableListOf<Album>().apply { addAll(initial) }
+    private var albums = mutableListOf<Album>().apply {
+        addAll(initial)
+        Log.d(TAG, "AdapterAlbums: Initialized with ${initial.size} albums")
+        if (initial.isNotEmpty()) {
+            Log.d(TAG, "First album: id=${initial.first().id}, name=${initial.first().name}, songCount=${initial.first().songCount}")
+        }
+    }
 
     init {
         setHasStableIds(true)
@@ -47,7 +54,14 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
     }
 
     override fun onBind(holder: VerticalListViewHolder, position: Int, isLightBind: Boolean) {
+        if (position >= albums.size) {
+            Log.e(TAG, "onBind: Invalid position $position, albums.size=${albums.size}")
+            return
+        }
+
         val album = albums[position]
+        Log.d(TAG, "onBind: position=$position, album=${album.name}, id=${album.id}")
+
         when (holder) {
             is ListHolder -> holder.bind(album, isLightBind)
             is GridHolder -> holder.bind(album, isLightBind)
@@ -81,11 +95,23 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
      * This is called when the Flow emits new data from the database
      */
     fun updateList(newAlbums: List<Album>) {
+        Log.d(TAG, "updateList: Old size=${albums.size}, New size=${newAlbums.size}")
+        if (newAlbums.isNotEmpty()) {
+            Log.d(TAG, "First new album: id=${newAlbums.first().id}, name=${newAlbums.first().name}, songCount=${newAlbums.first().songCount}")
+        }
+
         val diffCallback = AlbumsDiffCallback(albums, newAlbums)
         val diffResult = DiffUtil.calculateDiff(diffCallback)
         albums.clear()
         albums.addAll(newAlbums)
+
+        Log.d(TAG, "After update: albums.size=${albums.size}")
         diffResult.dispatchUpdatesTo(this)
+        Log.d(TAG, "DiffUtil updates dispatched")
+    }
+
+    companion object {
+        private const val TAG = "AdapterAlbums"
     }
 
     /**

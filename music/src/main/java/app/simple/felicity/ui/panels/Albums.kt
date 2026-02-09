@@ -50,6 +50,8 @@ class Albums : PanelFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        Log.d(TAG, "onViewCreated: adapterAlbums=${adapterAlbums != null}")
+
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.attachSlideFastScroller()
@@ -77,6 +79,14 @@ class Albums : PanelFragment() {
                     }
             }
         }
+    }
+
+    override fun onDestroyView() {
+        Log.d(TAG, "onDestroyView: Clearing adapter reference")
+        // Clear adapter reference when view is destroyed
+        adapterAlbums = null
+        gridLayoutManager = null
+        super.onDestroyView()
     }
 
     private fun setupClickListeners() {
@@ -149,9 +159,11 @@ class Albums : PanelFragment() {
     }
 
     private fun updateAlbumsList(albums: List<Album>) {
+        Log.d(TAG, "updateAlbumsList: albums.size=${albums.size}, adapterAlbums=${adapterAlbums != null}, recyclerView.adapter=${binding.recyclerView.adapter != null}")
+
         // Initialize adapter on first data arrival to preserve layout animations
         if (adapterAlbums == null) {
-            Log.d(TAG, "updateAlbumsList: Initializing adapter with ${albums.size} albums")
+            Log.d(TAG, "updateAlbumsList: Creating new adapter with ${albums.size} albums")
             adapterAlbums = AdapterAlbums(albums)
             adapterAlbums?.setHasStableIds(true)
             adapterAlbums?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
@@ -160,10 +172,17 @@ class Albums : PanelFragment() {
                 }
             })
             binding.recyclerView.adapter = adapterAlbums
+            Log.d(TAG, "updateAlbumsList: Adapter attached to RecyclerView")
         } else {
             // Update existing adapter data
             Log.d(TAG, "updateAlbumsList: Updating existing adapter with ${albums.size} albums")
             adapterAlbums?.updateList(albums)
+
+            // Re-attach adapter if RecyclerView lost its reference (e.g., after navigation)
+            if (binding.recyclerView.adapter == null) {
+                Log.d(TAG, "updateAlbumsList: Re-attaching adapter to RecyclerView")
+                binding.recyclerView.adapter = adapterAlbums
+            }
         }
 
         headerBinding.count.text = getString(R.string.x_albums, albums.size)
