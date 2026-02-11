@@ -10,8 +10,8 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
-import app.simple.felicity.repository.models.Song
 import com.smarteist.autoimageslider.SliderViewAdapter
 
 class ArtFlowAdapter(private val data: ArtFlowData<Any>, private val startGravity: Boolean = true)
@@ -43,7 +43,7 @@ class ArtFlowAdapter(private val data: ArtFlowData<Any>, private val startGravit
             )
 
             when (item) {
-                is Song -> {
+                is Audio -> {
                     holder.binding.title.text = item.title ?: holder.getContext().getString(R.string.unknown)
                     holder.binding.artist.text = item.artist ?: holder.getContext().getString(R.string.unknown)
                 }

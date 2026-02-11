@@ -18,7 +18,6 @@ import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Genre
-import app.simple.felicity.repository.models.Song
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.pages.GenrePage
 import app.simple.felicity.ui.panels.Albums
@@ -97,9 +96,6 @@ class ArtFlowHome : MediaFragment() {
                 override fun onClicked(view: View, position: Int, itemPosition: Int) {
                     Log.d(TAG, "Item clicked at position: $position")
                     when (data[position].items[0]) {
-                        is Song -> {
-                            // setMediaItems(data[position].items.filterIsInstance<Song>(), itemPosition)
-                        }
                         is Genre -> {
                             val genre = data[position].items.filterIsInstance<Genre>()[itemPosition]
                             openFragment(GenrePage.newInstance(genre), GenrePage.TAG)

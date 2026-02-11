@@ -8,12 +8,7 @@ import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.PageData
-import app.simple.felicity.repository.models.Song
-import app.simple.felicity.repository.repositories.AlbumRepository
-import app.simple.felicity.repository.repositories.ArtistRepository
-import app.simple.felicity.repository.repositories.GenreRepository
-import app.simple.felicity.repository.repositories.SongRepository
-import app.simple.felicity.repository.utils.SongUtils
+import app.simple.felicity.repository.repositories.AudioRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -24,10 +19,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel(assistedFactory = ArtistViewerViewModel.Factory::class)
 class ArtistViewerViewModel @AssistedInject constructor(
         @Assisted private val artist: Artist,
-        private val artistRepository: ArtistRepository,
-        private val songRepository: SongRepository,
-        private val genreRepository: GenreRepository,
-        private val albumRepository: AlbumRepository,
+        private val audioRepository: AudioRepository,
         application: Application) : WrappedViewModel(application) {
 
     private val data: MutableLiveData<PageData> by lazy {
@@ -50,21 +42,8 @@ class ArtistViewerViewModel @AssistedInject constructor(
 
     private fun loadArtistSongs() {
         viewModelScope.launch(Dispatchers.IO) {
-            val songs = songRepository.fetchSongByArtist(artist.id)
-            val albums = albumRepository.fetchAlbumsFromArtist(artist.id)
-            val genres = genreRepository.fetchGenreByArtist(artist.id)
-            val artists = artistRepository.fetchCollaboratorArtists(artist)
 
-            loadSongImages(songs)
         }
-    }
-
-    private fun loadSongImages(songs: List<Song>) {
-        val uris = songs.mapNotNull { song ->
-            SongUtils.getArtworkUri(getApplication(), song.albumId, song.id)
-        }.distinct()
-
-        imageUris.postValue(uris)
     }
 
     @AssistedFactory

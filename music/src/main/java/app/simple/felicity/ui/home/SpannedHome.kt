@@ -17,7 +17,7 @@ import app.simple.felicity.decorations.utils.RecyclerViewUtils.randomViewHolder
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
-import app.simple.felicity.repository.models.Song
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.ui.panels.Albums
@@ -58,7 +58,7 @@ class SpannedHome : MediaFragment() {
 
                 override fun onItemClicked(items: List<Any>, position: Int) {
                     when (items.first()) {
-                        is Song -> {
+                        is Audio -> {
                             // setMediaItems(items.filterIsInstance<Song>(), position)
                         }
                         is Artist -> {

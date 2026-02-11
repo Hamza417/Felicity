@@ -12,8 +12,8 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
-import app.simple.felicity.repository.models.Song
 
 class AdapterGridArt(private val data: ArtFlowData<Any>) :
         RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -49,7 +49,7 @@ class AdapterGridArt(private val data: ArtFlowData<Any>) :
                     }
 
                     when (item) {
-                        is Song -> {
+                        is Audio -> {
                             holder.binding.title.text = item.title
                         }
                         is Album -> {
@@ -69,7 +69,7 @@ class AdapterGridArt(private val data: ArtFlowData<Any>) :
                     val item = data.items[position]
 
                     when (item) {
-                        is Song -> {
+                        is Audio -> {
                             holder.binding.title.text = holder.binding.root.context.getString(R.string.songs)
                         }
                         is Album -> {

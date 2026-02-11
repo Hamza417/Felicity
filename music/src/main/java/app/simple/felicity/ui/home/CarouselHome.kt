@@ -13,8 +13,8 @@ import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
-import app.simple.felicity.repository.models.Song
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.ui.pages.GenrePage
@@ -51,7 +51,7 @@ class CarouselHome : MediaFragment() {
                     Log.d(TAG, "Item clicked at position: $position")
                     if (data[position].items.isNotEmpty()) {
                         when (data[position].items[0]) {
-                            is Song -> {
+                            is Audio -> {
                                 // setMediaItems(data[position].items.filterIsInstance<Song>(), itemPosition)
                             }
                             is Genre -> {
@@ -77,7 +77,7 @@ class CarouselHome : MediaFragment() {
                     Log.d(TAG, "Carousel clicked at position: $position")
                     if (data[position].items.isNotEmpty()) {
                         when (data[position].items[0]) {
-                            is Song -> {
+                            is Audio -> {
                                 // openFragment(ArtFlowRv.newInstance(), ArtFlowRv.TAG)
                                 openFragment(ArtFlow.newInstance(), ArtFlow.TAG)
                             }

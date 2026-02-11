@@ -19,9 +19,8 @@ import app.simple.felicity.repository.database.instances.SongStatDatabase
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.models.Song
-import app.simple.felicity.repository.utils.SongUtils
-import app.simple.felicity.repository.utils.SongUtils.createSongStat
+import app.simple.felicity.repository.utils.AudioUtils
+import app.simple.felicity.repository.utils.AudioUtils.createSongStat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -92,11 +91,11 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         }
     }
 
-    private fun createStatForSong(song: Song) {
+    private fun createStatForSong(song: Audio) {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val songStatDatabase = SongStatDatabase.getInstance(requireContext())
             val songStatDao = songStatDatabase.songStatDao()
-            val existingStat = songStatDao.getSongStatByStableId(SongUtils.generateStableId(song))
+            val existingStat = songStatDao.getSongStatByStableId(AudioUtils.generateStableId(song))
 
             if (existingStat == null) {
                 songStatDao.insertSongStat(song.createSongStat(existingStat))

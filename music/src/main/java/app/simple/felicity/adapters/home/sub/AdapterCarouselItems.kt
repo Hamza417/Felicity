@@ -11,8 +11,8 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
-import app.simple.felicity.repository.models.Song
 import app.simple.felicity.shared.utils.ViewUtils.gone
 
 class AdapterCarouselItems(private val data: ArtFlowData<Any>) : RecyclerView.Adapter<AdapterCarouselItems.Holder>() {
@@ -35,7 +35,7 @@ class AdapterCarouselItems(private val data: ArtFlowData<Any>) : RecyclerView.Ad
             holder.binding.art.loadArtCoverWithPayload(item)
 
             when (item) {
-                is Song -> {
+                is Audio -> {
                     holder.binding.title.text = item.title ?: holder.getContext().getString(R.string.unknown)
                     holder.binding.artist.text = item.artist ?: holder.getContext().getString(R.string.unknown)
                 }

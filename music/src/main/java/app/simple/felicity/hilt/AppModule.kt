@@ -5,8 +5,6 @@ import app.simple.felicity.repository.loader.AudioDatabaseLoader
 import app.simple.felicity.repository.repositories.AlbumRepository
 import app.simple.felicity.repository.repositories.ArtistRepository
 import app.simple.felicity.repository.repositories.AudioRepository
-import app.simple.felicity.repository.repositories.GenreRepository
-import app.simple.felicity.repository.repositories.SongRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,20 +17,8 @@ import javax.inject.Singleton
 object AppModule {
     @Provides
     @Singleton
-    fun provideSongRepository(@ApplicationContext context: Context): SongRepository {
-        return SongRepository(context)
-    }
-
-    @Provides
-    @Singleton
     fun provideAlbumRepository(@ApplicationContext context: Context): AlbumRepository {
         return AlbumRepository(context)
-    }
-
-    @Provides
-    @Singleton
-    fun provideGenreRepository(@ApplicationContext context: Context): GenreRepository {
-        return GenreRepository(context)
     }
 
     @Provides

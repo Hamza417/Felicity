@@ -13,7 +13,7 @@ import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutMa
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.models.ArtFlowData
-import app.simple.felicity.repository.models.Song
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.utils.ArrayUtils.getTwoRandomIndices
 
 class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
@@ -113,11 +113,11 @@ class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.A
         }
     }
 
-    private fun findRandomSongFromData(): Song? {
+    private fun findRandomSongFromData(): Audio? {
         data.forEach {
-            if (it.items.random() is Song) {
+            if (it.items.random() is Audio) {
                 Log.d("AdapterGridHome", "Found a random song in data")
-                return it.items.random() as Song
+                return it.items.random() as Audio
             }
         }
 

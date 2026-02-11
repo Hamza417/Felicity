@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.os.Build
 import android.util.Size
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
@@ -15,7 +14,6 @@ import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.covers.GenreCover
 import app.simple.felicity.repository.maps.GenreMap
 import app.simple.felicity.repository.models.Genre
-import app.simple.felicity.repository.repositories.GenreRepository
 import app.simple.felicity.shared.helpers.ImageHelper.toBitmap
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
@@ -39,7 +37,8 @@ class GenreCoverFetcher internal constructor(private val context: Context, priva
                 }
             }
             else -> {
-                val albumArts = GenreRepository(context).fetchAlbumArtUrisForGenre(genre.id, count = 9)
+                // TODO
+                val albumArts = emptyList<String>().toMutableList()
 
                 val count = when {
                     albumArts.size >= 9 -> 9
@@ -61,17 +60,11 @@ class GenreCoverFetcher internal constructor(private val context: Context, priva
                 for (str in albumArts.take(count)) {
                     val uri = str.toUri()
                     val bmp = try {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            context.contentResolver.loadThumbnail(uri, Size(cellSize, cellSize), null)
-                        } else {
-                            context.contentResolver.openInputStream(uri)?.use { input ->
-                                BitmapFactory.decodeStream(input)
-                            }
-                        }
+                        context.contentResolver.loadThumbnail(uri, Size(cellSize, cellSize), null)
                     } catch (e: FileNotFoundException) {
                         R.drawable.ic_felicity_full_art.toBitmap(context)
                     }
-                    bmp?.let { bitmaps.add(it) }
+                    bmp.let { bitmaps.add(it) }
                 }
 
                 if (bitmaps.isEmpty()) {
