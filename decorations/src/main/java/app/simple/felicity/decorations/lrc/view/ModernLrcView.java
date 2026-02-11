@@ -96,6 +96,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private TextPaint normalPaint;
     private TextPaint currentPaint;
     private Paint fadePaint;
+    // Cache for blur mask filters to avoid constant recreation
+    private final HashMap <Float, BlurMaskFilter> blurMaskFilters = new HashMap <>();
     // Styling properties
     private float normalTextSize;
     private float currentTextSize;
@@ -297,8 +299,17 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             // Calculate and apply blur based on distance from center (proportional to fade)
             if (enableFade) {
                 float blurAmount = calculateBlurAmount(y, getHeight());
-                if (blurAmount > 0) {
-                    paint.setMaskFilter(new BlurMaskFilter(blurAmount, BlurMaskFilter.Blur.NORMAL));
+                if (blurAmount > 0.5f) { // Only apply blur if significant
+                    // Round to nearest 0.5 to reduce unique filter instances
+                    float roundedBlur = Math.round(blurAmount * 2f) / 2f;
+                    
+                    // Get or create cached blur filter
+                    BlurMaskFilter blurFilter = blurMaskFilters.get(roundedBlur);
+                    if (blurFilter == null) {
+                        blurFilter = new BlurMaskFilter(roundedBlur, BlurMaskFilter.Blur.NORMAL);
+                        blurMaskFilters.put(roundedBlur, blurFilter);
+                    }
+                    paint.setMaskFilter(blurFilter);
                 } else {
                     paint.setMaskFilter(null);
                 }
@@ -429,10 +440,10 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             }
         }
         
-        // No animation in progress, return static size based on previous state
-        // Check if this was the previous current line
-        if (lineIndex == previousLineIndex) {
-            return currentTextSize; // It was highlighted, so it should be large
+        // No animation in progress, return static size based on current state
+        // Only the current line should be highlighted
+        if (lineIndex == currentLineIndex) {
+            return currentTextSize;
         }
         
         // For all other cases, return normal size
@@ -474,12 +485,17 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         });
         
         animation.addEndListener((anim, canceled, value, velocity) -> {
-            if (!canceled) {
-                animatedTextSizes.put(lineIndex, targetSize);
-                // Clean up animation reference
-                textSizeAnimations.remove(lineIndex);
-                invalidate();
+            // Always set final value and clean up
+            animatedTextSizes.put(lineIndex, targetSize);
+            textSizeAnimations.remove(lineIndex);
+            
+            // If we're animating to normal size and we're done, remove from cache entirely
+            // This ensures fresh state next time
+            if (Math.abs(targetSize - normalTextSize) < 0.1f && lineIndex != currentLineIndex) {
+                animatedTextSizes.remove(lineIndex);
             }
+            
+            invalidate();
         });
         
         // Store animation reference
@@ -514,12 +530,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         });
         
         animation.addEndListener((anim, canceled, value, velocity) -> {
-            if (!canceled) {
-                animatedHeights.put(lineIndex, toHeight);
-                // Clean up animation reference
-                heightAnimations.remove(lineIndex);
-                invalidate();
-            }
+            animatedHeights.put(lineIndex, toHeight);
+            heightAnimations.remove(lineIndex);
+            invalidate();
         });
         
         // Store animation reference
@@ -592,23 +605,20 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             default -> Layout.Alignment.ALIGN_CENTER;
         };
         
-        // Determine which size we're rendering at
-        boolean isCurrentLine = (lineIndex == currentLineIndex);
-        boolean isUsingCurrentSize = Math.abs(paint.getTextSize() - currentTextSize) < 1f;
+        // Determine which size we're rendering at by checking the paint's actual size
+        float currentPaintSize = paint.getTextSize();
+        boolean isUsingCurrentSize = Math.abs(currentPaintSize - currentTextSize) < 1f;
         
-        // Try to use cached layout
+        // Try to use cached layout for the correct size
         HashMap<Integer, StaticLayout> cache = isUsingCurrentSize ? currentLayoutCache : normalLayoutCache;
         StaticLayout cachedLayout = cache.get(lineIndex);
         
-        // If this line is transitioning from highlighted to normal, don't use cached layout
-        // Force recreation to ensure proper line count (e.g., 2 lines back to 1 line)
-        boolean isTransitioningToNormal = !isCurrentLine && previousLineIndex == lineIndex;
-        
-        if (cachedLayout != null && !isTransitioningToNormal) {
-            // Return cached layout
+        // Use cached layout if it exists and was created at the same text size
+        if (cachedLayout != null) {
             return cachedLayout;
         }
         
+        // No cached layout - create new one at the current paint size
         // Check if text will fit on one line at current size
         float textWidth = paint.measureText(text);
         boolean needsWrapping = textWidth > availableWidth;
@@ -635,23 +645,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         // Cache it
         cache.put(lineIndex, layout);
         
-        // Get height and check for changes
+        // Update height tracking
         float newHeight = (float) layout.getHeight();
         Float previousHeight = layoutHeights.get(lineIndex);
-        
-        // Save pre-highlight height when line is in normal state (not current)
-        if (!isCurrentLine && !preHighlightHeights.containsKey(lineIndex)) {
-            preHighlightHeights.put(lineIndex, newHeight);
-        }
-        
-        // If this line is being unhighlighted, restore to pre-highlight height
-        if (!isCurrentLine && previousLineIndex == lineIndex && preHighlightHeights.containsKey(lineIndex)) {
-            Float savedPreHeight = preHighlightHeights.get(lineIndex);
-            if (savedPreHeight != null) {
-                // Use the saved pre-highlight height as target
-                newHeight = savedPreHeight;
-            }
-        }
         
         // If layoutHeights was cleared but we still have an animated height, use that as the "previous"
         if (previousHeight == null) {
@@ -659,13 +655,13 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         }
         
         if (previousHeight != null && Math.abs(previousHeight - newHeight) > 1f) {
-            // Height changed - animate the transition from current animated height to new height
+            // Height changed - animate the transition
             animateHeight(lineIndex, previousHeight, newHeight);
         } else if (previousHeight == null) {
-            // First time ever - set directly without animation
+            // First time - set directly without animation
             animatedHeights.put(lineIndex, newHeight);
         } else {
-            // Height hasn't changed significantly - just update the animated height
+            // Height hasn't changed significantly
             animatedHeights.put(lineIndex, newHeight);
         }
         
@@ -714,14 +710,24 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.layoutHeights.clear();
         this.preHighlightHeights.clear();
         this.animatedHeights.clear();
+        this.animatedTextSizes.clear();
+        this.blurMaskFilters.clear();
         
-        // Cancel all height animations
-        for (SpringAnimation animation : heightAnimations.values()) {
-            if (animation.isRunning()) {
+        // Cancel all height animations - create a copy to avoid ConcurrentModificationException
+        for (SpringAnimation animation : new java.util.ArrayList <>(heightAnimations.values())) {
+            if (animation != null && animation.isRunning()) {
                 animation.cancel();
             }
         }
         heightAnimations.clear();
+        
+        // Cancel all text size animations - create a copy to avoid ConcurrentModificationException
+        for (SpringAnimation animation : new java.util.ArrayList <>(textSizeAnimations.values())) {
+            if (animation != null && animation.isRunning()) {
+                animation.cancel();
+            }
+        }
+        textSizeAnimations.clear();
         
         invalidate();
     }
@@ -743,28 +749,15 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         if (newLineIndex != currentLineIndex) {
             // Store previous line index
             previousLineIndex = currentLineIndex;
-            
-            // Clear cached layouts and heights for lines that are changing state
-            // This forces recalculation and proper height animation
-            if (previousLineIndex >= 0) {
-                normalLayoutCache.remove(previousLineIndex);
-                currentLayoutCache.remove(previousLineIndex);
-                layoutHeights.remove(previousLineIndex);
-                // Don't remove animatedHeights yet - let animation complete naturally
-            }
-            if (newLineIndex >= 0) {
-                normalLayoutCache.remove(newLineIndex);
-                currentLayoutCache.remove(newLineIndex);
-                layoutHeights.remove(newLineIndex);
-                // Don't remove animatedHeights yet - let animation complete naturally
-            }
-            
             currentLineIndex = newLineIndex;
             
             // Animate text size changes
             if (previousLineIndex >= 0 && previousLineIndex < lrcData.size()) {
                 // Animate previous line to normal size
                 animateTextSize(previousLineIndex, normalTextSize);
+                // Clear cached layouts for the previous line to force recalculation at new size
+                normalLayoutCache.remove(previousLineIndex);
+                currentLayoutCache.remove(previousLineIndex);
             }
             
             if (currentLineIndex >= 0 && currentLineIndex < lrcData.size()) {
@@ -777,6 +770,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                     // For empty lines, keep normal text size
                     animateTextSize(currentLineIndex, normalTextSize);
                 }
+                // Clear cached layouts for the current line to force recalculation at new size
+                normalLayoutCache.remove(currentLineIndex);
+                currentLayoutCache.remove(currentLineIndex);
             }
             
             // Only auto-scroll if not user scrolling, auto-scroll is enabled, and not from a tap seek
@@ -787,6 +783,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             // Reset tap seek flag after processing
             isTapSeek = false;
             
+            // Only invalidate once per line change, not on every time update
             invalidate();
         }
     }
@@ -1158,14 +1155,24 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.layoutHeights.clear();
         this.preHighlightHeights.clear();
         this.animatedHeights.clear();
+        this.animatedTextSizes.clear();
+        this.blurMaskFilters.clear();
         
-        // Cancel all height animations
-        for (SpringAnimation animation : heightAnimations.values()) {
-            if (animation.isRunning()) {
+        // Cancel all height animations - create a copy to avoid ConcurrentModificationException
+        for (SpringAnimation animation : new java.util.ArrayList <>(heightAnimations.values())) {
+            if (animation != null && animation.isRunning()) {
                 animation.cancel();
             }
         }
         heightAnimations.clear();
+        
+        // Cancel all text size animations - create a copy to avoid ConcurrentModificationException
+        for (SpringAnimation animation : new java.util.ArrayList <>(textSizeAnimations.values())) {
+            if (animation != null && animation.isRunning()) {
+                animation.cancel();
+            }
+        }
+        textSizeAnimations.clear();
         
         removeCallbacks(autoScrollRunnable);
         if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
@@ -1380,7 +1387,6 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             flingAnimation.setMaxValue(maxScroll + maxOverscrollDistance);
             
             flingAnimation.addUpdateListener((animation, value, velocity) -> {
-                // Directly set the scroll position - no damping formula during fling
                 scrollY = value;
                 
                 // Track if we're in overscroll

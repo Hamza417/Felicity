@@ -46,7 +46,6 @@ class Lyrics : MediaFragment() {
 
     override fun onSeekChanged(seek: Long) {
         super.onSeekChanged(seek)
-        lyricsViewModel.loadLrcData()
         binding.lrc.updateTime(seek)
     }
 
