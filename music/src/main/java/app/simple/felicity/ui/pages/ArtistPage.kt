@@ -10,7 +10,7 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.page.ArtistDetailsAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentPageArtistBinding
-import app.simple.felicity.decorations.itemdecorations.SongHolderSpacingItemDecoration
+import app.simple.felicity.decorations.itemdecorations.PageSpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.popups.PopupArtistMenu
 import app.simple.felicity.preferences.AppearancePreferences
@@ -57,7 +57,7 @@ class ArtistPage : MediaFragment() {
         artistViewerViewModel.getData().observe(viewLifecycleOwner) { data ->
             Log.i(TAG, "onViewCreated: Received songs for genre: ${artist.name}, count: ${data.songs}")
             val adapter = ArtistDetailsAdapter(data, artist)
-            binding.recyclerView.addItemDecoration(SongHolderSpacingItemDecoration(48, AppearancePreferences.getListSpacing().toInt()))
+            binding.recyclerView.addItemDecoration(PageSpacingItemDecoration(48, AppearancePreferences.getListSpacing().toInt()))
             binding.recyclerView.adapter = adapter
 
             adapter.setArtistAdapterListener(object : GeneralAdapterCallbacks {

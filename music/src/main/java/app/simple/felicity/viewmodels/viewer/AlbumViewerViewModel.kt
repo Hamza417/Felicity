@@ -24,7 +24,7 @@ class AlbumViewerViewModel @AssistedInject constructor(
         private val audioRepository: AudioRepository
 ) : ViewModel() {
 
-    private val _data = MutableStateFlow<PageData>(PageData())
+    private val _data = MutableStateFlow(PageData())
     val data: StateFlow<PageData> = _data.asStateFlow()
 
     init {

@@ -3,9 +3,9 @@ package app.simple.felicity.decorations.itemdecorations
 import android.graphics.Rect
 import android.view.View
 import androidx.recyclerview.widget.RecyclerView
-import app.simple.felicity.decorations.utils.RecyclerViewUtils
+import app.simple.felicity.shared.constants.PageConstants
 
-class SongHolderSpacingItemDecoration(
+class PageSpacingItemDecoration(
         private val horizontalSpacing: Int,
         private val verticalSpacing: Int,
         private val leftEdge: Boolean = true,
@@ -18,11 +18,13 @@ class SongHolderSpacingItemDecoration(
         val position = parent.getChildAdapterPosition(view)
         val viewType = parent.adapter?.getItemViewType(position)
 
-        if (viewType == RecyclerViewUtils.TYPE_ITEM) {
-            outRect.left = if (leftEdge) horizontalSpacing else 0
-            outRect.right = if (rightEdge) horizontalSpacing else 0
-            outRect.top = if (topEdge && position == 1) verticalSpacing else 0
-            outRect.bottom = if (bottomEdge) verticalSpacing else 0
+        when (viewType) {
+            PageConstants.VIEW_TYPE_SONG -> {
+                outRect.left = if (leftEdge) horizontalSpacing else 0
+                outRect.right = if (rightEdge) horizontalSpacing else 0
+                outRect.top = if (topEdge && position == 1) verticalSpacing.div(2) else 0
+                outRect.bottom = if (bottomEdge) verticalSpacing.div(2) else 0
+            }
         }
     }
 }

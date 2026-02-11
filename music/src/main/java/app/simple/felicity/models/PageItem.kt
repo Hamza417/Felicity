@@ -5,7 +5,7 @@ import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
 
-sealed class AlbumPageItem {
+sealed class PageItem {
     /**
      * Header with album info, art flow, and controls
      */
@@ -15,7 +15,7 @@ sealed class AlbumPageItem {
             val totalDuration: Long,
             val albumArtists: List<Artist>,
             val songs: List<Audio>
-    ) : AlbumPageItem()
+    ) : PageItem()
 
     /**
      * Sub-header carousel for albums from this artist
@@ -23,21 +23,21 @@ sealed class AlbumPageItem {
     data class AlbumsSection(
             val albums: List<Album>,
             val artistName: String?
-    ) : AlbumPageItem()
+    ) : PageItem()
 
     /**
      * Sub-header carousel for artists in this album
      */
     data class ArtistsSection(
             val artists: List<Artist>
-    ) : AlbumPageItem()
+    ) : PageItem()
 
     /**
      * Sub-header carousel for genres in this album
      */
     data class GenresSection(
             val genres: List<Genre>
-    ) : AlbumPageItem()
+    ) : PageItem()
 
     /**
      * Individual song item
@@ -46,6 +46,6 @@ sealed class AlbumPageItem {
             val audio: Audio,
             val position: Int, // Position in the songs list
             val allSongs: List<Audio> // Reference to all songs for playback
-    ) : AlbumPageItem()
+    ) : PageItem()
 }
 

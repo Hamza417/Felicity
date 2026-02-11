@@ -12,10 +12,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
-import app.simple.felicity.adapters.ui.page.AlbumPageAdapter
+import app.simple.felicity.adapters.ui.page.PageAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentPageArtistBinding
-import app.simple.felicity.decorations.itemdecorations.SongHolderSpacingItemDecoration
+import app.simple.felicity.decorations.itemdecorations.PageSpacingItemDecoration
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.popups.PopupArtistMenu
 import app.simple.felicity.preferences.AppearancePreferences
@@ -66,11 +66,6 @@ class AlbumPage : MediaFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 albumViewerViewModel.data.collect { data ->
-                    Log.i(TAG, "onViewCreated: Received data for album: ${album.name}")
-                    Log.i(TAG, "  - Audios: ${data.songs.size}")
-                    Log.i(TAG, "  - Artists: ${data.artists.size}")
-                    Log.i(TAG, "  - Genres: ${data.genres.size}")
-
                     updateAlbumPage(data)
                 }
             }
@@ -78,8 +73,10 @@ class AlbumPage : MediaFragment() {
     }
 
     private fun updateAlbumPage(data: PageData) {
-        val adapter = AlbumPageAdapter(data, album)
-        binding.recyclerView.addItemDecoration(SongHolderSpacingItemDecoration(48, AppearancePreferences.getListSpacing().toInt()))
+        Log.d(TAG, "updateAlbumPage: Updating UI for album: ${album.name} with data")
+        val adapter = PageAdapter(data, album)
+        val horPad = resources.getDimensionPixelSize(R.dimen.padding_8)
+        binding.recyclerView.addItemDecoration(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
         binding.recyclerView.adapter = adapter
 
         adapter.setArtistAdapterListener(object : GeneralAdapterCallbacks {

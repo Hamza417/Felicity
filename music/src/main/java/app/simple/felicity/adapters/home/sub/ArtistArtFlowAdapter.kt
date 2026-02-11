@@ -14,7 +14,7 @@ class ArtistArtFlowAdapter(private val data: ArtFlowData<Any>)
 
     inner class Holder(val binding: AdapterArtistArtFlowBinding) : ViewHolder(binding.root)
 
-    override fun getCount(): Int = data.items.size
+    override fun getCount(): Int = data.items.size.coerceAtMost(12)
 
     override fun onCreateViewHolder(parent: ViewGroup?): Holder {
         val inflater = LayoutInflater.from(parent?.context)

@@ -13,20 +13,21 @@ import app.simple.felicity.databinding.AdapterHeaderArtistPageBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.models.AlbumPageItem
 import app.simple.felicity.models.ArtFlowData
+import app.simple.felicity.models.PageItem
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.PageData
+import app.simple.felicity.shared.constants.PageConstants
 import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.theme.managers.ThemeManager
 import com.bumptech.glide.Glide
 
-class AlbumPageAdapter(private val data: PageData, private val album: Album) :
+class PageAdapter(private val data: PageData, private val album: Album) :
         RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var listener: GeneralAdapterCallbacks? = null
-    private val items = mutableListOf<AlbumPageItem>()
+    private val items = mutableListOf<PageItem>()
 
     init {
         buildItemsList()
@@ -36,7 +37,7 @@ class AlbumPageAdapter(private val data: PageData, private val album: Album) :
         items.clear()
 
         // Add header
-        items.add(AlbumPageItem.Header(
+        items.add(PageItem.Header(
                 album = album,
                 totalSongs = data.songs.size,
                 totalDuration = data.songs.sumOf { it.duration },
@@ -46,7 +47,7 @@ class AlbumPageAdapter(private val data: PageData, private val album: Album) :
 
         // Add all songs
         data.songs.forEachIndexed { index, audio ->
-            items.add(AlbumPageItem.SongItem(
+            items.add(PageItem.SongItem(
                     audio = audio,
                     position = index,
                     allSongs = data.songs
@@ -55,7 +56,7 @@ class AlbumPageAdapter(private val data: PageData, private val album: Album) :
 
         // Add albums section if available
         if (data.albums.isNotEmpty()) {
-            items.add(AlbumPageItem.AlbumsSection(
+            items.add(PageItem.AlbumsSection(
                     albums = data.albums,
                     artistName = album.name
             ))
@@ -63,14 +64,14 @@ class AlbumPageAdapter(private val data: PageData, private val album: Album) :
 
         // Add artists section if available
         if (data.artists.isNotEmpty()) {
-            items.add(AlbumPageItem.ArtistsSection(
+            items.add(PageItem.ArtistsSection(
                     artists = data.artists
             ))
         }
 
         // Add genres section if available
         if (data.genres.isNotEmpty()) {
-            items.add(AlbumPageItem.GenresSection(
+            items.add(PageItem.GenresSection(
                     genres = data.genres
             ))
         }
@@ -79,19 +80,19 @@ class AlbumPageAdapter(private val data: PageData, private val album: Album) :
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         val inflater = LayoutInflater.from(parent.context)
         return when (viewType) {
-            VIEW_TYPE_HEADER -> {
+            PageConstants.VIEW_TYPE_HEADER -> {
                 Header(AdapterHeaderArtistPageBinding.inflate(inflater, parent, false))
             }
-            VIEW_TYPE_ALBUMS -> {
+            PageConstants.VIEW_TYPE_ALBUMS -> {
                 Albums(AdapterGenreAlbumsBinding.inflate(inflater, parent, false))
             }
-            VIEW_TYPE_ARTISTS -> {
+            PageConstants.VIEW_TYPE_ARTISTS -> {
                 Artists(AdapterGenreAlbumsBinding.inflate(inflater, parent, false))
             }
-            VIEW_TYPE_GENRES -> {
+            PageConstants.VIEW_TYPE_GENRES -> {
                 Genre(AdapterGenreAlbumsBinding.inflate(inflater, parent, false))
             }
-            VIEW_TYPE_SONG -> {
+            PageConstants.VIEW_TYPE_SONG -> {
                 Songs(AdapterStyleListBinding.inflate(inflater, parent, false))
             }
             else -> throw IllegalArgumentException("Unknown view type: $viewType")
@@ -103,23 +104,23 @@ class AlbumPageAdapter(private val data: PageData, private val album: Album) :
 
         when (holder) {
             is Header -> {
-                val headerItem = item as AlbumPageItem.Header
+                val headerItem = item as PageItem.Header
                 holder.bind(headerItem, data)
             }
             is Albums -> {
-                val albumsItem = item as AlbumPageItem.AlbumsSection
+                val albumsItem = item as PageItem.AlbumsSection
                 holder.bind(albumsItem, listener)
             }
             is Artists -> {
-                val artistsItem = item as AlbumPageItem.ArtistsSection
+                val artistsItem = item as PageItem.ArtistsSection
                 holder.bind(artistsItem, listener)
             }
             is Genre -> {
-                val genresItem = item as AlbumPageItem.GenresSection
+                val genresItem = item as PageItem.GenresSection
                 holder.bind(genresItem, listener)
             }
             is Songs -> {
-                val songItem = item as AlbumPageItem.SongItem
+                val songItem = item as PageItem.SongItem
                 holder.bind(songItem.audio)
                 holder.binding.container.setOnClickListener {
                     listener?.onSongClicked(songItem.allSongs, songItem.position, holder.binding.cover)
@@ -150,18 +151,18 @@ class AlbumPageAdapter(private val data: PageData, private val album: Album) :
 
     override fun getItemViewType(position: Int): Int {
         return when (items[position]) {
-            is AlbumPageItem.Header -> VIEW_TYPE_HEADER
-            is AlbumPageItem.AlbumsSection -> VIEW_TYPE_ALBUMS
-            is AlbumPageItem.ArtistsSection -> VIEW_TYPE_ARTISTS
-            is AlbumPageItem.GenresSection -> VIEW_TYPE_GENRES
-            is AlbumPageItem.SongItem -> VIEW_TYPE_SONG
+            is PageItem.Header -> PageConstants.VIEW_TYPE_HEADER
+            is PageItem.AlbumsSection -> PageConstants.VIEW_TYPE_ALBUMS
+            is PageItem.ArtistsSection -> PageConstants.VIEW_TYPE_ARTISTS
+            is PageItem.GenresSection -> PageConstants.VIEW_TYPE_GENRES
+            is PageItem.SongItem -> PageConstants.VIEW_TYPE_SONG
         }
     }
 
     inner class Albums(val binding: AdapterGenreAlbumsBinding) : VerticalListViewHolder(binding.root) {
         private var adapter: AdapterCarouselItems? = null
 
-        fun bind(item: AlbumPageItem.AlbumsSection, adapterListener: GeneralAdapterCallbacks?) {
+        fun bind(item: PageItem.AlbumsSection, adapterListener: GeneralAdapterCallbacks?) {
             if (item.albums.isEmpty()) {
                 binding.root.visibility = View.GONE
                 return
@@ -196,7 +197,7 @@ class AlbumPageAdapter(private val data: PageData, private val album: Album) :
     inner class Artists(val binding: AdapterGenreAlbumsBinding) : VerticalListViewHolder(binding.root) {
         private var adapter: AdapterCarouselItems? = null
 
-        fun bind(item: AlbumPageItem.ArtistsSection, adapterListener: GeneralAdapterCallbacks?) {
+        fun bind(item: PageItem.ArtistsSection, adapterListener: GeneralAdapterCallbacks?) {
             if (item.artists.isEmpty()) {
                 binding.root.visibility = View.GONE
                 return
@@ -228,7 +229,7 @@ class AlbumPageAdapter(private val data: PageData, private val album: Album) :
     inner class Genre(val binding: AdapterGenreAlbumsBinding) : VerticalListViewHolder(binding.root) {
         private var adapter: AdapterCarouselItems? = null
 
-        fun bind(item: AlbumPageItem.GenresSection, adapterListener: GeneralAdapterCallbacks?) {
+        fun bind(item: PageItem.GenresSection, adapterListener: GeneralAdapterCallbacks?) {
             if (item.genres.isEmpty()) {
                 binding.root.visibility = View.GONE
                 return
@@ -239,7 +240,8 @@ class AlbumPageAdapter(private val data: PageData, private val album: Album) :
 
             if (binding.recyclerView.adapter == null) {
                 binding.recyclerView.setHasFixedSize(true)
-                binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
+                binding.recyclerView.addItemDecoration(
+                        LinearHorizontalSpacingDecoration(24))
             }
 
             adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, item.genres))
@@ -258,7 +260,7 @@ class AlbumPageAdapter(private val data: PageData, private val album: Album) :
     }
 
     inner class Header(val binding: AdapterHeaderArtistPageBinding) : VerticalListViewHolder(binding.root) {
-        fun bind(item: AlbumPageItem.Header, pageData: PageData) {
+        fun bind(item: PageItem.Header, pageData: PageData) {
             binding.apply {
                 name.text = item.album.name ?: context.getString(R.string.unknown)
                 songs.text = item.totalSongs.toString()
@@ -284,14 +286,5 @@ class AlbumPageAdapter(private val data: PageData, private val album: Album) :
 
     fun setArtistAdapterListener(listener: GeneralAdapterCallbacks) {
         this.listener = listener
-    }
-
-    companion object {
-        // View types based on sealed class types
-        private const val VIEW_TYPE_HEADER = 0
-        private const val VIEW_TYPE_ALBUMS = 1
-        private const val VIEW_TYPE_ARTISTS = 2
-        private const val VIEW_TYPE_GENRES = 3
-        private const val VIEW_TYPE_SONG = 4
     }
 }
