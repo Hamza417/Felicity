@@ -7,7 +7,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.models.Artist
-import app.simple.felicity.repository.models.CollectionPageData
+import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.repository.repositories.AlbumRepository
 import app.simple.felicity.repository.repositories.ArtistRepository
@@ -30,8 +30,8 @@ class ArtistViewerViewModel @AssistedInject constructor(
         private val albumRepository: AlbumRepository,
         application: Application) : WrappedViewModel(application) {
 
-    private val data: MutableLiveData<CollectionPageData> by lazy {
-        MutableLiveData<CollectionPageData>().also {
+    private val data: MutableLiveData<PageData> by lazy {
+        MutableLiveData<PageData>().also {
             loadArtistSongs()
         }
     }
@@ -40,7 +40,7 @@ class ArtistViewerViewModel @AssistedInject constructor(
         MutableLiveData<List<Uri>>()
     }
 
-    fun getData(): LiveData<CollectionPageData> {
+    fun getData(): LiveData<PageData> {
         return data
     }
 

@@ -15,13 +15,13 @@ import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.models.ArtFlowData
-import app.simple.felicity.repository.models.CollectionPageData
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.theme.managers.ThemeManager
 import com.bumptech.glide.Glide
 
-class GenrePageAdapter(private val data: CollectionPageData, private val genre: Genre) :
+class GenrePageAdapter(private val data: PageData, private val genre: Genre) :
         RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null

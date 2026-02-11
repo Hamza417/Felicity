@@ -6,7 +6,7 @@ import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.models.CollectionPageData
+import app.simple.felicity.repository.models.PageData
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -168,7 +168,7 @@ class AudioRepository @Inject constructor(
      * @param album The album to get data for
      * @return Flow of CollectionPageData with audios, artists, and genres
      */
-    fun getAlbumPageData(album: Album): Flow<CollectionPageData> {
+    fun getAlbumPageData(album: Album): Flow<PageData> {
         return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
             // Filter songs by album name (using album name instead of ID since we're using local DB)
             val albumAudios = audioList.filter { it.album == album.name }
@@ -207,7 +207,7 @@ class AudioRepository @Inject constructor(
                     )
                 }
 
-            CollectionPageData(
+            PageData(
                     songs = albumAudios,
                     artists = artistsMap,
                     genres = genresMap

@@ -16,13 +16,13 @@ import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Artist
-import app.simple.felicity.repository.models.CollectionPageData
+import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.theme.managers.ThemeManager
 import com.bumptech.glide.Glide
 
-class ArtistDetailsAdapter(private val data: CollectionPageData, private val artist: Artist) :
+class ArtistDetailsAdapter(private val data: PageData, private val artist: Artist) :
         RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var listener: GeneralAdapterCallbacks? = null

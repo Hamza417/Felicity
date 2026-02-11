@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.repository.models.Album
-import app.simple.felicity.repository.models.CollectionPageData
+import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.repository.repositories.AudioRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -24,8 +24,8 @@ class AlbumViewerViewModel @AssistedInject constructor(
         private val audioRepository: AudioRepository
 ) : ViewModel() {
 
-    private val _data = MutableStateFlow<CollectionPageData>(CollectionPageData())
-    val data: StateFlow<CollectionPageData> = _data.asStateFlow()
+    private val _data = MutableStateFlow<PageData>(PageData())
+    val data: StateFlow<PageData> = _data.asStateFlow()
 
     init {
         loadAlbumData()
@@ -38,7 +38,7 @@ class AlbumViewerViewModel @AssistedInject constructor(
             audioRepository.getAlbumPageData(album)
                 .catch { exception ->
                     Log.e(TAG, "Error loading album data", exception)
-                    emit(CollectionPageData())
+                    emit(PageData())
                 }
                 .flowOn(Dispatchers.IO)
                 .collect { pageData ->

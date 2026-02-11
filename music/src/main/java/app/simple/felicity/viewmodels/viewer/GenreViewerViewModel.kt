@@ -7,8 +7,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
-import app.simple.felicity.repository.models.CollectionPageData
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.repository.repositories.ArtistRepository
 import app.simple.felicity.repository.repositories.GenreRepository
@@ -28,13 +28,13 @@ class GenreViewerViewModel @AssistedInject constructor(
         private val artistRepository: ArtistRepository
 ) : ViewModel() {
 
-    private val data: MutableLiveData<CollectionPageData> by lazy {
-        MutableLiveData<CollectionPageData>().also {
+    private val data: MutableLiveData<PageData> by lazy {
+        MutableLiveData<PageData>().also {
             loadGenreSongs()
         }
     }
 
-    fun getData(): LiveData<CollectionPageData> {
+    fun getData(): LiveData<PageData> {
         return data
     }
 

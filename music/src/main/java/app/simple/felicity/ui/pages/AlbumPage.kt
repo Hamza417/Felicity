@@ -23,8 +23,8 @@ import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.models.CollectionPageData
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.viewer.AlbumViewerViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -77,7 +77,7 @@ class AlbumPage : MediaFragment() {
         }
     }
 
-    private fun updateAlbumPage(data: CollectionPageData) {
+    private fun updateAlbumPage(data: PageData) {
         val adapter = AlbumPageAdapter(data, album)
         binding.recyclerView.addItemDecoration(SongHolderSpacingItemDecoration(48, AppearancePreferences.getListSpacing().toInt()))
         binding.recyclerView.adapter = adapter
