@@ -12,7 +12,6 @@ import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
 import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
-import app.simple.felicity.glide.songcover.SongCoverUtils.loadBlurredBWSongCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.utils.ArrayUtils.getTwoRandomIndices
@@ -109,7 +108,7 @@ class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.A
                 adapterSpannedHomeCallbacks?.onSearchClicked(it)
             }
 
-            findRandomSongFromData()?.let { binding.headerArt.loadBlurredBWSongCover(it) }
+            // findRandomSongFromData()?.let { binding.headerArt.loadBlurredBWSongCover(it) }
             binding.subContainer.background = null
         }
     }

@@ -14,9 +14,10 @@ import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.PlayerPreferences
-import app.simple.felicity.repository.database.instances.LastSongDatabase
+import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.database.instances.SongStatDatabase
 import app.simple.felicity.repository.managers.MediaManager
+import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.repository.utils.SongUtils
@@ -70,15 +71,24 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         PlayerPreferences.setLastSongId(songs.getOrNull(position)?.id ?: -1L)
         MediaManager.setSongs(songs, position)
         MediaManager.play()
-        // createSongHistoryDatabase(songs)
+        createSongHistoryDatabase(songs)
         // createStatForSong(songs[position])
     }
 
-    private fun createSongHistoryDatabase(songs: List<Song>) {
+    private fun createSongHistoryDatabase(songs: List<Audio>) {
+        val seek = MediaManager.getSeekPosition()
+        val idx = MediaManager.getCurrentPosition()
+
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val lastSongDatabase = LastSongDatabase.getInstance(requireContext())
-            val songDao = lastSongDatabase.songDao()
-            songDao.cleanInsert(songs)
+            val audioDatabase = AudioDatabase.getInstance(requireContext())
+            PlaybackStateManager.savePlaybackState(
+                    db = audioDatabase,
+                    queueIds = songs.map { it.id },
+                    index = idx,
+                    position = seek,
+                    shuffle = false,
+                    repeat = 0
+            )
         }
     }
 
@@ -165,10 +175,21 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 binding.title.text = audios[position].title
                 binding.secondaryDetail.text = audios[position].artist
                 binding.tertiaryDetail.text = audios[position].album
-
+            }.onDialogInflated { binding, dismiss ->
                 binding.play.setOnClickListener {
                     val pos = audios.indexOfFirst { it.id == audios[position].id }.coerceAtLeast(0)
                     setMediaItems(audios, pos)
+                    postDelayed {
+                        dismiss()
+                    }
+                }
+
+                binding.addToQueue.setOnClickListener {
+                    dismiss()
+                }
+
+                binding.addToPlaylist.setOnClickListener {
+
                 }
             }
             .build()

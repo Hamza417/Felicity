@@ -27,21 +27,25 @@ import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceCha
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
-import app.simple.felicity.preferences.PlayerPreferences
-import app.simple.felicity.repository.database.instances.LastSongDatabase
+import app.simple.felicity.repository.covers.AudioCover
+import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.managers.MediaManager
+import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.shared.utils.BarHeight
+import app.simple.felicity.theme.accents.AlbumArt
 import app.simple.felicity.theme.accents.Felicity
 import app.simple.felicity.theme.data.MaterialYou.presetMaterialYouDynamicColors
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.managers.ThemeUtils
 import app.simple.felicity.theme.themes.Theme
+import app.simple.felicity.theme.tools.MonetPalette
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.FileNotFoundException
 
 open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener, ThemeChangedListener {
 
@@ -97,47 +101,52 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
     private fun restoreLastSongStateFromDatabase() {
         lifecycleScope.launch(Dispatchers.Default) {
-            val lastSongDatabase = LastSongDatabase.getInstance(applicationContext)
-            val songDao = lastSongDatabase.songDao()
-            val lastSongs = songDao.getAllSongs()
+            try {
+                val audioDatabase = AudioDatabase.getInstance(applicationContext)
+                val playbackState = PlaybackStateManager.fetchPlaybackState(audioDatabase)
+                val lastSongs = PlaybackStateManager.getAudiosFromQueueIDs(audioDatabase)?.toList()!!
 
-            if (lastSongs.isNotEmpty()) {
-                withContext(Dispatchers.Main) {
-                    //                    MediaManager.setSongs(
-                    //                            audios = lastSongs,
-                    //                            position = PlayerPreferences.getLastSongPosition(),
-                    //                            startPositionMs = PlayerPreferences.getLastSongSeek())
-                    MediaManager.seekTo(PlayerPreferences.getLastSongSeek())
+                if (lastSongs.isNotEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        MediaManager.setSongs(
+                                audios = lastSongs,
+                                position = playbackState?.index ?: 0,
+                                startPositionMs = playbackState?.position ?: 0L,
+                        )
+                        MediaManager.seekTo(playbackState?.position ?: 0L)
+                    }
+                } else {
+                    Log.d(TAG, "No last songs found in the database")
                 }
-            } else {
-                Log.d(TAG, "No last songs found in the database")
+            } catch (e: NullPointerException) {
+                Log.e(TAG, "Error restoring last song state: ${e.message}")
+                e.printStackTrace()
             }
-
         }
     }
 
     protected fun generateAlbumArtPalette() {
         lifecycleScope.launch(Dispatchers.Default) {
-            //            if (AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER) {
-            //                try {
-            //                    val song = MediaManager.getCurrentSong() ?: return@launch
-            //                    val bitmap = song.fetchBitmap(applicationContext) ?: return@launch
-            //                    val albumArtAccent = AlbumArt()
-            //                    val monetAccents = MonetPalette(bitmap)
-            //
-            //                    albumArtAccent.primaryAccentColor = monetAccents.accent1_500
-            //                    albumArtAccent.secondaryAccentColor = monetAccents.accent1_300
-            //
-            //                    withContext(Dispatchers.Main) {
-            //                        ThemeManager.accent = albumArtAccent
-            //                        Log.d(TAG, "Album art palette generated: ${albumArtAccent.hexes}")
-            //                    }
-            //                } catch (e: NullPointerException) {
-            //                    e.printStackTrace()
-            //                } catch (e: FileNotFoundException) {
-            //                    e.printStackTrace()
-            //                }
-            //            }
+            if (AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER) {
+                try {
+                    val audio = MediaManager.getCurrentSong() ?: return@launch
+                    val bitmap = AudioCover.load(audio) ?: return@launch
+                    val albumArtAccent = AlbumArt()
+                    val monetAccents = MonetPalette(bitmap)
+
+                    albumArtAccent.primaryAccentColor = monetAccents.accent1_500
+                    albumArtAccent.secondaryAccentColor = monetAccents.accent1_300
+
+                    withContext(Dispatchers.Main) {
+                        ThemeManager.accent = albumArtAccent
+                        Log.d(TAG, "Album art palette generated: ${albumArtAccent.hexes}")
+                    }
+                } catch (e: NullPointerException) {
+                    e.printStackTrace()
+                } catch (e: FileNotFoundException) {
+                    e.printStackTrace()
+                }
+            }
         }
     }
 
@@ -159,16 +168,11 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
         WindowCompat.setDecorFitsSystemWindows(window, false)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window.navigationBarDividerColor = Color.TRANSPARENT
-        }
+        window.navigationBarDividerColor = Color.TRANSPARENT
     }
 
     private fun enableNotchArea() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-        }
+        window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
     }
 
     private fun setStrictModePolicy() {
@@ -224,8 +228,6 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         } catch (e: NullPointerException) {
             e.printStackTrace()
         }
-
-        LastSongDatabase.getInstance(this.applicationContext).close()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {

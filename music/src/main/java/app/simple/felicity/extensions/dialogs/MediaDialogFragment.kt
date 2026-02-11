@@ -3,9 +3,11 @@ package app.simple.felicity.extensions.dialogs
 import android.util.Log
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.preferences.PlayerPreferences
-import app.simple.felicity.repository.database.instances.LastSongDatabase
+import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.database.instances.SongStatDatabase
 import app.simple.felicity.repository.managers.MediaManager
+import app.simple.felicity.repository.managers.PlaybackStateManager
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Song
 import app.simple.felicity.repository.utils.SongUtils
 import app.simple.felicity.repository.utils.SongUtils.createSongStat
@@ -14,20 +16,25 @@ import kotlinx.coroutines.launch
 
 abstract class MediaDialogFragment : ScopedBottomSheetFragment() {
 
-    protected fun setMediaItems(songs: List<Song>, position: Int = 0) {
+    protected fun setMediaItems(songs: List<Audio>, position: Int = 0) {
         PlayerPreferences.setLastSongPosition(position)
         PlayerPreferences.setLastSongId(songs.getOrNull(position)?.id ?: -1L)
         // MediaManager.setSongs(songs, position)
         MediaManager.play()
         createSongHistoryDatabase(songs)
-        createStatForSong(songs[position])
     }
 
-    private fun createSongHistoryDatabase(songs: List<Song>) {
+    private fun createSongHistoryDatabase(songs: List<Audio>) {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val lastSongDatabase = LastSongDatabase.getInstance(requireContext())
-            val songDao = lastSongDatabase.songDao()
-            songDao.cleanInsert(songs)
+            val audioDatabase = AudioDatabase.getInstance(requireContext())
+            PlaybackStateManager.savePlaybackState(
+                    db = audioDatabase,
+                    queueIds = songs.map { it.id },
+                    index = MediaManager.getCurrentPosition(),
+                    position = MediaManager.getSeekPosition(),
+                    shuffle = false,
+                    repeat = 0
+            )
         }
     }
 

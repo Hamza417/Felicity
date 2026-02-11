@@ -30,7 +30,7 @@ class SongMenu : MediaDialogFragment() {
 
         binding.play.setOnClickListener {
             val position = songs.indexOfFirst { it.id == songId }.coerceAtLeast(0)
-            setMediaItems(songs, position)
+            // setMediaItems(songs, position)
             dismiss()
         }
     }

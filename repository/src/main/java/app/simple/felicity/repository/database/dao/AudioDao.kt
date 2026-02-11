@@ -44,6 +44,9 @@ interface AudioDao {
     @RawQuery
     fun getQueriedData(query: SupportSQLiteQuery): MutableList<Audio>
 
+    @RawQuery
+    fun getAudioByIDs(query: SupportSQLiteQuery): MutableList<Audio>
+
     /**
      * Delete a [Audio] item
      * from the table

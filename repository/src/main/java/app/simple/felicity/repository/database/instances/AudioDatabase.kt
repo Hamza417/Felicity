@@ -5,52 +5,43 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import app.simple.felicity.repository.database.dao.AudioDao
+import app.simple.felicity.repository.database.dao.PlaybackStateDao
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.shared.utils.ConditionUtils.invert
+import app.simple.felicity.repository.models.PlaybackState
 
-@Database(entities = [Audio::class], exportSchema = true, version = 1)
+@Database(
+        entities = [
+            Audio::class,
+            PlaybackState::class
+        ],
+        version = 2,
+        exportSchema = true
+)
 abstract class AudioDatabase : RoomDatabase() {
-    abstract fun audioDao(): AudioDao?
+
+    abstract fun audioDao(): AudioDao
+    abstract fun playbackStateDao(): PlaybackStateDao
 
     companion object {
-        private var instance: AudioDatabase? = null
         private const val DB_NAME = "audio.db"
 
-        @Synchronized
-        fun init(context: Context) {
-            kotlin.runCatching {
-                if (instance!!.isOpen.invert()) {
-                    instance = Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                        .fallbackToDestructiveMigration()
-                        .build()
+        @Volatile
+        private var instance: AudioDatabase? = null
+
+        fun getInstance(context: Context): AudioDatabase {
+            return instance ?: synchronized(this) {
+                instance ?: buildDatabase(context.applicationContext).also {
+                    instance = it
                 }
-            }.getOrElse {
-                instance = Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                    .fallbackToDestructiveMigration()
-                    .build()
             }
         }
 
-        @Synchronized
-        fun getInstance(context: Context): AudioDatabase? {
-            kotlin.runCatching {
-                if (instance!!.isOpen.invert()) {
-                    instance = Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                        .fallbackToDestructiveMigration()
-                        .build()
-                }
-            }.getOrElse {
-                instance = Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                    .fallbackToDestructiveMigration()
-                    .build()
-            }
+        fun getInstance(): AudioDatabase? = instance
 
-            return instance
-        }
-
-        @Synchronized
-        fun getInstance(): AudioDatabase? {
-            return instance
+        private fun buildDatabase(context: Context): AudioDatabase {
+            return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
+                .fallbackToDestructiveMigration()
+                .build()
         }
     }
 }
