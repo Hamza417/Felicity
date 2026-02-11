@@ -66,7 +66,7 @@ class AlbumPage : MediaFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 albumViewerViewModel.data.collect { data ->
-                    updateAlbumPage(data)
+                    data?.let { updateAlbumPage(it) }
                 }
             }
         }
@@ -75,7 +75,7 @@ class AlbumPage : MediaFragment() {
     private fun updateAlbumPage(data: PageData) {
         Log.d(TAG, "updateAlbumPage: Updating UI for album: ${album.name} with data")
         val adapter = PageAdapter(data, album)
-        val horPad = resources.getDimensionPixelSize(R.dimen.padding_8)
+        val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
         binding.recyclerView.addItemDecoration(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
         binding.recyclerView.adapter = adapter
 
