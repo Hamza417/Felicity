@@ -207,8 +207,8 @@ class Songs : PanelFragment() {
         headerBinding.sortOrder.setSongOrder()
     }
 
-    override fun onSong(audio: Audio) {
-        super.onSong(audio)
+    override fun onAudio(audio: Audio) {
+        super.onAudio(audio)
         songsAdapter?.currentlyPlayingSong = audio
     }
 

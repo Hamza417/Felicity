@@ -47,7 +47,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 Log.d(TAG, "Song position: $position")
                 PlayerPreferences.setLastSongPosition(position)
                 MediaManager.getCurrentSong()?.let { song ->
-                    onSong(song)
+                    onAudio(song)
                 }
                 onPositionChanged(position)
             }
@@ -152,7 +152,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         Log.d(TAG, "Playback state changed: $state")
     }
 
-    open fun onSong(audio: Audio) {
+    open fun onAudio(audio: Audio) {
         Log.d(TAG, "New song played: ${audio.title} by ${audio.artist}")
     }
 

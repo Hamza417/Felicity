@@ -153,7 +153,11 @@ public class JAudioMetadataLoader {
     }
     
     private long getDuration() {
-        return audioFile.getAudioHeader().getTrackLength();
+        // Get precise track length in seconds (can be a decimal)
+        // in format 30.450 which means 30 seconds and 450 milliseconds
+        double length = audioFile.getAudioHeader().getPreciseTrackLength();
+        // Convert to exact milliseconds
+        return (long) (length * 1000);
     }
     
     private String getNumTracks() {

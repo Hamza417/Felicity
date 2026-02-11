@@ -50,8 +50,8 @@ class Lyrics : MediaFragment() {
         binding.lrc.updateTime(seek)
     }
 
-    override fun onSong(audio: Audio) {
-        super.onSong(audio)
+    override fun onAudio(audio: Audio) {
+        super.onAudio(audio)
         lyricsViewModel.getLrcData()
         binding.name.text = audio.title
         binding.artist.text = audio.artist
