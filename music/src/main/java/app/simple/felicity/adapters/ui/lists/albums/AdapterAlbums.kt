@@ -9,13 +9,11 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterStyleGridBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
-import app.simple.felicity.databinding.AdapterStylePeristyleBinding
 import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.ViewUtils.clearSkeletonBackground
 import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
-import app.simple.felicity.glide.util.AudioCoverUtils.loadPeristyleArtCover
 import app.simple.felicity.preferences.AlbumPreferences
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.shared.utils.TextViewUtils.setTextOrUnknown
@@ -46,9 +44,6 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
             CommonPreferencesConstants.GRID_TYPE_GRID -> {
                 GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
-            CommonPreferencesConstants.GRID_TYPE_PERISTYLE -> {
-                PeristyleHolder(AdapterStylePeristyleBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-            }
             else -> throw IllegalArgumentException("Invalid view type")
         }
     }
@@ -65,7 +60,6 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
         when (holder) {
             is ListHolder -> holder.bind(album, isLightBind)
             is GridHolder -> holder.bind(album, isLightBind)
-            is PeristyleHolder -> holder.bind(album, isLightBind)
         }
     }
 
@@ -78,7 +72,6 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
         when (holder) {
             is ListHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
             is GridHolder -> Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
-            is PeristyleHolder -> Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
         }
     }
 
@@ -165,25 +158,6 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
             binding.tertiaryDetail.setTextOrUnknown(album.artist)
             binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
             binding.albumArt.loadArtCoverWithPayload(album)
-            binding.container.setOnLongClickListener {
-                generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)
-                true
-            }
-            binding.container.setOnClickListener {
-                generalAdapterCallbacks?.onAlbumClicked(albums, bindingAdapterPosition, it)
-            }
-        }
-    }
-
-    inner class PeristyleHolder(val binding: AdapterStylePeristyleBinding) : VerticalListViewHolder(binding.root) {
-        fun bind(album: Album, isLightBind: Boolean) {
-            if (isLightBind) {
-                binding.container.setSkeletonBackground(enable = true)
-                return
-            }
-            binding.container.clearSkeletonBackground()
-            binding.albumArt.loadPeristyleArtCover(album)
-            binding.title.text = album.name
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)
                 true

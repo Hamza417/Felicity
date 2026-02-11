@@ -35,5 +35,4 @@ object CommonPreferencesConstants {
     // Grid type constants
     const val GRID_TYPE_LIST = 0
     const val GRID_TYPE_GRID = 1
-    const val GRID_TYPE_PERISTYLE = 2
 }

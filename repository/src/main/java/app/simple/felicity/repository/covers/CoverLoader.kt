@@ -53,7 +53,24 @@ internal object CoverLoader {
             }
         }
 
-        return null
+        // Look for first image file in the directory as a fallback
+        val imageFiles = directory.listFiles { file ->
+            file.isFile && file.canRead() && (file.name.endsWith(".jpg", true
+            ) || file.name.endsWith(".png", true))
+        } ?: return null
+
+        return imageFiles.asSequence()
+            .mapNotNull { file ->
+                try {
+                    BitmapFactory.decodeFile(file.absolutePath)?.also {
+                        Log.d(TAG, "Found fallback external art: ${file.name}")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to load fallback external art from: ${file.name}", e)
+                    null
+                }
+            }
+            .firstOrNull()
     }
 
     /**
@@ -156,7 +173,8 @@ internal object CoverLoader {
 
         return listOf(
                 "$sanitizedName.jpg", "$sanitizedName.png",
-                "${sanitizedName}_cover.jpg", "${sanitizedName}_cover.png"
+                "${sanitizedName}_cover.jpg", "${sanitizedName}_cover.png",
+                "${sanitizedName}_front.jpg", "${sanitizedName}_back.png",
         )
     }
 

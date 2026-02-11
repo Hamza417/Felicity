@@ -9,13 +9,11 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterStyleGridBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
-import app.simple.felicity.databinding.AdapterStylePeristyleBinding
 import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.ViewUtils.clearSkeletonBackground
 import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
-import app.simple.felicity.glide.util.AudioCoverUtils.loadPeristyleArtCover
 import app.simple.felicity.preferences.ArtistPreferences
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.shared.utils.TextViewUtils.setTextOrUnknown
@@ -38,9 +36,6 @@ class AdapterArtists(private val artists: MutableList<Artist>) : FastScrollAdapt
             CommonPreferencesConstants.GRID_TYPE_GRID -> {
                 GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
-            CommonPreferencesConstants.GRID_TYPE_PERISTYLE -> {
-                PeristyleHolder(AdapterStylePeristyleBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-            }
             else -> throw IllegalArgumentException("Invalid view type")
         }
     }
@@ -50,7 +45,6 @@ class AdapterArtists(private val artists: MutableList<Artist>) : FastScrollAdapt
         when (holder) {
             is ListHolder -> holder.bind(artist, isLightBind)
             is GridHolder -> holder.bind(artist, isLightBind)
-            is PeristyleHolder -> holder.bind(artist, isLightBind)
         }
     }
 
@@ -151,24 +145,4 @@ class AdapterArtists(private val artists: MutableList<Artist>) : FastScrollAdapt
             }
         }
     }
-
-    inner class PeristyleHolder(val binding: AdapterStylePeristyleBinding) : VerticalListViewHolder(binding.root) {
-        fun bind(artist: Artist, isLightBind: Boolean) {
-            if (isLightBind) {
-                binding.container.setSkeletonBackground(enable = true)
-                return
-            }
-            binding.container.clearSkeletonBackground()
-            binding.albumArt.loadPeristyleArtCover(artist)
-            binding.title.text = artist.name
-            binding.container.setOnLongClickListener {
-                generalAdapterCallbacks?.onArtistLongClicked(artists, bindingAdapterPosition, it)
-                true
-            }
-            binding.container.setOnClickListener {
-                generalAdapterCallbacks?.onArtistClicked(artists, bindingAdapterPosition, it)
-            }
-        }
-    }
-
 }

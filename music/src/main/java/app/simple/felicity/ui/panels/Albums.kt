@@ -136,19 +136,16 @@ class Albums : PanelFragment() {
                     anchorView = button,
                     menuItems = listOf(
                             R.string.list,
-                            R.string.grid,
-                            R.string.peristyle,
+                            R.string.grid
                     ),
                     menuIcons = listOf(
                             R.drawable.ic_list_16dp,
                             R.drawable.ic_grid_16dp,
-                            R.drawable.ic_peristyle_16dp,
                     ),
                     onMenuItemClick = {
                         when (it) {
                             R.string.list -> AlbumPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
                             R.string.grid -> AlbumPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
-                            R.string.peristyle -> AlbumPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_PERISTYLE)
                         }
                     },
                     onDismiss = {

@@ -136,18 +136,15 @@ class Artists : PanelFragment() {
                     menuItems = listOf(
                             R.string.list,
                             R.string.grid,
-                            R.string.peristyle,
                     ),
                     menuIcons = listOf(
                             R.drawable.ic_list_16dp,
                             R.drawable.ic_grid_16dp,
-                            R.drawable.ic_peristyle_16dp,
                     ),
                     onMenuItemClick = {
                         when (it) {
                             R.string.list -> ArtistPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
                             R.string.grid -> ArtistPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
-                            R.string.peristyle -> ArtistPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_PERISTYLE)
                         }
                     },
                     onDismiss = {

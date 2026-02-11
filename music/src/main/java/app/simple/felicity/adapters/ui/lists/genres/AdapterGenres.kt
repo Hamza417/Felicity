@@ -9,13 +9,11 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterGenresListBinding
 import app.simple.felicity.databinding.AdapterStyleGridBinding
-import app.simple.felicity.databinding.AdapterStylePeristyleBinding
 import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.ViewUtils.clearSkeletonBackground
 import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
-import app.simple.felicity.glide.util.AudioCoverUtils.loadPeristyleArtCover
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.shared.utils.ViewUtils.gone
@@ -36,9 +34,6 @@ class AdapterGenres(private val list: MutableList<Genre>) : FastScrollAdapter<Ve
             CommonPreferencesConstants.GRID_TYPE_GRID -> {
                 GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
-            CommonPreferencesConstants.GRID_TYPE_PERISTYLE -> {
-                PeristyleHolder(AdapterStylePeristyleBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-            }
             else -> throw IllegalArgumentException("Invalid view type")
         }
     }
@@ -48,7 +43,6 @@ class AdapterGenres(private val list: MutableList<Genre>) : FastScrollAdapter<Ve
         when (holder) {
             is GridHolder -> holder.bind(genre, isLightBind)
             is ListHolder -> holder.bind(genre, isLightBind)
-            is PeristyleHolder -> holder.bind(genre, isLightBind)
         }
     }
 
@@ -84,21 +78,6 @@ class AdapterGenres(private val list: MutableList<Genre>) : FastScrollAdapter<Ve
             binding.container.clearSkeletonBackground()
             binding.name.text = genre.name ?: context.getString(R.string.unknown)
             binding.cover.loadArtCoverWithPayload(genre)
-            binding.container.setOnClickListener {
-                callbacks?.onGenreClicked(genre, it)
-            }
-        }
-    }
-
-    inner class PeristyleHolder(private val binding: AdapterStylePeristyleBinding) : VerticalListViewHolder(binding.root) {
-        fun bind(genre: Genre, isLightBind: Boolean) {
-            if (isLightBind) {
-                binding.container.setSkeletonBackground(enable = true)
-                return
-            }
-            binding.container.clearSkeletonBackground()
-            binding.title.text = genre.name ?: context.getString(R.string.unknown)
-            binding.albumArt.loadPeristyleArtCover(genre)
             binding.container.setOnClickListener {
                 callbacks?.onGenreClicked(genre, it)
             }

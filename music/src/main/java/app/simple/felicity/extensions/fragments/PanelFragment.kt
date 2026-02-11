@@ -122,10 +122,6 @@ open class PanelFragment : MediaFragment() {
                 text = getString(R.string.grid)
                 setStartDrawable(R.drawable.ic_grid_16dp)
             }
-            CommonPreferencesConstants.GRID_TYPE_PERISTYLE -> {
-                text = getString(R.string.peristyle)
-                setStartDrawable(R.drawable.ic_peristyle_16dp)
-            }
             else -> {
                 text = getString(R.string.list) // Default to list
                 setStartDrawable(R.drawable.ic_list_16dp)
@@ -149,17 +145,6 @@ open class PanelFragment : MediaFragment() {
                 }
 
                 applySpacing()
-            }
-            CommonPreferencesConstants.GRID_TYPE_PERISTYLE -> {
-                gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                    override fun getSpanSize(position: Int): Int {
-                        val spanCount = maxOf(1, size)
-                        val cycle = spanCount * 2 + 1 // 1 giant + 2 rows of grid
-                        return if (position % cycle == 0) spanCount else 1
-                    }
-                }
-
-                removeSpacing()
             }
         }
     }

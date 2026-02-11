@@ -147,19 +147,16 @@ class Songs : PanelFragment() {
                         anchorView = button,
                         menuItems = listOf(
                                 R.string.list,
-                                R.string.grid,
-                                R.string.peristyle,
+                                R.string.grid
                         ),
                         menuIcons = listOf(
                                 R.drawable.ic_list_16dp,
-                                R.drawable.ic_grid_16dp,
-                                R.drawable.ic_peristyle_16dp,
+                                R.drawable.ic_grid_16dp
                         ),
                         onMenuItemClick = {
                             when (it) {
                                 R.string.list -> SongsPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
                                 R.string.grid -> SongsPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
-                                R.string.peristyle -> SongsPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_PERISTYLE)
                             }
                         },
                         onDismiss = {
