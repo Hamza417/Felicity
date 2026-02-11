@@ -3,11 +3,15 @@ package app.simple.felicity.extensions.fragments
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.ImageView
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
+import app.simple.felicity.databinding.DialogSongMenuBinding
+import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.database.instances.LastSongDatabase
@@ -148,6 +152,27 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
     open fun onSeekChanged(seek: Long) {
         Log.d(TAG, "Seek changed: $seek")
+    }
+
+    protected fun openSongsMenu(audios: List<Audio>, position: Int, imageView: ImageView) {
+        SimpleSharedImageDialog.Builder(
+                container = requireContainerView(),
+                sourceImageView = imageView,
+                inflateBinding = DialogSongMenuBinding::inflate,
+                targetImageViewProvider = { it.cover })
+            .onViewCreated { binding ->
+                binding.cover.loadArtCoverWithPayload(audios[position])
+                binding.title.text = audios[position].title
+                binding.secondaryDetail.text = audios[position].artist
+                binding.tertiaryDetail.text = audios[position].album
+
+                binding.play.setOnClickListener {
+                    val pos = audios.indexOfFirst { it.id == audios[position].id }.coerceAtLeast(0)
+                    setMediaItems(audios, pos)
+                }
+            }
+            .build()
+            .show()
     }
 
     override val wantsMiniPlayerVisible: Boolean

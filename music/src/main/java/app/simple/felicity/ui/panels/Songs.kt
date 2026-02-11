@@ -12,20 +12,17 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
-import app.simple.felicity.adapters.ui.lists.songs.SongsAdapter
+import app.simple.felicity.adapters.ui.lists.SongsAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.databinding.DialogSongMenuBinding
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.databinding.HeaderSongsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
-import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.PanelFragment
-import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.sort.SongSort.setSongOrder
@@ -181,24 +178,7 @@ class Songs : PanelFragment() {
                 }
 
                 override fun onSongLongClicked(audios: MutableList<Audio>, position: Int, view: View) {
-                    SimpleSharedImageDialog.Builder(
-                            container = requireContainerView(),
-                            sourceImageView = view as ImageView,
-                            inflateBinding = DialogSongMenuBinding::inflate,
-                            targetImageViewProvider = { it.cover })
-                        .onViewCreated { binding ->
-                            binding.cover.loadArtCoverWithPayload(audios[position])
-                            binding.title.text = audios[position].title
-                            binding.secondaryDetail.text = audios[position].artist
-                            binding.tertiaryDetail.text = audios[position].album
-
-                            binding.play.setOnClickListener {
-                                val pos = audios.indexOfFirst { it.id == audios[position].id }.coerceAtLeast(0)
-                                setMediaItems(audios, pos)
-                            }
-                        }
-                        .build()
-                        .show()
+                    openSongsMenu(audios, position, view as ImageView)
                 }
             })
             binding.recyclerView.adapter = songsAdapter

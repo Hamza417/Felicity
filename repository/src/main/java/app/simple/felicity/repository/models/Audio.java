@@ -163,7 +163,11 @@ public class Audio implements Parcelable {
     
     @Nullable
     public String getTitle() {
-        return title;
+        if (title == null || title.isEmpty()) {
+            return getName();
+        } else {
+            return title;
+        }
     }
     
     public void setTitle(@Nullable String title) {

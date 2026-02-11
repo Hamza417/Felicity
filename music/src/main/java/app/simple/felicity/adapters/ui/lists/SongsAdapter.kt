@@ -1,4 +1,4 @@
-package app.simple.felicity.adapters.ui.lists.songs
+package app.simple.felicity.adapters.ui.lists
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
