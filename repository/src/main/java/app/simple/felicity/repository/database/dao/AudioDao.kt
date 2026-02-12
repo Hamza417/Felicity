@@ -6,39 +6,40 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.RawQuery
+import androidx.room.Update
 import androidx.sqlite.db.SupportSQLiteQuery
 import app.simple.felicity.repository.models.Audio
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AudioDao {
-    @Query("SELECT * FROM audio ORDER BY title COLLATE NOCASE ASC")
+    @Query("SELECT * FROM audio WHERE is_available = 1 ORDER BY title COLLATE NOCASE ASC")
     fun getAllAudio(): Flow<MutableList<Audio>>
 
-    @Query("SELECT * FROM audio ORDER BY title COLLATE NOCASE ASC")
+    @Query("SELECT * FROM audio WHERE is_available = 1 ORDER BY title COLLATE NOCASE ASC")
     fun getAllAudioList(): MutableList<Audio>
 
     // Get unique artists
-    @Query("SELECT * FROM audio GROUP BY artist ORDER BY artist COLLATE NOCASE ASC")
+    @Query("SELECT * FROM audio WHERE is_available = 1 GROUP BY artist  ORDER BY artist COLLATE NOCASE ASC")
     fun getAllArtists(): Flow<MutableList<Audio>>
 
     // Get unique albums
-    @Query("SELECT * FROM audio GROUP BY album ORDER BY album COLLATE NOCASE ASC")
+    @Query("SELECT * FROM audio WHERE is_available = 1 GROUP BY album ORDER BY album COLLATE NOCASE ASC")
     fun getAllAlbums(): Flow<MutableList<Audio>>
 
     // Get all audio files grouped by album for aggregation
-    @Query("SELECT * FROM audio ORDER BY album COLLATE NOCASE ASC, title COLLATE NOCASE ASC")
+    @Query("SELECT * FROM audio WHERE is_available = 1 ORDER BY album COLLATE NOCASE ASC, title COLLATE NOCASE ASC")
     fun getAllAudioForAlbumAggregation(): Flow<MutableList<Audio>>
 
     // Get recent audio
-    @Query("SELECT * FROM audio ORDER BY date_added DESC LIMIT 25")
+    @Query("SELECT * FROM audio WHERE is_available = 1 ORDER BY date_added DESC LIMIT 25")
     fun getRecentAudio(): Flow<MutableList<Audio>>
 
     // get all audio files by artist name in ascending order
-    @Query("SELECT * FROM audio WHERE artist = :artist ORDER BY title COLLATE NOCASE ASC")
+    @Query("SELECT * FROM audio WHERE artist = :artist AND is_available = 1 ORDER BY title COLLATE NOCASE ASC")
     fun getAudioByArtist(artist: String): Flow<MutableList<Audio>>
 
-    @Query("SELECT id FROM audio WHERE path = :path")
+    @Query("SELECT id FROM audio WHERE path = :path AND is_available = 1")
     fun getAudioIdByPath(path: String): Long
 
     @RawQuery
@@ -54,12 +55,21 @@ interface AudioDao {
     @Delete
     suspend fun delete(audio: Audio)
 
+    @Delete
+    suspend fun delete(audioList: List<Audio>)
+
     /**
      * Insert [Audio] item
      * into the table
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(audio: Audio)
+
+    @Update
+    suspend fun update(audio: Audio)
+
+    @Update
+    suspend fun update(audioList: List<Audio>)
 
     /**
      * Delete the entire table

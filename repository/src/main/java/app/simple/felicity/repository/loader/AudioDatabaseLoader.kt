@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.annotation.WorkerThread
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.metadata.MetaDataHelper.extractMetadata
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.scanners.AudioScanner
 import app.simple.felicity.shared.storage.RemovableStorageDetector
 import app.simple.felicity.shared.utils.ProcessUtils.checkNotMainThread
@@ -69,8 +70,8 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             val storages = RemovableStorageDetector.getAllStorageVolumes(context)
             val dao = audioDatabase.audioDao()
 
-            Log.d(TAG, "Sanitizing database before processing...")
-            sanitizeDatabase()
+            Log.d(TAG, "Reconciling database with current storage state...")
+            reconcileDatabase(storages)
 
             Log.d(TAG, "Indexing existing audio files in the database...")
             // Create index of existing audio files in the database
@@ -157,17 +158,75 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     }
 
     // TODO: check for .nomedia and hidden files during sanitization as well
-    private suspend fun sanitizeDatabase() {
-        // This method can be called to remove entries from the database that no longer exist on disk
-        val audios = audioDatabase.audioDao()?.getAllAudioList() ?: return
-        audios.forEach { audio ->
-            val file = File(audio.path)
-            if (!file.exists()) {
-                Log.d(TAG, "Removing missing file from database: ${audio.path}")
-                audioDatabase.audioDao()?.delete(audio)
-                indexedMap.remove(audio.path)
+    /**
+     * Removes entries from the database that no longer exist on disk.
+     * SAFELY handles removable storage by only checking files on currently mounted volumes.
+     */
+    private suspend fun reconcileDatabase(mountedStorages: List<RemovableStorageDetector.StorageInfo?>) {
+        // Get all audio from DB
+        val allAudio = audioDatabase.audioDao()?.getAllAudioList() ?: return
+
+        // Get list of currently mounted paths (e.g., /storage/emulated/0)
+        val mounts = mountedStorages.mapNotNull { it?.path }
+
+        val toDelete = mutableListOf<Audio>()
+        val toUpdate = mutableListOf<Audio>()
+
+        allAudio.forEach { audio ->
+            // Check if this audio file belongs to a volume that is currently mounted
+            val isHostedOnMountedVolume = mounts.any { mount ->
+                audio.path.startsWith(mount.path, ignoreCase = true)
+            }
+
+            when {
+                isHostedOnMountedVolume -> {
+                    // Volume IS mounted. We can check the file system safely.
+                    val file = File(audio.path)
+
+                    when {
+                        !file.exists() -> {
+                            // CASE 1: Hard Delete (User deleted file using a file manager)
+                            Log.d(TAG, "File missing on mounted storage. Deleting: ${audio.path}")
+                            toDelete.add(audio)
+                            indexedMap.remove(audio.path)
+                        }
+                        !audio.isAvailable -> {
+                            // CASE 2: Restore (User inserted?, file is found)
+                            Log.d(TAG, "Restoring available file: ${audio.path}")
+                            audio.isAvailable = true
+                            toUpdate.add(audio)
+
+                            // Re-add to index so we don't re-scan metadata
+                            indexedMap[audio.path] = IndexedFile(audio.dateModified, audio.size)
+                        }
+                    }
+                }
+                else -> {
+                    // CASE 3: Volume is NOT mounted (ejected?).
+                    when {
+                        audio.isAvailable -> {
+                            // DB says available, but storage is gone. Mark as unavailable.
+                            Log.d(TAG, "Marking unavailable (storage ejected): ${audio.path}")
+
+                            // FIX: Use Setter instead of copy()
+                            audio.isAvailable = false
+                            toUpdate.add(audio)
+                        }
+                    }
+                }
             }
         }
+
+        // Apply Batched Changes
+        if (toDelete.isNotEmpty()) {
+            audioDatabase.audioDao()?.delete(toDelete)
+        }
+
+        if (toUpdate.isNotEmpty()) {
+            audioDatabase.audioDao()?.update(toUpdate)
+        }
+
+        Log.d(TAG, "Reconcile complete: Deleted ${toDelete.size}, Updated status for ${toUpdate.size}")
     }
 
     /**

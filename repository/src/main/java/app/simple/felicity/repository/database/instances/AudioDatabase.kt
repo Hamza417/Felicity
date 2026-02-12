@@ -14,7 +14,7 @@ import app.simple.felicity.repository.models.PlaybackState
             Audio::class,
             PlaybackState::class
         ],
-        version = 2,
+        version = 3,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {

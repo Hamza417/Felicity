@@ -1,0 +1,237 @@
+{
+    "formatVersion": 1,
+    "database": {
+        "version": 3,
+        "identityHash": "e5bfaf12b1fd9b6ff2fbb9d43b065ba9",
+        "entities": [
+            {
+                "tableName": "audio",
+                "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`name` TEXT, `id` INTEGER NOT NULL, `title` TEXT, `artist` TEXT, `path` TEXT, `track` INTEGER NOT NULL, `album` TEXT, `size` INTEGER NOT NULL, `author` TEXT, `album_artist` TEXT, `year` TEXT, `bitrate` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `composer` TEXT, `date` TEXT, `disc_number` TEXT, `genre` TEXT, `date_added` INTEGER NOT NULL, `date_modified` INTEGER NOT NULL, `date_taken` INTEGER NOT NULL, `album_id` INTEGER NOT NULL, `track_number` TEXT, `compilation` TEXT, `mimeType` TEXT, `num_tracks` TEXT, `sampling_rate` INTEGER NOT NULL, `bit_per_sample` INTEGER NOT NULL, `writer` TEXT, `is_available` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`id`))",
+                "fields": [
+                    {
+                        "fieldPath": "name",
+                        "columnName": "name",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "id",
+                        "columnName": "id",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "title",
+                        "columnName": "title",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "artist",
+                        "columnName": "artist",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "path",
+                        "columnName": "path",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "track",
+                        "columnName": "track",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "album",
+                        "columnName": "album",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "size",
+                        "columnName": "size",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "author",
+                        "columnName": "author",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "albumArtist",
+                        "columnName": "album_artist",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "year",
+                        "columnName": "year",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "bitrate",
+                        "columnName": "bitrate",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "duration",
+                        "columnName": "duration",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "composer",
+                        "columnName": "composer",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "date",
+                        "columnName": "date",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "discNumber",
+                        "columnName": "disc_number",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "genre",
+                        "columnName": "genre",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "dateAdded",
+                        "columnName": "date_added",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "dateModified",
+                        "columnName": "date_modified",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "dateTaken",
+                        "columnName": "date_taken",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "albumId",
+                        "columnName": "album_id",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "trackNumber",
+                        "columnName": "track_number",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "compilation",
+                        "columnName": "compilation",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "mimeType",
+                        "columnName": "mimeType",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "numTracks",
+                        "columnName": "num_tracks",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "samplingRate",
+                        "columnName": "sampling_rate",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "bitPerSample",
+                        "columnName": "bit_per_sample",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "writer",
+                        "columnName": "writer",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "isAvailable",
+                        "columnName": "is_available",
+                        "affinity": "INTEGER",
+                        "notNull": true,
+                        "defaultValue": "1"
+                    }
+                ],
+                "primaryKey": {
+                    "autoGenerate": false,
+                    "columnNames": [
+                        "id"
+                    ]
+                }
+            },
+            {
+                "tableName": "playback_state",
+                "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `queue` TEXT NOT NULL, `index` INTEGER NOT NULL, `position` INTEGER NOT NULL, `shuffle` INTEGER NOT NULL, `repeatMode` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+                "fields": [
+                    {
+                        "fieldPath": "id",
+                        "columnName": "id",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "queue",
+                        "columnName": "queue",
+                        "affinity": "TEXT",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "index",
+                        "columnName": "index",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "position",
+                        "columnName": "position",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "shuffle",
+                        "columnName": "shuffle",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "repeatMode",
+                        "columnName": "repeatMode",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "updatedAt",
+                        "columnName": "updatedAt",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    }
+                ],
+                "primaryKey": {
+                    "autoGenerate": false,
+                    "columnNames": [
+                        "id"
+                    ]
+                }
+            }
+        ],
+        "setupQueries": [
+            "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+            "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e5bfaf12b1fd9b6ff2fbb9d43b065ba9')"
+        ]
+    }
+}

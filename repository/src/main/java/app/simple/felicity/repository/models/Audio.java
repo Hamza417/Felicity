@@ -93,6 +93,8 @@ public class Audio implements Parcelable {
     @ColumnInfo (name = "writer")
     @Nullable
     private String writer;
+    @ColumnInfo (name = "is_available", defaultValue = "1")
+    private boolean isAvailable = true;
     
     public Audio() {
     }
@@ -120,6 +122,7 @@ public class Audio implements Parcelable {
         dateModified = in.readLong();
         dateTaken = in.readLong();
         albumId = in.readLong();
+        isAvailable = in.readByte() != 0;
     }
     
     @Override
@@ -146,6 +149,7 @@ public class Audio implements Parcelable {
         dest.writeLong(dateModified);
         dest.writeLong(dateTaken);
         dest.writeLong(albumId);
+        dest.writeByte((byte) (isAvailable ? 1 : 0));
     }
     
     @Override
@@ -344,11 +348,12 @@ public class Audio implements Parcelable {
         this.trackNumber = trackNumber;
     }
     
+    @Nullable
     public String getCompilation() {
         return compilation;
     }
     
-    public void setCompilation(String compilation) {
+    public void setCompilation(@Nullable String compilation) {
         this.compilation = compilation;
     }
     
@@ -393,6 +398,14 @@ public class Audio implements Parcelable {
         this.writer = writer;
     }
     
+    public boolean isAvailable() {
+        return isAvailable;
+    }
+    
+    public void setAvailable(boolean available) {
+        isAvailable = available;
+    }
+    
     @NonNull
     @Override
     public String toString() {
@@ -425,6 +438,7 @@ public class Audio implements Parcelable {
                 ", samplingRate=" + samplingRate +
                 ", bitPerSample=" + bitPerSample +
                 ", writer='" + writer + '\'' +
+                ", isAvailable=" + isAvailable +
                 '}';
     }
     
@@ -524,6 +538,9 @@ public class Audio implements Parcelable {
         if (numTracks != null ? !numTracks.equals(audio.numTracks) : audio.numTracks != null) {
             return false;
         }
+        if (isAvailable != audio.isAvailable) {
+            return false;
+        }
         return writer != null ? writer.equals(audio.writer) : audio.writer == null;
     }
     
@@ -558,6 +575,40 @@ public class Audio implements Parcelable {
         result = 31 * result + Long.hashCode(samplingRate);
         result = 31 * result + Long.hashCode(bitPerSample);
         result = 31 * result + (writer != null ? writer.hashCode() : 0);
+        result = 31 * result + (isAvailable ? 1 : 0);
         return result;
+    }
+    
+    public Audio copy() {
+        Audio audio = new Audio();
+        audio.setName(getName());
+        audio.setId(getId());
+        audio.setTitle(getTitle());
+        audio.setArtist(getArtist());
+        audio.setAlbum(getAlbum());
+        audio.setPath(getPath());
+        audio.setTrack(getTrack());
+        audio.setAuthor(getAuthor());
+        audio.setSize(getSize());
+        audio.setAlbumArtist(getAlbumArtist());
+        audio.setYear(getYear());
+        audio.setBitrate(getBitrate());
+        audio.setDuration(getDuration());
+        audio.setComposer(getComposer());
+        audio.setDate(getDate());
+        audio.setDiscNumber(getDiscNumber());
+        audio.setGenre(getGenre());
+        audio.setDateAdded(getDateAdded());
+        audio.setDateModified(getDateModified());
+        audio.setDateTaken(getDateTaken());
+        audio.setAlbumId(getAlbumId());
+        audio.setTrackNumber(getTrackNumber());
+        audio.setCompilation(getCompilation());
+        audio.setMimeType(getMimeType());
+        audio.setNumTracks(getNumTracks());
+        audio.setSamplingRate(getSamplingRate());
+        audio.setBitPerSample(getBitPerSample());
+        audio.setWriter(getWriter());
+        return audio;
     }
 }
