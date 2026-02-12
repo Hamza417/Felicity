@@ -56,6 +56,6 @@ object PlaybackStateManager {
                 "SELECT * FROM audio WHERE id IN (${queueIds.joinToString(",")}) ORDER BY CASE $orderByCase END"
         )
 
-        return db.audioDao().getAudioByIDs(query)
+        return db.audioDao()?.getAudioByIDs(query)
     }
 }

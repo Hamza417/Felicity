@@ -19,7 +19,7 @@ import app.simple.felicity.repository.models.PlaybackState
 )
 abstract class AudioDatabase : RoomDatabase() {
 
-    abstract fun audioDao(): AudioDao
+    abstract fun audioDao(): AudioDao?
     abstract fun playbackStateDao(): PlaybackStateDao
 
     companion object {

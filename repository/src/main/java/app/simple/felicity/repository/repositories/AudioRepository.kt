@@ -220,7 +220,7 @@ class AudioRepository @Inject constructor(
      * Returns songs, albums, and genres associated with the artist
      */
     fun getArtistPageData(artist: Artist): Flow<PageData> {
-        return audioDatabase.audioDao().getAllAudio().map { audioList ->
+        return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
             // Filter songs by artist name
             val artistAudios = audioList.filter { it.artist == artist.name }
 

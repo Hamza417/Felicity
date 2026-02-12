@@ -51,7 +51,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     private val semaphore = Semaphore(max(MIN_SEMAPHORE_PERMITS, Runtime.getRuntime().availableProcessors()))
 
     private val audioDatabase: AudioDatabase by lazy {
-        AudioDatabase.getInstance(context)!!
+        AudioDatabase.getInstance(context)
     }
 
     suspend fun processAudioFiles() {
@@ -68,6 +68,9 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             Log.d(TAG, "Starting audio file processing...")
             val storages = RemovableStorageDetector.getAllStorageVolumes(context)
             val dao = audioDatabase.audioDao()
+
+            Log.d(TAG, "Sanitizing database before processing...")
+            sanitizeDatabase()
 
             Log.d(TAG, "Indexing existing audio files in the database...")
             // Create index of existing audio files in the database
@@ -150,6 +153,20 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                 activeJobs.clear()
             }
             scanMutex.unlock()
+        }
+    }
+
+    // TODO: check for .nomedia and hidden files during sanitization as well
+    private suspend fun sanitizeDatabase() {
+        // This method can be called to remove entries from the database that no longer exist on disk
+        val audios = audioDatabase.audioDao()?.getAllAudioList() ?: return
+        audios.forEach { audio ->
+            val file = File(audio.path)
+            if (!file.exists()) {
+                Log.d(TAG, "Removing missing file from database: ${audio.path}")
+                audioDatabase.audioDao()?.delete(audio)
+                indexedMap.remove(audio.path)
+            }
         }
     }
 
