@@ -1,11 +1,8 @@
 package app.simple.felicity.viewmodels.viewer
 
-import android.app.Application
-import android.net.Uri
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import android.util.Log
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.repository.repositories.AudioRepository
@@ -14,35 +11,46 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 
 @HiltViewModel(assistedFactory = ArtistViewerViewModel.Factory::class)
 class ArtistViewerViewModel @AssistedInject constructor(
         @Assisted private val artist: Artist,
-        private val audioRepository: AudioRepository,
-        application: Application) : WrappedViewModel(application) {
+        private val audioRepository: AudioRepository
+) : ViewModel() {
 
-    private val data: MutableLiveData<PageData> by lazy {
-        MutableLiveData<PageData>().also {
-            loadArtistSongs()
-        }
+    private val _data = MutableStateFlow<PageData?>(null)
+    val data: StateFlow<PageData?> = _data.asStateFlow()
+
+    init {
+        loadArtistData()
     }
 
-    private val imageUris: MutableLiveData<List<Uri>> by lazy {
-        MutableLiveData<List<Uri>>()
-    }
+    private fun loadArtistData() {
+        viewModelScope.launch {
+            val startTime = System.currentTimeMillis()
 
-    fun getData(): LiveData<PageData> {
-        return data
-    }
+            audioRepository.getArtistPageData(artist)
+                .catch { exception ->
+                    Log.e(TAG, "Error loading artist data", exception)
+                    emit(PageData())
+                }
+                .flowOn(Dispatchers.IO)
+                .collect { pageData ->
+                    val loadTime = System.currentTimeMillis() - startTime
+                    Log.d(TAG, "loadArtistData: Loaded data for artist: ${artist.name}")
+                    Log.d(TAG, "  - Audios: ${pageData.songs.size}")
+                    Log.d(TAG, "  - Albums: ${pageData.albums.size}")
+                    Log.d(TAG, "  - Genres: ${pageData.genres.size}")
+                    Log.d(TAG, "  - Load time: $loadTime ms")
 
-    fun getImageUris(): LiveData<List<Uri>> {
-        return imageUris
-    }
-
-    private fun loadArtistSongs() {
-        viewModelScope.launch(Dispatchers.IO) {
-
+                    _data.value = pageData
+                }
         }
     }
 

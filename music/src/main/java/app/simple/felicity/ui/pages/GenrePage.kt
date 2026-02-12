@@ -6,8 +6,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
-import app.simple.felicity.adapters.ui.page.GenrePageAdapter
+import app.simple.felicity.adapters.ui.page.PageAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentViewerGenresBinding
 import app.simple.felicity.decorations.itemdecorations.PageSpacingItemDecoration
@@ -19,10 +22,12 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.viewer.GenreViewerViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class GenrePage : MediaFragment() {
@@ -50,59 +55,78 @@ class GenrePage : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.recyclerView.requireAttachedMiniPlayer()
+        postponeEnterTransition()
 
-        genreViewerViewModel.getData().observe(viewLifecycleOwner) { data ->
-            Log.i(TAG, "onViewCreated: Received songs for genre: ${genre.name}, count: ${data.songs}")
-            val adapter = GenrePageAdapter(data, genre)
-            binding.recyclerView.addItemDecoration(PageSpacingItemDecoration(
-                    AppearancePreferences.DEFAULT_SPACING.toInt(),
-                    AppearancePreferences.getListSpacing().toInt()))
-            binding.recyclerView.adapter = adapter
+        Log.d(TAG, "onViewCreated: GenrePage for genre: ${genre.name}")
 
-            adapter.setCallbacks(object : GeneralAdapterCallbacks {
-                override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
-                    Log.i(TAG, "onSongClick: Song clicked in genre: ${genre.name}, position: $position")
-                    setMediaItems(songs, position)
+        // Observe StateFlow with proper lifecycle handling
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                genreViewerViewModel.data.collect { data ->
+                    data?.let { updateGenrePage(it) }
                 }
-
-                override fun onPlayClicked(audios: MutableList<Audio>, position: Int) {
-                    Log.i(TAG, "onPlayClick: Play button clicked for genre: ${genre.name}, position: $position")
-                    // setMediaItems(songs, position)
-                }
-
-                override fun onShuffleClicked(audios: MutableList<Audio>, position: Int) {
-                    Log.i(TAG, "onShuffleClick: Shuffle button clicked for genre: ${genre.name}, position: $position")
-                    // setMediaItems(songs.shuffled(), position)
-                }
-
-                override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {
-                    openFragment(ArtistPage.newInstance(artists[position]), ArtistPage.TAG)
-                }
-
-                override fun onAlbumClicked(albums: List<Album>, position: Int, view: View) {
-                    openFragment(AlbumPage.newInstance(albums[position]), AlbumPage.TAG)
-                }
-
-                override fun onMenuClicked(view: View) {
-                    Log.i(TAG, "onMenuClicked: Menu clicked in genre: ${genre.name}")
-                    PopupGenreMenu(
-                            container = requireActivity().findViewById(R.id.app_container),
-                            anchorView = view,
-                            menuItems = listOf(R.string.play, R.string.shuffle, R.string.add_to_queue, R.string.add_to_playlist),
-                            menuIcons = listOf(R.drawable.ic_play, R.drawable.ic_shuffle, R.drawable.ic_add_to_queue, R.drawable.ic_add_to_playlist),
-                            onMenuItemClick = {
-                                when (it) {
-
-                                }
-                            },
-                            onDismiss = {
-                                Log.i(TAG, "onMenuClicked: Popup dismissed for genre: ${genre.name}")
-                            }
-                    ).show()
-
-                }
-            })
+            }
         }
+    }
+
+    private fun updateGenrePage(data: PageData) {
+        Log.d(TAG, "updateGenrePage: Updating UI for genre: ${genre.name} with ${data.songs.size} songs")
+        val adapter = PageAdapter(data, PageAdapter.PageType.GenrePage(genre))
+        val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
+        binding.recyclerView.addItemDecoration(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
+        binding.recyclerView.adapter = adapter
+
+        adapter.setArtistAdapterListener(object : GeneralAdapterCallbacks {
+            override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
+                Log.i(TAG, "onSongClick: Song clicked in genre: ${genre.name}, position: $position")
+                setMediaItems(songs, position)
+            }
+
+            override fun onPlayClicked(audios: MutableList<Audio>, position: Int) {
+                Log.i(TAG, "onPlayClick: Play button clicked for genre: ${genre.name}, position: $position")
+                setMediaItems(audios, position)
+            }
+
+            override fun onShuffleClicked(audios: MutableList<Audio>, position: Int) {
+                Log.i(TAG, "onShuffleClick: Shuffle button clicked for genre: ${genre.name}, position: $position")
+                setMediaItems(audios.shuffled().toMutableList(), position)
+            }
+
+            override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {
+                openFragment(ArtistPage.newInstance(artists[position]), ArtistPage.TAG)
+            }
+
+            override fun onAlbumClicked(albums: List<Album>, position: Int, view: View) {
+                openFragment(AlbumPage.newInstance(albums[position]), AlbumPage.TAG)
+            }
+
+            override fun onMenuClicked(view: View) {
+                Log.i(TAG, "onMenuClicked: Menu clicked in genre: ${genre.name}")
+                PopupGenreMenu(
+                        container = requireActivity().findViewById(R.id.app_container),
+                        anchorView = view,
+                        menuItems = listOf(R.string.play, R.string.shuffle, R.string.add_to_queue, R.string.add_to_playlist),
+                        menuIcons = listOf(R.drawable.ic_play, R.drawable.ic_shuffle, R.drawable.ic_add_to_queue, R.drawable.ic_add_to_playlist),
+                        onMenuItemClick = {
+                            when (it) {
+                                R.string.play -> {
+                                    Log.i(TAG, "onMenuItemClick: Play clicked for genre: ${genre.name}")
+                                    setMediaItems(data.songs.toMutableList(), 0)
+                                }
+                                R.string.shuffle -> {
+                                    Log.i(TAG, "onMenuItemClick: Shuffle clicked for genre: ${genre.name}")
+                                    setMediaItems(data.songs.shuffled().toMutableList(), 0)
+                                }
+                            }
+                        },
+                        onDismiss = {
+                            Log.i(TAG, "onMenuClicked: Popup dismissed for genre: ${genre.name}")
+                        }
+                ).show()
+            }
+        })
+
+        requireView().startTransitionOnPreDraw()
     }
 
     companion object {

@@ -74,7 +74,7 @@ class AlbumPage : MediaFragment() {
 
     private fun updateAlbumPage(data: PageData) {
         Log.d(TAG, "updateAlbumPage: Updating UI for album: ${album.name} with data")
-        val adapter = PageAdapter(data, album)
+        val adapter = PageAdapter(data, PageAdapter.PageType.AlbumPage(album))
         val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
         binding.recyclerView.addItemDecoration(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
         binding.recyclerView.adapter = adapter
