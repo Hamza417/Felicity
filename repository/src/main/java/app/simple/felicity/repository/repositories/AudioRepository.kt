@@ -6,6 +6,7 @@ import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.PageData
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -138,7 +139,7 @@ class AudioRepository @Inject constructor(
      * This method groups audio files by genre and creates proper Genre objects.
      * @return Flow of genres with complete metadata
      */
-    fun getAllGenresWithAggregation(): Flow<List<app.simple.felicity.repository.models.Genre>> {
+    fun getAllGenresWithAggregation(): Flow<List<Genre>> {
         return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
             // Group audio files by genre name
             audioList.groupBy { it.genre }
@@ -151,7 +152,7 @@ class AudioRepository @Inject constructor(
                     // Generate unique ID based on genre name
                     val uniqueId = genreName.hashCode().toLong()
 
-                    app.simple.felicity.repository.models.Genre(
+                    Genre(
                             id = uniqueId,
                             name = genreName,
                             songPaths = songPaths,
@@ -169,27 +170,53 @@ class AudioRepository @Inject constructor(
      * @return Flow of CollectionPageData with audios, artists, and genres
      */
     fun getAlbumPageData(album: Album): Flow<PageData> {
+        val artistWhitelist: Set<String> = AudioRepository::class.java.getResourceAsStream(ARTIST_WHITELIST)
+            ?.bufferedReader()?.use { it.readLines().map { name -> name.trim() }.toSet() } ?: emptySet()
+
         return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
             // Filter songs by album name (using album name instead of ID since we're using local DB)
             val albumAudios = audioList.filter { it.album == album.name }
 
-            // Extract unique artists from album songs
-            val artistsMap = albumAudios.groupBy { it.artist }
-                .mapNotNull { (artistName, _) ->
-                    if (artistName.isNullOrEmpty()) return@mapNotNull null
+            // Split combined artist names and create a map of split artists to their songs
+            val artistToSongsMap = mutableMapOf<String, MutableList<Audio>>()
 
-                    // Count unique albums by this artist in the entire collection
-                    val artistAllSongs = audioList.filter { it.artist == artistName }
-                    val uniqueAlbums = artistAllSongs.mapNotNull { it.album }.distinct().size
+            albumAudios.forEach { audio ->
+                val artistName = audio.artist ?: return@forEach
 
-                    Artist(
-                            id = artistName.hashCode().toLong(),
-                            name = artistName,
-                            albumCount = uniqueAlbums,
-                            trackCount = artistAllSongs.size,
-                            songPaths = artistAllSongs.map { it.path }
-                    )
+                // Check if artist is in whitelist (shouldn't be split)
+                if (artistWhitelist.any { it.equals(artistName, ignoreCase = true) }) {
+                    artistToSongsMap.getOrPut(artistName) { mutableListOf() }.add(audio)
+                } else {
+                    // Split artist names using the regex
+                    val splitArtists = artistName.split(Regex(ARTIST_REGEX))
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+
+                    // Add the song to each split artist
+                    splitArtists.forEach { splitArtist ->
+                        artistToSongsMap.getOrPut(splitArtist) { mutableListOf() }.add(audio)
+                    }
                 }
+            }
+
+            // Now match split artists to all their songs in the entire collection using contains
+            val artistsMap = artistToSongsMap.keys.map { artistName ->
+                // Find all songs where this artist is involved (even if not solo)
+                val artistAllSongs = audioList.filter { audio ->
+                    audio.artist?.contains(artistName, ignoreCase = true) == true
+                }
+
+                // Count unique albums by this artist
+                val uniqueAlbums = artistAllSongs.mapNotNull { it.album }.distinct().size
+
+                Artist(
+                        id = artistName.hashCode().toLong(),
+                        name = artistName,
+                        albumCount = uniqueAlbums,
+                        trackCount = artistAllSongs.size,
+                        songPaths = artistAllSongs.map { it.path }
+                )
+            }.sortedBy { it.name?.lowercase() }
 
             // Extract unique genres from album songs
             val genresMap = albumAudios.groupBy { it.genre }
@@ -199,7 +226,7 @@ class AudioRepository @Inject constructor(
                     // Count all songs for this genre in the entire collection
                     val genreAllSongs = audioList.filter { it.genre == genreName }
 
-                    app.simple.felicity.repository.models.Genre(
+                    Genre(
                             id = genreName.hashCode().toLong(),
                             name = genreName,
                             songPaths = genreAllSongs.map { it.path },
@@ -212,7 +239,7 @@ class AudioRepository @Inject constructor(
                     artists = artistsMap,
                     genres = genresMap
             )
-        } ?: throw IllegalStateException("AudioDao is null")
+        } ?: throw IllegalStateException("AudioDao is null") // TODO - shouldn't throw?
     }
 
     /**
@@ -221,8 +248,10 @@ class AudioRepository @Inject constructor(
      */
     fun getArtistPageData(artist: Artist): Flow<PageData> {
         return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
-            // Filter songs by artist name
-            val artistAudios = audioList.filter { it.artist == artist.name }
+            // Filter songs where artist name contains the specified artist (handles split artists)
+            val artistAudios = audioList.filter { audio ->
+                audio.artist?.contains(artist.name ?: "", ignoreCase = true) == true
+            }
 
             // Extract unique albums from artist songs
             val albumsMap = artistAudios.groupBy { it.album }
@@ -247,7 +276,7 @@ class AudioRepository @Inject constructor(
                     // Count all songs for this genre in the entire collection
                     val genreAllSongs = audioList.filter { it.genre == genreName }
 
-                    app.simple.felicity.repository.models.Genre(
+                    Genre(
                             id = genreName.hashCode().toLong(),
                             name = genreName,
                             songPaths = genreAllSongs.map { it.path },
@@ -267,7 +296,7 @@ class AudioRepository @Inject constructor(
      * Get page data for a specific genre as a Flow
      * Returns songs, albums, and artists associated with the genre
      */
-    fun getGenrePageData(genre: app.simple.felicity.repository.models.Genre): Flow<PageData> {
+    fun getGenrePageData(genre: Genre): Flow<PageData> {
         return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
             // Filter songs by genre name
             val genreAudios = audioList.filter { it.genre == genre.name }
@@ -478,5 +507,10 @@ class AudioRepository @Inject constructor(
         val query = "SELECT * FROM audio WHERE album_id = ? ORDER BY track ASC"
         val args = arrayOf<Any>(albumId)
         executeRawQuery(query, args)
+    }
+
+    companion object {
+        private const val ARTIST_REGEX = "\\s*(?:,|&|\\+|/|\\\\|\\||and|with|w\\/|vs\\.?|x|feat\\.?|ft\\.?|featuring|pres\\.?|starring)\\s+"
+        private const val ARTIST_WHITELIST = "/artist_whitelist.txt"
     }
 }
