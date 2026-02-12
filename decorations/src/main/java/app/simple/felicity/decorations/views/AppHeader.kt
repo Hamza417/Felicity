@@ -205,6 +205,8 @@ class AppHeader @JvmOverloads constructor(
         }
         if (!force && headerHeight == lastAppliedHeaderHeight) return
         val desiredTop = originalRecyclerPaddingTop + headerHeight
+        val previousPaddingTop = rv.paddingTop
+        val paddingDelta = desiredTop - previousPaddingTop
         if (rv.paddingTop != desiredTop) {
             rv.setPadding(rv.paddingLeft, desiredTop, rv.paddingRight, rv.paddingBottom)
             rv.clipToPadding = false
@@ -217,8 +219,19 @@ class AppHeader @JvmOverloads constructor(
         // Use multiple delayed attempts to ensure proper positioning
         rv.post {
             ensureListStartBelowPadding(rv)
+            if (rv.canScrollVertically(RecyclerView.VERTICAL)) {
+                rv.scrollBy(0, -paddingDelta)
+
+                // scrollBy may have made the header visible, so
+                // restore the header position to based on the last
+                // known scroll state (only if idle to avoid disrupting user scroll)
+                // TODO
+            }
+
             // Second attempt after potential adapter notifications
-            rv.post { ensureListStartBelowPadding(rv) }
+            rv.post {
+                ensureListStartBelowPadding(rv)
+            }
         }
     }
 
