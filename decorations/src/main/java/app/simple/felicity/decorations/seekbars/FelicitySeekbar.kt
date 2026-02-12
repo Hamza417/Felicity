@@ -541,7 +541,9 @@ class FelicitySeekbar @JvmOverloads constructor(
                 }
             }
             ThumbShape.PILL -> {
-                val baseThumbCornerR = min(thumbCornerRadiusPxOverride ?: scaledR, min(scaledR, scaledHalfW))
+                // val baseThumbCornerR = min(thumbCornerRadiusPxOverride ?: scaledR, min(scaledR, scaledHalfW))
+                // Use fully rounded rectangle instead
+                val baseThumbCornerR = 100F // effectively infinite for our sizes, ensures perfect pill shape regardless of dimensions or overrides
 
                 if (thumbShadowRadius > 0f) {
                     canvas.drawRoundRect(thumbOuterRect, baseThumbCornerR, baseThumbCornerR, thumbShadowPaint)
@@ -600,6 +602,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         }
     }
 
+    @Suppress("UnnecessaryVariable")
     private fun isPointOnThumb(x: Float, y: Float): Boolean {
         val hOut = horizontalOutset()
         val baseSafeInset = when (thumbShape) {
@@ -637,13 +640,6 @@ class FelicitySeekbar @JvmOverloads constructor(
                 dx * dx + dy * dy <= halfH * halfH
             }
         }
-    }
-
-    // Deprecated: no-op to keep binary/source compatibility; press ring provides feedback instead
-    private fun startThumbScale(up: Boolean = false) {
-        thumbScaleAnimator?.cancel()
-        thumbScale = 1f
-        invalidate()
     }
 
     private fun startPressRing(show: Boolean) {
