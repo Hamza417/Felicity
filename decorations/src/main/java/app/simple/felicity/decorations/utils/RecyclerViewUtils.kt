@@ -37,6 +37,16 @@ object RecyclerViewUtils {
         }
     }
 
+    fun RecyclerView.addItemDecorationSafely(itemDecoration: RecyclerView.ItemDecoration) {
+        for (i in 0 until itemDecorationCount) {
+            if (getItemDecorationAt(i) == itemDecoration) {
+                return
+            }
+        }
+
+        addItemDecoration(itemDecoration)
+    }
+
     /**
      * Iterate over all view holders in the RecyclerView and perform the given action on each.
      * @param action The action to perform on each view holder.

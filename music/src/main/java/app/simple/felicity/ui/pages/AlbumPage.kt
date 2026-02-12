@@ -16,6 +16,7 @@ import app.simple.felicity.adapters.ui.page.PageAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentPageArtistBinding
 import app.simple.felicity.decorations.itemdecorations.PageSpacingItemDecoration
+import app.simple.felicity.decorations.utils.RecyclerViewUtils.addItemDecorationSafely
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.popups.PopupArtistMenu
 import app.simple.felicity.preferences.AppearancePreferences
@@ -64,7 +65,7 @@ class AlbumPage : MediaFragment() {
 
         // Observe StateFlow with proper lifecycle handling
         viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
                 albumViewerViewModel.data.collect { data ->
                     data?.let { updateAlbumPage(it) }
                 }
@@ -76,7 +77,7 @@ class AlbumPage : MediaFragment() {
         Log.d(TAG, "updateAlbumPage: Updating UI for album: ${album.name} with data")
         val adapter = PageAdapter(data, PageAdapter.PageType.AlbumPage(album))
         val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
-        binding.recyclerView.addItemDecoration(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
+        binding.recyclerView.addItemDecorationSafely(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
         binding.recyclerView.adapter = adapter
 
         adapter.setArtistAdapterListener(object : GeneralAdapterCallbacks {
