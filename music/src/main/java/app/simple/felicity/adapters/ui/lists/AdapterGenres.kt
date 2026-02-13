@@ -54,15 +54,21 @@ class AdapterGenres(private val list: MutableList<Genre>) : FastScrollAdapter<Ve
 
     inner class GridHolder(private val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
         fun bind(genre: Genre, isLightBind: Boolean) {
+            // Always update text content so users see correct data during fast scroll
+            binding.title.text = genre.name ?: context.getString(R.string.unknown)
+            binding.tertiaryDetail.gone(false)
+            binding.secondaryDetail.gone(false)
+
             if (isLightBind) {
+                // Skip heavy operations: image loading
                 binding.container.setSkeletonBackground(enable = true)
                 return
             }
+
+            // Full binding: clear skeleton and load images
             binding.container.clearSkeletonBackground()
-            binding.title.text = genre.name ?: context.getString(R.string.unknown)
             binding.albumArt.loadArtCoverWithPayload(genre)
-            binding.tertiaryDetail.gone(false)
-            binding.secondaryDetail.gone(false)
+
             binding.container.setOnClickListener {
                 callbacks?.onGenreClicked(genre, it)
             }
@@ -71,13 +77,19 @@ class AdapterGenres(private val list: MutableList<Genre>) : FastScrollAdapter<Ve
 
     inner class ListHolder(private val binding: AdapterGenresListBinding) : VerticalListViewHolder(binding.root) {
         fun bind(genre: Genre, isLightBind: Boolean) {
+            // Always update text content so users see correct data during fast scroll
+            binding.name.text = genre.name ?: context.getString(R.string.unknown)
+
             if (isLightBind) {
+                // Skip heavy operations: image loading
                 binding.container.setSkeletonBackground(enable = true)
                 return
             }
+
+            // Full binding: clear skeleton and load images
             binding.container.clearSkeletonBackground()
-            binding.name.text = genre.name ?: context.getString(R.string.unknown)
             binding.cover.loadArtCoverWithPayload(genre)
+
             binding.container.setOnClickListener {
                 callbacks?.onGenreClicked(genre, it)
             }

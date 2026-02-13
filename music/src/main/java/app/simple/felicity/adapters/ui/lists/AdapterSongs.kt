@@ -139,19 +139,23 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
         }
 
         fun bind(audio: Audio, isLightBind: Boolean) {
-            if (isLightBind) {
-                binding.container.setSkeletonBackground(enable = true)
-                bindSelectionState(audio)
-                return
-            }
-            binding.container.clearSkeletonBackground()
+            // Always update text content so users see correct data during fast scroll
             binding.title.setTextOrUnknown(audio.title)
             binding.secondaryDetail.setTextOrUnknown(audio.artist)
             binding.tertiaryDetail.setTextOrUnknown(audio.album)
-            binding.cover.loadArtCoverWithPayload(audio)
             binding.title.addAudioQualityIcon(audio)
-
             bindSelectionState(audio)
+
+            if (isLightBind) {
+                // Skip heavy operations: image loading
+                binding.container.setSkeletonBackground(enable = true)
+                return
+            }
+
+            // Full binding: clear skeleton and load images
+            binding.container.clearSkeletonBackground()
+            binding.cover.loadArtCoverWithPayload(audio)
+
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, binding.cover)
                 true
@@ -168,17 +172,22 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
         }
 
         fun bind(song: Audio, isLightBind: Boolean) {
-            if (isLightBind) {
-                binding.container.setSkeletonBackground(enable = true)
-                bindSelectionState(song)
-                return
-            }
-            binding.container.clearSkeletonBackground()
+            // Always update text content so users see correct data during fast scroll
             binding.title.setTextOrUnknown(song.title)
             binding.secondaryDetail.setTextOrUnknown(song.artist)
             binding.tertiaryDetail.setTextOrUnknown(song.album)
-            binding.albumArt.loadArtCoverWithPayload(song)
             bindSelectionState(song)
+
+            if (isLightBind) {
+                // Skip heavy operations: image loading
+                binding.container.setSkeletonBackground(enable = true)
+                return
+            }
+
+            // Full binding: clear skeleton and load images
+            binding.container.clearSkeletonBackground()
+            binding.albumArt.loadArtCoverWithPayload(song)
+
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, it)
                 true

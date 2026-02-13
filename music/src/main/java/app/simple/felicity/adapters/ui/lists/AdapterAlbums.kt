@@ -128,15 +128,21 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
 
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
         fun bind(album: Album, isLightBind: Boolean) {
-            if (isLightBind) {
-                binding.container.setSkeletonBackground(enable = true)
-                return
-            }
-            binding.container.clearSkeletonBackground()
+            // Always update text content so users see correct data during fast scroll
             binding.title.setTextOrUnknown(album.name)
             binding.tertiaryDetail.setTextOrUnknown(album.artist)
             binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
+
+            if (isLightBind) {
+                // Skip heavy operations: image loading
+                binding.container.setSkeletonBackground(enable = true)
+                return
+            }
+
+            // Full binding: clear skeleton and load images
+            binding.container.clearSkeletonBackground()
             binding.cover.loadArtCoverWithPayload(album)
+
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)
                 true
@@ -149,15 +155,21 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
 
     inner class GridHolder(val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
         fun bind(album: Album, isLightBind: Boolean) {
-            if (isLightBind) {
-                binding.container.setSkeletonBackground(enable = true)
-                return
-            }
-            binding.container.clearSkeletonBackground()
+            // Always update text content so users see correct data during fast scroll
             binding.title.setTextOrUnknown(album.name)
             binding.tertiaryDetail.setTextOrUnknown(album.artist)
             binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
+
+            if (isLightBind) {
+                // Skip heavy operations: image loading
+                binding.container.setSkeletonBackground(enable = true)
+                return
+            }
+
+            // Full binding: clear skeleton and load images
+            binding.container.clearSkeletonBackground()
             binding.albumArt.loadArtCoverWithPayload(album)
+
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)
                 true

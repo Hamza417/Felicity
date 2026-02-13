@@ -103,7 +103,6 @@ class SlideFastScroller @JvmOverloads constructor(
     private var lightBindExitPending = false // Prevent multiple exit calls
 
     // Delayed full-bind while dragging
-    private val delayedFullBindDelay = 200L
     private val delayedFullBindRunnable = Runnable {
         if (dragging && lightBindMode) {
             exitLightBindMode()
@@ -134,6 +133,17 @@ class SlideFastScroller @JvmOverloads constructor(
             scrollToPercentSmooth(targetPercent)
         }
         pendingPercentUpdate = null
+    }
+
+    // Periodic position updates during light binding
+    private val lightBindUpdateInterval = 30L // Update positions every 30ms during drag (~33fps)
+    private val lightBindUpdateRunnable: Runnable = object : Runnable {
+        override fun run() {
+            if (dragging && lightBindMode) {
+                updateVisibleItemPositions()
+                handler.postDelayed(this, lightBindUpdateInterval)
+            }
+        }
     }
 
     // Index-to-offset cache for variable height items
@@ -265,14 +275,55 @@ class SlideFastScroller @JvmOverloads constructor(
                 adapter.setLightBindMode(true)
             }
         }
+
+        // Start periodic position updates
+        handler.removeCallbacks(lightBindUpdateRunnable)
+        handler.postDelayed(lightBindUpdateRunnable, lightBindUpdateInterval)
+    }
+
+    /**
+     * Update positions of visible items during light binding to show correct data
+     */
+    private fun updateVisibleItemPositions() {
+        val rv = recyclerRef?.get() ?: return
+        val adapter = rv.adapter ?: return
+        val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
+
+        val firstVisible = layoutManager.findFirstVisibleItemPosition()
+        val lastVisible = layoutManager.findLastVisibleItemPosition()
+
+        if (firstVisible < 0 || lastVisible < 0) return
+
+        // Update positions of currently visible items
+        when (adapter) {
+            is FastScrollBindingController -> {
+                if (adapter.shouldHandleCustomBinding()) {
+                    // Use custom light binding to update positions only
+                    for (position in firstVisible..lastVisible) {
+                        val view = layoutManager.findViewByPosition(position)
+                        if (view != null) {
+                            val holder = rv.getChildViewHolder(view)
+                            if (holder != null) {
+                                adapter.onBindViewHolder(holder, position, true)
+                            }
+                        }
+                    }
+                }
+            }
+            is FastScrollOptimizedAdapter -> {
+                // Notify change with payload to trigger position-only updates
+                adapter.notifyItemRangeChanged(firstVisible, lastVisible - firstVisible + 1, "position_update")
+            }
+        }
     }
 
     private fun exitLightBindMode() {
         if (!lightBindMode || lightBindExitPending) return
         lightBindMode = false
         lightBindExitPending = true
-        // Cancel any pending delayed full-bind trigger
+        // Cancel any pending delayed full-bind trigger and periodic updates
         handler.removeCallbacks(delayedFullBindRunnable)
+        handler.removeCallbacks(lightBindUpdateRunnable)
 
         val rv = recyclerRef?.get() ?: return
         val adapter = rv.adapter ?: return
@@ -819,7 +870,8 @@ class SlideFastScroller @JvmOverloads constructor(
 
     private fun scheduleDelayedFullBind() {
         handler.removeCallbacks(delayedFullBindRunnable)
-        handler.postDelayed(delayedFullBindRunnable, delayedFullBindDelay)
+        // Reduced delay for quicker updates during scroll pauses
+        handler.postDelayed(delayedFullBindRunnable, 80L)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
