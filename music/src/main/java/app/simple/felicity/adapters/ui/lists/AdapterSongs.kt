@@ -16,9 +16,10 @@ import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.TextViewUtils.setTextOrUnknown
+import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import com.bumptech.glide.Glide
 
-class SongsAdapter(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHolder>() {
+class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHolder>() {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
     private var previousIndex = -1
@@ -137,18 +138,20 @@ class SongsAdapter(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
             binding.container.isSelected = MediaManager.getCurrentSongId() == song.id
         }
 
-        fun bind(song: Audio, isLightBind: Boolean) {
+        fun bind(audio: Audio, isLightBind: Boolean) {
             if (isLightBind) {
                 binding.container.setSkeletonBackground(enable = true)
-                bindSelectionState(song)
+                bindSelectionState(audio)
                 return
             }
             binding.container.clearSkeletonBackground()
-            binding.title.setTextOrUnknown(song.title)
-            binding.secondaryDetail.setTextOrUnknown(song.artist)
-            binding.tertiaryDetail.setTextOrUnknown(song.album)
-            binding.cover.loadArtCoverWithPayload(song)
-            bindSelectionState(song)
+            binding.title.setTextOrUnknown(audio.title)
+            binding.secondaryDetail.setTextOrUnknown(audio.artist)
+            binding.tertiaryDetail.setTextOrUnknown(audio.album)
+            binding.cover.loadArtCoverWithPayload(audio)
+            binding.title.addAudioQualityIcon(audio)
+
+            bindSelectionState(audio)
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, binding.cover)
                 true

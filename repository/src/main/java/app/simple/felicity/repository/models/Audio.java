@@ -12,6 +12,12 @@ import androidx.room.PrimaryKey;
 @Entity (tableName = "audio")
 public class Audio implements Parcelable {
     
+    public static final int AUDIO_QUALITY_LQ = 0;
+    public static final int AUDIO_QUALITY_MQ = 1;
+    public static final int AUDIO_QUALITY_HQ = 2;
+    public static final int AUDIO_QUALITY_LOSSLESS = 3;
+    public static final int AUDIO_QUALITY_HI_RES = 4;
+    
     public static final Creator <Audio> CREATOR = new Creator <>() {
         @Override
         public Audio createFromParcel(Parcel in) {
@@ -610,5 +616,43 @@ public class Audio implements Parcelable {
         audio.setBitPerSample(getBitPerSample());
         audio.setWriter(getWriter());
         return audio;
+    }
+    
+    /**
+     * Determine an approximate audio quality class for this track.
+     * <p>
+     * Heuristics used:
+     * - FLAC: use bit depth (bitPerSample) -> 24+ is Hi-Res, otherwise Lossless.
+     * - MP3/MPEG: use bitrate thresholds (bps) -> 320k+ HQ, 192k+ MQ, otherwise LQ.
+     * - Other formats: fallback to bitrate thresholds.
+     * <p>
+     * Returns one of AUDIO_QUALITY_LQ, AUDIO_QUALITY_MQ, AUDIO_QUALITY_HQ,
+     * AUDIO_QUALITY_LOSSLESS or AUDIO_QUALITY_HI_RES.
+     */
+    public int getAudioQuality() {
+        String mt = mimeType != null ? mimeType.toLowerCase() : "";
+        if (mt.contains("flac")) {
+            // FLAC: 16-bit considered Lossless, 24-bit considered Hi-Res
+            return bitPerSample >= 24 ? AUDIO_QUALITY_HI_RES : AUDIO_QUALITY_LOSSLESS;
+        } else if (mt.contains("mp3") || mt.contains("mpeg")) {
+            // MP3: 320 kbps -> HQ, 192 kbps -> Standard (MQ), lower -> LQ
+            if (bitrate >= 320) {
+                return AUDIO_QUALITY_HQ;
+            } else if (bitrate >= 192) {
+                return AUDIO_QUALITY_MQ;
+            } else {
+                return AUDIO_QUALITY_LQ;
+            }
+        } else {
+            // Fallback to bitrate-based classification
+            if (bitrate >= 320) {
+                return AUDIO_QUALITY_HQ;
+            } else if (bitrate >= 192) {
+                return AUDIO_QUALITY_MQ;
+            } else {
+                // Fallback to bitrate-based classification
+                return AUDIO_QUALITY_LQ;
+            }
+        }
     }
 }

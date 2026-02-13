@@ -12,7 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
-import app.simple.felicity.adapters.ui.lists.SongsAdapter
+import app.simple.felicity.adapters.ui.lists.AdapterSongs
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentSongsBinding
@@ -37,7 +37,7 @@ class Songs : PanelFragment() {
     private lateinit var binding: FragmentSongsBinding
     private lateinit var headerBinding: HeaderSongsBinding
 
-    private var songsAdapter: SongsAdapter? = null
+    private var adapterSongs: AdapterSongs? = null
     private var gridLayoutManager: GridLayoutManager? = null
 
     private val songsViewModel: SongsViewModel by viewModels({ requireActivity() })
@@ -71,7 +71,7 @@ class Songs : PanelFragment() {
                     // Skip empty initial state, but allow empty updates after adapter exists
                     if (audios.isNotEmpty()) {
                         updateSongsList(audios)
-                    } else if (songsAdapter != null) {
+                    } else if (adapterSongs != null) {
                         // Allow empty list update if adapter already exists (e.g., after deletion)
                         updateSongsList(audios)
                     }
@@ -82,7 +82,7 @@ class Songs : PanelFragment() {
 
     override fun onDestroyView() {
         // Clear adapter reference when view is destroyed
-        songsAdapter = null
+        adapterSongs = null
         gridLayoutManager = null
         super.onDestroyView()
     }
@@ -169,10 +169,10 @@ class Songs : PanelFragment() {
      */
     private fun updateSongsList(songs: List<Audio>) {
         // Initialize adapter on first data arrival to preserve layout animations
-        if (songsAdapter == null) {
-            songsAdapter = SongsAdapter(songs)
-            songsAdapter?.setHasStableIds(true)
-            songsAdapter?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
+        if (adapterSongs == null) {
+            adapterSongs = AdapterSongs(songs)
+            adapterSongs?.setHasStableIds(true)
+            adapterSongs?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
                     setMediaItems(songs, position)
                 }
@@ -181,14 +181,14 @@ class Songs : PanelFragment() {
                     openSongsMenu(audios, position, view as ImageView)
                 }
             })
-            binding.recyclerView.adapter = songsAdapter
+            binding.recyclerView.adapter = adapterSongs
         } else {
             // Update existing adapter data
-            songsAdapter?.updateSongs(songs)
+            adapterSongs?.updateSongs(songs)
 
             // Re-attach adapter if RecyclerView lost its reference (e.g., after navigation)
             if (binding.recyclerView.adapter == null) {
-                binding.recyclerView.adapter = songsAdapter
+                binding.recyclerView.adapter = adapterSongs
             }
         }
 
@@ -209,7 +209,7 @@ class Songs : PanelFragment() {
 
     override fun onAudio(audio: Audio) {
         super.onAudio(audio)
-        songsAdapter?.currentlyPlayingSong = audio
+        adapterSongs?.currentlyPlayingSong = audio
     }
 
     private fun provideScrollPositionDataBasedOnSortStyle(songs: List<Audio>): List<SectionedFastScroller.Position> {

@@ -1,5 +1,7 @@
 package app.simple.felicity.repository.metadata;
 
+import android.util.Log;
+
 import org.jaudiotagger.audio.AudioFile;
 import org.jaudiotagger.audio.AudioFileIO;
 import org.jaudiotagger.audio.exceptions.CannotReadException;
@@ -15,6 +17,8 @@ import app.simple.felicity.core.utils.FileUtils;
 import app.simple.felicity.repository.models.Audio;
 
 public class JAudioMetadataLoader {
+    
+    private final static String TAG = "JAudioMetadataLoader";
     
     private final File file;
     private final AudioFile audioFile;
@@ -149,6 +153,7 @@ public class JAudioMetadataLoader {
     }
     
     private long getBitrate() {
+        Log.d(TAG, "Bitrate: " + audioFile.getAudioHeader().getBitRateAsNumber() + " for file: " + file.getAbsolutePath());
         return audioFile.getAudioHeader().getBitRateAsNumber();
     }
     
@@ -181,6 +186,7 @@ public class JAudioMetadataLoader {
     }
     
     private long getBitPerSample() {
+        Log.d("JAudioMetadataLoader", "Bits per sample: " + audioFile.getAudioHeader().getBitsPerSample());
         return audioFile.getAudioHeader().getBitsPerSample();
     }
     
