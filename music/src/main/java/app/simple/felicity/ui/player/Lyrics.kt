@@ -6,8 +6,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
+import app.simple.felicity.databinding.DialogLrcSearchBinding
 import app.simple.felicity.databinding.FragmentLyricsBinding
+import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.viewmodels.player.LyricsViewModel
@@ -42,6 +45,24 @@ class Lyrics : MediaFragment() {
                 binding.lrc.setLrcData(lrcData)
             }
         }
+
+        binding.albumArt.loadArtCoverWithPayload(MediaManager.getCurrentSong()!!)
+
+        binding.search.setOnClickListener {
+            SimpleSharedImageDialog.Builder(
+                    container = requireContainerView(),
+                    sourceImageView = binding.albumArt,
+                    inflateBinding = DialogLrcSearchBinding::inflate,
+                    targetImageViewProvider = { it.albumArt })
+                .onDialogInflated { dialogBinding, dismiss ->
+                    // Setup your dialog content
+                    dialogBinding.name.text = MediaManager.getCurrentSong()?.title
+                    dialogBinding.artist.text = MediaManager.getCurrentSong()?.artist
+                    dialogBinding.albumArt.loadArtCoverWithPayload(MediaManager.getCurrentSong()!!)
+                }
+                .build()
+                .show()
+        }
     }
 
     override fun onSeekChanged(seek: Long) {
@@ -52,6 +73,7 @@ class Lyrics : MediaFragment() {
     override fun onAudio(audio: Audio) {
         super.onAudio(audio)
         lyricsViewModel.getLrcData()
+        binding.albumArt.loadArtCoverWithPayload(MediaManager.getCurrentSong()!!)
         binding.name.text = audio.title
         binding.artist.text = audio.artist
     }
