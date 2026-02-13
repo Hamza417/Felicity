@@ -5,6 +5,7 @@ import app.simple.felicity.repository.loader.AudioDatabaseLoader
 import app.simple.felicity.repository.repositories.AlbumRepository
 import app.simple.felicity.repository.repositories.ArtistRepository
 import app.simple.felicity.repository.repositories.AudioRepository
+import app.simple.felicity.repository.repositories.LrcRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -37,5 +38,11 @@ object AppModule {
     @Singleton
     fun provideAudioRepository(@ApplicationContext context: Context): AudioRepository {
         return AudioRepository(context)
+    }
+
+    @Provides
+    @Singleton
+    fun providesLrcRepository(): LrcRepository {
+        return LrcRepository()
     }
 }

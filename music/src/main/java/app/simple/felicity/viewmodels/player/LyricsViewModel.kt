@@ -1,30 +1,27 @@
 package app.simple.felicity.viewmodels.player
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import app.simple.felicity.core.utils.FileUtils.toFile
 import app.simple.felicity.decorations.lrc.model.LrcData
 import app.simple.felicity.decorations.lrc.parser.LrcParser
 import app.simple.felicity.decorations.lrc.parser.LyricsParseException
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.managers.MediaManager
-import app.simple.felicity.repository.models.LrcLibResponse
-import com.google.common.reflect.TypeToken
-import com.google.gson.Gson
+import app.simple.felicity.repository.repositories.LrcRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.HttpUrl
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.io.IOException
 import javax.inject.Inject
 
 @HiltViewModel
-class LyricsViewModel @Inject constructor(application: Application) : WrappedViewModel(application) {
+class LyricsViewModel @Inject constructor(
+        application: Application,
+        private val lrcRepository: LrcRepository
+) : WrappedViewModel(application) {
 
     private val lrcData: MutableLiveData<LrcData> by lazy {
         MutableLiveData<LrcData>().also {
@@ -37,84 +34,83 @@ class LyricsViewModel @Inject constructor(application: Application) : WrappedVie
     }
 
     fun loadLrcData() {
-        viewModelScope.launch(Dispatchers.IO) { // Use IO for file operations
-            val song = MediaManager.getCurrentSong()?.path?.substringBeforeLast(".")
-            val lrcFile = song.plus(".lrc").toFile()
-            if (lrcFile.exists()) {
-                val lrcDataLoaded = LrcParser().parse(lrcFile.readText())
-                lrcData.postValue(lrcDataLoaded)
-            } else {
-                try {
-                    LrcParser().parse(fetchLrcBySearch(
-                            trackName = MediaManager.getCurrentSong()?.title ?: "",
-                            artistName = MediaManager.getCurrentSong()?.artist ?: "",
-                    ) ?: "").also {
-                        lrcData.postValue(it)
-                        writeLrcToFile(it.toString(), lrcFile.absolutePath) // Cache for future use
+        viewModelScope.launch(Dispatchers.IO) {
+            val currentSong = MediaManager.getCurrentSong()
+            if (currentSong == null) {
+                lrcData.postValue(LrcData())
+                return@launch
+            }
+
+            // Try to load from existing file first
+            val loadResult = lrcRepository.loadLrcFromFile(currentSong.path)
+
+            loadResult.onSuccess { lrcContent ->
+                if (lrcContent != null) {
+                    // Parse and display existing LRC
+                    Log.d(TAG, "Existing LRC file found for ${currentSong.title}, loading lyrics.")
+                    try {
+                        val lrcDataLoaded = LrcParser().parse(lrcContent)
+                        lrcData.postValue(lrcDataLoaded)
+                    } catch (e: LyricsParseException) {
+                        e.printStackTrace()
+                        lrcData.postValue(LrcData())
                     }
-                } catch (e: LyricsParseException) {
-                    e.printStackTrace()
-                    lrcData.postValue(LrcData()) // Post null on error
+                } else {
+                    Log.d(TAG, "No existing LRC file found for ${currentSong.title}, attempting to fetch automatically.")
+                    // No existing LRC file, try to fetch automatically
+                    fetchAndSaveLrc(
+                            trackName = currentSong.title ?: currentSong.name,
+                            artistName = currentSong.artist ?: "",
+                            audioPath = currentSong.path
+                    )
                 }
+            }.onFailure { exception ->
+                exception.printStackTrace()
+                lrcData.postValue(LrcData())
             }
         }
     }
-
-    private val client = OkHttpClient()
-    private val gson = Gson()
 
     /**
-     * Fetches the synced lyrics (.lrc) for a specific track.
-     * Returns the LRC string content if found, or null if not found/error.
-     *
-     * @param trackName The title of the song.
-     * @param artistName The artist's name.
+     * Fetch lyrics automatically and save to file.
+     * This gets the first best match from the search results.
      */
-    suspend fun fetchLrcBySearch(
-            trackName: String,
-            artistName: String
-    ): String? {
-        return withContext(Dispatchers.IO) {
-            try {
-                val urlBuilder = HttpUrl.Builder()
-                    .scheme("https")
-                    .host("lrclib.net")
-                    .addPathSegment("api")
-                    .addPathSegment("search")
-                    .addQueryParameter("track_name", trackName)
-                    .addQueryParameter("artist_name", artistName)
+    private suspend fun fetchAndSaveLrc(trackName: String, artistName: String, audioPath: String) {
+        val searchResult = lrcRepository.searchLyrics(trackName, artistName)
 
-                val request = Request.Builder()
-                    .url(urlBuilder.build())
-                    .header("User-Agent", "LrcFetchBot/1.0") // Recommended by docs [cite: 10]
-                    .build()
+        searchResult.onSuccess { results ->
+            val bestMatch = results.firstOrNull()
+            val syncedLyrics = bestMatch?.syncedLyrics
+            if (bestMatch != null && !syncedLyrics.isNullOrBlank()) {
+                try {
+                    // Parse the LRC
+                    val lrcDataLoaded = withContext(Dispatchers.Default) {
+                        LrcParser().parse(syncedLyrics)
+                    }
 
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return@use null
+                    // Save to file
+                    lrcRepository.saveLrcToFile(syncedLyrics, audioPath)
 
-                    val responseBody = response.body?.string() ?: return@use null
-
-                    val listType = object : TypeToken<List<LrcLibResponse>>() {}.type
-                    val results: List<LrcLibResponse> = gson.fromJson(responseBody, listType)
-                    val bestMatch = results.firstOrNull { !it.syncedLyrics.isNullOrBlank() }
-
-                    return@use bestMatch?.syncedLyrics
+                    // Update LiveData
+                    lrcData.postValue(lrcDataLoaded)
+                } catch (e: LyricsParseException) {
+                    e.printStackTrace()
+                    lrcData.postValue(LrcData())
                 }
-            } catch (e: IOException) {
-                e.printStackTrace()
-                return@withContext null
+            } else {
+                lrcData.postValue(LrcData())
             }
+        }.onFailure { exception ->
+            exception.printStackTrace()
+            lrcData.postValue(LrcData())
         }
     }
 
-    suspend fun writeLrcToFile(lrcContent: String, outputPath: String) {
-        withContext(Dispatchers.IO) {
-            try {
-                outputPath.toFile().writeText(lrcContent)
-            } catch (e: IOException) {
-                e.printStackTrace()
-            }
-        }
+    /**
+     * Reload LRC data. Useful after user selects new lyrics from search.
+     */
+    fun reloadLrcData() {
+        loadLrcData()
     }
 
     companion object {

@@ -30,4 +30,5 @@ dependencies {
     implementation 'androidx.media3:media3-session:1.9.2'
 
     implementation 'com.google.code.gson:gson:2.13.2'
+    implementation 'com.squareup.okhttp3:okhttp:5.3.2'
 }
