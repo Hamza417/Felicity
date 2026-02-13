@@ -22,6 +22,7 @@ import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.viewer.ArtistViewerViewModel
@@ -101,6 +102,12 @@ class ArtistPage : MediaFragment() {
                 val album = albums[position]
                 Log.i(TAG, "onAlbumClicked: Album clicked: ${album.name}")
                 openFragment(AlbumPage.newInstance(album), AlbumPage.TAG)
+            }
+
+            override fun onGenreClicked(genre: Genre, view: View) {
+                super.onGenreClicked(genre, view)
+                Log.i(TAG, "onGenreClicked: Genre clicked: ${genre.name}")
+                openFragment(GenrePage.newInstance(genre), GenrePage.TAG)
             }
 
             override fun onMenuClicked(view: View) {
