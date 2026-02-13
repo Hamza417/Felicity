@@ -183,7 +183,7 @@ open class PreferenceFragment : MediaFragment() {
                     true
                 },
                 valueProvider = Supplier {
-                    AppearancePreferences.isShadowEffectOn()
+                    AlbumArtPreferences.isShadowEnabled()
                 }
         )
 
