@@ -108,14 +108,15 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
     protected fun requireHiddenMiniPlayer() {
         viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onStart(owner: LifecycleOwner) {
-                super.onStart(owner)
+            override fun onCreate(owner: LifecycleOwner) {
+                super.onCreate(owner)
                 shouldShowMiniPlayer = false
                 hideMiniPlayer()
             }
 
-            override fun onPause(owner: LifecycleOwner) {
-                super.onPause(owner)
+            // TODO fix delay in showing up?
+            override fun onDestroy(owner: LifecycleOwner) {
+                super.onDestroy(owner)
                 // Don't force-show during configuration changes; preserve current state
                 if (requireActivity().isChangingConfigurations.not()) {
                     shouldShowMiniPlayer = true
