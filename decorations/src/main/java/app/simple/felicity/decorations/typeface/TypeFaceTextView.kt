@@ -155,6 +155,9 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
                 DRAWABLE_REGULAR -> animateDrawableColorChange(lastDrawableColor, ThemeManager.theme.iconTheme.regularIconColor)
                 DRAWABLE_SECONDARY -> animateDrawableColorChange(lastDrawableColor, ThemeManager.theme.iconTheme.secondaryIconColor)
                 DRAWABLE_WARNING -> animateDrawableColorChange(lastDrawableColor, Color.RED)
+                DRAWABLE_NONE -> {
+                    /* no-op */
+                }
             }
         } else {
             when (drawableTintMode) {
@@ -162,6 +165,9 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
                 DRAWABLE_REGULAR -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(ThemeManager.theme.iconTheme.regularIconColor))
                 DRAWABLE_SECONDARY -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(ThemeManager.theme.iconTheme.secondaryIconColor))
                 DRAWABLE_WARNING -> TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(Color.RED))
+                DRAWABLE_NONE -> {
+                    /* no-op */
+                }
             }
         }
 
@@ -260,5 +266,6 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
         const val DRAWABLE_REGULAR = 1
         const val DRAWABLE_SECONDARY = 2
         const val DRAWABLE_WARNING = 3
+        const val DRAWABLE_NONE = 4
     }
 }

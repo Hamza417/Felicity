@@ -38,7 +38,7 @@ the next few days.
 
 ## Screenshots
 
-Last Updated: 30 Jan 2026
+Last Updated: 14 Feb 2026
 
 |                          |                          |                          |
 |--------------------------|--------------------------|--------------------------|

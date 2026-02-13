@@ -54,6 +54,7 @@
             <flag name="regular" value="1" />
             <flag name="secondary" value="2" />
             <flag name="warning" value="3" />
+            <flag name="custom" value="4" />
         </attr>
 
         <attr name="isDrawableHidden" format="boolean" />
