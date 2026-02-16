@@ -64,7 +64,7 @@ dependencies {
 
     // AndroidX
     implementation 'androidx.fragment:fragment-ktx:1.8.9'
-    implementation 'androidx.activity:activity-ktx:1.12.3'
+    implementation 'androidx.activity:activity-ktx:1.12.4'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.10.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.10.0'
@@ -72,15 +72,15 @@ dependencies {
     implementation 'androidx.documentfile:documentfile:1.1.0'
     implementation 'androidx.media:media:1.7.1'
     implementation 'androidx.security:security-crypto:1.1.0'
-    implementation 'androidx.media3:media3-exoplayer:1.9.1'
-    implementation 'androidx.media3:media3-ui:1.9.1'
-    implementation 'androidx.media3:media3-common:1.9.1'
-    implementation 'androidx.media3:media3-session:1.9.1'
+    implementation 'androidx.media3:media3-exoplayer:1.9.2'
+    implementation 'androidx.media3:media3-ui:1.9.2'
+    implementation 'androidx.media3:media3-common:1.9.2'
+    implementation 'androidx.media3:media3-session:1.9.2'
     implementation 'androidx.viewpager2:viewpager2:1.1.0'
     implementation 'androidx.asynclayoutinflater:asynclayoutinflater:1.1.0'
 
-    implementation "com.google.dagger:hilt-android:2.59"
-    ksp "com.google.dagger:hilt-android-compiler:2.59"
+    implementation "com.google.dagger:hilt-android:2.59.1"
+    ksp "com.google.dagger:hilt-android-compiler:2.59.1"
 
     implementation 'com.squareup.retrofit2:retrofit:3.0.0'
     implementation 'com.squareup.retrofit2:converter-gson:3.0.0'
