@@ -26,7 +26,7 @@ class AudioRepository @Inject constructor(
 ) {
 
     private val audioDatabase: AudioDatabase by lazy {
-        AudioDatabase.getInstance(context)!!
+        AudioDatabase.getInstance(context)
     }
 
     /**
@@ -510,7 +510,7 @@ class AudioRepository @Inject constructor(
     }
 
     companion object {
-        private const val ARTIST_REGEX = "\\s*(?:,|&|\\+|/|\\\\|\\||and|with|w\\/|vs\\.?|x|feat\\.?|ft\\.?|featuring|pres\\.?|starring)\\s+"
+        private const val ARTIST_REGEX = "\\s*(?:,|&|\\+|/|\\\\|\\||and|with|w/|vs\\.?|x|feat\\.?|ft\\.?|featuring|pres\\.?|starring)\\s*"
         private const val ARTIST_WHITELIST = "/artist_whitelist.txt"
     }
 }
