@@ -510,7 +510,8 @@ class AudioRepository @Inject constructor(
     }
 
     companion object {
-        private const val ARTIST_REGEX = "\\s*(?:,|&|\\+|/|\\\\|\\||and|with|w/|vs\\.?|x|feat\\.?|ft\\.?|featuring|pres\\.?|starring)\\s*"
+        private const val ARTIST_REGEX = "\\s*[,&+/\\\\|]\\s*|\\s+and\\s+|\\s+with\\s+|\\s+w/\\s+|\\s+vs\\.?\\s+|\\s+x\\s+" +
+                "|\\s+feat\\.?\\s+|\\s+ft\\.?\\s+|\\s+featuring\\s+|\\s+pres\\.?\\s+|\\s+starring\\s+"
         private const val ARTIST_WHITELIST = "/artist_whitelist.txt"
     }
 }
