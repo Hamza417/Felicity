@@ -10,6 +10,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -19,30 +20,44 @@ import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
+import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionError
 import app.simple.felicity.manager.SharedPreferences.initRegisterSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
-import app.simple.felicity.repository.repositories.MediaStoreRepository
+import app.simple.felicity.repository.repositories.AudioRepository
+import com.google.common.collect.ImmutableList
+import com.google.common.util.concurrent.ListenableFuture
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.guava.future
+import javax.inject.Inject
 
 /**
  * Service responsible for managing audio playback using ExoPlayer with dynamic decoder switching support.
  */
+@AndroidEntryPoint
 @OptIn(UnstableApi::class)
 class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedPreferenceChangeListener {
 
+    @Inject
+    lateinit var audioRepository: AudioRepository
+
     private var mediaSession: MediaLibrarySession? = null
     private lateinit var player: ExoPlayer
-    private var mediaStoreRepository: MediaStoreRepository? = null
     private var renderersFactory: DefaultRenderersFactory? = null
+
+    private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     override fun onCreate() {
         super.onCreate()
         initRegisterSharedPreferenceChangeListener(applicationContext)
-        mediaStoreRepository = MediaStoreRepository(this)
 
         // Initialize the RenderersFactory once.
         renderersFactory = object : DefaultRenderersFactory(this) {
@@ -211,7 +226,6 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     }
 
     override fun onDestroy() {
-        mediaStoreRepository = null
         unregisterSharedPreferenceChangeListener()
 
         mediaSession?.run {
@@ -222,7 +236,176 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         super.onDestroy()
     }
 
-    private inner class LibraryCallback : MediaLibrarySession.Callback
+    private inner class LibraryCallback : MediaLibrarySession.Callback {
+
+        /**
+         * Allow clients (Assistant, Android Auto) to connect and get the library root
+         */
+        override fun onGetLibraryRoot(
+                session: MediaLibrarySession,
+                browser: MediaSession.ControllerInfo,
+                params: LibraryParams?
+        ): ListenableFuture<LibraryResult<MediaItem>> = serviceScope.future {
+            Log.d(TAG, "onGetLibraryRoot called by: ${browser.packageName}")
+
+            val rootItem = MediaItem.Builder()
+                .setMediaId("root")
+                .setMediaMetadata(
+                        MediaMetadata.Builder()
+                            .setIsBrowsable(true)
+                            .setIsPlayable(false)
+                            .setTitle("Felicity Music Library")
+                            .build()
+                )
+                .build()
+
+            LibraryResult.ofItem(rootItem, params)
+        }
+
+        /**
+         * Allow clients to browse content (essential for "Play Music" generally)
+         */
+        override fun onGetChildren(
+                session: MediaLibrarySession,
+                browser: MediaSession.ControllerInfo,
+                parentId: String,
+                page: Int,
+                pageSize: Int,
+                params: LibraryParams?
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> = serviceScope.future {
+            Log.d(TAG, "onGetChildren called for parentId: $parentId, page: $page, pageSize: $pageSize")
+
+            when (parentId) {
+                "root" -> {
+                    // Fetch all songs from AudioRepository
+                    val songs = audioRepository.getAllAudioList()
+
+                    // Convert Audio models to MediaItems
+                    val mediaItems = songs.map { audio ->
+                        MediaItem.Builder()
+                            .setMediaId(audio.id.toString())
+                            .setUri(audio.path)
+                            .setMediaMetadata(
+                                    MediaMetadata.Builder()
+                                        .setTitle(audio.title ?: "Unknown Title")
+                                        .setArtist(audio.artist ?: "Unknown Artist")
+                                        .setAlbumTitle(audio.album ?: "Unknown Album")
+                                        .setIsBrowsable(false) // Songs are leaves, not folders
+                                        .setIsPlayable(true)
+                                        .build()
+                            )
+                            .build()
+                    }
+
+                    // Handle pagination
+                    val startIndex = page * pageSize
+                    val endIndex = minOf(startIndex + pageSize, mediaItems.size)
+                    val paginatedItems = if (startIndex < mediaItems.size) {
+                        mediaItems.subList(startIndex, endIndex)
+                    } else {
+                        emptyList()
+                    }
+
+                    Log.d(TAG, "Returning ${paginatedItems.size} items out of ${mediaItems.size} total")
+                    LibraryResult.ofItemList(ImmutableList.copyOf(paginatedItems), params)
+                }
+                else -> {
+                    // Unknown parent ID
+                    Log.w(TAG, "Unknown parent ID: $parentId")
+                    LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
+                }
+            }
+        }
+
+        /**
+         * Handle "Play [Song Name]" commands from Assistant (Search Intent)
+         */
+        override fun onAddMediaItems(
+                mediaSession: MediaSession,
+                controller: MediaSession.ControllerInfo,
+                mediaItems: MutableList<MediaItem>
+        ): ListenableFuture<MutableList<MediaItem>> = serviceScope.future {
+            Log.d(TAG, "onAddMediaItems called with ${mediaItems.size} items")
+
+            val updatedMediaItems = mediaItems.mapNotNull { mediaItem ->
+                // If the mediaItem comes from a search query, it often lacks a URI
+                if (mediaItem.requestMetadata.searchQuery != null) {
+                    val query = mediaItem.requestMetadata.searchQuery!!
+                    Log.d(TAG, "Assistant requested search for: $query")
+
+                    // Search for the song in the AudioRepository
+                    // Try title search first, then artist search
+                    val titleResults = audioRepository.searchByTitle(query)
+                    val artistResults = audioRepository.searchByArtist(query)
+                    val audio = titleResults.firstOrNull() ?: artistResults.firstOrNull()
+
+                    if (audio != null) {
+                        Log.d(TAG, "Found audio: ${audio.title} by ${audio.artist}")
+                        // Return the fully populated MediaItem with URI
+                        MediaItem.Builder()
+                            .setMediaId(audio.id.toString())
+                            .setUri(audio.path)
+                            .setMediaMetadata(
+                                    MediaMetadata.Builder()
+                                        .setTitle(audio.title ?: "Unknown Title")
+                                        .setArtist(audio.artist ?: "Unknown Artist")
+                                        .setAlbumTitle(audio.album ?: "Unknown Album")
+                                        .setIsPlayable(true)
+                                        .build()
+                            )
+                            .build()
+                    } else {
+                        Log.w(TAG, "No audio found for query: $query")
+                        null
+                    }
+                } else if (mediaItem.localConfiguration != null) {
+                    // Already has a URI, return as-is
+                    mediaItem
+                } else {
+                    // Try to resolve by media ID
+                    val mediaId = mediaItem.mediaId
+                    if (mediaId.isNotEmpty()) {
+                        val audioId = mediaId.toLongOrNull()
+                        if (audioId != null) {
+                            // Get audio by ID from database
+                            val query = "SELECT * FROM audio WHERE id = ?"
+                            val args = arrayOf<Any>(audioId)
+                            val results = audioRepository.executeRawQuery(query, args)
+                            val audio = results.firstOrNull()
+
+                            if (audio != null) {
+                                Log.d(TAG, "Resolved media ID $mediaId to audio: ${audio.title}")
+                                MediaItem.Builder()
+                                    .setMediaId(audio.id.toString())
+                                    .setUri(audio.path)
+                                    .setMediaMetadata(
+                                            MediaMetadata.Builder()
+                                                .setTitle(audio.title ?: "Unknown Title")
+                                                .setArtist(audio.artist ?: "Unknown Artist")
+                                                .setAlbumTitle(audio.album ?: "Unknown Album")
+                                                .setIsPlayable(true)
+                                                .build()
+                                    )
+                                    .build()
+                            } else {
+                                Log.w(TAG, "No audio found for media ID: $mediaId")
+                                null
+                            }
+                        } else {
+                            Log.w(TAG, "Invalid media ID format: $mediaId")
+                            null
+                        }
+                    } else {
+                        Log.w(TAG, "MediaItem has no URI, search query, or valid media ID")
+                        null
+                    }
+                }
+            }.toMutableList()
+
+            Log.d(TAG, "Resolved ${updatedMediaItems.size} media items")
+            updatedMediaItems
+        }
+    }
 
     companion object {
         private const val TAG = "FelicityPlayerService"

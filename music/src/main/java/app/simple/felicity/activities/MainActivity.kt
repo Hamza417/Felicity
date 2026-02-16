@@ -1,7 +1,10 @@
 package app.simple.felicity.activities
 
+import android.app.SearchManager
+import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
@@ -272,5 +275,19 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     override fun onResume() {
         super.onResume()
         AudioDatabaseService.refreshScan(applicationContext)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleSearchIntent(intent)
+    }
+
+    private fun handleSearchIntent(intent: Intent) {
+        if (intent.action == MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH) {
+            val query = intent.getStringExtra(SearchManager.QUERY)
+            Log.d("MainActivity", "Search query: $query")
+        } else {
+            Log.d("MainActivity", "Received non-search intent: ${intent.action}")
+        }
     }
 }
