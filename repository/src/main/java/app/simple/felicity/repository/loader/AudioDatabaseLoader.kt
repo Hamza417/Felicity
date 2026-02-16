@@ -31,6 +31,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     companion object {
         private const val TAG = "AudioDatabaseLoader"
         private const val MIN_SEMAPHORE_PERMITS = 4
+        private const val BATCH_SIZE = 50 // Number of audio items to accumulate before inserting to database
 
         data class IndexedFile(val lastModified: Long, val size: Long)
     }
@@ -88,6 +89,10 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                 activeJobs.clear()
             }
 
+            // Batch accumulator for audio items
+            val batchList = mutableListOf<Audio>()
+            val batchMutex = Mutex()
+
             storages.forEach { storage ->
                 // Check for cancellation before processing each storage
                 loaderScope.coroutineContext.ensureActive()
@@ -116,9 +121,23 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                                     Log.w(TAG, "Failed to extract metadata for: ${file.name}")
                                 } else {
                                     Log.d(TAG, "Metadata extracted for ${file.name}: size=${audio.size}, dateModified=${audio.dateModified}")
-                                    dao?.insert(audio)
-                                    indexedMap[file.absolutePath] = IndexedFile(audio.dateModified, audio.size)
-                                    Log.d(TAG, "Inserted and indexed: ${file.name}")
+
+                                    // Add to batch list
+                                    batchMutex.lock()
+                                    try {
+                                        batchList.add(audio)
+                                        indexedMap[file.absolutePath] = IndexedFile(audio.dateModified, audio.size)
+
+                                        // Insert batch when it reaches the batch size
+                                        if (batchList.size >= BATCH_SIZE) {
+                                            val batchToInsert = batchList.toList()
+                                            batchList.clear()
+                                            Log.d(TAG, "Inserting batch of ${batchToInsert.size} audio items")
+                                            dao?.insertBatch(batchToInsert)
+                                        }
+                                    } finally {
+                                        batchMutex.unlock()
+                                    }
                                 }
                             } catch (e: CancellationException) {
                                 // Coroutine was canceled - rethrow to propagate cancellation
@@ -141,6 +160,14 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             // Wait for all processing jobs to complete
             val jobsToWait = synchronized(activeJobs) { activeJobs.toList() }
             jobsToWait.joinAll()
+
+            // Insert any remaining items in the batch
+            if (batchList.isNotEmpty()) {
+                Log.d(TAG, "Inserting final batch of ${batchList.size} audio items")
+                dao?.insertBatch(batchList)
+                batchList.clear()
+            }
+
             Log.d(TAG, "Audio file processing complete in ${(System.currentTimeMillis() - startTime) / 1000} seconds.")
         } catch (e: CancellationException) {
             // Scan was canceled - this is expected behavior

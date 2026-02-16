@@ -65,6 +65,13 @@ interface AudioDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(audio: Audio)
 
+    /**
+     * Insert multiple [Audio] items in a batch
+     * into the table
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBatch(audioList: List<Audio>)
+
     @Update
     suspend fun update(audio: Audio)
 
