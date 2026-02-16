@@ -11,8 +11,6 @@ import app.simple.felicity.databinding.AdapterStyleGridBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.decorations.utils.ViewUtils.clearSkeletonBackground
-import app.simple.felicity.decorations.utils.ViewUtils.setSkeletonBackground
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.AlbumPreferences
 import app.simple.felicity.repository.models.Album
@@ -135,12 +133,10 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
 
             if (isLightBind) {
                 // Skip heavy operations: image loading
-                binding.container.setSkeletonBackground(enable = true)
                 return
             }
 
-            // Full binding: clear skeleton and load images
-            binding.container.clearSkeletonBackground()
+            // Full binding: load images
             binding.cover.loadArtCoverWithPayload(album)
 
             binding.container.setOnLongClickListener {
@@ -162,12 +158,10 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
 
             if (isLightBind) {
                 // Skip heavy operations: image loading
-                binding.container.setSkeletonBackground(enable = true)
                 return
             }
 
-            // Full binding: clear skeleton and load images
-            binding.container.clearSkeletonBackground()
+            // Full binding: load images
             binding.albumArt.loadArtCoverWithPayload(album)
 
             binding.container.setOnLongClickListener {
