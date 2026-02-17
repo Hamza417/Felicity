@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 class ArtistPage : MediaFragment() {
 
     private lateinit var binding: FragmentPageArtistBinding
+    private var pageAdapter: PageAdapter? = null
 
     private val artistViewerViewModel: ArtistViewerViewModel by viewModels(
             ownerProducer = { this },
@@ -60,9 +61,8 @@ class ArtistPage : MediaFragment() {
         binding.recyclerView.requireAttachedMiniPlayer()
         postponeEnterTransition()
 
-        Log.d(TAG, "onViewCreated: ArtistPage for artist: ${artist.name}")
+        Log.d(TAG, "onViewCreated: ArtistPage for artist: ${artist.name}, adapter=${pageAdapter != null}")
 
-        // Observe StateFlow with proper lifecycle handling
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
                 artistViewerViewModel.data.collect { data ->
@@ -73,13 +73,31 @@ class ArtistPage : MediaFragment() {
     }
 
     private fun updateArtistPage(data: PageData) {
-        Log.d(TAG, "updateArtistPage: Updating UI for artist: ${artist.name} with ${data.songs.size} songs")
-        val adapter = PageAdapter(data, PageAdapter.PageType.ArtistPage(artist))
-        val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
-        binding.recyclerView.addItemDecorationSafely(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
-        binding.recyclerView.adapter = adapter
+        Log.d(TAG, "updateArtistPage: Updating UI for artist: ${artist.name} with ${data.songs.size} songs, adapter=${pageAdapter != null}, recyclerView.adapter=${binding.recyclerView.adapter != null}")
 
-        adapter.setArtistAdapterListener(object : GeneralAdapterCallbacks {
+        if (pageAdapter == null) {
+            Log.d(TAG, "updateArtistPage: Creating new adapter")
+            pageAdapter = PageAdapter(data, PageAdapter.PageType.ArtistPage(artist))
+            val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
+            binding.recyclerView.addItemDecorationSafely(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
+            binding.recyclerView.adapter = pageAdapter
+            setupAdapterCallbacks()
+        } else {
+            Log.d(TAG, "updateArtistPage: Updating existing adapter with new data")
+            pageAdapter?.updateData(data)
+
+            // Re-attach adapter if RecyclerView lost its reference (e.g., after navigation)
+            if (binding.recyclerView.adapter == null) {
+                Log.d(TAG, "updateArtistPage: Re-attaching adapter to RecyclerView")
+                binding.recyclerView.adapter = pageAdapter
+            }
+        }
+
+        requireView().startTransitionOnPreDraw()
+    }
+
+    private fun setupAdapterCallbacks() {
+        pageAdapter?.setArtistAdapterListener(object : GeneralAdapterCallbacks {
             override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
                 Log.i(TAG, "onSongClick: Song clicked in artist: ${artist.name}, position: $position")
                 setMediaItems(songs, position)
@@ -118,33 +136,36 @@ class ArtistPage : MediaFragment() {
             override fun onMenuClicked(view: View) {
                 Log.i(TAG, "onMenuClicked: Menu clicked for artist: ${artist.name}")
 
-                PopupArtistMenu(
-                        container = requireContainerView(),
-                        anchorView = view,
-                        menuItems = listOf(R.string.play, R.string.shuffle, R.string.send),
-                        onMenuItemClick = {
-                            when (it) {
-                                R.string.play -> {
-                                    Log.i(TAG, "onMenuItemClick: Play clicked for artist: ${artist.name}")
-                                    setMediaItems(data.songs.toMutableList(), 0)
+                // Get current data from adapter
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val currentData = artistViewerViewModel.data.value ?: return@launch
+
+                    PopupArtistMenu(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(R.string.play, R.string.shuffle, R.string.send),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.play -> {
+                                        Log.i(TAG, "onMenuItemClick: Play clicked for artist: ${artist.name}")
+                                        setMediaItems(currentData.songs.toMutableList(), 0)
+                                    }
+                                    R.string.shuffle -> {
+                                        Log.i(TAG, "onMenuItemClick: Shuffle clicked for artist: ${artist.name}")
+                                        setMediaItems(currentData.songs.shuffled().toMutableList(), 0)
+                                    }
+                                    R.string.send -> {
+                                        Log.i(TAG, "onMenuItemClick: Send clicked for artist: ${artist.name}")
+                                        // TODO: Implement send functionality
+                                    }
                                 }
-                                R.string.shuffle -> {
-                                    Log.i(TAG, "onMenuItemClick: Shuffle clicked for artist: ${artist.name}")
-                                    setMediaItems(data.songs.shuffled().toMutableList(), 0)
-                                }
-                                R.string.send -> {
-                                    Log.i(TAG, "onMenuItemClick: Send clicked for artist: ${artist.name}")
-                                    // TODO: Implement send functionality
-                                }
-                            }
-                        },
-                        menuIcons = listOf(R.drawable.ic_play, R.drawable.ic_shuffle, R.drawable.ic_send),
-                        onDismiss = { Log.d(TAG, "PopupArtistMenu dismissed") }
-                ).show()
+                            },
+                            menuIcons = listOf(R.drawable.ic_play, R.drawable.ic_shuffle, R.drawable.ic_send),
+                            onDismiss = { Log.d(TAG, "PopupArtistMenu dismissed") }
+                    ).show()
+                }
             }
         })
-
-        requireView().startTransitionOnPreDraw()
     }
 
     companion object {

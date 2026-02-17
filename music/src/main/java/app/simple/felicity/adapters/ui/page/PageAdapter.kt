@@ -1,8 +1,10 @@
 package app.simple.felicity.adapters.ui.page
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
@@ -30,7 +32,7 @@ import com.bumptech.glide.Glide
  * Handles different page types and adapts the header and sections accordingly
  */
 class PageAdapter(
-        private val data: PageData,
+        private var data: PageData,
         private val pageType: PageType
 ) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
@@ -48,6 +50,72 @@ class PageAdapter(
 
     init {
         buildItemsList()
+    }
+
+    /**
+     * Update the adapter's data with new PageData using DiffUtil for efficiency.
+     * This prevents full list recreation and maintains scroll position.
+     */
+    fun updateData(newData: PageData) {
+        Log.d(TAG, "updateData: Updating with ${newData.songs.size} songs, ${newData.albums.size} albums, ${newData.artists.size} artists")
+
+        val oldItems = items.toList()
+        this.data = newData
+        buildItemsList()
+
+        val diffCallback = PageDiffCallback(oldItems, items)
+        val diffResult = DiffUtil.calculateDiff(diffCallback)
+
+        diffResult.dispatchUpdatesTo(this)
+        Log.d(TAG, "updateData: DiffUtil updates dispatched")
+    }
+
+    /**
+     * DiffUtil callback for efficient list updates
+     */
+    private class PageDiffCallback(
+            private val oldList: List<PageItem>,
+            private val newList: List<PageItem>
+    ) : DiffUtil.Callback() {
+
+        override fun getOldListSize(): Int = oldList.size
+
+        override fun getNewListSize(): Int = newList.size
+
+        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            val oldItem = oldList[oldItemPosition]
+            val newItem = newList[newItemPosition]
+
+            // Check if items are of the same type and represent the same data
+            return when {
+                oldItem is PageItem.Header && newItem is PageItem.Header -> true
+                oldItem is PageItem.SongItem && newItem is PageItem.SongItem ->
+                    oldItem.audio.id == newItem.audio.id
+                oldItem is PageItem.AlbumsSection && newItem is PageItem.AlbumsSection -> true
+                oldItem is PageItem.ArtistsSection && newItem is PageItem.ArtistsSection -> true
+                oldItem is PageItem.GenresSection && newItem is PageItem.GenresSection -> true
+                else -> false
+            }
+        }
+
+        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            val oldItem = oldList[oldItemPosition]
+            val newItem = newList[newItemPosition]
+
+            return when {
+                oldItem is PageItem.Header && newItem is PageItem.Header ->
+                    oldItem == newItem
+                oldItem is PageItem.SongItem && newItem is PageItem.SongItem ->
+                    oldItem.audio == newItem.audio && oldItem.position == newItem.position
+                oldItem is PageItem.AlbumsSection && newItem is PageItem.AlbumsSection ->
+                    oldItem.albums == newItem.albums
+                oldItem is PageItem.ArtistsSection && newItem is PageItem.ArtistsSection ->
+                    oldItem.artists == newItem.artists
+                oldItem is PageItem.GenresSection && newItem is PageItem.GenresSection ->
+                    oldItem.genres == newItem.genres
+                else -> false
+            }
+        }
     }
 
     private fun buildItemsList() {
@@ -421,5 +489,9 @@ class PageAdapter(
 
     fun setArtistAdapterListener(listener: GeneralAdapterCallbacks) {
         this.listener = listener
+    }
+
+    companion object {
+        private const val TAG = "PageAdapter"
     }
 }

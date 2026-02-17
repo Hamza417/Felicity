@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 class GenrePage : MediaFragment() {
 
     private lateinit var binding: FragmentViewerGenresBinding
+    private var pageAdapter: PageAdapter? = null
 
     private val genre: Genre by lazy {
         requireArguments().parcelable(BundleConstants.GENRE)
@@ -49,7 +50,7 @@ class GenrePage : MediaFragment() {
             }
     )
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentViewerGenresBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -59,9 +60,8 @@ class GenrePage : MediaFragment() {
         binding.recyclerView.requireAttachedMiniPlayer()
         postponeEnterTransition()
 
-        Log.d(TAG, "onViewCreated: GenrePage for genre: ${genre.name}")
+        Log.d(TAG, "onViewCreated: GenrePage for genre: ${genre.name}, adapter=${pageAdapter != null}")
 
-        // Observe StateFlow with proper lifecycle handling
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
                 genreViewerViewModel.data.collect { data ->
@@ -73,12 +73,23 @@ class GenrePage : MediaFragment() {
 
     private fun updateGenrePage(data: PageData) {
         Log.d(TAG, "updateGenrePage: Updating UI for genre: ${genre.name} with ${data.songs.size} songs")
-        val adapter = PageAdapter(data, PageAdapter.PageType.GenrePage(genre))
-        val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
-        binding.recyclerView.addItemDecorationSafely(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
-        binding.recyclerView.adapter = adapter
 
-        adapter.setArtistAdapterListener(object : GeneralAdapterCallbacks {
+        if (pageAdapter == null) {
+            pageAdapter = PageAdapter(data, PageAdapter.PageType.GenrePage(genre))
+            val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
+            binding.recyclerView.addItemDecorationSafely(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
+            binding.recyclerView.adapter = pageAdapter
+            setupAdapterCallbacks()
+        } else {
+            Log.d(TAG, "updateGenrePage: Updating existing adapter with new data")
+            pageAdapter?.updateData(data)
+        }
+
+        requireView().startTransitionOnPreDraw()
+    }
+
+    private fun setupAdapterCallbacks() {
+        pageAdapter?.setArtistAdapterListener(object : GeneralAdapterCallbacks {
             override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
                 Log.i(TAG, "onSongClick: Song clicked in genre: ${genre.name}, position: $position")
                 setMediaItems(songs, position)
@@ -108,31 +119,34 @@ class GenrePage : MediaFragment() {
 
             override fun onMenuClicked(view: View) {
                 Log.i(TAG, "onMenuClicked: Menu clicked in genre: ${genre.name}")
-                PopupGenreMenu(
-                        container = requireActivity().findViewById(R.id.app_container),
-                        anchorView = view,
-                        menuItems = listOf(R.string.play, R.string.shuffle, R.string.add_to_queue, R.string.add_to_playlist),
-                        menuIcons = listOf(R.drawable.ic_play, R.drawable.ic_shuffle, R.drawable.ic_add_to_queue, R.drawable.ic_add_to_playlist),
-                        onMenuItemClick = {
-                            when (it) {
-                                R.string.play -> {
-                                    Log.i(TAG, "onMenuItemClick: Play clicked for genre: ${genre.name}")
-                                    setMediaItems(data.songs.toMutableList(), 0)
+
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val currentData = genreViewerViewModel.data.value ?: return@launch
+
+                    PopupGenreMenu(
+                            container = requireActivity().findViewById(R.id.app_container),
+                            anchorView = view,
+                            menuItems = listOf(R.string.play, R.string.shuffle, R.string.add_to_queue, R.string.add_to_playlist),
+                            menuIcons = listOf(R.drawable.ic_play, R.drawable.ic_shuffle, R.drawable.ic_add_to_queue, R.drawable.ic_add_to_playlist),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.play -> {
+                                        Log.i(TAG, "onMenuItemClick: Play clicked for genre: ${genre.name}")
+                                        setMediaItems(currentData.songs.toMutableList(), 0)
+                                    }
+                                    R.string.shuffle -> {
+                                        Log.i(TAG, "onMenuItemClick: Shuffle clicked for genre: ${genre.name}")
+                                        setMediaItems(currentData.songs.shuffled().toMutableList(), 0)
+                                    }
                                 }
-                                R.string.shuffle -> {
-                                    Log.i(TAG, "onMenuItemClick: Shuffle clicked for genre: ${genre.name}")
-                                    setMediaItems(data.songs.shuffled().toMutableList(), 0)
-                                }
+                            },
+                            onDismiss = {
+                                Log.i(TAG, "onMenuClicked: Popup dismissed for genre: ${genre.name}")
                             }
-                        },
-                        onDismiss = {
-                            Log.i(TAG, "onMenuClicked: Popup dismissed for genre: ${genre.name}")
-                        }
-                ).show()
+                    ).show()
+                }
             }
         })
-
-        requireView().startTransitionOnPreDraw()
     }
 
     companion object {
