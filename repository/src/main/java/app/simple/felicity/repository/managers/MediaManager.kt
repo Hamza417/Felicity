@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.max
 
@@ -87,30 +88,34 @@ object MediaManager {
         val clampedPosition = if (audios.isEmpty()) 0 else position.coerceIn(0, audios.size - 1)
         currentSongPosition = clampedPosition
 
+        // Line 83 inside setSongs
         if (audios.isNotEmpty()) {
-            val mediaItems = audios.map { audio ->
-                // Convert file path to URI since Audio model only has path property
-                val uri = File(audio.path).toUri()
-                MediaItem.Builder()
-                    .setMediaId(audio.id.toString())
-                    .setUri(uri)
-                    .setMediaMetadata(
-                            MediaMetadata.Builder()
-                                .setArtist(audio.artist)
-                                .setTitle(audio.title)
-                                .build()
-                    )
-                    .build()
-            }
+            // Move heavy mapping to background thread
+            scope.launch {
+                val mediaItems = withContext(Dispatchers.Default) {
+                    audios.map { audio ->
+                        val uri = File(audio.path).toUri()
+                        MediaItem.Builder()
+                            .setMediaId(audio.id.toString())
+                            .setUri(uri)
+                            .setMediaMetadata(
+                                    MediaMetadata.Builder()
+                                        .setArtist(audio.artist)
+                                        .setTitle(audio.title)
+                                        .build()
+                            )
+                            .build()
+                    }
+                }
 
-            if (mediaController == null) {
-                Log.e(TAG, "setSongs: mediaController is null! Cannot set media items.")
-            } else {
-                mediaController?.setMediaItems(mediaItems, currentSongPosition, startPositionMs)
-                mediaController?.prepare()
-                Log.d(TAG, "setSongs: Media items set and prepared. Controller state: ${mediaController?.playbackState}")
+                // Back on Main Thread to set items
+                if (mediaController != null) {
+                    mediaController?.setMediaItems(mediaItems, currentSongPosition, startPositionMs)
+                    mediaController?.prepare()
+                    // mediaController?.play() // Auto-play when setting new list?
+                }
+                startSeekPositionUpdates()
             }
-            startSeekPositionUpdates()
         } else {
             // Clear controller playlist if applicable and keep UI state consistent
             mediaController?.clearMediaItems()
@@ -128,8 +133,13 @@ object MediaManager {
 
     fun getCurrentSong(): Audio? = songs.getOrNull(currentSongPosition)
 
+    // Line 133
     fun playCurrent() {
-        mediaController?.seekToDefaultPosition(currentSongPosition)
+        // Only seek if we are NOT at the correct index already
+        if (mediaController?.currentMediaItemIndex != currentSongPosition) {
+            mediaController?.seekTo(currentSongPosition, 0L)
+        }
+        // Just play. If we are already there, this resumes perfectly.
         mediaController?.play()
         startSeekPositionUpdates()
     }
@@ -275,7 +285,7 @@ object MediaManager {
      * Emit seek position periodically while playing to keep UI in sync.
      * Only runs when actually needed to avoid overhead.
      */
-    fun startSeekPositionUpdates(intervalMs: Long = 1000L) {
+    fun startSeekPositionUpdates(intervalMs: Long = 200L) {
         // Don't start multiple jobs - check if already running
         if (seekJob?.isActive == true) {
             return
@@ -340,6 +350,7 @@ object MediaManager {
                 // Directly update without using setter to avoid potential feedback loops
                 // But we need to emit manually since we're not using the setter
                 currentSongPosition = position
+                scope.launch { _songPositionFlow.emit(position) }
             }
         } else {
             Log.w(TAG, "notifyCurrentPosition: Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")
