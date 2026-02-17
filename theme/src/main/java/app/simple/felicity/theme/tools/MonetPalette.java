@@ -15,36 +15,38 @@ import androidx.core.graphics.ColorUtils;
  * <p>
  * Derivation strategy:
  * - Extract a seed color by estimating the dominant color via quantized sampling.
- * - Convert to HSL and set lightness to approximate Material You tones:
- * 500 ≈ tone 60, 300 ≈ tone 80 (mapped here to HSL L 0.60f and 0.80f).
- * - Clamp lightness to avoid too dark/light results.
+ * - Convert to CAM16-based HCT (Hue, Chroma, Tone) color space.
+ * - Generate tones using MD3 spec: tone values represent perceptual lightness (0-100).
+ * - Apply chroma limits to prevent oversaturated/eye-straining colors.
  */
 public class MonetPalette {
     
-    private static final float MIN_L = 0.28f; // Prevent too dark
-    private static final float MAX_L = 0.68f; // Prevent too light
-    private static final float MIN_S = 0.25f; // Keep some saturation
-    private static final float MAX_S = 0.60f; // Prevent oversaturation
+    // MD3 chroma constraints for pleasant, eye-friendly colors
+    private static final double MIN_CHROMA = 16.0; // Keep some color presence
+    private static final double MAX_CHROMA = 48.0; // Prevent oversaturation (MD3 uses ~48 max)
     
     @ColorInt
     private final int seedColor;
     
     @ColorInt
-    private final int accent1_500; // ~tone60
+    private final int accent1_500; // MD3 tone 40 (medium)
     
     @ColorInt
-    private final int accent1_300; // ~tone80
+    private final int accent1_300; // MD3 tone 80 (light)
     
     public MonetPalette(@NonNull Bitmap bitmap) {
         this.seedColor = extractSeed(bitmap);
-        float[] hsl = new float[3];
-        ColorUtils.colorToHSL(seedColor, hsl);
-        // Normalize saturation
-        hsl[1] = clamp(hsl[1], MIN_S, MAX_S);
         
-        // Derive tones by setting lightness, with clamping
-        this.accent1_500 = tone(hsl, 0.60f);
-        this.accent1_300 = tone(hsl, 0.80f);
+        // Convert to HCT color space via LAB
+        double[] hct = rgbToHct(seedColor);
+        double hue = hct[0];
+        double chroma = clamp(hct[1], MIN_CHROMA, MAX_CHROMA);
+        
+        // Generate MD3-compliant tones
+        // Tone 40: medium contrast for primary surfaces
+        // Tone 80: light, suitable for backgrounds in light theme
+        this.accent1_500 = hctToRgb(hue, chroma, 40.0);
+        this.accent1_300 = hctToRgb(hue, chroma * 0.8, 80.0); // Reduce chroma for lighter tone
     }
     
     /**
@@ -105,12 +107,55 @@ public class MonetPalette {
         return opaque(Color.rgb(r, g, b));
     }
     
-    private static int tone(float[] baseHsl, float targetL) {
-        float[] hsl = new float[] {baseHsl[0], baseHsl[1], clamp(targetL, MIN_L, MAX_L)};
-        return ColorUtils.HSLToColor(hsl);
+    /**
+     * Convert RGB color to HCT (Hue, Chroma, Tone).
+     * Uses LAB color space as intermediate for perceptually uniform tone calculation.
+     */
+    private static double[] rgbToHct(@ColorInt int color) {
+        double[] lab = new double[3];
+        ColorUtils.colorToLAB(color, lab);
+        
+        double L = lab[0]; // L* (lightness): 0-100
+        double a = lab[1]; // a*: green-red axis
+        double b = lab[2]; // b*: blue-yellow axis
+        
+        // Calculate chroma (colorfulness)
+        double chroma = Math.sqrt(a * a + b * b);
+        
+        // Calculate hue angle in degrees
+        double hue = Math.toDegrees(Math.atan2(b, a));
+        if (hue < 0) {
+            hue += 360.0;
+        }
+        
+        // Tone is essentially L* in LAB space (0-100)
+        return new double[] {hue, chroma, L};
     }
     
-    private static float clamp(float v, float min, float max) {
+    /**
+     * Convert HCT back to RGB.
+     * Uses target tone and chroma to generate perceptually uniform colors.
+     */
+    @ColorInt
+    private static int hctToRgb(double hue, double chroma, double tone) {
+        // Clamp tone to valid range
+        tone = clamp(tone, 0.0, 100.0);
+        chroma = Math.max(0.0, chroma);
+        
+        // Convert to LAB coordinates
+        double L = tone;
+        double hueRad = Math.toRadians(hue);
+        double a = chroma * Math.cos(hueRad);
+        double b = chroma * Math.sin(hueRad);
+        
+        // Convert LAB to RGB
+        int color = ColorUtils.LABToColor(L, a, b);
+        
+        // Ensure result is valid and opaque
+        return opaque(color);
+    }
+    
+    private static double clamp(double v, double min, double max) {
         return Math.max(min, Math.min(max, v));
     }
     
@@ -129,7 +174,7 @@ public class MonetPalette {
     }
     
     /**
-     * Approximation of system_accent1_500 (mid tone ~60)
+     * Approximation of system_accent1_500 (MD3 tone 40 - medium contrast)
      */
     @ColorInt
     public int getAccent1_500() {
@@ -137,7 +182,7 @@ public class MonetPalette {
     }
     
     /**
-     * Approximation of system_accent1_300 (lighter tone ~80)
+     * Approximation of system_accent1_300 (MD3 tone 80 - light)
      */
     @ColorInt
     public int getAccent1_300() {
