@@ -35,8 +35,12 @@ import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.future
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -54,6 +58,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     private var renderersFactory: DefaultRenderersFactory? = null
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private var periodicStateSaveJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -183,8 +188,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
             if (isPlaying) {
                 MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
+                startPeriodicStateSaving()
             } else if (player.playbackState == Player.STATE_READY) {
                 MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
+                stopPeriodicStateSaving()
+                savePlaybackStateToDatabase() // Save immediately when paused
             }
         }
 
@@ -195,18 +203,27 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     if (player.playWhenReady) MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
                     else MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
                 }
-                Player.STATE_ENDED -> MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ENDED)
-                Player.STATE_IDLE -> MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_STOPPED)
+                Player.STATE_ENDED -> {
+                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ENDED)
+                    stopPeriodicStateSaving()
+                    savePlaybackStateToDatabase()
+                }
+                Player.STATE_IDLE -> {
+                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_STOPPED)
+                    stopPeriodicStateSaving()
+                }
             }
         }
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             Log.e(TAG, "Player error: ${error.errorCodeName}", error)
             MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ERROR)
+            stopPeriodicStateSaving()
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             MediaManager.notifyCurrentPosition(player.currentMediaItemIndex)
+            savePlaybackStateToDatabase() // Save when track changes
         }
     }
 
@@ -219,6 +236,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        savePlaybackStateToDatabase()
         if (!player.playWhenReady || player.mediaItemCount == 0) {
             stopSelf()
         }
@@ -226,6 +244,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     }
 
     override fun onDestroy() {
+        savePlaybackStateToDatabase()
         unregisterSharedPreferenceChangeListener()
 
         mediaSession?.run {
@@ -234,6 +253,46 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             mediaSession = null
         }
         super.onDestroy()
+    }
+
+    private fun savePlaybackStateToDatabase() {
+        val songs = MediaManager.getSongs()
+        if (songs.isEmpty()) return
+
+        serviceScope.launch {
+            try {
+                val audioDatabase = app.simple.felicity.repository.database.instances.AudioDatabase.getInstance(applicationContext)
+                app.simple.felicity.repository.managers.PlaybackStateManager.savePlaybackState(
+                        db = audioDatabase,
+                        queueIds = songs.map { it.id },
+                        index = MediaManager.getCurrentPosition(),
+                        position = MediaManager.getSeekPosition(),
+                        shuffle = false,
+                        repeat = 0
+                )
+                Log.d(TAG, "Service: Playback state saved: position=${MediaManager.getCurrentPosition()}, seek=${MediaManager.getSeekPosition()}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Service: Error saving playback state", e)
+            }
+        }
+    }
+
+    private fun startPeriodicStateSaving() {
+        if (periodicStateSaveJob?.isActive == true) return
+
+        periodicStateSaveJob = serviceScope.launch {
+            while (isActive) {
+                delay(10000) // Save every 10 seconds
+                savePlaybackStateToDatabase()
+            }
+        }
+        Log.d(TAG, "Started periodic state saving")
+    }
+
+    private fun stopPeriodicStateSaving() {
+        periodicStateSaveJob?.cancel()
+        periodicStateSaveJob = null
+        Log.d(TAG, "Stopped periodic state saving")
     }
 
     private inner class LibraryCallback : MediaLibrarySession.Callback {

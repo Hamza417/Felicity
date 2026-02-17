@@ -30,6 +30,7 @@ import java.io.File
 open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
     private var shouldShowMiniPlayer = true
+    private var lastSavedSeekPosition = 0L
 
     private val miniPlayerCallbacks: MiniPlayerCallbacks?
         get() = requireActivity() as? MiniPlayerCallbacks
@@ -41,6 +42,16 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             MediaManager.songSeekPositionFlow.collect { position ->
                 PlayerPreferences.setLastSongSeek(position)
                 onSeekChanged(position)
+
+                // Save to database every 5 seconds or 5% of duration, whichever is larger
+                val song = MediaManager.getCurrentSong()
+                if (song != null) {
+                    val threshold = maxOf(5000L, song.duration / 20) // 5 seconds or 5% of duration
+                    if (kotlin.math.abs(position - lastSavedSeekPosition) > threshold) {
+                        lastSavedSeekPosition = position
+                        saveCurrentPlaybackState()
+                    }
+                }
             }
         }
 
@@ -52,6 +63,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     onAudio(song)
                 }
                 onPositionChanged(position)
+                // Save state when song position changes
+                saveCurrentPlaybackState()
             }
         }
 
@@ -91,6 +104,27 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     shuffle = false,
                     repeat = 0
             )
+        }
+    }
+
+    private fun saveCurrentPlaybackState() {
+        val songs = MediaManager.getSongs()
+        if (songs.isEmpty()) return
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val audioDatabase = AudioDatabase.getInstance(requireContext())
+                PlaybackStateManager.savePlaybackState(
+                        db = audioDatabase,
+                        queueIds = songs.map { it.id },
+                        index = MediaManager.getCurrentPosition(),
+                        position = MediaManager.getSeekPosition(),
+                        shuffle = false,
+                        repeat = 0
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving playback state", e)
+            }
         }
     }
 

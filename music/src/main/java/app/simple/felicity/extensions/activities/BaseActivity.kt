@@ -104,22 +104,30 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
             try {
                 val audioDatabase = AudioDatabase.getInstance(applicationContext)
                 val playbackState = PlaybackStateManager.fetchPlaybackState(audioDatabase)
-                val lastSongs = PlaybackStateManager.getAudiosFromQueueIDs(audioDatabase)?.toList()!!
+                val lastSongs = PlaybackStateManager.getAudiosFromQueueIDs(audioDatabase)?.toList()
 
-                if (lastSongs.isNotEmpty()) {
+                Log.d(TAG, "Restoring playback state: index=${playbackState?.index}, position=${playbackState?.position}, queue size=${lastSongs?.size}")
+
+                if (!lastSongs.isNullOrEmpty() && playbackState != null) {
                     withContext(Dispatchers.Main) {
+                        // Set songs with the saved position and seek position in one call
+                        // This avoids the need for a separate seekTo call
                         MediaManager.setSongs(
                                 audios = lastSongs,
-                                position = playbackState?.index ?: 0,
-                                startPositionMs = playbackState?.position ?: 0L,
+                                position = playbackState.index.coerceIn(0, lastSongs.size - 1),
+                                startPositionMs = playbackState.position.coerceAtLeast(0L),
                         )
-                        MediaManager.seekTo(playbackState?.position ?: 0L)
+                        // Don't call play() automatically - let user initiate playback
+                        Log.d(TAG, "Playback state restored successfully")
                     }
                 } else {
-                    Log.d(TAG, "No last songs found in the database")
+                    Log.d(TAG, "No valid playback state found in database")
                 }
             } catch (e: NullPointerException) {
                 Log.e(TAG, "Error restoring last song state: ${e.message}")
+                e.printStackTrace()
+            } catch (e: Exception) {
+                Log.e(TAG, "Unexpected error restoring playback state", e)
                 e.printStackTrace()
             }
         }

@@ -277,6 +277,33 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         AudioDatabaseService.refreshScan(applicationContext)
     }
 
+    override fun onStop() {
+        super.onStop()
+        savePlaybackState()
+    }
+
+    private fun savePlaybackState() {
+        val songs = MediaManager.getSongs()
+        if (songs.isEmpty()) return
+
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val audioDatabase = app.simple.felicity.repository.database.instances.AudioDatabase.getInstance(applicationContext)
+                app.simple.felicity.repository.managers.PlaybackStateManager.savePlaybackState(
+                        db = audioDatabase,
+                        queueIds = songs.map { it.id },
+                        index = MediaManager.getCurrentPosition(),
+                        position = MediaManager.getSeekPosition(),
+                        shuffle = false,
+                        repeat = 0
+                )
+                Log.d("MainActivity", "Playback state saved: position=${MediaManager.getCurrentPosition()}, seek=${MediaManager.getSeekPosition()}")
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error saving playback state", e)
+            }
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleSearchIntent(intent)

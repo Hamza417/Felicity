@@ -79,6 +79,8 @@ object MediaManager {
      * but replay=1 on both flows ensures UI will observe the latest of each.
      */
     fun setSongs(audios: List<Audio>, position: Int = 0, startPositionMs: Long = 0L) {
+        Log.d(TAG, "setSongs called: count=${audios.size}, position=$position, startPositionMs=$startPositionMs")
+
         this.songs = audios
         val clampedPosition = if (audios.isEmpty()) 0 else position.coerceIn(0, audios.size - 1)
         currentSongPosition = clampedPosition
@@ -99,8 +101,13 @@ object MediaManager {
                     .build()
             }
 
-            mediaController?.setMediaItems(mediaItems, currentSongPosition, startPositionMs)
-            mediaController?.prepare()
+            if (mediaController == null) {
+                Log.e(TAG, "setSongs: mediaController is null! Cannot set media items.")
+            } else {
+                mediaController?.setMediaItems(mediaItems, currentSongPosition, startPositionMs)
+                mediaController?.prepare()
+                Log.d(TAG, "setSongs: Media items set and prepared. Controller state: ${mediaController?.playbackState}")
+            }
             startSeekPositionUpdates()
         } else {
             // Clear controller playlist if applicable and keep UI state consistent
@@ -143,6 +150,15 @@ object MediaManager {
     }
 
     fun play() {
+        if (mediaController == null) {
+            Log.w(TAG, "play() called but mediaController is null")
+            return
+        }
+        if (songs.isEmpty()) {
+            Log.w(TAG, "play() called but songs list is empty")
+            return
+        }
+        Log.d(TAG, "play() called: currentPosition=$currentSongPosition, mediaItemCount=${mediaController?.mediaItemCount}")
         mediaController?.play()
         startSeekPositionUpdates()
     }
@@ -153,6 +169,15 @@ object MediaManager {
     }
 
     fun flipState() {
+        if (mediaController == null) {
+            Log.w(TAG, "flipState() called but mediaController is null")
+            return
+        }
+        if (songs.isEmpty()) {
+            Log.w(TAG, "flipState() called but songs list is empty")
+            return
+        }
+        Log.d(TAG, "flipState() called: isPlaying=${mediaController?.isPlaying}, mediaItemCount=${mediaController?.mediaItemCount}")
         if (mediaController?.isPlaying == true) {
             pause()
         } else {
