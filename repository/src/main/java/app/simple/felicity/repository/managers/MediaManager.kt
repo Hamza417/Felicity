@@ -147,8 +147,9 @@ object MediaManager {
 
     fun pause() {
         mediaController?.pause()
-        // Do not stop seek updates; keep them running so UI stays in sync while paused
-        // stopSeekPositionUpdates()
+        // Stop seek updates when paused to reduce unnecessary processing
+        // UI will get the final position from the playback state change
+        stopSeekPositionUpdates()
     }
 
     fun play() {
@@ -188,16 +189,18 @@ object MediaManager {
     }
 
     fun next() {
-        if (songs.isNotEmpty()) {
-            currentSongPosition = (currentSongPosition + 1) % songs.size
-            playCurrent()
+        if (mediaController?.hasNextMediaItem() == true) {
+            mediaController?.seekToNextMediaItem()
+            // Let ExoPlayer handle the transition naturally for gapless playback
+            // Don't force position updates here
         }
     }
 
     fun previous() {
-        if (songs.isNotEmpty()) {
-            currentSongPosition = if (currentSongPosition == 0) songs.size - 1 else currentSongPosition - 1
-            playCurrent()
+        if (mediaController?.hasPreviousMediaItem() == true) {
+            mediaController?.seekToPreviousMediaItem()
+            // Let ExoPlayer handle the transition naturally for gapless playback
+            // Don't force position updates here
         }
     }
 
@@ -231,7 +234,15 @@ object MediaManager {
         if (position != currentSongPosition) {
             if (position in songs.indices) {
                 currentSongPosition = position
-                playCurrent()
+                // Let ExoPlayer handle the transition naturally for gapless playback
+                // Only seek if the controller is not already on this track
+                if (mediaController?.currentMediaItemIndex != position) {
+                    mediaController?.seekTo(position, 0L)
+                    // Only start playing if we were already playing, otherwise just prepare
+                    if (mediaController?.isPlaying == true) {
+                        startSeekPositionUpdates()
+                    }
+                }
             } else {
                 Log.w(TAG, "Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")
             }
@@ -262,13 +273,20 @@ object MediaManager {
 
     /**
      * Emit seek position periodically while playing to keep UI in sync.
+     * Only runs when actually needed to avoid overhead.
      */
     fun startSeekPositionUpdates(intervalMs: Long = 1000L) {
+        // Don't start multiple jobs - check if already running
+        if (seekJob?.isActive == true) {
+            return
+        }
+
         seekJob?.cancel()
         seekJob = scope.launch {
             var lastEmittedPosition: Long? = null
             while (isActive) {
                 val position = getSeekPosition()
+                // Only emit if position actually changed to reduce overhead
                 if (position != lastEmittedPosition) {
                     _songSeekPositionFlow.emit(position)
                     lastEmittedPosition = position
@@ -290,12 +308,20 @@ object MediaManager {
         scope.launch {
             _playbackStateFlow.emit(state)
         }
-        // Keep seek updates running for PLAYING, PAUSED, and BUFFERING
+        // Keep seek updates running ONLY for PLAYING state
+        // For paused/buffering, stop updates to avoid interfering with ExoPlayer
         when (state) {
             MediaConstants.PLAYBACK_PLAYING -> startSeekPositionUpdates()
-            MediaConstants.PLAYBACK_PAUSED -> startSeekPositionUpdates()
+            MediaConstants.PLAYBACK_PAUSED -> {
+                stopSeekPositionUpdates()
+                // Emit final position when paused
+                scope.launch {
+                    _songSeekPositionFlow.emit(getSeekPosition())
+                }
+            }
             MediaConstants.PLAYBACK_BUFFERING -> {
-                // Keep existing job running; position may still be valid
+                // Don't stop during buffering, but also don't restart if not running
+                // ExoPlayer is handling buffer state, we shouldn't interfere
             }
             MediaConstants.PLAYBACK_STOPPED,
             MediaConstants.PLAYBACK_ENDED,
@@ -309,7 +335,12 @@ object MediaManager {
     // Notify UI about current media item index changes originating from the player/service without reconfiguring playback
     fun notifyCurrentPosition(position: Int) {
         if (position in songs.indices) {
-            currentSongPosition = position
+            // Check if position actually changed to avoid unnecessary emissions
+            if (currentSongPosition != position) {
+                // Directly update without using setter to avoid potential feedback loops
+                // But we need to emit manually since we're not using the setter
+                currentSongPosition = position
+            }
         } else {
             Log.w(TAG, "notifyCurrentPosition: Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")
         }
