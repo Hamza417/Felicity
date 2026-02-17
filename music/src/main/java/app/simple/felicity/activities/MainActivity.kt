@@ -30,6 +30,7 @@ import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
+import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
@@ -41,6 +42,7 @@ import app.simple.felicity.ui.launcher.Setup
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.viewmodels.setup.PermissionViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -283,24 +285,8 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     }
 
     private fun savePlaybackState() {
-        val songs = MediaManager.getSongs()
-        if (songs.isEmpty()) return
-
-        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            try {
-                val audioDatabase = app.simple.felicity.repository.database.instances.AudioDatabase.getInstance(applicationContext)
-                app.simple.felicity.repository.managers.PlaybackStateManager.savePlaybackState(
-                        db = audioDatabase,
-                        queueIds = songs.map { it.id },
-                        index = MediaManager.getCurrentPosition(),
-                        position = MediaManager.getSeekPosition(),
-                        shuffle = false,
-                        repeat = 0
-                )
-                Log.d("MainActivity", "Playback state saved: position=${MediaManager.getCurrentPosition()}, seek=${MediaManager.getSeekPosition()}")
-            } catch (e: Exception) {
-                Log.e("MainActivity", "Error saving playback state", e)
-            }
+        lifecycleScope.launch(Dispatchers.IO) {
+            PlaybackStateManager.saveCurrentPlaybackState(applicationContext, "MainActivity")
         }
     }
 

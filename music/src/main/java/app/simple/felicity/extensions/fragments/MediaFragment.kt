@@ -108,23 +108,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     private fun saveCurrentPlaybackState() {
-        val songs = MediaManager.getSongs()
-        if (songs.isEmpty()) return
-
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val audioDatabase = AudioDatabase.getInstance(requireContext())
-                PlaybackStateManager.savePlaybackState(
-                        db = audioDatabase,
-                        queueIds = songs.map { it.id },
-                        index = MediaManager.getCurrentPosition(),
-                        position = MediaManager.getSeekPosition(),
-                        shuffle = false,
-                        repeat = 0
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "Error saving playback state", e)
-            }
+            PlaybackStateManager.saveCurrentPlaybackState(requireContext(), TAG)
         }
     }
 

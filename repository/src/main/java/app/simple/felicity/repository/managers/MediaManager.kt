@@ -1,6 +1,7 @@
 package app.simple.felicity.repository.managers
 
 import android.util.Log
+import androidx.annotation.MainThread
 import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -8,6 +9,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.shared.utils.ProcessUtils.ensureOnMainThread
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -199,11 +201,14 @@ object MediaManager {
         }
     }
 
+    @MainThread
     fun getSeekPosition(): Long {
-        val position = mediaController?.currentPosition ?: 0L
-        val duration = getDuration()
-        // Clamp to [0, duration] when duration is known
-        return if (duration > 0L) position.coerceIn(0L, duration) else max(0L, position)
+        ensureOnMainThread {
+            val position = mediaController?.currentPosition ?: 0L
+            val duration = getDuration()
+            // Clamp to [0, duration] when duration is known
+            return if (duration > 0L) position.coerceIn(0L, duration) else max(0L, position)
+        }
     }
 
     fun seekTo(position: Long) {

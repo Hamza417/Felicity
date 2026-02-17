@@ -29,6 +29,7 @@ import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceC
 import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
+import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.repositories.AudioRepository
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.ListenableFuture
@@ -256,24 +257,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     }
 
     private fun savePlaybackStateToDatabase() {
-        val songs = MediaManager.getSongs()
-        if (songs.isEmpty()) return
-
         serviceScope.launch {
-            try {
-                val audioDatabase = app.simple.felicity.repository.database.instances.AudioDatabase.getInstance(applicationContext)
-                app.simple.felicity.repository.managers.PlaybackStateManager.savePlaybackState(
-                        db = audioDatabase,
-                        queueIds = songs.map { it.id },
-                        index = MediaManager.getCurrentPosition(),
-                        position = MediaManager.getSeekPosition(),
-                        shuffle = false,
-                        repeat = 0
-                )
-                Log.d(TAG, "Service: Playback state saved: position=${MediaManager.getCurrentPosition()}, seek=${MediaManager.getSeekPosition()}")
-            } catch (e: Exception) {
-                Log.e(TAG, "Service: Error saving playback state", e)
-            }
+            PlaybackStateManager.saveCurrentPlaybackState(applicationContext, TAG)
         }
     }
 
