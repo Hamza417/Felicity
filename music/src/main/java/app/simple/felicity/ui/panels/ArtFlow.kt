@@ -67,8 +67,8 @@ class ArtFlow : MediaFragment() {
         binding.coverflow.addScrollListener(object : ArtFlowRenderer.ScrollListener {
             override fun onCenteredIndexChanged(index: Int) {
                 songsViewModel.setCarouselPosition(index)
-                // Preload covers around the new position
-                coverCache.preloadAround(index, radius = 15, maxDimension = 1024)
+                // Preload covers around the new position - reduced radius and size for memory efficiency
+                coverCache.preloadAround(index, radius = 8, maxDimension = 512)
             }
 
             override fun onScrollOffsetChanged(offset: Float) {
@@ -187,8 +187,8 @@ class ArtFlow : MediaFragment() {
             }
         }
 
-        // Start preloading covers around the current position
-        coverCache.preloadAround(songsViewModel.getCarouselPosition(), radius = 15, maxDimension = 1024)
+        // Start preloading covers around the current position - reduced for memory efficiency
+        coverCache.preloadAround(songsViewModel.getCarouselPosition(), radius = 8, maxDimension = 512)
     }
 
     override fun onAudio(audio: Audio) {
@@ -224,8 +224,8 @@ class ArtFlow : MediaFragment() {
             coverCache.getOrNull(index)?.let { return it }
 
             // If not in cache, load synchronously as fallback
-            // This should rarely happen if preloading is working well
-            return coverCache.loadSync(index, maxDimension)
+            // Use the reduced maxDimension for memory efficiency
+            return coverCache.loadSync(index, maxDimension.coerceAtMost(512))
         }
     }
 

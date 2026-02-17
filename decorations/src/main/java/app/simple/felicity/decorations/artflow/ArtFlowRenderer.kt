@@ -154,10 +154,10 @@ class ArtFlowRenderer(
     // Texture management
     private val targetMaxDim = 512 // px max dimension for covers
 
-    // Radii
+    // Radii - reduced to save memory
     private var visibleRadius = 5        // items each side to actively draw
-    private var prefetchRadius = 8       // items each side to ensure decoded (>= visibleRadius)
-    private var keepRadius = 11          // items each side to retain before recycling (>= prefetchRadius)
+    private var prefetchRadius = 7       // items each side to ensure decoded (>= visibleRadius)
+    private var keepRadius = 8           // items each side to retain before recycling (>= prefetchRadius)
 
     // GL program/attribs
     private var program = 0
@@ -620,20 +620,32 @@ class ArtFlowRenderer(
         if (textures.containsKey(index)) return
         if (inFlight.putIfAbsent(index, true) == null) {
             decodeExecutor.execute {
+                var bmpCopy: Bitmap? = null
                 try {
                     val bmp = dataProvider?.loadArtwork(index, targetMaxDim)
                     @Suppress("SENSELESS_COMPARISON")
-                    if (bmp != null) {
+                    if (bmp != null && !bmp.isRecycled) {
+                        // Create a mutable copy of the bitmap for OpenGL upload
+                        // This allows the cache to manage the original independently
+                        bmpCopy = bmp.copy(bmp.config ?: Bitmap.Config.ARGB_8888, false)
+
                         queueGL {
-                            val texId = createTextureFromBitmap(bmp)
-                            textures[index] = texId
-                            // DO NOT recycle the bitmap here!
-                            // The cache owns the bitmap and may return the same instance multiple times.
-                            // Let the garbage collector handle cleanup when no references remain.
+                            try {
+                                // Only upload if the copy is still valid
+                                if (bmpCopy != null && !bmpCopy.isRecycled) {
+                                    val texId = createTextureFromBitmap(bmpCopy)
+                                    textures[index] = texId
+                                }
+                            } finally {
+                                // Recycle the copy immediately after GL upload
+                                // The texture is now in GPU memory, we don't need the bitmap anymore
+                                bmpCopy?.recycle()
+                            }
                         }
                     }
                 } catch (t: Throwable) {
                     Log.w("CoverFlow", "Decode failed for index=$index: ${t.message}")
+                    bmpCopy?.recycle()
                 } finally {
                     inFlight.remove(index)
                 }
@@ -642,7 +654,7 @@ class ArtFlowRenderer(
     }
 
     private fun recycleFarTexturesFloat(centerF: Float) {
-        val cutoff = keepRadius + 0.75f // small buffer to prevent rapid thrash
+        val cutoff = keepRadius + 0.25f // reduced buffer for more aggressive cleanup
         val it = textures.entries.iterator()
         while (it.hasNext()) {
             val (idx, texId) = it.next()

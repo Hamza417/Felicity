@@ -25,7 +25,7 @@ import java.util.concurrent.Executors
  */
 @Suppress("unused") // Methods used via reflection or for future use
 class ArtFlowCoverCache(
-        maxMemoryCacheSizeMB: Int = 50
+        maxMemoryCacheSizeMB: Int = 25  // Reduced from 50MB to 25MB
 ) {
     private val TAG = "ArtFlowCoverCache"
 
@@ -40,10 +40,10 @@ class ArtFlowCoverCache(
 
         override fun entryRemoved(evicted: Boolean, key: Int, oldValue: Bitmap, newValue: Bitmap?) {
             if (evicted && oldValue != newValue) {
-                // DO NOT recycle here! The GL thread might still be using the bitmap.
-                // Let the garbage collector handle bitmap cleanup automatically.
-                // Modern Android (8.0+) stores bitmap pixels in native memory that GC manages efficiently.
-                Log.d(TAG, "Evicted bitmap for index $key from cache (GC will handle cleanup)")
+                // Now safe to recycle! The OpenGL thread makes copies of bitmaps before upload,
+                // so we can aggressively recycle cache entries to reduce memory pressure
+                Log.d(TAG, "Evicted and recycling bitmap for index $key from cache")
+                oldValue.recycle()
             }
         }
     }
@@ -95,9 +95,9 @@ class ArtFlowCoverCache(
     }
 
     /**
-     * Pre-load bitmaps around a center position in the background
+     * Preload bitmaps around a center position in the background
      */
-    fun preloadAround(centerIndex: Int, radius: Int = 10, maxDimension: Int = 1024) {
+    fun preloadAround(centerIndex: Int, radius: Int = 8, maxDimension: Int = 512) {  // Reduced from radius=10, maxDim=1024
         prefetchJob?.cancel()
         prefetchJob = cacheScope.launch {
             val startIndex = (centerIndex - radius).coerceAtLeast(0)
@@ -146,15 +146,15 @@ class ArtFlowCoverCache(
                 }
             }
 
-            // Clean up old entries outside the visible range
-            cleanupCache(centerIndex, radius + 5)
+            // Clean up old entries outside the visible range - more aggressive
+            cleanupCache(centerIndex, radius + 2)  // Reduced from radius + 5
         }
     }
 
     /**
      * Load a single bitmap in the background
      */
-    fun preloadSingle(index: Int, maxDimension: Int = 1024) {
+    fun preloadSingle(index: Int, maxDimension: Int = 512) {  // Reduced from 1024
         if (index !in audioList.indices) return
         if (memoryCache.get(index) != null) return
 
@@ -210,9 +210,13 @@ class ArtFlowCoverCache(
                     val newHeight = (height * scale).toInt()
 
                     val scaledBitmap = bitmap.scale(newWidth, newHeight, true)
-                    // DO NOT recycle the original bitmap here!
-                    // Even though we have a scaled copy, the original might still be referenced elsewhere.
-                    // Let GC handle cleanup to avoid race conditions with the GL thread.
+
+                    // Now we can safely recycle the original since we have the scaled version
+                    // and the GL thread will make its own copy anyway
+                    if (bitmap != scaledBitmap) {
+                        bitmap.recycle()
+                    }
+
                     return scaledBitmap
                 }
             }
@@ -229,9 +233,11 @@ class ArtFlowCoverCache(
      */
     private fun cleanupCache(centerIndex: Int, keepRadius: Int) {
         val snapshot = memoryCache.snapshot()
-        for ((index, _) in snapshot) {
+        for ((index, bitmap) in snapshot) {
             if (kotlin.math.abs(index - centerIndex) > keepRadius) {
                 memoryCache.remove(index)
+                // Manually recycle old bitmaps that are far from view
+                bitmap.recycle()
             }
         }
     }
