@@ -15,7 +15,6 @@ import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.interfaces.MiniPlayerPolicy
-import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.database.instances.SongStatDatabase
 import app.simple.felicity.repository.managers.MediaManager
@@ -40,7 +39,6 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
         viewLifecycleOwner.lifecycleScope.launch {
             MediaManager.songSeekPositionFlow.collect { position ->
-                PlayerPreferences.setLastSongSeek(position)
                 onSeekChanged(position)
 
                 // Save to database every 5 seconds or 5% of duration, whichever is larger
@@ -58,7 +56,6 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         viewLifecycleOwner.lifecycleScope.launch {
             MediaManager.songPositionFlow.collect { position ->
                 Log.d(TAG, "Song position: $position")
-                PlayerPreferences.setLastSongPosition(position)
                 MediaManager.getCurrentSong()?.let { song ->
                     onAudio(song)
                 }
@@ -82,8 +79,6 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     protected fun setMediaItems(songs: List<Audio>, position: Int = 0) {
-        PlayerPreferences.setLastSongPosition(position)
-        PlayerPreferences.setLastSongId(songs.getOrNull(position)?.id ?: -1L)
         MediaManager.setSongs(songs, position)
         MediaManager.play()
         createSongHistoryDatabase(songs)

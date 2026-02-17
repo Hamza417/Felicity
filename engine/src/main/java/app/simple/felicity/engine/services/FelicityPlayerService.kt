@@ -72,7 +72,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     .setEnableFloatOutput(true) // Force 32-bit Internal Processing
                     .build()
 
-                audioSink.setOffloadMode(DefaultAudioSink.OFFLOAD_MODE_ENABLED_GAPLESS_NOT_REQUIRED)
+                audioSink.setOffloadMode(DefaultAudioSink.OFFLOAD_MODE_ENABLED_GAPLESS_REQUIRED)
                 return audioSink
             }
 
@@ -231,8 +231,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = mediaSession
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
-        if (key == AudioPreferences.AUDIO_DECODER) {
-            switchDecoder()
+        when (key) {
+            AudioPreferences.AUDIO_DECODER -> {
+                switchDecoder()
+            }
+            AudioPreferences.GAPLESS_PLAYBACK -> {
+                val gaplessEnabled = AudioPreferences.isGaplessPlaybackEnabled()
+            }
         }
     }
 

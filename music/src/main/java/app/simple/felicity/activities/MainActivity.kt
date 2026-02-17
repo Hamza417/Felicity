@@ -27,7 +27,6 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.HomePreferences
-import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.managers.PlaybackStateManager
@@ -88,13 +87,12 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
         lifecycleScope.launch {
             MediaManager.songSeekPositionFlow.collect { position ->
-                PlayerPreferences.setLastSongSeek(position)
+
             }
         }
 
         lifecycleScope.launch {
             MediaManager.songPositionFlow.collect { position ->
-                PlayerPreferences.setLastSongPosition(position)
                 if (miniPlayerBinding.pager.currentItem != position) {
                     miniPlayerBinding.pager.setCurrentItem(position, true)
                 }

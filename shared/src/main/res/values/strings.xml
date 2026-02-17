@@ -163,4 +163,6 @@
     <string name="audio_pipeline_summary">Select the primary engine used to process audio data.</string>
     <string name="are_you_sure">Are you sure?</string>
     <string name="yes">Yes</string>
+    <string name="gapless_playback">Gapless Playback</string>
+    <string name="gapless_playback_summary">Play audio files gaplessly.</string>
 </resources>

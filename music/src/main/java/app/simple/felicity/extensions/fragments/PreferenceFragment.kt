@@ -383,7 +383,7 @@ open class PreferenceFragment : MediaFragment() {
     protected fun createAudioPanel(): List<Preference> {
         val preferences = mutableListOf<Preference>()
 
-        val decoderHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.playback)
+        val decoderHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.decoder)
 
         val currentDecoder = Preference(
                 title = R.string.audio_pipeline,
@@ -421,8 +421,26 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val playbackHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.playback)
+
+        val gaplessToggle = Preference(
+                title = R.string.gapless_playback,
+                summary = R.string.gapless_playback_summary,
+                icon = R.drawable.ic_join,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AudioPreferences.setGaplessPlayback((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    AudioPreferences.isGaplessPlaybackEnabled()
+                }
+        )
+
         preferences.add(decoderHeader)
         preferences.add(currentDecoder)
+        preferences.add(playbackHeader)
+        preferences.add(gaplessToggle)
 
         return preferences
     }

@@ -1,7 +1,6 @@
 package app.simple.felicity.extensions.dialogs
 
 import androidx.lifecycle.lifecycleScope
-import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.managers.PlaybackStateManager
@@ -12,8 +11,6 @@ import kotlinx.coroutines.launch
 abstract class MediaDialogFragment : ScopedBottomSheetFragment() {
 
     protected fun setMediaItems(songs: List<Audio>, position: Int = 0) {
-        PlayerPreferences.setLastSongPosition(position)
-        PlayerPreferences.setLastSongId(songs.getOrNull(position)?.id ?: -1L)
         // MediaManager.setSongs(songs, position)
         MediaManager.play()
         createSongHistoryDatabase(songs)
