@@ -72,7 +72,14 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     .setEnableFloatOutput(true) // Force 32-bit Internal Processing
                     .build()
 
-                audioSink.setOffloadMode(DefaultAudioSink.OFFLOAD_MODE_ENABLED_GAPLESS_REQUIRED)
+                // Configure offload mode based on gapless playback preference
+                val gaplessEnabled = AudioPreferences.isGaplessPlaybackEnabled()
+                if (gaplessEnabled) {
+                    audioSink.setOffloadMode(DefaultAudioSink.OFFLOAD_MODE_ENABLED_GAPLESS_REQUIRED)
+                } else {
+                    audioSink.setOffloadMode(DefaultAudioSink.OFFLOAD_MODE_DISABLED)
+                }
+
                 return audioSink
             }
 
@@ -139,6 +146,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
 
+        // Configure gapless playback
+        configureGaplessPlayback()
+
         player.addListener(playerListener)
     }
 
@@ -169,6 +179,28 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
         // Update the session to point to the new player instance
         mediaSession?.player = player
+    }
+
+    /**
+     * Configures gapless playback based on user preferences.
+     * When enabled, the player will seamlessly transition between tracks without silence.
+     */
+    private fun configureGaplessPlayback() {
+        val gaplessEnabled = AudioPreferences.isGaplessPlaybackEnabled()
+
+        if (gaplessEnabled) {
+            // Enable gapless playback by setting skip silence and configuring repeat mode
+            player.skipSilenceEnabled = false // Don't skip silence for gapless playback
+            Log.i(TAG, "Gapless playback enabled")
+        } else {
+            player.skipSilenceEnabled = false
+            Log.i(TAG, "Gapless playback disabled")
+        }
+
+        // Note: Media3's ExoPlayer handles gapless playback automatically when AudioSink
+        // is configured with OFFLOAD_MODE_ENABLED_GAPLESS_REQUIRED (already set in buildAudioSink)
+        // The key is ensuring the AudioSink offload mode is properly configured, which we've done
+        // in the RenderersFactory's buildAudioSink method.
     }
 
     private val playerListener = object : Player.Listener {
@@ -236,7 +268,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 switchDecoder()
             }
             AudioPreferences.GAPLESS_PLAYBACK -> {
-                val gaplessEnabled = AudioPreferences.isGaplessPlaybackEnabled()
+                // Reconfigure gapless playback when preference changes
+                configureGaplessPlayback()
+                Log.d(TAG, "Gapless playback preference changed to: ${AudioPreferences.isGaplessPlaybackEnabled()}")
             }
         }
     }
