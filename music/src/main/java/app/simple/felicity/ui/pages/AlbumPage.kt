@@ -42,7 +42,7 @@ class AlbumPage : MediaFragment() {
     private val albumViewerViewModel: AlbumViewerViewModel by viewModels(
             ownerProducer = { this },
             extrasProducer = {
-                defaultViewModelCreationExtras.withCreationCallback<AlbumViewerViewModel.Factory>() {
+                defaultViewModelCreationExtras.withCreationCallback<AlbumViewerViewModel.Factory> {
                     it.create(album = album)
                 }
             }

@@ -33,14 +33,16 @@ object MediaManager {
     // Backing store for the queue provided by UI/db. Treat as read-only outside.
     private var songs: List<Audio> = emptyList()
 
-    // Current queue index. Setter also emits to observers when valid.
+    // Current queue index. Setter also emits to observers when valid and changed.
     private var currentSongPosition: Int = 0
         set(value) {
             if (value in songs.indices) {
-                field = value
-                // Emit position change to observers on the manager scope
-                scope.launch {
-                    _songPositionFlow.emit(value)
+                if (field != value) {
+                    field = value
+                    // Emit position change to observers on the manager scope
+                    scope.launch {
+                        _songPositionFlow.emit(value)
+                    }
                 }
             } else {
                 Log.i(TAG, "Invalid song position: $value. Must be between 0 and ${songs.size - 1}.")
@@ -196,11 +198,15 @@ object MediaManager {
     }
 
     fun updatePosition(position: Int) {
-        if (position in songs.indices) {
-            currentSongPosition = position
-            playCurrent()
+        if (position != currentSongPosition) {
+            if (position in songs.indices) {
+                currentSongPosition = position
+                playCurrent()
+            } else {
+                Log.w(TAG, "Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")
+            }
         } else {
-            Log.w(TAG, "Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")
+            Log.i(TAG, "updatePosition called with current position: $position. No action taken.")
         }
     }
 
