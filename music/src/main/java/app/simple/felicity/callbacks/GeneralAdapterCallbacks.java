@@ -17,11 +17,11 @@ public interface GeneralAdapterCallbacks {
     
     }
     
-    default void onSongClicked(List <Audio> songs, int position, View view) {
+    default void onSongClicked(@NonNull List <Audio> songs, int position, View view) {
     
     }
     
-    default void onSongLongClicked(List <Audio> songs, int position, View view) {
+    default void onSongLongClicked(@NonNull List <Audio> songs, int position, @NonNull View view) {
     
     }
     

@@ -190,6 +190,11 @@ class PageAdapter(
                 holder.binding.container.setOnClickListener {
                     listener?.onSongClicked(songItem.allSongs, songItem.position, holder.binding.cover)
                 }
+
+                holder.binding.container.setOnLongClickListener {
+                    listener?.onSongLongClicked(songItem.allSongs, songItem.position, holder.binding.cover)
+                    true
+                }
             }
         }
     }

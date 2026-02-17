@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.core.net.toUri
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -84,6 +85,11 @@ class AlbumPage : MediaFragment() {
             override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
                 Log.i(TAG, "onSongClick: Audio clicked in album: ${album.name}, position: $position")
                 setMediaItems(songs, position)
+            }
+
+            override fun onSongLongClicked(songs: List<Audio>, position: Int, view: View) {
+                super.onSongLongClicked(songs, position, view)
+                openSongsMenu(songs, position, view as ImageView)
             }
 
             override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {
