@@ -10,6 +10,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.databinding.DialogSongMenuBinding
+import app.simple.felicity.databinding.DialogSureBinding
+import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.interfaces.MiniPlayerPolicy
@@ -23,6 +25,7 @@ import app.simple.felicity.repository.utils.AudioUtils
 import app.simple.felicity.repository.utils.AudioUtils.createSongStat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.io.File
 
 open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
@@ -179,9 +182,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 binding.play.setOnClickListener {
                     val pos = audios.indexOfFirst { it.id == audios[position].id }.coerceAtLeast(0)
                     setMediaItems(audios, pos)
-                    postDelayed {
-                        dismiss()
-                    }
+                    dismiss()
                 }
 
                 binding.addToQueue.setOnClickListener {
@@ -191,9 +192,75 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 binding.addToPlaylist.setOnClickListener {
 
                 }
+
+                binding.delete.setOnClickListener {
+                    dismiss()
+                    showDeleteConfirmation() { confirmed ->
+                        if (confirmed) {
+                            deleteSong(audios[position])
+                        } else {
+                            // Reopen the menu if user cancels
+                            openSongsMenu(audios, position, imageView)
+                        }
+                    }
+                }
             }
             .build()
             .show()
+    }
+
+    protected fun showDeleteConfirmation(onResult: (Boolean) -> Unit) {
+        SimpleDialog.Builder(
+                container = requireContainerView(),
+                inflateBinding = DialogSureBinding::inflate)
+            .onViewCreated { binding ->
+
+            }.onDialogInflated { binding, dismiss ->
+                binding.sure.setOnClickListener {
+                    onResult(true)
+                    dismiss()
+                }
+
+                binding.cancel.setOnClickListener {
+                    onResult(false)
+                    dismiss()
+                }
+            }
+            .build()
+            .show()
+    }
+
+    private fun deleteSong(audio: Audio) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // Delete the physical file
+                val file = File(audio.path)
+                val deleted = if (file.exists()) {
+                    file.delete()
+                } else {
+                    Log.w(TAG, "File does not exist: ${audio.path}")
+                    true // Consider it deleted if it doesn't exist
+                }
+
+                if (deleted) {
+                    // Remove from database
+                    val audioDatabase = AudioDatabase.getInstance(requireContext())
+                    audioDatabase.audioDao()?.delete(audio)
+
+                    // If the deleted song is currently playing, skip to next
+                    val currentSong = MediaManager.getCurrentSong()
+                    if (currentSong?.id == audio.id) {
+                        MediaManager.next()
+                    }
+
+                    Log.d(TAG, "Song deleted successfully: ${audio.title}")
+                } else {
+                    Log.e(TAG, "Failed to delete file: ${audio.path}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting song: ${e.message}", e)
+            }
+        }
     }
 
     override val wantsMiniPlayerVisible: Boolean

@@ -161,4 +161,6 @@
     <string name="audio_pipeline">Audio Pipeline</string>
     <string name="playback">Playback</string>
     <string name="audio_pipeline_summary">Select the primary engine used to process audio data.</string>
+    <string name="are_you_sure">Are you sure?</string>
+    <string name="yes">Yes</string>
 </resources>
