@@ -62,12 +62,12 @@ class ArtFlowRenderer(
     private var verticalOrientation = false
 
     // Camera distances
-    private val cameraZLandscape = 2.1f
-    private val cameraZPortrait = 2.1f
+    private val cameraZLandscape = 4.2f
+    private val cameraZPortrait = 4.2f
 
     // Scaling variants
-    private var baseScaleLandscape = 1.4f
-    private var baseScalePortrait = 0.8f // reduced further so portrait items look smaller
+    private var baseScaleLandscape = 2.8f
+    private var baseScalePortrait = 1.6f // reduced further so portrait items look smaller
     private var currentBaseScale = baseScaleLandscape
 
     // Reflection enable flag (disabled in portrait)
@@ -131,8 +131,8 @@ class ArtFlowRenderer(
     private var isBouncing = false          // true when we're animating the snap back
 
     // Layout knobs
-    private val spacingLandscape = 1.2f
-    private val spacingPortrait = 0.65f // tighter spacing in portrait
+    private val spacingLandscape = 2.4f
+    private val spacingPortrait = 1.3f // tighter spacing in portrait
     private var currentSpacing = spacingLandscape
     private val maxRotation = 55f
     private var sideScale = 0.75f
