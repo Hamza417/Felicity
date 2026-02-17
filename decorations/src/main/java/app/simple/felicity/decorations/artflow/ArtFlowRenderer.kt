@@ -627,7 +627,9 @@ class ArtFlowRenderer(
                         queueGL {
                             val texId = createTextureFromBitmap(bmp)
                             textures[index] = texId
-                            bmp.recycle()
+                            // DO NOT recycle the bitmap here!
+                            // The cache owns the bitmap and may return the same instance multiple times.
+                            // Let the garbage collector handle cleanup when no references remain.
                         }
                     }
                 } catch (t: Throwable) {

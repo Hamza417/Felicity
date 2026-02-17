@@ -21,7 +21,6 @@ import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.repository.constants.MediaConstants
-import app.simple.felicity.repository.covers.AudioCover
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
@@ -34,6 +33,7 @@ class ArtFlow : MediaFragment() {
 
     private lateinit var binding: FragmentArtflowBinding
     private val songsViewModel: SongsViewModel by viewModels({ requireActivity() })
+    private val coverCache = ArtFlowCoverCache(maxMemoryCacheSizeMB = 50)
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentArtflowBinding.inflate(inflater, container, false)
@@ -67,6 +67,8 @@ class ArtFlow : MediaFragment() {
         binding.coverflow.addScrollListener(object : ArtFlowRenderer.ScrollListener {
             override fun onCenteredIndexChanged(index: Int) {
                 songsViewModel.setCarouselPosition(index)
+                // Preload covers around the new position
+                coverCache.preloadAround(index, radius = 15, maxDimension = 1024)
             }
 
             override fun onScrollOffsetChanged(offset: Float) {
@@ -165,10 +167,18 @@ class ArtFlow : MediaFragment() {
         }
     }
 
+    override fun onDestroyView() {
+        super.onDestroyView()
+        coverCache.release()
+    }
+
     /**
      * Updates the carousel with a new list of audio items
      */
     private fun updateCarousel(audioList: List<Audio>) {
+        // Update cache with new audio list
+        coverCache.setAudioList(audioList)
+
         val provider = AlbumArtProvider(audioList)
         binding.coverflow.setDataProvider(provider)
         binding.coverflow.scrollToIndex(songsViewModel.getCarouselPosition()).also {
@@ -176,6 +186,9 @@ class ArtFlow : MediaFragment() {
                 binding.coverflow.reloadTextures()
             }
         }
+
+        // Start preloading covers around the current position
+        coverCache.preloadAround(songsViewModel.getCarouselPosition(), radius = 15, maxDimension = 1024)
     }
 
     override fun onAudio(audio: Audio) {
@@ -207,7 +220,12 @@ class ArtFlow : MediaFragment() {
         }
 
         override fun loadArtwork(index: Int, maxDimension: Int): Bitmap? {
-            return AudioCover.load(audioList[index])
+            // Try to get from cache first (non-blocking)
+            coverCache.getOrNull(index)?.let { return it }
+
+            // If not in cache, load synchronously as fallback
+            // This should rarely happen if preloading is working well
+            return coverCache.loadSync(index, maxDimension)
         }
     }
 
