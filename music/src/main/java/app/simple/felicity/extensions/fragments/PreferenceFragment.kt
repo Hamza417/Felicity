@@ -423,6 +423,20 @@ open class PreferenceFragment : MediaFragment() {
 
         val playbackHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.playback)
 
+        val hiresToggle = Preference(
+                title = R.string.high_resolution_output,
+                summary = R.string.high_resolution_output_summary,
+                icon = R.drawable.ic_hires_12dp,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AudioPreferences.setHiresOutput((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    AudioPreferences.isHiresOutputEnabled()
+                }
+        )
+
         val gaplessToggle = Preference(
                 title = R.string.gapless_playback,
                 summary = R.string.gapless_playback_summary,
@@ -440,6 +454,7 @@ open class PreferenceFragment : MediaFragment() {
         preferences.add(decoderHeader)
         preferences.add(currentDecoder)
         preferences.add(playbackHeader)
+        preferences.add(hiresToggle)
         preferences.add(gaplessToggle)
 
         return preferences

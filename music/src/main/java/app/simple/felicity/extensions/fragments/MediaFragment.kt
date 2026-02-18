@@ -178,7 +178,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     open fun onSeekChanged(seek: Long) {
-        Log.d(TAG, "Seek changed: $seek")
+        /* no-op */
     }
 
     protected fun openSongsMenu(audios: List<Audio>, position: Int, imageView: ImageView) {

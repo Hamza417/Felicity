@@ -165,4 +165,5 @@
     <string name="yes">Yes</string>
     <string name="gapless_playback">Gapless Playback</string>
     <string name="gapless_playback_summary">Play audio files gaplessly.</string>
+    <string name="high_resolution_output_summary">"Enable Hi-Res (32bit Float) mode instead of standard 16bit mode. Supported device is required otherwise the quality may drop instead of improving."</string>
 </resources>

@@ -7,6 +7,7 @@ object AudioPreferences {
 
     const val AUDIO_DECODER = "audio_decoder"
     const val GAPLESS_PLAYBACK = "gapless_playback"
+    const val HIRES_OUTPUT = "hires_output"
 
     const val LOCAL_DECODER = 0
     const val FFMPEG = 1
@@ -29,5 +30,15 @@ object AudioPreferences {
 
     fun isGaplessPlaybackEnabled(): Boolean {
         return SharedPreferences.getSharedPreferences().getBoolean(GAPLESS_PLAYBACK, true)
+    }
+
+    // --------------------------------------------------------------------------------------------- //
+
+    fun setHiresOutput(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(HIRES_OUTPUT, enabled) }
+    }
+
+    fun isHiresOutputEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(HIRES_OUTPUT, false)
     }
 }

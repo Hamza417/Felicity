@@ -68,18 +68,17 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // Initialize the RenderersFactory once.
         renderersFactory = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableOffload: Boolean): AudioSink {
+                // Check hi-res preference to determine output format
+                val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
+
                 val audioSink = DefaultAudioSink.Builder(context)
-                    .setEnableFloatOutput(true) // Force 32-bit Internal Processing
+                    .setEnableFloatOutput(hiresEnabled) // 32-bit float if hi-res, 16-bit PCM otherwise
                     .build()
 
-                // Configure offload mode based on gapless playback preference
-                val gaplessEnabled = AudioPreferences.isGaplessPlaybackEnabled()
-                if (gaplessEnabled) {
-                    audioSink.setOffloadMode(DefaultAudioSink.OFFLOAD_MODE_ENABLED_GAPLESS_REQUIRED)
-                } else {
-                    audioSink.setOffloadMode(DefaultAudioSink.OFFLOAD_MODE_DISABLED)
-                }
+                // Disable offload mode for consistent processing
+                audioSink.setOffloadMode(DefaultAudioSink.OFFLOAD_MODE_DISABLED)
 
+                Log.i(TAG, "AudioSink configured: Hi-Res=${hiresEnabled} (${if (hiresEnabled) "32-bit Float" else "16-bit PCM"})")
                 return audioSink
             }
 
@@ -133,6 +132,35 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
         renderersFactory?.setExtensionRendererMode(extensionMode)
 
+        // Configure LoadControl with optimized buffer settings based on hi-res mode
+        val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
+
+        val loadControl = if (hiresEnabled) {
+            // Hi-Res mode: 32-bit float processing requires larger buffers
+            androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                        /* minBufferMs = */ 5000,   // 5s minimum for smooth float processing
+                        /* maxBufferMs = */ 15000,  // 15s maximum for hi-res content
+                        /* bufferForPlaybackMs = */ 2000,   // 2s to start playback
+                        /* bufferForPlaybackAfterRebufferMs = */ 3000  // 3s rebuffer threshold
+                )
+                .setPrioritizeTimeOverSizeThresholds(false) // Prioritize size for hi-res
+                .build()
+        } else {
+            // Standard mode: 16-bit PCM processing uses smaller, efficient buffers
+            androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                        /* minBufferMs = */ 2500,   // 2.5s minimum for standard playback
+                        /* maxBufferMs = */ 10000,  // 10s maximum for efficiency
+                        /* bufferForPlaybackMs = */ 1000,   // 1s quick start
+                        /* bufferForPlaybackAfterRebufferMs = */ 2000  // 2s rebuffer threshold
+                )
+                .setPrioritizeTimeOverSizeThresholds(true) // Prioritize time for responsiveness
+                .build()
+        }
+
+        Log.i(TAG, "LoadControl configured for ${if (hiresEnabled) "Hi-Res" else "Standard"} mode")
+
         // Build new player instance
         player = ExoPlayer.Builder(this, renderersFactory!!)
             .setAudioAttributes(
@@ -142,9 +170,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                         .build(),
                     true
             )
+            .setLoadControl(loadControl)
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
+
+        // Disable skip silence for natural audio playback
+        player.skipSilenceEnabled = false
 
         // Configure gapless playback
         configureGaplessPlayback()
@@ -182,25 +214,54 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     }
 
     /**
+     * Handles the dynamic switching between hi-res and standard audio modes.
+     * Captures current playback state, rebuilds the player with new audio output settings,
+     * restores the state seamlessly for real-time mode switching.
+     */
+    private fun switchAudioMode() {
+        val currentItem = player.currentMediaItem
+        val currentPos = player.currentPosition
+        val playWhenReady = player.playWhenReady
+        val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
+
+        Log.i(TAG, "Switching audio mode to: ${if (hiresEnabled) "Hi-Res (32-bit Float)" else "Standard (16-bit PCM)"}")
+
+        // Release the old player to free up audio resources
+        player.removeListener(playerListener)
+        player.release()
+
+        // Build the new player with updated audio sink and buffer settings
+        buildPlayer()
+
+        // Restore state seamlessly
+        if (currentItem != null) {
+            player.setMediaItem(currentItem)
+            player.seekTo(currentPos)
+            player.playWhenReady = playWhenReady
+            player.prepare()
+        }
+
+        // Update the session to point to the new player instance
+        mediaSession?.player = player
+
+        Log.i(TAG, "Audio mode switch completed successfully")
+    }
+
+    /**
      * Configures gapless playback based on user preferences.
      * When enabled, the player will seamlessly transition between tracks without silence.
      */
     private fun configureGaplessPlayback() {
         val gaplessEnabled = AudioPreferences.isGaplessPlaybackEnabled()
 
+        // Skip silence is always disabled for natural audio playback
+        player.skipSilenceEnabled = false
+
         if (gaplessEnabled) {
-            // Enable gapless playback by setting skip silence and configuring repeat mode
-            player.skipSilenceEnabled = false // Don't skip silence for gapless playback
             Log.i(TAG, "Gapless playback enabled")
         } else {
-            player.skipSilenceEnabled = false
             Log.i(TAG, "Gapless playback disabled")
         }
-
-        // Note: Media3's ExoPlayer handles gapless playback automatically when AudioSink
-        // is configured with OFFLOAD_MODE_ENABLED_GAPLESS_REQUIRED (already set in buildAudioSink)
-        // The key is ensuring the AudioSink offload mode is properly configured, which we've done
-        // in the RenderersFactory's buildAudioSink method.
     }
 
     private val playerListener = object : Player.Listener {
@@ -216,7 +277,6 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 }
                 Log.i(TAG, "Audio Engine: ${format.sampleRate}Hz | Output: $encodingName")
                 Log.i(TAG, "Song Info: Channels: ${format.channelCount}, Encoding: ${format.pcmEncoding}, Sample Rate: ${format.sampleRate}")
-                Log.i(TAG, "Playing song ${MediaManager.getCurrentSong()?.title} at encoding $encodingName and sample rate ${format.sampleRate}")
             }
 
             if (isPlaying) {
@@ -265,7 +325,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
             AudioPreferences.AUDIO_DECODER -> {
+                Log.d(TAG, "Audio decoder preference changed, switching decoder...")
                 switchDecoder()
+            }
+            AudioPreferences.HIRES_OUTPUT -> {
+                val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
+                Log.d(TAG, "Hi-Res output preference changed to: $hiresEnabled")
+                switchAudioMode()
             }
             AudioPreferences.GAPLESS_PLAYBACK -> {
                 // Reconfigure gapless playback when preference changes
@@ -463,7 +529,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                                     .setUri(audio.path)
                                     .setMediaMetadata(
                                             MediaMetadata.Builder()
-                                                .setTitle(audio.title ?: "Unknown Title")
+                                                .setTitle(audio.title)
                                                 .setArtist(audio.artist ?: "Unknown Artist")
                                                 .setAlbumTitle(audio.album ?: "Unknown Album")
                                                 .setIsPlayable(true)
