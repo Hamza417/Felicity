@@ -16,8 +16,9 @@ import app.simple.felicity.preferences.ArtistPreferences
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.shared.utils.TextViewUtils.setTextOrUnknown
 
-class AdapterArtists(private val artists: MutableList<Artist>) : FastScrollAdapter<VerticalListViewHolder>() {
+class AdapterArtists(artists: List<Artist>) : FastScrollAdapter<VerticalListViewHolder>() {
 
+    private val artists: MutableList<Artist> = ArrayList(artists)
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
 
     init {
