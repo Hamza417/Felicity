@@ -27,7 +27,9 @@ class DefaultPlayer : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
         requireHiddenMiniPlayer()
+        updateState()
 
         binding.pager.setAdapter(object : FelicityPager.Adapter {
             override fun getCount(): Int {
@@ -76,6 +78,25 @@ class DefaultPlayer : MediaFragment() {
         }
     }
 
+    private fun updateState() {
+        val audio = MediaManager.getCurrentSong() ?: return
+        binding.title.text = audio.title
+        binding.artist.text = audio.artist
+        binding.album.text = audio.album
+        binding.info.text = audio.path
+        binding.duration.text = NumberUtils.getFormattedTime(audio.duration)
+        binding.seekbar.setMax(audio.duration.toFloat())
+        updatePlayButtonState(MediaManager.isPlaying())
+    }
+
+    private fun updatePlayButtonState(isPlaying: Boolean) {
+        if (isPlaying) {
+            binding.play.playing()
+        } else {
+            binding.play.paused()
+        }
+    }
+
     override fun onPositionChanged(position: Int) {
         super.onPositionChanged(position)
         Log.i(TAG, "Position changed to $position")
@@ -110,10 +131,10 @@ class DefaultPlayer : MediaFragment() {
         super.onPlaybackStateChanged(state)
         when (state) {
             MediaConstants.PLAYBACK_PLAYING -> {
-                binding.play.playing()
+                updatePlayButtonState(true)
             }
             MediaConstants.PLAYBACK_PAUSED -> {
-                binding.play.paused()
+                updatePlayButtonState(false)
             }
         }
     }

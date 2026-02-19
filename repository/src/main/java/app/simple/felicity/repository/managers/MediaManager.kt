@@ -181,6 +181,10 @@ object MediaManager {
         stopSeekPositionUpdates()
     }
 
+    fun isPlaying(): Boolean {
+        return mediaController?.isPlaying == true
+    }
+
     fun flipState() {
         if (mediaController == null) {
             Log.w(TAG, "flipState() called but mediaController is null")

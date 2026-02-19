@@ -127,7 +127,7 @@ class FlipPlayPauseView @JvmOverloads constructor(
         if (isPlaying == playing) return
 
         isPlaying = playing
-        val target = if (playing) 0f else 1f
+        val target = if (playing) PROGRESS_PLAY else PROGRESS_PAUSE
 
         animator?.cancel()
 
@@ -239,7 +239,7 @@ class FlipPlayPauseView @JvmOverloads constructor(
     override fun onRestoreInstanceState(state: Parcelable?) {
         if (state is Bundle) {
             isPlaying = state.getBoolean(KEY_IS_PLAYING)
-            progress = if (isPlaying) 1f else 0f
+            progress = if (isPlaying) PROGRESS_PLAY else PROGRESS_PAUSE
             super.onRestoreInstanceState(
                     BundleCompat.getParcelable(state, KEY_SUPER_STATE, Parcelable::class.java)
             )
@@ -266,5 +266,7 @@ class FlipPlayPauseView @JvmOverloads constructor(
         private const val TAG = "FlipPlayPauseView"
         private const val KEY_SUPER_STATE = "superState"
         private const val KEY_IS_PLAYING = "isPlaying"
+        private const val PROGRESS_PLAY = 0f
+        private const val PROGRESS_PAUSE = 1f
     }
 }
