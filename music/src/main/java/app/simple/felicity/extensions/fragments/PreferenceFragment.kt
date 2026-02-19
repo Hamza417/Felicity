@@ -451,11 +451,26 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val skipSilenceToggle = Preference(
+                title = R.string.skip_silence,
+                summary = R.string.skip_silence_summary,
+                icon = R.drawable.ic_skip,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AudioPreferences.setSkipSilence((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    AudioPreferences.isSkipSilenceEnabled()
+                }
+        )
+
         preferences.add(decoderHeader)
         preferences.add(currentDecoder)
         preferences.add(playbackHeader)
         preferences.add(hiresToggle)
         preferences.add(gaplessToggle)
+        preferences.add(skipSilenceToggle)
 
         return preferences
     }

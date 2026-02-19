@@ -8,6 +8,7 @@ object AudioPreferences {
     const val AUDIO_DECODER = "audio_decoder"
     const val GAPLESS_PLAYBACK = "gapless_playback"
     const val HIRES_OUTPUT = "hires_output"
+    const val SKIP_SILENCE = "skip_silence"
 
     const val LOCAL_DECODER = 0
     const val FFMPEG = 1
@@ -40,5 +41,15 @@ object AudioPreferences {
 
     fun isHiresOutputEnabled(): Boolean {
         return SharedPreferences.getSharedPreferences().getBoolean(HIRES_OUTPUT, false)
+    }
+
+    // --------------------------------------------------------------------------------------------- //
+
+    fun setSkipSilence(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(SKIP_SILENCE, enabled) }
+    }
+
+    fun isSkipSilenceEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(SKIP_SILENCE, false)
     }
 }

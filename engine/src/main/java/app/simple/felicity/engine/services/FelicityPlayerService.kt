@@ -178,8 +178,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
 
-        // Disable skip silence for natural audio playback
-        // player.skipSilenceEnabled = false
+        // Set initial silence state based on preferences
+        setSilenceState()
 
         // Configure gapless playback
         configureGaplessPlayback()
@@ -256,15 +256,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      */
     private fun configureGaplessPlayback() {
         val gaplessEnabled = AudioPreferences.isGaplessPlaybackEnabled()
+        player.pauseAtEndOfMediaItems = !gaplessEnabled
+    }
 
+    private fun setSilenceState() {
         // Skip silence is always disabled for natural audio playback
-        player.skipSilenceEnabled = false
-
-        if (gaplessEnabled) {
-            Log.i(TAG, "Gapless playback enabled")
-        } else {
-            Log.i(TAG, "Gapless playback disabled")
-        }
+        player.skipSilenceEnabled = AudioPreferences.isSkipSilenceEnabled()
     }
 
     private val playerListener = object : Player.Listener {
@@ -289,6 +286,22 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
                 stopPeriodicStateSaving()
                 savePlaybackStateToDatabase() // Save immediately when paused
+            }
+        }
+
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            if (AudioPreferences.isGaplessPlaybackEnabled().not()) {
+                if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
+                    // The track ended and the player paused itself automatically.
+                    // Now we introduce our artificial gap.
+                    serviceScope.launch(Dispatchers.Main) {
+                        delay(GAP_DURATION_MS) // time of silence
+                        player.play() // Move on to the next track
+                    }
+                }
+            } else {
+                // If gapless is enabled, we don't need to do anything special here.
+                // The player will handle seamless transitions automatically.
             }
         }
 
@@ -340,6 +353,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 // Reconfigure gapless playback when preference changes
                 configureGaplessPlayback()
                 Log.d(TAG, "Gapless playback preference changed to: ${AudioPreferences.isGaplessPlaybackEnabled()}")
+            }
+            AudioPreferences.SKIP_SILENCE -> {
+                setSilenceState()
+                Log.d(TAG, "Skip silence preference changed to: ${AudioPreferences.isSkipSilenceEnabled()} (Note: Skip silence is currently disabled for all modes)")
             }
         }
     }
@@ -561,5 +578,6 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
     companion object {
         private const val TAG = "FelicityPlayerService"
+        private const val GAP_DURATION_MS = 800L // Duration of silence gap when gapless playback is disabled
     }
 }

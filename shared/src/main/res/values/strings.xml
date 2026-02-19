@@ -189,4 +189,6 @@
     <string name="no">No</string>
     <string name="num_tracks">Num Tracks</string>
     <string name="format">Format</string>
+    <string name="skip_silence">Skip Silence</string>
+    <string name="skip_silence_summary">Skip silent part while playing the song.</string>
 </resources>
