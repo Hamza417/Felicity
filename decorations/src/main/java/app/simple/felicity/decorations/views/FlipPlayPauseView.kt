@@ -12,29 +12,39 @@ import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.DecelerateInterpolator
+import androidx.core.graphics.withTranslation
+import androidx.core.os.BundleCompat
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.themes.Theme
+import com.google.android.material.math.MathUtils.lerp
 import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
- * A lightweight custom view that draws a Play/Pause icon and morphs between them using a "flip" illusion.
+ * A lightweight animated Play/Pause button that morphs between:
  *
- * ## Visual model
- * - **Pause**: two vertical bars
- * - **Play**: a right-pointing triangle
+ * - **Pause** → Two rounded vertical bars
+ * - **Play**  → A rounded equilateral triangle
  *
- * ## Animation strategy
- * - The **left bar** morphs into the triangle by collapsing its right edge into a tip.
- * - The **right bar** fades out while the morph progresses.
+ * ### Animation Model
+ * The **left pause bar morphs into the play triangle**, while the **right bar fades out**.
  *
  * Progress mapping:
- * - `progress = 0f` → Pause state
- * - `progress = 1f` → Play state
+ * - `0f` → Pause
+ * - `1f` → Play
  *
- * The view listens to theme updates via [ThemeChangedListener] and updates [iconColor] automatically.
+ * The view maintains visual centering during morph to prevent drift.
+ *
+ * ### Corner Handling
+ * Uses [CornerPathEffect] for smooth rounded geometry. A true triangle is introduced
+ * slightly before the morph completes (`progress >= 0.9f`) to avoid degenerate vertices
+ * and ensure consistent rounding from the start of the visible transition.
+ *
+ * ### Theme Awareness
+ * Implements [ThemeChangedListener] and automatically updates icon tint on theme change.
  */
+@Suppress("UnnecessaryVariable")
 class FlipPlayPauseView @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
@@ -42,9 +52,8 @@ class FlipPlayPauseView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr), ThemeChangedListener {
 
     /**
-     * Tint color used to draw the icon.
-     *
-     * Setting this updates [paint] and triggers a redraw.
+     * Tint color of the icon.
+     * Updating this invalidates the view.
      */
     var iconColor: Int = Color.WHITE
         set(value) {
@@ -54,35 +63,28 @@ class FlipPlayPauseView @JvmOverloads constructor(
         }
 
     /**
-     * Duration of the play/pause morph animation in milliseconds.
+     * Duration of morph animation in milliseconds.
      */
     var animDuration: Long = 300L
 
     /**
-     * Corner smoothing radius applied via [CornerPathEffect].
-     *
-     * This prevents harsh sharp corners and keeps the icon soft.
+     * Radius used by [CornerPathEffect] to smooth all icon corners.
      */
     private val cornerRadius = 10f
 
     /**
-     * Current logical state of the icon.
-     * - `false` → Pause
-     * - `true`  → Play
+     * Logical playback state.
+     * `false` → Pause, `true` → Play
      */
     private var isPlaying = false
 
     /**
-     * Animation progress:
-     * - `0f` → Pause (two bars)
-     * - `1f` → Play (triangle)
+     * Morph progress between Pause and Play.
      */
     private var progress = 0f
 
     /**
-     * Paint used to render both paths.
-     *
-     * Alpha will be modified temporarily to fade the right bar.
+     * Paint used for rendering both shapes.
      */
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -90,22 +92,13 @@ class FlipPlayPauseView @JvmOverloads constructor(
         pathEffect = CornerPathEffect(cornerRadius)
     }
 
-    /**
-     * The morphing left side shape.
-     * - Rectangle in Pause
-     * - Triangle in Play
-     */
+    /** Morphing left shape (Pause bar → Triangle) */
     private val leftPath = Path()
 
-    /**
-     * The right pause bar.
-     * This does not morph; it only fades out during transition to Play.
-     */
+    /** Right pause bar (fades out during morph) */
     private val rightPath = Path()
 
-    /**
-     * Animator used to drive [progress] smoothly between states.
-     */
+    /** Animator driving morph progress */
     private var animator: ValueAnimator? = null
 
     init {
@@ -118,29 +111,28 @@ class FlipPlayPauseView @JvmOverloads constructor(
     }
 
     /**
-     * Toggles between Play and Pause with animation enabled by default.
+     * Toggles between Play and Pause with animation.
      */
     fun toggle() {
-        setPlaying(!isPlaying, animate = true)
+        setPlaying(!isPlaying, true)
     }
 
     /**
-     * Sets the icon state.
+     * Sets the current playback state.
      *
-     * @param playing Desired state:
-     *  - `true`  → Play (triangle)
-     *  - `false` → Pause (two bars)
-     * @param animate Whether to animate the transition.
+     * @param playing Target state
+     * @param animate Whether to animate transition
      */
     fun setPlaying(playing: Boolean, animate: Boolean = true) {
         if (isPlaying == playing) return
 
         isPlaying = playing
-        val targetProgress = if (isPlaying) 1f else 0f
+        val target = if (playing) 1f else 0f
+
+        animator?.cancel()
 
         if (animate) {
-            animator?.cancel()
-            animator = ValueAnimator.ofFloat(progress, targetProgress).apply {
+            animator = ValueAnimator.ofFloat(progress, target).apply {
                 duration = animDuration
                 interpolator = DecelerateInterpolator()
                 addUpdateListener {
@@ -150,8 +142,7 @@ class FlipPlayPauseView @JvmOverloads constructor(
                 start()
             }
         } else {
-            animator?.cancel()
-            progress = targetProgress
+            progress = target
             invalidate()
         }
     }
@@ -159,44 +150,24 @@ class FlipPlayPauseView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        /**
-         * Size calculation:
-         * We draw the icon inside the smallest available square, respecting padding.
-         */
-        val wAvailable = width - paddingLeft - paddingRight
-        val hAvailable = height - paddingTop - paddingBottom
-        val size = min(wAvailable, hAvailable).toFloat()
+        // ----- Compute drawable square -----
+        val wAvail = width - paddingLeft - paddingRight
+        val hAvail = height - paddingTop - paddingBottom
+        val size = min(wAvail, hAvail).toFloat()
 
-        /**
-         * Base "bar height" reference used for both pause bars and play triangle.
-         */
         val h = size * 0.5f
 
-        /**
-         * Pause shape specs:
-         * Two vertical bars of equal width, separated by a gap.
-         */
+        // Pause bar geometry
         val barWidth = h / 2.5f
         val gap = barWidth / 1.5f
 
-        /**
-         * Play shape spec:
-         * An equilateral triangle whose "side" is similar to the bar height.
-         *
-         * Height of an equilateral triangle = (sqrt(3)/2) * side
-         */
+        // Equilateral triangle height
         val triHeight = (sqrt(3.0) / 2.0 * h).toFloat()
 
-        /**
-         * Reset paths before recomputing geometry for the current frame.
-         */
         leftPath.rewind()
         rightPath.rewind()
 
-        /**
-         * Right pause bar:
-         * Remains a rectangle, but fades out as we approach Play.
-         */
+        // ----- Right pause bar -----
         val rightBarX = barWidth + gap
         rightPath.moveTo(rightBarX, 0f)
         rightPath.lineTo(rightBarX + barWidth, 0f)
@@ -204,127 +175,88 @@ class FlipPlayPauseView @JvmOverloads constructor(
         rightPath.lineTo(rightBarX, h)
         rightPath.close()
 
-        /**
-         * Left bar morph:
-         *
-         * Pause (rectangle):
-         *   (0,0) -> (barWidth,0) -> (barWidth,h) -> (0,h)
-         *
-         * Play (triangle-ish):
-         *   (0,0) -> (triHeight, h/2) -> (triHeight, h/2) -> (0,h)
-         *
-         * Morphing happens by moving the rectangle's right edge into a single tip at center.
-         */
-        val currentTipX = lerp(barWidth, triHeight, progress)
-        val currentTopRightY = lerp(0f, h / 2f, progress)
-        val currentBottomRightY = lerp(h, h / 2f, progress)
+        // ----- Left morphing shape -----
+        if (progress >= 0.9f) {
+            /**
+             * Switch to true triangle slightly early to avoid degenerate
+             * collapsing edge and ensure CornerPathEffect rounds properly.
+             */
+            leftPath.moveTo(0f, 0f)
+            leftPath.lineTo(triHeight, h / 2f)
+            leftPath.lineTo(0f, h)
+            leftPath.close()
+        } else {
+            val tipX = lerp(barWidth, triHeight, progress)
+            val topY = lerp(0f, h / 2f, progress)
+            val bottomY = lerp(h, h / 2f, progress)
 
-        leftPath.moveTo(0f, 0f)
-        leftPath.lineTo(currentTipX, currentTopRightY)
-        leftPath.lineTo(currentTipX, currentBottomRightY)
-        leftPath.lineTo(0f, h)
-        leftPath.close()
-
-        /**
-         * Centering:
-         *
-         * We translate canvas to the center of the view, then offset the icon horizontally so:
-         * - Pause (2 bars + gap) appears centered
-         * - Play triangle appears centered
-         *
-         * This avoids the icon "drifting" during morph.
-         */
-        canvas.save()
-        canvas.translate(width / 2f, height / 2f)
-
-        val totalWidthPause = (barWidth * 2) + gap
-        val totalWidthPlay = triHeight
-
-        val startOffsetPause = -totalWidthPause / 2f
-        val startOffsetPlay = -totalWidthPlay / 2f + (barWidth * 0.1f)
-
-        val currentOffsetX = lerp(startOffsetPause, startOffsetPlay, progress)
-
-        canvas.translate(currentOffsetX, -h / 2f)
-
-        /**
-         * Draw order:
-         * 1) Morphing left shape (always fully opaque)
-         * 2) Right bar, fading out (alpha = 255 -> 0)
-         */
-        paint.alpha = 255
-        canvas.drawPath(leftPath, paint)
-
-        if (progress < 1f) {
-            val fadeAlpha = (255 * (1f - progress)).toInt().coerceIn(0, 255)
-            paint.alpha = fadeAlpha
-            canvas.drawPath(rightPath, paint)
+            leftPath.moveTo(0f, 0f)
+            leftPath.lineTo(tipX, topY)
+            leftPath.lineTo(tipX, bottomY)
+            leftPath.lineTo(0f, h)
+            leftPath.close()
         }
 
-        canvas.restore()
+        // ----- Center icon -----
+        canvas.withTranslation(width / 2f, height / 2f) {
+            val totalPauseWidth = barWidth * 2 + gap
+            val totalPlayWidth = triHeight
 
-        /**
-         * Restore alpha for any future drawing passes.
-         */
+            val offsetPause = -totalPauseWidth / 2f
+            val offsetPlay = -totalPlayWidth / 2f + (barWidth * 0.1f)
+
+            val offsetX = lerp(offsetPause, offsetPlay, progress)
+            translate(offsetX, -h / 2f)
+
+            // ----- Draw shapes -----
+            paint.alpha = 255
+            drawPath(leftPath, paint)
+
+            if (progress < 1f) {
+                paint.alpha = (255 * (1f - progress)).toInt()
+                drawPath(rightPath, paint)
+            }
+
+        }
         paint.alpha = 255
     }
 
-    /**
-     * Saves view state so the play/pause state survives:
-     * - configuration changes
-     * - list recycling
-     * - view recreation
-     */
     override fun onSaveInstanceState(): Parcelable {
         val bundle = Bundle()
-        bundle.putParcelable("superState", super.onSaveInstanceState())
-        bundle.putBoolean("isPlaying", isPlaying)
+        bundle.putParcelable(KEY_SUPER_STATE, super.onSaveInstanceState())
+        bundle.putBoolean(KEY_IS_PLAYING, isPlaying)
         return bundle
     }
 
-    /**
-     * Restores view state saved by [onSaveInstanceState].
-     */
     override fun onRestoreInstanceState(state: Parcelable?) {
         if (state is Bundle) {
-            val playing = state.getBoolean("isPlaying")
-            isPlaying = playing
-            progress = if (playing) 1f else 0f
-            super.onRestoreInstanceState(state.getParcelable("superState"))
+            isPlaying = state.getBoolean(KEY_IS_PLAYING)
+            progress = if (isPlaying) 1f else 0f
+            super.onRestoreInstanceState(
+                    BundleCompat.getParcelable(state, KEY_SUPER_STATE, Parcelable::class.java)
+            )
         } else {
             super.onRestoreInstanceState(state)
         }
     }
 
-    /**
-     * Theme callback:
-     * Updates the icon tint when the app theme changes.
-     */
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
-        super.onThemeChanged(theme, animate)
         iconColor = theme.iconTheme.regularIconColor
     }
 
-    /**
-     * Register for theme updates when the view becomes visible/attached.
-     */
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         ThemeManager.addListener(this)
     }
 
-    /**
-     * Unregister from theme updates to avoid leaks when detached.
-     */
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         ThemeManager.removeListener(this)
     }
 
-    /**
-     * Linear interpolation helper.
-     */
-    private fun lerp(a: Float, b: Float, t: Float): Float {
-        return a + (b - a) * t
+    companion object {
+        private const val TAG = "FlipPlayPauseView"
+        private const val KEY_SUPER_STATE = "superState"
+        private const val KEY_IS_PLAYING = "isPlaying"
     }
 }
