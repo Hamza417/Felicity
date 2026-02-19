@@ -1,6 +1,7 @@
 package app.simple.felicity.ui.home
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterSimpleHome
 import app.simple.felicity.databinding.FragmentHomeSimpleBinding
+import app.simple.felicity.databinding.HeaderHomeBinding
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.ui.panels.Albums
@@ -15,6 +17,7 @@ import app.simple.felicity.ui.panels.ArtFlow
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.panels.Preferences
+import app.simple.felicity.ui.panels.Search
 import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Element
@@ -22,11 +25,13 @@ import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Eleme
 class SimpleHome : MediaFragment() {
 
     private lateinit var binding: FragmentHomeSimpleBinding
+    private lateinit var headerBinding: HeaderHomeBinding
 
     private var homeViewModel: SimpleHomeViewModel? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentHomeSimpleBinding.inflate(inflater, container, false)
+        headerBinding = HeaderHomeBinding.inflate(inflater, container, false)
         homeViewModel = ViewModelProvider(requireActivity())[SimpleHomeViewModel::class.java]
 
         return binding.root
@@ -36,7 +41,13 @@ class SimpleHome : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
         postponeEnterTransition()
         binding.recyclerView.requireAttachedMiniPlayer()
+        binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
+
+        headerBinding.search.setOnClickListener {
+            Log.d(TAG, "onViewCreated: Search Clicked")
+            openFragment(Search.newInstance(), Search.TAG)
+        }
 
         homeViewModel!!.getHomeData().observe(viewLifecycleOwner) { list ->
             binding.recyclerView.adapter = AdapterSimpleHome(list)
@@ -78,8 +89,6 @@ class SimpleHome : MediaFragment() {
                     }
                 }
             })
-
-            view.startTransitionOnPreDraw()
         }
     }
 
