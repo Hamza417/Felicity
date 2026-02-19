@@ -26,6 +26,7 @@
     <string name="cancel">Cancel</string>
     <string name="ok">OK</string>
     <string name="playlists">Playlists</string>
+    <string name="genre">Genre</string>
     <string name="genres">Genres</string>
     <string name="info">Info</string>
     <string name="shuffle">Shuffle</string>
@@ -166,4 +167,25 @@
     <string name="gapless_playback">Gapless Playback</string>
     <string name="gapless_playback_summary">Play audio files gaplessly.</string>
     <string name="high_resolution_output_summary">"Enable Hi-Res (32bit Float) mode instead of standard 16bit mode. Supported device is required otherwise the quality may drop instead of improving."</string>
+    <string name="audio_information">Audio Information</string>
+
+    <!-- Audio Information dialog -->
+    <string name="album_artist">Album Artist</string>
+    <string name="size">Size</string>
+    <string name="bitrate">Bitrate</string>
+    <string name="sample_rate">Sample Rate</string>
+    <string name="bit_depth">Bit Depth</string>
+    <string name="mime_type">MIME Type</string>
+    <string name="track">Track</string>
+    <string name="disc">Disc</string>
+    <string name="author">Author</string>
+    <string name="writer">Writer</string>
+    <string name="compilation">Compilation</string>
+    <string name="date">Date</string>
+    <string name="date_taken">Date Taken</string>
+    <string name="has_embedded_art">Embedded Album Art</string>
+    <string name="has_lrc_sidecar">LRC Sidecar File</string>
+    <string name="audio_id">Audio ID</string>
+    <string name="no">No</string>
+    <string name="num_tracks">Num Tracks</string>
 </resources>

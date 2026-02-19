@@ -1,12 +1,13 @@
 package app.simple.felicity.utils
 
+import app.simple.felicity.preferences.FormattingPreferences
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 object DateUtils {
     fun Long.toDate(): String {
-        val sdf = SimpleDateFormat(app.simple.felicity.preferences.FormattingPreferences.getDateFormat(), Locale.getDefault())
+        val sdf = SimpleDateFormat(FormattingPreferences.getDateFormat(), Locale.getDefault())
         return sdf.format(Date(this))
     }
 
