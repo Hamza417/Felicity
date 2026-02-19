@@ -17,11 +17,12 @@
         <app.simple.felicity.decorations.corners.DynamicCornerEditText
             android:id="@+id/edit_text"
             android:layout_width="0dp"
-            android:layout_height="60dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
             android:padding="@dimen/padding_10"
             android:background="@android:color/transparent"
             android:gravity="center_vertical"
+            android:layout_gravity="center_vertical"
             android:hint="@string/search"
             android:imeOptions="actionSearch"
             android:importantForAutofill="yes"

@@ -4,10 +4,9 @@
     android:id="@+id/container"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingVertical="@dimen/padding_10"
+    android:padding="@dimen/padding_10"
     android:clipChildren="false"
-    android:clipToPadding="false"
-    android:paddingHorizontal="@dimen/padding_5">
+    android:clipToPadding="false">
 
     <app.simple.felicity.decorations.theme.ThemeIcon
         android:id="@+id/icon"
