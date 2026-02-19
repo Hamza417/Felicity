@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
 import app.simple.felicity.adapters.dialogs.AdapterAudioInformation.Data
+import app.simple.felicity.repository.constants.FileConstants.getAudioFormat
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
@@ -56,6 +57,7 @@ class AudioInformationViewModel @AssistedInject constructor(
                 add(data(R.string.bit_depth,
                          if (audio.bitPerSample > 0) "${audio.bitPerSample}-bit" else "–"))
                 add(data(R.string.mime_type, audio.mimeType ?: "–"))
+                add(data(R.string.format, audio.path.getAudioFormat() ?: "–"))
                 add(data(R.string.genre, audio.genre ?: "–"))
                 add(data(R.string.year, audio.year ?: "–"))
                 add(data(R.string.track, if (audio.track > 0) audio.track.toString() else "–"))

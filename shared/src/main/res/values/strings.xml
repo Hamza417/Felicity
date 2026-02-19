@@ -188,4 +188,5 @@
     <string name="audio_id">Audio ID</string>
     <string name="no">No</string>
     <string name="num_tracks">Num Tracks</string>
+    <string name="format">Format</string>
 </resources>
