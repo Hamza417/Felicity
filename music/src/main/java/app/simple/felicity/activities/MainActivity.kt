@@ -134,10 +134,10 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             MediaManager.playbackStateFlow.collect { state ->
                 when (state) {
                     MediaConstants.PLAYBACK_PLAYING -> {
-                        miniPlayerBinding.playPause.setPlaying(playing = false, animate = true)
+                        miniPlayerBinding.playPause.playing()
                     }
                     MediaConstants.PLAYBACK_PAUSED -> {
-                        miniPlayerBinding.playPause.setPlaying(playing = true, animate = true)
+                        miniPlayerBinding.playPause.paused()
                     }
                 }
             }

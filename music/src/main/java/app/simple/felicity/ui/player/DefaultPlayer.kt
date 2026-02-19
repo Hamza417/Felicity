@@ -110,10 +110,10 @@ class DefaultPlayer : MediaFragment() {
         super.onPlaybackStateChanged(state)
         when (state) {
             MediaConstants.PLAYBACK_PLAYING -> {
-                binding.play.setImageResource(app.simple.felicity.decoration.R.drawable.ic_pause)
+                binding.play.playing()
             }
             MediaConstants.PLAYBACK_PAUSED -> {
-                binding.play.setImageResource(app.simple.felicity.decoration.R.drawable.ic_play)
+                binding.play.paused()
             }
         }
     }

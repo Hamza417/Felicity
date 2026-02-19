@@ -127,7 +127,7 @@ class FlipPlayPauseView @JvmOverloads constructor(
         if (isPlaying == playing) return
 
         isPlaying = playing
-        val target = if (playing) 1f else 0f
+        val target = if (playing) 0f else 1f
 
         animator?.cancel()
 
@@ -145,6 +145,14 @@ class FlipPlayPauseView @JvmOverloads constructor(
             progress = target
             invalidate()
         }
+    }
+
+    fun paused(animate: Boolean = true) {
+        setPlaying(false, animate)
+    }
+
+    fun playing(animate: Boolean = true) {
+        setPlaying(true, animate)
     }
 
     override fun onDraw(canvas: Canvas) {

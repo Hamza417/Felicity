@@ -243,7 +243,7 @@
             android:src="@drawable/ic_skip_previous"
             app:buttonTintType="regular" />
 
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        <app.simple.felicity.decorations.views.FlipPlayPauseView
             android:id="@+id/play"
             android:layout_width="@dimen/button_size"
             android:layout_height="@dimen/button_size"
