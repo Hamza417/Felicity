@@ -13,6 +13,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
@@ -126,10 +127,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     private fun buildPlayer() {
         // Configure extension mode based on preferences
         val extensionMode = if (AudioPreferences.getAudioDecoder() == AudioPreferences.FFMPEG) {
-            DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
+            DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
         } else {
             DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
         }
+
         renderersFactory?.setExtensionRendererMode(extensionMode)
 
         // Configure LoadControl with optimized buffer settings based on hi-res mode
@@ -137,7 +139,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
         val loadControl = if (hiresEnabled) {
             // Hi-Res mode: 32-bit float processing requires larger buffers
-            androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
                         /* minBufferMs = */ 5000,   // 5s minimum for smooth float processing
                         /* maxBufferMs = */ 15000,  // 15s maximum for hi-res content
@@ -148,7 +150,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 .build()
         } else {
             // Standard mode: 16-bit PCM processing uses smaller, efficient buffers
-            androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
                         /* minBufferMs = */ 2500,   // 2.5s minimum for standard playback
                         /* maxBufferMs = */ 10000,  // 10s maximum for efficiency
@@ -167,6 +169,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     AudioAttributes.Builder()
                         .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                         .setUsage(C.USAGE_MEDIA)
+                        .setSpatializationBehavior(C.SPATIALIZATION_BEHAVIOR_NEVER)
                         .build(),
                     true
             )
@@ -176,7 +179,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             .build()
 
         // Disable skip silence for natural audio playback
-        player.skipSilenceEnabled = false
+        // player.skipSilenceEnabled = false
 
         // Configure gapless playback
         configureGaplessPlayback()
