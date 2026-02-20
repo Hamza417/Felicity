@@ -40,6 +40,10 @@ class Search : PanelFragment() {
     private var adapterSearch: AdapterSearch? = null
     private var gridLayoutManager: GridLayoutManager? = null
 
+    /**
+     * This will keep the query and search results till activity is alive, we will not be going the Inure
+     * way here where we persist the search query and results.
+     */
     private val searchViewModel: SearchViewModel by viewModels({ requireActivity() })
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
