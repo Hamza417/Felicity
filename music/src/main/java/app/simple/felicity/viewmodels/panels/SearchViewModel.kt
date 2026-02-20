@@ -11,15 +11,18 @@ import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.sort.SearchSort.searchSorted
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -38,24 +41,27 @@ class SearchViewModel @Inject constructor(
         observeSearchQuery()
     }
 
-    @OptIn(FlowPreview::class)
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observeSearchQuery() {
         viewModelScope.launch {
             _searchQuery
                 .debounce(300L)
                 .distinctUntilChanged()
-                .map { query ->
+                .flatMapLatest { query ->
                     if (query.isBlank()) {
-                        emptyList()
+                        // Immediately emit an empty list and stay reactive
+                        flowOf(emptyList())
                     } else {
-                        audioRepository.searchByTitle(query)
-                            .also { byTitle ->
-                                val byArtist = audioRepository.searchByArtist(query)
-                                val byAlbum = audioRepository.searchByAlbum(query)
-                                return@map (byTitle + byArtist + byAlbum)
-                                    .distinctBy { it.id }
-                                    .searchSorted()
-                            }
+                        // Combine three live Room Flows; any DB write re-emits here
+                        combine(
+                                audioRepository.searchByTitleFlow(query),
+                                audioRepository.searchByArtistFlow(query),
+                                audioRepository.searchByAlbumFlow(query)
+                        ) { byTitle, byArtist, byAlbum ->
+                            (byTitle + byArtist + byAlbum)
+                                .distinctBy { it.id }
+                                .searchSorted()
+                        }
                     }
                 }
                 .catch { e ->
@@ -93,4 +99,3 @@ class SearchViewModel @Inject constructor(
         private const val TAG = "SearchViewModel"
     }
 }
-

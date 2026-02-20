@@ -443,9 +443,7 @@ class AudioRepository @Inject constructor(
     }
 
     /**
-     * Search audio files by title
-     * @param title The title or partial title to search for
-     * @return List of audio files matching the search criteria
+     * Search audio files by title (one-shot, kept for compatibility).
      */
     suspend fun searchByTitle(title: String): MutableList<Audio> = withContext(Dispatchers.IO) {
         val query = "SELECT * FROM audio WHERE title LIKE ? ORDER BY title COLLATE NOCASE ASC"
@@ -454,9 +452,7 @@ class AudioRepository @Inject constructor(
     }
 
     /**
-     * Search audio files by artist
-     * @param artist The artist name or partial name to search for
-     * @return List of audio files matching the search criteria
+     * Search audio files by artist (one-shot, kept for compatibility).
      */
     suspend fun searchByArtist(artist: String): MutableList<Audio> = withContext(Dispatchers.IO) {
         val query = "SELECT * FROM audio WHERE artist LIKE ? ORDER BY title COLLATE NOCASE ASC"
@@ -465,14 +461,36 @@ class AudioRepository @Inject constructor(
     }
 
     /**
-     * Search audio files by album
-     * @param album The album name or partial name to search for
-     * @return List of audio files matching the search criteria
+     * Search audio files by album (one-shot, kept for compatibility).
      */
     suspend fun searchByAlbum(album: String): MutableList<Audio> = withContext(Dispatchers.IO) {
         val query = "SELECT * FROM audio WHERE album LIKE ? ORDER BY title COLLATE NOCASE ASC"
         val args = arrayOf<Any>("%$album%")
         executeRawQuery(query, args)
+    }
+
+    /**
+     * Reactive search by title – re-emits whenever the audio table changes.
+     */
+    fun searchByTitleFlow(title: String): Flow<MutableList<Audio>> {
+        return audioDatabase.audioDao()?.searchByTitle(title)
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Reactive search by artist – re-emits whenever the audio table changes.
+     */
+    fun searchByArtistFlow(artist: String): Flow<MutableList<Audio>> {
+        return audioDatabase.audioDao()?.searchByArtist(artist)
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Reactive search by album – re-emits whenever the audio table changes.
+     */
+    fun searchByAlbumFlow(album: String): Flow<MutableList<Audio>> {
+        return audioDatabase.audioDao()?.searchByAlbum(album)
+            ?: throw IllegalStateException("AudioDao is null")
     }
 
     /**

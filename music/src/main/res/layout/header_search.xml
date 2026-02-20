@@ -23,6 +23,7 @@
             android:background="@android:color/transparent"
             android:gravity="center_vertical"
             android:layout_gravity="center_vertical"
+            android:layout_marginEnd="@dimen/padding_10"
             android:hint="@string/search"
             android:imeOptions="actionSearch"
             android:importantForAutofill="yes"

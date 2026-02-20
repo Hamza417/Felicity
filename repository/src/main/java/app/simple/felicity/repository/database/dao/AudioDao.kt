@@ -39,6 +39,16 @@ interface AudioDao {
     @Query("SELECT * FROM audio WHERE artist = :artist AND is_available = 1 ORDER BY title COLLATE NOCASE ASC")
     fun getAudioByArtist(artist: String): Flow<MutableList<Audio>>
 
+    // Reactive search – Room will re-emit whenever the 'audio' table changes
+    @Query("SELECT * FROM audio WHERE is_available = 1 AND title LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
+    fun searchByTitle(query: String): Flow<MutableList<Audio>>
+
+    @Query("SELECT * FROM audio WHERE is_available = 1 AND artist LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
+    fun searchByArtist(query: String): Flow<MutableList<Audio>>
+
+    @Query("SELECT * FROM audio WHERE is_available = 1 AND album LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
+    fun searchByAlbum(query: String): Flow<MutableList<Audio>>
+
     @Query("SELECT id FROM audio WHERE path = :path AND is_available = 1")
     fun getAudioIdByPath(path: String): Long
 
