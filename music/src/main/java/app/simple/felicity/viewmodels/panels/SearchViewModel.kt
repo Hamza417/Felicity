@@ -1,11 +1,14 @@
 package app.simple.felicity.viewmodels.panels
 
 import android.app.Application
+import android.content.SharedPreferences
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.preferences.SearchPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
+import app.simple.felicity.repository.sort.SearchSort.searchSorted
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -51,7 +54,7 @@ class SearchViewModel @Inject constructor(
                                 val byAlbum = audioRepository.searchByAlbum(query)
                                 return@map (byTitle + byArtist + byAlbum)
                                     .distinctBy { it.id }
-                                    .sortedBy { it.title?.lowercase() }
+                                    .searchSorted()
                             }
                     }
                 }
@@ -67,11 +70,27 @@ class SearchViewModel @Inject constructor(
         }
     }
 
+    private fun resort() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _songs.value = _songs.value.searchSorted()
+        }
+    }
+
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, s: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, s)
+        when (s) {
+            SearchPreferences.SONG_SORT, SearchPreferences.SORTING_STYLE -> {
+                resort()
+            }
+        }
     }
 
     companion object {
         private const val TAG = "SearchViewModel"
     }
 }
+

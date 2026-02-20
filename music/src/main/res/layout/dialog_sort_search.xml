@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:padding="@dimen/padding_15"
+    android:layout_height="wrap_content">
+
+    <app.simple.felicity.decorations.corners.DynamicCornerLinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/padding_15"
+        android:orientation="vertical">
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/sort_by"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="black"
+            app:textColorStyle="primary" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/sort_by_chip_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:checkedChip="@id/title"
+            app:chipSpacingVertical="-5dp"
+            app:selectionRequired="true"
+            app:singleSelection="true">
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/title"
+                android:layout_width="wrap_content"
+                android:text="@string/title"
+                android:layout_height="wrap_content" />
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/artist"
+                android:layout_width="wrap_content"
+                android:text="@string/artist"
+                android:layout_height="wrap_content" />
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/album"
+                android:layout_width="wrap_content"
+                android:text="@string/album"
+                android:layout_height="wrap_content" />
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/path"
+                android:layout_width="wrap_content"
+                android:text="@string/path"
+                android:layout_height="wrap_content" />
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/date_added"
+                android:layout_width="wrap_content"
+                android:text="@string/date_added"
+                android:layout_height="wrap_content" />
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/date_modified"
+                android:layout_width="wrap_content"
+                android:text="@string/date_modified"
+                android:layout_height="wrap_content" />
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/duration"
+                android:layout_width="wrap_content"
+                android:text="@string/duration"
+                android:layout_height="wrap_content" />
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/year"
+                android:layout_width="wrap_content"
+                android:text="@string/year"
+                android:layout_height="wrap_content" />
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/track_number"
+                android:layout_width="wrap_content"
+                android:text="@string/track_number"
+                android:layout_height="wrap_content" />
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/composer"
+                android:layout_width="wrap_content"
+                android:text="@string/composer"
+                android:layout_height="wrap_content" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/sorting_style"
+            android:textSize="@dimen/text_size_14"
+            android:layout_marginTop="5dp"
+            app:appFontStyle="black"
+            app:textColorStyle="primary" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/sorting_style_chip_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:checkedChip="@id/normal"
+            app:selectionRequired="true"
+            app:singleSelection="true">
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/normal"
+                android:layout_width="wrap_content"
+                android:text="@string/normal"
+                android:layout_height="wrap_content" />
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/reversed"
+                android:layout_width="wrap_content"
+                android:text="@string/reversed"
+                android:layout_height="wrap_content" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+    </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+
+</FrameLayout>
+

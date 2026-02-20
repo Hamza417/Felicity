@@ -20,14 +20,13 @@ import app.simple.felicity.databinding.FragmentSearchBinding
 import app.simple.felicity.databinding.HeaderSearchBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.search.SearchSort.Companion.showSearchSort
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
-import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.SearchPreferences
-import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.sort.SongSort.setSongOrder
-import app.simple.felicity.repository.sort.SongSort.setSongSort
+import app.simple.felicity.repository.sort.SearchSort.setSearchOrder
+import app.simple.felicity.repository.sort.SearchSort.setSearchSort
 import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.panels.SearchViewModel
@@ -58,9 +57,9 @@ class Search : PanelFragment() {
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.attachSlideFastScroller()
 
-        gridLayoutManager = GridLayoutManager(requireContext(), SongsPreferences.getGridSize())
+        gridLayoutManager = GridLayoutManager(requireContext(), SearchPreferences.getGridSize())
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(SongsPreferences.getGridType(), SongsPreferences.getGridSize())
+        binding.recyclerView.setGridType(SearchPreferences.getGridType(), SearchPreferences.getGridSize())
 
         setupClickListeners()
 
@@ -90,8 +89,8 @@ class Search : PanelFragment() {
     }
 
     private fun setupClickListeners() {
-        headerBinding.sortStyle.setSongSort()
-        headerBinding.sortOrder.setSongOrder()
+        headerBinding.sortStyle.setSearchSort()
+        headerBinding.sortOrder.setSearchOrder()
 
         headerBinding.editText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -106,11 +105,11 @@ class Search : PanelFragment() {
         }
 
         headerBinding.sortStyle.setOnClickListener {
-            childFragmentManager.showSongsSort()
+            childFragmentManager.showSearchSort()
         }
 
         headerBinding.sortOrder.setOnClickListener {
-            childFragmentManager.showSongsSort()
+            childFragmentManager.showSearchSort()
         }
 
         headerBinding.scroll.setOnClickListener {
@@ -148,8 +147,8 @@ class Search : PanelFragment() {
         headerBinding.count.text = getString(R.string.x_songs, songs.size)
         headerBinding.hours.text = songs.sumOf { it.duration }
             .toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
-        headerBinding.sortStyle.setSongSort()
-        headerBinding.sortOrder.setSongOrder()
+        headerBinding.sortStyle.setSearchSort()
+        headerBinding.sortOrder.setSearchOrder()
     }
 
     private fun provideScrollPositions(songs: List<Audio>): List<SectionedFastScroller.Position> {
@@ -172,13 +171,19 @@ class Search : PanelFragment() {
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
+            SearchPreferences.SONG_SORT -> {
+                headerBinding.sortStyle.setSearchSort()
+            }
+            SearchPreferences.SORTING_STYLE -> {
+                headerBinding.sortOrder.setSearchOrder()
+            }
             SearchPreferences.GRID_SIZE_PORTRAIT, SearchPreferences.GRID_SIZE_LANDSCAPE -> {
                 binding.recyclerView.beginDelayedTransition()
                 gridLayoutManager?.spanCount = SearchPreferences.getGridSize()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             SearchPreferences.GRID_TYPE_PORTRAIT, SearchPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(SongsPreferences.getGridType(), SongsPreferences.getGridSize())
+                binding.recyclerView.setGridType(SearchPreferences.getGridType(), SearchPreferences.getGridSize())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
