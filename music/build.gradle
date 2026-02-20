@@ -21,18 +21,25 @@ android {
         versionName "0.0.1-preview"
     }
 
-    // Create flavor dimensions
-    flavorDimensions.add("default")
+    signingConfigs {
+        release {
+            def properties = loadProperties(rootProject.file('local.properties').absolutePath)
+            if (properties.isEmpty()) {
+                logger.error("local.properties file not found or empty, signing disabled.")
+                storeFile = null
+            }
 
-    productFlavors {
-        dev {
-            dimension "default"
-            applicationIdSuffix ".dev"
-            versionNameSuffix "-dev"
-        }
+            def keystoreFile = findKeystoreFile(properties)
 
-        production {
-            dimension "default"
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = getEnvOrProperty("SIGNING_STORE_PASSWORD", properties)
+                keyAlias = getEnvOrProperty("SIGNING_KEY_ALIAS", properties)
+                keyPassword = getEnvOrProperty("SIGNING_KEY_PASSWORD", properties)
+            } else {
+                storeFile = null
+                logger.error("Keystore file not found, signing disabled.")
+            }
         }
     }
 
@@ -40,6 +47,13 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            versionNameSuffix "-dev"
+
+            if (signingConfigs.release != null && signingConfigs.release.storeFile != null) {
+                signingConfig = signingConfigs.release
+            }
         }
     }
 
@@ -111,4 +125,32 @@ dependencies {
     implementation "androidx.room:room-ktx:2.8.4"
     ksp "androidx.room:room-compiler:2.8.4"
     androidTestImplementation "androidx.room:room-testing:2.8.4"
+}
+
+static def loadProperties(filePath) {
+    def properties = new Properties()
+    def file = new File(filePath)
+    if (file.exists()) {
+        properties.load(new FileInputStream(file))
+    } else {
+        println("Properties file not found: $filePath")
+    }
+    return properties
+}
+
+static def findKeystoreFile(properties) {
+    def path = System.getProperty("user.home") + "/work/_temp/keystore/"
+    def fallbackPath = properties.get("KEYSTORE_PATH")
+    def keystoreFileName = "key.jks"
+    def keystoreFile = new File(path, keystoreFileName)
+
+    if (!keystoreFile.exists() && fallbackPath != null) {
+        keystoreFile = new File(fallbackPath)
+    }
+
+    return keystoreFile
+}
+
+static def getEnvOrProperty(envKey, properties) {
+    return System.getenv(envKey) ?: properties.get(envKey)
 }
