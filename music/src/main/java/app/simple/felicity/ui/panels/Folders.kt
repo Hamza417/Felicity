@@ -26,6 +26,7 @@ import app.simple.felicity.preferences.FoldersPreferences
 import app.simple.felicity.repository.models.Folder
 import app.simple.felicity.repository.sort.FolderSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.FolderSort.setCurrentSortStyle
+import app.simple.felicity.ui.pages.FolderPage
 import app.simple.felicity.viewmodels.panels.FoldersViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -160,7 +161,7 @@ class Folders : PanelFragment() {
             adapterFolders?.setCallbackListener(object : GeneralAdapterCallbacks {
                 override fun onFolderClicked(folder: Folder, view: View) {
                     Log.d(TAG, "onFolderClicked: Folder: ${folder.name}")
-                    // TODO: openFragment(FolderPage.newInstance(folder), FolderPage.TAG)
+                    openFragment(FolderPage.newInstance(folder), FolderPage.TAG)
                 }
             })
             binding.recyclerView.adapter = adapterFolders

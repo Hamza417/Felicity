@@ -377,6 +377,75 @@ class AudioRepository @Inject constructor(
     }
 
     /**
+     * Get page data for a specific folder as a Flow.
+     * Returns all songs in the folder plus aggregated albums, artists and genres.
+     * @param folder The folder to get data for
+     * @return Flow of PageData with songs, albums, artists, and genres
+     */
+    fun getFolderPageData(folder: Folder): Flow<PageData> {
+        return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
+            // Filter songs whose path starts with the folder path
+            val folderAudios = audioList.filter { audio ->
+                val parent = audio.path?.let {
+                    val idx = it.lastIndexOf('/')
+                    if (idx > 0) it.substring(0, idx) else it
+                }
+                parent == folder.path
+            }
+
+            // Extract unique albums from folder songs
+            val albumsMap = folderAudios.groupBy { it.album }
+                .mapNotNull { (albumName, albumSongs) ->
+                    if (albumName.isNullOrEmpty()) return@mapNotNull null
+                    val primaryArtist = albumSongs.firstOrNull()?.artist ?: ""
+                    Album(
+                            id = albumName.hashCode().toLong(),
+                            name = albumName,
+                            artist = primaryArtist,
+                            artistId = primaryArtist.hashCode().toLong(),
+                            songCount = albumSongs.size,
+                            songPaths = albumSongs.map { it.path }
+                    )
+                }
+
+            // Extract unique artists from folder songs
+            val artistsMap = folderAudios.groupBy { it.artist }
+                .mapNotNull { (artistName, _) ->
+                    if (artistName.isNullOrEmpty()) return@mapNotNull null
+                    val artistAllSongs = audioList.filter { it.artist == artistName }
+                    val uniqueAlbums = artistAllSongs.mapNotNull { it.album }.distinct().size
+                    Artist(
+                            id = artistName.hashCode().toLong(),
+                            name = artistName,
+                            albumCount = uniqueAlbums,
+                            trackCount = artistAllSongs.size,
+                            songPaths = artistAllSongs.map { it.path }
+                    )
+                }
+
+            // Extract unique genres from folder songs
+            val genresMap = folderAudios.groupBy { it.genre }
+                .mapNotNull { (genreName, _) ->
+                    if (genreName.isNullOrEmpty()) return@mapNotNull null
+                    val genreAllSongs = audioList.filter { it.genre == genreName }
+                    Genre(
+                            id = genreName.hashCode().toLong(),
+                            name = genreName,
+                            songPaths = genreAllSongs.map { it.path },
+                            songCount = genreAllSongs.size
+                    )
+                }
+
+            PageData(
+                    songs = folderAudios,
+                    albums = albumsMap,
+                    artists = artistsMap,
+                    genres = genresMap
+            )
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
      * Get recent audio files from the database as a Flow
      * Returns the 25 most recently added audio files
      */

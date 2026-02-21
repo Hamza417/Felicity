@@ -9,4 +9,5 @@ object BundleConstants {
     const val SONG_ID = "song_id"
     const val PLAYLIST = "playlist"
     const val PLAYLIST_ID = "playlist_id"
+    const val FOLDER = "folder"
 }
