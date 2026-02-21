@@ -104,6 +104,10 @@ class Genres : PanelFragment() {
             childFragmentManager.showGenresSortDialog()
         }
 
+        headerBinding.search.setOnClickListener {
+            openSearch()
+        }
+
         headerBinding.gridSize.setOnClickListener { button ->
             SharedScrollViewPopup(
                     container = requireContainerView(),

@@ -98,6 +98,10 @@ class Folders : PanelFragment() {
             childFragmentManager.showFoldersSortDialog()
         }
 
+        headerBinding.search.setOnClickListener {
+            openSearch()
+        }
+
         headerBinding.gridSize.setOnClickListener { button ->
             SharedScrollViewPopup(
                     container = requireContainerView(),

@@ -22,3 +22,7 @@ local.properties
 /music/production/release/music-production-release.apk
 /music/production/release/output-metadata.json
 /.kotlin/errors/
+/music/release/baselineProfiles/0/music-release.dm
+/music/release/baselineProfiles/1/music-release.dm
+/music/release/music-release.apk
+/music/release/output-metadata.json

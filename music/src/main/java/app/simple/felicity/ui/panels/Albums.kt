@@ -98,6 +98,10 @@ class Albums : PanelFragment() {
             childFragmentManager.showAlbumsSort()
         }
 
+        headerBinding.search.setOnClickListener {
+            openSearch()
+        }
+
         headerBinding.gridSize.setOnClickListener { button ->
             SharedScrollViewPopup(
                     container = requireContainerView(),

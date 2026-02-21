@@ -17,6 +17,7 @@ import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.shared.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
+import app.simple.felicity.ui.panels.Search
 
 open class PanelFragment : MediaFragment() {
 
@@ -147,6 +148,10 @@ open class PanelFragment : MediaFragment() {
                 applySpacing()
             }
         }
+    }
+
+    protected fun openSearch() {
+        openFragment(Search.newInstance(), Search.TAG)
     }
 
     protected fun View.hideOnUnfavorableSort(sorts: List<Int>, preference: Int) {
