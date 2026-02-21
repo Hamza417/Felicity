@@ -23,6 +23,7 @@ import app.simple.felicity.ui.pages.GenrePage
 import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.ArtFlow
 import app.simple.felicity.ui.panels.Artists
+import app.simple.felicity.ui.panels.Folders
 import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.ui.player.DefaultPlayer
@@ -57,6 +58,7 @@ class ArtFlowHome : MediaFragment() {
                 FelicitySideBar.SidebarItem(R.drawable.ic_song),
                 FelicitySideBar.SidebarItem(R.drawable.ic_artist),
                 FelicitySideBar.SidebarItem(R.drawable.ic_album),
+                FelicitySideBar.SidebarItem(R.drawable.ic_folder),
                 FelicitySideBar.SidebarItem(R.drawable.ic_volume),
                 FelicitySideBar.SidebarItem(R.drawable.ic_play)
         ))
@@ -72,6 +74,9 @@ class ArtFlowHome : MediaFragment() {
                 }
                 R.drawable.ic_album -> {
                     openFragment(Albums.newInstance(), Albums.TAG)
+                }
+                R.drawable.ic_folder -> {
+                    openFragment(Folders.newInstance(), Folders.TAG)
                 }
                 R.drawable.ic_volume -> {
                     childFragmentManager.showVolumeKnob()

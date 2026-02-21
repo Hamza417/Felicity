@@ -86,7 +86,7 @@ import kotlin.math.roundToInt
  *
  * Callbacks
  * - [onPageScrolled](position, positionOffset, positionOffsetPixels) — emitted continuously during drag/settle.
- * - [onPageSelected] (position, fromUser) — emitted only after a settle completes; legacy [onPageSelected]
+ * - [OnPageChangeListener.onPageSelected] (position, fromUser) — emitted only after a settle completes; legacy [OnPageChangeListener.onPageSelected]
  *   is also called for compatibility in the same moment.
  * - [onPageScrollStateChanged](state) — DRAGGING, SETTLING, IDLE.
  *
