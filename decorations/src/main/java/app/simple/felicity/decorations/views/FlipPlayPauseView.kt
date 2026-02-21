@@ -80,8 +80,10 @@ class FlipPlayPauseView @JvmOverloads constructor(
 
     /**
      * Morph progress between Pause and Play.
+     * Initialized to PROGRESS_PAUSE so the default visual is the play triangle,
+     * matching the default isPlaying = false state.
      */
-    private var progress = 0f
+    private var progress = PROGRESS_PAUSE
 
     /**
      * Paint used for rendering both shapes.
