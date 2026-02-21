@@ -471,13 +471,32 @@ class FelicityPager @JvmOverloads constructor(
     }
 
     // ----- Lifecycle -----
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // Re-prime textures after reattach (e.g. predictive back cancel restoring the view).
+        queueEvent { renderer.reloadTextures(scrollOffset) }
+    }
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         stopAutoSlide()
         if (animPosted) choreographer.removeFrameCallback(frameCallback)
         animPosted = false
         animating = false
-        queueEvent { renderer.clearAllTextures(); renderer.release() }
+        // Clear textures (they become invalid when the EGL context is lost), but do NOT
+        // call release() / shut down the decodeExecutor here so the renderer stays usable
+        // if the view is reattached (predictive back cancel / activity resume).
+        queueEvent { renderer.clearAllTextures() }
+    }
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        if (visibility == VISIBLE) {
+            // Coming back from predictive back (or any window-level hide/show):
+            // textures may have been lost – reload around the current page.
+            queueEvent { renderer.reloadTextures(scrollOffset) }
+            requestRender()
+        }
     }
 
     override fun setAlpha(alpha: Float) {
@@ -561,6 +580,17 @@ class FelicityPager @JvmOverloads constructor(
             futures.values.forEach { it.cancel(true) }; decodeExecutor.shutdownNow()
         }
 
+        /** Clear all stale texture handles and reload pages around [offset]. Call via queueEvent. */
+        fun reloadTextures(offset: Float) {
+            textures.clear()
+            positionToId.clear()
+            inFlight.clear()
+            futures.values.forEach { it.cancel(false) }
+            futures.clear()
+            glScrollOffset = offset
+            preloadAround(offset)
+        }
+
         override fun onSurfaceCreated(unused: javax.microedition.khronos.opengles.GL10?, config: javax.microedition.khronos.egl.EGLConfig?) {
             GLES20.glClearColor(0f, 0f, 0f, 1f)
             GLES20.glEnable(GLES20.GL_BLEND)
@@ -570,6 +600,15 @@ class FelicityPager @JvmOverloads constructor(
             ib = ByteBuffer.allocateDirect(quadInd.size * 2).order(ByteOrder.nativeOrder()).asShortBuffer().apply { put(quadInd); position(0) }
             buildProgram()
             Matrix.setIdentityM(viewM, 0)
+            // The EGL context was (re-)created – all previously uploaded textures are gone.
+            // Purge the stale handles from our cache and schedule a reload so pages don't
+            // stay blank after a predictive-back gesture or any other context loss event.
+            textures.clear()
+            positionToId.clear()
+            inFlight.clear()
+            futures.values.forEach { it.cancel(false) }
+            futures.clear()
+            primeInitialLoad()
         }
 
         override fun onSurfaceChanged(unused: javax.microedition.khronos.opengles.GL10?, width: Int, height: Int) {
@@ -602,7 +641,7 @@ class FelicityPager @JvmOverloads constructor(
         }
 
         fun primeInitialLoad() {
-            preloadAround(0f)
+            preloadAround(glScrollOffset)
         }
 
         private fun buildProgram() {
@@ -641,7 +680,7 @@ class FelicityPager @JvmOverloads constructor(
 
         private fun drawPage(position: Int, offsetFromPage: Float) {
             val count = adapter?.getCount() ?: return
-            if (position < 0 || position >= count) return
+            if (position !in 0..<count) return
             val id = adapter?.getItemId(position) ?: position.toLong()
             val tex = textures[id] ?: return
             Matrix.setIdentityM(model, 0)
@@ -750,16 +789,20 @@ class FelicityPager @JvmOverloads constructor(
             val w = src.width
             val h = src.height
             val bmpAspect = w.toFloat() / h
-            return if (abs(bmpAspect - targetAspect) < 0.01f) {
-                src
-            } else if (bmpAspect > targetAspect) {
-                val newW = (h * targetAspect).roundToInt().coerceAtLeast(1)
-                val x = ((w - newW) / 2f).roundToInt().coerceAtLeast(0)
-                Bitmap.createBitmap(src, x, 0, min(newW, w - x), h)
-            } else {
-                val newH = (w / targetAspect).roundToInt().coerceAtLeast(1)
-                val y = ((h - newH) / 2f).roundToInt().coerceAtLeast(0)
-                Bitmap.createBitmap(src, 0, y, w, min(newH, h - y))
+            return when {
+                abs(bmpAspect - targetAspect) < 0.01f -> {
+                    src
+                }
+                bmpAspect > targetAspect -> {
+                    val newW = (h * targetAspect).roundToInt().coerceAtLeast(1)
+                    val x = ((w - newW) / 2f).roundToInt().coerceAtLeast(0)
+                    Bitmap.createBitmap(src, x, 0, min(newW, w - x), h)
+                }
+                else -> {
+                    val newH = (w / targetAspect).roundToInt().coerceAtLeast(1)
+                    val y = ((h - newH) / 2f).roundToInt().coerceAtLeast(0)
+                    Bitmap.createBitmap(src, 0, y, w, min(newH, h - y))
+                }
             }.also { if (it != src) src.recycle() }
         }
     }
