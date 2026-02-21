@@ -6,7 +6,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
-import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogHomeMenuBinding
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.HomePreferences
@@ -23,25 +22,8 @@ class HomeMenu : ScopedBottomSheetFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        setHomeInterfaceType()
-
-        binding.changeHomeInterface.setOnClickListener { it ->
-
-        }
-
         binding.openAppSettings.setOnClickListener {
             openAppSettings()
-        }
-    }
-
-    private fun setHomeInterfaceType() {
-        when (HomePreferences.getHomeInterface()) {
-            HomePreferences.HOME_INTERFACE_SPANNED -> {
-                binding.changeHomeInterface.setText(R.string.spanned)
-            }
-            HomePreferences.HOME_INTERFACE_SIMPLE -> {
-                binding.changeHomeInterface.setText(R.string.simple)
-            }
         }
     }
 
@@ -49,7 +31,7 @@ class HomeMenu : ScopedBottomSheetFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             HomePreferences.HOME_INTERFACE -> {
-                setHomeInterfaceType()
+
             }
         }
     }

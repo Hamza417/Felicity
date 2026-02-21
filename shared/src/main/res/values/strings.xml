@@ -194,4 +194,5 @@
     <string name="format">Format</string>
     <string name="skip_silence">Skip Silence</string>
     <string name="skip_silence_summary">Skip silent part while playing the song.</string>
+    <string name="list_style">List Style</string>
 </resources>

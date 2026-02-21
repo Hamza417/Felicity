@@ -1,7 +1,6 @@
 package app.simple.felicity.ui.home
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,19 +10,19 @@ import app.simple.felicity.adapters.home.main.AdapterSimpleHome
 import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.databinding.HeaderHomeBinding
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
+import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.ArtFlow
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Folders
 import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.panels.Preferences
-import app.simple.felicity.ui.panels.Search
 import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Element
 
-class SimpleHome : MediaFragment() {
+class SimpleHome : PanelFragment() {
 
     private lateinit var binding: FragmentHomeSimpleBinding
     private lateinit var headerBinding: HeaderHomeBinding
@@ -45,8 +44,11 @@ class SimpleHome : MediaFragment() {
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
 
         headerBinding.search.setOnClickListener {
-            Log.d(TAG, "onViewCreated: Search Clicked")
-            openFragment(Search.newInstance(), Search.TAG)
+            openSearch()
+        }
+
+        headerBinding.menu.setOnClickListener {
+            childFragmentManager.showHomeMenu()
         }
 
         homeViewModel!!.getHomeData().observe(viewLifecycleOwner) { list ->
