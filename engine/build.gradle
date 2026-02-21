@@ -28,6 +28,6 @@ dependencies {
     implementation 'org.jellyfin.media3:media3-ffmpeg-decoder:1.9.0+1'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.10.2'
 
-    implementation "com.google.dagger:hilt-android:2.59.1"
-    ksp "com.google.dagger:hilt-android-compiler:2.59.1"
+    implementation "com.google.dagger:hilt-android:2.59.2"
+    ksp "com.google.dagger:hilt-android-compiler:2.59.2"
 }
