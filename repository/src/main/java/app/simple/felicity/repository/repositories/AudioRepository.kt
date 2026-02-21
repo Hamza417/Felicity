@@ -6,6 +6,7 @@ import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.Folder
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.PageData
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -160,6 +161,36 @@ class AudioRepository @Inject constructor(
                     )
                 }
                 .sortedBy { it.name?.lowercase() }
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Get all unique folders that contain audio files, with aggregated data.
+     * This method groups audio files by their parent directory path.
+     * @return Flow of folders with complete metadata
+     */
+    fun getAllFoldersWithAggregation(): Flow<List<Folder>> {
+        return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
+            audioList.groupBy { audio ->
+                val filePath = audio.path ?: return@groupBy ""
+                val lastSlash = filePath.lastIndexOf('/')
+                if (lastSlash > 0) filePath.substring(0, lastSlash) else filePath
+            }.mapNotNull { (folderPath, songs) ->
+                if (folderPath.isEmpty()) return@mapNotNull null
+
+                val folderName = folderPath.substringAfterLast('/')
+                    .ifEmpty { folderPath }
+                val songPaths = songs.map { it.path }
+                val uniqueId = folderPath.hashCode().toLong()
+
+                Folder(
+                        id = uniqueId,
+                        path = folderPath,
+                        name = folderName,
+                        songPaths = songPaths,
+                        songCount = songs.size
+                )
+            }.sortedBy { it.name.lowercase() }
         } ?: throw IllegalStateException("AudioDao is null")
     }
 

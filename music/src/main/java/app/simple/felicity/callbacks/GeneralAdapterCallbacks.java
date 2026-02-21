@@ -9,6 +9,7 @@ import androidx.annotation.StringRes;
 import app.simple.felicity.repository.models.Album;
 import app.simple.felicity.repository.models.Artist;
 import app.simple.felicity.repository.models.Audio;
+import app.simple.felicity.repository.models.Folder;
 import app.simple.felicity.repository.models.Genre;
 
 public interface GeneralAdapterCallbacks {
@@ -66,6 +67,10 @@ public interface GeneralAdapterCallbacks {
     }
     
     default void onGenreClicked(@NonNull Genre genre, @NonNull View view) {
+    
+    }
+    
+    default void onFolderClicked(@NonNull Folder folder, @NonNull View view) {
     
     }
 }

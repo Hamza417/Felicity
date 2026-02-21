@@ -15,6 +15,7 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.ArtFlow
 import app.simple.felicity.ui.panels.Artists
+import app.simple.felicity.ui.panels.Folders
 import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.panels.Preferences
 import app.simple.felicity.ui.panels.Search
@@ -67,6 +68,9 @@ class SimpleHome : MediaFragment() {
                         }
                         R.string.genres -> {
                             openFragment(Genres.newInstance(), Genres.TAG)
+                        }
+                        R.string.folders -> {
+                            openFragment(Folders.newInstance(), Folders.TAG)
                         }
                         R.string.preferences -> {
                             openFragment(Preferences.newInstance(), Preferences.TAG)

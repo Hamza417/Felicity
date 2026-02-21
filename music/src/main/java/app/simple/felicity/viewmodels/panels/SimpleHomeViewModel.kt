@@ -29,7 +29,8 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
                     Element(R.string.albums, app.simple.felicity.decoration.R.drawable.ic_album),
                     Element(R.string.artists, app.simple.felicity.decoration.R.drawable.ic_artist),
                     Element(R.string.genres, app.simple.felicity.decoration.R.drawable.ic_piano),
-                    Element(R.string.playlists, app.simple.felicity.decoration.R.drawable.ic_list),
+                    Element(R.string.folders, app.simple.felicity.decoration.R.drawable.ic_folder),
+                    // Element(R.string.playlists, app.simple.felicity.decoration.R.drawable.ic_list),
                     Element(R.string.preferences, app.simple.felicity.decoration.R.drawable.ic_settings)
             )
 
