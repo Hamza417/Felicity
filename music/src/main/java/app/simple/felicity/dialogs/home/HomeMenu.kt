@@ -39,12 +39,6 @@ class HomeMenu : ScopedBottomSheetFragment() {
             HomePreferences.HOME_INTERFACE_SPANNED -> {
                 binding.changeHomeInterface.setText(R.string.spanned)
             }
-            HomePreferences.HOME_INTERFACE_CAROUSEL -> {
-                binding.changeHomeInterface.setText(R.string.carousel)
-            }
-            HomePreferences.HOME_INTERFACE_ARTFLOW -> {
-                binding.changeHomeInterface.setText(R.string.artflow)
-            }
             HomePreferences.HOME_INTERFACE_SIMPLE -> {
                 binding.changeHomeInterface.setText(R.string.simple)
             }

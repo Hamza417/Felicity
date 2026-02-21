@@ -34,7 +34,6 @@ import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.ui.home.ArtFlowHome
-import app.simple.felicity.ui.home.CarouselHome
 import app.simple.felicity.ui.home.SimpleHome
 import app.simple.felicity.ui.home.SpannedHome
 import app.simple.felicity.ui.launcher.Setup
@@ -179,12 +178,6 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
     fun showHome() {
         when (HomePreferences.getHomeInterface()) {
-            HomePreferences.HOME_INTERFACE_CAROUSEL -> {
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, CarouselHome.newInstance(), CarouselHome.TAG)
-                    .commit()
-            }
-
             HomePreferences.HOME_INTERFACE_SPANNED -> {
                 supportFragmentManager.beginTransaction()
                     .replace(R.id.fragment_container, SpannedHome.newInstance(), SpannedHome.TAG)

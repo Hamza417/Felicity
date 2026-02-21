@@ -261,7 +261,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.POPUP,
                 valueProvider = {
                     when (HomePreferences.getHomeInterface()) {
-                        HomePreferences.HOME_INTERFACE_CAROUSEL -> getString(R.string.carousel)
                         HomePreferences.HOME_INTERFACE_ARTFLOW -> getString(R.string.artflow)
                         HomePreferences.HOME_INTERFACE_SPANNED -> getString(R.string.spanned)
                         HomePreferences.HOME_INTERFACE_SIMPLE -> getString(R.string.simple)
@@ -273,11 +272,9 @@ open class PreferenceFragment : MediaFragment() {
                             container = requireContainerView(),
                             anchorView = view,
                             menuItems = listOf(R.string.spanned,
-                                               R.string.carousel,
                                                R.string.artflow,
                                                R.string.simple),
                             menuIcons = listOf(R.drawable.ic_spanned_16dp,
-                                               R.drawable.ic_carousel_16dp,
                                                R.drawable.ic_flow_16dp,
                                                R.drawable.ic_list_16dp),
                             onMenuItemClick = {
@@ -285,10 +282,6 @@ open class PreferenceFragment : MediaFragment() {
                                     R.string.spanned -> {
                                         HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_SPANNED)
                                         (view as TextView).text = getString(R.string.spanned)
-                                    }
-                                    R.string.carousel -> {
-                                        HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_CAROUSEL)
-                                        (view as TextView).text = getString(R.string.carousel)
                                     }
                                     R.string.artflow -> {
                                         HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_ARTFLOW)

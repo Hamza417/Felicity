@@ -25,6 +25,7 @@ import app.simple.felicity.ui.panels.ArtFlow
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Folders
 import app.simple.felicity.ui.panels.Genres
+import app.simple.felicity.ui.panels.Search
 import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.viewmodels.panels.HomeViewModel
@@ -60,7 +61,9 @@ class ArtFlowHome : MediaFragment() {
                 FelicitySideBar.SidebarItem(R.drawable.ic_album),
                 FelicitySideBar.SidebarItem(R.drawable.ic_folder),
                 FelicitySideBar.SidebarItem(R.drawable.ic_volume),
-                FelicitySideBar.SidebarItem(R.drawable.ic_play)
+                FelicitySideBar.SidebarItem(R.drawable.ic_play),
+                FelicitySideBar.SidebarItem(R.drawable.ic_search),
+                FelicitySideBar.SidebarItem(R.drawable.ic_settings)
         ))
 
         binding.sideBar.setOnItemClickListener { id, view ->
@@ -83,6 +86,12 @@ class ArtFlowHome : MediaFragment() {
                 }
                 R.drawable.ic_play -> {
                     openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
+                }
+                R.drawable.ic_search -> {
+                    openFragment(Search.newInstance(), Search.TAG)
+                }
+                R.drawable.ic_settings -> {
+                    childFragmentManager.showHomeMenu()
                 }
                 else -> {
                     Log.w(TAG, "Unknown sidebar item clicked with id: $id")
@@ -134,10 +143,6 @@ class ArtFlowHome : MediaFragment() {
                             Log.w(TAG, "Unknown panel item clicked with title: $title")
                         }
                     }
-                }
-
-                override fun onMenuClicked(view: View) {
-                    childFragmentManager.showHomeMenu()
                 }
             })
 
