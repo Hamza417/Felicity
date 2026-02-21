@@ -1,0 +1,93 @@
+name: Build APKs (Release)
+
+on:
+    workflow_dispatch:  # Allow manual triggering
+
+jobs:
+    build:
+        name: Build Release APK
+        runs-on: ubuntu-latest
+
+        steps:
+            -   name: Checkout code
+                uses: actions/checkout@v4
+
+            -   name: Set up Java and Android SDK
+                uses: actions/setup-java@v4
+                with:
+                    java-version: '21' # Adjust the Java version as needed
+                    distribution: 'temurin'
+
+            -   name: Decode Keystore
+                id: decode_keystore
+                uses: timheuer/base64-to-file@v1
+                with:
+                    fileName: 'keystore/key.jks'
+                    encodedString: ${{ secrets.SIGN_KEY }}
+
+            -   name: Extract Version Name and Version Code
+                run: |
+                    # Extract versionName and versionCode from build.gradle
+                    VERSION_NAME=$(cat music/build.gradle | grep -oP 'versionName "\K[^"]*')
+                    VERSION_CODE=$(cat music/build.gradle | grep -oP 'versionCode \K\d+')
+
+                    # Make the version name sentence case
+                    # VERSION_NAME=$(echo "$VERSION_NAME" | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2));}1')
+
+                    echo "Version Name: $VERSION_NAME"
+                    echo "Version Code: $VERSION_CODE"
+
+                    # Set these values as environment variables for later steps
+                    echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+                    echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+
+            -   name: Set Tag
+                run: |
+                    TAG=$(echo ${{ env.VERSION_NAME }} | tr '[:upper:]' '[:lower:]')
+                    echo "TAG=${TAG}" >> $GITHUB_ENV
+                    echo "Tag: ${TAG}" # Print tag to console
+
+            #            -   name: Check Fastlane Changelogs
+            #                run: |
+            #                    if [ -f "fastlane/metadata/android/en-US/changelogs/${{ env.VERSION_CODE }}.txt" ]; then
+            #                      echo "Changelog exists for version code ${{ env.VERSION_CODE }}."
+            #                    else
+            #                      echo "Changelog does not exist for version code ${{ env.VERSION_CODE }}."
+            #                      exit 1
+            #                    fi
+
+            -   name: Accept Android SDK licenses
+                run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+
+            -   name: Build Release APK
+                run: |
+                    chmod +x ./gradlew
+                    ./gradlew clean assembleRelease --no-build-cache --rerun-tasks
+                env:
+                    SIGNING_KEY_ALIAS: ${{ secrets.ALIAS }}
+                    SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+                    SIGNING_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+
+            -   name: Move APK to Temporary Directory
+                run: |
+                    mkdir -p ${{ runner.temp }}
+                    ## Find apk first, then move it
+                    find music/ -name "*.apk" -exec mv {} ${{ runner.temp }}/music-release.apk \;
+
+            -   name: Create GitHub Release
+                uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631
+                with:
+                    files: |
+                        ${{ runner.temp }}/music-release.apk
+                    name: ${{ env.VERSION_NAME }} # Use the original case for the release name
+                    tag_name: ${{ env.TAG }} # Use lowercase for the tag
+                    body: _to be updated_
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            -   name: Archive APKs
+                uses: actions/upload-artifact@v4
+                with:
+                    name: ${{ env.VERSION_NAME }} APKs
+                    path: |
+                        ${{ runner.temp }}/music-release.apk
