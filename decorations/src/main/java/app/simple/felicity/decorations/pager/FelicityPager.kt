@@ -165,8 +165,8 @@ class FelicityPager @JvmOverloads constructor(
     private var lastMotionX = 0f
     private var velocityTracker: VelocityTracker? = null
     private var dragStartOffset = 0f
-    private val minFlingVelocity = ViewConfiguration.get(context).scaledMinimumFlingVelocity * 0.4f // more sensitive
-    private val advanceThreshold = 0.12f // fraction of a page to switch without velocity
+    private val minFlingVelocity = ViewConfiguration.get(context).scaledMinimumFlingVelocity * 1.65f // intentional flings only
+    private val advanceThreshold = 0.25f // fraction of a page to switch without velocity
 
     // Animation config (consistent, non-physics)
     private var animationDurationMs: Long = 420L
@@ -295,8 +295,8 @@ class FelicityPager @JvmOverloads constructor(
         if (abs(velocityX) > minFlingVelocity) {
             // Fling-based: advance proportional to velocity
             val vPagesPerSec = abs(velocityX) / widthPx
-            val windowSec = 0.40f
-            val pages = max(1, (vPagesPerSec * windowSec).roundToInt())
+            val windowSec = 0.18f
+            val pages = max(1, (vPagesPerSec * windowSec).roundToInt().coerceAtMost(3))
             val dir = if (velocityX < 0) +1 else -1
             val base = if (dir > 0) ceil else floor
             val targetIdx = (base + (pages - 1) * dir).coerceIn(0, maxLastPage())
@@ -458,8 +458,8 @@ class FelicityPager @JvmOverloads constructor(
         val floor = scrollOffset.toInt().coerceIn(0, maxLastPage())
         val ceil = (floor + 1).coerceAtMost(maxLastPage())
         val vPagesPerSec = abs(velocityX) / widthPx
-        val windowSec = 0.40f
-        val pages = max(1, (vPagesPerSec * windowSec).roundToInt())
+        val windowSec = 0.18f
+        val pages = max(1, (vPagesPerSec * windowSec).roundToInt().coerceAtMost(3))
         val dir = if (velocityX < 0) +1 else -1
         val base = if (dir > 0) ceil else floor
         val targetIdx = (base + (pages - 1) * dir).coerceIn(0, maxLastPage())
@@ -574,9 +574,17 @@ class FelicityPager @JvmOverloads constructor(
 
         override fun onSurfaceChanged(unused: javax.microedition.khronos.opengles.GL10?, width: Int, height: Int) {
             GLES20.glViewport(0, 0, width, height)
+            val dimensionsChanged = surfaceWidth != width || surfaceHeight != height
             surfaceWidth = width
             surfaceHeight = height
             Matrix.orthoM(proj, 0, -1f, 1f, -1f, 1f, -2f, 2f)
+            // If dimensions changed (including first setup), clear cached textures so they are
+            // re-decoded with the correct aspect ratio. This fixes black/squeezed images that
+            // were loaded before the surface dimensions were known.
+            if (dimensionsChanged && width > 0 && height > 0) {
+                clearAllTextures()
+                primeInitialLoad()
+            }
         }
 
         override fun onDrawFrame(unused: javax.microedition.khronos.opengles.GL10?) {
@@ -683,17 +691,28 @@ class FelicityPager @JvmOverloads constructor(
             if (textures.containsKey(id)) return
             val ad = adapter ?: return
             inFlight[position] = true
-            val targetAspect = if (surfaceWidth > 0 && surfaceHeight > 0) surfaceWidth.toFloat() / surfaceHeight else this@FelicityPager.width.takeIf { it > 0 }?.let { w ->
-                this@FelicityPager.height.takeIf { it > 0 }?.let { h -> w.toFloat() / h }
-            } ?: 1f
             futures[position] = decodeExecutor.submit {
                 val bmp = try {
                     ad.loadBitmap(position)
                 } catch (_: Throwable) {
                     null
                 }
-                val processed = bmp?.let { centerCropToAspect(it, targetAspect) }
-                if (processed != null) {
+                if (bmp != null) {
+                    // Re-read surface dimensions inside the task so we always get the latest values.
+                    // Fall back to view layout dimensions, then to the bitmap's own aspect so we
+                    // never produce a distorted or fully-black frame.
+                    val sw = surfaceWidth
+                    val sh = surfaceHeight
+                    val targetAspect = when {
+                        sw > 0 && sh > 0 -> sw.toFloat() / sh
+                        else -> {
+                            val vw = this@FelicityPager.width
+                            val vh = this@FelicityPager.height
+                            if (vw > 0 && vh > 0) vw.toFloat() / vh
+                            else bmp.width.toFloat() / bmp.height.coerceAtLeast(1) // identity: no crop
+                        }
+                    }
+                    val processed = centerCropToAspect(bmp, targetAspect)
                     queueEvent {
                         val texId = createTexture(processed)
                         textures[id] = texId
