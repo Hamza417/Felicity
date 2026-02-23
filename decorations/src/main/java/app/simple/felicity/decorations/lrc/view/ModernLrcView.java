@@ -124,6 +124,13 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private SpringAnimation scrollSpringAnimation; // For auto-scroll
     private FlingAnimation flingAnimation;
     private boolean isInOverscroll = false;
+    
+    /**
+     * When true the view will yield touch control to its parent (e.g. BottomSheetBehavior) once
+     * the user has scrolled past the bottom of the lyrics so the sheet can be dragged to dismiss.
+     * Set to false (default) in a Fragment where there is no dismissible parent.
+     */
+    private boolean parentDismissEnabled = false;
     // Auto scroll resume
     private final Runnable autoScrollRunnable = () -> {
         isUserScrolling = false;
@@ -489,7 +496,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             animatedTextSizes.put(lineIndex, targetSize);
             textSizeAnimations.remove(lineIndex);
             
-            // If we're animating to normal size and we're done, remove from cache entirely
+            // If we're animating to normal size, and we're done, remove from cache entirely
             // This ensures fresh state next time
             if (Math.abs(targetSize - normalTextSize) < 0.1f && lineIndex != currentLineIndex) {
                 animatedTextSizes.remove(lineIndex);
@@ -649,7 +656,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         float newHeight = (float) layout.getHeight();
         Float previousHeight = layoutHeights.get(lineIndex);
         
-        // If layoutHeights was cleared but we still have an animated height, use that as the "previous"
+        // If layoutHeights was cleared, but we still have an animated height, use that as the "previous"
         if (previousHeight == null) {
             previousHeight = animatedHeights.get(lineIndex);
         }
@@ -899,17 +906,23 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         if (lrcData == null || lrcData.isEmpty()) {
             return super.onTouchEvent(event);
         }
-        
+
         // Handle ripple effect based on touch events
         int action = event.getAction();
         if (action == MotionEvent.ACTION_DOWN) {
+            // When parentDismissEnabled the parent (BottomSheet) must not steal our events until
+            // we decide to hand back control at the bottom boundary.
+            if (parentDismissEnabled && getParent() != null) {
+                getParent().requestDisallowInterceptTouchEvent(true);
+            }
+
             // Find which line was touched and show ripple immediately
             int touchedIndex = findTappedLineIndex(event.getY());
             if (touchedIndex >= 0) {
                 tappedLineIndex = touchedIndex;
                 rippleX = event.getX();
                 rippleY = event.getY();
-                
+
                 // Set hotspot and trigger ripple press state
                 if (rippleDrawable != null) {
                     rippleDrawable.setHotspot(rippleX, rippleY);
@@ -1102,6 +1115,16 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     public void setMaxOverscrollDistance(float distanceInDp) {
         this.maxOverscrollDistance = dp2px(getContext(), distanceInDp);
         invalidate();
+    }
+    
+    /**
+     * Enable/disable yielding touch control to the parent when the user scrolls past the
+     * bottom of the lyrics content.  Enable this inside a BottomSheetDialog so the sheet can
+     * be dragged to dismiss after the user reaches the end of the lyrics.  Leave disabled (the
+     * default) inside a plain Fragment where there is no dismissible parent.
+     */
+    public void setParentDismissEnabled(boolean enabled) {
+        this.parentDismissEnabled = enabled;
     }
     
     /**
@@ -1305,6 +1328,22 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             // Get max scroll bounds
             float maxScroll = getMaxScrollY();
             
+            // When parentDismissEnabled: hand control back to parent (BottomSheet) once the
+            // user has scrolled to the very bottom and keeps dragging downward (distanceY < 0
+            // means finger moving up → content scrolling down / sheet dragging down to dismiss).
+            if (parentDismissEnabled && getParent() != null) {
+                boolean atBottom = scrollY >= maxScroll;
+                boolean draggingPastBottom = distanceY < 0; // negative = finger moving up = scroll-down
+                if (atBottom && draggingPastBottom) {
+                    // Release the parent so BottomSheetBehavior can take over and dismiss
+                    getParent().requestDisallowInterceptTouchEvent(false);
+                    return false; // Don't consume; let the parent handle it
+                } else {
+                    // Re-claim the touch so we can scroll freely
+                    getParent().requestDisallowInterceptTouchEvent(true);
+                }
+            }
+
             // Apply scroll multiplier for base scrolling
             float acceleratedDistance = distanceY * scrollMultiplier;
             

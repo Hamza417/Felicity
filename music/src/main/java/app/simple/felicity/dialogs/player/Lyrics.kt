@@ -41,6 +41,9 @@ class Lyrics : MediaDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Allow the BottomSheet to take over (dismiss) once the user scrolls past the end of lyrics
+        binding.lrcView.setParentDismissEnabled(true)
+
         binding.title.text = audio?.title
         binding.artists.text = audio?.artist
 
