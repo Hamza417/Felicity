@@ -100,6 +100,17 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     }
 
     private fun restoreLastSongStateFromDatabase() {
+        // If the controller already has media items loaded (e.g. after a rotation where the
+        // service kept running), skip the DB restore entirely to avoid re-preparing the player
+        // which causes the brief audio freeze.
+        if ((mediaController?.mediaItemCount ?: 0) > 0) {
+            Log.d(TAG, "MediaController already has items, skipping DB restore (likely a rotation)")
+            // Re-sync MediaManager's in-memory queue with what the service has
+            val currentIndex = mediaController?.currentMediaItemIndex ?: 0
+            MediaManager.notifyCurrentPosition(currentIndex)
+            return
+        }
+
         lifecycleScope.launch(Dispatchers.Default) {
             try {
                 val audioDatabase = AudioDatabase.getInstance(applicationContext)
@@ -222,19 +233,23 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
     override fun onDestroy() {
         super.onDestroy()
-        MediaManager.stopSeekPositionUpdates()
         unregisterSharedPreferenceChangeListener()
         ThemeManager.removeListener(this)
 
-        try {
-            mediaController?.let {
-                MediaManager.clearMediaController()
-                it.release()
+        // Skip releasing the MediaController on configuration changes (e.g. rotation).
+        // The service keeps playing; tearing down and rebuilding the controller causes
+        // a brief audio freeze because setMediaItems + prepare() is called again on reconnect.
+        if (!isChangingConfigurations) {
+            MediaManager.stopSeekPositionUpdates()
+            try {
+                mediaController?.let {
+                    MediaManager.clearMediaController()
+                    it.release()
+                }
+                MediaController.releaseFuture(controllerFuture!!)
+            } catch (e: NullPointerException) {
+                e.printStackTrace()
             }
-
-            MediaController.releaseFuture(controllerFuture!!)
-        } catch (e: NullPointerException) {
-            e.printStackTrace()
         }
     }
 

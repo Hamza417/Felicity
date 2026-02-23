@@ -1,0 +1,32 @@
+This is the initial public alpha release of Felicity. The primary focus of this build
+is core playback stability and performance. The foundational audio engine is ready for
+daily use, but several secondary features and interface elements remain incomplete.
+
+### Features
+
+- Real-time library updates, the app will automatically detect and incorporate new media files in real-time without needing to restart/refresh.
+- Basic playback controls (play, pause, stop, next, previous) are fully functional and responsive.
+- The audio engine has two decoders FFmpeg and System Decoder both are supported and fully working.
+- Hi-res (tested upto 24-bit, 32 is expected to work as well), Gapless and Skip Silence is supported and working.
+- App has zero latency performance and expected to load and work instantly on all supported platforms.
+- Built in artflow for songs.
+- Currently, Songs, Albums, Artists, Genres and Folders are supported as library categories, with more to be added in future updates.
+- Themes, fonts, and other UI customizations are supported and working.
+- Predictive back is fully supported.
+
+### Known Issues
+
+- UI gaps are present in most of the areas, and many interface elements are placeholders or incomplete.
+- Some features like playlists, advanced library management, and certain settings are not yet implemented.
+- Edge to edge is working but navigation bar is not supported in all devices as of now.
+- Scroll state loss in some horizontal lists.
+
+### Plans (atleast for next release)
+
+- Full implementation of playlists, including creation, editing, and management features.
+- Add selections framework to the library for easier multi-item management.
+- Implement more placeholders and complete the UI for most of the sections in the app.
+- Queue management features.
+
+This release is intended for early adopters and testers and any user who wants to experience the app early. Please
+open as many issues as you can and any ideas are most welcome :)
