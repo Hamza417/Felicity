@@ -12,13 +12,20 @@ import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.viewmodels.player.LyricsViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.lifecycle.withCreationCallback
 
 @AndroidEntryPoint
 class Lyrics : MediaFragment() {
 
     private lateinit var binding: FragmentLyricsBinding
 
-    private val lyricsViewModel: LyricsViewModel by viewModels()
+    private val lyricsViewModel: LyricsViewModel by viewModels(
+            extrasProducer = {
+                defaultViewModelCreationExtras.withCreationCallback<LyricsViewModel.Factory> {
+                    it.create(audio = null)
+                }
+            }
+    )
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentLyricsBinding.inflate(inflater, container, false)

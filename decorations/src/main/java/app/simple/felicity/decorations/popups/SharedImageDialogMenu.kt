@@ -422,6 +422,25 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         }
     }
 
+    /**
+     * Immediately removes the dialog without playing the return animation.
+     * The source ImageView's alpha is restored so it doesn't appear blank in the new panel.
+     * Use this when the user navigates away before the dialog is closed normally.
+     */
+    fun dismissImmediately() {
+        if (!isShowing) return
+        isDismissing = true
+        backCallback?.remove()
+        backCallback = null
+        // Restore the source image so it isn't left invisible when the new panel renders
+        sourceImageView.alpha = 1f
+        container.removeView(dialogContainer)
+        container.removeView(scrimView)
+        onDismiss?.invoke()
+        isDismissing = false
+        isShowing = false
+    }
+
     private fun cleanup() {
         sourceImageView.alpha = 1f
         container.removeView(dialogContainer)

@@ -10,16 +10,20 @@ import app.simple.felicity.decorations.lrc.parser.LrcParser
 import app.simple.felicity.decorations.lrc.parser.LyricsParseException
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.managers.MediaManager
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.LrcRepository
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
 
-@HiltViewModel
-class LyricsViewModel @Inject constructor(
+@HiltViewModel(assistedFactory = LyricsViewModel.Factory::class)
+class LyricsViewModel @AssistedInject constructor(
         application: Application,
+        @Assisted private val audio: Audio?,
         private val lrcRepository: LrcRepository
 ) : WrappedViewModel(application) {
 
@@ -35,7 +39,7 @@ class LyricsViewModel @Inject constructor(
 
     fun loadLrcData() {
         viewModelScope.launch(Dispatchers.IO) {
-            val currentSong = MediaManager.getCurrentSong()
+            val currentSong = audio ?: MediaManager.getCurrentSong()
             if (currentSong == null) {
                 lrcData.postValue(LrcData())
                 return@launch
@@ -111,6 +115,11 @@ class LyricsViewModel @Inject constructor(
      */
     fun reloadLrcData() {
         loadLrcData()
+    }
+
+    @AssistedFactory
+    interface Factory {
+        fun create(audio: Audio?): LyricsViewModel
     }
 
     companion object {
