@@ -88,14 +88,11 @@ class ArtFlow : MediaFragment() {
         binding.coverflow.setOnCoverClickListener(object : OnCoverClickListener {
             override fun onCenteredCoverClick(index: Int, itemId: Any?) {
                 songsViewModel.setCarouselPosition(index)
-                // Uncomment when ready to enable playback from carousel
-                // viewLifecycleOwner.lifecycleScope.launch {
-                //     songsViewModel.songs.value.let { songs ->
-                //         if (index in songs.indices) {
-                //             setMediaItems(songs, index)
-                //         }
-                //     }
-                // }
+                songsViewModel.songs.value.let { songs ->
+                    if (index in songs.indices) {
+                        setMediaItems(songs, index)
+                    }
+                }
             }
 
             override fun onSideCoverSelected(index: Int, itemId: Any?) {
