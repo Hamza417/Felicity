@@ -728,6 +728,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         if (lrcData == null || lrcData.isEmpty()) {
             return false;
         }
+        //noinspection SequencedCollectionMethodCanBeUsed
         return lrcData.getEntries().get(0).getTimeInMillis() == TxtParser.NO_TIMESTAMP;
     }
 
@@ -952,19 +953,22 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             
             // Smoothly remove blur/fade while the finger is touching
             animateBlurTo(1f);
-
-            // Find which line was touched and show ripple immediately
-            int touchedIndex = findTappedLineIndex(event.getY());
-            if (touchedIndex >= 0) {
-                tappedLineIndex = touchedIndex;
-                rippleX = event.getX();
-                rippleY = event.getY();
-
-                // Set hotspot and trigger ripple press state
-                if (rippleDrawable != null) {
-                    rippleDrawable.setHotspot(rippleX, rippleY);
-                    rippleDrawable.setState(new int[] {android.R.attr.state_pressed, android.R.attr.state_enabled});
-                    invalidate();
+            
+            // Find which line was touched and show ripple immediately.
+            // In static (plain-text) mode lines are not seekable, so skip the ripple.
+            if (!isStaticMode()) {
+                int touchedIndex = findTappedLineIndex(event.getY());
+                if (touchedIndex >= 0) {
+                    tappedLineIndex = touchedIndex;
+                    rippleX = event.getX();
+                    rippleY = event.getY();
+                    
+                    // Set hotspot and trigger ripple press state
+                    if (rippleDrawable != null) {
+                        rippleDrawable.setHotspot(rippleX, rippleY);
+                        rippleDrawable.setState(new int[] {android.R.attr.state_pressed, android.R.attr.state_enabled});
+                        invalidate();
+                    }
                 }
             }
         } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
@@ -1102,7 +1106,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         }
         
         //
-        long duration = target == 1f ? 600L : 450L;
+        long duration = 750;
         
         blurAnimator = android.animation.ValueAnimator.ofFloat(blurInterpolation, target);
         blurAnimator.setDuration(duration);
@@ -1526,6 +1530,11 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         
         @Override
         public boolean onSingleTapConfirmed(@NonNull MotionEvent e) {
+            // Plain-text lyrics are not seekable — ignore taps entirely.
+            if (isStaticMode()) {
+                return true;
+            }
+
             // Find which line was tapped
             int tappedIndex = findTappedLineIndex(e.getY());
             
