@@ -14,6 +14,9 @@ the quality of the software. I hope you are patient enough until the first few r
 The project will be developed under the codename Felicity, the final name maybe updated in the
 future.
 
+## Stats
+[![](https://img.shields.io/github/downloads/Hamza417/Felicity/total?color=blue&label=Total%20Downloads%20(GitHub)&logo=github&logoColor=white)](https://tooomm.github.io/github-release-stats/?username=Hamza417&repository=Felicity)
+
 ## Update
 
 16 July 2025: I have finalized the repository module and now beginning to work on engine and
