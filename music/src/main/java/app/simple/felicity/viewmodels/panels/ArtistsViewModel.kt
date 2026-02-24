@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.ArtistPreferences
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.sort.ArtistSort.sorted
@@ -54,7 +55,10 @@ class ArtistsViewModel @Inject constructor(
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
-            ArtistPreferences.ARTIST_SORT, ArtistPreferences.SORTING_STYLE -> {
+            ArtistPreferences.ARTIST_SORT,
+            ArtistPreferences.SORTING_STYLE,
+            LibraryPreferences.MINIMUM_AUDIO_SIZE,
+            LibraryPreferences.MINIMUM_AUDIO_LENGTH -> {
                 loadData()
             }
         }

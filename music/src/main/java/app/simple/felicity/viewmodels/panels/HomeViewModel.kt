@@ -1,6 +1,7 @@
 package app.simple.felicity.viewmodels.panels
 
 import android.app.Application
+import android.content.SharedPreferences
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -8,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.models.ArtFlowData
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.repositories.AudioRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -100,6 +102,17 @@ class HomeViewModel @Inject constructor(
                 data.postValue(artFlowData)
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading home data", e)
+            }
+        }
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            LibraryPreferences.MINIMUM_AUDIO_SIZE,
+            LibraryPreferences.MINIMUM_AUDIO_LENGTH -> {
+                Log.d(TAG, "onSharedPreferenceChanged: Relevant preference changed, reloading data")
+                loadData()
             }
         }
     }

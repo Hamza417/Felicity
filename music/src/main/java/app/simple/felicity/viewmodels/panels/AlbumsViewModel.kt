@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.AlbumPreferences
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.sort.AlbumSort.sorted
@@ -54,7 +55,10 @@ class AlbumsViewModel @Inject constructor(
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
-            AlbumPreferences.ALBUM_SORT, AlbumPreferences.SORTING_STYLE -> {
+            AlbumPreferences.ALBUM_SORT,
+            AlbumPreferences.SORTING_STYLE,
+            LibraryPreferences.MINIMUM_AUDIO_SIZE,
+            LibraryPreferences.MINIMUM_AUDIO_LENGTH -> {
                 loadData()
             }
         }

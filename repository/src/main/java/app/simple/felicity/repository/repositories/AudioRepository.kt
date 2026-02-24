@@ -2,6 +2,7 @@ package app.simple.felicity.repository.repositories
 
 import android.content.Context
 import androidx.sqlite.db.SimpleSQLiteQuery
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
@@ -31,48 +32,63 @@ class AudioRepository @Inject constructor(
     }
 
     /**
-     * Get all audio files from the database as a Flow
-     * Sorted by title in ascending order
+     * Minimum duration threshold in milliseconds derived from [LibraryPreferences].
+     * The preference stores the value in seconds.
+     */
+    private fun minDurationMs(): Long =
+        LibraryPreferences.getMinimumAudioLength().toLong() * 1000L
+
+    /**
+     * Minimum file-size threshold in bytes derived from [LibraryPreferences].
+     * The preference stores the value in kilobytes (KB).
+     */
+    private fun minSizeBytes(): Long =
+        LibraryPreferences.getMinimumAudioSize().toLong() * 1024L
+
+    /**
+     * Get all audio files from the database as a Flow.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
      */
     fun getAllAudio(): Flow<MutableList<Audio>> {
-        return audioDatabase.audioDao()?.getAllAudio()
+        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())
             ?: throw IllegalStateException("AudioDao is null")
     }
 
     /**
-     * Get all audio files from the database as a list
-     * Sorted by title in ascending order
+     * Get all audio files from the database as a list.
+     * Results are filtered by [LibraryPreferences] minimum duration and size.
      */
     suspend fun getAllAudioList(): MutableList<Audio> = withContext(Dispatchers.IO) {
-        audioDatabase.audioDao()?.getAllAudioList()
+        audioDatabase.audioDao()?.getFilteredAudioList(minDurationMs(), minSizeBytes())
             ?: throw IllegalStateException("AudioDao is null")
     }
 
     /**
-     * Get all unique artists from the database as a Flow
-     * Grouped by artist name and sorted in ascending order
+     * Get all unique artists from the database as a Flow.
+     * Filtered in real-time by [LibraryPreferences] minimum duration and size.
      */
     fun getAllArtists(): Flow<MutableList<Audio>> {
-        return audioDatabase.audioDao()?.getAllArtists()
+        return audioDatabase.audioDao()?.getFilteredArtists(minDurationMs(), minSizeBytes())
             ?: throw IllegalStateException("AudioDao is null")
     }
 
     /**
-     * Get all unique albums from the database as a Flow
-     * Grouped by album name and sorted in ascending order
+     * Get all unique albums from the database as a Flow.
+     * Filtered in real-time by [LibraryPreferences] minimum duration and size.
      */
     fun getAllAlbums(): Flow<MutableList<Audio>> {
-        return audioDatabase.audioDao()?.getAllAlbums()
+        return audioDatabase.audioDao()?.getFilteredAlbums(minDurationMs(), minSizeBytes())
             ?: throw IllegalStateException("AudioDao is null")
     }
 
     /**
      * Get all albums with aggregated data including song counts and file paths.
      * This method groups audio files by album and creates proper Album objects.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
      * @return Flow of albums with complete metadata
      */
     fun getAllAlbumsWithAggregation(): Flow<List<Album>> {
-        return audioDatabase.audioDao()?.getAllAudioForAlbumAggregation()?.map { audioList ->
+        return audioDatabase.audioDao()?.getFilteredAudioForAlbumAggregation(minDurationMs(), minSizeBytes())?.map { audioList ->
             // Group audio files by album name
             audioList.groupBy { it.album }
                 .mapNotNull { (albumName, songs) ->
@@ -105,10 +121,11 @@ class AudioRepository @Inject constructor(
     /**
      * Get all artists with aggregated data including album counts, track counts, and song paths.
      * This method groups audio files by artist and creates proper Artist objects.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
      * @return Flow of artists with complete metadata
      */
     fun getAllArtistsWithAggregation(): Flow<List<Artist>> {
-        return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
+        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
             // Group audio files by artist name
             audioList.groupBy { it.artist }
                 .mapNotNull { (artistName, songs) ->
@@ -138,10 +155,11 @@ class AudioRepository @Inject constructor(
     /**
      * Get all genres with aggregated data including song counts and song paths.
      * This method groups audio files by genre and creates proper Genre objects.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
      * @return Flow of genres with complete metadata
      */
     fun getAllGenresWithAggregation(): Flow<List<Genre>> {
-        return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
+        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
             // Group audio files by genre name
             audioList.groupBy { it.genre }
                 .mapNotNull { (genreName, songs) ->
@@ -167,10 +185,11 @@ class AudioRepository @Inject constructor(
     /**
      * Get all unique folders that contain audio files, with aggregated data.
      * This method groups audio files by their parent directory path.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
      * @return Flow of folders with complete metadata
      */
     fun getAllFoldersWithAggregation(): Flow<List<Folder>> {
-        return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
+        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
             audioList.groupBy { audio ->
                 val filePath = audio.path ?: return@groupBy ""
                 val lastSlash = filePath.lastIndexOf('/')
@@ -197,6 +216,7 @@ class AudioRepository @Inject constructor(
     /**
      * Get all data for an album page including songs, artists, and genres.
      * This method filters audio files by album name and aggregates related data.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
      * @param album The album to get data for
      * @return Flow of CollectionPageData with audios, artists, and genres
      */
@@ -204,7 +224,7 @@ class AudioRepository @Inject constructor(
         val artistWhitelist: Set<String> = AudioRepository::class.java.getResourceAsStream(ARTIST_WHITELIST)
             ?.bufferedReader()?.use { it.readLines().map { name -> name.trim() }.toSet() } ?: emptySet()
 
-        return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
+        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
             // Filter songs by album name (using album name instead of ID since we're using local DB)
             val albumAudios = audioList.filter { it.album == album.name }
 
@@ -274,11 +294,12 @@ class AudioRepository @Inject constructor(
     }
 
     /**
-     * Get page data for a specific artist as a Flow
-     * Returns songs, albums, and genres associated with the artist
+     * Get page data for a specific artist as a Flow.
+     * Returns songs, albums, and genres associated with the artist.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
      */
     fun getArtistPageData(artist: Artist): Flow<PageData> {
-        return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
+        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
             // Filter songs where artist name contains the specified artist (handles split artists)
             val artistAudios = audioList.filter { audio ->
                 audio.artist?.contains(artist.name ?: "", ignoreCase = true) == true
@@ -324,11 +345,12 @@ class AudioRepository @Inject constructor(
     }
 
     /**
-     * Get page data for a specific genre as a Flow
-     * Returns songs, albums, and artists associated with the genre
+     * Get page data for a specific genre as a Flow.
+     * Returns songs, albums, and artists associated with the genre.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
      */
     fun getGenrePageData(genre: Genre): Flow<PageData> {
-        return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
+        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
             // Filter songs by genre name
             val genreAudios = audioList.filter { it.genre == genre.name }
 
@@ -379,11 +401,12 @@ class AudioRepository @Inject constructor(
     /**
      * Get page data for a specific folder as a Flow.
      * Returns all songs in the folder plus aggregated albums, artists and genres.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
      * @param folder The folder to get data for
      * @return Flow of PageData with songs, albums, artists, and genres
      */
     fun getFolderPageData(folder: Folder): Flow<PageData> {
-        return audioDatabase.audioDao()?.getAllAudio()?.map { audioList ->
+        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
             // Filter songs whose path starts with the folder path
             val folderAudios = audioList.filter { audio ->
                 val parent = audio.path?.let {
@@ -446,21 +469,23 @@ class AudioRepository @Inject constructor(
     }
 
     /**
-     * Get recent audio files from the database as a Flow
-     * Returns the 25 most recently added audio files
+     * Get recent audio files from the database as a Flow.
+     * Returns the 25 most recently added audio files.
+     * Filtered in real-time by [LibraryPreferences] minimum duration and size.
      */
     fun getRecentAudio(): Flow<MutableList<Audio>> {
-        return audioDatabase.audioDao()?.getRecentAudio()
+        return audioDatabase.audioDao()?.getFilteredRecentAudio(minDurationMs(), minSizeBytes())
             ?: throw IllegalStateException("AudioDao is null")
     }
 
     /**
-     * Get all audio files by a specific artist as a Flow
+     * Get all audio files by a specific artist as a Flow.
+     * Filtered in real-time by [LibraryPreferences] minimum duration and size.
      * @param artist The name of the artist
      * @return Flow of audio files by the specified artist, sorted by title
      */
     fun getAudioByArtist(artist: String): Flow<MutableList<Audio>> {
-        return audioDatabase.audioDao()?.getAudioByArtist(artist)
+        return audioDatabase.audioDao()?.getFilteredAudioByArtist(artist, minDurationMs(), minSizeBytes())
             ?: throw IllegalStateException("AudioDao is null")
     }
 
@@ -571,25 +596,28 @@ class AudioRepository @Inject constructor(
 
     /**
      * Reactive search by title – re-emits whenever the audio table changes.
+     * Filtered in real-time by [LibraryPreferences] minimum duration and size.
      */
     fun searchByTitleFlow(title: String): Flow<MutableList<Audio>> {
-        return audioDatabase.audioDao()?.searchByTitle(title)
+        return audioDatabase.audioDao()?.searchByTitleFiltered(title, minDurationMs(), minSizeBytes())
             ?: throw IllegalStateException("AudioDao is null")
     }
 
     /**
      * Reactive search by artist – re-emits whenever the audio table changes.
+     * Filtered in real-time by [LibraryPreferences] minimum duration and size.
      */
     fun searchByArtistFlow(artist: String): Flow<MutableList<Audio>> {
-        return audioDatabase.audioDao()?.searchByArtist(artist)
+        return audioDatabase.audioDao()?.searchByArtistFiltered(artist, minDurationMs(), minSizeBytes())
             ?: throw IllegalStateException("AudioDao is null")
     }
 
     /**
      * Reactive search by album – re-emits whenever the audio table changes.
+     * Filtered in real-time by [LibraryPreferences] minimum duration and size.
      */
     fun searchByAlbumFlow(album: String): Flow<MutableList<Audio>> {
-        return audioDatabase.audioDao()?.searchByAlbum(album)
+        return audioDatabase.audioDao()?.searchByAlbumFiltered(album, minDurationMs(), minSizeBytes())
             ?: throw IllegalStateException("AudioDao is null")
     }
 

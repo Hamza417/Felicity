@@ -17,6 +17,7 @@ import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.HomePreferences
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.ui.preferences.sub.AccentColors
 import app.simple.felicity.ui.preferences.sub.Themes
 import app.simple.felicity.ui.preferences.sub.TypeFaces
@@ -464,6 +465,56 @@ open class PreferenceFragment : MediaFragment() {
         preferences.add(hiresToggle)
         preferences.add(gaplessToggle)
         preferences.add(skipSilenceToggle)
+
+        return preferences
+    }
+
+    protected fun createLibraryPanel(): List<Preference> {
+        val preferences = mutableListOf<Preference>()
+
+        val scannerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.scanner)
+
+        val minimumAudioLength = Preference(
+                title = R.string.minimum_audio_length,
+                summary = R.string.minimum_audio_length_summary,
+                icon = R.drawable.ic_timer,
+                type = PreferenceType.SLIDER,
+                onPreferenceAction = { view, callback ->
+                    LibraryPreferences.setMinimumAudioLength((view as FelicitySeekbar).getProgress().toInt())
+                    true
+                },
+                valueProvider = Supplier {
+                    SeekbarState(
+                            position = LibraryPreferences.getMinimumAudioLength().toFloat(),
+                            max = 600F, // 10 minutes max
+                            min = 0F,
+                            default = 0F,
+                    )
+                }
+        )
+
+        val minimumAudioSize = Preference(
+                title = R.string.minimum_audio_size,
+                summary = R.string.minimum_audio_size_summary,
+                icon = R.drawable.ic_storage,
+                type = PreferenceType.SLIDER,
+                onPreferenceAction = { view, callback ->
+                    LibraryPreferences.setMinimumAudioSize((view as FelicitySeekbar).getProgress().toInt())
+                    true
+                },
+                valueProvider = Supplier {
+                    SeekbarState(
+                            position = LibraryPreferences.getMinimumAudioSize().toFloat(),
+                            max = 1024 * 20F, // 20 MB max
+                            min = 0F,
+                            default = 0F,
+                    )
+                }
+        )
+
+        preferences.add(scannerHeader)
+        preferences.add(minimumAudioLength)
+        preferences.add(minimumAudioSize)
 
         return preferences
     }

@@ -54,7 +54,8 @@ class FoldersViewModel @Inject constructor(
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
-            FoldersPreferences.FOLDER_SORT_STYLE, FoldersPreferences.SORT_ORDER -> {
+            FoldersPreferences.FOLDER_SORT_STYLE,
+            FoldersPreferences.SORT_ORDER -> {
                 Log.d(TAG, "onSharedPreferenceChanged: Sorting order changed, updating folders list")
                 loadData()
             }

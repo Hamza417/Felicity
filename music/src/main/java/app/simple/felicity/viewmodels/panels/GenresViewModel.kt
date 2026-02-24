@@ -54,7 +54,8 @@ class GenresViewModel @Inject constructor(
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
-            GenresPreferences.GENRE_SORT_STYLE, GenresPreferences.SORT_ORDER -> {
+            GenresPreferences.GENRE_SORT_STYLE,
+            GenresPreferences.SORT_ORDER -> {
                 Log.d(TAG, "onSharedPreferenceChanged: Sorting order changed, updating genres list")
                 loadData()
             }

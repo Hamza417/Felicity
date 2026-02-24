@@ -195,4 +195,11 @@
     <string name="skip_silence">Skip Silence</string>
     <string name="skip_silence_summary">Skip silent part while playing the song.</string>
     <string name="list_style">List Style</string>
+    <string name="library">Library</string>
+    <string name="library_desc">Configure how app scans and present music files.</string>
+    <string name="scanner">Scanner</string>
+    <string name="minimum_audio_length">Minimum Audio Length</string>
+    <string name="minimum_audio_length_summary">Minimum audio length (in seconds) required to be scanned and shown in the app.</string>
+    <string name="minimum_audio_size">Minimum Audio Size</string>
+    <string name="minimum_audio_size_summary">Minimum audio file size required to be scanned and shown in the app.</string>
 </resources>

@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
@@ -61,7 +62,10 @@ class SongsViewModel @Inject constructor(
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, s: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, s)
         when (s) {
-            SongsPreferences.SONG_SORT, SongsPreferences.SORTING_STYLE -> {
+            SongsPreferences.SONG_SORT,
+            SongsPreferences.SORTING_STYLE,
+            LibraryPreferences.MINIMUM_AUDIO_SIZE,
+            LibraryPreferences.MINIMUM_AUDIO_LENGTH -> {
                 loadData()
             }
         }
