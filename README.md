@@ -16,6 +16,12 @@ future.
 
 ## Stats
 [![](https://img.shields.io/github/downloads/Hamza417/Felicity/total?color=blue&label=Total%20Downloads%20(GitHub)&logo=github&logoColor=white)](https://tooomm.github.io/github-release-stats/?username=Hamza417&repository=Felicity)
+[![](https://img.shields.io/endpoint?url=https://ghloc.vercel.app/api/Hamza417/Felicity/badge?style=flat&logo=kotlin&logoColor=white&label=Total%20Lines&color=indianred)](https://ghloc.vercel.app/Hamza417/Felicity?branch=master)
+[![Release](https://img.shields.io/github/v/release/Hamza417/Felicity?color=52be80&label=Current%20Release)](https://github.com/Hamza417/Felicity/releases)
+![](https://img.shields.io/github/languages/count/Hamza417/Felicity?color=white&label=Languages)
+![](https://img.shields.io/github/license/Hamza417/Felicity?color=red&label=License)
+![](https://img.shields.io/badge/Minimum%20SDK-29%20(Android%2010)-839192?logo=android&logoColor=white)
+![](https://img.shields.io/badge/Target%20SDK-36%20(Android%2016)-566573?logo=android&logoColor=white)
 
 ## Update
 
