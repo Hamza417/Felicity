@@ -126,6 +126,11 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private FlingAnimation flingAnimation;
     private boolean isInOverscroll = false;
     
+    // Blur/fade interaction state
+    // 0f = fully blurred (default), 1f = fully unblurred (finger down)
+    private float blurInterpolation = 0f;
+    private android.animation.ValueAnimator blurAnimator;
+    
     /**
      * When true the view will yield touch control to its parent (e.g. BottomSheetBehavior) once
      * the user has scrolled past the bottom of the lyrics so the sheet can be dragged to dismiss.
@@ -381,21 +386,27 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         int width = getWidth();
         int height = getHeight();
         
-        // Top fade gradient (transparent to opaque black)
+        // Scale the opaque end of the gradient by (1 - blurInterpolation).
+        // When blurInterpolation = 0 (idle) the gradient is fully opaque (0xFF) → normal fade.
+        // When blurInterpolation = 1 (finger down) the gradient is transparent (0x00) → no fade.
+        int alpha = Math.round(0xFF * (1f - blurInterpolation));
+        int opaqueBlack = (alpha << 24);
+        
+        // Top fade gradient
         LinearGradient topGradient = new LinearGradient(
                 0, 0,
                 0, fadeLength,
-                0xFF000000, 0x00000000,
+                opaqueBlack, 0x00000000,
                 Shader.TileMode.CLAMP
         );
         fadePaint.setShader(topGradient);
         canvas.drawRect(0, 0, width, fadeLength, fadePaint);
         
-        // Bottom fade gradient (opaque black to transparent)
+        // Bottom fade gradient
         LinearGradient bottomGradient = new LinearGradient(
                 0, height - fadeLength,
                 0, height,
-                0x00000000, 0xFF000000,
+                0x00000000, opaqueBlack,
                 Shader.TileMode.CLAMP
         );
         fadePaint.setShader(bottomGradient);
@@ -412,20 +423,19 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         
         // Top edge blur (within fadeLength from top)
         if (y < fadeLength) {
-            // Calculate how far into the fade zone we are (0 = top edge, 1 = end of fade)
             float fadeProgress = y / fadeLength;
-            // Invert so blur is strongest at edge: (1 - fadeProgress)
             blurAmount = (1f - fadeProgress) * MAX_BLUR_RADIUS;
         }
         // Bottom edge blur (within fadeLength from bottom)
         else if (y > viewHeight - fadeLength) {
-            // Calculate how far into the bottom fade zone we are
             float distanceFromBottom = viewHeight - y;
             float fadeProgress = distanceFromBottom / fadeLength;
-            // Blur is strongest at edge
             blurAmount = (1f - fadeProgress) * MAX_BLUR_RADIUS;
         }
         
+        // Scale down towards zero as the user's finger is down (blurInterpolation → 1)
+        blurAmount *= (1f - blurInterpolation);
+
         return blurAmount;
     }
     
@@ -939,6 +949,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             if (parentDismissEnabled && getParent() != null) {
                 getParent().requestDisallowInterceptTouchEvent(true);
             }
+            
+            // Smoothly remove blur/fade while the finger is touching
+            animateBlurTo(1f);
 
             // Find which line was touched and show ripple immediately
             int touchedIndex = findTappedLineIndex(event.getY());
@@ -955,6 +968,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                 }
             }
         } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+            // Smoothly reapply blur/fade once the finger lifts
+            animateBlurTo(0f);
+
             // Release ripple state
             if (rippleDrawable != null) {
                 rippleDrawable.setState(new int[] {});
@@ -1070,6 +1086,41 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     public void setScrollMultiplier(float multiplier) {
         this.scrollMultiplier = Math.max(0.1f, multiplier); // Ensure positive value
         invalidate();
+    }
+    
+    /**
+     * Smoothly animate the blur/fade overlay towards {@code target}.
+     * target = 0f → fully blurred (normal idle state, finger lifted)
+     * target = 1f → fully unblurred (finger touching the view)
+     * <p>
+     * Uses a ValueAnimator with DecelerateInterpolator for a slow, natural deceleration.
+     * Unblur (finger down) takes ~1500 ms; re-blur (finger up) takes ~800 ms.
+     */
+    private void animateBlurTo(float target) {
+        if (blurAnimator != null && blurAnimator.isRunning()) {
+            blurAnimator.cancel();
+        }
+        
+        //
+        long duration = target == 1f ? 600L : 450L;
+        
+        blurAnimator = android.animation.ValueAnimator.ofFloat(blurInterpolation, target);
+        blurAnimator.setDuration(duration);
+        blurAnimator.setInterpolator(new DecelerateInterpolator());
+        blurAnimator.addUpdateListener(anim -> {
+            blurInterpolation = (float) anim.getAnimatedValue();
+            blurMaskFilters.clear();
+            invalidate();
+        });
+        blurAnimator.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                blurInterpolation = target;
+                blurMaskFilters.clear();
+                invalidate();
+            }
+        });
+        blurAnimator.start();
     }
     
     private float dp2px(Context context, float dp) {
@@ -1222,6 +1273,10 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         textSizeAnimations.clear();
         
         removeCallbacks(autoScrollRunnable);
+        if (blurAnimator != null && blurAnimator.isRunning()) {
+            blurAnimator.cancel();
+        }
+        blurInterpolation = 0f;
         if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
             scrollSpringAnimation.cancel();
         }
