@@ -4,6 +4,8 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.ImageView
+import androidx.core.app.ShareCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -229,6 +231,21 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
                 binding.addToPlaylist.setOnClickListener {
 
+                }
+
+                binding.share.setOnClickListener {
+                    val file = audios[position].file
+                    val uri = FileProvider.getUriForFile(
+                            requireContext(),
+                            "${requireContext().packageName}.provider",
+                            file
+                    )
+
+                    ShareCompat.IntentBuilder(requireContext())
+                        .setType("audio/*")
+                        .setText(audios[position].title)
+                        .setStream(uri)
+                        .startChooser()
                 }
 
                 binding.delete.setOnClickListener {

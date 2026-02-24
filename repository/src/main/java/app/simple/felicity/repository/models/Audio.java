@@ -3,6 +3,8 @@ package app.simple.felicity.repository.models;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import java.io.File;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.room.ColumnInfo;
@@ -654,5 +656,14 @@ public class Audio implements Parcelable {
                 return AUDIO_QUALITY_LQ;
             }
         }
+    }
+    
+    /**
+     * Convenience method to get a File object for this audio's path.
+     *
+     * @return a File object representing the audio file.
+     */
+    public File getFile() {
+        return new File(path);
     }
 }
