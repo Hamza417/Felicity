@@ -202,4 +202,6 @@
     <string name="minimum_audio_length_summary">Minimum audio length (in seconds) required to be scanned and shown in the app.</string>
     <string name="minimum_audio_size">Minimum Audio Size</string>
     <string name="minimum_audio_size_summary">Minimum audio file size required to be scanned and shown in the app.</string>
+    <string name="paste_lyrics_here">Paste Lyrics Here</string>
+    <string name="save">Save</string>
 </resources>

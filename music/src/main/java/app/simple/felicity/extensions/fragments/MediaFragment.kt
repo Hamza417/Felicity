@@ -14,7 +14,7 @@ import app.simple.felicity.databinding.DialogSureBinding
 import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.dialogs.app.AudioInformation.Companion.showAudioInfo
-import app.simple.felicity.dialogs.player.Lyrics.Companion.showLyrics
+import app.simple.felicity.dialogs.lyrics.Lyrics.Companion.showLyrics
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.repository.database.instances.AudioDatabase

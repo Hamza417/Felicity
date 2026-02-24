@@ -1,4 +1,4 @@
-package app.simple.felicity.dialogs.player
+package app.simple.felicity.dialogs.lyrics
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -7,9 +7,12 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.viewModels
 import app.simple.felicity.databinding.DialogLyricsBinding
+import app.simple.felicity.dialogs.lyrics.AddLyrics.Companion.showAddLyrics
 import app.simple.felicity.extensions.dialogs.MediaDialogFragment
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.shared.utils.ViewUtils.gone
+import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.player.LyricsViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -50,8 +53,16 @@ class Lyrics : MediaDialogFragment() {
         lyricsViewModel.getLrcData().observe(viewLifecycleOwner) { lrcData ->
             if (lrcData.isEmpty) {
                 binding.lrcView.reset()
+                binding.addLyrics.visible(animate = true)
             } else {
                 binding.lrcView.setLrcData(lrcData)
+                binding.addLyrics.gone(animate = true)
+            }
+        }
+
+        binding.addLyrics.setOnClickListener {
+            audio?.let {
+                childFragmentManager.showAddLyrics(audio!!)
             }
         }
     }

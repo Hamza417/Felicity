@@ -30,7 +30,7 @@ public class DynamicCornerEditText extends TypeFaceEditText {
             setSaveEnabled(true);
             setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_YES);
             LayoutBackground.setBackground(getContext(), this, attrs, 2F);
-            setBackground(false, ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getSelectedBackgroundColor());
+            setBackground(false, ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor());
             ViewUtils.INSTANCE.addShadow(this, ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
         }
     }
