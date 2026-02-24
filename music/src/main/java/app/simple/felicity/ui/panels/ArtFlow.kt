@@ -19,13 +19,10 @@ import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselM
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.MediaFragment
-import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.repository.constants.MediaConstants
-import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ConditionUtils.isNotZero
 import app.simple.felicity.shared.utils.WindowUtil
-import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.viewmodels.panels.SongsViewModel
 import kotlinx.coroutines.launch
 
@@ -43,7 +40,7 @@ class ArtFlow : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         requireLightBarIcons()
-        requireHiddenMiniPlayer()
+        requireTransparentMiniPlayer()
 
         WindowUtil.getStatusBarHeightWhenAvailable(binding.topMenuContainer) { height ->
             binding.topMenuContainer.setPadding(
@@ -133,35 +130,6 @@ class ArtFlow : MediaFragment() {
                     onDismiss = {}
             ).show()
         }
-
-        binding.play.setOnLongClickListener {
-            val currentSong = MediaManager.getCurrentSong()
-            viewLifecycleOwner.lifecycleScope.launch {
-                songsViewModel.songs.value.forEachIndexed { index, audio ->
-                    if (audio.id == currentSong?.id) {
-                        binding.coverflow.scrollToIndex(index)
-                        return@forEachIndexed
-                    }
-                }
-            }
-            true
-        }
-
-        binding.play.setOnClickListener {
-            MediaManager.flipState()
-        }
-
-        binding.next.setOnClickListener {
-            MediaManager.next()
-        }
-
-        binding.previous.setOnClickListener {
-            MediaManager.previous()
-        }
-
-        binding.miniplayerContainer.setOnClickListener {
-            openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
-        }
     }
 
     override fun onDestroyView() {
@@ -190,19 +158,17 @@ class ArtFlow : MediaFragment() {
 
     override fun onAudio(audio: Audio) {
         super.onAudio(audio)
-        binding.title.text = audio.title
-        binding.artist.text = audio.artist
-        binding.art.loadArtCoverWithPayload(audio)
+
     }
 
     override fun onPlaybackStateChanged(state: Int) {
         super.onPlaybackStateChanged(state)
         when (state) {
             MediaConstants.PLAYBACK_PLAYING -> {
-                binding.play.setImageResource(app.simple.felicity.decoration.R.drawable.ic_pause)
+
             }
             MediaConstants.PLAYBACK_PAUSED -> {
-                binding.play.setImageResource(app.simple.felicity.decoration.R.drawable.ic_play)
+
             }
         }
     }

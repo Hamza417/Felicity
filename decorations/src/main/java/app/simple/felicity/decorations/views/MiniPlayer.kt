@@ -1,7 +1,9 @@
 package app.simple.felicity.decorations.views
 
 import android.animation.TimeInterpolator
+import android.animation.ValueAnimator
 import android.content.Context
+import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
 import android.os.Parcel
@@ -13,6 +15,9 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
+import androidx.core.graphics.ColorUtils
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isNotEmpty
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
@@ -70,11 +75,25 @@ class MiniPlayer @JvmOverloads constructor(
         isManuallyControlled = false
     }
 
+    // Track the original (opaque) card background color set by the theme
+    private var opaqueCardColor: Int = Color.TRANSPARENT
+    private var transparentColorAnimator: ValueAnimator? = null
+
     init {
         // Inflate base container layout (root is <merge/>)
         LayoutInflater.from(context).inflate(R.layout.miniplayer_view, this, true)
         card = findViewById(R.id.container)
         isVisible = true
+
+        // Apply navigation bar inset as bottom margin so the mini player
+        // floats above the navigation bar (works for both gesture and button nav)
+        ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
+            val navBarInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            val lp = v.layoutParams as? MarginLayoutParams ?: return@setOnApplyWindowInsetsListener insets
+            lp.bottomMargin = navBarInsets.bottom
+            v.layoutParams = lp
+            insets
+        }
     }
 
     // region Content API
@@ -100,6 +119,43 @@ class MiniPlayer @JvmOverloads constructor(
     /** Returns the currently set ViewBinding, if any. */
     @Suppress("UNCHECKED_CAST", "unused")
     fun <T : ViewBinding> getContent(): T? = currentBinding as? T
+
+    /**
+     * Animate the card background to fully transparent.
+     * Use this for fragments that have a dark background and want a seamless look.
+     */
+    fun makeTransparent(animated: Boolean = true) {
+        opaqueCardColor = card.cardBackgroundColor.defaultColor
+        val targetColor = ColorUtils.setAlphaComponent(opaqueCardColor, 0)
+        animateCardColor(opaqueCardColor, targetColor, animated)
+        elevation = 0f
+    }
+
+    /**
+     * Animate the card background back to its opaque theme color.
+     */
+    fun makeOpaque(animated: Boolean = true) {
+        val currentColor = card.cardBackgroundColor.defaultColor
+        val target = if (opaqueCardColor != Color.TRANSPARENT) opaqueCardColor
+        else card.cardBackgroundColor.defaultColor
+        animateCardColor(currentColor, target, animated)
+        // Restore elevation to cast shadows again
+        elevation = resources.getDimension(R.dimen.app_views_elevation)
+    }
+
+    private fun animateCardColor(from: Int, to: Int, animated: Boolean) {
+        transparentColorAnimator?.cancel()
+        if (!animated || from == to) {
+            card.setCardBackgroundColor(to)
+            return
+        }
+        transparentColorAnimator = ValueAnimator.ofArgb(from, to).apply {
+            duration = animDuration
+            interpolator = animInterpolator
+            addUpdateListener { card.setCardBackgroundColor(it.animatedValue as Int) }
+            start()
+        }
+    }
 
     // region Hide/Show animation
     fun show(animated: Boolean = true) {

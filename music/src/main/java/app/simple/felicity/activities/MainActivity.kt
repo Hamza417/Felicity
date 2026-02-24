@@ -260,6 +260,14 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         }
     }
 
+    override fun onMakeTransparentMiniPlayer() {
+        binding.miniPlayer.makeTransparent(animated = true)
+    }
+
+    override fun onMakeOpaqueMiniPlayer() {
+        binding.miniPlayer.makeOpaque(animated = true)
+    }
+
     override fun onStart() {
         super.onStart()
         startAudioDatabaseService()

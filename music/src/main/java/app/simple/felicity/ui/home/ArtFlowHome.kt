@@ -49,6 +49,7 @@ class ArtFlowHome : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
         postponeEnterTransition()
         requireLightBarIcons()
+        requireTransparentMiniPlayer()
         binding.recyclerView.setBackgroundColor(Color.BLACK)
         binding.recyclerView.requireAttachedMiniPlayer()
 

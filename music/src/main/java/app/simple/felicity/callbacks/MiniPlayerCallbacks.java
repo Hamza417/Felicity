@@ -10,4 +10,10 @@ public interface MiniPlayerCallbacks {
     void onAttachMiniPlayer(RecyclerView recyclerView);
     
     void onDetachMiniPlayer(RecyclerView recyclerView);
+    
+    default void onMakeTransparentMiniPlayer() {
+    }
+    
+    default void onMakeOpaqueMiniPlayer() {
+    }
 }

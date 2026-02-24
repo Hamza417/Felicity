@@ -167,6 +167,28 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         miniPlayerCallbacks?.onHideMiniPlayer()
     }
 
+    /**
+     * Request that the mini player renders with a transparent background for the
+     * duration of this fragment's lifecycle.  Useful for panels that have a dark
+     * or image-based background where an opaque card would look out of place
+     * (e.g. ArtFlowHome).
+     */
+    protected fun requireTransparentMiniPlayer() {
+        viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onCreate(owner: LifecycleOwner) {
+                super.onCreate(owner)
+                miniPlayerCallbacks?.onMakeTransparentMiniPlayer()
+            }
+
+            override fun onDestroy(owner: LifecycleOwner) {
+                super.onDestroy(owner)
+                if (requireActivity().isChangingConfigurations.not()) {
+                    miniPlayerCallbacks?.onMakeOpaqueMiniPlayer()
+                }
+            }
+        })
+    }
+
     open fun onPlaybackStateChanged(state: Int) {
         Log.d(TAG, "Playback state changed: $state")
     }
