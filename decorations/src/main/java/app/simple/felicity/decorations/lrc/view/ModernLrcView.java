@@ -20,6 +20,7 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
+import android.view.animation.PathInterpolator;
 import android.widget.OverScroller;
 
 import java.util.HashMap;
@@ -59,8 +60,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private static final float SPRING_STIFFNESS = SpringForce.STIFFNESS_LOW; // Spring stiffness for overscroll
     private static final float SPRING_DAMPING_RATIO = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Spring damping
     private static final float FLING_FRICTION = 1.5f; // Friction for fling animation
-    private static final float TEXT_SIZE_SPRING_STIFFNESS = SpringForce.STIFFNESS_LOW; // Text size animation stiffness
-    private static final float TEXT_SIZE_SPRING_DAMPING = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Text size animation damping
+    private static final long TEXT_SIZE_ANIMATION_DURATION = 600L; // Duration in ms for text size highlight/unhighlight
+    private static final long SCROLL_ANIMATION_DURATION = 900L; // Duration in ms for auto-scroll line change
     private static final float MAX_BLUR_RADIUS = 15f; // Maximum blur radius at edges (in pixels)
     private static final int DEFAULT_NORMAL_COLOR = Color.GRAY;
     private static final int DEFAULT_CURRENT_COLOR = Color.WHITE;
@@ -70,16 +71,10 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private LrcData lrcData;
     private int currentLineIndex = -1;
     
-    // Cache for wrapped text layouts
-    private final HashMap<Integer, StaticLayout> layoutCache = new HashMap<>();
-    
     // Cache for wrapped text layouts at normal size
     private final HashMap<Integer, StaticLayout> normalLayoutCache = new HashMap<>();
     
-    // Cache for wrapped text layouts at current (highlighted) size
-    private final HashMap<Integer, StaticLayout> currentLayoutCache = new HashMap<>();
-    
-    // Cache for layout heights (to properly calculate spacing)
+    // Cache for layout heights at normal text size (base heights before scaling)
     private final HashMap<Integer, Float> layoutHeights = new HashMap<>();
     
     // Cache for pre-highlight heights (to restore original state)
@@ -88,14 +83,16 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     // Cache for animated heights (smoothly interpolated values for positioning)
     private final HashMap <Integer, Float> animatedHeights = new HashMap <>();
     
-    // Height animations
-    private final HashMap <Integer, SpringAnimation> heightAnimations = new HashMap <>();
-    
     // Text size animation
     private final java.util.HashMap <Integer, Float> animatedTextSizes = new java.util.HashMap <>();
+    
+    // Color interpolation fraction per line: 0 = normal color, 1 = highlight color
+    private final java.util.HashMap <Integer, Float> animatedColorFractions = new java.util.HashMap <>();
+    
     // Paint objects
     private TextPaint normalPaint;
     private TextPaint currentPaint;
+    private final HashMap <Integer, android.animation.ValueAnimator> textSizeAnimations = new java.util.HashMap <>();
     private Paint fadePaint;
     // Cache for blur mask filters to avoid constant recreation
     private final HashMap <Float, BlurMaskFilter> blurMaskFilters = new HashMap <>();
@@ -109,7 +106,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private String emptyText;
     private float fadeLength;
     private boolean enableFade = true;
-    private final HashMap <Integer, SpringAnimation> textSizeAnimations = new java.util.HashMap <>();
+    private TextPaint drawPaint; // Reusable paint for drawing with interpolated properties
     private int previousLineIndex = -1;
     // Scrolling
     private OverScroller scroller;
@@ -122,7 +119,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private float scrollMultiplier;
     private float maxOverscrollDistance;
     private SpringAnimation springAnimation; // For overscroll snap-back
-    private SpringAnimation scrollSpringAnimation; // For auto-scroll
+    private android.animation.ValueAnimator scrollAnimator; // For auto-scroll (smooth, duration-based)
     private FlingAnimation flingAnimation;
     private boolean isInOverscroll = false;
     
@@ -206,6 +203,14 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             currentPaint.setTypeface(TypeFace.INSTANCE.getMediumTypeFace(context));
         }
         
+        // Reusable paint for drawing – properties are set per-line in drawLyrics
+        drawPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        drawPaint.setTextSize(normalTextSize);
+        drawPaint.setColor(normalTextColor);
+        if (!isInEditMode()) {
+            drawPaint.setTypeface(TypeFace.INSTANCE.getRegularTypeFace(context));
+        }
+        
         // Initialize fade paint for vertical gradient effect
         fadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         fadePaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
@@ -263,6 +268,18 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         
         int entryCount = lrcData.size();
         
+        // Pre-pass: compute all animated heights so that getLineOffset is consistent
+        // within this frame.  We ensure normalPaint is at normalTextSize for layout creation.
+        normalPaint.setTextSize(normalTextSize);
+        for (int i = 0; i < entryCount; i++) {
+            LrcEntry entry = lrcData.getEntries().get(i);
+            String text = entry.getText();
+            StaticLayout layout = getOrCreateLayout(text, normalPaint, i);
+            float baseHeight = layout.getHeight();
+            float scale = getAnimatedTextSize(i) / normalTextSize;
+            animatedHeights.put(i, baseHeight * scale);
+        }
+        
         // Use hardware layer for fade effect
         int layerId = -1;
         if (enableFade) {
@@ -282,88 +299,95 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             LrcEntry entry = lrcData.getEntries().get(i);
             String text = entry.getText();
             
-            // Get animated text size for this line
+            // Get the animation fraction for this line (0 = normal, 1 = highlighted)
+            float colorFraction = getColorFraction(i);
+            
+            // Get the animated text size
             float animatedSize = getAnimatedTextSize(i);
             
-            // Calculate Y position for this line
+            // Calculate scale factor: how much bigger the text should be vs normalTextSize
+            float scale = animatedSize / normalTextSize;
+            
+            // Calculate Y position for this line using animated heights
             float y = offsetY + getLineOffset(i);
             
-            // Choose paint and set animated size
-            TextPaint paint;
-            // Don't highlight empty lines; in static mode all lines use the normal paint
-            if (!isStaticMode() && i == currentLineIndex && text != null && !text.trim().isEmpty()) {
-                paint = currentPaint;
-            } else {
-                paint = normalPaint;
-            }
+            // Always use normalPaint for layout creation - the layout line count stays stable
+            normalPaint.setTextSize(normalTextSize);
+            StaticLayout layout = getOrCreateLayout(text, normalPaint, i);
             
-            // Apply animated text size
-            paint.setTextSize(animatedSize);
+            // The actual rendered height after scaling
+            float baseHeight = layout.getHeight();
+            float scaledHeight = baseHeight * scale;
             
-            // Get or create StaticLayout for this line
-            StaticLayout layout = getOrCreateLayout(text, paint, i);
-            
-            // Skip lines that are completely off-screen (accounting for multi-line height)
-            float lineHeight = layout.getHeight();
-            if (y < -lineHeight || y > getHeight() + lineHeight) {
+            // Skip lines that are completely off-screen
+            if (y < -scaledHeight || y > getHeight() + scaledHeight) {
                 continue;
             }
+            
+            // Interpolate color between normal and current
+            int blendedColor = blendColors(normalTextColor, currentTextColor, colorFraction);
+            
+            // Set up drawPaint with interpolated properties
+            drawPaint.setTextSize(normalTextSize);
+            drawPaint.setColor(blendedColor);
+            drawPaint.setTextAlign(normalPaint.getTextAlign());
             
             // Calculate and apply blur based on distance from center (proportional to fade)
             if (enableFade) {
                 float blurAmount = calculateBlurAmount(y, getHeight());
-                if (blurAmount > 0.5f) { // Only apply blur if significant
-                    // Round to nearest 0.5 to reduce unique filter instances
+                if (blurAmount > 0.5f) {
                     float roundedBlur = Math.round(blurAmount * 2f) / 2f;
-                    
-                    // Get or create cached blur filter
                     BlurMaskFilter blurFilter = blurMaskFilters.get(roundedBlur);
                     if (blurFilter == null) {
                         blurFilter = new BlurMaskFilter(roundedBlur, BlurMaskFilter.Blur.NORMAL);
                         blurMaskFilters.put(roundedBlur, blurFilter);
                     }
-                    paint.setMaskFilter(blurFilter);
+                    drawPaint.setMaskFilter(blurFilter);
                 } else {
-                    paint.setMaskFilter(null);
+                    drawPaint.setMaskFilter(null);
                 }
             } else {
-                paint.setMaskFilter(null);
+                drawPaint.setMaskFilter(null);
             }
             
             // Draw ripple effect for tapped line (behind the text)
             if (i == tappedLineIndex && rippleDrawable != null) {
-                float yOffset = y - (lineHeight / 2f);
+                float yOffset = y - (scaledHeight / 2f);
                 int paddingLeft = getPaddingLeft();
                 int paddingRight = getPaddingRight();
                 int availableWidth = getWidth() - paddingLeft - paddingRight;
                 
-                // Set ripple bounds to cover the full width of the text area
                 rippleDrawable.setBounds(
                         paddingLeft,
                         (int) yOffset,
                         paddingLeft + availableWidth,
-                        (int) (yOffset + lineHeight)
+                        (int) (yOffset + scaledHeight)
                                         );
                 rippleDrawable.draw(canvas);
             }
             
-            // Draw the wrapped text using StaticLayout
+            // Draw the text using canvas scaling for smooth size animation
             canvas.save();
             
-            // Calculate X position for the layout based on alignment
-            float x = calculateXPositionForLayout(layout, paint);
+            float x = calculateXPositionForLayout(layout, drawPaint);
+            float yOffset = y - (scaledHeight / 2f);
             
-            // Position the text vertically (centered on y position)
-            float yOffset = y - (lineHeight / 2f);
+            // Translate to the top-left of where the text should be drawn,
+            // then scale from the top-left corner
             canvas.translate(x, yOffset);
+            canvas.scale(scale, scale);
             
+            // Draw using drawPaint by re-creating a temporary layout with the blended paint
+            // We need to use drawPaint for color, but the layout was built with normalPaint
+            // Simply set the paint color on the layout's paint and draw
+            layout.getPaint().setColor(blendedColor);
             layout.draw(canvas);
+            
             canvas.restore();
         }
         
-        // Clear mask filters
-        normalPaint.setMaskFilter(null);
-        currentPaint.setMaskFilter(null);
+        // Clear mask filter
+        drawPaint.setMaskFilter(null);
         
         // Restore original paint sizes
         normalPaint.setTextSize(normalTextSize);
@@ -464,103 +488,134 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         }
         
         // No animation in progress, return static size based on current state
-        // Only the current line should be highlighted
         if (lineIndex == currentLineIndex) {
             return currentTextSize;
         }
         
-        // For all other cases, return normal size
         return normalTextSize;
     }
     
     /**
-     * Animate text size change for a line
+     * Get the color interpolation fraction for a line.
+     * 0f = normal color, 1f = highlight (current) color.
+     */
+    private float getColorFraction(int lineIndex) {
+        if (isStaticMode()) {
+            return 0f;
+        }
+        
+        Float fraction = animatedColorFractions.get(lineIndex);
+        if (fraction != null) {
+            return fraction;
+        }
+        
+        // Check if this line is empty
+        if (lrcData != null && lineIndex >= 0 && lineIndex < lrcData.size()) {
+            LrcEntry entry = lrcData.getEntries().get(lineIndex);
+            String text = entry.getText();
+            if (text == null || text.trim().isEmpty()) {
+                return 0f;
+            }
+        }
+        
+        // No animation in progress
+        if (lineIndex == currentLineIndex) {
+            return 1f;
+        }
+        return 0f;
+    }
+    
+    /**
+     * Linearly interpolate between two ARGB colors.
+     */
+    private int blendColors(int from, int to, float fraction) {
+        if (fraction <= 0f) {
+            return from;
+        }
+        if (fraction >= 1f) {
+            return to;
+        }
+        
+        int fromA = (from >> 24) & 0xFF;
+        int fromR = (from >> 16) & 0xFF;
+        int fromG = (from >> 8) & 0xFF;
+        int fromB = from & 0xFF;
+        
+        int toA = (to >> 24) & 0xFF;
+        int toR = (to >> 16) & 0xFF;
+        int toG = (to >> 8) & 0xFF;
+        int toB = to & 0xFF;
+        
+        int a = fromA + (int) ((toA - fromA) * fraction);
+        int r = fromR + (int) ((toR - fromR) * fraction);
+        int g = fromG + (int) ((toG - fromG) * fraction);
+        int b = fromB + (int) ((toB - fromB) * fraction);
+        
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+    
+    /**
+     * Animate text size change for a line using ValueAnimator for smooth, precise interpolation.
+     * Also animates the color fraction so that color transitions smoothly alongside size.
      */
     private void animateTextSize(int lineIndex, float targetSize) {
         // Get current size (either animated or default)
         float currentSize = getAnimatedTextSize(lineIndex);
         
-        // Skip animation if we're already at the target size
-        if (Math.abs(currentSize - targetSize) < 0.1f) {
+        // Determine target color fraction: 1 if going to highlighted size, 0 if going to normal
+        float targetColorFraction = (Math.abs(targetSize - currentTextSize) < 0.5f) ? 1f : 0f;
+        float currentColorFraction = getColorFraction(lineIndex);
+        
+        // Skip animation if we're already at the target
+        if (Math.abs(currentSize - targetSize) < 0.01f) {
             animatedTextSizes.put(lineIndex, targetSize);
+            animatedColorFractions.put(lineIndex, targetColorFraction);
             return;
         }
         
         // Cancel any existing animation for this line
-        SpringAnimation existingAnimation = textSizeAnimations.get(lineIndex);
+        android.animation.ValueAnimator existingAnimation = textSizeAnimations.get(lineIndex);
         if (existingAnimation != null && existingAnimation.isRunning()) {
             existingAnimation.cancel();
         }
         
-        // Create holder for text size animation
-        FloatValueHolder holder = new FloatValueHolder();
-        holder.setValue(currentSize);
+        // Animate a fraction from 0 to 1 and derive both text size and color from it
+        final float startSize = currentSize;
+        final float startColor = currentColorFraction;
+        final float endColor = targetColorFraction;
         
-        // Create spring animation for text size
-        SpringAnimation animation = new SpringAnimation(holder, holder.getProperty());
-        animation.setSpring(new SpringForce(targetSize)
-                .setStiffness(TEXT_SIZE_SPRING_STIFFNESS)
-                .setDampingRatio(TEXT_SIZE_SPRING_DAMPING));
+        android.animation.ValueAnimator animator = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        animator.setDuration(TEXT_SIZE_ANIMATION_DURATION);
+        animator.setInterpolator(new PathInterpolator(0.4f, 0f, 0.2f, 1f));
         
-        animation.addUpdateListener((anim, value, velocity) -> {
-            animatedTextSizes.put(lineIndex, value);
+        animator.addUpdateListener(anim -> {
+            float fraction = (float) anim.getAnimatedValue();
+            float size = startSize + (targetSize - startSize) * fraction;
+            float color = startColor + (endColor - startColor) * fraction;
+            animatedTextSizes.put(lineIndex, size);
+            animatedColorFractions.put(lineIndex, color);
             invalidate();
         });
         
-        animation.addEndListener((anim, canceled, value, velocity) -> {
-            // Always set final value and clean up
-            animatedTextSizes.put(lineIndex, targetSize);
-            textSizeAnimations.remove(lineIndex);
-            
-            // If we're animating to normal size, and we're done, remove from cache entirely
-            // This ensures fresh state next time
-            if (Math.abs(targetSize - normalTextSize) < 0.1f && lineIndex != currentLineIndex) {
-                animatedTextSizes.remove(lineIndex);
+        animator.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                animatedTextSizes.put(lineIndex, targetSize);
+                animatedColorFractions.put(lineIndex, targetColorFraction);
+                textSizeAnimations.remove(lineIndex);
+                
+                // Clean up entries for non-current lines at normal size
+                if (Math.abs(targetSize - normalTextSize) < 0.01f && lineIndex != currentLineIndex) {
+                    animatedTextSizes.remove(lineIndex);
+                    animatedColorFractions.remove(lineIndex);
+                }
+                
+                invalidate();
             }
-            
-            invalidate();
         });
         
-        // Store animation reference
-        textSizeAnimations.put(lineIndex, animation);
-        animation.start();
-    }
-    
-    /**
-     * Animate height change smoothly
-     */
-    private void animateHeight(int lineIndex, float fromHeight, float toHeight) {
-        // Cancel any existing height animation for this line
-        SpringAnimation existingAnimation = heightAnimations.get(lineIndex);
-        if (existingAnimation != null && existingAnimation.isRunning()) {
-            existingAnimation.cancel();
-        }
-        
-        // Create holder for height animation
-        FloatValueHolder holder = new FloatValueHolder();
-        holder.setValue(fromHeight);
-        
-        // Create spring animation for height with very low stiffness for smooth, slow transition
-        SpringAnimation animation = new SpringAnimation(holder, holder.getProperty());
-        animation.setSpring(new SpringForce(toHeight)
-                .setStiffness(SpringForce.STIFFNESS_VERY_LOW) // Very slow, smooth transition
-                .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY));
-        
-        animation.addUpdateListener((anim, value, velocity) -> {
-            // Update animated height - this affects positioning
-            animatedHeights.put(lineIndex, value);
-            invalidate();
-        });
-        
-        animation.addEndListener((anim, canceled, value, velocity) -> {
-            animatedHeights.put(lineIndex, toHeight);
-            heightAnimations.remove(lineIndex);
-            invalidate();
-        });
-        
-        // Store animation reference
-        heightAnimations.put(lineIndex, animation);
-        animation.start();
+        textSizeAnimations.put(lineIndex, animator);
+        animator.start();
     }
     
     /**
@@ -613,11 +668,19 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Get or create a StaticLayout for wrapped text
-     * Uses cached layouts at fixed sizes to avoid constant recreation
+     * Get or create a StaticLayout for wrapped text.
+     * Always builds the layout at normalTextSize using normalPaint.
+     * The visual size change during highlight is achieved via canvas.scale() in drawLyrics,
+     * which means the layout line count never changes during animation – no flickering.
      */
     @SuppressWarnings("unused")
     private StaticLayout getOrCreateLayout(String text, TextPaint paint, int lineIndex) {
+        // Check normal layout cache first
+        StaticLayout cachedLayout = normalLayoutCache.get(lineIndex);
+        if (cachedLayout != null) {
+            return cachedLayout;
+        }
+        
         int paddingLeft = getPaddingLeft();
         int paddingRight = getPaddingRight();
         int availableWidth = getWidth() - paddingLeft - paddingRight;
@@ -628,28 +691,12 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             default -> Layout.Alignment.ALIGN_CENTER;
         };
         
-        // Determine which size we're rendering at by checking the paint's actual size
-        float currentPaintSize = paint.getTextSize();
-        boolean isUsingCurrentSize = Math.abs(currentPaintSize - currentTextSize) < 1f;
-        
-        // Try to use cached layout for the correct size
-        HashMap<Integer, StaticLayout> cache = isUsingCurrentSize ? currentLayoutCache : normalLayoutCache;
-        StaticLayout cachedLayout = cache.get(lineIndex);
-        
-        // Use cached layout if it exists and was created at the same text size
-        if (cachedLayout != null) {
-            return cachedLayout;
-        }
-        
-        // No cached layout - create new one at the current paint size
-        // Check if text will fit on one line at current size
         float textWidth = paint.measureText(text);
         boolean needsWrapping = textWidth > availableWidth;
         
         StaticLayout layout;
         
         if (!needsWrapping) {
-            // Text fits on one line - create single-line layout
             layout = StaticLayout.Builder.obtain(text, 0, text.length(), paint, availableWidth)
                     .setAlignment(alignment)
                     .setLineSpacing(0f, 1f)
@@ -657,7 +704,6 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                     .setMaxLines(1)
                     .build();
         } else {
-            // Text needs wrapping - create multi-line layout
             layout = StaticLayout.Builder.obtain(text, 0, text.length(), paint, availableWidth)
                     .setAlignment(alignment)
                     .setLineSpacing(0f, 1f)
@@ -665,31 +711,16 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                     .build();
         }
         
-        // Cache it
-        cache.put(lineIndex, layout);
+        normalLayoutCache.put(lineIndex, layout);
         
-        // Update height tracking
-        float newHeight = (float) layout.getHeight();
-        Float previousHeight = layoutHeights.get(lineIndex);
+        // Store the base height (at normal size) for positioning calculations
+        float baseHeight = (float) layout.getHeight();
+        layoutHeights.put(lineIndex, baseHeight);
         
-        // If layoutHeights was cleared, but we still have an animated height, use that as the "previous"
-        if (previousHeight == null) {
-            previousHeight = animatedHeights.get(lineIndex);
+        // Initialize animated height if not already set
+        if (!animatedHeights.containsKey(lineIndex)) {
+            animatedHeights.put(lineIndex, baseHeight);
         }
-        
-        if (previousHeight != null && Math.abs(previousHeight - newHeight) > 1f) {
-            // Height changed - animate the transition
-            animateHeight(lineIndex, previousHeight, newHeight);
-        } else if (previousHeight == null) {
-            // First time - set directly without animation
-            animatedHeights.put(lineIndex, newHeight);
-        } else {
-            // Height hasn't changed significantly
-            animatedHeights.put(lineIndex, newHeight);
-        }
-        
-        // Update cached height
-        layoutHeights.put(lineIndex, newHeight);
         
         return layout;
     }
@@ -740,25 +771,16 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.currentLineIndex = -1;
         this.scrollY = 0f;
         this.targetScrollY = 0f;
-        this.layoutCache.clear();
         this.normalLayoutCache.clear();
-        this.currentLayoutCache.clear();
         this.layoutHeights.clear();
         this.preHighlightHeights.clear();
         this.animatedHeights.clear();
         this.animatedTextSizes.clear();
+        this.animatedColorFractions.clear();
         this.blurMaskFilters.clear();
         
-        // Cancel all height animations - create a copy to avoid ConcurrentModificationException
-        for (SpringAnimation animation : new java.util.ArrayList <>(heightAnimations.values())) {
-            if (animation != null && animation.isRunning()) {
-                animation.cancel();
-            }
-        }
-        heightAnimations.clear();
-        
         // Cancel all text size animations - create a copy to avoid ConcurrentModificationException
-        for (SpringAnimation animation : new java.util.ArrayList <>(textSizeAnimations.values())) {
+        for (android.animation.ValueAnimator animation : new java.util.ArrayList <>(textSizeAnimations.values())) {
             if (animation != null && animation.isRunning()) {
                 animation.cancel();
             }
@@ -797,9 +819,6 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             if (previousLineIndex >= 0 && previousLineIndex < lrcData.size()) {
                 // Animate previous line to normal size
                 animateTextSize(previousLineIndex, normalTextSize);
-                // Clear cached layouts for the previous line to force recalculation at new size
-                normalLayoutCache.remove(previousLineIndex);
-                currentLayoutCache.remove(previousLineIndex);
             }
             
             if (currentLineIndex >= 0 && currentLineIndex < lrcData.size()) {
@@ -812,9 +831,6 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                     // For empty lines, keep normal text size
                     animateTextSize(currentLineIndex, normalTextSize);
                 }
-                // Clear cached layouts for the current line to force recalculation at new size
-                normalLayoutCache.remove(currentLineIndex);
-                currentLayoutCache.remove(currentLineIndex);
             }
             
             // Only auto-scroll if not user scrolling, auto-scroll is enabled, and not from a tap seek
@@ -865,10 +881,12 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         for (int i = 0; i < lrcData.size(); i++) {
             float lineY = offsetY + getLineOffset(i);
             
-            // Get layout height for this line
-            Float cachedHeight = layoutHeights.get(i);
-            float lineHeight = cachedHeight != null ? cachedHeight :
-                    (i == currentLineIndex ? currentTextSize : normalTextSize);
+            // Get layout height for this line (uses animated/scaled height)
+            Float cachedHeight = animatedHeights.get(i);
+            if (cachedHeight == null) {
+                cachedHeight = layoutHeights.get(i);
+            }
+            float lineHeight = cachedHeight != null ? cachedHeight : normalTextSize;
             
             float topBound = lineY - (lineHeight / 2f);
             float bottomBound = lineY + (lineHeight / 2f);
@@ -894,12 +912,14 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Animate scroll to target position using Spring animation
+     * Animate scroll to target position using ValueAnimator with a gentle ease-in-out curve.
+     * This replaces the spring-based scroll which moved too swiftly and made line changes
+     * feel abrupt. The duration-based approach with a cubic bezier gives a relaxed, smooth feel.
      */
     private void animateScroll(float from, float to) {
-        // Cancel any existing scroll spring animation
-        if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
-            scrollSpringAnimation.cancel();
+        // Cancel any existing scroll animation
+        if (scrollAnimator != null && scrollAnimator.isRunning()) {
+            scrollAnimator.cancel();
         }
         
         // Also cancel spring/fling if they're running (user interaction)
@@ -910,29 +930,27 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             flingAnimation.cancel();
         }
         
-        // Create a holder for the scroll position
-        FloatValueHolder holder = new FloatValueHolder();
-        holder.setValue(from);
+        final float finalTo = to;
         
-        // Use Spring animation for natural, smooth scrolling
-        scrollSpringAnimation = new SpringAnimation(holder, holder.getProperty());
-        scrollSpringAnimation.setSpring(new SpringForce(to)
-                .setStiffness(SpringForce.STIFFNESS_LOW) // Smooth, gentle scroll
-                .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY)); // No bounce for auto-scroll
+        scrollAnimator = android.animation.ValueAnimator.ofFloat(from, to);
+        scrollAnimator.setDuration(SCROLL_ANIMATION_DURATION);
+        // Gentle ease-in-out – the line glides into place rather than snapping
+        scrollAnimator.setInterpolator(new PathInterpolator(0.25f, 0.1f, 0.25f, 1f));
         
-        scrollSpringAnimation.addUpdateListener((animation, value, velocity) -> {
-            scrollY = value;
+        scrollAnimator.addUpdateListener(anim -> {
+            scrollY = (float) anim.getAnimatedValue();
             invalidate();
         });
         
-        scrollSpringAnimation.addEndListener((animation, canceled, value, velocity) -> {
-            if (!canceled) {
-                scrollY = to;
+        scrollAnimator.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                scrollY = finalTo;
                 invalidate();
             }
         });
         
-        scrollSpringAnimation.start();
+        scrollAnimator.start();
     }
     
     @SuppressLint ("ClickableViewAccessibility")
@@ -1251,25 +1269,16 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.scrollY = 0f;
         this.targetScrollY = 0f;
         this.isUserScrolling = false;
-        this.layoutCache.clear();
         this.normalLayoutCache.clear();
-        this.currentLayoutCache.clear();
         this.layoutHeights.clear();
         this.preHighlightHeights.clear();
         this.animatedHeights.clear();
         this.animatedTextSizes.clear();
+        this.animatedColorFractions.clear();
         this.blurMaskFilters.clear();
         
-        // Cancel all height animations - create a copy to avoid ConcurrentModificationException
-        for (SpringAnimation animation : new java.util.ArrayList <>(heightAnimations.values())) {
-            if (animation != null && animation.isRunning()) {
-                animation.cancel();
-            }
-        }
-        heightAnimations.clear();
-        
         // Cancel all text size animations - create a copy to avoid ConcurrentModificationException
-        for (SpringAnimation animation : new java.util.ArrayList <>(textSizeAnimations.values())) {
+        for (android.animation.ValueAnimator animation : new java.util.ArrayList <>(textSizeAnimations.values())) {
             if (animation != null && animation.isRunning()) {
                 animation.cancel();
             }
@@ -1281,8 +1290,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             blurAnimator.cancel();
         }
         blurInterpolation = 0f;
-        if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
-            scrollSpringAnimation.cancel();
+        if (scrollAnimator != null && scrollAnimator.isRunning()) {
+            scrollAnimator.cancel();
         }
         if (springAnimation != null && springAnimation.isRunning()) {
             springAnimation.cancel();
@@ -1377,8 +1386,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             isUserScrolling = false;
             
             // Immediately cancel all animations
-            if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
-                scrollSpringAnimation.cancel();
+            if (scrollAnimator != null && scrollAnimator.isRunning()) {
+                scrollAnimator.cancel();
             }
             if (springAnimation != null && springAnimation.isRunning()) {
                 springAnimation.cancel();
