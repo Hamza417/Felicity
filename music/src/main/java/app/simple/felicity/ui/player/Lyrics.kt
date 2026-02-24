@@ -47,6 +47,7 @@ class Lyrics : MediaFragment() {
                 binding.lrc.reset()
             } else {
                 binding.lrc.setLrcData(lrcData)
+                binding.lrc.updateTime(MediaManager.getSeekPosition())
             }
         }
     }

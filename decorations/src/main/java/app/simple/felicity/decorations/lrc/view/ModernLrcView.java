@@ -56,10 +56,10 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private static final float DEFAULT_SCROLL_MULTIPLIER = 1f; // Accelerated scroll multiplier
     private static final float DEFAULT_OVERSCROLL_DISTANCE = 250f; // dp - maximum overscroll distance
     private static final float OVERSCROLL_DAMPING = 0.25f; // Rubber band damping factor (0-1)
-    private static final float SPRING_STIFFNESS = SpringForce.STIFFNESS_LOW; // Spring stiffness for overscroll
+    private static final float SPRING_STIFFNESS = SpringForce.STIFFNESS_HIGH; // Spring stiffness for overscroll
     private static final float SPRING_DAMPING_RATIO = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Spring damping
     private static final float FLING_FRICTION = 1.5f; // Friction for fling animation
-    private static final float TEXT_SIZE_SPRING_STIFFNESS = SpringForce.STIFFNESS_LOW; // Text size animation stiffness
+    private static final float TEXT_SIZE_SPRING_STIFFNESS = SpringForce.STIFFNESS_MEDIUM; // Text size animation stiffness
     private static final float TEXT_SIZE_SPRING_DAMPING = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Text size animation damping
     private static final float MAX_BLUR_RADIUS = 15f; // Maximum blur radius at edges (in pixels)
     private static final int DEFAULT_NORMAL_COLOR = Color.GRAY;
@@ -70,20 +70,14 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private LrcData lrcData;
     private int currentLineIndex = -1;
     
-    // Cache for wrapped text layouts
-    private final HashMap<Integer, StaticLayout> layoutCache = new HashMap<>();
-    
     // Cache for wrapped text layouts at normal size
-    private final HashMap<Integer, StaticLayout> normalLayoutCache = new HashMap<>();
+    private final HashMap <Integer, StaticLayout> normalLayoutCache = new HashMap <>();
     
     // Cache for wrapped text layouts at current (highlighted) size
-    private final HashMap<Integer, StaticLayout> currentLayoutCache = new HashMap<>();
+    private final HashMap <Integer, StaticLayout> currentLayoutCache = new HashMap <>();
     
     // Cache for layout heights (to properly calculate spacing)
-    private final HashMap<Integer, Float> layoutHeights = new HashMap<>();
-    
-    // Cache for pre-highlight heights (to restore original state)
-    private final HashMap<Integer, Float> preHighlightHeights = new HashMap<>();
+    private final HashMap <Integer, Float> layoutHeights = new HashMap <>();
     
     // Cache for animated heights (smoothly interpolated values for positioning)
     private final HashMap <Integer, Float> animatedHeights = new HashMap <>();
@@ -435,7 +429,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         
         // Scale down towards zero as the user's finger is down (blurInterpolation → 1)
         blurAmount *= (1f - blurInterpolation);
-
+        
         return blurAmount;
     }
     
@@ -447,7 +441,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         if (isStaticMode()) {
             return normalTextSize;
         }
-
+        
         // Return animated size if it exists, otherwise return default size
         Float animatedSize = animatedTextSizes.get(lineIndex);
         if (animatedSize != null) {
@@ -616,16 +610,19 @@ public class ModernLrcView extends View implements ThemeChangedListener {
      * Get or create a StaticLayout for wrapped text
      * Uses cached layouts at fixed sizes to avoid constant recreation
      */
-    @SuppressWarnings("unused")
+    @SuppressWarnings ("unused")
     private StaticLayout getOrCreateLayout(String text, TextPaint paint, int lineIndex) {
         int paddingLeft = getPaddingLeft();
         int paddingRight = getPaddingRight();
         int availableWidth = getWidth() - paddingLeft - paddingRight;
         
         Layout.Alignment alignment = switch (textAlignment) {
-            case LEFT -> Layout.Alignment.ALIGN_NORMAL;
-            case RIGHT -> Layout.Alignment.ALIGN_OPPOSITE;
-            default -> Layout.Alignment.ALIGN_CENTER;
+            case LEFT ->
+                    Layout.Alignment.ALIGN_NORMAL;
+            case RIGHT ->
+                    Layout.Alignment.ALIGN_OPPOSITE;
+            default ->
+                    Layout.Alignment.ALIGN_CENTER;
         };
         
         // Determine which size we're rendering at by checking the paint's actual size
@@ -633,7 +630,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         boolean isUsingCurrentSize = Math.abs(currentPaintSize - currentTextSize) < 1f;
         
         // Try to use cached layout for the correct size
-        HashMap<Integer, StaticLayout> cache = isUsingCurrentSize ? currentLayoutCache : normalLayoutCache;
+        HashMap <Integer, StaticLayout> cache = isUsingCurrentSize ? currentLayoutCache : normalLayoutCache;
         StaticLayout cachedLayout = cache.get(lineIndex);
         
         // Use cached layout if it exists and was created at the same text size
@@ -731,7 +728,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         //noinspection SequencedCollectionMethodCanBeUsed
         return lrcData.getEntries().get(0).getTimeInMillis() == TxtParser.NO_TIMESTAMP;
     }
-
+    
     /**
      * Set lyrics data
      */
@@ -740,11 +737,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.currentLineIndex = -1;
         this.scrollY = 0f;
         this.targetScrollY = 0f;
-        this.layoutCache.clear();
         this.normalLayoutCache.clear();
         this.currentLayoutCache.clear();
         this.layoutHeights.clear();
-        this.preHighlightHeights.clear();
         this.animatedHeights.clear();
         this.animatedTextSizes.clear();
         this.blurMaskFilters.clear();
@@ -781,7 +776,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         if (isStaticMode()) {
             return;
         }
-
+        
         // Apply offset if present
         timeInMillis += lrcData.getOffset();
         
@@ -941,7 +936,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         if (lrcData == null || lrcData.isEmpty()) {
             return super.onTouchEvent(event);
         }
-
+        
         // Handle ripple effect based on touch events
         int action = event.getAction();
         if (action == MotionEvent.ACTION_DOWN) {
@@ -974,7 +969,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
             // Smoothly reapply blur/fade once the finger lifts
             animateBlurTo(0f);
-
+            
             // Release ripple state
             if (rippleDrawable != null) {
                 rippleDrawable.setState(new int[] {});
@@ -1251,11 +1246,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.scrollY = 0f;
         this.targetScrollY = 0f;
         this.isUserScrolling = false;
-        this.layoutCache.clear();
         this.normalLayoutCache.clear();
         this.currentLayoutCache.clear();
         this.layoutHeights.clear();
-        this.preHighlightHeights.clear();
         this.animatedHeights.clear();
         this.animatedTextSizes.clear();
         this.blurMaskFilters.clear();
@@ -1426,7 +1419,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                     getParent().requestDisallowInterceptTouchEvent(true);
                 }
             }
-
+            
             // Apply scroll multiplier for base scrolling
             float acceleratedDistance = distanceY * scrollMultiplier;
             
@@ -1534,7 +1527,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             if (isStaticMode()) {
                 return true;
             }
-
+            
             // Find which line was tapped
             int tappedIndex = findTappedLineIndex(e.getY());
             
