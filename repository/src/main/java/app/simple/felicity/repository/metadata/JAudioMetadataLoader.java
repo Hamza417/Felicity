@@ -102,6 +102,7 @@ public class JAudioMetadataLoader {
         audio.setId(generateId());
         audio.setSize(file.length());
         audio.setDateModified(file.lastModified());
+        audio.setDateAdded(System.currentTimeMillis());
     }
     
     private String getAudioFileTag(FieldKey tag) {

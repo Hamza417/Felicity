@@ -97,6 +97,7 @@ public class MediaMetadataLoader {
         audio.setId(generateId());
         audio.setSize(file.length());
         audio.setDateModified(file.lastModified());
+        audio.setDateAdded(System.currentTimeMillis());
     }
     
     private long generateId() {

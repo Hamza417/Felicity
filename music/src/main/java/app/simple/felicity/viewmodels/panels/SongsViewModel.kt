@@ -12,12 +12,12 @@ import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.sort.SongSort.sorted
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -31,23 +31,38 @@ class SongsViewModel @Inject constructor(
     private val _songs = MutableStateFlow<List<Audio>>(emptyList())
     val songs: StateFlow<List<Audio>> = _songs.asStateFlow()
 
+    /** Raw unordered list from the database, kept so we can re-sort without a DB round-trip. */
+    private var rawAudioList: List<Audio> = emptyList()
+
+    private var loadJob: Job? = null
+
     init {
         loadData()
     }
 
     private fun loadData() {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             audioRepository.getAllAudio()
-                .map { audioList -> audioList.sorted() }
                 .catch { exception ->
                     Log.e(TAG, "Error loading songs", exception)
-                    emit(emptyList())
+                    emit(mutableListOf())
                 }
                 .flowOn(Dispatchers.IO)
-                .collect { sortedSongs ->
+                .collect { audioList ->
+                    rawAudioList = audioList
+                    val sortedSongs = audioList.sorted()
                     _songs.value = sortedSongs
                     Log.d(TAG, "loadData: ${sortedSongs.size} songs loaded")
                 }
+        }
+    }
+
+    private fun resort() {
+        viewModelScope.launch(Dispatchers.Default) {
+            val sortedSongs = rawAudioList.sorted()
+            _songs.value = sortedSongs
+            Log.d(TAG, "resort: ${sortedSongs.size} songs re-sorted")
         }
     }
 
@@ -63,9 +78,13 @@ class SongsViewModel @Inject constructor(
         super.onSharedPreferenceChanged(sharedPreferences, s)
         when (s) {
             SongsPreferences.SONG_SORT,
-            SongsPreferences.SORTING_STYLE,
+            SongsPreferences.SORTING_STYLE -> {
+                // Only the sort order changed — re-sort the cached list, no DB query needed.
+                resort()
+            }
             LibraryPreferences.MINIMUM_AUDIO_SIZE,
             LibraryPreferences.MINIMUM_AUDIO_LENGTH -> {
+                // Filter criteria changed — need a fresh query from the database.
                 loadData()
             }
         }
