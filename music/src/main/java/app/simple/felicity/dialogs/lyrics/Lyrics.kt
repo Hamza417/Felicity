@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.viewModels
 import app.simple.felicity.databinding.DialogLyricsBinding
+import app.simple.felicity.decorations.lrc.view.ModernLrcView
 import app.simple.felicity.dialogs.lyrics.AddLyrics.Companion.showAddLyrics
 import app.simple.felicity.extensions.dialogs.MediaDialogFragment
 import app.simple.felicity.repository.constants.BundleConstants
@@ -19,7 +20,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
 
 @AndroidEntryPoint
-class Lyrics : MediaDialogFragment() {
+class Lyrics : MediaDialogFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
 
     private lateinit var binding: DialogLyricsBinding
 
@@ -35,7 +36,7 @@ class Lyrics : MediaDialogFragment() {
             }
     )
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = DialogLyricsBinding.inflate(inflater, container, false)
 
         return binding.root
@@ -46,6 +47,7 @@ class Lyrics : MediaDialogFragment() {
 
         // Allow the BottomSheet to take over (dismiss) once the user scrolls past the end of lyrics
         binding.lrcView.setParentDismissEnabled(true)
+        binding.lrcView.setFadeLength(ModernLrcView.DEFAULT_FADE_LENGTH.div(2))
 
         binding.title.text = audio?.title
         binding.artists.text = audio?.artist
@@ -63,8 +65,14 @@ class Lyrics : MediaDialogFragment() {
         binding.addLyrics.setOnClickListener {
             audio?.let {
                 childFragmentManager.showAddLyrics(audio!!)
+                    .setOnLyricsCreatedListener(this)
             }
         }
+    }
+
+    override fun onLyricsCreated() {
+        // Reload the lyrics view after the sidecar file has been created
+        lyricsViewModel.reloadLrcData()
     }
 
     companion object {

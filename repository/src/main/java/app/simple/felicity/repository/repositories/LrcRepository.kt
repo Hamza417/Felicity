@@ -154,6 +154,28 @@ class LrcRepository @Inject constructor() {
     }
 
     /**
+     * Save plain-text lyrics to a .txt sidecar file next to the audio file.
+     *
+     * @param textContent The plain lyrics content to save.
+     * @param audioFilePath The path to the audio file.
+     * @return Result indicating success or failure.
+     */
+    suspend fun saveTxtToFile(textContent: String, audioFilePath: String): Result<File> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val txtFilePath = audioFilePath.substringBeforeLast(".") + ".txt"
+                val txtFile = File(txtFilePath)
+                txtFile.writeText(textContent)
+                Log.d(TAG, "TXT lyrics saved successfully: ${txtFile.absolutePath}")
+                return@withContext Result.success(txtFile)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving TXT lyrics to file", e)
+                return@withContext Result.failure(e)
+            }
+        }
+    }
+
+    /**
      * Load LRC content from a sidecar file.
      *
      * @param audioFilePath The path to the audio file.
@@ -187,6 +209,29 @@ class LrcRepository @Inject constructor() {
     fun lrcFileExists(audioFilePath: String): Boolean {
         val lrcFilePath = audioFilePath.substringBeforeLast(".") + ".lrc"
         return File(lrcFilePath).exists()
+    }
+
+    /**
+     * Load plain-text lyrics from a .txt sidecar file next to the audio file.
+     *
+     * @param audioFilePath The path to the audio file.
+     * @return The plain-text content as a string, or null if the file doesn't exist.
+     */
+    suspend fun loadTxtFromFile(audioFilePath: String): Result<String?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val txtFilePath = audioFilePath.substringBeforeLast(".") + ".txt"
+                val txtFile = File(txtFilePath)
+                if (txtFile.exists()) {
+                    Result.success(txtFile.readText())
+                } else {
+                    Result.success(null)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading TXT lyrics from file", e)
+                Result.failure(e)
+            }
+        }
     }
 
     companion object {

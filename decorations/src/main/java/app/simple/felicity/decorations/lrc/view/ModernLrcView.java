@@ -34,6 +34,7 @@ import androidx.dynamicanimation.animation.SpringForce;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.decorations.lrc.model.LrcData;
 import app.simple.felicity.decorations.lrc.model.LrcEntry;
+import app.simple.felicity.decorations.lrc.parser.TxtParser;
 import app.simple.felicity.decorations.ripple.FelicityRippleDrawable;
 import app.simple.felicity.decorations.typeface.TypeFace;
 import app.simple.felicity.preferences.AppearancePreferences;
@@ -51,7 +52,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private static final float DEFAULT_TEXT_SIZE = 22f; // sp
     private static final float DEFAULT_CURRENT_TEXT_SIZE = 28f; // sp
     private static final float DEFAULT_LINE_SPACING = 16f; // dp
-    private static final float DEFAULT_FADE_LENGTH = 140f; // dp - length of vertical fade
+    public static final float DEFAULT_FADE_LENGTH = 140f; // dp - length of vertical fade
     private static final float DEFAULT_SCROLL_MULTIPLIER = 1f; // Accelerated scroll multiplier
     private static final float DEFAULT_OVERSCROLL_DISTANCE = 250f; // dp - maximum overscroll distance
     private static final float OVERSCROLL_DAMPING = 0.25f; // Rubber band damping factor (0-1)
@@ -284,8 +285,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             
             // Choose paint and set animated size
             TextPaint paint;
-            // Don't highlight empty lines
-            if (i == currentLineIndex && text != null && !text.trim().isEmpty()) {
+            // Don't highlight empty lines; in static mode all lines use the normal paint
+            if (!isStaticMode() && i == currentLineIndex && text != null && !text.trim().isEmpty()) {
                 paint = currentPaint;
             } else {
                 paint = normalPaint;
@@ -432,6 +433,11 @@ public class ModernLrcView extends View implements ThemeChangedListener {
      * Get animated text size for a line
      */
     private float getAnimatedTextSize(int lineIndex) {
+        // In static (plain-text) mode, all lines have the same normal size.
+        if (isStaticMode()) {
+            return normalTextSize;
+        }
+
         // Return animated size if it exists, otherwise return default size
         Float animatedSize = animatedTextSizes.get(lineIndex);
         if (animatedSize != null) {
@@ -704,6 +710,18 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
+     * Returns {@code true} when the loaded lyrics data was parsed from a plain-text file
+     * (no timestamps).  In this mode the view acts as a scrollable text display rather than
+     * a time-synced karaoke view – no line is highlighted and {@link #updateTime} is a no-op.
+     */
+    public boolean isStaticMode() {
+        if (lrcData == null || lrcData.isEmpty()) {
+            return false;
+        }
+        return lrcData.getEntries().get(0).getTimeInMillis() == TxtParser.NO_TIMESTAMP;
+    }
+
+    /**
      * Set lyrics data
      */
     public void setLrcData(LrcData data) {
@@ -740,13 +758,19 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Update current playback time
+     * Update current playback time.
+     * This is a no-op when the view is in static (plain-text) mode.
      */
     public void updateTime(long timeInMillis) {
         if (lrcData == null || lrcData.isEmpty()) {
             return;
         }
         
+        // Plain-text lyrics have no timestamps; skip time-driven logic entirely.
+        if (isStaticMode()) {
+            return;
+        }
+
         // Apply offset if present
         timeInMillis += lrcData.getOffset();
         

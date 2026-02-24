@@ -19,11 +19,11 @@
             android:padding="@dimen/padding_10"
             android:background="@android:color/transparent"
             android:gravity="top"
+            android:textSize="@dimen/text_size_14"
             android:layout_gravity="center_vertical"
             android:hint="@string/paste_lyrics_here"
-            android:imeOptions="actionUnspecified"
-            android:importantForAutofill="yes"
-            android:inputType="text"
+            android:importantForAutofill="no"
+            android:inputType="textMultiLine"
             app:appFontStyle="medium"
             app:textColorStyle="primary" />
 

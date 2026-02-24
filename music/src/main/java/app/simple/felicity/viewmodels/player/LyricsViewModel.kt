@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import app.simple.felicity.decorations.lrc.model.LrcData
 import app.simple.felicity.decorations.lrc.parser.LrcParser
 import app.simple.felicity.decorations.lrc.parser.LyricsParseException
+import app.simple.felicity.decorations.lrc.parser.TxtParser
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
@@ -60,13 +61,28 @@ class LyricsViewModel @AssistedInject constructor(
                         lrcData.postValue(LrcData())
                     }
                 } else {
-                    Log.d(TAG, "No existing LRC file found for ${currentSong.title}, attempting to fetch automatically.")
-                    // No existing LRC file, try to fetch automatically
-                    fetchAndSaveLrc(
-                            trackName = currentSong.title ?: currentSong.name,
-                            artistName = currentSong.artist ?: "",
-                            audioPath = currentSong.path
-                    )
+                    Log.d(TAG, "No existing LRC file found for ${currentSong.title}, checking for TXT sidecar.")
+                    // Try plain-text sidecar first
+                    val txtResult = lrcRepository.loadTxtFromFile(currentSong.path)
+                    val txtContent = txtResult.getOrNull()
+                    if (!txtContent.isNullOrBlank()) {
+                        Log.d(TAG, "TXT sidecar found for ${currentSong.title}, loading plain-text lyrics.")
+                        try {
+                            val txtLrcData = TxtParser().parse(txtContent)
+                            lrcData.postValue(txtLrcData)
+                        } catch (e: LyricsParseException) {
+                            e.printStackTrace()
+                            lrcData.postValue(LrcData())
+                        }
+                    } else {
+                        Log.d(TAG, "No TXT sidecar found for ${currentSong.title}, attempting to fetch automatically.")
+                        // No existing LRC or TXT file, try to fetch automatically
+                        fetchAndSaveLrc(
+                                trackName = currentSong.title ?: currentSong.name,
+                                artistName = currentSong.artist ?: "",
+                                audioPath = currentSong.path
+                        )
+                    }
                 }
             }.onFailure { exception ->
                 exception.printStackTrace()
