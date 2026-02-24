@@ -43,6 +43,7 @@ import app.simple.felicity.theme.tools.MonetPalette
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException
@@ -132,7 +133,31 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                         Log.d(TAG, "Playback state restored successfully")
                     }
                 } else {
-                    Log.d(TAG, "No valid playback state found in database")
+                    // No saved queue (e.g. first-ever launch) – the DB may be empty because the
+                    // scan hasn't finished yet. Observe the Flow and set the queue as soon as the
+                    // first non-empty batch of songs arrives (works for both instant & delayed scans).
+                    Log.d(TAG, "No valid playback state found – waiting for first songs from DB scan")
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        try {
+                            val dao = audioDatabase.audioDao() ?: return@launch
+                            // first { } suspends until Room emits a non-empty list, then cancels.
+                            val firstSongs = dao.getAllAudio().first { it.isNotEmpty() }
+                            withContext(Dispatchers.Main) {
+                                if (MediaManager.getSongs().isEmpty()) {
+                                    MediaManager.setSongs(
+                                            audios = firstSongs,
+                                            position = 0,
+                                            startPositionMs = 0L,
+                                    )
+                                    Log.d(TAG, "Default queue loaded on first launch: ${firstSongs.size} songs")
+                                } else {
+                                    Log.d(TAG, "Queue already populated by the time scan finished – skipping default load")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error waiting for first songs from DB", e)
+                        }
+                    }
                 }
             } catch (e: NullPointerException) {
                 Log.e(TAG, "Error restoring last song state: ${e.message}")
