@@ -130,6 +130,18 @@ class RotaryKnobView @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Paint for the tiny text labels rendered just beyond each end-stop tick mark.
+     * Text size is governed by [tickLabelTextSizeFraction].
+     */
+    private val tickLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        if (!isInEditMode) {
+            typeface = TypeFace.getMediumTypeFace(context)
+            color = ThemeManager.theme.textViewTheme.secondaryTextColor
+        }
+    }
+
     /** Fallback arc/tick color used when no [SimpleRotaryKnobDrawable] is attached. */
     @ColorInt
     var arcColor: Int = SimpleRotaryKnobDrawable.DEFAULT_IDLE_COLOR
@@ -241,6 +253,44 @@ class RotaryKnobView @JvmOverloads constructor(
             field = value; invalidate()
         }
 
+    /**
+     * Text drawn just beyond the **minimum** (start) end-stop tick.
+     * Set to an empty string to hide the label (default).
+     */
+    var tickStartText: String = ""
+        set(value) {
+            field = value; invalidate()
+        }
+
+    /**
+     * Text drawn just beyond the **maximum** (end) end-stop tick.
+     * Set to an empty string to hide the label (default).
+     */
+    var tickEndText: String = ""
+        set(value) {
+            field = value; invalidate()
+        }
+
+    /**
+     * Size of the tick label text as a fraction of the available radius.
+     * Intentionally very small — 0.05 = 5 % — so it never crowds the arc ring.
+     * Changing this triggers a geometry recalculation.
+     */
+    var tickLabelTextSizeFraction: Float = 0.05f
+        set(value) {
+            field = value; recalcGeometry()
+        }
+
+    /**
+     * Color applied to both tick label texts.
+     * Defaults to the theme secondary text color, updated automatically on theme changes.
+     */
+    @ColorInt
+    var tickLabelColor: Int = SimpleRotaryKnobDrawable.DEFAULT_IDLE_COLOR
+        set(value) {
+            field = value; invalidate()
+        }
+
     /** Typeface used for the value label. Defaults to the app medium typeface. */
     var labelTypeface: Typeface?
         get() = labelPaint.typeface
@@ -271,6 +321,7 @@ class RotaryKnobView @JvmOverloads constructor(
     private var arcStrokeWidthPx = 0f
     private var tickStartRadiusPx = 0f
     private var tickEndRadiusPx = 0f
+    private var tickLabelRadiusPx = 0f
     private var tickStrokeWidthPx = 0f
     private var labelYPx = 0f
     private var divStrokeWidthPx = 0f
@@ -339,6 +390,8 @@ class RotaryKnobView @JvmOverloads constructor(
     fun setThemeColors(theme: Theme) {
         labelPaint.color = theme.textViewTheme.primaryTextColor
         labelColor = theme.textViewTheme.primaryTextColor
+        tickLabelColor = theme.textViewTheme.secondaryTextColor
+        tickLabelPaint.color = theme.textViewTheme.secondaryTextColor
         if (knobDrawable is SimpleRotaryKnobDrawable) {
             val drawable = knobDrawable as SimpleRotaryKnobDrawable
             drawable.idleColor = theme.viewGroupTheme.highlightColor
@@ -368,6 +421,13 @@ class RotaryKnobView @JvmOverloads constructor(
         tickStrokeWidthPx = r * tickStrokeWidthFraction
         tickStartRadiusPx = arcCentreRadiusPx + arcStrokeWidthPx / 2f + r * tickGapFraction
         tickEndRadiusPx = tickStartRadiusPx + r * tickLengthFraction
+
+        // Tick label: tiny text placed just beyond the outer end of the tick mark.
+        val tickLabelSizePx = r * tickLabelTextSizeFraction
+        tickLabelPaint.textSize = tickLabelSizePx
+        // Centre the glyph one full text-size beyond the tick end so it clears the mark.
+        tickLabelRadiusPx = tickEndRadiusPx + tickLabelSizePx
+
         divStrokeWidthPx = r * divisionStrokeWidthFraction
         divProgressLengthPx = r * divisionProgressLengthFraction
         divIdleLengthPx = r * divisionIdleLengthFraction
@@ -491,8 +551,8 @@ class RotaryKnobView @JvmOverloads constructor(
         // End-stop tick marks at the min (ARC_START_ANGLE) and max (ARC_START_ANGLE + ARC_SWEEP).
         tickPaint.strokeWidth = tickStrokeWidthPx
         tickPaint.color = currentArcColor()
-        drawTick(canvas, ARC_START_ANGLE)
-        drawTick(canvas, ARC_START_ANGLE + ARC_SWEEP)
+        drawTick(canvas, ARC_START_ANGLE, tickStartText)
+        drawTick(canvas, ARC_START_ANGLE + ARC_SWEEP, tickEndText)
 
         // Value label centred below the knob, between the two end-stop ticks.
         if (labelText.isNotEmpty()) {
@@ -542,17 +602,36 @@ class RotaryKnobView @JvmOverloads constructor(
 
     /**
      * Draws a single end-stop tick mark radiating outward from [tickStartRadiusPx] to
-     * [tickEndRadiusPx] at the given canvas-space angle.
+     * [tickEndRadiusPx] at the given canvas-space angle, then renders [label] just beyond
+     * the tick end along the same radial direction when the string is non-empty.
+     *
+     * The label text is sized by [tickLabelTextSizeFraction] — intentionally tiny so it
+     * never competes visually with the arc ring or value label.
      */
-    private fun drawTick(canvas: Canvas, angleDeg: Float) {
+    private fun drawTick(canvas: Canvas, angleDeg: Float, label: String = "") {
         val rad = Math.toRadians(angleDeg.toDouble())
         val cosA = cos(rad).toFloat()
         val sinA = sin(rad).toFloat()
+
+        // Tick line
         canvas.drawLine(
                 cx + cosA * tickStartRadiusPx, cy + sinA * tickStartRadiusPx,
                 cx + cosA * tickEndRadiusPx, cy + sinA * tickEndRadiusPx,
                 tickPaint
         )
+
+        // Optional label centred just beyond the outer end of the tick, along the same radial axis.
+        if (label.isNotEmpty()) {
+            tickLabelPaint.color = tickLabelColor
+            // Offset by half the text height to optically centre the glyph on the radial direction.
+            val textOffset = (tickLabelPaint.descent() - tickLabelPaint.ascent()) / 2f - tickLabelPaint.descent()
+            canvas.drawText(
+                    label,
+                    cx + cosA * tickLabelRadiusPx,
+                    cy + sinA * tickLabelRadiusPx + textOffset,
+                    tickLabelPaint
+            )
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -650,6 +729,22 @@ class RotaryKnobView @JvmOverloads constructor(
         listener = rotaryKnobListener
         labelText = rotaryKnobListener.onLabel(angleToValue(knobRotation))
         invalidate()
+    }
+
+    /**
+     * Sets the tiny labels that appear just beyond the min and max end-stop tick marks.
+     *
+     * Both labels are rendered at [tickLabelTextSizeFraction] of the available radius —
+     * typically very small (≈ 5 %) — so they sit neatly outside the arc ring without
+     * cluttering the design.
+     *
+     * @param startText  Label for the minimum (start) tick. Pass an empty string to hide it.
+     * @param endText    Label for the maximum (end) tick. Pass an empty string to hide it.
+     */
+    fun setTickTexts(startText: String, endText: String) {
+        tickStartText = startText
+        tickEndText = endText
+        // invalidate() is triggered by each property setter individually.
     }
 
     /**

@@ -18,7 +18,7 @@ import kotlin.math.roundToInt
 class VolumeKnob : ScopedBottomSheetFragment() {
 
     private var audioManager: AudioManager? = null
-    private var binding: DialogVolumeKnobBinding? = null
+    private lateinit var binding: DialogVolumeKnobBinding
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = DialogVolumeKnobBinding.inflate(inflater, container, false)
@@ -26,15 +26,16 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         requireActivity().volumeControlStream = AudioManager.STREAM_MUSIC
         audioManager = requireActivity().getSystemService(Context.AUDIO_SERVICE) as AudioManager?
 
-        return binding?.root
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         setKnobPosition()
+        binding.volumeKnob.setTickTexts("0", "100")
 
-        binding?.volumeKnob?.setListener(object : RotaryKnobListener {
+        binding.volumeKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {
                 Log.d(TAG, "Increment: $value")
             }
@@ -76,12 +77,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         val current = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC)?.toFloat() ?: 0f
         val max = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC)?.toFloat() ?: 1f
         Log.d(TAG, "setKnobPosition: current=$current, max=$max (percentage=${(current / max) * 100f})")
-        binding?.volumeKnob?.setKnobPosition((current / max) * 100f)
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        binding = null
+        binding.volumeKnob.setKnobPosition((current / max) * 100f)
     }
 
     companion object {
