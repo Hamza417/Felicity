@@ -52,6 +52,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     private var progressInternal = 0f // current float progress for animation, in absolute units within [min..max]
     private var defaultProgress = 0f // value to reset to on double tap
     private var hasDefaultSet = false // only reset if explicitly configured
+    private var defaultIndicatorEnabled = true // can be disabled explicitly
 
     @ColorInt
     private var trackColor: Int = if (isInEditMode) {
@@ -447,10 +448,28 @@ class FelicitySeekbar @JvmOverloads constructor(
     fun getProgress(): Float = progressInternal
 
     fun setDefaultProgress(value: Float) {
+        if (value < 0f) {
+            // Negative value: disable the default indicator entirely
+            hasDefaultSet = false
+            defaultIndicatorEnabled = false
+            invalidate()
+            return
+        }
         hasDefaultSet = true
         defaultProgress = value.coerceIn(minProgress, maxProgress)
         invalidate()
     }
+
+    /**
+     * Explicitly enable or disable drawing of the default indicator line.
+     * When disabled, the indicator will not be drawn regardless of [setDefaultProgress].
+     */
+    fun setDefaultIndicatorEnabled(enabled: Boolean) {
+        defaultIndicatorEnabled = enabled
+        invalidate()
+    }
+
+    fun isDefaultIndicatorEnabled(): Boolean = defaultIndicatorEnabled
 
     fun resetToDefault(animate: Boolean = true) {
         setProgress(defaultProgress, fromUser = true, animate = animate)
@@ -496,7 +515,8 @@ class FelicitySeekbar @JvmOverloads constructor(
         }
 
         // Default indicator
-        if (hasDefaultSet) {
+        val indicatorEpsilon = (rangeSpan() * 0.001f).coerceAtLeast(0.0001f)
+        if (hasDefaultSet && defaultIndicatorEnabled && (defaultProgress - minProgress) > indicatorEpsilon) {
             val df = valueToFraction(defaultProgress).coerceIn(0f, 1f)
             val dx = left + (right - left) * df
             val halfW = defaultIndicatorWidthPx / 2f
