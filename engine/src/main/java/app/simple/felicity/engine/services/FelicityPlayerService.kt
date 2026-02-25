@@ -11,6 +11,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -325,9 +326,27 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-            Log.e(TAG, "Player error: ${error.errorCodeName}", error)
-            MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ERROR)
-            stopPeriodicStateSaving()
+            if (error.errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED) {
+                // The device can't decode this specific file.
+                // Automatically skip to the next track or show a Toast to the user.
+                Log.e(TAG, "Decoding error for current track: ${error.message} (code: ${error.errorCode})")
+                if (player.hasNextMediaItem()) {
+                    player.seekToNextMediaItem()
+                    Log.i(TAG, "Skipped to next track due to decoding error")
+                } else {
+                    // No media item to skip to, go back?
+                    player.seekToDefaultPosition()
+                    Log.i(TAG, "Restarted current track due to decoding error (no next track available)")
+                }
+
+                player.prepare()
+                player.playWhenReady = true
+            } else {
+                Log.e(TAG, "Playback error: ${error.message} (code: ${error.errorCode})")
+                Log.e(TAG, "Player error: ${error.errorCodeName}", error)
+                MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ERROR)
+                stopPeriodicStateSaving()
+            }
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
