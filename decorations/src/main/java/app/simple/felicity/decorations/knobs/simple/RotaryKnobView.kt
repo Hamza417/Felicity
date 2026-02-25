@@ -1,10 +1,12 @@
 package app.simple.felicity.decorations.knobs.simple
 
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
 import android.os.VibrationEffect
@@ -12,9 +14,13 @@ import android.os.Vibrator
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import androidx.annotation.ColorInt
 import androidx.core.graphics.withRotation
 import app.simple.felicity.decoration.R
+import app.simple.felicity.decorations.typeface.TypeFace
+import app.simple.felicity.theme.managers.ThemeManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -40,14 +46,20 @@ class RotaryKnobView @JvmOverloads constructor(
     @Suppress("DEPRECATION")
     private var vibration: Vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     private var lastMoveAngle = 0f
-    private var knobRotation = 0f          // current visual rotation of the knob, clamped to START..END
-    private var rotationAnimator: android.animation.ValueAnimator? = null
+    private var knobRotation = 0f
+    private var rotationAnimator: ValueAnimator? = null
+    private var firstPositionSet = true   // true until setKnobPosition is called at least once
     private val debounceHandler = Handler(Looper.getMainLooper())
     private var debounceRunnable: Runnable? = null
     private var pendingVolume = 0f
     var value = 130
     private var haptic = false
     private var listener: RotaryKnobListener? = null
+
+    // ── Label state ───────────────────────────────────────────────────────────
+
+    /** Current label string, produced by [RotaryKnobListener.onLabel]. */
+    private var labelText: String = ""
 
     // ── Paints ────────────────────────────────────────────────────────────────
 
@@ -61,42 +73,88 @@ class RotaryKnobView @JvmOverloads constructor(
         strokeCap = Paint.Cap.ROUND
     }
 
+    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+        if (isInEditMode.not()) {
+            typeface = TypeFace.getMediumTypeFace(context)
+            color = ThemeManager.theme.textViewTheme.primaryTextColor
+        }
+    }
+
     // ── Customisation ─────────────────────────────────────────────────────────
 
-    /** Fallback arc/tick color when not using [SimpleRotaryKnobDrawable]. */
     @ColorInt
     var arcColor: Int = SimpleRotaryKnobDrawable.DEFAULT_IDLE_COLOR
-        set(value) { field = value; invalidate() }
+        set(value) {
+            field = value; invalidate()
+        }
 
-    /**
-     * Fraction of the total available radius occupied by the knob circle.
-     * Everything else (gap + arc + gap + ticks) lives in the remaining fraction.
-     * Default 0.72 — knob takes 72 %, outer ring takes 28 %.
-     */
+    /** Fraction of available radius the knob circle occupies. Default 0.80. */
     var knobRadiusFraction: Float = 0.80f
-        set(value) { field = value.coerceIn(0.1f, 0.95f); recalcGeometry() }
+        set(value) {
+            field = value.coerceIn(0.1f, 0.95f); recalcGeometry()
+        }
 
-    /** Gap between knob outer edge and near edge of arc, as fraction of available radius. */
+    /** Gap: knob outer edge → arc near edge, fraction of available radius. */
     var arcGapFraction: Float = 0.06f
-        set(value) { field = value; recalcGeometry() }
+        set(value) {
+            field = value; recalcGeometry()
+        }
 
-    /** Arc stroke width as fraction of available radius. */
+    /** Arc stroke width, fraction of available radius. */
     var arcStrokeWidthFraction: Float = 0.01f
-        set(value) { field = value; recalcGeometry() }
+        set(value) {
+            field = value; recalcGeometry()
+        }
 
-    /** Gap between far edge of arc and near end of tick, as fraction of available radius. */
+    /** Gap: arc far edge → tick near end, fraction of available radius. */
     var tickGapFraction: Float = 0.06f
-        set(value) { field = value; recalcGeometry() }
+        set(value) {
+            field = value; recalcGeometry()
+        }
 
-    /** Tick length as fraction of available radius. */
+    /** Tick length, fraction of available radius. */
     var tickLengthFraction: Float = 0.03f
-        set(value) { field = value; recalcGeometry() }
+        set(value) {
+            field = value; recalcGeometry()
+        }
 
-    /** Tick stroke width as fraction of available radius. */
+    /** Tick stroke width, fraction of available radius. */
     var tickStrokeWidthFraction: Float = 0.01f
-        set(value) { field = value; invalidate() }
+        set(value) {
+            field = value; invalidate()
+        }
 
-    // ── Computed geometry (recalculated in onSizeChanged) ─────────────────────
+    /** Label text size, fraction of available radius. Default 0.14. */
+    var labelTextSizeFraction: Float = 0.10f
+        set(value) {
+            field = value; recalcGeometry()
+        }
+
+    /** Label color. Defaults to the same muted color as the arc. */
+    @ColorInt
+    var labelColor: Int = SimpleRotaryKnobDrawable.DEFAULT_IDLE_COLOR
+        set(value) {
+            field = value; invalidate()
+        }
+
+    /** Optional typeface for the label. */
+    var labelTypeface: Typeface?
+        get() = labelPaint.typeface
+        set(value) {
+            labelPaint.typeface = value ?: Typeface.DEFAULT; invalidate()
+        }
+
+    /** Duration in ms for the rotation animation. Default 400. */
+    var animationDuration: Long = 400L
+
+    /** Tension for the overshoot interpolator used on the first value set. Default 2.0. */
+    var overshootTension: Float = 2.0f
+
+    /** Deceleration factor for the decelerate interpolator used on subsequent sets. Default 1.5. */
+    var decelerateFactor: Float = 1.5f
+
+    // ── Computed geometry ─────────────────────────────────────────────────────
 
     private var cx = 0f
     private var cy = 0f
@@ -106,7 +164,9 @@ class RotaryKnobView @JvmOverloads constructor(
     private var tickStartRadiusPx = 0f
     private var tickEndRadiusPx = 0f
     private var tickStrokeWidthPx = 0f
+    private var labelYPx = 0f          // baseline Y for the label
     private val arcOval = RectF()
+
 
     // ── Init ──────────────────────────────────────────────────────────────────
 
@@ -119,9 +179,7 @@ class RotaryKnobView @JvmOverloads constructor(
             }
         }
 
-        // When the drawable's color animates, redraw this view so arc/ticks stay in sync
         (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = { invalidate() }
-
         setOnTouchListener { _, event -> handleTouch(event) }
     }
 
@@ -133,6 +191,7 @@ class RotaryKnobView @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = null
+        rotationAnimator?.cancel()
     }
 
     // ── Size ──────────────────────────────────────────────────────────────────
@@ -142,11 +201,6 @@ class RotaryKnobView @JvmOverloads constructor(
         recalcGeometry()
     }
 
-    /**
-     * Recomputes all pixel geometry from the current view size and fraction properties.
-     * Layout outward from centre:  [knob circle] [arcGap] [arc] [tickGap] [tick]
-     * Everything fits within availableRadius = min(w, h) / 2.
-     */
     private fun recalcGeometry() {
         if (width == 0 || height == 0) return
 
@@ -154,19 +208,29 @@ class RotaryKnobView @JvmOverloads constructor(
         cy = height / 2f
         val availableRadius = min(width, height) / 2f
 
-        knobRadiusPx        = availableRadius * knobRadiusFraction
-        arcStrokeWidthPx    = availableRadius * arcStrokeWidthFraction
-        arcCentreRadiusPx   = knobRadiusPx + availableRadius * arcGapFraction + arcStrokeWidthPx / 2f
-        tickStrokeWidthPx   = availableRadius * tickStrokeWidthFraction
-        tickStartRadiusPx   = arcCentreRadiusPx + arcStrokeWidthPx / 2f + availableRadius * tickGapFraction
-        tickEndRadiusPx     = tickStartRadiusPx + availableRadius * tickLengthFraction
+        knobRadiusPx = availableRadius * knobRadiusFraction
+        arcStrokeWidthPx = availableRadius * arcStrokeWidthFraction
+        arcCentreRadiusPx = knobRadiusPx + availableRadius * arcGapFraction + arcStrokeWidthPx / 2f
+        tickStrokeWidthPx = availableRadius * tickStrokeWidthFraction
+        tickStartRadiusPx = arcCentreRadiusPx + arcStrokeWidthPx / 2f + availableRadius * tickGapFraction
+        tickEndRadiusPx = tickStartRadiusPx + availableRadius * tickLengthFraction
 
         arcOval.set(
                 cx - arcCentreRadiusPx, cy - arcCentreRadiusPx,
                 cx + arcCentreRadiusPx, cy + arcCentreRadiusPx
         )
 
-        // Update the drawable bounds so it knows its drawing area
+        // Label: centred between the two ticks, just below the knob bottom.
+        // The midpoint of the arc gap at the bottom (270° in canvas = 6 o'clock) is
+        // at cy + arcCentreRadiusPx. We place text a little further down.
+        val labelTextSizePx = availableRadius * labelTextSizeFraction
+        labelPaint.textSize = labelTextSizePx
+        // Position baseline so the text sits in the gap between the bottom of the knob
+        // and the bottom of the view, roughly centred in that space.
+        val bottomOfKnob = cy + knobRadiusPx
+        val bottomOfView = height.toFloat()
+        labelYPx = bottomOfKnob + (bottomOfView - bottomOfKnob) / 2f + labelTextSizePx / 2f
+
         val r = knobRadiusPx.toInt()
         knobDrawable.setBounds(
                 (cx - knobRadiusPx).toInt(), (cy - knobRadiusPx).toInt(),
@@ -184,25 +248,31 @@ class RotaryKnobView @JvmOverloads constructor(
 
         val color = currentArcColor()
 
-        // ── Static arc (never rotates) ────────────────────────────────────────
+        // Arc
         arcPaint.strokeWidth = arcStrokeWidthPx
         arcPaint.color = color
         canvas.drawArc(arcOval, ARC_START_ANGLE, ARC_SWEEP, false, arcPaint)
 
-        // ── Static tick marks at min and max positions ────────────────────────
+        // Ticks
         tickPaint.strokeWidth = tickStrokeWidthPx
         tickPaint.color = color
         drawTick(canvas, ARC_START_ANGLE)
         drawTick(canvas, ARC_START_ANGLE + ARC_SWEEP)
 
-        // ── Knob (rotated around its centre) ──────────────────────────────────
-        canvas.withRotation(knobRotation, cx, cy) {
+        // Label between ticks
+        if (labelText.isNotEmpty()) {
+            labelPaint.color = labelColor
+            canvas.drawText(labelText, cx, labelYPx, labelPaint)
+        }
+
+        // Knob — rotated around center; clamp visually so it never draws past the stops
+        canvas.withRotation(knobRotation.coerceIn(START, END), cx, cy) {
             knobDrawable.draw(this)
         }
     }
 
     private fun currentArcColor(): Int =
-            (knobDrawable as? SimpleRotaryKnobDrawable)?.currentStateColor ?: arcColor
+        (knobDrawable as? SimpleRotaryKnobDrawable)?.currentStateColor ?: arcColor
 
     private fun drawTick(canvas: Canvas, angleDeg: Float) {
         val rad = Math.toRadians(angleDeg.toDouble())
@@ -210,7 +280,7 @@ class RotaryKnobView @JvmOverloads constructor(
         val sinA = sin(rad).toFloat()
         canvas.drawLine(
                 cx + cosA * tickStartRadiusPx, cy + sinA * tickStartRadiusPx,
-                cx + cosA * tickEndRadiusPx,   cy + sinA * tickEndRadiusPx,
+                cx + cosA * tickEndRadiusPx, cy + sinA * tickEndRadiusPx,
                 tickPaint
         )
     }
@@ -222,6 +292,7 @@ class RotaryKnobView @JvmOverloads constructor(
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 rotationAnimator?.cancel()
+                rotationAnimator = null
                 knobDrawable.onPressedStateChanged(true, 300)
                 lastMoveAngle = calculateAngle(event.x, event.y)
                 feedback()
@@ -235,7 +306,9 @@ class RotaryKnobView @JvmOverloads constructor(
                 if (delta < -180f) delta += 360f
                 knobRotation = (knobRotation + delta).coerceIn(START, END)
                 lastMoveAngle = currentAngle
-                listener?.onRotate(angleToValue(knobRotation))
+                val v = angleToValue(knobRotation)
+                labelText = listener?.onLabel(v) ?: ""
+                listener?.onRotate(v)
                 listener?.onIncrement(abs(delta))
                 invalidate()
                 return true
@@ -259,26 +332,36 @@ class RotaryKnobView @JvmOverloads constructor(
     // ── Public API ────────────────────────────────────────────────────────────
 
     fun setKnobPosition(volume: Float, animate: Boolean = true) {
-        val target = valueToAngle(volume)
         if (animate) {
             pendingVolume = volume
             debounceRunnable?.let { debounceHandler.removeCallbacks(it) }
-            debounceRunnable = Runnable { animateRotation(valueToAngle(pendingVolume)) }
+            debounceRunnable = Runnable { animateTo(valueToAngle(pendingVolume)) }
             debounceHandler.postDelayed(debounceRunnable!!, 100)
         } else {
-            knobRotation = target
+            rotationAnimator?.cancel()
+            knobRotation = valueToAngle(volume)
+            labelText = listener?.onLabel(volume) ?: ""
+            firstPositionSet = false
             invalidate()
         }
     }
 
-    private fun animateRotation(toAngle: Float) {
+    private fun animateTo(targetAngle: Float) {
+        val clamped = targetAngle.coerceIn(START, END)
         rotationAnimator?.cancel()
-        val start = knobRotation
-        rotationAnimator = android.animation.ValueAnimator.ofFloat(start, toAngle).apply {
-            duration = 300
-            interpolator = android.view.animation.DecelerateInterpolator()
-            addUpdateListener {
-                knobRotation = it.animatedValue as Float
+        val interpolator = if (firstPositionSet) {
+            OvershootInterpolator(overshootTension)
+        } else {
+            DecelerateInterpolator(decelerateFactor)
+        }
+        firstPositionSet = false
+        val from = knobRotation
+        rotationAnimator = ValueAnimator.ofFloat(from, clamped).apply {
+            duration = animationDuration
+            this.interpolator = interpolator
+            addUpdateListener { anim ->
+                knobRotation = anim.animatedValue as Float
+                labelText = listener?.onLabel(angleToValue(knobRotation)) ?: ""
                 invalidate()
             }
             start()
@@ -287,23 +370,25 @@ class RotaryKnobView @JvmOverloads constructor(
 
     fun setListener(rotaryKnobListener: RotaryKnobListener) {
         this.listener = rotaryKnobListener
+        // Seed the initial label
+        labelText = rotaryKnobListener.onLabel(angleToValue(knobRotation))
+        invalidate()
     }
 
-    /** Replace the knob drawable. Must be a [RotaryKnobDrawable] subclass. */
     fun setKnobDrawable(drawable: RotaryKnobDrawable) {
         (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = null
         knobDrawable = drawable
         (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = { invalidate() }
-        recalcGeometry()   // re-sets bounds and redraws
+        recalcGeometry()
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun angleToValue(angle: Float): Float =
-            ((angle - START) / (END - START) * 100f).coerceIn(0f, 100f)
+        ((angle - START) / (END - START) * 100f).coerceIn(0f, 100f)
 
     private fun valueToAngle(volume: Float): Float =
-            START + (volume / 100f) * (END - START)
+        START + (volume / 100f) * (END - START)
 
     private fun feedback() {
         CoroutineScope(Dispatchers.Default).launch {
@@ -316,12 +401,12 @@ class RotaryKnobView @JvmOverloads constructor(
 
     companion object {
         private const val START = -150f
-        private const val END   =  150f
+        private const val END = 150f
 
         // Android canvas: 0° = 3 o'clock, CW+.
-        // Knob min (−150° from 12 o'clock) → −90° − 150° = −240° ≡ 120° in canvas coords.
-        // Sweep CW 300° reaches max (+150° from 12 o'clock, ≡ 60° in canvas coords).
+        // Knob min (−150° from 12 o'clock) = −240° ≡ 120° canvas.
+        // Sweep CW 300° reaches max (+150° from 12 o'clock).
         private const val ARC_START_ANGLE = 120f
-        private const val ARC_SWEEP       = 300f
+        private const val ARC_SWEEP = 300f
     }
 }
