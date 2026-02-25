@@ -2,6 +2,7 @@ package app.simple.felicity.decorations.views
 
 import android.animation.TimeInterpolator
 import android.animation.ValueAnimator
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
 import android.os.Handler
@@ -9,172 +10,310 @@ import android.os.Looper
 import android.os.Parcel
 import android.os.Parcelable
 import android.util.AttributeSet
-import android.view.LayoutInflater
+import android.util.Log
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
-import android.widget.FrameLayout
-import androidx.core.graphics.ColorUtils
+import android.widget.ImageView
+import android.widget.LinearLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.isNotEmpty
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
-import androidx.viewbinding.ViewBinding
-import app.simple.felicity.decoration.R
-import app.simple.felicity.decorations.theme.ThemeMaterialCardView
+import androidx.viewpager2.widget.ViewPager2
+import app.simple.felicity.decorations.corners.DynamicCornerMaterialCardView
+import app.simple.felicity.decorations.typeface.TypeFaceTextView
+import app.simple.felicity.shared.utils.ColorUtils.animateColorChange
+import app.simple.felicity.theme.managers.ThemeManager
 import kotlin.math.abs
 
 /**
- * Generic container view that hosts arbitrary content via ViewBinding.
- * Provides an onViewCreated-style callback and can attach to multiple
- * RecyclerViews to hide on scroll down and show on scroll up.
+ * Self-contained mini-player card that IS a [DynamicCornerMaterialCardView].
+ *
+ * Layout (single flat card, no wrapper):
+ *   ┌──────────────────────────────────────────────────┐
+ *   │ [AlbumArt] ←─── swipeable pager ────→ [▶/⏸]     │
+ *   │             Title                                │
+ *   │             Artist                               │
+ *   └──────────────────────────────────────────────────┘
+ *
+ * No external layout file or ViewBinding is required.
+ * Wire up [callbacks] to drive image loading, play/pause, and navigation.
+ *
+ * All scroll-hide/show behavior is preserved.
+ *
+ * ### Transparent mode
+ * [makeTransparent] zeroes elevation, makes the card background transparent and
+ * forces all text/icon colors to white so content stays legible over any backdrop.
+ * [makeOpaque] reverses everything back to the current theme colors.
  */
 class MiniPlayer @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0
-) : FrameLayout(context, attrs, defStyleAttr) {
+) : DynamicCornerMaterialCardView(context, attrs, defStyleAttr) {
 
-    private val card: ThemeMaterialCardView
+    // ── UI ───────────────────────────────────────────────────────────────────
 
-    // Internal RecyclerView attach/detach support
+    private val pager: ViewPager2
+    private val playPause: FlipPlayPauseView
+
+    // ── Adapter ──────────────────────────────────────────────────────────────
+
+    private val innerAdapter = InnerAdapter()
+    private var items: List<MiniPlayerItem> = emptyList()
+
+    /**
+     * All [TypeFaceTextView]s currently bound across visible pages.
+     * Used to switch color mode when toggling transparency.
+     */
+    private val activeTextViews: MutableSet<TypeFaceTextView> = mutableSetOf()
+
+    // ── Callbacks ────────────────────────────────────────────────────────────
+
+    interface Callbacks {
+        /** Called when the user swipes to a new page and settles on [position]. */
+        fun onPageSelected(position: Int) {}
+
+        /** Load album art into [imageView] using [payload] (e.g. an Audio object). */
+        fun onLoadArt(imageView: ImageView, payload: Any?) {}
+
+        /** Called when the play/pause button is clicked. */
+        fun onPlayPauseClick() {}
+
+        /** Called when a page row is tapped. */
+        fun onItemClick(position: Int) {}
+
+        /** Called when a page row is long-pressed. */
+        fun onItemLongClick(position: Int) {}
+    }
+
+    var callbacks: Callbacks? = null
+
+    // ── Transparency state ────────────────────────────────────────────────────
+
+    private var isTransparent: Boolean = false
+    private var opaqueCardColor: Int = Color.TRANSPARENT
+    private var transparentColorAnimator: ValueAnimator? = null
+
+    // ── Margin / inset bookkeeping ────────────────────────────────────────────
+
+    /** The uniform side margin applied in init (dp → px). */
+    private var baseSideMarginPx: Int = 0
+
+    /** The last nav-bar inset height received, so we can combine it with baseSideMarginPx. */
+    private var navBarInsetPx: Int = 0
+
+    // ── Scroll-hide bookkeeping ───────────────────────────────────────────────
+
     private val attached: MutableMap<RecyclerView, RecyclerView.OnScrollListener> = mutableMapOf()
 
     private val animDuration = 180L
     private val animInterpolator: TimeInterpolator = AccelerateDecelerateInterpolator()
     private val showInterpolator = DecelerateInterpolator()
     private val hideInterpolator = AccelerateInterpolator()
-
-    // Treat near-zero or near-hideDistance as stable states
     private val epsilon = 1f
 
     private val hideDistance: Float
         get() {
             val bm = (layoutParams as? MarginLayoutParams)?.bottomMargin ?: 0
+            Log.d("MiniPlayer", "Calculating hide distance: height=$height, bottomMargin=${(layoutParams as? MarginLayoutParams)?.bottomMargin ?: 0}")
             return height.toFloat() + bm.toFloat()
         }
 
-    private var currentBinding: ViewBinding? = null
-
-    // State preservation/restoration helpers
     private var pendingRestoreTranslationY: Float? = null
     private var pendingRestoreFraction: Float? = null
-
-    // When true, ignore RecyclerView-driven updates until next IDLE
     private var suppressAutoFromRecyclerUntilIdle: Boolean = false
     private var isManuallyControlled: Boolean = false
-
-    // Tracks whether an immersive drag started in a non-scrollable list; avoids
-    // auto-showing on spurious IDLE events (e.g., when switching panels and attaching a new RV)
     private var hadImmersiveDrag: Boolean = false
 
     private val resetManualControlHandler = Handler(Looper.getMainLooper())
-    private val resetManualControlRunnable = Runnable {
-        isManuallyControlled = false
-    }
+    private val resetManualControlRunnable = Runnable { isManuallyControlled = false }
 
-    // Track the original (opaque) card background color set by the theme
-    private var opaqueCardColor: Int = Color.TRANSPARENT
-    private var transparentColorAnimator: ValueAnimator? = null
+    // ── Init ──────────────────────────────────────────────────────────────────
 
     init {
-        // Inflate base container layout (root is <merge/>)
-        LayoutInflater.from(context).inflate(R.layout.miniplayer_view, this, true)
-        card = findViewById(R.id.container)
+        // The card IS this view — just set its layout margin once inflated
+        post {
+            val lp = layoutParams as? MarginLayoutParams ?: return@post
+            val margin = dp(15)
+            baseSideMarginPx = margin
+            lp.setMargins(margin, margin, margin, margin + navBarInsetPx)
+            layoutParams = lp
+        }
+
+        // ViewPager2 fills the remaining width
+        pager = ViewPager2(context).apply {
+            layoutParams = LinearLayout.LayoutParams(0, dp(64), 1f)
+            orientation = ViewPager2.ORIENTATION_HORIZONTAL
+            offscreenPageLimit = 1
+            adapter = innerAdapter
+        }
+
+        // Play/Pause button on the trailing edge
+        playPause = FlipPlayPauseView(context).apply {
+            val sz = dp(40)
+            layoutParams = LinearLayout.LayoutParams(sz, sz).also {
+                val hMargin = dp(10)
+                it.setMargins(hMargin, 0, hMargin, 0)
+                it.gravity = Gravity.CENTER_VERTICAL
+            }
+        }
+
+        // Single horizontal row — no extra wrapper needed
+        val row = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = ViewGroup.LayoutParams(
+                    LayoutParams.MATCH_PARENT,
+                    LayoutParams.WRAP_CONTENT)
+            addView(pager)
+            addView(playPause)
+        }
+
+        addView(row)
         isVisible = true
 
-        // Apply navigation bar inset as bottom margin so the mini player
-        // floats above the navigation bar (works for both gesture and button nav)
+        pager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                callbacks?.onPageSelected(position)
+            }
+        })
+
+        playPause.setOnClickListener { callbacks?.onPlayPauseClick() }
+
+        // Keep the card above the navigation bar
         ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
-            val navBarInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            navBarInsetPx = nav.bottom
             val lp = v.layoutParams as? MarginLayoutParams ?: return@setOnApplyWindowInsetsListener insets
-            lp.bottomMargin = navBarInsets.bottom
+            lp.bottomMargin = baseSideMarginPx + navBarInsetPx
             v.layoutParams = lp
             insets
         }
     }
 
-    // region Content API
+    // ── Public data API ───────────────────────────────────────────────────────
 
-    /**
-     * Set/replace content with a ViewBinding. Calls [onViewCreated] after the view is attached.
-     */
-    fun <T : ViewBinding> setContent(binding: T, onViewCreated: (T) -> Unit = {}) {
-        // Remove existing
-        removeContent()
-        // Attach new
-        card.addView(binding.root)
-        currentBinding = binding
-        onViewCreated(binding)
+    @SuppressLint("NotifyDataSetChanged")
+    fun setItems(newItems: List<MiniPlayerItem>) {
+        items = newItems
+        innerAdapter.notifyDataSetChanged()
     }
 
-    /** Remove the current content view, if any. */
-    fun removeContent() {
-        if (card.isNotEmpty()) card.removeAllViews()
-        currentBinding = null
+    fun setCurrentItem(position: Int, smoothScroll: Boolean = true) {
+        if (position in items.indices) {
+            pager.setCurrentItem(position, smoothScroll)
+        }
     }
 
-    /** Returns the currently set ViewBinding, if any. */
-    @Suppress("UNCHECKED_CAST", "unused")
-    fun <T : ViewBinding> getContent(): T? = currentBinding as? T
+    val currentItem: Int get() = pager.currentItem
 
-    /**
-     * Animate the card background to fully transparent.
-     * Use this for fragments that have a dark background and want a seamless look.
-     */
+    // ── Playback state ────────────────────────────────────────────────────────
+
+    fun setPlaying(playing: Boolean, animate: Boolean = true) {
+        if (playing) playPause.playing(animate) else playPause.paused(animate)
+    }
+
+    // ── Transparency ──────────────────────────────────────────────────────────
+
     fun makeTransparent(animated: Boolean = true) {
-        opaqueCardColor = card.cardBackgroundColor.defaultColor
-        val targetColor = ColorUtils.setAlphaComponent(opaqueCardColor, 0)
-        animateCardColor(opaqueCardColor, targetColor, animated)
-        elevation = 0f
+        if (isTransparent) return
+        isTransparent = true
+
+        // Remember the current opaque background so we can restore it
+        opaqueCardColor = cardBackgroundColor.defaultColor
+
+        // Background → fully transparent.
+        // DO NOT touch elevation/cardElevation — MaterialCardView uses cardElevation to
+        // compute compat shadow padding, so changing it shifts the view's bounds and
+        // causes the bottom margin to visually jump.  Instead, zero the shadow outline
+        // colors to achieve the flat/invisible shadow look.
+        animateCardColor(opaqueCardColor, Color.TRANSPARENT, animated)
+        outlineAmbientShadowColor = Color.TRANSPARENT
+        outlineSpotShadowColor = Color.TRANSPARENT
+
+        // Texts → white
+        activeTextViews.forEach { tv -> tv.animateColorChange(Color.WHITE) }
+
+        // Icon → white
+        if (animated) {
+            ValueAnimator.ofArgb(playPause.iconColor, Color.WHITE).apply {
+                duration = animDuration
+                addUpdateListener { playPause.iconColor = it.animatedValue as Int }
+                start()
+            }
+        } else {
+            playPause.iconColor = Color.WHITE
+        }
     }
 
-    /**
-     * Animate the card background back to its opaque theme color.
-     */
     fun makeOpaque(animated: Boolean = true) {
-        val currentColor = card.cardBackgroundColor.defaultColor
+        if (!isTransparent) return
+        isTransparent = false
+
         val target = if (opaqueCardColor != Color.TRANSPARENT) opaqueCardColor
-        else card.cardBackgroundColor.defaultColor
-        animateCardColor(currentColor, target, animated)
-        // Restore elevation to cast shadows again
-        elevation = resources.getDimension(R.dimen.app_views_elevation)
+        else ThemeManager.theme.viewGroupTheme.backgroundColor
+
+        // Restore background and shadow colors (elevation itself is never changed).
+        animateCardColor(Color.TRANSPARENT, target, animated)
+        val accentColor = ThemeManager.accent.primaryAccentColor
+        outlineAmbientShadowColor = accentColor
+        outlineSpotShadowColor = accentColor
+
+        // Texts → theme primary / secondary colors
+        val primaryColor = ThemeManager.theme.textViewTheme.primaryTextColor
+        val secondaryColor = ThemeManager.theme.textViewTheme.secondaryTextColor
+        activeTextViews.forEach { tv ->
+            val targetColor = if (tv.tag == TAG_ARTIST) secondaryColor else primaryColor
+            tv.animateColorChange(targetColor)
+        }
+
+        // Icon → theme colour
+        val iconColor = ThemeManager.theme.iconTheme.regularIconColor
+        if (animated) {
+            ValueAnimator.ofArgb(playPause.iconColor, iconColor).apply {
+                duration = animDuration
+                addUpdateListener { playPause.iconColor = it.animatedValue as Int }
+                start()
+            }
+        } else {
+            playPause.iconColor = iconColor
+        }
     }
 
     private fun animateCardColor(from: Int, to: Int, animated: Boolean) {
         transparentColorAnimator?.cancel()
         if (!animated || from == to) {
-            card.setCardBackgroundColor(to)
+            setCardBackgroundColor(to)
             return
         }
         transparentColorAnimator = ValueAnimator.ofArgb(from, to).apply {
             duration = animDuration
             interpolator = animInterpolator
-            addUpdateListener { card.setCardBackgroundColor(it.animatedValue as Int) }
+            addUpdateListener { setCardBackgroundColor(it.animatedValue as Int) }
             start()
         }
     }
 
-    // region Hide/Show animation
+    // ── Show / Hide ───────────────────────────────────────────────────────────
+
     fun show(animated: Boolean = true) {
-        // Ensure no conflicting animations
         animate().cancel()
-        // Make this view visible in case it was set to GONE/INVISIBLE
         isVisible = true
         alpha = 1f
-        // Clear any pending restore so an explicit command wins
         pendingRestoreFraction = null
         pendingRestoreTranslationY = null
-        // Prevent RecyclerView listeners from immediately overriding this explicit command
         suppressAutoFromRecyclerUntilIdle = true
         isManuallyControlled = true
-        // Defer until laid out to get the correct hideDistance
         if (height == 0) {
             addOnLayoutChangeListener(object : OnLayoutChangeListener {
-                override fun onLayoutChange(v: View?, left: Int, top: Int, right: Int, bottom: Int,
-                                            oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
+                override fun onLayoutChange(v: View?, l: Int, t: Int, r: Int, b: Int,
+                                            ol: Int, ot: Int, or2: Int, ob: Int) {
                     removeOnLayoutChangeListener(this)
                     show(animated)
                 }
@@ -186,17 +325,15 @@ class MiniPlayer @JvmOverloads constructor(
 
     fun hide(animated: Boolean = true) {
         animate().cancel()
-        // Keep in layout; hide by translating, not by changing visibility
         isVisible = true
         pendingRestoreFraction = null
         pendingRestoreTranslationY = null
-        // Prevent RecyclerView listeners from immediately overriding this explicit command
         suppressAutoFromRecyclerUntilIdle = true
         isManuallyControlled = true
         if (height == 0) {
             addOnLayoutChangeListener(object : OnLayoutChangeListener {
-                override fun onLayoutChange(v: View?, left: Int, top: Int, right: Int, bottom: Int,
-                                            oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
+                override fun onLayoutChange(v: View?, l: Int, t: Int, r: Int, b: Int,
+                                            ol: Int, ot: Int, or2: Int, ob: Int) {
                     removeOnLayoutChangeListener(this)
                     hide(animated)
                 }
@@ -205,16 +342,11 @@ class MiniPlayer @JvmOverloads constructor(
         }
         animateTranslationY(hideDistance, animated)
     }
-    // endregion
 
     @Suppress("unused")
-            /** Public API for the attacher to move the view with a scroll delta. */
-    fun offsetBy(dy: Int) {
-        updateForScrollDelta(dy)
-    }
+    fun offsetBy(dy: Int) = updateForScrollDelta(dy)
 
     @Suppress("unused")
-            /** Snap helpers for the attacher */
     fun snapToShown(animated: Boolean = true) = animateTranslationY(0f, animated)
 
     @Suppress("unused")
@@ -223,9 +355,7 @@ class MiniPlayer @JvmOverloads constructor(
     private fun animateTranslationY(target: Float, animated: Boolean) {
         if (!animated) {
             translationY = target
-            // Allow RecyclerView-driven updates again after an explicit movement completes
             suppressAutoFromRecyclerUntilIdle = false
-            // Delay resetting manual control to prevent immediate scroll interference
             resetManualControlHandler.removeCallbacks(resetManualControlRunnable)
             resetManualControlHandler.postDelayed(resetManualControlRunnable, 500)
             return
@@ -235,28 +365,23 @@ class MiniPlayer @JvmOverloads constructor(
             .setInterpolator(animInterpolator)
             .withEndAction {
                 suppressAutoFromRecyclerUntilIdle = false
-                // Delay resetting manual control to prevent immediate scroll interference
                 resetManualControlHandler.removeCallbacks(resetManualControlRunnable)
                 resetManualControlHandler.postDelayed(resetManualControlRunnable, 500)
             }
             .start()
     }
 
-    // Move the container incrementally with the scroll delta and clamp within [0, hideDistance]
     private fun updateForScrollDelta(dy: Int) {
-        if (height == 0) return // not laid out yet
-        if (suppressAutoFromRecyclerUntilIdle || isManuallyControlled) return // honor explicit show/hide
-        // Cancel any ongoing animation for responsive drag-follow
+        if (height == 0) return
+        if (suppressAutoFromRecyclerUntilIdle || isManuallyControlled) return
         animate().cancel()
         val target = (translationY + dy).coerceIn(0f, hideDistance)
         if (target != translationY) translationY = target
     }
 
-    // Clamp translation when size changes (e.g., rotation, insets change)
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (h > 0) {
-            // Preserve relative offset to keep hidden state intact
             if (oldh > 0 && translationY > 0f) {
                 val bm = (layoutParams as? MarginLayoutParams)?.bottomMargin ?: 0
                 val oldHideDistance = oldh.toFloat() + bm
@@ -266,32 +391,32 @@ class MiniPlayer @JvmOverloads constructor(
                     if (newTy != translationY) translationY = newTy
                 }
             }
-            // Apply any pending restore after the layout is ready
             applyPendingTranslationIfPossible()
         }
     }
 
-    // Helpers to detect stable states
     private fun isFullyShown(): Boolean = translationY <= epsilon
     private fun isFullyHidden(): Boolean = abs(translationY - hideDistance) <= epsilon
 
-    // region State save/restore
+    // ── State save / restore ──────────────────────────────────────────────────
+
     override fun onSaveInstanceState(): Parcelable {
         val superState = super.onSaveInstanceState()
         val fraction = if (hideDistance > 0f) (translationY / hideDistance).coerceIn(0f, 1f) else 0f
         return SavedState(superState).also {
             it.translationY = this.translationY
             it.fraction = fraction
+            it.isTransparent = this.isTransparent
         }
     }
 
     override fun onRestoreInstanceState(state: Parcelable?) {
         if (state is SavedState) {
             super.onRestoreInstanceState(state.superState)
-            // Prefer restoring by fraction so hidden stays hidden even if the height changes
             pendingRestoreFraction = state.fraction.takeIf { it in 0f..1f }
-            // Fallback to absolute translation if the fraction isn't valid
             if (pendingRestoreFraction == null) pendingRestoreTranslationY = state.translationY
+            // Restore transparency without animation (we're just rebuilding)
+            if (state.isTransparent) makeTransparent(animated = false)
             applyPendingTranslationIfPossible()
         } else {
             super.onRestoreInstanceState(state)
@@ -300,25 +425,22 @@ class MiniPlayer @JvmOverloads constructor(
 
     private fun applyPendingTranslationIfPossible() {
         if (height <= 0) {
-            // Defer until laid out
             addOnLayoutChangeListener(object : OnLayoutChangeListener {
-                override fun onLayoutChange(v: View?, left: Int, top: Int, right: Int, bottom: Int,
-                                            oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
+                override fun onLayoutChange(v: View?, l: Int, t: Int, r: Int, b: Int,
+                                            ol: Int, ot: Int, or2: Int, ob: Int) {
                     removeOnLayoutChangeListener(this)
                     applyPendingTranslationIfPossible()
                 }
             })
             return
         }
-
         var applied = false
         pendingRestoreFraction?.let { f ->
             animate().cancel()
-            val ty = (f.coerceIn(0f, 1f) * hideDistance).coerceIn(0f, hideDistance)
             translationY = when {
-                f >= 0.995f -> hideDistance // force exact hidden
-                f <= 0.005f -> 0f           // force exact shown
-                else -> ty
+                f >= 0.995f -> hideDistance
+                f <= 0.005f -> 0f
+                else -> (f.coerceIn(0f, 1f) * hideDistance).coerceIn(0f, hideDistance)
             }
             applied = true
         }
@@ -332,45 +454,28 @@ class MiniPlayer @JvmOverloads constructor(
         pendingRestoreTranslationY = null
     }
 
-    // Detect if a RecyclerView can actually scroll vertically
+    // ── RecyclerView scroll-hide ──────────────────────────────────────────────
+
     private fun isRecyclerVerticallyScrollable(rv: RecyclerView): Boolean {
-        // Use fast checks via canScrollVertically; fall back to range/extent
         if (rv.canScrollVertically(1) || rv.canScrollVertically(-1)) return true
         return try {
-            val extent = rv.computeVerticalScrollExtent()
-            val range = rv.computeVerticalScrollRange()
-            range > extent
+            rv.computeVerticalScrollRange() > rv.computeVerticalScrollExtent()
         } catch (_: Exception) {
             false
         }
     }
 
-    // region RecyclerView attach API (active)
-    @Suppress("unused")
-            /** Attach to one or more RecyclerViews to auto hide/show on scroll. */
-    fun attachToRecyclerViews(vararg recyclerViews: RecyclerView) {
-        recyclerViews.forEach { attachToRecyclerView(it) }
-    }
-
-    /** Attach to a single RecyclerView. No-op if already attached. */
     fun attachToRecyclerView(recyclerView: RecyclerView) {
         if (attached.containsKey(recyclerView)) return
         val listener = object : RecyclerView.OnScrollListener() {
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
-                super.onScrolled(rv, dx, dy)
-                // Ignore auto-hide/show if the list cannot actually scroll
                 if (!isRecyclerVerticallyScrollable(rv)) return
                 updateForScrollDelta(dy)
             }
 
             override fun onScrollStateChanged(rv: RecyclerView, newState: Int) {
-                super.onScrollStateChanged(rv, newState)
-                // Do not lift suppression or allow scroll behavior if manually controlled
                 if (isManuallyControlled) return
-
                 val scrollable = isRecyclerVerticallyScrollable(rv)
-
-                // For non-scrollable lists: provide a transient immersive hide on drag and animate back on settle/idle
                 if (!scrollable) {
                     when (newState) {
                         RecyclerView.SCROLL_STATE_DRAGGING -> {
@@ -378,12 +483,10 @@ class MiniPlayer @JvmOverloads constructor(
                             if (!isFullyHidden()) {
                                 animate().translationY(hideDistance)
                                     .setDuration(250)
-                                    .setInterpolator(hideInterpolator)
-                                    .start()
+                                    .setInterpolator(hideInterpolator).start()
                             }
                         }
                         RecyclerView.SCROLL_STATE_SETTLING, RecyclerView.SCROLL_STATE_IDLE -> {
-                            // Only animate back if an actual user drag happened
                             if (hadImmersiveDrag && !isFullyShown()) {
                                 animate().translationY(0f)
                                     .setDuration(250)
@@ -391,44 +494,38 @@ class MiniPlayer @JvmOverloads constructor(
                                     .withEndAction { hadImmersiveDrag = false }
                                     .start()
                             } else if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                                // Clear the flag on idle to avoid a sticky state
                                 hadImmersiveDrag = false
                             }
                         }
                     }
-
-                    // Ensure suppression doesn't get stuck
                     suppressAutoFromRecyclerUntilIdle = false
                     return
                 }
-
-                // Lift suppression only when the user starts dragging and this isn't manually controlled
                 if (suppressAutoFromRecyclerUntilIdle && newState == RecyclerView.SCROLL_STATE_DRAGGING) {
                     suppressAutoFromRecyclerUntilIdle = false
                 }
                 if (suppressAutoFromRecyclerUntilIdle) return
-
                 when (newState) {
                     RecyclerView.SCROLL_STATE_IDLE -> {
-                        // Preserve fully hidden/shown states; only snap if in-between
                         if (isFullyShown() || isFullyHidden()) return
-                        val halfway = hideDistance / 2f
-                        if (translationY <= halfway) {
-                            animate().translationY(0f)
+                        if (translationY <= hideDistance / 2f) {
+                            animate()
+                                .translationY(0f)
                                 .setDuration(250)
                                 .setInterpolator(showInterpolator)
                                 .start()
                         } else {
-                            animate().translationY(hideDistance)
+                            animate()
+                                .translationY(hideDistance)
                                 .setDuration(250)
                                 .setInterpolator(hideInterpolator)
                                 .start()
                         }
                     }
                     RecyclerView.SCROLL_STATE_DRAGGING -> {
-                        // Only auto-hide on drag if the list can actually scroll
                         if (isFullyShown()) {
-                            animate().translationY(hideDistance)
+                            animate()
+                                .translationY(hideDistance)
                                 .setDuration(250)
                                 .setInterpolator(hideInterpolator)
                                 .start()
@@ -437,44 +534,39 @@ class MiniPlayer @JvmOverloads constructor(
                 }
             }
         }
+
         recyclerView.addOnScrollListener(listener)
         attached[recyclerView] = listener
-        // Start responsive to scroll immediately on (re)attach
         suppressAutoFromRecyclerUntilIdle = false
-
-        // Do not force a show on attach; preserve current state across panels
     }
 
-    /** Detach from the given RecyclerViews. */
-    fun detachFromRecyclerViews(vararg recyclerViews: RecyclerView) {
-        recyclerViews.forEach { detachFromRecyclerView(it) }
-    }
+    @Suppress("unused")
+    fun attachToRecyclerViews(vararg recyclerViews: RecyclerView) =
+        recyclerViews.forEach { attachToRecyclerView(it) }
 
-    /** Detach from a single RecyclerView. */
     fun detachFromRecyclerView(recyclerView: RecyclerView) {
-        val listener = attached.remove(recyclerView) ?: return
-        recyclerView.removeOnScrollListener(listener)
+        attached.remove(recyclerView)?.let { recyclerView.removeOnScrollListener(it) }
     }
 
-    /** Detach from all attached RecyclerViews. */
+    @Suppress("unused")
+    fun detachFromRecyclerViews(vararg recyclerViews: RecyclerView) =
+        recyclerViews.forEach { detachFromRecyclerView(it) }
+
     fun detachFromAllRecyclerViews() {
-        attached.forEach { (rv, listener) -> rv.removeOnScrollListener(listener) }
+        attached.forEach { (rv, l) -> rv.removeOnScrollListener(l) }
         attached.clear()
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        // Do not carry suppression across fragment/activity transitions
         suppressAutoFromRecyclerUntilIdle = false
         resetManualControlHandler.removeCallbacks(resetManualControlRunnable)
         isManuallyControlled = false
-        // Do not reset translationY; preserve current state. Also reset immersive flag.
         hadImmersiveDrag = false
     }
 
     override fun onDetachedFromWindow() {
         detachFromAllRecyclerViews()
-        // Clear any suppression to avoid a sticky state on reattach
         suppressAutoFromRecyclerUntilIdle = false
         resetManualControlHandler.removeCallbacks(resetManualControlRunnable)
         isManuallyControlled = false
@@ -482,13 +574,123 @@ class MiniPlayer @JvmOverloads constructor(
         super.onDetachedFromWindow()
     }
 
-    // region SavedState class
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private fun dp(value: Int): Int =
+        TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value.toFloat(), resources.displayMetrics).toInt()
+
+    // ── Inner adapter ─────────────────────────────────────────────────────────
+
+    private inner class InnerAdapter : RecyclerView.Adapter<InnerAdapter.PageHolder>() {
+
+        override fun getItemCount(): Int = items.size
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PageHolder {
+            val albumArt = ImageView(parent.context).apply {
+                val sz = dp(64)
+                layoutParams = LinearLayout.LayoutParams(sz, sz)
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+            }
+
+            val title = TypeFaceTextView(parent.context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+                isSingleLine = true
+                marqueeRepeatLimit = -1
+                isSelected = true
+                fontStyle = TypeFaceTextView.BOLD
+                val hPad = dp(5)
+                setPadding(hPad, 0, hPad, 0)
+                tag = TAG_TITLE
+            }
+
+            val artist = TypeFaceTextView(parent.context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+                isSingleLine = true
+                marqueeRepeatLimit = -1
+                isSelected = true
+                fontStyle = TypeFaceTextView.REGULAR
+                val hPad = dp(5)
+                setPadding(hPad, 0, hPad, 0)
+                tag = TAG_ARTIST
+            }
+
+            val textBlock = LinearLayout(parent.context).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                addView(title)
+                addView(artist)
+            }
+
+            val row = LinearLayout(parent.context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                layoutParams = ViewGroup.LayoutParams(
+                        LayoutParams.MATCH_PARENT,
+                        LayoutParams.MATCH_PARENT)
+                addView(albumArt)
+                addView(textBlock)
+            }
+
+            // If already in transparent mode, start new views as white immediately
+            if (isTransparent) {
+                title.setTextColor(Color.WHITE)
+                artist.setTextColor(Color.WHITE)
+            }
+
+            return PageHolder(row, albumArt, title, artist)
+        }
+
+        override fun onBindViewHolder(holder: PageHolder, position: Int) {
+            val item = items[position]
+            holder.title.text = item.title
+            holder.artist.text = item.artist
+            callbacks?.onLoadArt(holder.albumArt, item.payload)
+
+            holder.row.setOnClickListener { callbacks?.onItemClick(holder.bindingAdapterPosition) }
+            holder.row.setOnLongClickListener {
+                callbacks?.onItemLongClick(holder.bindingAdapterPosition)
+                true
+            }
+        }
+
+        override fun onViewAttachedToWindow(holder: PageHolder) {
+            activeTextViews += holder.title
+            activeTextViews += holder.artist
+        }
+
+        override fun onViewDetachedFromWindow(holder: PageHolder) {
+            activeTextViews -= holder.title
+            activeTextViews -= holder.artist
+        }
+
+        inner class PageHolder(
+                val row: LinearLayout,
+                val albumArt: ImageView,
+                val title: TypeFaceTextView,
+                val artist: TypeFaceTextView
+        ) : RecyclerView.ViewHolder(row)
+    }
+
+    // ── SavedState ────────────────────────────────────────────────────────────
+
     internal class SavedState : BaseSavedState {
         var translationY: Float = 0f
         var fraction: Float = -1f
+        var isTransparent: Boolean = false
 
         constructor(superState: Parcelable?) : super(superState)
-
         constructor(source: Parcel) : super(source) {
             translationY = source.readFloat()
             fraction = try {
@@ -496,17 +698,24 @@ class MiniPlayer @JvmOverloads constructor(
             } catch (_: Exception) {
                 -1f
             }
+            isTransparent = source.readInt() != 0
         }
 
         override fun writeToParcel(out: Parcel, flags: Int) {
             super.writeToParcel(out, flags)
             out.writeFloat(translationY)
             out.writeFloat(fraction)
+            out.writeInt(if (isTransparent) 1 else 0)
         }
 
         companion object CREATOR : Parcelable.Creator<SavedState> {
             override fun createFromParcel(source: Parcel): SavedState = SavedState(source)
             override fun newArray(size: Int): Array<SavedState?> = arrayOfNulls(size)
         }
+    }
+
+    companion object {
+        private const val TAG_TITLE = "mini_player_title"
+        private const val TAG_ARTIST = "mini_player_artist"
     }
 }

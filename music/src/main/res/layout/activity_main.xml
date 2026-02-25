@@ -28,6 +28,7 @@
         android:id="@+id/mini_player"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_margin="@dimen/padding_15"
         android:layout_gravity="bottom" />
 
 </app.simple.felicity.decorations.theme.ThemeCoordinatorLayout>

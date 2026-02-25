@@ -8,28 +8,28 @@ import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
+import android.widget.ImageView
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
-import androidx.viewpager2.widget.ViewPager2
-import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback
 import app.simple.felicity.R
-import app.simple.felicity.adapters.ui.miniplayer.AdapterMiniPlayer
-import app.simple.felicity.adapters.ui.miniplayer.AdapterMiniPlayer.Companion.MiniPlayerAdapterCallbacks
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.databinding.ActivityMainBinding
-import app.simple.felicity.databinding.MiniplayerBinding
 import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
+import app.simple.felicity.decorations.views.MiniPlayer
+import app.simple.felicity.decorations.views.MiniPlayerItem
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.glide.util.AudioCoverUtils.loadPeristyleArtCover
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.managers.PlaybackStateManager
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
@@ -47,9 +47,6 @@ import kotlinx.coroutines.launch
 class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
     private lateinit var binding: ActivityMainBinding
-    private lateinit var miniPlayerBinding: MiniplayerBinding
-
-    private lateinit var adapterMiniPlayer: AdapterMiniPlayer
 
     private var serviceConnection: ServiceConnection? = null
     private var audioDatabaseService: AudioDatabaseService? = null
@@ -61,19 +58,26 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        miniPlayerBinding = MiniplayerBinding.inflate(layoutInflater)
-        binding.miniPlayer.setContent(miniPlayerBinding) { binding ->
-            binding.pager.offscreenPageLimit = 1
-            binding.pager.registerOnPageChangeCallback(object : OnPageChangeCallback() {
-                override fun onPageScrollStateChanged(state: Int) {
-                    super.onPageScrollStateChanged(state)
-                    if (state == ViewPager2.SCROLL_STATE_IDLE) {
-                        MediaManager.updatePosition(binding.pager.currentItem)
-                    }
+        binding.miniPlayer.callbacks = object : MiniPlayer.Callbacks {
+            override fun onPageSelected(position: Int) {
+                MediaManager.updatePosition(position)
+            }
+
+            override fun onLoadArt(imageView: ImageView, payload: Any?) {
+                if (payload is Audio) {
+                    imageView.loadPeristyleArtCover(payload)
                 }
-            })
-            binding.playPause.setOnClickListener {
+            }
+
+            override fun onPlayPauseClick() {
                 MediaManager.flipState()
+            }
+
+            override fun onItemClick(position: Int) {
+                val topFragment = supportFragmentManager.fragments.lastOrNull() as? ScopedFragment
+                if (topFragment.isNotNull()) {
+                    topFragment?.openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
+                }
             }
         }
 
@@ -92,52 +96,37 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
         lifecycleScope.launch {
             MediaManager.songPositionFlow.collect { position ->
-                if (miniPlayerBinding.pager.currentItem != position) {
-                    miniPlayerBinding.pager.setCurrentItem(position, true)
+                val currentPagerItem = binding.miniPlayer.currentItem
+                if (currentPagerItem != position) {
+                    binding.miniPlayer.setCurrentItem(position, smoothScroll = true)
                 }
-                generateAlbumArtPalette()
             }
         }
 
         lifecycleScope.launch {
             MediaManager.songListFlow.collect { songs ->
                 Log.d("MainActivity", "songListFlow: ${songs.size}")
-                adapterMiniPlayer = AdapterMiniPlayer(songs)
-                miniPlayerBinding.pager.adapter = adapterMiniPlayer
-                val songPosition = MediaManager.getCurrentPosition()
-                if (songPosition < songs.size) {
-                    miniPlayerBinding.pager.setCurrentItem(songPosition, false)
-                } else {
-                    miniPlayerBinding.pager.setCurrentItem(0, false)
+                val items = songs.map { audio ->
+                    MiniPlayerItem(
+                            title = audio.title ?: audio.name ?: "",
+                            artist = audio.artist ?: "",
+                            payload = audio
+                    )
                 }
-
-                adapterMiniPlayer.setCallbacks(object : MiniPlayerAdapterCallbacks {
-                    override fun onOpenPlayer() {
-                        // Make top fragment open player
-                        // Based on app architecture, there will always be a fragment at the top
-                        // and mini player won't/shouldn't be visible in player panels
-                        val topFragment = supportFragmentManager.fragments.lastOrNull() as? ScopedFragment
-                        if (topFragment.isNotNull()) {
-                            topFragment?.openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
-                        }
-                    }
-
-                    override fun onOpenPopupPlayer() {
-
-                    }
-                })
+                binding.miniPlayer.setItems(items)
+                val songPosition = MediaManager.getCurrentPosition()
+                binding.miniPlayer.setCurrentItem(
+                        if (songPosition < songs.size) songPosition else 0,
+                        smoothScroll = false
+                )
             }
         }
 
         lifecycleScope.launch {
             MediaManager.playbackStateFlow.collect { state ->
                 when (state) {
-                    MediaConstants.PLAYBACK_PLAYING -> {
-                        miniPlayerBinding.playPause.playing()
-                    }
-                    MediaConstants.PLAYBACK_PAUSED -> {
-                        miniPlayerBinding.playPause.paused()
-                    }
+                    MediaConstants.PLAYBACK_PLAYING -> binding.miniPlayer.setPlaying(true)
+                    MediaConstants.PLAYBACK_PAUSED -> binding.miniPlayer.setPlaying(false)
                 }
             }
         }
@@ -255,6 +244,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     }
 
     override fun onDetachMiniPlayer(recyclerView: RecyclerView?) {
+        Log.d("MainActivity", "Detaching mini player from RecyclerView")
         recyclerView?.let {
             binding.miniPlayer.detachFromRecyclerView(it)
         }
