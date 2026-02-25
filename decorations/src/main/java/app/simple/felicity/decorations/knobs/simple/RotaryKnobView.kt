@@ -78,14 +78,21 @@ class RotaryKnobView @JvmOverloads constructor(
     /** Current display string sourced from [RotaryKnobListener.onLabel]. */
     private var labelText: String = ""
 
-    /** Per-line scale factors: 0 = idle height, 1 = fully progressed height. Lerped each frame. */
+    /** Per-line scale factors: 0.0 = fully idle, 1.0 = fully progressed. Written by animators, read in onDraw. */
     private var divisionScales = FloatArray(0)
 
     /** Pre-computed canvas-space angle (degrees) for each division line. Set in [recalcGeometry]. */
     private var divisionAngles = FloatArray(0)
 
-    /** Previous knob rotation used for direction detection (currently unused but kept for extension). */
-    private var prevKnobRotation = 0f
+    /**
+     * Per-line [ValueAnimator] instances that drive [divisionScales].
+     * Each animator runs independently so lines animate in a natural trailing-wave order
+     * rather than all updating simultaneously on the same lerp tick.
+     */
+    private var divisionAnimators = arrayOfNulls<ValueAnimator>(0)
+
+    /** Target scale for each line (0f or 1f). Tracked so redundant animator restarts are skipped. */
+    private var divisionTargets = FloatArray(0)
 
     /** Paint for idle arc segments drawn between division lines in the remaining region. */
     private val arcPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -247,6 +254,13 @@ class RotaryKnobView @JvmOverloads constructor(
     /** Deceleration factor applied on all subsequent [setKnobPosition] calls. */
     var decelerateFactor: Float = 1.5f
 
+    /**
+     * Duration in milliseconds for each individual division line grow/shrink animation.
+     * Shorter values produce a tighter trailing wave; longer values a more fluid sweep.
+     * Default 120 ms gives a smooth trail at normal knob speeds.
+     */
+    var divisionLineDuration: Long = 120L
+
     private var cx = 0f
     private var cy = 0f
     private var knobRadiusPx = 0f
@@ -282,6 +296,7 @@ class RotaryKnobView @JvmOverloads constructor(
         super.onDetachedFromWindow()
         (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = null
         rotationAnimator?.cancel()
+        divisionAnimators.forEach { it?.cancel() }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -323,8 +338,11 @@ class RotaryKnobView @JvmOverloads constructor(
         // Distribute division lines evenly across the full sweep, endpoints included.
         val n = divisionCount
         if (divisionAngles.size != n) {
+            divisionAnimators.forEach { it?.cancel() }
             divisionAngles = FloatArray(n)
-            if (divisionScales.size != n) divisionScales = FloatArray(n)
+            divisionScales = FloatArray(n)
+            divisionTargets = FloatArray(n)
+            divisionAnimators = arrayOfNulls(n)
         }
         for (i in 0 until n) {
             val fraction = if (n > 1) i.toFloat() / (n - 1).toFloat() else 0f
@@ -344,10 +362,13 @@ class RotaryKnobView @JvmOverloads constructor(
         invalidate()
     }
 
-    /** Resets all per-line scale factors to 0 when [divisionCount] changes. */
+    /** Cancels all running per-line animators and resets scale/target/animator arrays to match [divisionCount]. */
     private fun resetDivisions() {
+        divisionAnimators.forEach { it?.cancel() }
         divisionScales = FloatArray(divisionCount) { 0f }
         divisionAngles = FloatArray(divisionCount) { 0f }
+        divisionTargets = FloatArray(divisionCount) { 0f }
+        divisionAnimators = arrayOfNulls(divisionCount)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -363,34 +384,21 @@ class RotaryKnobView @JvmOverloads constructor(
          */
         val knobCanvasAngle = ARC_START_ANGLE + ((knobRotation - START) / (END - START)) * ARC_SWEEP
 
-        // Lerp each division line's scale toward its target (1 = progressed, 0 = idle).
-        var stillAnimating = false
-        for (i in divisionScales.indices) {
-            val target = if (divisionAngles[i] <= knobCanvasAngle) 1f else 0f
-            val current = divisionScales[i]
-            val next = current + (target - current) * DIVISION_LERP_SPEED
-            divisionScales[i] = next
-            if (next > 0.001f && next < 0.999f) stillAnimating = true
-        }
-        prevKnobRotation = knobRotation
+        // Start/reverse per-line ValueAnimators for any line whose target has flipped.
+        updateDivisionAnimators(knobCanvasAngle)
 
         /**
-         * Draw the arc/division ring as two interleaved gutter regions:
+         * Draw the arc/division ring as two non-overlapping gutter regions:
          *
-         * REMAINING region (idle): draws small idle-coloured arc segments in the angular gaps
-         *   between consecutive division lines. No division lines are painted here.
+         *  - PROGRESSED: accent division lines only (scale > 0). No arc stroke here.
+         *  - REMAINING:  idle arc segments in the angular gaps between idle lines. No lines here.
          *
-         * PROGRESSED region (accent): draws accent-coloured division lines only, scaled by their
-         *   individual animation factor. No arc stroke is painted here.
-         *
-         * The two regions never overlap — together they tile the full 300° sweep.
+         * Together the two regions tile the full 300° sweep without overlap.
          */
-
         arcPaint.color = idleColor
         arcPaint.strokeWidth = arcStrokeWidthPx
-
-        divisionAccentPaint.strokeWidth = divStrokeWidthPx
         divisionAccentPaint.color = accentColor
+        divisionAccentPaint.strokeWidth = divStrokeWidthPx
 
         val n = divisionAngles.size
         for (i in 0 until n) {
@@ -454,14 +462,41 @@ class RotaryKnobView @JvmOverloads constructor(
         canvas.withRotation(knobRotation.coerceIn(START, END), cx, cy) {
             knobDrawable.draw(this)
         }
-
-        // Continue invalidating only while division lines are mid-animation.
-        if (stillAnimating) invalidate()
     }
 
     /** Returns the color to use for static elements (ticks). Mirrors the knob drawable's animated state color. */
     private fun currentArcColor(): Int =
         (knobDrawable as? SimpleRotaryKnobDrawable)?.currentStateColor ?: arcColor
+
+    /**
+     * Compares each line's desired target against [knobCanvasAngle] and starts a new
+     * [ValueAnimator] only when the target has actually changed (0 → 1 or 1 → 0).
+     *
+     * Because each animator starts from the line's *current mid-flight scale*, reversals
+     * are seamless — no pop or jump when the knob direction changes. The
+     * [android.view.animation.AccelerateDecelerateInterpolator] gives the smoothest
+     * grow/shrink feel for a trailing-wave effect.
+     */
+    private fun updateDivisionAnimators(knobCanvasAngle: Float) {
+        val interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+        for (i in divisionAngles.indices) {
+            val newTarget = if (divisionAngles[i] <= knobCanvasAngle) 1f else 0f
+            if (newTarget == divisionTargets[i]) continue  // target unchanged — nothing to do
+
+            divisionTargets[i] = newTarget
+            val fromScale = divisionScales[i]  // pick up from wherever the scale currently sits
+            divisionAnimators[i]?.cancel()
+            divisionAnimators[i] = ValueAnimator.ofFloat(fromScale, newTarget).apply {
+                duration = divisionLineDuration
+                this.interpolator = interpolator
+                addUpdateListener { anim ->
+                    divisionScales[i] = anim.animatedValue as Float
+                    invalidate()
+                }
+                start()
+            }
+        }
+    }
 
     /**
      * Draws a single end-stop tick mark radiating outward from [tickStartRadiusPx] to
@@ -616,11 +651,5 @@ class RotaryKnobView @JvmOverloads constructor(
 
         /** Total angular sweep of the arc from min to max (END − START = 300°). */
         private const val ARC_SWEEP = 300f
-
-        /**
-         * Per-frame lerp coefficient for division line scale animation.
-         * At 60 fps, 0.25 produces roughly a 4-frame (≈67 ms) grow/shrink transition.
-         */
-        private const val DIVISION_LERP_SPEED = 0.25f
     }
 }
