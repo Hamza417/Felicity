@@ -73,6 +73,16 @@ class RotaryKnobView @JvmOverloads constructor(
         strokeCap = Paint.Cap.ROUND
     }
 
+    private val divisionIdlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
+    private val divisionAccentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
         if (isInEditMode.not()) {
@@ -125,6 +135,46 @@ class RotaryKnobView @JvmOverloads constructor(
             field = value; invalidate()
         }
 
+    // ── Division lines ────────────────────────────────────────────────────────
+
+    /** Number of division lines distributed evenly across the full arc. Default 20. */
+    var divisionCount: Int = 200
+        set(value) {
+            field = value.coerceAtLeast(2); resetDivisions(); recalcGeometry()
+        }
+
+    /** Full (progressed) length of each division line, fraction of available radius. */
+    var divisionProgressLengthFraction: Float = 0.07f
+        set(value) {
+            field = value; recalcGeometry()
+        }
+
+    /** Length of idle (not-yet-progressed) division lines, fraction of available radius. */
+    var divisionIdleLengthFraction: Float = 0.03f
+        set(value) {
+            field = value; recalcGeometry()
+        }
+
+    /** Stroke width of division lines, fraction of available radius. */
+    var divisionStrokeWidthFraction: Float = 0.008f
+        set(value) {
+            field = value; invalidate()
+        }
+
+    /** Color of the accent (progressed) division lines. */
+    @ColorInt
+    var divisionAccentColor: Int = SimpleRotaryKnobDrawable.DEFAULT_ACCENT_COLOR
+        set(value) {
+            field = value; invalidate()
+        }
+
+    /** Color of the idle (not-yet-progressed) division lines. */
+    @ColorInt
+    var divisionIdleColor: Int = SimpleRotaryKnobDrawable.DEFAULT_IDLE_COLOR
+        set(value) {
+            field = value; invalidate()
+        }
+
     /** Label text size, fraction of available radius. Default 0.14. */
     var labelTextSizeFraction: Float = 0.10f
         set(value) {
@@ -164,8 +214,26 @@ class RotaryKnobView @JvmOverloads constructor(
     private var tickStartRadiusPx = 0f
     private var tickEndRadiusPx = 0f
     private var tickStrokeWidthPx = 0f
-    private var labelYPx = 0f          // baseline Y for the label
+    private var labelYPx = 0f
     private val arcOval = RectF()
+
+    // Division lines geometry
+    private var divStrokeWidthPx = 0f
+    private var divProgressLengthPx = 0f   // full length when progressed
+    private var divIdleLengthPx = 0f       // shorter length when idle
+    private var divInnerRadiusPx = 0f      // inner end of the line (on the arc)
+
+    /**
+     * Per-line scale factors: 0f = idle (draws at idle length), 1f = fully progressed.
+     * Values between 0 and 1 animate the line growing/shrinking.
+     */
+    private var divisionScales = FloatArray(divisionCount)
+
+    /** Canvas-space angle for each division line. Pre-computed in recalcGeometry. */
+    private var divisionAngles = FloatArray(divisionCount)
+
+    /** The knob rotation on the previous draw frame — used to detect direction. */
+    private var prevKnobRotation = 0f
 
 
     // ── Init ──────────────────────────────────────────────────────────────────
@@ -220,16 +288,25 @@ class RotaryKnobView @JvmOverloads constructor(
                 cx + arcCentreRadiusPx, cy + arcCentreRadiusPx
         )
 
-        // Label: centred between the two ticks, just below the knob bottom.
-        // The midpoint of the arc gap at the bottom (270° in canvas = 6 o'clock) is
-        // at cy + arcCentreRadiusPx. We place text a little further down.
+        // Division lines sit on the arc centre-line radius
+        divStrokeWidthPx = availableRadius * divisionStrokeWidthFraction
+        divProgressLengthPx = availableRadius * divisionProgressLengthFraction
+        divIdleLengthPx = availableRadius * divisionIdleLengthFraction
+        // Lines are centred on arcCentreRadiusPx, inner end = centre - halfMaxLength
+        divInnerRadiusPx = arcCentreRadiusPx - divProgressLengthPx / 2f
+
+        // Pre-compute the canvas angle for every division line.
+        // Evenly distributed across ARC_SWEEP, endpoints included (index 0 = min, N-1 = max).
+        val n = divisionCount
+        for (i in 0 until n) {
+            val fraction = if (n > 1) i.toFloat() / (n - 1).toFloat() else 0f
+            divisionAngles[i] = ARC_START_ANGLE + fraction * ARC_SWEEP
+        }
+
         val labelTextSizePx = availableRadius * labelTextSizeFraction
         labelPaint.textSize = labelTextSizePx
-        // Position baseline so the text sits in the gap between the bottom of the knob
-        // and the bottom of the view, roughly centred in that space.
         val bottomOfKnob = cy + knobRadiusPx
-        val bottomOfView = height.toFloat()
-        labelYPx = bottomOfKnob + (bottomOfView - bottomOfKnob) / 2f + labelTextSizePx / 2f
+        labelYPx = bottomOfKnob + (height.toFloat() - bottomOfKnob) / 2f + labelTextSizePx / 2f
 
         val r = knobRadiusPx.toInt()
         knobDrawable.setBounds(
@@ -240,6 +317,12 @@ class RotaryKnobView @JvmOverloads constructor(
         invalidate()
     }
 
+    /** Resets all per-line scale factors to 0 (used when divisionCount changes). */
+    private fun resetDivisions() {
+        divisionScales = FloatArray(divisionCount) { 0f }
+        divisionAngles = FloatArray(divisionCount) { 0f }
+    }
+
     // ── Drawing ───────────────────────────────────────────────────────────────
 
     override fun onDraw(canvas: Canvas) {
@@ -248,26 +331,78 @@ class RotaryKnobView @JvmOverloads constructor(
 
         val color = currentArcColor()
 
-        // Arc
+        // ── Update division scales ────────────────────────────────────────────
+        // Convert the knob rotation (-150..150) to a canvas angle (120..420).
+        // Each line has a canvas angle; if that angle ≤ current knob canvas angle
+        // it is "progressed". We drive scale toward 1 or 0 at DIVISION_LERP_SPEED.
+        val knobCanvasAngle = ARC_START_ANGLE + ((knobRotation - START) / (END - START)) * ARC_SWEEP
+        val lerp = DIVISION_LERP_SPEED
+        for (i in divisionScales.indices) {
+            val target = if (divisionAngles[i] <= knobCanvasAngle) 1f else 0f
+            divisionScales[i] += (target - divisionScales[i]) * lerp
+        }
+        prevKnobRotation = knobRotation
+
+        // ── Arc (static, never changes color) ────────────────────────────────
         arcPaint.strokeWidth = arcStrokeWidthPx
         arcPaint.color = color
         canvas.drawArc(arcOval, ARC_START_ANGLE, ARC_SWEEP, false, arcPaint)
 
-        // Ticks
+        // ── Division lines ────────────────────────────────────────────────────
+        val divStroke = divStrokeWidthPx
+        for (i in divisionScales.indices) {
+            val scale = divisionScales[i]
+            val angleDeg = divisionAngles[i]
+            val rad = Math.toRadians(angleDeg.toDouble())
+            val cosA = cos(rad).toFloat()
+            val sinA = sin(rad).toFloat()
+
+            if (scale > 0.001f) {
+                // Progressed (or animating in): accent color, grows from idle length → full length
+                val len = divIdleLengthPx + (divProgressLengthPx - divIdleLengthPx) * scale
+                val innerR = arcCentreRadiusPx - len / 2f
+                val outerR = arcCentreRadiusPx + len / 2f
+                divisionAccentPaint.strokeWidth = divStroke
+                divisionAccentPaint.color = divisionAccentColor
+                canvas.drawLine(
+                        cx + cosA * innerR, cy + sinA * innerR,
+                        cx + cosA * outerR, cy + sinA * outerR,
+                        divisionAccentPaint
+                )
+            } else {
+                // Idle: muted color, fixed short length
+                val innerR = arcCentreRadiusPx - divIdleLengthPx / 2f
+                val outerR = arcCentreRadiusPx + divIdleLengthPx / 2f
+                divisionIdlePaint.strokeWidth = divStroke
+                divisionIdlePaint.color = divisionIdleColor
+                canvas.drawLine(
+                        cx + cosA * innerR, cy + sinA * innerR,
+                        cx + cosA * outerR, cy + sinA * outerR,
+                        divisionIdlePaint
+                )
+            }
+        }
+
+        // ── Ticks ─────────────────────────────────────────────────────────────
         tickPaint.strokeWidth = tickStrokeWidthPx
         tickPaint.color = color
         drawTick(canvas, ARC_START_ANGLE)
         drawTick(canvas, ARC_START_ANGLE + ARC_SWEEP)
 
-        // Label between ticks
+        // ── Label between ticks ───────────────────────────────────────────────
         if (labelText.isNotEmpty()) {
             labelPaint.color = labelColor
             canvas.drawText(labelText, cx, labelYPx, labelPaint)
         }
 
-        // Knob — rotated around center; clamp visually so it never draws past the stops
+        // ── Knob — rotated around centre ──────────────────────────────────────
         canvas.withRotation(knobRotation.coerceIn(START, END), cx, cy) {
             knobDrawable.draw(this)
+        }
+
+        // Keep redrawing while any division line is still animating
+        if (divisionScales.any { it > 0.001f && it < 0.999f }) {
+            invalidate()
         }
     }
 
@@ -408,5 +543,11 @@ class RotaryKnobView @JvmOverloads constructor(
         // Sweep CW 300° reaches max (+150° from 12 o'clock).
         private const val ARC_START_ANGLE = 120f
         private const val ARC_SWEEP = 300f
+
+        /**
+         * Per-frame lerp speed for division line scale animation (0..1).
+         * Higher = faster animation. At 60 fps, 0.25 gives a ~4-frame transition.
+         */
+        private const val DIVISION_LERP_SPEED = 0.25f
     }
 }
