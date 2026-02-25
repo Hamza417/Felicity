@@ -13,6 +13,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import androidx.annotation.ColorInt
+import androidx.core.graphics.withRotation
 import app.simple.felicity.decoration.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -72,27 +73,27 @@ class RotaryKnobView @JvmOverloads constructor(
      * Everything else (gap + arc + gap + ticks) lives in the remaining fraction.
      * Default 0.72 — knob takes 72 %, outer ring takes 28 %.
      */
-    var knobRadiusFraction: Float = 0.72f
+    var knobRadiusFraction: Float = 0.80f
         set(value) { field = value.coerceIn(0.1f, 0.95f); recalcGeometry() }
 
     /** Gap between knob outer edge and near edge of arc, as fraction of available radius. */
-    var arcGapFraction: Float = 0.04f
+    var arcGapFraction: Float = 0.06f
         set(value) { field = value; recalcGeometry() }
 
     /** Arc stroke width as fraction of available radius. */
-    var arcStrokeWidthFraction: Float = 0.02f
+    var arcStrokeWidthFraction: Float = 0.01f
         set(value) { field = value; recalcGeometry() }
 
     /** Gap between far edge of arc and near end of tick, as fraction of available radius. */
-    var tickGapFraction: Float = 0.05f
+    var tickGapFraction: Float = 0.06f
         set(value) { field = value; recalcGeometry() }
 
     /** Tick length as fraction of available radius. */
-    var tickLengthFraction: Float = 0.08f
+    var tickLengthFraction: Float = 0.03f
         set(value) { field = value; recalcGeometry() }
 
     /** Tick stroke width as fraction of available radius. */
-    var tickStrokeWidthFraction: Float = 0.02f
+    var tickStrokeWidthFraction: Float = 0.01f
         set(value) { field = value; invalidate() }
 
     // ── Computed geometry (recalculated in onSizeChanged) ─────────────────────
@@ -195,10 +196,9 @@ class RotaryKnobView @JvmOverloads constructor(
         drawTick(canvas, ARC_START_ANGLE + ARC_SWEEP)
 
         // ── Knob (rotated around its centre) ──────────────────────────────────
-        canvas.save()
-        canvas.rotate(knobRotation, cx, cy)
-        knobDrawable.draw(canvas)
-        canvas.restore()
+        canvas.withRotation(knobRotation, cx, cy) {
+            knobDrawable.draw(this)
+        }
     }
 
     private fun currentArcColor(): Int =
