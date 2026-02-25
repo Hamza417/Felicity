@@ -22,7 +22,10 @@ import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.knobs.simple.RotaryKnobView.Companion.END
 import app.simple.felicity.decorations.knobs.simple.RotaryKnobView.Companion.START
 import app.simple.felicity.decorations.typeface.TypeFace
+import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.theme.models.Accent
+import app.simple.felicity.theme.themes.Theme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -51,7 +54,7 @@ class RotaryKnobView @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr) {
+) : View(context, attrs, defStyleAttr), ThemeChangedListener {
 
     /** The drawable used to paint the rotating knob circle. Must be a [RotaryKnobDrawable]. */
     private var knobDrawable: RotaryKnobDrawable = SimpleRotaryKnobDrawable()
@@ -259,7 +262,7 @@ class RotaryKnobView @JvmOverloads constructor(
      * Shorter values produce a tighter trailing wave; longer values a more fluid sweep.
      * Default 120 ms gives a smooth trail at normal knob speeds.
      */
-    var divisionLineDuration: Long = 120L
+    var divisionLineDuration: Long = 160L
 
     private var cx = 0f
     private var cy = 0f
@@ -285,11 +288,19 @@ class RotaryKnobView @JvmOverloads constructor(
         }
         (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = { invalidate() }
         setOnTouchListener { _, event -> handleTouch(event) }
+
+        if (isInEditMode.not()) {
+            setThemeColors(ThemeManager.theme)
+            setAccentColor(ThemeManager.accent)
+        }
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = { invalidate() }
+        if (isInEditMode.not()) {
+            ThemeManager.addListener(this)
+        }
     }
 
     override fun onDetachedFromWindow() {
@@ -297,11 +308,42 @@ class RotaryKnobView @JvmOverloads constructor(
         (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = null
         rotationAnimator?.cancel()
         divisionAnimators.forEach { it?.cancel() }
+        if (isInEditMode.not()) {
+            ThemeManager.removeListener(this)
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         recalcGeometry()
+    }
+
+    override fun onAccentChanged(accent: Accent) {
+        super.onAccentChanged(accent)
+        setAccentColor(accent)
+    }
+
+    override fun onThemeChanged(theme: Theme, animate: Boolean) {
+        super.onThemeChanged(theme, animate)
+        setThemeColors(theme)
+    }
+
+    fun setAccentColor(accent: Accent) {
+        if (knobDrawable is SimpleRotaryKnobDrawable) {
+            val drawable = knobDrawable as SimpleRotaryKnobDrawable
+            drawable.accentColor = accent.primaryAccentColor
+        }
+        divisionAccentColor = accent.primaryAccentColor
+    }
+
+    fun setThemeColors(theme: Theme) {
+        labelPaint.color = theme.textViewTheme.primaryTextColor
+        labelColor = theme.textViewTheme.primaryTextColor
+        if (knobDrawable is SimpleRotaryKnobDrawable) {
+            val drawable = knobDrawable as SimpleRotaryKnobDrawable
+            drawable.idleColor = theme.viewGroupTheme.highlightColor
+        }
+        divisionIdleColor = theme.viewGroupTheme.highlightColor
     }
 
     /**
