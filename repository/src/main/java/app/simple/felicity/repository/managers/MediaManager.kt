@@ -133,6 +133,57 @@ object MediaManager {
 
     fun getCurrentSong(): Audio? = songs.getOrNull(currentSongPosition)
 
+    /**
+     * Returns true if the given list has the exact same song IDs in the same order as the current queue.
+     */
+    fun isSameQueue(audios: List<Audio>): Boolean {
+        if (audios.size != songs.size) return false
+        return audios.indices.all { audios[it].id == songs[it].id }
+    }
+
+    /**
+     * Updates the internal song list and emits the new list to observers WITHOUT resetting
+     * the media controller or interrupting playback. Used when the queue composition changes
+     * but the currently-playing song should continue uninterrupted.
+     */
+    fun updateQueueSilently(audios: List<Audio>, newPosition: Int) {
+        this.songs = audios
+        val clampedPosition = if (audios.isEmpty()) 0 else newPosition.coerceIn(0, audios.size - 1)
+        currentSongPosition = clampedPosition
+
+        // Rebuild media items on the controller to reflect the new queue, but seek to the
+        // existing track so playback is not interrupted.
+        if (audios.isNotEmpty()) {
+            scope.launch {
+                val mediaItems = withContext(Dispatchers.Default) {
+                    audios.map { audio ->
+                        val uri = File(audio.path).toUri()
+                        MediaItem.Builder()
+                            .setMediaId(audio.id.toString())
+                            .setUri(uri)
+                            .setMediaMetadata(
+                                    MediaMetadata.Builder()
+                                        .setArtist(audio.artist)
+                                        .setTitle(audio.title)
+                                        .build()
+                            )
+                            .build()
+                    }
+                }
+
+                val currentPositionMs = mediaController?.currentPosition ?: 0L
+                mediaController?.setMediaItems(mediaItems, clampedPosition, currentPositionMs)
+                mediaController?.prepare()
+                mediaController?.play()
+                startSeekPositionUpdates()
+            }
+        }
+
+        scope.launch {
+            _songListFlow.emit(this@MediaManager.songs)
+        }
+    }
+
     // Line 133
     fun playCurrent() {
         // Only seek if we are NOT at the correct index already

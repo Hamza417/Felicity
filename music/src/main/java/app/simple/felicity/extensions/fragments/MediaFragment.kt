@@ -26,6 +26,7 @@ import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils
 import app.simple.felicity.repository.utils.AudioUtils.createSongStat
+import app.simple.felicity.ui.player.DefaultPlayer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
@@ -83,10 +84,40 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     protected fun setMediaItems(songs: List<Audio>, position: Int = 0) {
-        MediaManager.setSongs(songs, position)
-        MediaManager.play()
+        val currentSong = MediaManager.getCurrentSong()
+        val requestedSong = songs.getOrNull(position)
+        val isSameQueue = MediaManager.isSameQueue(songs)
+        val isSameSong = currentSong != null && requestedSong != null && currentSong.id == requestedSong.id
+
+        when {
+            isSameQueue && isSameSong -> {
+                // Case 1: Same queue, same song — just open the player
+                openDefaultPlayer()
+            }
+            isSameSong -> {
+                // Case 2: Same song playing but queue is different — update queue silently and open player
+                updateQueueSilently(songs, position)
+            }
+            isSameQueue && !isSameSong -> {
+                // Case 4: Same queue but different song — seek to that position and open player
+                MediaManager.updatePosition(position)
+            }
+            else -> {
+                // Case 3: Different queue and different song — default behavior
+                MediaManager.setSongs(songs, position)
+                MediaManager.play()
+                createSongHistoryDatabase(songs)
+            }
+        }
+    }
+
+    private fun openDefaultPlayer() {
+        openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
+    }
+
+    private fun updateQueueSilently(songs: List<Audio>, position: Int) {
+        MediaManager.updateQueueSilently(songs, position)
         createSongHistoryDatabase(songs)
-        // createStatForSong(songs[position])
     }
 
     private fun createSongHistoryDatabase(songs: List<Audio>) {
