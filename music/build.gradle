@@ -17,15 +17,15 @@ android {
     defaultConfig {
         applicationId "app.simple.felicity"
 
-        versionCode 1
-        versionName "0.0.1-preview"
+        versionCode 2
+        versionName "0.0.2-preview"
     }
 
     signingConfigs {
         release {
             def properties = loadProperties(rootProject.file('local.properties').absolutePath)
             if (properties.isEmpty()) {
-                logger.error("local.properties file not found or empty, signing disabled.")
+                logger.error("local.properties file not found or empty, retrying with environment variables.")
                 storeFile = null
             }
 

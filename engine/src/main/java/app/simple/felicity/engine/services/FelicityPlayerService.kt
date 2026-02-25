@@ -189,11 +189,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
     /**
      * Handles the dynamic switching of the audio decoder.
-     * Captures current playback state, rebuilds the player with new decoder settings,
-     * restores the state, and updates the active MediaSession.
+     * Captures current playback state (full queue + position), rebuilds the player with new
+     * decoder settings, restores the entire queue and resumes from the same track/position.
      */
     private fun switchDecoder() {
-        val currentItem = player.currentMediaItem
+        val mediaItems = (0 until player.mediaItemCount).map { player.getMediaItemAt(it) }
+        val currentIndex = player.currentMediaItemIndex
         val currentPos = player.currentPosition
         val playWhenReady = player.playWhenReady
 
@@ -204,10 +205,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // Build the new player with updated Factory settings
         buildPlayer()
 
-        // Restore state
-        if (currentItem != null) {
-            player.setMediaItem(currentItem)
-            player.seekTo(currentPos)
+        // Restore the full queue and position
+        if (mediaItems.isNotEmpty()) {
+            player.setMediaItems(mediaItems, currentIndex, currentPos)
             player.playWhenReady = playWhenReady
             player.prepare()
         }
@@ -222,7 +222,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      * restores the state seamlessly for real-time mode switching.
      */
     private fun switchAudioMode() {
-        val currentItem = player.currentMediaItem
+        val mediaItems = (0 until player.mediaItemCount).map { player.getMediaItemAt(it) }
+        val currentIndex = player.currentMediaItemIndex
         val currentPos = player.currentPosition
         val playWhenReady = player.playWhenReady
         val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
@@ -236,10 +237,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // Build the new player with updated audio sink and buffer settings
         buildPlayer()
 
-        // Restore state seamlessly
-        if (currentItem != null) {
-            player.setMediaItem(currentItem)
-            player.seekTo(currentPos)
+        // Restore the full queue and position seamlessly
+        if (mediaItems.isNotEmpty()) {
+            player.setMediaItems(mediaItems, currentIndex, currentPos)
             player.playWhenReady = playWhenReady
             player.prepare()
         }
