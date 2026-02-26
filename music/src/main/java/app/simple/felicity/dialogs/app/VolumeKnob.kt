@@ -1,8 +1,13 @@
 package app.simple.felicity.dialogs.app
 
 import android.content.Context
+import android.database.ContentObserver
 import android.media.AudioManager
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import android.util.Log
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -19,6 +24,15 @@ class VolumeKnob : ScopedBottomSheetFragment() {
 
     private var audioManager: AudioManager? = null
     private lateinit var binding: DialogVolumeKnobBinding
+
+    private val volumeObserver by lazy {
+        object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean, uri: Uri?) {
+                super.onChange(selfChange, uri)
+                setKnobPosition()
+            }
+        }
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = DialogVolumeKnobBinding.inflate(inflater, container, false)
@@ -41,10 +55,8 @@ class VolumeKnob : ScopedBottomSheetFragment() {
             }
 
             override fun onRotate(value: Float) {
-                audioManager?.setStreamVolume(
-                        AudioManager.STREAM_MUSIC,
-                        (((value / 100.0f) * audioManager!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC))
-                            .roundToInt()), 0);
+                val index = ((value / 100.0f) * audioManager!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC)).roundToInt()
+                audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0);
             }
         })
 
@@ -71,6 +83,17 @@ class VolumeKnob : ScopedBottomSheetFragment() {
                 else -> false
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        requireContext().contentResolver
+            .registerContentObserver(Settings.System.CONTENT_URI, true, volumeObserver)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        requireContext().contentResolver.unregisterContentObserver(volumeObserver)
     }
 
     private fun setKnobPosition() {

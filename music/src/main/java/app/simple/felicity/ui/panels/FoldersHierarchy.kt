@@ -195,6 +195,8 @@ class FoldersHierarchy : PanelFragment() {
             }
         }
 
+        binding.recyclerView.scheduleLayoutAnimation()
+
         val folderCount = contents.subFolders.size
         val songCount = contents.songs.size
 
