@@ -1,5 +1,6 @@
 package app.simple.felicity.decorations.utils
 
+import android.view.ViewTreeObserver
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decorations.itemdecorations.DividerItemDecoration
 
@@ -110,5 +111,32 @@ object RecyclerViewUtils {
                 break
             }
         }
+    }
+
+    /**
+     * Universally prevents LayoutAnimation and ItemAnimator collisions on initial load.
+     * * @param customAnimator The animator to attach after the first load.
+     * If null, it just restores whatever was already there (like DefaultItemAnimator).
+     */
+    fun RecyclerView.withDelayedAnimator(customAnimator: RecyclerView.ItemAnimator? = null) {
+        // Determine which animator we want to eventually use
+        val targetAnimator = customAnimator ?: this.itemAnimator
+
+        // Strip it off so the initial XML layout animation can run cleanly
+        this.itemAnimator = null
+
+        // Listen for the exact moment the view tree finishes its first layout draw
+        this.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                // Unregister immediately so this only happens exactly once per screen load
+                this@withDelayedAnimator.viewTreeObserver.removeOnGlobalLayoutListener(this)
+
+                // Post back to the main thread queue to safely snap the animator back on
+                // after the UI is completely settled.
+                this@withDelayedAnimator.post {
+                    this@withDelayedAnimator.itemAnimator = targetAnimator
+                }
+            }
+        })
     }
 }

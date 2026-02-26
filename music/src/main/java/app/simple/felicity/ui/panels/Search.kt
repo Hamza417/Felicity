@@ -19,6 +19,7 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentSearchBinding
 import app.simple.felicity.databinding.HeaderSearchBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
+import app.simple.felicity.decorations.itemanimators.ElasticAnimator
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.search.SearchSort.Companion.showSearchSort
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
@@ -56,6 +57,7 @@ class Search : PanelFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        binding.recyclerView.itemAnimator = ElasticAnimator()
         binding.recyclerView.requireAttachedMiniPlayer()
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
