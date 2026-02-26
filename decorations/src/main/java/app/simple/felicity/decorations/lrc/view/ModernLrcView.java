@@ -269,8 +269,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                 getPaddingLeft(),
                 0,
                 getWidth() - getPaddingRight(),
-                getHeight()
-                       );
+                getHeight());
         
         for (int i = 0; i < entryCount; i++) {
             LrcEntry entry = lrcData.getEntries().get(i);
@@ -336,8 +335,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                         paddingLeft,
                         (int) yOffset,
                         paddingLeft + availableWidth,
-                        (int) (yOffset + lineHeight)
-                                        );
+                        (int) (yOffset + lineHeight));
                 rippleDrawable.draw(canvas);
             }
             
@@ -1466,7 +1464,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
          * Returns a multiplier between 0 and 1 that decreases as overscroll increases
          */
         private float calculateDragResistance(float currentOverscroll) {
-            // Use exponential decay: resistance = e^(-k * distance)
+            // Use exponential decay -> resistance = e^(-k * distance)
             // This creates smooth, progressive resistance that gets stronger as you drag further
             float k = 0.004f; // Decay rate - higher = faster resistance increase
             float resistance = (float) Math.exp(-k * currentOverscroll);

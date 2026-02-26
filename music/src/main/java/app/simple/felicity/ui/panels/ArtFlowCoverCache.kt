@@ -23,13 +23,13 @@ import java.util.concurrent.Executors
  * A background cache for ArtFlow album covers that pre-loads and caches bitmaps
  * to avoid I/O operations on the OpenGL thread.
  */
-@Suppress("unused") // Methods used via reflection or for future use
+@Suppress("unused")
 class ArtFlowCoverCache(
-        maxMemoryCacheSizeMB: Int = 25  // Reduced from 50MB to 25MB
+        maxMemoryCacheSizeMB: Int = 25
 ) {
     private val TAG = "ArtFlowCoverCache"
 
-    // Calculate cache size in bytes (50MB default)
+    // Calculate cache size in bytes
     private val maxMemoryCacheSize = maxMemoryCacheSizeMB * 1024 * 1024
 
     // Memory cache using LruCache
@@ -97,7 +97,7 @@ class ArtFlowCoverCache(
     /**
      * Preload bitmaps around a center position in the background
      */
-    fun preloadAround(centerIndex: Int, radius: Int = 8, maxDimension: Int = 512) {  // Reduced from radius=10, maxDim=1024
+    fun preloadAround(centerIndex: Int, radius: Int = 8, maxDimension: Int = 512) {
         prefetchJob?.cancel()
         prefetchJob = cacheScope.launch {
             val startIndex = (centerIndex - radius).coerceAtLeast(0)

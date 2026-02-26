@@ -37,6 +37,8 @@ import androidx.recyclerview.widget.RecyclerView;
  * </ol>
  * Fallback heuristics are used during pre-layout / predictive layout when visible positions
  * may not yet be stable. Those heuristics approximate row counts from the total child count.
+ *
+ * @author Hamza417
  */
 public class GridRecyclerView extends SpacingRecyclerView {
     

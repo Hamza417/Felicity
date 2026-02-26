@@ -183,7 +183,7 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
             binding.albumArt.loadArtCoverWithPayload(song)
 
             binding.container.setOnLongClickListener {
-                generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, it)
+                generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, binding.albumArt)
                 true
             }
             binding.container.setOnClickListener {

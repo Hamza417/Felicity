@@ -402,7 +402,7 @@ class RotaryKnobView @JvmOverloads constructor(
     /**
      * Recomputes all pixel geometry from the current view size and fraction properties.
      *
-     * Visual layout (outward from centre):
+     * Visual layout (outward from center):
      * ```
      * |← knobRadius →|← arcGap →|← arcStroke →|← tickGap →|← tick →|
      * ```
@@ -422,10 +422,10 @@ class RotaryKnobView @JvmOverloads constructor(
         tickStartRadiusPx = arcCentreRadiusPx + arcStrokeWidthPx / 2f + r * tickGapFraction
         tickEndRadiusPx = tickStartRadiusPx + r * tickLengthFraction
 
-        // Tick label: tiny text placed just beyond the outer end of the tick mark.
+        // Tick label -> tiny text placed just beyond the outer end of the tick mark.
         val tickLabelSizePx = r * tickLabelTextSizeFraction
         tickLabelPaint.textSize = tickLabelSizePx
-        // Centre the glyph one full text-size beyond the tick end so it clears the mark.
+        // Center the glyph one full text-size beyond the tick end so it clears the mark.
         tickLabelRadiusPx = tickEndRadiusPx + tickLabelSizePx
 
         divStrokeWidthPx = r * divisionStrokeWidthFraction
@@ -525,7 +525,7 @@ class RotaryKnobView @JvmOverloads constructor(
                         divisionAccentPaint
                 )
             } else {
-                // IDLE — draw an arc segment in the gap leading up to this line position.
+                // IDLE —> draw an arc segment in the gap leading up to this line position.
                 // The segment runs from the midpoint after the previous line to just before this one.
                 val prevMidAngle = if (i == 0) ARC_START_ANGLE
                 else (divisionAngles[i - 1] + lineAngle) / 2f
@@ -537,7 +537,7 @@ class RotaryKnobView @JvmOverloads constructor(
                 }
 
                 // Also draw the segment from this line to the midpoint toward the next line,
-                // only if the next line is also idle — otherwise the next iteration handles it.
+                // only if the next line is also idle, otherwise the next iteration handles it.
                 val nextMidAngle = if (i == n - 1) ARC_START_ANGLE + ARC_SWEEP
                 else (lineAngle + divisionAngles[i + 1]) / 2f
                 val seg2Start = lineAngle + halfLineAngleDeg
@@ -623,7 +623,7 @@ class RotaryKnobView @JvmOverloads constructor(
         // Optional label centred just beyond the outer end of the tick, along the same radial axis.
         if (label.isNotEmpty()) {
             tickLabelPaint.color = tickLabelColor
-            // Offset by half the text height to optically centre the glyph on the radial direction.
+            // Offset by half the text height to optically center the glyph on the radial direction.
             val textOffset = (tickLabelPaint.descent() - tickLabelPaint.ascent()) / 2f - tickLabelPaint.descent()
             canvas.drawText(
                     label,
