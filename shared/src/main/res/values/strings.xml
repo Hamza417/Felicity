@@ -17,6 +17,7 @@
     <string name="loading">Loading</string>
     <string name="done">Done</string>
     <string name="folders">Folders</string>
+    <string name="folders_hierarchy">Folders Hierarchy</string>
     <string name="favorites">Favorites</string>
     <string name="links">Links</string>
     <string name="bookmarks">Bookmarks</string>

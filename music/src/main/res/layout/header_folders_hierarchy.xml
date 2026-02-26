@@ -15,11 +15,16 @@
         android:orientation="horizontal">
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/header_title"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:textSize="@dimen/text_size_48"
-            android:text="@string/folders"
+            android:text="@string/folders_hierarchy"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
             app:appFontStyle="black"
             app:textColorStyle="primary" />
 

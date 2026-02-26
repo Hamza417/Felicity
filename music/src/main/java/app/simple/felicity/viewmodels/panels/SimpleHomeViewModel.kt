@@ -25,13 +25,14 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
         viewModelScope.launch(Dispatchers.IO) {
             // Simulate data fetching
             val elements = listOf(
-                    Element(R.string.songs, app.simple.felicity.decoration.R.drawable.ic_song),
-                    Element(R.string.albums, app.simple.felicity.decoration.R.drawable.ic_album),
-                    Element(R.string.artists, app.simple.felicity.decoration.R.drawable.ic_artist),
-                    Element(R.string.genres, app.simple.felicity.decoration.R.drawable.ic_piano),
-                    Element(R.string.folders, app.simple.felicity.decoration.R.drawable.ic_folder),
-                    // Element(R.string.playlists, app.simple.felicity.decoration.R.drawable.ic_list),
-                    Element(R.string.preferences, app.simple.felicity.decoration.R.drawable.ic_settings)
+                    Element(R.string.songs, R.drawable.ic_song),
+                    Element(R.string.albums, R.drawable.ic_album),
+                    Element(R.string.artists, R.drawable.ic_artist),
+                    Element(R.string.genres, R.drawable.ic_piano),
+                    Element(R.string.folders, R.drawable.ic_folder),
+                    Element(R.string.folders_hierarchy, R.drawable.ic_tree),
+                    // Element(R.string.playlists, R.drawable.ic_list),
+                    Element(R.string.preferences, R.drawable.ic_settings)
             )
 
             homeData.postValue(elements)
