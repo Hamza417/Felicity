@@ -9,6 +9,7 @@ import android.view.animation.GridLayoutAnimationController;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import app.simple.felicity.decorations.itemanimators.ElasticAnimator;
 
 /**
  * RecyclerView subclass that applies a diagonal (anti-diagonal) staggered layout animation
@@ -44,14 +45,21 @@ public class GridRecyclerView extends SpacingRecyclerView {
     
     public GridRecyclerView(Context context) {
         super(context);
+        init();
     }
     
     public GridRecyclerView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        init();
     }
     
     public GridRecyclerView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
+        init();
+    }
+    
+    private void init() {
+        setItemAnimator(new ElasticAnimator());
     }
     
     /**

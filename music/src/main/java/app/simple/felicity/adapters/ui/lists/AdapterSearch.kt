@@ -2,7 +2,11 @@ package app.simple.felicity.adapters.ui.lists
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.AsyncDifferConfig
+import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListUpdateCallback
+import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterStyleGridBinding
@@ -21,10 +25,63 @@ class AdapterSearch(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHo
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
     private var previousIndex = -1
-    private var songs = mutableListOf<Audio>().apply { addAll(initial) }
+    private var attachedRecyclerView: RecyclerView? = null
+
+    // 1. Custom callback to intercept massive UI updates
+    private val listUpdateCallback = object : ListUpdateCallback {
+        override fun onInserted(position: Int, count: Int) {
+            if (count > 100) {
+                notifyDataSetChanged()
+            } else {
+                notifyItemRangeInserted(position, count)
+            }
+        }
+
+        override fun onRemoved(position: Int, count: Int) {
+            if (count > 100) {
+                notifyDataSetChanged()
+            } else {
+                notifyItemRangeRemoved(position, count)
+            }
+        }
+
+        override fun onMoved(fromPosition: Int, toPosition: Int) {
+            notifyItemMoved(fromPosition, toPosition)
+        }
+
+        override fun onChanged(position: Int, count: Int, payload: Any?) {
+            notifyItemRangeChanged(position, count, payload)
+        }
+    }
+
+    // 2. DiffUtil item comparisons
+    private val diffCallback = object : DiffUtil.ItemCallback<Audio>() {
+        override fun areItemsTheSame(oldItem: Audio, newItem: Audio): Boolean {
+            return oldItem.id == newItem.id
+        }
+
+        override fun areContentsTheSame(oldItem: Audio, newItem: Audio): Boolean {
+            return oldItem.title == newItem.title &&
+                    oldItem.artist == newItem.artist &&
+                    oldItem.album == newItem.album &&
+                    oldItem.duration == newItem.duration &&
+                    oldItem.path == newItem.path
+        }
+    }
+
+    // 3. Initialize differ with the custom callback
+    private val differ = AsyncListDiffer(
+            listUpdateCallback,
+            AsyncDifferConfig.Builder(diffCallback).build()
+    )
+
+    // Expose the differ's current list to keep existing logic intact
+    private val songs: List<Audio>
+        get() = differ.currentList
 
     init {
         setHasStableIds(true)
+        differ.submitList(initial.toList())
     }
 
     var currentlyPlayingSong: Audio? = null
@@ -42,6 +99,16 @@ class AdapterSearch(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHo
         }
 
     override fun getItemId(position: Int): Long = songs[position].id
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        attachedRecyclerView = recyclerView
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView)
+        attachedRecyclerView = null
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
@@ -95,40 +162,10 @@ class AdapterSearch(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHo
     }
 
     /**
-     * Update the songs list with DiffUtil for efficient updates
-     * This is called when the Flow emits new data from the database
+     * Update the songs list safely using AsyncListDiffer.
      */
     fun updateSongs(newSongs: List<Audio>) {
-        val diffCallback = SongsDiffCallback(songs, newSongs)
-        val diffResult = DiffUtil.calculateDiff(diffCallback)
-        songs.clear()
-        songs.addAll(newSongs)
-        diffResult.dispatchUpdatesTo(this)
-    }
-
-    /**
-     * DiffUtil callback for efficient list updates
-     */
-    private class SongsDiffCallback(
-            private val oldList: List<Audio>,
-            private val newList: List<Audio>
-    ) : DiffUtil.Callback() {
-        override fun getOldListSize(): Int = oldList.size
-        override fun getNewListSize(): Int = newList.size
-
-        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-            return oldList[oldItemPosition].id == newList[newItemPosition].id
-        }
-
-        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-            val oldSong = oldList[oldItemPosition]
-            val newSong = newList[newItemPosition]
-            return oldSong.title == newSong.title &&
-                    oldSong.artist == newSong.artist &&
-                    oldSong.album == newSong.album &&
-                    oldSong.duration == newSong.duration &&
-                    oldSong.path == newSong.path
-        }
+        differ.submitList(newSongs.toList())
     }
 
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
@@ -137,19 +174,14 @@ class AdapterSearch(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHo
         }
 
         fun bind(audio: Audio, isLightBind: Boolean) {
-            // Always update text content so users see correct data during fast scroll
             binding.title.setTextOrUnknown(audio.title)
             binding.secondaryDetail.setTextOrUnknown(audio.artist)
             binding.tertiaryDetail.setTextOrUnknown(audio.album)
             binding.title.addAudioQualityIcon(audio)
             bindSelectionState(audio)
 
-            if (isLightBind) {
-                // Skip heavy operations: image loading
-                return
-            }
+            if (isLightBind) return
 
-            // Full binding: load images
             binding.cover.loadArtCoverWithPayload(audio)
 
             binding.container.setOnLongClickListener {
@@ -168,18 +200,13 @@ class AdapterSearch(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHo
         }
 
         fun bind(song: Audio, isLightBind: Boolean) {
-            // Always update text content so users see correct data during fast scroll
             binding.title.setTextOrUnknown(song.title)
             binding.secondaryDetail.setTextOrUnknown(song.artist)
             binding.tertiaryDetail.setTextOrUnknown(song.album)
             bindSelectionState(song)
 
-            if (isLightBind) {
-                // Skip heavy operations: image loading
-                return
-            }
+            if (isLightBind) return
 
-            // Full binding: load images
             binding.albumArt.loadArtCoverWithPayload(song)
 
             binding.container.setOnLongClickListener {

@@ -3,6 +3,7 @@ package app.simple.felicity.adapters.ui.lists
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterStyleGridBinding
@@ -16,12 +17,19 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import com.bumptech.glide.Glide
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHolder>() {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
     private var previousIndex = -1
     private var songs = mutableListOf<Audio>().apply { addAll(initial) }
+    private var pendingDiffJob: Job? = null
+    private var attachedRecyclerView: RecyclerView? = null
 
     init {
         setHasStableIds(true)
@@ -95,15 +103,34 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
     }
 
     /**
-     * Update the songs list with DiffUtil for efficient updates
-     * This is called when the Flow emits new data from the database
+     * Update the songs list with DiffUtil for efficient updates.
+     * The diff is computed on a background thread, then dispatched on Main only after
+     * any currently-running item animation has finished — so remove and insert animations
+     * never collide and the adapter/RecyclerView state is always consistent.
      */
-    fun updateSongs(newSongs: List<Audio>) {
-        val diffCallback = SongsDiffCallback(songs, newSongs)
-        val diffResult = DiffUtil.calculateDiff(diffCallback)
-        songs.clear()
-        songs.addAll(newSongs)
-        diffResult.dispatchUpdatesTo(this)
+    fun updateSongs(newSongs: List<Audio>, scope: CoroutineScope) {
+        pendingDiffJob?.cancel()
+        val frozenOld = songs.toList()
+        val frozenNew = newSongs.toList()
+        pendingDiffJob = scope.launch(Dispatchers.Default) {
+            val diffResult = DiffUtil.calculateDiff(SongsDiffCallback(frozenOld, frozenNew))
+            withContext(Dispatchers.Main) {
+                val rv = attachedRecyclerView
+                val animator = rv?.itemAnimator
+                if (animator != null && animator.isRunning) {
+                    // Wait for the current animation to finish, then apply
+                    animator.isRunning {
+                        songs.clear()
+                        songs.addAll(frozenNew)
+                        diffResult.dispatchUpdatesTo(this@AdapterSongs)
+                    }
+                } else {
+                    songs.clear()
+                    songs.addAll(frozenNew)
+                    diffResult.dispatchUpdatesTo(this@AdapterSongs)
+                }
+            }
+        }
     }
 
     /**

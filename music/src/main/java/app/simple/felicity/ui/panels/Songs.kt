@@ -187,8 +187,8 @@ class Songs : PanelFragment() {
             })
             binding.recyclerView.adapter = adapterSongs
         } else {
-            // Update existing adapter data
-            adapterSongs?.updateSongs(songs)
+            // Update existing adapter data using a background coroutine for the diff calculation
+            adapterSongs?.updateSongs(songs, viewLifecycleOwner.lifecycleScope)
 
             // Re-attach adapter if RecyclerView lost its reference (e.g., after navigation)
             if (binding.recyclerView.adapter == null) {

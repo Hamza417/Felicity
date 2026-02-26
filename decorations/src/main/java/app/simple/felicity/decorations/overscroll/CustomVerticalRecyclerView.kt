@@ -89,7 +89,8 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
 
             (itemAnimator as SimpleItemAnimator).supportsChangeAnimations = !AccessibilityPreferences.isAnimationReduced()
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
-            setHasFixedSize(true)
+            // Do NOT call setHasFixedSize(true) — item count changes (add/remove) require
+            // RecyclerView to remeasure itself so the animated item animator can play correctly.
 
             if (statusBarPaddingRequired || navigationBarPaddingRequired) {
                 clipToPadding = false
