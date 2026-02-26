@@ -643,6 +643,7 @@ class RotaryKnobView @JvmOverloads constructor(
                 knobDrawable.onPressedStateChanged(true, 300)
                 lastMoveAngle = calculateAngle(event.x, event.y)
                 feedback()
+                listener?.onUserInteractionStart()
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
@@ -662,6 +663,7 @@ class RotaryKnobView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 knobDrawable.onPressedStateChanged(false, 300)
+                listener?.onUserInteractionEnd()
                 return true
             }
         }

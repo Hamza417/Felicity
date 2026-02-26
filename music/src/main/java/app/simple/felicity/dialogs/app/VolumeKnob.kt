@@ -58,6 +58,15 @@ class VolumeKnob : ScopedBottomSheetFragment() {
                 val index = ((value / 100.0f) * audioManager!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC)).roundToInt()
                 audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0);
             }
+
+            override fun onUserInteractionStart() {
+                requireContext().contentResolver.unregisterContentObserver(volumeObserver)
+            }
+
+            override fun onUserInteractionEnd() {
+                requireContext().contentResolver
+                    .registerContentObserver(Settings.System.CONTENT_URI, true, volumeObserver)
+            }
         })
 
         dialog?.setOnKeyListener { _, keyCode, _ ->
