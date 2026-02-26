@@ -73,12 +73,12 @@ class FolderPage : MediaFragment() {
     }
 
     private fun updateFolderPage(data: PageData) {
-        Log.d(TAG, "updateFolderPage: Updating UI for folder: ${folder.name} with ${data.songs.size} songs")
+        val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
+        binding.recyclerView.addItemDecorationSafely(
+                PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
 
         if (pageAdapter == null) {
             pageAdapter = PageAdapter(data, PageAdapter.PageType.FolderPage(folder))
-            val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
-            binding.recyclerView.addItemDecorationSafely(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
             binding.recyclerView.adapter = pageAdapter
             setupAdapterCallbacks()
         } else {

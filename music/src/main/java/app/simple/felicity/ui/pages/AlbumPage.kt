@@ -68,20 +68,22 @@ class AlbumPage : MediaFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
                 albumViewerViewModel.data.collect { data ->
-                    data?.let { updateAlbumPage(it) }
+                    data?.let {
+                        updateAlbumPage(it)
+                    }
                 }
             }
         }
     }
 
     private fun updateAlbumPage(data: PageData) {
-        Log.d(TAG, "updateAlbumPage: Updating UI for album: ${album.name} with ${data.songs.size} songs, adapter=${pageAdapter != null}, recyclerView.adapter=${binding.recyclerView.adapter != null}")
+        val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
+        binding.recyclerView.addItemDecorationSafely(
+                PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
 
         if (pageAdapter == null) {
             Log.d(TAG, "updateAlbumPage: Creating new adapter")
             pageAdapter = PageAdapter(data, PageAdapter.PageType.AlbumPage(album))
-            val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
-            binding.recyclerView.addItemDecorationSafely(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
             binding.recyclerView.adapter = pageAdapter
             setupAdapterCallbacks()
         } else {

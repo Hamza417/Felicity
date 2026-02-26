@@ -232,7 +232,8 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
             e.printStackTrace()
         }
 
-        if (this.adapter != null) {
+        if (this.adapter != null && this.adapter !== adapter) {
+            // Different adapter — animate the swap
             this.clearAnimation()
             this.animate()
                 .alpha(0F)
@@ -245,6 +246,7 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
                         .start()
                 }
         } else {
+            // No existing adapter, or re-attaching the same instance — skip the fade
             super.setAdapter(adapter)
         }
 

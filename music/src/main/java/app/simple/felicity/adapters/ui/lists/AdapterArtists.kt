@@ -1,9 +1,11 @@
 package app.simple.felicity.adapters.ui.lists
 
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.AsyncDifferConfig
+import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListUpdateCallback
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
@@ -16,13 +18,51 @@ import app.simple.felicity.preferences.ArtistPreferences
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.shared.utils.TextViewUtils.setTextOrUnknown
 
-class AdapterArtists(artists: List<Artist>) : FastScrollAdapter<VerticalListViewHolder>() {
+class AdapterArtists(initial: List<Artist>) : FastScrollAdapter<VerticalListViewHolder>() {
 
-    private val artists: MutableList<Artist> = ArrayList(artists)
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
+
+    private val listUpdateCallback = object : ListUpdateCallback {
+        override fun onInserted(position: Int, count: Int) {
+            if (count > 100) {
+                notifyDataSetChanged()
+            } else {
+                notifyItemRangeInserted(position, count)
+            }
+        }
+
+        override fun onRemoved(position: Int, count: Int) {
+            if (count > 100) {
+                notifyDataSetChanged()
+            } else {
+                notifyItemRangeRemoved(position, count)
+            }
+        }
+
+        override fun onMoved(fromPosition: Int, toPosition: Int) {
+            notifyItemMoved(fromPosition, toPosition)
+        }
+
+        override fun onChanged(position: Int, count: Int, payload: Any?) {
+            notifyItemRangeChanged(position, count, payload)
+        }
+    }
+
+    private val diffCallback = object : DiffUtil.ItemCallback<Artist>() {
+        override fun areItemsTheSame(oldItem: Artist, newItem: Artist) = oldItem.id == newItem.id
+        override fun areContentsTheSame(oldItem: Artist, newItem: Artist) = oldItem == newItem
+    }
+
+    private val differ = AsyncListDiffer(
+            listUpdateCallback,
+            AsyncDifferConfig.Builder(diffCallback).build()
+    )
+
+    private val artists: List<Artist> get() = differ.currentList
 
     init {
         setHasStableIds(true)
+        differ.submitList(initial.toList())
     }
 
     override fun getItemId(position: Int): Long = artists[position].id
@@ -35,7 +75,9 @@ class AdapterArtists(artists: List<Artist>) : FastScrollAdapter<VerticalListView
             CommonPreferencesConstants.GRID_TYPE_GRID -> {
                 GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
-            else -> throw IllegalArgumentException("Invalid view type")
+            else -> {
+                throw IllegalArgumentException("Invalid view type")
+            }
         }
     }
 
@@ -48,7 +90,6 @@ class AdapterArtists(artists: List<Artist>) : FastScrollAdapter<VerticalListView
     }
 
     override fun getItemCount(): Int = artists.size
-
     override fun getItemViewType(position: Int): Int = ArtistPreferences.getGridType()
 
     override fun onViewRecycled(holder: VerticalListViewHolder) {
@@ -60,64 +101,17 @@ class AdapterArtists(artists: List<Artist>) : FastScrollAdapter<VerticalListView
         this.generalAdapterCallbacks = callbacks
     }
 
-    /**
-     * Update the list of artists with DiffUtil for efficient updates
-     * This is called when the Flow emits new data from the database
-     */
     fun updateList(newArtists: List<Artist>) {
-        Log.d(TAG, "updateList: Old size=${artists.size}, New size=${newArtists.size}")
-        if (newArtists.isNotEmpty()) {
-            Log.d(TAG, "First new artist: id=${newArtists.first().id}, name=${newArtists.first().name}, trackCount=${newArtists.first().trackCount}")
-        }
-
-        val diffCallback = ArtistsDiffCallback(artists, newArtists)
-        val diffResult = DiffUtil.calculateDiff(diffCallback)
-        artists.clear()
-        artists.addAll(newArtists)
-
-        Log.d(TAG, "After update: artists.size=${artists.size}")
-        diffResult.dispatchUpdatesTo(this)
-        Log.d(TAG, "DiffUtil updates dispatched")
-    }
-
-    companion object {
-        private const val TAG = "AdapterArtists"
-    }
-
-    /**
-     * DiffUtil callback for efficient list updates
-     */
-    private class ArtistsDiffCallback(
-            private val oldList: List<Artist>,
-            private val newList: List<Artist>
-    ) : DiffUtil.Callback() {
-        override fun getOldListSize(): Int = oldList.size
-        override fun getNewListSize(): Int = newList.size
-
-        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-            return oldList[oldItemPosition].id == newList[newItemPosition].id
-        }
-
-        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-            return oldList[oldItemPosition] == newList[newItemPosition]
-        }
+        differ.submitList(newArtists.toList())
     }
 
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
         fun bind(artist: Artist, isLightBind: Boolean) {
-            // Always update text content so users see correct data during fast scroll
             binding.title.setTextOrUnknown(artist.name)
             binding.tertiaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_albums, artist.albumCount, artist.albumCount))
             binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, artist.trackCount, artist.trackCount))
-
-            if (isLightBind) {
-                // Skip heavy operations: image loading
-                return
-            }
-
-            // Full binding: load images
+            if (isLightBind) return
             binding.cover.loadArtCoverWithPayload(item = artist)
-
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onArtistLongClicked(artists, bindingAdapterPosition, it)
                 true
@@ -130,17 +124,10 @@ class AdapterArtists(artists: List<Artist>) : FastScrollAdapter<VerticalListView
 
     inner class GridHolder(val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
         fun bind(artist: Artist, isLightBind: Boolean) {
-            // Always update text content so users see correct data during fast scroll
             binding.title.setTextOrUnknown(artist.name)
             binding.tertiaryDetail.setTextOrUnknown(artist.name)
             binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, artist.trackCount, artist.trackCount))
-
-            if (isLightBind) {
-                // Skip heavy operations: image loading
-                return
-            }
-
-            // Full binding: load images
+            if (isLightBind) return
             binding.albumArt.loadArtCoverWithPayload(item = artist)
 
             binding.container.setOnLongClickListener {

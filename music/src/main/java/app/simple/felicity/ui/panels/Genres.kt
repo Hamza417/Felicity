@@ -2,7 +2,6 @@ package app.simple.felicity.ui.panels
 
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -52,8 +51,6 @@ class Genres : PanelFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        Log.d(TAG, "onViewCreated: adapterGenres=${adapterGenres != null}")
-
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.attachSlideFastScroller()
@@ -64,29 +61,27 @@ class Genres : PanelFragment() {
         binding.recyclerView.layoutManager = gridLayoutManager
         binding.recyclerView.setGridType(GenresPreferences.getGridType(), GenresPreferences.getGridSize())
 
+        // Re-attach existing adapter immediately so the RecyclerView is never blank on return
+        adapterGenres?.let { binding.recyclerView.adapter = it }
+
         setupClickListeners()
 
-        // Observe StateFlow with proper lifecycle handling for immediate updates
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                genresViewModel.genres
-                    .collect { genres ->
-                        // Skip empty initial state, but allow empty updates after adapter exists
-                        if (genres.isNotEmpty()) {
-                            updateGenresList(genres)
-                        } else if (adapterGenres != null) {
-                            // Allow empty list update if adapter already exists (e.g., after deletion)
-                            updateGenresList(genres)
-                        }
+                genresViewModel.genres.collect { genres ->
+                    if (genres.isNotEmpty()) {
+                        updateGenresList(genres)
+                    } else if (adapterGenres != null) {
+                        updateGenresList(genres)
                     }
+                }
             }
         }
     }
 
     override fun onDestroyView() {
-        Log.d(TAG, "onDestroyView: Clearing adapter reference")
-        // Clear adapter reference when view is destroyed
-        adapterGenres = null
+        // Do NOT null out adapterGenres — keep it alive across view destruction
+        // so returning from a child fragment re-attaches it instantly without a flash.
         gridLayoutManager = null
         super.onDestroyView()
     }
@@ -166,12 +161,8 @@ class Genres : PanelFragment() {
     }
 
     private fun updateGenresList(genres: List<Genre>) {
-        Log.d(TAG, "updateGenresList: genres.size=${genres.size}, adapterGenres=${adapterGenres != null}, recyclerView.adapter=${binding.recyclerView.adapter != null}")
-
-        // Initialize adapter on first data arrival to preserve layout animations
         if (adapterGenres == null) {
-            Log.d(TAG, "updateGenresList: Creating new adapter with ${genres.size} genres")
-            adapterGenres = AdapterGenres(genres.toMutableList())
+            adapterGenres = AdapterGenres(genres)
             adapterGenres?.setHasStableIds(true)
             adapterGenres?.setCallbackListener(object : GeneralAdapterCallbacks {
                 override fun onMenuClicked(view: View) {
@@ -179,20 +170,13 @@ class Genres : PanelFragment() {
                 }
 
                 override fun onGenreClicked(genre: Genre, view: View) {
-                    Log.d(TAG, "onGenreClicked: Genre: ${genre.name}")
                     openFragment(GenrePage.newInstance(genre), GenrePage.TAG)
                 }
             })
             binding.recyclerView.adapter = adapterGenres
-            Log.d(TAG, "updateGenresList: Adapter attached to RecyclerView")
         } else {
-            // Update existing adapter data
-            Log.d(TAG, "updateGenresList: Updating existing adapter with ${genres.size} genres")
             adapterGenres?.updateList(genres)
-
-            // Re-attach adapter if RecyclerView lost its reference (e.g., after navigation)
             if (binding.recyclerView.adapter == null) {
-                Log.d(TAG, "updateGenresList: Re-attaching adapter to RecyclerView")
                 binding.recyclerView.adapter = adapterGenres
             }
         }

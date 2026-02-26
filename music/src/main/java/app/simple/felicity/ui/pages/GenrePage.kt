@@ -72,17 +72,23 @@ class GenrePage : MediaFragment() {
     }
 
     private fun updateGenrePage(data: PageData) {
-        Log.d(TAG, "updateGenrePage: Updating UI for genre: ${genre.name} with ${data.songs.size} songs")
+        val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
+        binding.recyclerView.addItemDecorationSafely(
+                PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
 
         if (pageAdapter == null) {
             pageAdapter = PageAdapter(data, PageAdapter.PageType.GenrePage(genre))
-            val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
-            binding.recyclerView.addItemDecorationSafely(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
             binding.recyclerView.adapter = pageAdapter
             setupAdapterCallbacks()
         } else {
             Log.d(TAG, "updateGenrePage: Updating existing adapter with new data")
             pageAdapter?.updateData(data)
+
+            // Re-attach adapter if RecyclerView lost its reference (e.g., after navigation)
+            if (binding.recyclerView.adapter == null) {
+                Log.d(AlbumPage.Companion.TAG, "updateAlbumPage: Re-attaching adapter to RecyclerView")
+                binding.recyclerView.adapter = pageAdapter
+            }
         }
 
         requireView().startTransitionOnPreDraw()

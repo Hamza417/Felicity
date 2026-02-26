@@ -2,7 +2,6 @@ package app.simple.felicity.ui.panels
 
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -50,8 +49,6 @@ class Albums : PanelFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        Log.d(TAG, "onViewCreated: adapterAlbums=${adapterAlbums != null}")
-
         binding.header.setContentView(headerBinding.root)
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.attachSlideFastScroller()
@@ -63,6 +60,9 @@ class Albums : PanelFragment() {
         binding.recyclerView.setGridType(AlbumPreferences.getGridType(), AlbumPreferences.getGridSize())
 
         setupClickListeners()
+
+        // Re-attach existing adapter immediately so the RecyclerView is never blank on return
+        adapterAlbums?.let { binding.recyclerView.adapter = it }
 
         // Observe StateFlow with proper lifecycle handling for immediate updates
         viewLifecycleOwner.lifecycleScope.launch {
@@ -82,8 +82,6 @@ class Albums : PanelFragment() {
     }
 
     override fun onDestroyView() {
-        Log.d(TAG, "onDestroyView: Clearing adapter reference")
-        // Clear adapter reference when view is destroyed
         adapterAlbums = null
         gridLayoutManager = null
         super.onDestroyView()
@@ -160,11 +158,7 @@ class Albums : PanelFragment() {
     }
 
     private fun updateAlbumsList(albums: List<Album>) {
-        Log.d(TAG, "updateAlbumsList: albums.size=${albums.size}, adapterAlbums=${adapterAlbums != null}, recyclerView.adapter=${binding.recyclerView.adapter != null}")
-
-        // Initialize adapter on first data arrival to preserve layout animations
         if (adapterAlbums == null) {
-            Log.d(TAG, "updateAlbumsList: Creating new adapter with ${albums.size} albums")
             adapterAlbums = AdapterAlbums(albums)
             adapterAlbums?.setHasStableIds(true)
             adapterAlbums?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
@@ -173,15 +167,9 @@ class Albums : PanelFragment() {
                 }
             })
             binding.recyclerView.adapter = adapterAlbums
-            Log.d(TAG, "updateAlbumsList: Adapter attached to RecyclerView")
         } else {
-            // Update existing adapter data
-            Log.d(TAG, "updateAlbumsList: Updating existing adapter with ${albums.size} albums")
             adapterAlbums?.updateList(albums)
-
-            // Re-attach adapter if RecyclerView lost its reference (e.g., after navigation)
             if (binding.recyclerView.adapter == null) {
-                Log.d(TAG, "updateAlbumsList: Re-attaching adapter to RecyclerView")
                 binding.recyclerView.adapter = adapterAlbums
             }
         }

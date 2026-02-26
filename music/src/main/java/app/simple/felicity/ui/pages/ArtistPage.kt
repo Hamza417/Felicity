@@ -73,13 +73,13 @@ class ArtistPage : MediaFragment() {
     }
 
     private fun updateArtistPage(data: PageData) {
-        Log.d(TAG, "updateArtistPage: Updating UI for artist: ${artist.name} with ${data.songs.size} songs, adapter=${pageAdapter != null}, recyclerView.adapter=${binding.recyclerView.adapter != null}")
+        val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
+        binding.recyclerView.addItemDecorationSafely(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
+
 
         if (pageAdapter == null) {
             Log.d(TAG, "updateArtistPage: Creating new adapter")
             pageAdapter = PageAdapter(data, PageAdapter.PageType.ArtistPage(artist))
-            val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
-            binding.recyclerView.addItemDecorationSafely(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
             binding.recyclerView.adapter = pageAdapter
             setupAdapterCallbacks()
         } else {
