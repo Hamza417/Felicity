@@ -22,18 +22,24 @@ import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
+import androidx.media3.session.CommandButton
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
+import androidx.media3.session.SessionResult
+import app.simple.felicity.engine.R
 import app.simple.felicity.manager.SharedPreferences.initRegisterSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AudioPreferences
+import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.repositories.AudioRepository
 import com.google.common.collect.ImmutableList
+import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -119,6 +125,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             .setSessionActivity(sessionActivityIntent!!)
             .setId("ExoPlayerServiceSession")
             .build()
+
+        // Set initial repeat button in the notification
+        mediaSession?.setCustomLayout(listOf(buildRepeatCommandButton(PlayerPreferences.getRepeatMode())))
     }
 
     /**
@@ -184,6 +193,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
         // Configure gapless playback
         configureGaplessPlayback()
+
+        // Apply saved repeat mode
+        applyRepeatMode(PlayerPreferences.getRepeatMode())
 
         player.addListener(playerListener)
     }
@@ -260,6 +272,41 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         player.pauseAtEndOfMediaItems = !gaplessEnabled
     }
 
+    private fun applyRepeatMode(repeatMode: Int) {
+        when (repeatMode) {
+            MediaConstants.REPEAT_ONE -> {
+                player.repeatMode = Player.REPEAT_MODE_ONE
+            }
+            MediaConstants.REPEAT_QUEUE -> {
+                player.repeatMode = Player.REPEAT_MODE_ALL
+            }
+            else -> { // REPEAT_OFF
+                player.repeatMode = Player.REPEAT_MODE_OFF
+            }
+        }
+        MediaManager.notifyRepeatMode(repeatMode)
+        // Push the updated repeat button to the media notification
+        mediaSession?.setCustomLayout(listOf(buildRepeatCommandButton(repeatMode)))
+        Log.d(TAG, "Repeat mode applied: $repeatMode")
+    }
+
+    /** Builds a CommandButton representing the current repeat state for the notification. */
+    @Suppress("DEPRECATION")
+    private fun buildRepeatCommandButton(repeatMode: Int): CommandButton {
+        val (iconRes, displayName) = when (repeatMode) {
+            MediaConstants.REPEAT_ONE -> Pair(R.drawable.ic_repeat_one, "Repeat One")
+            MediaConstants.REPEAT_QUEUE -> Pair(R.drawable.ic_repeat, "Repeat Queue")
+            else -> Pair(R.drawable.ic_repeat_off, "Repeat Off")
+        }
+
+        return CommandButton.Builder(
+                CommandButton.ICON_REPEAT_OFF)
+            .setDisplayName(displayName)
+            .setIconResId(iconRes)
+            .setSessionCommand(SessionCommand(COMMAND_TOGGLE_REPEAT, android.os.Bundle.EMPTY))
+            .build()
+    }
+
     private fun setSilenceState() {
         // Skip silence is always disabled for natural audio playback
         player.skipSilenceEnabled = AudioPreferences.isSkipSilenceEnabled()
@@ -314,7 +361,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     else MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
                 }
                 Player.STATE_ENDED -> {
-                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ENDED)
+                    // Only treat as a true "ended" event in REPEAT_OFF mode.
+                    // For REPEAT_ONE / REPEAT_QUEUE, ExoPlayer loops automatically and
+                    // STATE_ENDED is never actually reached.
+                    if (PlayerPreferences.getRepeatMode() == MediaConstants.REPEAT_OFF) {
+                        MediaManager.handleQueueEnded()
+                    }
                     stopPeriodicStateSaving()
                     savePlaybackStateToDatabase()
                 }
@@ -377,6 +429,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 setSilenceState()
                 Log.d(TAG, "Skip silence preference changed to: ${AudioPreferences.isSkipSilenceEnabled()} (Note: Skip silence is currently disabled for all modes)")
             }
+            PlayerPreferences.REPEAT_MODE -> {
+                val repeatMode = PlayerPreferences.getRepeatMode()
+                Log.d(TAG, "Repeat mode preference changed to: $repeatMode")
+                applyRepeatMode(repeatMode)
+            }
         }
     }
 
@@ -426,9 +483,47 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
     private inner class LibraryCallback : MediaLibrarySession.Callback {
 
+        private val toggleRepeatCommand = SessionCommand(COMMAND_TOGGLE_REPEAT, android.os.Bundle.EMPTY)
+
         /**
-         * Allow clients (Assistant, Android Auto) to connect and get the library root
+         * Advertise the custom repeat command so the system notification controller can use it.
          */
+        override fun onConnect(
+                session: MediaSession,
+                controller: MediaSession.ControllerInfo
+        ): MediaSession.ConnectionResult {
+            val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
+                .buildUpon()
+                .add(toggleRepeatCommand)
+                .build()
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(sessionCommands)
+                .build()
+        }
+
+        /**
+         * Handle the repeat toggle command sent from the notification button.
+         */
+        override fun onCustomCommand(
+                session: MediaSession,
+                controller: MediaSession.ControllerInfo,
+                customCommand: SessionCommand,
+                args: android.os.Bundle
+        ): ListenableFuture<SessionResult> {
+            if (customCommand.customAction == COMMAND_TOGGLE_REPEAT) {
+                val current = PlayerPreferences.getRepeatMode()
+                val next = when (current) {
+                    MediaConstants.REPEAT_OFF -> MediaConstants.REPEAT_QUEUE
+                    MediaConstants.REPEAT_QUEUE -> MediaConstants.REPEAT_ONE
+                    else -> MediaConstants.REPEAT_OFF
+                }
+                PlayerPreferences.setRepeatMode(next)
+                applyRepeatMode(next)
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+            return super.onCustomCommand(session, controller, customCommand, args)
+        }
+
         override fun onGetLibraryRoot(
                 session: MediaLibrarySession,
                 browser: MediaSession.ControllerInfo,
@@ -598,5 +693,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     companion object {
         private const val TAG = "FelicityPlayerService"
         private const val GAP_DURATION_MS = 800L // Duration of silence gap when gapless playback is disabled
+
+        /** Custom session command sent when the user taps the repeat button in the notification. */
+        const val COMMAND_TOGGLE_REPEAT = "app.simple.felicity.TOGGLE_REPEAT"
     }
 }

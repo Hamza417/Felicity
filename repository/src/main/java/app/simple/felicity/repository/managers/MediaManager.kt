@@ -59,11 +59,13 @@ object MediaManager {
     private val _songPositionFlow = MutableSharedFlow<Int>(replay = 1)
     private val _songSeekPositionFlow = MutableSharedFlow<Long>(replay = 1)
     private val _playbackStateFlow = MutableSharedFlow<Int>(replay = 1)
+    private val _repeatModeFlow = MutableSharedFlow<Int>(replay = 1)
 
     val songListFlow: SharedFlow<List<Audio>> = _songListFlow.asSharedFlow()
     val songPositionFlow: SharedFlow<Int> = _songPositionFlow.asSharedFlow()
     val songSeekPositionFlow: SharedFlow<Long> = _songSeekPositionFlow.asSharedFlow()
     val playbackStateFlow: SharedFlow<Int> = _playbackStateFlow.asSharedFlow()
+    val repeatModeFlow: SharedFlow<Int> = _repeatModeFlow.asSharedFlow()
 
     fun setMediaController(controller: MediaController) {
         mediaController = controller
@@ -334,6 +336,30 @@ object MediaManager {
             Log.w(TAG, "Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")
             null
         }
+    }
+
+    fun notifyRepeatMode(repeatMode: Int) {
+        scope.launch { _repeatModeFlow.emit(repeatMode) }
+    }
+
+    /**
+     * Called by the service when the ExoPlayer signals STATE_ENDED (end of queue).
+     * Applies the current repeat mode behaviour:
+     *  - REPEAT_ONE / REPEAT_QUEUE: ExoPlayer handles natively, this is a no-op.
+     *  - REPEAT_OFF: pause and seek back to the first song.
+     */
+    fun handleQueueEnded() {
+        // For REPEAT_OFF, ExoPlayer has no repeat so STATE_ENDED means the queue truly finished.
+        // Seek to position 0 and pause.
+        mediaController?.seekTo(0, 0L)
+        mediaController?.pause()
+        currentSongPosition = 0
+        scope.launch {
+            _playbackStateFlow.emit(MediaConstants.PLAYBACK_PAUSED)
+            _songPositionFlow.emit(0)
+            _songSeekPositionFlow.emit(0L)
+        }
+        stopSeekPositionUpdates()
     }
 
     /**
