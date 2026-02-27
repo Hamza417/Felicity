@@ -9,9 +9,8 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
-import android.os.VibrationEffect
-import android.os.Vibrator
 import android.util.AttributeSet
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.animation.DecelerateInterpolator
@@ -26,9 +25,6 @@ import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.themes.Theme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -59,8 +55,6 @@ class RotaryKnobView @JvmOverloads constructor(
     /** The drawable used to paint the rotating knob circle. Must be a [RotaryKnobDrawable]. */
     private var knobDrawable: RotaryKnobDrawable = SimpleRotaryKnobDrawable()
 
-    @Suppress("DEPRECATION")
-    private var vibration: Vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
     /** Current angular position of the knob in degrees, clamped to [START]..[END]. */
     private var knobRotation = 0f
@@ -75,8 +69,14 @@ class RotaryKnobView @JvmOverloads constructor(
     private var debounceRunnable: Runnable? = null
     private var pendingVolume = 0f
     var value = 130
-    private var haptic = false
+
+    /** Enable / disable all haptic feedback. Defaults to true. */
+    var hapticEnabled: Boolean = true
+
     private var listener: RotaryKnobListener? = null
+
+    /** Accumulated rotation since the last tick vibration, in degrees. */
+    private var hapticAccumulator = 0f
 
     /** Current display string sourced from [RotaryKnobListener.onLabel]. */
     private var labelText: String = ""
@@ -527,7 +527,10 @@ class RotaryKnobView @JvmOverloads constructor(
         val knobCanvasAngle = ARC_START_ANGLE + ((knobRotation - START) / (END - START)) * ARC_SWEEP
 
         // Start/reverse per-line ValueAnimators for any line whose target has flipped.
-        updateDivisionAnimators(knobCanvasAngle)
+        // In centerSnapEnabled mode progress radiates outward from the midpoint;
+        // in normal mode it sweeps from the start (left) up to the knob position.
+        val centreCanvasAngle = if (centerSnapEnabled) ARC_START_ANGLE + ARC_SWEEP / 2f else Float.NaN
+        updateDivisionAnimators(knobCanvasAngle, centreCanvasAngle)
 
         /**
          * Draw the arc/division ring as two non-overlapping gutter regions:
@@ -597,7 +600,6 @@ class RotaryKnobView @JvmOverloads constructor(
         // Center-snap tick: a taller, accent-colored mark at the exact midpoint of the arc.
         if (centerSnapEnabled) {
             val centreArcAngle = ARC_START_ANGLE + ARC_SWEEP / 2f  // 270° canvas = 12-o'clock
-            centerTickPaint.strokeWidth = divStrokeWidthPx * 2f
 
             val centreRad = Math.toRadians(centreArcAngle.toDouble())
             val cosCentre = cos(centreRad).toFloat()
@@ -605,38 +607,39 @@ class RotaryKnobView @JvmOverloads constructor(
             val innerR = arcCentreRadiusPx - divProgressLengthPx
             val outerR = arcCentreRadiusPx + divProgressLengthPx
 
-            // Lean amount: -1 = full left, 0 = center, +1 = full right
-            val lean = (knobRotation / END).coerceIn(-1f, 1f)
-
-            // Blend color: center → accent, left/right lean → idle (so it's subtle when centred)
-            val leanAbs = abs(lean)
-            val blendedAlpha = (0x40 + (0xBF * leanAbs)).toInt().coerceIn(0x40, 0xFF)
-            centerTickPaint.color = (divisionAccentColor and 0x00FFFFFF) or (blendedAlpha shl 24)
+            // Center tick is always drawn at full accent color — it's a fixed reference mark.
+            centerTickPaint.strokeWidth = divStrokeWidthPx * 2f
+            centerTickPaint.color = divisionAccentColor
             canvas.drawLine(
                     cx + cosCentre * innerR, cy + sinCentre * innerR,
                     cx + cosCentre * outerR, cy + sinCentre * outerR,
                     centerTickPaint
             )
 
-            // Pan-lean divider line: from center (cx,cy) toward the knob indicator tip,
-            // drawn along the current knobRotation direction. The indicator dot sits at
-            // knobRadiusPx * knobIndicatorDistanceFraction from center (before rotation),
-            // so after rotation by knobRotation we compute the rotated direction.
-            // knobRotation=0 → indicator points straight up → canvas angle = -90° (270°).
-            val indicatorCanvasAngleDeg = knobRotation - 90f  // -90° offset: 0 rotation = up
+            // Pan-lean line: starts at the inner face of the center tick (on the arc, pointing
+            // toward the knob) and ends at the rotating indicator dot tip.
+            // As the knob leans left or right the line pivots away from 12-o'clock, giving an
+            // immediate visual cue of which side is weighted and by how much.
+            //
+            // knobRotation = 0  → indicator at top    → canvas direction = -90° (12 o'clock)
+            // knobRotation = -150 → full left          → canvas direction = -240° (= 120°, left)
+            // knobRotation = +150 → full right         → canvas direction = +60°  (right)
+            val lean = (knobRotation / END).coerceIn(-1f, 1f)
+            val leanAbs = abs(lean)
+            // Pan line fades in as the knob moves away from center (invisible at exact center).
+            val panAlpha = (0xFF * leanAbs).toInt().coerceIn(0, 0xFF)
+
+            val indicatorCanvasAngleDeg = knobRotation - 90f
             val indicatorRad = Math.toRadians(indicatorCanvasAngleDeg.toDouble())
             val cosInd = cos(indicatorRad).toFloat()
             val sinInd = sin(indicatorRad).toFloat()
-
-            // Tip position of the indicator dot
             val tipR = knobRadiusPx * knobIndicatorDistanceFraction
 
             panLinePaint.strokeWidth = divStrokeWidthPx * 1.5f
-            panLinePaint.color = (divisionAccentColor and 0x00FFFFFF) or (blendedAlpha shl 24)
+            panLinePaint.color = (divisionAccentColor and 0x00FFFFFF) or (panAlpha shl 24)
 
-            // Draw from just inside the center of the knob out to the indicator tip
             canvas.drawLine(
-                    cx, cy,
+                    cx + cosCentre * innerR, cy + sinCentre * innerR,
                     cx + cosInd * tipR, cy + sinInd * tipR,
                     panLinePaint
             )
@@ -662,15 +665,28 @@ class RotaryKnobView @JvmOverloads constructor(
      * Compares each line's desired target against [knobCanvasAngle] and starts a new
      * [ValueAnimator] only when the target has actually changed (0 → 1 or 1 → 0).
      *
-     * Because each animator starts from the line's *current mid-flight scale*, reversals
-     * are seamless — no pop or jump when the knob direction changes. The
-     * [android.view.animation.AccelerateDecelerateInterpolator] gives the smoothest
-     * grow/shrink feel for a trailing-wave effect.
+     * When [centreCanvasAngle] is finite (center-snap / balance mode) a line is progressed
+     * only when it lies **between the center and the current knob position** — i.e. the
+     * accent region grows outward from the center tick toward whichever side the knob leans.
+     * When [centreCanvasAngle] is [Float.NaN] the original left-to-knob sweep is used.
      */
-    private fun updateDivisionAnimators(knobCanvasAngle: Float) {
+    private fun updateDivisionAnimators(knobCanvasAngle: Float, centreCanvasAngle: Float = Float.NaN) {
         val interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+        val centreMode = centreCanvasAngle.isFinite()
         for (i in divisionAngles.indices) {
-            val newTarget = if (divisionAngles[i] <= knobCanvasAngle) 1f else 0f
+            val lineAngle = divisionAngles[i]
+            val newTarget = if (centreMode) {
+                // Progress outward from center: line is lit when it sits in the arc segment
+                // that runs from centreCanvasAngle toward knobCanvasAngle (either direction).
+                val isBetween = if (knobCanvasAngle >= centreCanvasAngle) {
+                    lineAngle in centreCanvasAngle..knobCanvasAngle
+                } else {
+                    lineAngle in knobCanvasAngle..centreCanvasAngle
+                }
+                if (isBetween) 1f else 0f
+            } else {
+                if (lineAngle <= knobCanvasAngle) 1f else 0f
+            }
             if (newTarget == divisionTargets[i]) continue  // target unchanged — nothing to do
 
             divisionTargets[i] = newTarget
@@ -730,7 +746,8 @@ class RotaryKnobView @JvmOverloads constructor(
                 rotationAnimator = null
                 knobDrawable.onPressedStateChanged(true, 300)
                 lastMoveAngle = calculateAngle(event.x, event.y)
-                feedback()
+                hapticAccumulator = 0f
+                vibrateTouchDown()
                 listener?.onUserInteractionStart()
                 return true
             }
@@ -740,8 +757,39 @@ class RotaryKnobView @JvmOverloads constructor(
                 var delta = currentAngle - lastMoveAngle
                 if (delta > 180f) delta -= 360f
                 if (delta < -180f) delta += 360f
+
+                val prevRotation = knobRotation
                 knobRotation = (knobRotation + delta).coerceIn(START, END)
                 lastMoveAngle = currentAngle
+
+                // Rotation tick haptics: accumulate travel and fire a light tick every HAPTIC_TICK_INTERVAL_DEG.
+                val actualDelta = knobRotation - prevRotation
+                if (actualDelta != 0f) {
+                    hapticAccumulator += abs(actualDelta)
+                    if (hapticAccumulator >= HAPTIC_TICK_INTERVAL_DEG) {
+                        hapticAccumulator %= HAPTIC_TICK_INTERVAL_DEG
+                        vibrateRotationTick()
+                    }
+                }
+
+                // End-stop heavy click: fire once when the knob first clamps against START or END.
+                if ((knobRotation == START && prevRotation > START) ||
+                        (knobRotation == END && prevRotation < END)) {
+                    hapticAccumulator = 0f
+                    vibrateHeavyTick()
+                }
+
+                // Center-snap heavy click: fire once each time the knob crosses the center angle.
+                if (centerSnapEnabled) {
+                    val centreAngle = valueToAngle(50f)
+                    val crossedCentre = (prevRotation < centreAngle && knobRotation >= centreAngle) ||
+                            (centreAngle in knobRotation..prevRotation)
+                    if (crossedCentre) {
+                        hapticAccumulator = 0f
+                        vibrateHeavyTick()
+                    }
+                }
+
                 val v = angleToValue(knobRotation)
                 labelText = listener?.onLabel(v) ?: ""
                 listener?.onRotate(v)
@@ -755,10 +803,12 @@ class RotaryKnobView @JvmOverloads constructor(
                 if (centerSnapEnabled) {
                     val centreAngle = valueToAngle(50f)
                     if (abs(knobRotation - centreAngle) <= snapThreshold) {
+                        val wasAlreadyAtCentre = knobRotation == centreAngle
                         animateTo(centreAngle)
                         val snappedValue = 50f
                         labelText = listener?.onLabel(snappedValue) ?: ""
                         listener?.onRotate(snappedValue)
+                        if (!wasAlreadyAtCentre) vibrateHeavyTick()
                     }
                 }
                 listener?.onUserInteractionEnd()
@@ -866,11 +916,22 @@ class RotaryKnobView @JvmOverloads constructor(
     private fun valueToAngle(volume: Float): Float =
         START + (volume / 100f) * (END - START)
 
-    private fun feedback() {
-        CoroutineScope(Dispatchers.Default).launch {
-            @Suppress("DEPRECATION")
-            if (haptic) vibration.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
-        }
+    /** Light tick fired every [HAPTIC_TICK_INTERVAL_DEG] degrees of rotation. */
+    private fun vibrateRotationTick() {
+        if (!hapticEnabled) return
+        performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+    }
+
+    /** Heavy click fired when the knob hits an end-stop or the center snap position. */
+    private fun vibrateHeavyTick() {
+        if (!hapticEnabled) return
+        performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+    }
+
+    /** Single tap fired on finger-down to acknowledge the touch. */
+    private fun vibrateTouchDown() {
+        if (!hapticEnabled) return
+        performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
     }
 
     companion object {
@@ -888,5 +949,12 @@ class RotaryKnobView @JvmOverloads constructor(
 
         /** Total angular sweep of the arc from min to max (END − START = 300°). */
         private const val ARC_SWEEP = 300f
+
+        /**
+         * Minimum cumulative rotation in degrees between successive light-tick haptic pulses.
+         * 3° over a 300° arc with 200 division lines ≈ one tick every ~2 division lines,
+         * giving a natural detent feel without over-firing.
+         */
+        private const val HAPTIC_TICK_INTERVAL_DEG = 3f
     }
 }

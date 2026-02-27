@@ -70,9 +70,9 @@ class VolumeKnob : ScopedBottomSheetFragment() {
             }
         })
 
-        // ── Balance knob (constant-power panning) ───────────────────────────────
-        // Knob value 0-100 maps to pan -1 (full left) … 0 (centre, default) … +1 (full right).
-        // Centre (50) = no change. Centre-snap enabled so the knob snaps back to 50 when
+        // Balance knob (constant-power panning)
+        // Knob value 0-100 maps to pan -1 (full left) … 0 (center, default) … +1 (full right).
+        // Center (50) = no change. Center-snap enabled so the knob snaps back to 50 when
         // released close to it, and a divider line shows which side it's leaning toward.
         binding.balanceKnob.centerSnapEnabled = true
         binding.balanceKnob.setTickTexts("L", "R")
@@ -96,7 +96,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
             }
         })
 
-        // ── Hardware volume keys ─────────────────────────────────────────────────
+        // Hardware volume keys
         dialog?.setOnKeyListener { _, keyCode, _ ->
             when (keyCode) {
                 KeyEvent.KEYCODE_VOLUME_UP -> {
@@ -133,13 +133,13 @@ class VolumeKnob : ScopedBottomSheetFragment() {
     companion object {
         /**
          * Maps knob position [0..100] → pan [-1..1].
-         * 50 = centre = 0, 0 = full left = -1, 100 = full right = +1.
+         * 50 = center = 0, 0 = full left = -1, 100 = full right = +1.
          */
         fun knobValueToPan(knobValue: Float): Float = ((knobValue - 50f) / 50f).coerceIn(-1f, 1f)
 
         /**
          * Maps pan [-1..1] → knob position [0..100].
-         * 0 (centre) → 50, -1 (full left) → 0, +1 (full right) → 100.
+         * 0 (center) → 50, -1 (full left) → 0, +1 (full right) → 100.
          */
         fun panToKnobValue(pan: Float): Float = ((pan * 50f) + 50f).coerceIn(0f, 100f)
 
