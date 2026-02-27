@@ -174,7 +174,12 @@
         <attr name="felicityLabelsEnabled" format="boolean" />
         <attr name="felicityLabelTextSize" format="dimension" />
         <attr name="felicityLabelTextColor" format="color|reference" />
-        <attr name="felicityLabelSpacing" format="dimension" />
+        <!-- Extra gap between label text and thumb edge. Mandatory minimum (thumb+ring) is always enforced. -->
+        <attr name="felicityLabelGap" format="dimension" />
+        <!-- Label background pill -->
+        <attr name="felicityLabelBackgroundEnabled" format="boolean" />
+        <attr name="felicityLabelBackgroundColor" format="color|reference" />
+        <attr name="felicityLabelBackgroundCornerRadius" format="dimension" />
     </declare-styleable>
 
     <declare-styleable name="FelicitySwitch">

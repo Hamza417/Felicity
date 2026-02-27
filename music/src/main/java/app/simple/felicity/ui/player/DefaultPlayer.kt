@@ -97,7 +97,6 @@ class DefaultPlayer : MediaFragment() {
             }
         })
 
-        binding.seekbar.setLabelsEnabled(enabled = true)
         binding.seekbar.setLeftLabelProvider { f, f1, f2 ->
             NumberUtils.getFormattedTime(f.toLong())
         }

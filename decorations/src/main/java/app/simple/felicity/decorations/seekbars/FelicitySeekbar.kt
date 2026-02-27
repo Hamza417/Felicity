@@ -164,9 +164,15 @@ class FelicitySeekbar @JvmOverloads constructor(
     else ThemeManager.theme.textViewTheme.secondaryTextColor
 
     private var labelTextSize: Float  // set in init
-    private var labelSpacingPx: Float // gap between label and track edge, set in init
 
-    // Per-side animated widths (drive the track inset)
+    /**
+     * Extra gap in px added on top of the mandatory minimum clearance.
+     * Minimum clearance = thumb half-width + press-ring outset (computed at draw time).
+     * This value is customisable via [setLabelGap] or the XML attr felicityLabelGap.
+     */
+    private var labelGapPx: Float = 0f // set in init; 0 means "just the mandatory clearance"
+
+    // Per-side animated widths (text width only — gap is added on top when computing reserve)
     private var leftLabelAnimatedWidth = 0f
     private var rightLabelAnimatedWidth = 0f
 
@@ -176,6 +182,20 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     // Shared scale — both labels scale together during tracking
     private var labelScale = 1f
+
+    // Optional solid background pill drawn behind each label
+    private var labelBackgroundEnabled = false
+
+    @ColorInt
+    private var labelBackgroundColor: Int = if (isInEditMode) Color.DKGRAY
+    else ThemeManager.theme.viewGroupTheme.highlightColor
+
+    private var labelBackgroundCornerRadius = 0f
+    private var labelBackgroundPaddingH = 0f
+    private var labelBackgroundPaddingV = 0f
+
+    private val labelBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val labelBgRect = RectF()
 
     private var leftLabelWidthAnimator: ValueAnimator? = null
     private var rightLabelWidthAnimator: ValueAnimator? = null
@@ -257,6 +277,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     }
 
     private var animateFromUser = false
+
     private val springAnimation = SpringAnimation(this, progressProperty).apply {
         spring = SpringForce().apply {
             stiffness = SpringForce.STIFFNESS_VERY_LOW
@@ -269,6 +290,7 @@ class FelicitySeekbar @JvmOverloads constructor(
             spring?.dampingRatio = baseDamping
         }
     }
+
     private val baseStiffness = SpringForce.STIFFNESS_LOW
     private val baseDamping = SpringForce.DAMPING_RATIO_NO_BOUNCY
 
@@ -294,7 +316,10 @@ class FelicitySeekbar @JvmOverloads constructor(
         defaultIndicatorWidthPx = 2f * d
         // Label defaults
         labelTextSize = 12f * d
-        labelSpacingPx = 8f * d
+        labelGapPx = 8f * d          // extra gap on top of the mandatory thumb+ring clearance
+        labelBackgroundCornerRadius = 6f * d
+        labelBackgroundPaddingH = 6f * d
+        labelBackgroundPaddingV = 3f * d
 
         context.theme.obtainStyledAttributes(attrs, R.styleable.FelicitySeekbar, defStyleAttr, 0).apply {
             try {
@@ -340,7 +365,10 @@ class FelicitySeekbar @JvmOverloads constructor(
                 val labelsEnabledXml = getBoolean(R.styleable.FelicitySeekbar_felicityLabelsEnabled, false)
                 labelTextSize = getDimension(R.styleable.FelicitySeekbar_felicityLabelTextSize, labelTextSize)
                 labelTextColor = getColor(R.styleable.FelicitySeekbar_felicityLabelTextColor, labelTextColor)
-                labelSpacingPx = getDimension(R.styleable.FelicitySeekbar_felicityLabelSpacing, labelSpacingPx)
+                labelGapPx = getDimension(R.styleable.FelicitySeekbar_felicityLabelGap, labelGapPx)
+                labelBackgroundEnabled = getBoolean(R.styleable.FelicitySeekbar_felicityLabelBackgroundEnabled, labelBackgroundEnabled)
+                labelBackgroundColor = getColor(R.styleable.FelicitySeekbar_felicityLabelBackgroundColor, labelBackgroundColor)
+                labelBackgroundCornerRadius = getDimension(R.styleable.FelicitySeekbar_felicityLabelBackgroundCornerRadius, labelBackgroundCornerRadius)
                 if (labelsEnabledXml) {
                     leftLabelEnabled = true
                     rightLabelEnabled = true
@@ -412,6 +440,7 @@ class FelicitySeekbar @JvmOverloads constructor(
             pressRingColor = progressColor
             defaultIndicatorColor = ThemeManager.accent.secondaryAccentColor
             labelTextColor = ThemeManager.theme.textViewTheme.secondaryTextColor
+            labelBackgroundColor = ThemeManager.theme.viewGroupTheme.highlightColor
             setThumbCornerRadius(AppearancePreferences.getCornerRadius())
             applyPaintColors()
             setupSmudgeAndShadow()
@@ -422,6 +451,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     private fun setupLabelPaint() {
         labelPaint.textSize = labelTextSize
         labelPaint.color = labelTextColor
+        labelBgPaint.color = labelBackgroundColor
         if (isInEditMode.not()) {
             TypeFace.getMediumTypeFace(context)?.let { labelPaint.typeface = it }
         }
@@ -808,6 +838,46 @@ class FelicitySeekbar @JvmOverloads constructor(
         widthAnim.start()
     }
 
+    /**
+     * Show or hide the solid background pill drawn behind each label.
+     * The pill uses [labelBackgroundColor] which defaults to the theme highlight colour.
+     */
+    fun setLabelBackgroundEnabled(enabled: Boolean) {
+        if (labelBackgroundEnabled == enabled) return
+        labelBackgroundEnabled = enabled
+        invalidate()
+    }
+
+    fun isLabelBackgroundEnabled(): Boolean = labelBackgroundEnabled
+
+    /** Override the label background fill colour. */
+    fun setLabelBackgroundColor(@ColorInt color: Int) {
+        labelBackgroundColor = color
+        labelBgPaint.color = color
+        invalidate()
+    }
+
+    /** Override the label background corner radius in pixels. */
+    fun setLabelBackgroundCornerRadius(radiusPx: Float) {
+        labelBackgroundCornerRadius = radiusPx.coerceAtLeast(0f)
+        invalidate()
+    }
+
+    /**
+     * Set the extra gap in pixels added between the label text's right edge and the thumb's
+     * left edge (at position 0). The mandatory minimum is always enforced:
+     *   minimum = thumb half-width + press-ring outset
+     * This value is an *extra* cushion on top of that minimum.
+     * Default is 8dp.
+     */
+    fun setLabelGap(gapPx: Float) {
+        labelGapPx = gapPx.coerceAtLeast(0f)
+        requestLayout()
+        invalidate()
+    }
+
+    fun getLabelGap(): Float = labelGapPx
+
     private fun animateLabelScale(focused: Boolean) {
         val target = if (focused) 1.12f else 1f
         if (labelScale == target) return
@@ -827,15 +897,38 @@ class FelicitySeekbar @JvmOverloads constructor(
         val baseHeight = max(trackHeightPx, thumbRadiusPx * 2f) + (pressRingTotalOutset() * 2f)
         val verticalBlur = max(thumbShadowRadius, if (smudgeEnabled) (smudgeRadius + abs(smudgeOffsetY)) else 0f)
         val desiredHeight = (paddingTop + paddingBottom + baseHeight + verticalBlur * 2f).toInt()
-        // Reserve space for each side independently
-        val leftReserve = if (leftLabelAnimatedWidth > 0f) (leftLabelAnimatedWidth + labelSpacingPx).toInt() else 0
-        val rightReserve = if (rightLabelAnimatedWidth > 0f) (rightLabelAnimatedWidth + labelSpacingPx).toInt() else 0
+        // Reserve = text width + mandatory clearance (thumb half + ring + extra gap)
+        val leftReserve = if (leftLabelAnimatedWidth > 0f) totalLabelReserve(leftLabelAnimatedWidth).toInt() else 0
+        val rightReserve = if (rightLabelAnimatedWidth > 0f) totalLabelReserve(rightLabelAnimatedWidth).toInt() else 0
         val resolvedWidth = resolveSize(suggestedMinimumWidth + paddingLeft + paddingRight + leftReserve + rightReserve, widthMeasureSpec)
         val resolvedHeight = resolveSize(desiredHeight, heightMeasureSpec)
         setMeasuredDimension(resolvedWidth, resolvedHeight)
     }
 
     private fun horizontalOutset(): Float = max(max(thumbShadowRadius, if (smudgeEnabled) smudgeRadius else 0f), pressRingTotalOutset())
+
+    /**
+     * The minimum gap between label text and the nearest edge of the thumb when the
+     * thumb is at position 0 (left label) or max (right label).
+     *
+     * = thumb half-width (baseSafeInset) + press-ring outset + [labelGapPx]
+     *
+     * This is computed fresh each time so it automatically adapts when thumb size or
+     * press-ring size changes at runtime.
+     */
+    private fun mandatoryLabelClearance(): Float {
+        val baseSafeInset = when (thumbShape) {
+            ThumbShape.CIRCLE -> thumbRadiusPx
+            else -> thumbWidthPx / 2f
+        }
+        return baseSafeInset + pressRingTotalOutset() + labelGapPx
+    }
+
+    /**
+     * Total horizontal space to reserve for one label on its side.
+     * = text width + mandatory clearance (thumb half + ring + extra gap)
+     */
+    private fun totalLabelReserve(textWidth: Float): Float = textWidth + mandatoryLabelClearance()
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -844,12 +937,34 @@ class FelicitySeekbar @JvmOverloads constructor(
             ThumbShape.CIRCLE -> thumbRadiusPx
             else -> thumbWidthPx / 2f
         }
-        // Each side only eats into the track as much as its own animated width
-        val leftReserve = if (leftLabelAnimatedWidth > 0f) leftLabelAnimatedWidth + labelSpacingPx else 0f
-        val rightReserve = if (rightLabelAnimatedWidth > 0f) rightLabelAnimatedWidth + labelSpacingPx else 0f
 
-        val left = paddingLeft.toFloat() + hOut + baseSafeInset + leftReserve
-        val right = (width - paddingRight).toFloat() - hOut - baseSafeInset - rightReserve
+        // Total space reserved per side = text width + mandatory clearance
+        // The track is then inset by baseSafeInset on top of that (standard thumb-fit inset).
+        // Geometry:
+        //   left edge of view
+        //   + paddingLeft + hOut                           ← view safe area
+        //   + leftLabelAnimatedWidth                       ← text zone
+        //   + mandatoryLabelClearance()                    ← gap from text to thumb centre
+        //   = left (track start / thumb centre at pos 0)
+        //
+        // Note: mandatoryLabelClearance = baseSafeInset + pressRing + labelGapPx
+        // so "left" already includes baseSafeInset — we must NOT add it again.
+        val leftTotalReserve = if (leftLabelAnimatedWidth > 0f) totalLabelReserve(leftLabelAnimatedWidth) else 0f
+        val rightTotalReserve = if (rightLabelAnimatedWidth > 0f) totalLabelReserve(rightLabelAnimatedWidth) else 0f
+
+        // Track bounds: baseSafeInset is already inside mandatoryLabelClearance when labels
+        // are present; for the no-label case we still need it to keep thumb inside bounds.
+        val left = if (leftTotalReserve > 0f) {
+            paddingLeft.toFloat() + hOut + leftTotalReserve
+        } else {
+            paddingLeft.toFloat() + hOut + baseSafeInset
+        }
+        val right = if (rightTotalReserve > 0f) {
+            (width - paddingRight).toFloat() - hOut - rightTotalReserve
+        } else {
+            (width - paddingRight).toFloat() - hOut - baseSafeInset
+        }
+
         if (right <= left) return
         val centerY = height / 2f + if (smudgeEnabled) smudgeOffsetY else 0f
         val trackRadius = trackHeightPx / 2f
@@ -950,15 +1065,31 @@ class FelicitySeekbar @JvmOverloads constructor(
         }
 
         // ---- Draw side labels ----
+        // Label text zone: [paddingLeft + hOut .. paddingLeft + hOut + labelAnimatedWidth]
+        // Label centre X = paddingLeft + hOut + labelAnimatedWidth / 2
+        // Thumb left edge at pos 0 = left (= paddingLeft + hOut + totalLabelReserve)
+        // Gap between text right edge and thumb left edge = mandatoryLabelClearance() = baseSafeInset + ring + labelGapPx
         val textY = centerY - ((labelPaint.ascent() + labelPaint.descent()) / 2f)
+        val fontHalfHeight = (labelPaint.descent() - labelPaint.ascent()) / 2f
 
         if (leftLabelAlpha > 0f && leftLabelAnimatedWidth > 0f) {
             val text = cachedLeftLabel
             if (!text.isNullOrEmpty()) {
-                labelPaint.alpha = (leftLabelAlpha * 255f).toInt().coerceIn(0, 255)
-                // Centre of the left reserved zone
-                val leftLabelCx = paddingLeft.toFloat() + hOut + baseSafeInset + leftLabelAnimatedWidth / 2f
+                val alpha = (leftLabelAlpha * 255f).toInt().coerceIn(0, 255)
+                val leftLabelCx = paddingLeft.toFloat() + hOut + leftLabelAnimatedWidth / 2f
                 canvas.withScale(labelScale, labelScale, leftLabelCx, centerY) {
+                    if (labelBackgroundEnabled) {
+                        val textHalfW = labelPaint.measureText(text) / 2f
+                        labelBgPaint.color = (labelBackgroundColor and 0x00FFFFFF) or (alpha shl 24)
+                        labelBgRect.set(
+                                leftLabelCx - textHalfW - labelBackgroundPaddingH,
+                                centerY - fontHalfHeight - labelBackgroundPaddingV,
+                                leftLabelCx + textHalfW + labelBackgroundPaddingH,
+                                centerY + fontHalfHeight + labelBackgroundPaddingV
+                        )
+                        drawRoundRect(labelBgRect, labelBackgroundCornerRadius, labelBackgroundCornerRadius, labelBgPaint)
+                    }
+                    labelPaint.alpha = alpha
                     drawText(text, leftLabelCx, textY, labelPaint)
                 }
             }
@@ -967,10 +1098,21 @@ class FelicitySeekbar @JvmOverloads constructor(
         if (rightLabelAlpha > 0f && rightLabelAnimatedWidth > 0f) {
             val text = cachedRightLabel
             if (!text.isNullOrEmpty()) {
-                labelPaint.alpha = (rightLabelAlpha * 255f).toInt().coerceIn(0, 255)
-                // Centre of the right reserved zone
-                val rightLabelCx = (width - paddingRight).toFloat() - hOut - baseSafeInset - rightLabelAnimatedWidth / 2f
+                val alpha = (rightLabelAlpha * 255f).toInt().coerceIn(0, 255)
+                val rightLabelCx = (width - paddingRight).toFloat() - hOut - rightLabelAnimatedWidth / 2f
                 canvas.withScale(labelScale, labelScale, rightLabelCx, centerY) {
+                    if (labelBackgroundEnabled) {
+                        val textHalfW = labelPaint.measureText(text) / 2f
+                        labelBgPaint.color = (labelBackgroundColor and 0x00FFFFFF) or (alpha shl 24)
+                        labelBgRect.set(
+                                rightLabelCx - textHalfW - labelBackgroundPaddingH,
+                                centerY - fontHalfHeight - labelBackgroundPaddingV,
+                                rightLabelCx + textHalfW + labelBackgroundPaddingH,
+                                centerY + fontHalfHeight + labelBackgroundPaddingV
+                        )
+                        drawRoundRect(labelBgRect, labelBackgroundCornerRadius, labelBackgroundCornerRadius, labelBgPaint)
+                    }
+                    labelPaint.alpha = alpha
                     drawText(text, rightLabelCx, textY, labelPaint)
                 }
             }
@@ -984,10 +1126,16 @@ class FelicitySeekbar @JvmOverloads constructor(
             ThumbShape.CIRCLE -> thumbRadiusPx
             else -> thumbWidthPx / 2f
         }
-        val leftReserve = if (leftLabelAnimatedWidth > 0f) leftLabelAnimatedWidth + labelSpacingPx else 0f
-        val rightReserve = if (rightLabelAnimatedWidth > 0f) rightLabelAnimatedWidth + labelSpacingPx else 0f
-        val left = paddingLeft.toFloat() + hOut + baseSafeInset + leftReserve
-        val right = (width - paddingRight).toFloat() - hOut - baseSafeInset - rightReserve
+        val left = if (leftLabelAnimatedWidth > 0f) {
+            paddingLeft.toFloat() + hOut + totalLabelReserve(leftLabelAnimatedWidth)
+        } else {
+            paddingLeft.toFloat() + hOut + baseSafeInset
+        }
+        val right = if (rightLabelAnimatedWidth > 0f) {
+            (width - paddingRight).toFloat() - hOut - totalLabelReserve(rightLabelAnimatedWidth)
+        } else {
+            (width - paddingRight).toFloat() - hOut - baseSafeInset
+        }
         if (right <= left) return false
         val progressX = left + (right - left) * valueToFraction(progressInternal).coerceIn(0f, 1f)
         val cy = height / 2f + if (smudgeEnabled) smudgeOffsetY else 0f
@@ -1006,10 +1154,8 @@ class FelicitySeekbar @JvmOverloads constructor(
                 val cornerR = min(thumbCornerRadiusPxOverride ?: halfH, min(halfH, halfW))
                 val bodyHalfW = max(0f, halfW - cornerR)
                 if (abs(dx) <= bodyHalfW && abs(dy) <= halfH) true else {
-                    val leftCx = -bodyHalfW
-                    val rightCx = bodyHalfW
-                    val dlx = dx - leftCx
-                    val drx = dx - rightCx
+                    val dlx = dx - (-bodyHalfW)
+                    val drx = dx - bodyHalfW
                     (dlx * dlx + dy * dy <= cornerR * cornerR) || (drx * drx + dy * dy <= cornerR * cornerR)
                 }
             }
@@ -1065,12 +1211,18 @@ class FelicitySeekbar @JvmOverloads constructor(
                         ThumbShape.CIRCLE -> thumbRadiusPx
                         else -> thumbWidthPx / 2f
                     }
-                    val leftReserve = if (leftLabelAnimatedWidth > 0f) leftLabelAnimatedWidth + labelSpacingPx else 0f
-                    val rightReserve = if (rightLabelAnimatedWidth > 0f) rightLabelAnimatedWidth + labelSpacingPx else 0f
-                    val left = paddingLeft.toFloat() + hOut + baseSafeInset + leftReserve
-                    val right = (width - paddingRight).toFloat() - hOut - baseSafeInset - rightReserve
-                    val clamped = min(max(event.x, left), right)
-                    val fraction = (clamped - left) / (right - left)
+                    val tapLeft = if (leftLabelAnimatedWidth > 0f) {
+                        paddingLeft.toFloat() + hOut + totalLabelReserve(leftLabelAnimatedWidth)
+                    } else {
+                        paddingLeft.toFloat() + hOut + baseSafeInset
+                    }
+                    val tapRight = if (rightLabelAnimatedWidth > 0f) {
+                        (width - paddingRight).toFloat() - hOut - totalLabelReserve(rightLabelAnimatedWidth)
+                    } else {
+                        (width - paddingRight).toFloat() - hOut - baseSafeInset
+                    }
+                    val clamped = min(max(event.x, tapLeft), tapRight)
+                    val fraction = if (tapRight > tapLeft) (clamped - tapLeft) / (tapRight - tapLeft) else 0f
                     val newProgress = fractionToValue(fraction).coerceIn(minProgress, maxProgress)
                     setProgress(newProgress, fromUser = true, animate = true)
                 }
@@ -1108,10 +1260,16 @@ class FelicitySeekbar @JvmOverloads constructor(
             ThumbShape.CIRCLE -> thumbRadiusPx
             else -> thumbWidthPx / 2f
         }
-        val leftReserve = if (leftLabelAnimatedWidth > 0f) leftLabelAnimatedWidth + labelSpacingPx else 0f
-        val rightReserve = if (rightLabelAnimatedWidth > 0f) rightLabelAnimatedWidth + labelSpacingPx else 0f
-        val left = paddingLeft.toFloat() + hOut + baseSafeInset + leftReserve
-        val right = (width - paddingRight).toFloat() - hOut - baseSafeInset - rightReserve
+        val left = if (leftLabelAnimatedWidth > 0f) {
+            paddingLeft.toFloat() + hOut + totalLabelReserve(leftLabelAnimatedWidth)
+        } else {
+            paddingLeft.toFloat() + hOut + baseSafeInset
+        }
+        val right = if (rightLabelAnimatedWidth > 0f) {
+            (width - paddingRight).toFloat() - hOut - totalLabelReserve(rightLabelAnimatedWidth)
+        } else {
+            (width - paddingRight).toFloat() - hOut - baseSafeInset
+        }
         if (right <= left) return
         val clamped = min(max(x, left), right)
         val fraction = (clamped - left) / (right - left)
