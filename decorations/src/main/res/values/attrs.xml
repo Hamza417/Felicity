@@ -170,6 +170,11 @@
             <enum name="oval" value="1" />
             <enum name="circle" value="2" />
         </attr>
+        <!-- Side labels -->
+        <attr name="felicityLabelsEnabled" format="boolean" />
+        <attr name="felicityLabelTextSize" format="dimension" />
+        <attr name="felicityLabelTextColor" format="color|reference" />
+        <attr name="felicityLabelSpacing" format="dimension" />
     </declare-styleable>
 
     <declare-styleable name="FelicitySwitch">

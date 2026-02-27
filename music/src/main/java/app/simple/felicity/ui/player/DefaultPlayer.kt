@@ -93,10 +93,18 @@ class DefaultPlayer : MediaFragment() {
             override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
                 if (fromUser) {
                     MediaManager.seekTo(progress.toLong())
-                    binding.currentTime.text = NumberUtils.getFormattedTime(progress.toLong())
                 }
             }
         })
+
+        binding.seekbar.setLabelsEnabled(enabled = true)
+        binding.seekbar.setLeftLabelProvider { f, f1, f2 ->
+            NumberUtils.getFormattedTime(f.toLong())
+        }
+
+        binding.seekbar.setRightLabelProvider { f, f1, f2 ->
+            NumberUtils.getFormattedTime(f2.toLong())
+        }
 
         binding.lyrics.setOnClickListener {
             openFragment(Lyrics.newInstance(), Lyrics.TAG)
@@ -109,7 +117,6 @@ class DefaultPlayer : MediaFragment() {
         binding.artist.text = audio.artist
         binding.album.text = audio.album
         binding.info.text = audio.path
-        binding.duration.text = NumberUtils.getFormattedTime(audio.duration)
         binding.seekbar.setMax(audio.duration.toFloat())
         updatePlayButtonState(MediaManager.isPlaying())
     }
@@ -158,15 +165,13 @@ class DefaultPlayer : MediaFragment() {
         binding.artist.text = audio.artist
         binding.album.text = audio.album
         binding.info.text = audio.path
-        binding.duration.text = NumberUtils.getFormattedTime(audio.duration)
-        binding.seekbar.setMax(audio.duration.toFloat())
+        binding.seekbar.setMaxWithReset(audio.duration.toFloat())
         binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
     }
 
     override fun onSeekChanged(seek: Long) {
         super.onSeekChanged(seek)
         binding.seekbar.setProgress(seek.toFloat(), false, animate = true)
-        binding.currentTime.text = NumberUtils.getFormattedTime(seek)
     }
 
     override fun onPlaybackStateChanged(state: Int) {

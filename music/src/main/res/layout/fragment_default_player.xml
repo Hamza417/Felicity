@@ -130,59 +130,16 @@
         android:layout_width="match_parent"
         android:layout_height="1px" />
 
-    <LinearLayout
-        android:id="@+id/linearLayout"
+    <app.simple.felicity.decorations.seekbars.FelicitySeekbar
+        android:id="@+id/seekbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="5dp"
-        android:layout_marginVertical="@dimen/padding_10"
-        android:clipChildren="false"
-        android:clipToPadding="false"
-        android:orientation="horizontal"
-        app:layout_constraintBottom_toTopOf="@+id/linearLayout2"
-        app:layout_constraintTop_toBottomOf="@+id/mime_info">
+        android:layout_gravity="center_vertical"
+        app:felicityLabelsEnabled="true"
+        app:felicityThumbRadius="@dimen/padding_10"
+        app:felicityThumbRingWidth="@dimen/padding_10"
+        app:felicityTrackHeight="@dimen/padding_10" />
 
-        <app.simple.felicity.decorations.typeface.TypeFaceTextView
-            android:id="@+id/current_time"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
-            android:layout_weight=".3"
-            android:gravity="center"
-            android:maxLines="1"
-            android:text="--:--"
-            android:textAlignment="center"
-            android:textSize="@dimen/text_size_14"
-            app:appFontStyle="regular"
-            app:textColorStyle="secondary"
-            tools:ignore="HardcodedText,RtlCompat" />
-
-        <app.simple.felicity.decorations.seekbars.FelicitySeekbar
-            android:id="@+id/seekbar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
-            android:layout_weight=".9"
-            app:felicityThumbRadius="@dimen/padding_10"
-            app:felicityThumbRingWidth="@dimen/padding_10"
-            app:felicityTrackHeight="@dimen/padding_10" />
-
-        <app.simple.felicity.decorations.typeface.TypeFaceTextView
-            android:id="@+id/duration"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
-            android:layout_weight=".3"
-            android:gravity="center"
-            android:maxLines="1"
-            android:text="--:--"
-            android:textAlignment="center"
-            android:textSize="@dimen/text_size_14"
-            app:appFontStyle="regular"
-            app:textColorStyle="secondary"
-            tools:ignore="HardcodedText,RtlCompat" />
-
-    </LinearLayout>
 
     <app.simple.felicity.decorations.theme.ThemeDivider
         android:layout_width="match_parent"

@@ -17,10 +17,12 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.ColorInt
+import androidx.core.graphics.withScale
 import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
 import app.simple.felicity.decoration.R
+import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
@@ -42,6 +44,25 @@ class FelicitySeekbar @JvmOverloads constructor(
         fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean)
         fun onStartTrackingTouch(seekbar: FelicitySeekbar) {}
         fun onStopTrackingTouch(seekbar: FelicitySeekbar) {}
+    }
+
+    fun interface SideLabelProvider {
+        /**
+         * Called whenever the seekbar needs to render the side labels.
+         * Return a [Pair] where [Pair.first] is the left label and [Pair.second] is the right label.
+         * Return null strings to hide a specific label.
+         */
+        fun getLabels(progress: Float, min: Float, max: Float): Pair<String?, String?>
+    }
+
+    /** Provides the formatted string for the left-side label. */
+    fun interface LeftLabelProvider {
+        fun getLabel(progress: Float, min: Float, max: Float): String?
+    }
+
+    /** Provides the formatted string for the right-side label. */
+    fun interface RightLabelProvider {
+        fun getLabel(progress: Float, min: Float, max: Float): String?
     }
 
     private var listener: OnSeekChangeListener? = null
@@ -131,6 +152,50 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     // Extra rect for press ring
     private val thumbPressRingRect = RectF()
+
+    // ----- Side label support -----
+    private var leftLabelEnabled = false
+    private var rightLabelEnabled = false
+    private var leftLabelProvider: LeftLabelProvider? = null
+    private var rightLabelProvider: RightLabelProvider? = null
+
+    @ColorInt
+    private var labelTextColor: Int = if (isInEditMode) Color.WHITE
+    else ThemeManager.theme.textViewTheme.secondaryTextColor
+
+    private var labelTextSize: Float  // set in init
+    private var labelSpacingPx: Float // gap between label and track edge, set in init
+
+    // Per-side animated widths (drive the track inset)
+    private var leftLabelAnimatedWidth = 0f
+    private var rightLabelAnimatedWidth = 0f
+
+    // Per-side animated alpha
+    private var leftLabelAlpha = 0f
+    private var rightLabelAlpha = 0f
+
+    // Shared scale — both labels scale together during tracking
+    private var labelScale = 1f
+
+    private var leftLabelWidthAnimator: ValueAnimator? = null
+    private var rightLabelWidthAnimator: ValueAnimator? = null
+    private var leftLabelAlphaAnimator: ValueAnimator? = null
+    private var rightLabelAlphaAnimator: ValueAnimator? = null
+    private var labelScaleAnimator: ValueAnimator? = null
+
+    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        textAlign = Paint.Align.CENTER
+    }
+
+    // Cached label strings — refreshed when progress or providers change, never inside onDraw
+    private var cachedLeftLabel: String? = null
+    private var cachedRightLabel: String? = null
+
+    // setMaxWithReset sequencing flag
+    private var pendingMaxAfterReset: Float? = null
+    private var pendingProgressAfterReset: Float? = null
+    private var isResetAnimationInFlight = false
 
     // Default indicator configuration
     @ColorInt
@@ -227,6 +292,9 @@ class FelicitySeekbar @JvmOverloads constructor(
         pressRingColor = progressColor
         // Default indicator stroke width
         defaultIndicatorWidthPx = 2f * d
+        // Label defaults
+        labelTextSize = 12f * d
+        labelSpacingPx = 8f * d
 
         context.theme.obtainStyledAttributes(attrs, R.styleable.FelicitySeekbar, defStyleAttr, 0).apply {
             try {
@@ -268,6 +336,15 @@ class FelicitySeekbar @JvmOverloads constructor(
                         else -> ThumbShape.PILL
                     }
                 }
+                // Label attrs
+                val labelsEnabledXml = getBoolean(R.styleable.FelicitySeekbar_felicityLabelsEnabled, false)
+                labelTextSize = getDimension(R.styleable.FelicitySeekbar_felicityLabelTextSize, labelTextSize)
+                labelTextColor = getColor(R.styleable.FelicitySeekbar_felicityLabelTextColor, labelTextColor)
+                labelSpacingPx = getDimension(R.styleable.FelicitySeekbar_felicityLabelSpacing, labelSpacingPx)
+                if (labelsEnabledXml) {
+                    leftLabelEnabled = true
+                    rightLabelEnabled = true
+                }
             } finally {
                 recycle()
             }
@@ -282,6 +359,13 @@ class FelicitySeekbar @JvmOverloads constructor(
         applyPaintColors()
         setupSmudgeAndShadow()
         applyThemeProps()
+        setupLabelPaint()
+
+        // Labels enabled via XML: mark alpha as fully visible; width is resolved in onLayout
+        // once we have a measured size and a provider attached.
+        // (Width animators are started from setLeftLabelProvider / setRightLabelProvider)
+        if (leftLabelEnabled) leftLabelAlpha = 1f
+        if (rightLabelEnabled) rightLabelAlpha = 1f
 
         isClickable = true
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -326,12 +410,20 @@ class FelicitySeekbar @JvmOverloads constructor(
             smudgeColor = progressColor
             thumbShadowColor = progressColor
             pressRingColor = progressColor
-            thumbShadowColor = progressColor
             defaultIndicatorColor = ThemeManager.accent.secondaryAccentColor
+            labelTextColor = ThemeManager.theme.textViewTheme.secondaryTextColor
             setThumbCornerRadius(AppearancePreferences.getCornerRadius())
-            // Ensure paints reflect theme-updated colors
             applyPaintColors()
             setupSmudgeAndShadow()
+            setupLabelPaint()
+        }
+    }
+
+    private fun setupLabelPaint() {
+        labelPaint.textSize = labelTextSize
+        labelPaint.color = labelTextColor
+        if (isInEditMode.not()) {
+            TypeFace.getMediumTypeFace(context)?.let { labelPaint.typeface = it }
         }
     }
 
@@ -355,6 +447,87 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     fun setOnSeekChangeListener(listener: OnSeekChangeListener?) {
         this.listener = listener
+    }
+
+    /**
+     * Animates the thumb back to [minProgress] first, then applies the new max and any
+     * [setProgress] call that arrived while the animation was running.
+     *
+     * This prevents the thumb from jumping when:
+     *  - The old max and new max differ significantly while the thumb is not at the start.
+     *  - The caller does `setMaxWithReset(newMax)` + `setProgress(someValue)` in sequence
+     *    (the progress call is deferred until after the max is applied).
+     */
+    fun setMaxWithReset(max: Float, progress: Float? = null) {
+        // Store what we eventually want to apply
+        pendingMaxAfterReset = max
+        if (progress != null) pendingProgressAfterReset = progress
+
+        // If already at min (or range is trivially small), apply immediately without animation
+        val epsilon = (rangeSpan() * 0.001f).coerceAtLeast(0.0001f)
+        if (progressInternal <= minProgress + epsilon && !isResetAnimationInFlight) {
+            applyPendingMaxAndProgress()
+            return
+        }
+
+        // If a reset is already running, just update the pending values and let it finish
+        if (isResetAnimationInFlight) return
+
+        // Cancel any ongoing progress animation — we're taking full control
+        if (springAnimation.isRunning) springAnimation.cancel()
+        progressAnimator?.cancel()
+
+        isResetAnimationInFlight = true
+        val start = progressInternal
+        progressAnimFromUser = false
+
+        progressAnimator = ValueAnimator.ofFloat(start, minProgress).apply {
+            duration = 500L
+            interpolator = DecelerateInterpolator(1.5F)
+            addUpdateListener { anim ->
+                // Only write if we're still the authoritative animation (not canceled by another call)
+                if (isResetAnimationInFlight) {
+                    progressInternal = (anim.animatedValue as Float).coerceIn(minProgress, maxProgress)
+                    invalidate()
+                }
+            }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    if (isResetAnimationInFlight) {
+                        isResetAnimationInFlight = false
+                        applyPendingMaxAndProgress()
+                    }
+                }
+
+                override fun onAnimationCancel(animation: android.animation.Animator) {
+                    // onAnimationEnd is called after onAnimationCancel by ValueAnimator,
+                    // but isResetAnimationInFlight will already be false if we canceled externally.
+                    // Reset the flag so a new call can proceed.
+                    isResetAnimationInFlight = false
+                }
+            })
+            start()
+        }
+    }
+
+    private fun applyPendingMaxAndProgress() {
+        val newMax = pendingMaxAfterReset ?: return
+        val newProgress = pendingProgressAfterReset
+        pendingMaxAfterReset = null
+        pendingProgressAfterReset = null
+
+        // Apply new max first — progress is at minProgress so no jump possible
+        setMax(newMax)
+
+        // Now animate (or snap) to the desired progress within the new range
+        if (newProgress != null) {
+            setProgress(newProgress.coerceIn(minProgress, maxProgress), fromUser = false, animate = true)
+        } else {
+            // Ensure progress is still valid within the new range
+            progressInternal = progressInternal.coerceIn(minProgress, maxProgress)
+            invalidate()
+            listener?.onProgressChanged(this, getProgress(), false)
+        }
     }
 
     fun setMax(max: Float) {
@@ -414,17 +587,22 @@ class FelicitySeekbar @JvmOverloads constructor(
     }
 
     fun setProgress(progress: Float, fromUser: Boolean = false, animate: Boolean = false) {
+        // If a reset animation is in flight, queue this progress to be applied after max is set.
+        if (isResetAnimationInFlight) {
+            pendingProgressAfterReset = progress
+            return
+        }
+
         val target = progress.coerceIn(minProgress, maxProgress)
         if (!animate) {
-            // Cancel any ongoing animations
             if (springAnimation.isRunning) springAnimation.cancel()
             progressAnimator?.cancel()
             if (progressInternal == target) return
             progressInternal = target
+            refreshCachedLabels()
             invalidate()
             listener?.onProgressChanged(this, getProgress(), fromUser)
         } else {
-            // Animate with ValueAnimator and notify during animation
             animateFromUser = fromUser
             if (springAnimation.isRunning) springAnimation.cancel()
             progressAnimator?.cancel()
@@ -436,8 +614,8 @@ class FelicitySeekbar @JvmOverloads constructor(
                 interpolator = DecelerateInterpolator()
                 addUpdateListener { anim ->
                     progressInternal = (anim.animatedValue as Float).coerceIn(minProgress, maxProgress)
+                    refreshCachedLabels()
                     invalidate()
-                    // Notify on every frame so listeners see intermediate values while it moves
                     listener?.onProgressChanged(this@FelicitySeekbar, getProgress(), progressAnimFromUser)
                 }
                 start()
@@ -475,11 +653,184 @@ class FelicitySeekbar @JvmOverloads constructor(
         setProgress(defaultProgress, fromUser = true, animate = animate)
     }
 
+    // -------- Side label API --------
+
+    /** Show or hide the left label with an animation. */
+    fun setLeftLabelEnabled(enabled: Boolean) {
+        if (leftLabelEnabled == enabled) return
+        leftLabelEnabled = enabled
+        animateSideLabel(left = true, show = enabled)
+    }
+
+    /** Show or hide the right label with an animation. */
+    fun setRightLabelEnabled(enabled: Boolean) {
+        if (rightLabelEnabled == enabled) return
+        rightLabelEnabled = enabled
+        animateSideLabel(left = false, show = enabled)
+    }
+
+    /** Convenience — enable/disable both sides at once. */
+    fun setLabelsEnabled(enabled: Boolean) {
+        setLeftLabelEnabled(enabled)
+        setRightLabelEnabled(enabled)
+    }
+
+    fun isLeftLabelEnabled(): Boolean = leftLabelEnabled
+    fun isRightLabelEnabled(): Boolean = rightLabelEnabled
+
+    /**
+     * Set the provider for the left-side label.
+     * Automatically enables the left label if it isn't already.
+     * Pass null to clear the provider and hide the left label.
+     */
+    fun setLeftLabelProvider(provider: LeftLabelProvider?) {
+        leftLabelProvider = provider
+        if (provider != null) {
+            cachedLeftLabel = provider.getLabel(progressInternal, minProgress, maxProgress)
+            if (!leftLabelEnabled) {
+                leftLabelEnabled = true
+                animateSideLabel(left = true, show = true)
+            } else {
+                // Already enabled — re-measure and resize if the text width changed
+                remeasureSideLabel(left = true)
+            }
+        } else {
+            cachedLeftLabel = null
+            leftLabelEnabled = false
+            animateSideLabel(left = true, show = false)
+        }
+        invalidate()
+    }
+
+    /**
+     * Set the provider for the right-side label.
+     * Automatically enables the right label if it isn't already.
+     * Pass null to clear the provider and hide the right label.
+     */
+    fun setRightLabelProvider(provider: RightLabelProvider?) {
+        rightLabelProvider = provider
+        if (provider != null) {
+            cachedRightLabel = provider.getLabel(progressInternal, minProgress, maxProgress)
+            if (!rightLabelEnabled) {
+                rightLabelEnabled = true
+                animateSideLabel(left = false, show = true)
+            } else {
+                remeasureSideLabel(left = false)
+            }
+        } else {
+            cachedRightLabel = null
+            rightLabelEnabled = false
+            animateSideLabel(left = false, show = false)
+        }
+        invalidate()
+    }
+
+    /** Refresh cached label strings from providers (call when progress changes). */
+    private fun refreshCachedLabels() {
+        cachedLeftLabel = leftLabelProvider?.getLabel(progressInternal, minProgress, maxProgress)
+        cachedRightLabel = rightLabelProvider?.getLabel(progressInternal, minProgress, maxProgress)
+    }
+
+    private fun measureTextWidth(text: String?): Float =
+        if (text.isNullOrEmpty()) 0f else labelPaint.measureText(text)
+
+    private fun animateSideLabel(left: Boolean, show: Boolean) {
+        val currentText = if (left) cachedLeftLabel else cachedRightLabel
+        val targetWidth = if (show) measureTextWidth(currentText).coerceAtLeast(1f) else 0f
+        val currentWidth = if (left) leftLabelAnimatedWidth else rightLabelAnimatedWidth
+        val currentAlpha = if (left) leftLabelAlpha else rightLabelAlpha
+        val targetAlpha = if (show) 1f else 0f
+
+        // Width animator
+        val widthAnim = ValueAnimator.ofFloat(currentWidth, targetWidth).apply {
+            duration = 300L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                val v = anim.animatedValue as Float
+                if (left) leftLabelAnimatedWidth = v else rightLabelAnimatedWidth = v
+                requestLayout()
+                invalidate()
+            }
+        }
+
+        // Alpha animator
+        val alphaAnim = ValueAnimator.ofFloat(currentAlpha, targetAlpha).apply {
+            duration = 250L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                val v = anim.animatedValue as Float
+                if (left) leftLabelAlpha = v else rightLabelAlpha = v
+                invalidate()
+            }
+        }
+
+        if (left) {
+            leftLabelWidthAnimator?.cancel()
+            leftLabelAlphaAnimator?.cancel()
+            leftLabelWidthAnimator = widthAnim
+            leftLabelAlphaAnimator = alphaAnim
+        } else {
+            rightLabelWidthAnimator?.cancel()
+            rightLabelAlphaAnimator?.cancel()
+            rightLabelWidthAnimator = widthAnim
+            rightLabelAlphaAnimator = alphaAnim
+        }
+
+        widthAnim.start()
+        alphaAnim.start()
+    }
+
+    /** Re-animate to the new measured width if text content changed while already visible. */
+    private fun remeasureSideLabel(left: Boolean) {
+        val text = if (left) cachedLeftLabel else cachedRightLabel
+        val newWidth = measureTextWidth(text).coerceAtLeast(1f)
+        val currentWidth = if (left) leftLabelAnimatedWidth else rightLabelAnimatedWidth
+        if (newWidth == currentWidth) return
+
+        val widthAnim = ValueAnimator.ofFloat(currentWidth, newWidth).apply {
+            duration = 200L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                val v = anim.animatedValue as Float
+                if (left) leftLabelAnimatedWidth = v else rightLabelAnimatedWidth = v
+                requestLayout()
+                invalidate()
+            }
+        }
+
+        if (left) {
+            leftLabelWidthAnimator?.cancel()
+            leftLabelWidthAnimator = widthAnim
+        } else {
+            rightLabelWidthAnimator?.cancel()
+            rightLabelWidthAnimator = widthAnim
+        }
+        widthAnim.start()
+    }
+
+    private fun animateLabelScale(focused: Boolean) {
+        val target = if (focused) 1.12f else 1f
+        if (labelScale == target) return
+        labelScaleAnimator?.cancel()
+        labelScaleAnimator = ValueAnimator.ofFloat(labelScale, target).apply {
+            duration = if (focused) 200L else 280L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                labelScale = anim.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val baseHeight = max(trackHeightPx, thumbRadiusPx * 2f) + (pressRingTotalOutset() * 2f)
         val verticalBlur = max(thumbShadowRadius, if (smudgeEnabled) (smudgeRadius + abs(smudgeOffsetY)) else 0f)
         val desiredHeight = (paddingTop + paddingBottom + baseHeight + verticalBlur * 2f).toInt()
-        val resolvedWidth = resolveSize(suggestedMinimumWidth + paddingLeft + paddingRight, widthMeasureSpec)
+        // Reserve space for each side independently
+        val leftReserve = if (leftLabelAnimatedWidth > 0f) (leftLabelAnimatedWidth + labelSpacingPx).toInt() else 0
+        val rightReserve = if (rightLabelAnimatedWidth > 0f) (rightLabelAnimatedWidth + labelSpacingPx).toInt() else 0
+        val resolvedWidth = resolveSize(suggestedMinimumWidth + paddingLeft + paddingRight + leftReserve + rightReserve, widthMeasureSpec)
         val resolvedHeight = resolveSize(desiredHeight, heightMeasureSpec)
         setMeasuredDimension(resolvedWidth, resolvedHeight)
     }
@@ -489,13 +840,16 @@ class FelicitySeekbar @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val hOut = horizontalOutset()
-        // Ensure full thumb fits horizontally: use per-shape half width for bounds
         val baseSafeInset = when (thumbShape) {
             ThumbShape.CIRCLE -> thumbRadiusPx
             else -> thumbWidthPx / 2f
         }
-        val left = paddingLeft.toFloat() + hOut + baseSafeInset
-        val right = (width - paddingRight).toFloat() - hOut - baseSafeInset
+        // Each side only eats into the track as much as its own animated width
+        val leftReserve = if (leftLabelAnimatedWidth > 0f) leftLabelAnimatedWidth + labelSpacingPx else 0f
+        val rightReserve = if (rightLabelAnimatedWidth > 0f) rightLabelAnimatedWidth + labelSpacingPx else 0f
+
+        val left = paddingLeft.toFloat() + hOut + baseSafeInset + leftReserve
+        val right = (width - paddingRight).toFloat() - hOut - baseSafeInset - rightReserve
         if (right <= left) return
         val centerY = height / 2f + if (smudgeEnabled) smudgeOffsetY else 0f
         val trackRadius = trackHeightPx / 2f
@@ -531,25 +885,19 @@ class FelicitySeekbar @JvmOverloads constructor(
         val scaledR = thumbRadiusPx * thumbScale
         val scaledHalfW = (thumbWidthPx / 2f) * thumbScale
 
-        // Outer rect for oval/pill
         thumbOuterRect.set(cx - scaledHalfW, cy - scaledR, cx + scaledHalfW, cy + scaledR)
 
         when (thumbShape) {
             ThumbShape.OVAL -> {
-                if (thumbShadowRadius > 0f) {
-                    canvas.drawOval(thumbOuterRect, thumbShadowPaint)
-                }
+                if (thumbShadowRadius > 0f) canvas.drawOval(thumbOuterRect, thumbShadowPaint)
                 if (thumbInnerColor != Color.TRANSPARENT) {
                     thumbInnerRect.set(thumbOuterRect)
-                    val inset = thumbRingWidthPx / 2f
-                    thumbInnerRect.inset(inset, inset)
+                    thumbInnerRect.inset(thumbRingWidthPx / 2f, thumbRingWidthPx / 2f)
                     canvas.drawOval(thumbInnerRect, thumbInnerPaint)
                 }
                 thumbStrokeRect.set(thumbOuterRect)
-                val strokeInset = thumbRingWidthPx / 2f
-                thumbStrokeRect.inset(strokeInset, strokeInset)
+                thumbStrokeRect.inset(thumbRingWidthPx / 2f, thumbRingWidthPx / 2f)
                 canvas.drawOval(thumbStrokeRect, thumbRingPaint)
-
                 if (pressRingProgress > 0f) {
                     val extra = pressRingOutsetPx * pressRingProgress
                     thumbPressRingRect.set(thumbOuterRect)
@@ -561,32 +909,24 @@ class FelicitySeekbar @JvmOverloads constructor(
                 }
             }
             ThumbShape.PILL -> {
-                // val baseThumbCornerR = min(thumbCornerRadiusPxOverride ?: scaledR, min(scaledR, scaledHalfW))
-                // Use fully rounded rectangle instead
-                val baseThumbCornerR = 100F // effectively infinite for our sizes, ensures perfect pill shape regardless of dimensions or overrides
-
-                if (thumbShadowRadius > 0f) {
-                    canvas.drawRoundRect(thumbOuterRect, baseThumbCornerR, baseThumbCornerR, thumbShadowPaint)
-                }
+                val baseThumbCornerR = 100f
+                if (thumbShadowRadius > 0f) canvas.drawRoundRect(thumbOuterRect, baseThumbCornerR, baseThumbCornerR, thumbShadowPaint)
                 if (thumbInnerColor != Color.TRANSPARENT) {
                     thumbInnerRect.set(thumbOuterRect)
                     val inset = thumbRingWidthPx / 2f
                     thumbInnerRect.inset(inset, inset)
-                    val innerR = max(0f, baseThumbCornerR - inset)
-                    canvas.drawRoundRect(thumbInnerRect, innerR, innerR, thumbInnerPaint)
+                    canvas.drawRoundRect(thumbInnerRect, max(0f, baseThumbCornerR - inset), max(0f, baseThumbCornerR - inset), thumbInnerPaint)
                 }
                 thumbStrokeRect.set(thumbOuterRect)
                 val strokeInset = thumbRingWidthPx / 2f
                 thumbStrokeRect.inset(strokeInset, strokeInset)
-                val baseRingCornerR = baseThumbCornerR // ring follows thumb shape strictly
-                val ringR = max(0f, baseRingCornerR - strokeInset)
+                val ringR = max(0f, baseThumbCornerR - strokeInset)
                 canvas.drawRoundRect(thumbStrokeRect, ringR, ringR, thumbRingPaint)
-
                 if (pressRingProgress > 0f) {
                     val extra = pressRingOutsetPx * pressRingProgress
                     thumbPressRingRect.set(thumbOuterRect)
                     thumbPressRingRect.inset(-extra, -extra)
-                    val pressRingCornerR = baseRingCornerR + extra // + (pressRingStrokePx / 2f)
+                    val pressRingCornerR = baseThumbCornerR + extra
                     val alpha = (0.35f * pressRingProgress * 255).toInt().coerceIn(0, 255)
                     thumbPressRingPaint.color = (pressRingColor and 0x00FFFFFF) or (alpha shl 24)
                     thumbPressRingPaint.strokeWidth = pressRingStrokePx
@@ -594,29 +934,44 @@ class FelicitySeekbar @JvmOverloads constructor(
                 }
             }
             ThumbShape.CIRCLE -> {
-                // Shadow
-                if (thumbShadowRadius > 0f) {
-                    canvas.drawCircle(cx, cy, scaledR, thumbShadowPaint)
-                }
-                // Fill
+                if (thumbShadowRadius > 0f) canvas.drawCircle(cx, cy, scaledR, thumbShadowPaint)
                 if (thumbInnerColor != Color.TRANSPARENT) {
-                    val inset = thumbRingWidthPx / 2f
-                    val innerRadius = max(0f, scaledR - inset)
-                    canvas.drawCircle(cx, cy, innerRadius, thumbInnerPaint)
+                    canvas.drawCircle(cx, cy, max(0f, scaledR - thumbRingWidthPx / 2f), thumbInnerPaint)
                 }
-                // Stroke ring
-                val strokeInset = thumbRingWidthPx / 2f
-                val ringRadius = max(0f, scaledR - strokeInset)
-                canvas.drawCircle(cx, cy, ringRadius, thumbRingPaint)
-
-                // Press ring
+                canvas.drawCircle(cx, cy, max(0f, scaledR - thumbRingWidthPx / 2f), thumbRingPaint)
                 if (pressRingProgress > 0f) {
                     val extra = pressRingOutsetPx * pressRingProgress
-                    val prRadius = scaledR + extra
                     val alpha = (0.35f * pressRingProgress * 255).toInt().coerceIn(0, 255)
                     thumbPressRingPaint.color = (pressRingColor and 0x00FFFFFF) or (alpha shl 24)
                     thumbPressRingPaint.strokeWidth = pressRingStrokePx
-                    canvas.drawCircle(cx, cy, prRadius, thumbPressRingPaint)
+                    canvas.drawCircle(cx, cy, scaledR + extra, thumbPressRingPaint)
+                }
+            }
+        }
+
+        // ---- Draw side labels ----
+        val textY = centerY - ((labelPaint.ascent() + labelPaint.descent()) / 2f)
+
+        if (leftLabelAlpha > 0f && leftLabelAnimatedWidth > 0f) {
+            val text = cachedLeftLabel
+            if (!text.isNullOrEmpty()) {
+                labelPaint.alpha = (leftLabelAlpha * 255f).toInt().coerceIn(0, 255)
+                // Centre of the left reserved zone
+                val leftLabelCx = paddingLeft.toFloat() + hOut + baseSafeInset + leftLabelAnimatedWidth / 2f
+                canvas.withScale(labelScale, labelScale, leftLabelCx, centerY) {
+                    drawText(text, leftLabelCx, textY, labelPaint)
+                }
+            }
+        }
+
+        if (rightLabelAlpha > 0f && rightLabelAnimatedWidth > 0f) {
+            val text = cachedRightLabel
+            if (!text.isNullOrEmpty()) {
+                labelPaint.alpha = (rightLabelAlpha * 255f).toInt().coerceIn(0, 255)
+                // Centre of the right reserved zone
+                val rightLabelCx = (width - paddingRight).toFloat() - hOut - baseSafeInset - rightLabelAnimatedWidth / 2f
+                canvas.withScale(labelScale, labelScale, rightLabelCx, centerY) {
+                    drawText(text, rightLabelCx, textY, labelPaint)
                 }
             }
         }
@@ -629,8 +984,10 @@ class FelicitySeekbar @JvmOverloads constructor(
             ThumbShape.CIRCLE -> thumbRadiusPx
             else -> thumbWidthPx / 2f
         }
-        val left = paddingLeft.toFloat() + hOut + baseSafeInset
-        val right = (width - paddingRight).toFloat() - hOut - baseSafeInset
+        val leftReserve = if (leftLabelAnimatedWidth > 0f) leftLabelAnimatedWidth + labelSpacingPx else 0f
+        val rightReserve = if (rightLabelAnimatedWidth > 0f) rightLabelAnimatedWidth + labelSpacingPx else 0f
+        val left = paddingLeft.toFloat() + hOut + baseSafeInset + leftReserve
+        val right = (width - paddingRight).toFloat() - hOut - baseSafeInset - rightReserve
         if (right <= left) return false
         val progressX = left + (right - left) * valueToFraction(progressInternal).coerceIn(0f, 1f)
         val cy = height / 2f + if (smudgeEnabled) smudgeOffsetY else 0f
@@ -708,14 +1065,17 @@ class FelicitySeekbar @JvmOverloads constructor(
                         ThumbShape.CIRCLE -> thumbRadiusPx
                         else -> thumbWidthPx / 2f
                     }
-                    val left = paddingLeft.toFloat() + hOut + baseSafeInset
-                    val right = (width - paddingRight).toFloat() - hOut - baseSafeInset
+                    val leftReserve = if (leftLabelAnimatedWidth > 0f) leftLabelAnimatedWidth + labelSpacingPx else 0f
+                    val rightReserve = if (rightLabelAnimatedWidth > 0f) rightLabelAnimatedWidth + labelSpacingPx else 0f
+                    val left = paddingLeft.toFloat() + hOut + baseSafeInset + leftReserve
+                    val right = (width - paddingRight).toFloat() - hOut - baseSafeInset - rightReserve
                     val clamped = min(max(event.x, left), right)
                     val fraction = (clamped - left) / (right - left)
                     val newProgress = fractionToValue(fraction).coerceIn(minProgress, maxProgress)
                     setProgress(newProgress, fromUser = true, animate = true)
                 }
                 listener?.onStartTrackingTouch(this)
+                if (leftLabelEnabled || rightLabelEnabled) animateLabelScale(true)
                 performClick()
                 return true
             }
@@ -727,6 +1087,7 @@ class FelicitySeekbar @JvmOverloads constructor(
                 if (isDragging) {
                     isDragging = false
                     listener?.onStopTrackingTouch(this)
+                    if (leftLabelEnabled || rightLabelEnabled) animateLabelScale(false)
                 }
                 if (downOnThumb) startPressRing(false)
                 downOnThumb = false
@@ -747,13 +1108,14 @@ class FelicitySeekbar @JvmOverloads constructor(
             ThumbShape.CIRCLE -> thumbRadiusPx
             else -> thumbWidthPx / 2f
         }
-        val left = paddingLeft.toFloat() + hOut + baseSafeInset
-        val right = (width - paddingRight).toFloat() - hOut - baseSafeInset
+        val leftReserve = if (leftLabelAnimatedWidth > 0f) leftLabelAnimatedWidth + labelSpacingPx else 0f
+        val rightReserve = if (rightLabelAnimatedWidth > 0f) rightLabelAnimatedWidth + labelSpacingPx else 0f
+        val left = paddingLeft.toFloat() + hOut + baseSafeInset + leftReserve
+        val right = (width - paddingRight).toFloat() - hOut - baseSafeInset - rightReserve
         if (right <= left) return
         val clamped = min(max(x, left), right)
         val fraction = (clamped - left) / (right - left)
         val newProgress = fractionToValue(fraction).coerceIn(minProgress, maxProgress)
-        // User drag: immediate update without animation for responsiveness
         setProgress(newProgress, fromUser, animate = false)
     }
 
@@ -807,6 +1169,10 @@ class FelicitySeekbar @JvmOverloads constructor(
             AppearancePreferences.SEEKBAR_THUMB_STYLE -> {
                 applyThumbPreferences()
             }
+            AppearancePreferences.APP_FONT -> {
+                setupLabelPaint()
+                invalidate()
+            }
         }
     }
 
@@ -823,9 +1189,16 @@ class FelicitySeekbar @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         unregisterSharedPreferenceChangeListener()
-        // Cancel running animations to avoid leaks or stray callbacks
+        isResetAnimationInFlight = false
+        pendingMaxAfterReset = null
+        pendingProgressAfterReset = null
         progressAnimator?.cancel()
         pressRingAnimator?.cancel()
+        leftLabelWidthAnimator?.cancel()
+        rightLabelWidthAnimator?.cancel()
+        leftLabelAlphaAnimator?.cancel()
+        rightLabelAlphaAnimator?.cancel()
+        labelScaleAnimator?.cancel()
         if (springAnimation.isRunning) springAnimation.cancel()
         ThemeManager.removeListener(this)
     }
