@@ -626,9 +626,18 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         int paddingRight = getPaddingRight();
         int availableWidth = getWidth() - paddingLeft - paddingRight;
         
-        // Always use ALIGN_NORMAL – the canvas is translated to the correct X position in
-        // calculateXPositionForLayout(), which also handles smooth animated alignment shifts.
-        Layout.Alignment staticAlignment = Layout.Alignment.ALIGN_NORMAL;
+        // Single-line layouts always use ALIGN_NORMAL; X positioning is handled manually in
+        // calculateXPositionForLayout() so the smooth alignment animation works.
+        // Multi-line (wrapped) layouts delegate alignment to StaticLayout itself because each
+        // wrapped line has a different width and can't be shifted as a single block.
+        Layout.Alignment multiLineAlignment = switch (textAlignment) {
+            case RIGHT ->
+                    Layout.Alignment.ALIGN_OPPOSITE;
+            case CENTER ->
+                    Layout.Alignment.ALIGN_CENTER;
+            default ->
+                    Layout.Alignment.ALIGN_NORMAL;
+        };
         
         // Determine which size we're rendering at by checking the paint's actual size
         float currentPaintSize = paint.getTextSize();
@@ -651,17 +660,17 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         StaticLayout layout;
         
         if (!needsWrapping) {
-            // Text fits on one line - create single-line layout
+            // Single-line: always ALIGN_NORMAL, X is computed by calculateXPositionForLayout
             layout = StaticLayout.Builder.obtain(text, 0, text.length(), paint, availableWidth)
-                    .setAlignment(staticAlignment)
+                    .setAlignment(Layout.Alignment.ALIGN_NORMAL)
                     .setLineSpacing(0f, 1f)
                     .setIncludePad(false)
                     .setMaxLines(1)
                     .build();
         } else {
-            // Text needs wrapping - create multi-line layout
+            // Multi-line: let StaticLayout handle per-line alignment internally
             layout = StaticLayout.Builder.obtain(text, 0, text.length(), paint, availableWidth)
-                    .setAlignment(staticAlignment)
+                    .setAlignment(multiLineAlignment)
                     .setLineSpacing(0f, 1f)
                     .setIncludePad(false)
                     .build();
@@ -717,23 +726,28 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         int paddingRight = getPaddingRight();
         int availableWidth = getWidth() - paddingLeft - paddingRight;
         
-        // Measure the actual rendered text width using the paint (which already has the
-        // correct animated text size set on it). Clamp to availableWidth for wrapped lines.
+        // Multi-line layouts have their alignment baked in by StaticLayout (ALIGN_NORMAL /
+        // ALIGN_CENTER / ALIGN_OPPOSITE), so they are always placed at paddingLeft.
+        if (layout.getLineCount() > 1) {
+            return paddingLeft;
+        }
+        
+        // Single-line layout: measure the actual text width and compute the X shift so that
+        //   LEFT   → text left-edge at paddingLeft
+        //   CENTER → text centred in availableWidth
+        //   RIGHT  → text right-edge at paddingLeft + availableWidth
         String text = layout.getText().toString();
         float textWidth = Math.min(paint.measureText(text), availableWidth);
-        
-        // LEFT   : text left-edge at paddingLeft
-        // CENTER : text centred  → paddingLeft + (availableWidth - textWidth) / 2
-        // RIGHT  : text right-edge at paddingLeft + availableWidth → paddingLeft + availableWidth - textWidth
+
         float xCenter = paddingLeft + (availableWidth - textWidth) / 2f;
         float xRight = paddingLeft + availableWidth - textWidth;
-        
+
         float fraction = alignmentFraction;
         if (fraction <= 0.5f) {
-            float t = fraction * 2f;                    // 0→1 as fraction 0→0.5
+            float t = fraction * 2f;
             return paddingLeft + t * (xCenter - paddingLeft);
         } else {
-            float t = (fraction - 0.5f) * 2f;           // 0→1 as fraction 0.5→1.0
+            float t = (fraction - 0.5f) * 2f;
             return xCenter + t * (xRight - xCenter);
         }
     }
