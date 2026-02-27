@@ -104,7 +104,7 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
     }
 
     /**
-     * Called when any preferences is changed using [app.simple.felicity.manager.SharedPreferences.getSharedPreferences]
+     * Called when any preferences are changed using [app.simple.felicity.manager.SharedPreferences.getSharedPreferences]
      *
      * Override this to get any preferences change events inside
      * the fragment
@@ -125,7 +125,8 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
     protected fun openAppSettings() {
         try {
             (parentFragment as ScopedFragment).openPreferencesPanel().also {
-                // May mess with the predictive back if left alive
+                // May mess with the predictive back if the dialog is left alive in the back stack
+                // so we dismiss the dialog immediately after opening the settings.
                 dismiss()
             }
         } catch (e: Exception) {

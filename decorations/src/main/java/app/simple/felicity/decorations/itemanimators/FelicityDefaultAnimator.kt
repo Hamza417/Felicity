@@ -4,7 +4,6 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.view.ViewPropertyAnimator
 import android.view.animation.DecelerateInterpolator
-import android.view.animation.OvershootInterpolator
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.RecyclerView
 
@@ -13,18 +12,16 @@ import androidx.recyclerview.widget.RecyclerView
  * and a smooth deceleration on removals. It delegates Moves and Changes 
  * to the standard DefaultItemAnimator.
  */
-class ElasticAnimator : DefaultItemAnimator() {
+class FelicityDefaultAnimator : DefaultItemAnimator() {
 
     companion object {
         private const val TAG = "ElasticAnimator"
-        private const val DURATION_ADD = 500L
+        private const val DURATION_ADD = 300L
         private const val DURATION_REMOVE = 500L
-        private const val OVERSHOOT_TENSION = 3f
         private const val DECELERATE_FACTOR = 3f
         private const val SCALE_START = 0.85f
     }
 
-    private val overshootInterpolator = OvershootInterpolator(OVERSHOOT_TENSION)
     private val decelerateInterpolator = DecelerateInterpolator(DECELERATE_FACTOR)
     private val addAnimators = mutableMapOf<RecyclerView.ViewHolder, ViewPropertyAnimator>()
     private val removeAnimators = mutableMapOf<RecyclerView.ViewHolder, ViewPropertyAnimator>()
@@ -42,7 +39,7 @@ class ElasticAnimator : DefaultItemAnimator() {
             .scaleX(1f)
             .scaleY(1f)
             .setDuration(DURATION_ADD)
-            .setInterpolator(overshootInterpolator)
+            .setInterpolator(decelerateInterpolator)
             .setListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationStart(animation: Animator) {
                     dispatchAddStarting(holder)
