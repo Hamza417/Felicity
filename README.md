@@ -47,7 +47,7 @@ the next few days.
 
 ## Screenshots
 
-Last Updated: 21 Feb 2026
+Last Updated: 28 Feb 2026
 
 |                          |                          |                          |
 |--------------------------|--------------------------|--------------------------|
@@ -56,6 +56,7 @@ Last Updated: 21 Feb 2026
 | ![](/screenshots/07.png) | ![](/screenshots/08.png) | ![](/screenshots/11.png) |
 | ![](/screenshots/12.png) | ![](/screenshots/13.png) | ![](/screenshots/14.png) |
 | ![](/screenshots/15.png) | ![](/screenshots/16.png) | ![](/screenshots/17.png) |
+| ![](/screenshots/18.png) |                          |                          |
 
 |                          |
 |--------------------------|
