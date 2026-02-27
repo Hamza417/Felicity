@@ -2,6 +2,7 @@ package app.simple.felicity.extensions.fragments
 
 import android.os.Build
 import android.os.Bundle
+import android.text.format.DateUtils
 import android.view.View
 import android.widget.TextView
 import app.simple.felicity.R
@@ -21,6 +22,7 @@ import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.ui.preferences.sub.AccentColors
 import app.simple.felicity.ui.preferences.sub.Themes
 import app.simple.felicity.ui.preferences.sub.TypeFaces
+import java.util.Locale
 import java.util.function.Supplier
 
 open class PreferenceFragment : MediaFragment() {
@@ -90,6 +92,11 @@ open class PreferenceFragment : MediaFragment() {
                             max = AppearancePreferences.MAX_CORNER_RADIUS,
                             min = 0F,
                             default = AppearancePreferences.DEFAULT_CORNER_RADIUS,
+                            leftLabel = false,
+                            rightLabel = true,
+                            rightLabelProvider = { progress, _, _ ->
+                                String.format(Locale.getDefault(), "%.1f px", progress)
+                            },
                     )
                 }
         )
@@ -109,6 +116,11 @@ open class PreferenceFragment : MediaFragment() {
                             max = AppearancePreferences.MAX_SPACING,
                             min = 0F,
                             default = AppearancePreferences.DEFAULT_SPACING,
+                            leftLabel = false,
+                            rightLabel = true,
+                            rightLabelProvider = { progress, _, _ ->
+                                String.format(Locale.getDefault(), "%.1f px", progress)
+                            },
                     )
                 }
         )
@@ -489,6 +501,11 @@ open class PreferenceFragment : MediaFragment() {
                             max = 600F, // 10 minutes max
                             min = 0F,
                             default = 0F,
+                            leftLabel = false,
+                            rightLabel = true,
+                            rightLabelProvider = { progress, _, _ ->
+                                DateUtils.formatElapsedTime(progress.toLong())
+                            },
                     )
                 }
         )
@@ -508,6 +525,11 @@ open class PreferenceFragment : MediaFragment() {
                             max = 1024 * 20F, // 20 MB max
                             min = 0F,
                             default = 0F,
+                            leftLabel = false,
+                            rightLabel = true,
+                            rightLabelProvider = { progress, _, _ ->
+                                String.format(Locale.getDefault(), "%d MB", (progress / 1024).toInt())
+                            },
                     )
                 }
         )

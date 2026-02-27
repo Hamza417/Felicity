@@ -96,6 +96,20 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                 holder.binding.slider.setDefaultProgress(seekbarState.default)
                 holder.binding.slider.setMax(seekbarState.max)
                 holder.binding.slider.setMin(seekbarState.min)
+                holder.binding.slider.setLeftLabelEnabled(seekbarState.leftLabel)
+                holder.binding.slider.setRightLabelEnabled(seekbarState.rightLabel)
+
+                if (seekbarState.leftLabel) {
+                    holder.binding.slider.setLeftLabelProvider { progress, min, max ->
+                        seekbarState.leftLabelProvider?.invoke(progress, min, max) ?: ""
+                    }
+                }
+
+                if (seekbarState.rightLabel) {
+                    holder.binding.slider.setRightLabelProvider { progress, min, max ->
+                        seekbarState.rightLabelProvider?.invoke(progress, min, max) ?: ""
+                    }
+                }
 
                 holder.binding.slider.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
                     override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {

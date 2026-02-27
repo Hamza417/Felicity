@@ -2,6 +2,7 @@ package app.simple.felicity.ui.player
 
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.text.format.DateUtils
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -17,7 +18,6 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.covers.AudioCover
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.shared.utils.NumberUtils
 import kotlinx.coroutines.launch
 
 class DefaultPlayer : MediaFragment() {
@@ -97,12 +97,12 @@ class DefaultPlayer : MediaFragment() {
             }
         })
 
-        binding.seekbar.setLeftLabelProvider { f, f1, f2 ->
-            NumberUtils.getFormattedTime(f.toLong())
+        binding.seekbar.setLeftLabelProvider { progress, _, _ ->
+            DateUtils.formatElapsedTime(progress.toLong().div(1000))
         }
 
-        binding.seekbar.setRightLabelProvider { f, f1, f2 ->
-            NumberUtils.getFormattedTime(f2.toLong())
+        binding.seekbar.setRightLabelProvider { _, _, max ->
+            DateUtils.formatElapsedTime(max.toLong().div(1000))
         }
 
         binding.lyrics.setOnClickListener {
