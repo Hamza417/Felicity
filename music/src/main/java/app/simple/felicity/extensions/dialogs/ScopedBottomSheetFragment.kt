@@ -124,7 +124,10 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
      */
     protected fun openAppSettings() {
         try {
-            (parentFragment as ScopedFragment).openPreferencesPanel()
+            (parentFragment as ScopedFragment).openPreferencesPanel().also {
+                // May mess with the predictive back if left alive
+                dismiss()
+            }
         } catch (e: Exception) {
             Log.e("ScopedBottomSheetFragment", "openAppSettings: ${e.message}")
         }
