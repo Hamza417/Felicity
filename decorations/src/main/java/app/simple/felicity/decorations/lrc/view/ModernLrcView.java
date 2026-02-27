@@ -56,7 +56,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private static final float DEFAULT_SCROLL_MULTIPLIER = 1f; // Accelerated scroll multiplier
     private static final float DEFAULT_OVERSCROLL_DISTANCE = 250f; // dp - maximum overscroll distance
     private static final float OVERSCROLL_DAMPING = 0.25f; // Rubber band damping factor (0-1)
-    private static final float SPRING_STIFFNESS = SpringForce.STIFFNESS_HIGH; // Spring stiffness for overscroll
+    private static final float SPRING_STIFFNESS = SpringForce.STIFFNESS_LOW; // Spring stiffness for overscroll
     private static final float SPRING_DAMPING_RATIO = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Spring damping
     private static final float FLING_FRICTION = 1.5f; // Friction for fling animation
     private static final float TEXT_SIZE_SPRING_STIFFNESS = SpringForce.STIFFNESS_MEDIUM; // Text size animation stiffness
@@ -1215,43 +1215,80 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         invalidate();
     }
     
-    public void setNormalTextSize(float size) {
-        this.normalTextSize = sp2px(getContext(), size);
+    /**
+     * Update both normal and current (highlight) text sizes in one atomic call.
+     *
+     * <p>Clears the layout caches once so that every line's {@link StaticLayout} is rebuilt
+     * at the new size on the next draw pass.  The existing per-line height spring-animations
+     * then automatically transition the spacing from the old layout heights to the new ones,
+     * giving the elastic resize feel without any extra work here.</p>
+     *
+     * <p>Text-size spring animations are restarted for every visible line so the font itself
+     * also scales smoothly rather than snapping.</p>
+     *
+     * @param normalSizeSp  new normal-line text size in <b>sp</b>
+     * @param currentSizeSp new highlighted-line text size in <b>sp</b>
+     */
+    public void setTextSizes(float normalSizeSp, float currentSizeSp) {
+        float newNormal = sp2px(getContext(), normalSizeSp);
+        float newCurrent = sp2px(getContext(), currentSizeSp);
+        
+        boolean normalChanged = Math.abs(newNormal - normalTextSize) > 0.1f;
+        boolean currentChanged = Math.abs(newCurrent - currentTextSize) > 0.1f;
+        if (!normalChanged && !currentChanged) {
+            return;
+        }
+        
+        normalTextSize = newNormal;
+        currentTextSize = newCurrent;
+        
+        // Update the base paint sizes so new layouts are built at the right size.
         normalPaint.setTextSize(normalTextSize);
-        // Clear layout caches so heights/wrapping are recalculated at the new size.
-        // Animated heights will then spring-animate from old values to new ones.
+        currentPaint.setTextSize(currentTextSize);
+        
+        // Clear layout caches — stale layouts have wrong heights/wrapping for the new sizes.
         normalLayoutCache.clear();
-        // Also clear current-size cache because the normal size is used as the base for
-        // animated sizes; stale current layouts can reference wrong metrics.
         currentLayoutCache.clear();
-        // Clear animatedTextSizes so lines adopt the new normalTextSize immediately.
-        animatedTextSizes.clear();
-        // Cancel stale text-size spring animations to avoid fighting with the new sizes.
+        
+        // Cancel any in-flight text-size springs and re-kick them toward the new targets.
+        // This makes the font scale animate elastically instead of snapping.
         for (SpringAnimation anim : new java.util.ArrayList <>(textSizeAnimations.values())) {
             if (anim != null && anim.isRunning()) {
                 anim.cancel();
             }
         }
         textSizeAnimations.clear();
+        
+        // Re-animate every line to its new target size so the font grows/shrinks smoothly.
+        if (lrcData != null) {
+            for (int i = 0; i < lrcData.size(); i++) {
+                float target = (i == currentLineIndex) ? currentTextSize : normalTextSize;
+                // Only animate if there's a meaningful difference from the currently stored size.
+                Float current = animatedTextSizes.get(i);
+                float from = (current != null) ? current : target;
+                if (Math.abs(from - target) > 0.1f) {
+                    animateTextSize(i, target);
+                } else {
+                    animatedTextSizes.put(i, target);
+                }
+            }
+        } else {
+            animatedTextSizes.clear();
+        }
+
         invalidate();
+    }
+    
+    public void setNormalTextSize(float size) {
+        float newCurrent = (currentTextSize / (normalTextSize > 0 ? normalTextSize : 1f)) *
+                sp2px(getContext(), size);
+        setTextSizes(size, newCurrent / getResources().getDisplayMetrics().scaledDensity);
     }
 
     // Public API
-    
+
     public void setCurrentTextSize(float size) {
-        this.currentTextSize = sp2px(getContext(), size);
-        currentPaint.setTextSize(currentTextSize);
-        // Same cache-clearing logic as setNormalTextSize.
-        currentLayoutCache.clear();
-        normalLayoutCache.clear();
-        animatedTextSizes.clear();
-        for (SpringAnimation anim : new java.util.ArrayList <>(textSizeAnimations.values())) {
-            if (anim != null && anim.isRunning()) {
-                anim.cancel();
-            }
-        }
-        textSizeAnimations.clear();
-        invalidate();
+        setTextSizes(normalTextSize / getResources().getDisplayMetrics().scaledDensity, size);
     }
     
     public void setLineSpacing(float spacing) {

@@ -2,6 +2,8 @@ package app.simple.felicity.ui.player
 
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -14,6 +16,7 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.ui.player.Lyrics.Companion.TEXT_SIZE_DEBOUNCE_MS
 import app.simple.felicity.viewmodels.player.LyricsViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
@@ -22,6 +25,10 @@ import dagger.hilt.android.lifecycle.withCreationCallback
 class Lyrics : MediaFragment() {
 
     private lateinit var binding: FragmentLyricsBinding
+
+    /** Debounce handler – coalesces rapid text-size changes from the slider. */
+    private val textSizeHandler = Handler(Looper.getMainLooper())
+    private val textSizeRunnable = Runnable { applyTextSize() }
 
     private val lyricsViewModel: LyricsViewModel by viewModels(
             extrasProducer = {
@@ -33,7 +40,6 @@ class Lyrics : MediaFragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentLyricsBinding.inflate(inflater, container, false)
-
         return binding.root
     }
 
@@ -41,7 +47,7 @@ class Lyrics : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
         requireHiddenMiniPlayer()
         setAlignment()
-        setTextSize()
+        applyTextSize()
 
         binding.lrc.setOnLrcClickListener { timeInMillis, _ ->
             MediaManager.seekTo(timeInMillis)
@@ -70,21 +76,33 @@ class Lyrics : MediaFragment() {
         }
     }
 
-    private fun setTextSize() {
-        binding.lrc.setNormalTextSize(LyricsPreferences.getLrcTextSize())
-        binding.lrc.setCurrentTextSize(LyricsPreferences.getLrcTextSize().times(1.1f))
+    /** Applies the current text-size preferences to the view immediately. */
+    private fun applyTextSize() {
+        val normal = LyricsPreferences.getLrcTextSize()
+        binding.lrc.setTextSizes(normal, normal * LRC_HIGHLIGHT_TIMES)
+    }
+
+    /**
+     * Schedules [applyTextSize] after [TEXT_SIZE_DEBOUNCE_MS] ms, cancelling any
+     * previously pending call.  Rapid slider events therefore collapse into one update
+     * that fires only once the user stops (or nearly stops) dragging.
+     */
+    private fun scheduleTextSizeUpdate() {
+        textSizeHandler.removeCallbacks(textSizeRunnable)
+        textSizeHandler.postDelayed(textSizeRunnable, TEXT_SIZE_DEBOUNCE_MS)
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
-            LyricsPreferences.LRC_ALIGNMENT -> {
-                setAlignment()
-            }
-            LyricsPreferences.LRC_TEXT_SIZE -> {
-                setTextSize()
-            }
+            LyricsPreferences.LRC_ALIGNMENT -> setAlignment()
+            LyricsPreferences.LRC_TEXT_SIZE -> scheduleTextSizeUpdate()
         }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        textSizeHandler.removeCallbacks(textSizeRunnable)
     }
 
     override fun onSeekChanged(seek: Long) {
@@ -108,5 +126,11 @@ class Lyrics : MediaFragment() {
         }
 
         const val TAG = "LyricsFragment"
+
+        private const val LRC_HIGHLIGHT_TIMES = 1.2F
+
+        /** How long to wait after the last slider event before applying the text-size change. */
+        private const val TEXT_SIZE_DEBOUNCE_MS = 150L
     }
 }
+
