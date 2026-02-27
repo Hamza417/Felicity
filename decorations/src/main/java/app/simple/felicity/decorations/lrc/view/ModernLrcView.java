@@ -84,7 +84,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     
     // Height animations
     private final HashMap <Integer, SpringAnimation> heightAnimations = new HashMap <>();
-    
+
     // Text size animation
     private final java.util.HashMap <Integer, Float> animatedTextSizes = new java.util.HashMap <>();
     // Paint objects
@@ -100,6 +100,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private int normalTextColor;
     private int currentTextColor;
     private Alignment textAlignment = Alignment.LEFT;
+    // 0.0f = LEFT, 0.5f = CENTER, 1.0f = RIGHT – animated on alignment changes
+    private float alignmentFraction = 0f;
+    private android.animation.ValueAnimator alignmentAnimator;
     private String emptyText;
     private float fadeLength;
     private boolean enableFade = true;
@@ -160,6 +163,32 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         init(context, attrs);
     }
     
+    /**
+     * Maps an {@link Alignment} to its canonical fraction (LEFT=0, CENTER=0.5, RIGHT=1).
+     */
+    private static float alignmentFractionFor(Alignment alignment) {
+        return switch (alignment) {
+            case LEFT ->
+                    0f;
+            case CENTER ->
+                    0.5f;
+            case RIGHT ->
+                    1f;
+        };
+    }
+    
+    @Override
+    protected void onDraw(@NonNull Canvas canvas) {
+        super.onDraw(canvas);
+        
+        if (lrcData == null || lrcData.isEmpty()) {
+            drawEmptyText(canvas);
+            return;
+        }
+        
+        drawLyrics(canvas);
+    }
+    
     private void init(Context context, @Nullable AttributeSet attrs) {
         // Initialize default values
         normalTextSize = sp2px(context, DEFAULT_TEXT_SIZE);
@@ -171,6 +200,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         normalTextColor = DEFAULT_NORMAL_COLOR;
         currentTextColor = DEFAULT_CURRENT_COLOR;
         emptyText = DEFAULT_EMPTY_TEXT;
+        alignmentFraction = alignmentFractionFor(textAlignment);
         
         // Read attributes if provided
         if (attrs != null) {
@@ -225,150 +255,12 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         }
     }
     
-    @Override
-    protected void onDraw(@NonNull Canvas canvas) {
-        super.onDraw(canvas);
-        
-        if (lrcData == null || lrcData.isEmpty()) {
-            drawEmptyText(canvas);
-            return;
-        }
-        
-        drawLyrics(canvas);
-    }
-    
     private void drawEmptyText(Canvas canvas) {
-        // Save current alignment
-        Paint.Align savedAlign = normalPaint.getTextAlign();
-        
-        // Temporarily set to center for empty text
         normalPaint.setTextAlign(Paint.Align.CENTER);
         float x = getWidth() / 2f;
         float y = getHeight() / 2f - ((normalPaint.descent() + normalPaint.ascent()) / 2);
         canvas.drawText(emptyText, x, y, normalPaint);
-        
-        // Restore original alignment
-        normalPaint.setTextAlign(savedAlign);
-    }
-    
-    private void drawLyrics(Canvas canvas) {
-        float centerY = getHeight() / 2f;
-        float offsetY = centerY - scrollY;
-        
-        int entryCount = lrcData.size();
-        
-        // Use hardware layer for fade effect
-        int layerId = -1;
-        if (enableFade) {
-            layerId = canvas.saveLayer(0, 0, getWidth(), getHeight(), null);
-        }
-        
-        // Save canvas state and apply clipping to respect padding
-        canvas.save();
-        canvas.clipRect(
-                getPaddingLeft(),
-                0,
-                getWidth() - getPaddingRight(),
-                getHeight());
-        
-        for (int i = 0; i < entryCount; i++) {
-            LrcEntry entry = lrcData.getEntries().get(i);
-            String text = entry.getText();
-            
-            // Get animated text size for this line
-            float animatedSize = getAnimatedTextSize(i);
-            
-            // Calculate Y position for this line
-            float y = offsetY + getLineOffset(i);
-            
-            // Choose paint and set animated size
-            TextPaint paint;
-            // Don't highlight empty lines; in static mode all lines use the normal paint
-            if (!isStaticMode() && i == currentLineIndex && text != null && !text.trim().isEmpty()) {
-                paint = currentPaint;
-            } else {
-                paint = normalPaint;
-            }
-            
-            // Apply animated text size
-            paint.setTextSize(animatedSize);
-            
-            // Get or create StaticLayout for this line
-            StaticLayout layout = getOrCreateLayout(text, paint, i);
-            
-            // Skip lines that are completely off-screen (accounting for multi-line height)
-            float lineHeight = layout.getHeight();
-            if (y < -lineHeight || y > getHeight() + lineHeight) {
-                continue;
-            }
-            
-            // Calculate and apply blur based on distance from center (proportional to fade)
-            if (enableFade) {
-                float blurAmount = calculateBlurAmount(y, getHeight());
-                if (blurAmount > 0.5f) { // Only apply blur if significant
-                    // Round to nearest 0.5 to reduce unique filter instances
-                    float roundedBlur = Math.round(blurAmount * 2f) / 2f;
-                    
-                    // Get or create cached blur filter
-                    BlurMaskFilter blurFilter = blurMaskFilters.get(roundedBlur);
-                    if (blurFilter == null) {
-                        blurFilter = new BlurMaskFilter(roundedBlur, BlurMaskFilter.Blur.NORMAL);
-                        blurMaskFilters.put(roundedBlur, blurFilter);
-                    }
-                    paint.setMaskFilter(blurFilter);
-                } else {
-                    paint.setMaskFilter(null);
-                }
-            } else {
-                paint.setMaskFilter(null);
-            }
-            
-            // Draw ripple effect for tapped line (behind the text)
-            if (i == tappedLineIndex && rippleDrawable != null) {
-                float yOffset = y - (lineHeight / 2f);
-                int paddingLeft = getPaddingLeft();
-                int paddingRight = getPaddingRight();
-                int availableWidth = getWidth() - paddingLeft - paddingRight;
-                
-                // Set ripple bounds to cover the full width of the text area
-                rippleDrawable.setBounds(
-                        paddingLeft,
-                        (int) yOffset,
-                        paddingLeft + availableWidth,
-                        (int) (yOffset + lineHeight));
-                rippleDrawable.draw(canvas);
-            }
-            
-            // Draw the wrapped text using StaticLayout
-            canvas.save();
-            
-            // Calculate X position for the layout based on alignment
-            float x = calculateXPositionForLayout(layout, paint);
-            
-            // Position the text vertically (centered on y position)
-            float yOffset = y - (lineHeight / 2f);
-            canvas.translate(x, yOffset);
-            
-            layout.draw(canvas);
-            canvas.restore();
-        }
-        
-        // Clear mask filters
-        normalPaint.setMaskFilter(null);
-        currentPaint.setMaskFilter(null);
-        
-        // Restore original paint sizes
-        normalPaint.setTextSize(normalTextSize);
-        currentPaint.setTextSize(currentTextSize);
-        
-        // Restore canvas state
-        canvas.restore();
-        
-        // Apply vertical fade effect
-        if (enableFade && fadeLength > 0) {
-            drawVerticalFade(canvas);
-            canvas.restoreToCount(layerId);
-        }
+        normalPaint.setTextAlign(Paint.Align.LEFT);
     }
     
     /**
@@ -604,6 +496,126 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         return offset;
     }
     
+    private void drawLyrics(Canvas canvas) {
+        float centerY = getHeight() / 2f;
+        float offsetY = centerY - scrollY;
+        
+        int entryCount = lrcData.size();
+        
+        // Use hardware layer for fade effect
+        int layerId = -1;
+        if (enableFade) {
+            layerId = canvas.saveLayer(0, 0, getWidth(), getHeight(), null);
+        }
+        
+        // Save canvas state and apply clipping to respect padding
+        canvas.save();
+        canvas.clipRect(
+                getPaddingLeft(),
+                0,
+                getWidth() - getPaddingRight(),
+                getHeight());
+        
+        for (int i = 0; i < entryCount; i++) {
+            LrcEntry entry = lrcData.getEntries().get(i);
+            String text = entry.getText();
+            
+            // Get animated text size for this line
+            float animatedSize = getAnimatedTextSize(i);
+            
+            // Calculate Y position for this line
+            float y = offsetY + getLineOffset(i);
+            
+            // Choose paint and set animated size
+            TextPaint paint;
+            // Don't highlight empty lines; in static mode all lines use the normal paint
+            if (!isStaticMode() && i == currentLineIndex && text != null && !text.trim().isEmpty()) {
+                paint = currentPaint;
+            } else {
+                paint = normalPaint;
+            }
+            
+            // Apply animated text size
+            paint.setTextSize(animatedSize);
+            
+            // Get or create StaticLayout for this line
+            StaticLayout layout = getOrCreateLayout(text, paint, i);
+            
+            // Skip lines that are completely off-screen (accounting for multi-line height)
+            float lineHeight = layout.getHeight();
+            if (y < -lineHeight || y > getHeight() + lineHeight) {
+                continue;
+            }
+            
+            // Calculate and apply blur based on distance from center (proportional to fade)
+            if (enableFade) {
+                float blurAmount = calculateBlurAmount(y, getHeight());
+                if (blurAmount > 0.5f) { // Only apply blur if significant
+                    // Round to nearest 0.5 to reduce unique filter instances
+                    float roundedBlur = Math.round(blurAmount * 2f) / 2f;
+                    
+                    // Get or create cached blur filter
+                    BlurMaskFilter blurFilter = blurMaskFilters.get(roundedBlur);
+                    if (blurFilter == null) {
+                        blurFilter = new BlurMaskFilter(roundedBlur, BlurMaskFilter.Blur.NORMAL);
+                        blurMaskFilters.put(roundedBlur, blurFilter);
+                    }
+                    paint.setMaskFilter(blurFilter);
+                } else {
+                    paint.setMaskFilter(null);
+                }
+            } else {
+                paint.setMaskFilter(null);
+            }
+            
+            // Draw ripple effect for tapped line (behind the text)
+            if (i == tappedLineIndex && rippleDrawable != null) {
+                float yOffset = y - (lineHeight / 2f);
+                int paddingLeft = getPaddingLeft();
+                int paddingRight = getPaddingRight();
+                int availableWidth = getWidth() - paddingLeft - paddingRight;
+                
+                // Set ripple bounds to cover the full width of the text area
+                rippleDrawable.setBounds(
+                        paddingLeft,
+                        (int) yOffset,
+                        paddingLeft + availableWidth,
+                        (int) (yOffset + lineHeight));
+                rippleDrawable.draw(canvas);
+            }
+            
+            // Draw the wrapped text using StaticLayout
+            canvas.save();
+            
+            // Calculate X position for the layout based on alignment
+            float x = calculateXPositionForLayout(layout, paint, i);
+            
+            // Position the text vertically (centered on y position)
+            float yOffset = y - (lineHeight / 2f);
+            canvas.translate(x, yOffset);
+            
+            layout.draw(canvas);
+            canvas.restore();
+        }
+        
+        // Clear mask filters
+        normalPaint.setMaskFilter(null);
+        currentPaint.setMaskFilter(null);
+        
+        // Restore original paint sizes
+        normalPaint.setTextSize(normalTextSize);
+        currentPaint.setTextSize(currentTextSize);
+        
+        // Restore canvas state
+        canvas.restore();
+        
+        // Apply vertical fade effect
+        if (enableFade && fadeLength > 0) {
+            drawVerticalFade(canvas);
+            canvas.restoreToCount(layerId);
+        }
+    }
+    
     /**
      * Get or create a StaticLayout for wrapped text
      * Uses cached layouts at fixed sizes to avoid constant recreation
@@ -614,14 +626,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         int paddingRight = getPaddingRight();
         int availableWidth = getWidth() - paddingLeft - paddingRight;
         
-        Layout.Alignment alignment = switch (textAlignment) {
-            case LEFT ->
-                    Layout.Alignment.ALIGN_NORMAL;
-            case RIGHT ->
-                    Layout.Alignment.ALIGN_OPPOSITE;
-            default ->
-                    Layout.Alignment.ALIGN_CENTER;
-        };
+        // Always use ALIGN_NORMAL – the canvas is translated to the correct X position in
+        // calculateXPositionForLayout(), which also handles smooth animated alignment shifts.
+        Layout.Alignment staticAlignment = Layout.Alignment.ALIGN_NORMAL;
         
         // Determine which size we're rendering at by checking the paint's actual size
         float currentPaintSize = paint.getTextSize();
@@ -646,7 +653,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         if (!needsWrapping) {
             // Text fits on one line - create single-line layout
             layout = StaticLayout.Builder.obtain(text, 0, text.length(), paint, availableWidth)
-                    .setAlignment(alignment)
+                    .setAlignment(staticAlignment)
                     .setLineSpacing(0f, 1f)
                     .setIncludePad(false)
                     .setMaxLines(1)
@@ -654,7 +661,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         } else {
             // Text needs wrapping - create multi-line layout
             layout = StaticLayout.Builder.obtain(text, 0, text.length(), paint, availableWidth)
-                    .setAlignment(alignment)
+                    .setAlignment(staticAlignment)
                     .setLineSpacing(0f, 1f)
                     .setIncludePad(false)
                     .build();
@@ -662,7 +669,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         
         // Cache it
         cache.put(lineIndex, layout);
-        
+
         // Update height tracking
         float newHeight = (float) layout.getHeight();
         Float previousHeight = layoutHeights.get(lineIndex);
@@ -690,28 +697,45 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Calculate X position for StaticLayout based on alignment
+     * Calculate X position for StaticLayout based on alignment.
+     *
+     * <p>All layouts use {@code ALIGN_NORMAL} so text always starts at x=0 within the layout.
+     * We translate the canvas to the correct X so that:</p>
+     * <ul>
+     *   <li>LEFT   – text left-edge is at {@code paddingLeft}</li>
+     *   <li>CENTER – text is centred: {@code paddingLeft + (availableWidth/2) - (textWidth/2)}</li>
+     *   <li>RIGHT  – text right-edge is at {@code paddingLeft + availableWidth}:
+     *                {@code paddingLeft + availableWidth - textWidth}</li>
+     * </ul>
+     *
+     * <p>{@link #alignmentFraction} (0=LEFT, 0.5=CENTER, 1=RIGHT) is animated on alignment
+     * changes so the text slides smoothly between positions.</p>
      */
     @SuppressWarnings ("unused")
-    private float calculateXPositionForLayout(StaticLayout layout, TextPaint paint) {
-        // StaticLayout handles alignment internally, so we just position it at the left padding
-        return getPaddingLeft();
-    }
-    
-    /**
-     * Update text alignment for paints
-     */
-    private void updateTextAlignment() {
-        Paint.Align align = switch (textAlignment) {
-            case LEFT ->
-                    Paint.Align.LEFT;
-            case RIGHT ->
-                    Paint.Align.RIGHT;
-            default ->
-                    Paint.Align.CENTER;
-        };
-        normalPaint.setTextAlign(align);
-        currentPaint.setTextAlign(align);
+    private float calculateXPositionForLayout(StaticLayout layout, TextPaint paint, int lineIndex) {
+        int paddingLeft = getPaddingLeft();
+        int paddingRight = getPaddingRight();
+        int availableWidth = getWidth() - paddingLeft - paddingRight;
+        
+        // Measure the actual rendered text width using the paint (which already has the
+        // correct animated text size set on it). Clamp to availableWidth for wrapped lines.
+        String text = layout.getText().toString();
+        float textWidth = Math.min(paint.measureText(text), availableWidth);
+        
+        // LEFT   : text left-edge at paddingLeft
+        // CENTER : text centred  → paddingLeft + (availableWidth - textWidth) / 2
+        // RIGHT  : text right-edge at paddingLeft + availableWidth → paddingLeft + availableWidth - textWidth
+        float xCenter = paddingLeft + (availableWidth - textWidth) / 2f;
+        float xRight = paddingLeft + availableWidth - textWidth;
+        
+        float fraction = alignmentFraction;
+        if (fraction <= 0.5f) {
+            float t = fraction * 2f;                    // 0→1 as fraction 0→0.5
+            return paddingLeft + t * (xCenter - paddingLeft);
+        } else {
+            float t = (fraction - 0.5f) * 2f;           // 0→1 as fraction 0.5→1.0
+            return xCenter + t * (xRight - xCenter);
+        }
     }
     
     /**
@@ -1130,9 +1154,49 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                 context.getResources().getDisplayMetrics());
     }
     
+    /**
+     * Update text alignment for paints.
+     * Paint.Align only affects canvas.drawText() (used for the empty-text placeholder).
+     * StaticLayout.draw() also honours Paint.Align internally, so we always keep it LEFT
+     * and handle alignment entirely via canvas translation in calculateXPositionForLayout().
+     */
+    private void updateTextAlignment() {
+        normalPaint.setTextAlign(Paint.Align.LEFT);
+        currentPaint.setTextAlign(Paint.Align.LEFT);
+    }
+    
     // Utility methods
     public void setTextAlignment(Alignment alignment) {
+        if (this.textAlignment == alignment) {
+            return;
+        }
         this.textAlignment = alignment;
+        
+        // Clear layout caches so new layouts are built with the correct StaticLayout alignment
+        normalLayoutCache.clear();
+        currentLayoutCache.clear();
+        
+        // Animate alignmentFraction toward the target value for a smooth visual shift
+        float targetFraction = alignmentFractionFor(alignment);
+        if (alignmentAnimator != null && alignmentAnimator.isRunning()) {
+            alignmentAnimator.cancel();
+        }
+        alignmentAnimator = android.animation.ValueAnimator.ofFloat(alignmentFraction, targetFraction);
+        alignmentAnimator.setDuration(350);
+        alignmentAnimator.setInterpolator(new DecelerateInterpolator());
+        alignmentAnimator.addUpdateListener(anim -> {
+            alignmentFraction = (float) anim.getAnimatedValue();
+            invalidate();
+        });
+        alignmentAnimator.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                alignmentFraction = targetFraction;
+                invalidate();
+            }
+        });
+        alignmentAnimator.start();
+
         updateTextAlignment();
         invalidate();
     }
