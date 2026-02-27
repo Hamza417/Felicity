@@ -4,7 +4,57 @@
     android:layout_width="match_parent"
     android:orientation="vertical"
     android:paddingHorizontal="@dimen/padding_20"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    app:navigationPaddingRequired="true"
+    app:statusPaddingRequired="false">
+
+    <app.simple.felicity.decorations.lrc.view.ModernLrcView
+        android:id="@+id/lrc"
+        android:layout_width="match_parent"
+        android:paddingHorizontal="@dimen/padding_5"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="@dimen/padding_10">
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/settings"
+            android:layout_width="@dimen/button_size"
+            android:src="@drawable/ic_settings"
+            android:layout_height="@dimen/button_size" />
+
+        <app.simple.felicity.decorations.theme.ThemeDivider
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="@dimen/padding_10"
+            android:layout_gravity="center_vertical"
+            android:layout_height="1px" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/previous"
+            android:layout_width="@dimen/button_size"
+            android:src="@drawable/ic_skip_previous"
+            android:layout_height="@dimen/button_size" />
+
+        <app.simple.felicity.decorations.views.FlipPlayPauseView
+            android:id="@+id/play"
+            android:layout_width="@dimen/button_size"
+            android:layout_height="@dimen/button_size"
+            android:layout_marginEnd="@dimen/padding_1"
+            android:padding="@dimen/padding_10"
+            app:buttonTintType="regular" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/next"
+            android:layout_width="@dimen/button_size"
+            android:src="@drawable/ic_skip_next"
+            android:layout_height="@dimen/button_size" />
+
+    </LinearLayout>
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
         android:id="@+id/name"
@@ -15,7 +65,6 @@
         android:ellipsize="marquee"
         android:layout_marginTop="@dimen/padding_5"
         android:singleLine="true"
-        android:text="sample"
         app:appFontStyle="bold"
         app:textColorStyle="heading" />
 
@@ -27,37 +76,23 @@
         android:marqueeRepeatLimit="marquee_forever"
         android:ellipsize="end"
         android:singleLine="true"
-        android:text="sample"
         app:appFontStyle="regular"
         app:textColorStyle="secondary" />
 
-    <LinearLayout
+    <app.simple.felicity.decorations.seekbars.FelicitySeekbar
+        android:id="@+id/seekbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="@dimen/padding_10">
+        android:layout_gravity="center_vertical"
+        app:felicityLabelBackgroundEnabled="true"
+        app:felicityLabelGap="@dimen/padding_15"
+        app:felicityLabelsEnabled="true"
+        app:felicityThumbRadius="@dimen/padding_10"
+        app:felicityThumbRingWidth="@dimen/padding_10"
+        app:felicityTrackHeight="@dimen/padding_10" />
 
-        <app.simple.felicity.decorations.theme.ThemeDivider
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="@dimen/padding_10"
-            android:layout_gravity="center_vertical"
-            android:layout_height="1px" />
-
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-            android:id="@+id/settings"
-            android:layout_width="@dimen/button_size"
-            android:src="@drawable/ic_settings"
-            android:layout_height="@dimen/button_size" />
-
-    </LinearLayout>
-
-    <app.simple.felicity.decorations.lrc.view.ModernLrcView
-        android:id="@+id/lrc"
+    <Space
         android:layout_width="match_parent"
-        android:paddingHorizontal="@dimen/padding_5"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginBottom="@dimen/padding_20" />
+        android:layout_height="@dimen/padding_20" />
 
 </app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>
