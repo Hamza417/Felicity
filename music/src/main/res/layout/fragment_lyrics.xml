@@ -10,7 +10,7 @@
         android:id="@+id/name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="@dimen/text_size_36"
+        android:textSize="@dimen/text_size_22"
         android:marqueeRepeatLimit="marquee_forever"
         android:ellipsize="marquee"
         android:layout_marginTop="@dimen/padding_5"
@@ -23,7 +23,7 @@
         android:id="@+id/artist"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="@dimen/text_size_18"
+        android:textSize="@dimen/text_size_14"
         android:marqueeRepeatLimit="marquee_forever"
         android:ellipsize="end"
         android:singleLine="true"
@@ -31,10 +31,26 @@
         app:appFontStyle="regular"
         app:textColorStyle="secondary" />
 
-    <app.simple.felicity.decorations.theme.ThemeDivider
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_marginVertical="@dimen/padding_15"
-        android:layout_height="1px" />
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="@dimen/padding_10">
+
+        <app.simple.felicity.decorations.theme.ThemeDivider
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="@dimen/padding_10"
+            android:layout_gravity="center_vertical"
+            android:layout_height="1px" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/settings"
+            android:layout_width="@dimen/button_size"
+            android:src="@drawable/ic_settings"
+            android:layout_height="@dimen/button_size" />
+
+    </LinearLayout>
 
     <app.simple.felicity.decorations.lrc.view.ModernLrcView
         android:id="@+id/lrc"

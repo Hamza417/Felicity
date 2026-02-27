@@ -214,4 +214,8 @@
     <string name="save">Save</string>
     <string name="volume">Volume</string>
     <string name="balance">Balance</string>
+    <string name="alignment">Alignment</string>
+    <string name="left">Left</string>
+    <string name="center">Center</string>
+    <string name="right">Right</string>
 </resources>

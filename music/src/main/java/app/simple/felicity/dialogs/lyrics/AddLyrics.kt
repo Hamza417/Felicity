@@ -11,7 +11,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.databinding.DialogLyricsAddBinding
-import app.simple.felicity.extensions.dialogs.MediaDialogFragment
+import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.utils.ParcelUtils.parcelable
@@ -21,7 +21,7 @@ import dagger.hilt.android.lifecycle.withCreationCallback
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
-class AddLyrics : MediaDialogFragment() {
+class AddLyrics : MediaBottomDialogFragment() {
 
     private lateinit var binding: DialogLyricsAddBinding
 

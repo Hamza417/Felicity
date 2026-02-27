@@ -1,5 +1,6 @@
 package app.simple.felicity.ui.player
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -7,7 +8,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.databinding.FragmentLyricsBinding
+import app.simple.felicity.decorations.lrc.view.ModernLrcView
+import app.simple.felicity.dialogs.player.LyricsMenu.Companion.showLyricsMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.viewmodels.player.LyricsViewModel
@@ -36,9 +40,14 @@ class Lyrics : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         requireHiddenMiniPlayer()
+        setAlignment()
 
         binding.lrc.setOnLrcClickListener { timeInMillis, _ ->
             MediaManager.seekTo(timeInMillis)
+        }
+
+        binding.settings.setOnClickListener {
+            childFragmentManager.showLyricsMenu()
         }
 
         lyricsViewModel.getLrcData().observe(viewLifecycleOwner) { lrcData ->
@@ -48,6 +57,23 @@ class Lyrics : MediaFragment() {
             } else {
                 binding.lrc.setLrcData(lrcData)
                 binding.lrc.updateTime(MediaManager.getSeekPosition())
+            }
+        }
+    }
+
+    private fun setAlignment() {
+        when (LyricsPreferences.getLrcAlignment()) {
+            LyricsPreferences.LEFT -> binding.lrc.setTextAlignment(ModernLrcView.Alignment.LEFT)
+            LyricsPreferences.CENTER -> binding.lrc.setTextAlignment(ModernLrcView.Alignment.CENTER)
+            LyricsPreferences.RIGHT -> binding.lrc.setTextAlignment(ModernLrcView.Alignment.RIGHT)
+        }
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            LyricsPreferences.LRC_ALIGNMENT -> {
+                setAlignment()
             }
         }
     }

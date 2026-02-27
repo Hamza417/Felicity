@@ -1131,7 +1131,6 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     // Utility methods
-    
     public void setTextAlignment(Alignment alignment) {
         this.textAlignment = alignment;
         updateTextAlignment();

@@ -9,7 +9,7 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.databinding.DialogLyricsBinding
 import app.simple.felicity.decorations.lrc.view.ModernLrcView
 import app.simple.felicity.dialogs.lyrics.AddLyrics.Companion.showAddLyrics
-import app.simple.felicity.extensions.dialogs.MediaDialogFragment
+import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ViewUtils.gone
@@ -20,7 +20,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
 
 @AndroidEntryPoint
-class Lyrics : MediaDialogFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
+class Lyrics : MediaBottomDialogFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
 
     private lateinit var binding: DialogLyricsBinding
 

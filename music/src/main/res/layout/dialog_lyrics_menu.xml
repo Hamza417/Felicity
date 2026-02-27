@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_gravity="bottom"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:padding="@dimen/padding_15"
+    android:layout_height="wrap_content">
+
+    <app.simple.felicity.decorations.corners.DynamicCornerLinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:padding="@dimen/padding_15"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:orientation="horizontal">
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="0dp"
+                android:padding="@dimen/padding_15"
+                android:layout_height="wrap_content"
+                android:text="@string/alignment"
+                android:layout_weight="1"
+                android:layout_gravity="center_vertical"
+                android:textSize="@dimen/text_size_14"
+                app:appFontStyle="bold"
+                app:textColorStyle="primary" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/alignment_group"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <app.simple.felicity.decorations.toggles.Button
+                    android:id="@+id/left"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="48dp"
+                    android:layout_height="wrap_content"
+                    app:icon="@drawable/ic_align_left_12dp"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:minHeight="0dp"
+                    app:minWidth="0dp" />
+
+                <app.simple.felicity.decorations.toggles.Button
+                    android:id="@+id/center"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="48dp"
+                    android:layout_height="wrap_content"
+                    app:icon="@drawable/ic_align_center_12dp"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:minHeight="0dp"
+                    app:minWidth="0dp" />
+
+                <app.simple.felicity.decorations.toggles.Button
+                    android:id="@+id/right"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="48dp"
+                    android:layout_height="wrap_content"
+                    app:icon="@drawable/ic_align_right_12dp"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:minHeight="0dp"
+                    app:minWidth="0dp" />
+
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+        </LinearLayout>
+
+        <app.simple.felicity.decorations.theme.ThemeDivider
+            android:layout_width="match_parent"
+            android:layout_marginVertical="@dimen/padding_10"
+            android:layout_height="1px" />
+
+    </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+
+</FrameLayout>

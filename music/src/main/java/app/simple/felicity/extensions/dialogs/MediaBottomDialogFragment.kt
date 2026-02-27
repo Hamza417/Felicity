@@ -8,7 +8,7 @@ import app.simple.felicity.repository.models.Audio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-abstract class MediaDialogFragment : ScopedBottomSheetFragment() {
+abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
 
     protected fun setMediaItems(songs: List<Audio>, position: Int = 0) {
         // MediaManager.setSongs(songs, position)
