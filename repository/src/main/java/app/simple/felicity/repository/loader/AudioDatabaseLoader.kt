@@ -42,12 +42,13 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     // Track all active processing jobs for proper cancellation
     private val activeJobs = mutableListOf<Job>()
 
-    // Supervisor job ensures that failure in one child doesn't cancel others
-    private val supervisorJob = SupervisorJob()
-    private val loaderScope = CoroutineScope(Dispatchers.IO + supervisorJob)
+    // Scope is recreated for every scan so a canceled/dead scope never blocks future scans
+    private var scanScope: CoroutineScope = newScanScope()
 
     // Mutex to prevent multiple parallel scans
     private val scanMutex = Mutex()
+
+    private fun newScanScope() = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     // Use max() to ensure we use at least MIN_SEMAPHORE_PERMITS, even if fewer processors are available
     private val semaphore = Semaphore(max(MIN_SEMAPHORE_PERMITS, Runtime.getRuntime().availableProcessors()))
@@ -63,6 +64,12 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         if (!scanMutex.tryLock()) {
             Log.w(TAG, "Scan already in progress, skipping...")
             return
+        }
+
+        // Ensure the scope is alive – it may have been canceled by a prior cleanup() call
+        if (!scanScope.coroutineContext[Job]!!.isActive) {
+            Log.d(TAG, "Recreating dead scanScope before new scan")
+            scanScope = newScanScope()
         }
 
         try {
@@ -95,17 +102,17 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
             storages.forEach { storage ->
                 // Check for cancellation before processing each storage
-                loaderScope.coroutineContext.ensureActive()
+                scanScope.coroutineContext.ensureActive()
 
                 val audioFiles = AudioScanner().getAudioFiles(storage.path!!)
                 Log.d(TAG, "Found ${audioFiles.size} audio files in ${storage.path}")
 
                 audioFiles.forEach { file ->
                     // Check for cancellation before processing each file
-                    loaderScope.coroutineContext.ensureActive()
+                    scanScope.coroutineContext.ensureActive()
 
                     if (shouldProcess(file)) {
-                        val processingJob = loaderScope.launch {
+                        val processingJob = scanScope.launch {
                             semaphore.acquire()
                             try {
                                 // Check for cancellation before starting metadata extraction
@@ -262,39 +269,53 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     fun isScanInProgress(): Boolean = scanMutex.isLocked
 
     /**
-     * Cancel all ongoing operations and cleanup resources
-     * This ensures no background processes are left running
+     * Cancel any in-flight scan and immediately start a new one.
+     * This is the safe path for "refresh on resume" – it never silently drops the request.
      */
-    fun cleanup() {
-        Log.d(TAG, "Cleanup called - canceling all operations")
+    suspend fun cancelAndRestartScan() {
+        Log.d(TAG, "cancelAndRestartScan: tearing down current scan")
+        cancelCurrentScan()
+        Log.d(TAG, "cancelAndRestartScan: starting fresh scan")
+        processAudioFiles()
+    }
 
-        // Cancel all active processing jobs
+    /**
+     * Cancel the currently running scan and reset all state so a new scan can be started.
+     * Unlike cleanup(), this method leaves the loader fully operational.
+     */
+    private fun cancelCurrentScan() {
+        // Cancel every child job first
         synchronized(activeJobs) {
             Log.d(TAG, "Canceling ${activeJobs.size} active jobs")
-            activeJobs.forEach { job ->
-                if (job.isActive) {
-                    job.cancel()
-                }
-            }
+            activeJobs.forEach { it.cancel() }
             activeJobs.clear()
         }
 
-        // Cancel the supervisor job (this will cancel the entire scope)
-        supervisorJob.cancel()
+        // Cancel and replace the scope – this kills any stragglers launched directly on scanScope
+        scanScope.coroutineContext[Job]?.cancel()
+        scanScope = newScanScope()
 
-        // Clear the indexed map
+        // Clear stale index so the new scan re-evaluates every file
         indexedMap.clear()
 
-        // Unlock the mutex if it's locked (in case cleanup is called during a scan)
+        // Release the mutex if it is still held by the canceled scan
         if (scanMutex.isLocked) {
             try {
                 scanMutex.unlock()
+                Log.d(TAG, "Mutex released after cancel")
             } catch (_: IllegalStateException) {
-                // Mutex wasn't locked by this thread, ignore
-                Log.w(TAG, "Attempted to unlock mutex but it wasn't locked by this thread")
+                Log.w(TAG, "Mutex unlock skipped – not locked by current owner")
             }
         }
+    }
 
+    /**
+     * Cancel all ongoing operations and cleanup resources.
+     * After this call the loader is still usable – a new scan can be started.
+     */
+    fun cleanup() {
+        Log.d(TAG, "Cleanup called - canceling all operations")
+        cancelCurrentScan()
         Log.d(TAG, "Cleanup complete - all operations canceled")
     }
 

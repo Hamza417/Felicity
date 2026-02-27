@@ -13,7 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -23,7 +22,6 @@ class AudioDatabaseService : Service() {
     lateinit var audioDatabaseLoader: AudioDatabaseLoader
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val scanMutex = Mutex()
     private var currentStartId: Int = -1
 
     companion object {
@@ -32,7 +30,7 @@ class AudioDatabaseService : Service() {
         private const val ACTION_REFRESH_SCAN = "app.simple.felicity.ACTION_REFRESH_SCAN"
 
         /**
-         * Start the audio database scan service
+         * Start the audio database scan service (skips if a scan is already running).
          */
         fun startScan(context: Context) {
             val intent = Intent(context, AudioDatabaseService::class.java).apply {
@@ -42,7 +40,8 @@ class AudioDatabaseService : Service() {
         }
 
         /**
-         * Refresh/restart the audio database scan
+         * Cancel any running scan and immediately start a fresh one.
+         * Use this on app resume so a zombie scan never blocks the refresh.
          */
         fun refreshScan(context: Context) {
             val intent = Intent(context, AudioDatabaseService::class.java).apply {
@@ -55,7 +54,6 @@ class AudioDatabaseService : Service() {
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "Service created")
-        // Never run scan here - wait for onStartCommand
     }
 
     override fun onBind(intent: Intent?): IBinder {
@@ -68,93 +66,81 @@ class AudioDatabaseService : Service() {
         currentStartId = startId
 
         when (intent?.action) {
-            ACTION_START_SCAN, ACTION_REFRESH_SCAN -> {
-                startScanWithGuard(startId)
+            ACTION_REFRESH_SCAN -> {
+                // Cancel whatever is running and force a fresh scan
+                startForcedScan(startId)
             }
             else -> {
-                // No action specified, just start a scan
-                startScanWithGuard(startId)
+                // ACTION_START_SCAN or no action – only run if nothing is in progress
+                startScanIfIdle(startId)
             }
         }
 
-        // Use START_NOT_STICKY - don't auto-restart if killed
-        // The scan can be safely restarted by the user/system when needed
         return START_NOT_STICKY
     }
 
     /**
-     * Start scan with mutex guard to prevent parallel scans
+     * Run a scan only when no scan is already active.
+     * Silently drops the request if one is already running.
      */
-    private fun startScanWithGuard(startId: Int) {
+    private fun startScanIfIdle(startId: Int) {
+        if (audioDatabaseLoader.isScanInProgress()) {
+            Log.w(TAG, "Scan already in progress, ignoring duplicate start request")
+            return
+        }
         serviceScope.launch {
-            // Try to acquire mutex - if already locked, skip
-            if (!scanMutex.tryLock()) {
-                Log.w(TAG, "Scan already in progress, ignoring duplicate request")
-                // Still stop this startId since we're not doing work
-                checkAndStopService(startId)
-                return@launch
-            }
-
             try {
-                Log.d(TAG, "Starting audio database scan...")
-                performScan()
-                Log.d(TAG, "Audio database scan completed successfully")
+                Log.d(TAG, "Starting audio database scan (idle path)…")
+                audioDatabaseLoader.processAudioFiles()
+                Log.d(TAG, "Scan completed successfully")
             } catch (e: Exception) {
-                Log.e(TAG, "Error during audio database scan", e)
+                Log.e(TAG, "Error during scan", e)
             } finally {
-                scanMutex.unlock()
-                // Stop service after work completes
-                checkAndStopService(startId)
+                stopSelfResult(startId)
             }
         }
     }
 
     /**
-     * Perform the actual scan - delegates to AudioDatabaseLoader
+     * Cancel the current scan (if any) and immediately start a new one.
+     * This is the path used on app resume – it is guaranteed to run.
      */
-    private suspend fun performScan() {
-        // The loader has its own internal guards, but we also guard at service level
-        audioDatabaseLoader.processAudioFiles()
-    }
-
-    /**
-     * Stop the service after work is complete
-     */
-    private fun checkAndStopService(startId: Int) {
-        if (!isScanInProgress()) {
-            Log.d(TAG, "No scans in progress, stopping service with startId: $startId")
-            stopSelfResult(startId)
+    private fun startForcedScan(startId: Int) {
+        serviceScope.launch {
+            try {
+                Log.d(TAG, "Forced refresh: cancelling existing scan and starting fresh…")
+                audioDatabaseLoader.cancelAndRestartScan()
+                Log.d(TAG, "Forced scan completed successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during forced scan", e)
+            } finally {
+                stopSelfResult(startId)
+            }
         }
     }
 
     /**
-     * Check if a scan is currently in progress
+     * Check if a scan is currently in progress.
      */
-    fun isScanInProgress(): Boolean {
-        return audioDatabaseLoader.isScanInProgress() || scanMutex.isLocked
-    }
+    fun isScanInProgress(): Boolean = audioDatabaseLoader.isScanInProgress()
 
     /**
-     * Manually refresh audio files (for bound clients)
-     * This is safe to call - it won't create duplicate scans
+     * Force-refresh audio files (for bound clients, e.g. a settings screen).
      */
     fun refreshAudioFiles() {
-        Log.d(TAG, "Manual refresh requested")
-        startScanWithGuard(currentStartId)
+        Log.d(TAG, "Manual refresh requested via binder")
+        startForcedScan(currentStartId)
     }
 
     override fun onDestroy() {
         Log.d(TAG, "Service destroyed - cleaning up")
-        // Cancel all ongoing operations before destroying
         audioDatabaseLoader.cleanup()
-        // Cancel the service scope
         serviceScope.coroutineContext.cancel()
         super.onDestroy()
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         Log.d(TAG, "Task removed - cleaning up and stopping service")
-        // App was swiped away from recent apps
         audioDatabaseLoader.cleanup()
         stopSelf()
         super.onTaskRemoved(rootIntent)
