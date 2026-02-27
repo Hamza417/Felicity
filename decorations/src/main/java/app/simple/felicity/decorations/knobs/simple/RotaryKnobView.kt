@@ -38,12 +38,12 @@ import kotlin.math.sin
 /**
  * A fully custom rotary knob view drawn entirely on canvas — no XML layout or child views.
  *
- * Layout (outward from centre):
+ * Layout (outward from center):
  *   [knob circle] → [gap] → [arc / division ring] → [gap] → [ticks]
  *
  * The arc ring is split into two visual regions:
- *  - **Progressed region** (min → current value): accent-coloured division lines only, no arc stroke.
- *  - **Remaining region** (current value → max): idle-coloured arc segments drawn in the gaps
+ *  - **Progressed region** (min → current value): accent-colored division lines only, no arc stroke.
+ *  - **Remaining region** (current value → max): idle-colored arc segments drawn in the gaps
  *    between division lines, no division lines.
  *
  * Division lines grow from 0 → full height as the knob sweeps over them (forward) and
@@ -314,6 +314,46 @@ class RotaryKnobView @JvmOverloads constructor(
      */
     var divisionLineDuration: Long = 160L
 
+    /**
+     * When true a prominent tick mark is drawn at the top-center (50 % / 0°) position and
+     * the knob snaps back to 50 when the user lifts their finger within [snapThreshold] degrees.
+     */
+    var centerSnapEnabled: Boolean = false
+        set(value) {
+            field = value; invalidate()
+        }
+
+    /**
+     * Angular dead-zone (degrees) on either side of the center tick within which a finger-up
+     * causes the knob to snap to 50.  Default is 16°.
+     */
+    var snapThreshold: Float = 16f
+
+    /** Paint for the center-snap tick mark. */
+    private val centerTickPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
+    /**
+     * Paint for the divider line drawn from the center-tick position toward the knob indicator
+     * tip when [centerSnapEnabled] is true. Shows which side the knob is leaning toward.
+     */
+    private val panLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
+    /**
+     * Fraction of [knobRadiusPx] at which the indicator dot sits inside the knob circle.
+     * Must match [SimpleRotaryKnobDrawable.INDICATOR_DISTANCE_FRACTION] (0.81).
+     * Used to compute the exact tip position for the pan-lean divider line.
+     */
+    var knobIndicatorDistanceFraction: Float = 0.81f
+        set(value) {
+            field = value; invalidate()
+        }
+
     private var cx = 0f
     private var cy = 0f
     private var knobRadiusPx = 0f
@@ -467,9 +507,9 @@ class RotaryKnobView @JvmOverloads constructor(
     /** Cancels all running per-line animators and resets scale/target/animator arrays to match [divisionCount]. */
     private fun resetDivisions() {
         divisionAnimators.forEach { it?.cancel() }
-        divisionScales = FloatArray(divisionCount) { 0f }
-        divisionAngles = FloatArray(divisionCount) { 0f }
-        divisionTargets = FloatArray(divisionCount) { 0f }
+        divisionScales = FloatArray(divisionCount)
+        divisionAngles = FloatArray(divisionCount)
+        divisionTargets = FloatArray(divisionCount)
         divisionAnimators = arrayOfNulls(divisionCount)
     }
 
@@ -554,13 +594,61 @@ class RotaryKnobView @JvmOverloads constructor(
         drawTick(canvas, ARC_START_ANGLE, tickStartText)
         drawTick(canvas, ARC_START_ANGLE + ARC_SWEEP, tickEndText)
 
+        // Center-snap tick: a taller, accent-colored mark at the exact midpoint of the arc.
+        if (centerSnapEnabled) {
+            val centreArcAngle = ARC_START_ANGLE + ARC_SWEEP / 2f  // 270° canvas = 12-o'clock
+            centerTickPaint.strokeWidth = divStrokeWidthPx * 2f
+
+            val centreRad = Math.toRadians(centreArcAngle.toDouble())
+            val cosCentre = cos(centreRad).toFloat()
+            val sinCentre = sin(centreRad).toFloat()
+            val innerR = arcCentreRadiusPx - divProgressLengthPx
+            val outerR = arcCentreRadiusPx + divProgressLengthPx
+
+            // Lean amount: -1 = full left, 0 = center, +1 = full right
+            val lean = (knobRotation / END).coerceIn(-1f, 1f)
+
+            // Blend color: center → accent, left/right lean → idle (so it's subtle when centred)
+            val leanAbs = abs(lean)
+            val blendedAlpha = (0x40 + (0xBF * leanAbs)).toInt().coerceIn(0x40, 0xFF)
+            centerTickPaint.color = (divisionAccentColor and 0x00FFFFFF) or (blendedAlpha shl 24)
+            canvas.drawLine(
+                    cx + cosCentre * innerR, cy + sinCentre * innerR,
+                    cx + cosCentre * outerR, cy + sinCentre * outerR,
+                    centerTickPaint
+            )
+
+            // Pan-lean divider line: from center (cx,cy) toward the knob indicator tip,
+            // drawn along the current knobRotation direction. The indicator dot sits at
+            // knobRadiusPx * knobIndicatorDistanceFraction from center (before rotation),
+            // so after rotation by knobRotation we compute the rotated direction.
+            // knobRotation=0 → indicator points straight up → canvas angle = -90° (270°).
+            val indicatorCanvasAngleDeg = knobRotation - 90f  // -90° offset: 0 rotation = up
+            val indicatorRad = Math.toRadians(indicatorCanvasAngleDeg.toDouble())
+            val cosInd = cos(indicatorRad).toFloat()
+            val sinInd = sin(indicatorRad).toFloat()
+
+            // Tip position of the indicator dot
+            val tipR = knobRadiusPx * knobIndicatorDistanceFraction
+
+            panLinePaint.strokeWidth = divStrokeWidthPx * 1.5f
+            panLinePaint.color = (divisionAccentColor and 0x00FFFFFF) or (blendedAlpha shl 24)
+
+            // Draw from just inside the center of the knob out to the indicator tip
+            canvas.drawLine(
+                    cx, cy,
+                    cx + cosInd * tipR, cy + sinInd * tipR,
+                    panLinePaint
+            )
+        }
+
         // Value label centred below the knob, between the two end-stop ticks.
         if (labelText.isNotEmpty()) {
             labelPaint.color = labelColor
             canvas.drawText(labelText, cx, labelYPx, labelPaint)
         }
 
-        // Knob circle — rotated around the view centre; visually clamped to START..END.
+        // Knob circle — rotated around the view center; visually clamped to START..END.
         canvas.withRotation(knobRotation.coerceIn(START, END), cx, cy) {
             knobDrawable.draw(this)
         }
@@ -663,6 +751,16 @@ class RotaryKnobView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 knobDrawable.onPressedStateChanged(false, 300)
+                // Snap to center (50 %) if within the snap threshold
+                if (centerSnapEnabled) {
+                    val centreAngle = valueToAngle(50f)
+                    if (abs(knobRotation - centreAngle) <= snapThreshold) {
+                        animateTo(centreAngle)
+                        val snappedValue = 50f
+                        labelText = listener?.onLabel(snappedValue) ?: ""
+                        listener?.onRotate(snappedValue)
+                    }
+                }
                 listener?.onUserInteractionEnd()
                 return true
             }

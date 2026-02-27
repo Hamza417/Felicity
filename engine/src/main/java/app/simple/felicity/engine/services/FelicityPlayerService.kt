@@ -13,6 +13,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.audio.ChannelMixingAudioProcessor
+import androidx.media3.common.audio.ChannelMixingMatrix
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -51,6 +53,8 @@ import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * Service responsible for managing audio playback using ExoPlayer with dynamic decoder switching support.
@@ -66,6 +70,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     private lateinit var player: ExoPlayer
     private var renderersFactory: DefaultRenderersFactory? = null
 
+    /** Reusable processor that applies stereo balance without rebuilding the whole pipeline. */
+    private val balanceProcessor = ChannelMixingAudioProcessor()
+
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var periodicStateSaveJob: Job? = null
 
@@ -79,8 +86,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 // Check hi-res preference to determine output format
                 val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
 
+                // Apply the saved balance to the processor before building the sink.
+                applyBalanceToProcessor(PlayerPreferences.getBalance())
+
                 val audioSink = DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(hiresEnabled) // 32-bit float if hi-res, 16-bit PCM otherwise
+                    .setAudioProcessors(arrayOf(balanceProcessor))
                     .build()
 
                 // Disable offload mode for consistent processing
@@ -312,6 +323,39 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         player.skipSilenceEnabled = AudioPreferences.isSkipSilenceEnabled()
     }
 
+    /**
+     * Updates [balanceProcessor] with a constant-power panning matrix.
+     *
+     * [pan] in [-1 .. 1]: -1 = full left, 0 = centre, +1 = full right.
+     *
+     * Constant-power law: θ = (pan + 1) / 2 * π/2
+     *   leftGain  = cos(θ)   → 1.0 at center, 0.707 at extremes, 0.0 at full right
+     *   rightGain = sin(θ)   → same mirrored
+     * This keeps the perceived loudness constant while panning.
+     */
+    private fun applyBalanceToProcessor(pan: Float) {
+        val p = pan.coerceIn(-1f, 1f)
+        val theta = ((p + 1f) / 2f) * (Math.PI / 2.0)
+        val l = cos(theta).toFloat()
+        val r = sin(theta).toFloat()
+        // 2-in / 2-out mixing matrix (row-major):
+        //   [0] out_L <- in_L (left gain),   [1] out_L <- in_R (no cross-talk)
+        //   [2] out_R <- in_L (no cross-talk), [3] out_R <- in_R (right gain)
+        val mixingMatrix = ChannelMixingMatrix(
+                /* inputChannelCount = */ 2,
+                /* outputChannelCount = */ 2,
+                /* coefficients = */ floatArrayOf(l, 0f, 0f, r)
+        )
+        balanceProcessor.putChannelMixingMatrix(mixingMatrix)
+        Log.d(TAG, "Constant-power pan applied: pan=$p → L=$l, R=$r")
+    }
+
+    /** Apply a new pan value immediately to the processor and persist it. */
+    fun setBalance(pan: Float) {
+        PlayerPreferences.setBalance(pan)
+        applyBalanceToProcessor(pan)
+    }
+
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             val format = player.audioFormat
@@ -433,6 +477,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 val repeatMode = PlayerPreferences.getRepeatMode()
                 Log.d(TAG, "Repeat mode preference changed to: $repeatMode")
                 applyRepeatMode(repeatMode)
+            }
+            PlayerPreferences.BALANCE -> {
+                val pan = PlayerPreferences.getBalance()
+                Log.d(TAG, "Balance preference changed to: $pan")
+                applyBalanceToProcessor(pan)
             }
         }
     }

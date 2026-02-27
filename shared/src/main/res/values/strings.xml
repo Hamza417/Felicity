@@ -213,4 +213,5 @@
     <string name="paste_lyrics_here">Paste Lyrics Here</string>
     <string name="save">Save</string>
     <string name="volume">Volume</string>
+    <string name="balance">Balance</string>
 </resources>

@@ -18,6 +18,7 @@ import androidx.fragment.app.FragmentManager
 import app.simple.felicity.databinding.DialogVolumeKnobBinding
 import app.simple.felicity.decorations.knobs.simple.RotaryKnobListener
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
+import app.simple.felicity.preferences.PlayerPreferences
 import kotlin.math.roundToInt
 
 class VolumeKnob : ScopedBottomSheetFragment() {
@@ -29,12 +30,12 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean, uri: Uri?) {
                 super.onChange(selfChange, uri)
-                setKnobPosition()
+                setVolumeKnobPosition()
             }
         }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = DialogVolumeKnobBinding.inflate(inflater, container, false)
 
         requireActivity().volumeControlStream = AudioManager.STREAM_MUSIC
@@ -46,9 +47,9 @@ class VolumeKnob : ScopedBottomSheetFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        setKnobPosition()
+        // ── Volume knob ──────────────────────────────────────────────────────────
+        setVolumeKnobPosition()
         binding.volumeKnob.setTickTexts("0", "100")
-
         binding.volumeKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {
                 Log.d(TAG, "Increment: $value")
@@ -56,7 +57,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
 
             override fun onRotate(value: Float) {
                 val index = ((value / 100.0f) * audioManager!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC)).roundToInt()
-                audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0);
+                audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0)
             }
 
             override fun onUserInteractionStart() {
@@ -69,24 +70,43 @@ class VolumeKnob : ScopedBottomSheetFragment() {
             }
         })
 
+        // ── Balance knob (constant-power panning) ───────────────────────────────
+        // Knob value 0-100 maps to pan -1 (full left) … 0 (centre, default) … +1 (full right).
+        // Centre (50) = no change. Centre-snap enabled so the knob snaps back to 50 when
+        // released close to it, and a divider line shows which side it's leaning toward.
+        binding.balanceKnob.centerSnapEnabled = true
+        binding.balanceKnob.setTickTexts("L", "R")
+        binding.balanceKnob.setKnobPosition(panToKnobValue(PlayerPreferences.getBalance()), animate = false)
+        binding.balanceKnob.setListener(object : RotaryKnobListener {
+            override fun onIncrement(value: Float) {}
+
+            override fun onRotate(value: Float) {
+                val pan = knobValueToPan(value)
+                PlayerPreferences.setBalance(pan)
+                Log.d(TAG, "Balance updated: pan=$pan")
+            }
+
+            override fun onLabel(value: Float): String {
+                val pan = knobValueToPan(value)
+                return when {
+                    pan < -0.02f -> "L ${"%.0f".format(-pan * 100)}%"
+                    pan > 0.02f -> "R ${"%.0f".format(pan * 100)}%"
+                    else -> "C"
+                }
+            }
+        })
+
+        // ── Hardware volume keys ─────────────────────────────────────────────────
         dialog?.setOnKeyListener { _, keyCode, _ ->
             when (keyCode) {
                 KeyEvent.KEYCODE_VOLUME_UP -> {
-                    Log.d(TAG, "Volume key pressed: $keyCode")
-                    audioManager?.adjustStreamVolume(
-                            AudioManager.STREAM_MUSIC,
-                            AudioManager.ADJUST_RAISE,
-                            AudioManager.FLAG_VIBRATE);
-                    setKnobPosition()
+                    audioManager?.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_VIBRATE)
+                    setVolumeKnobPosition()
                     true
                 }
                 KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                    Log.d(TAG, "Volume key pressed: $keyCode")
-                    audioManager?.adjustStreamVolume(
-                            AudioManager.STREAM_MUSIC,
-                            AudioManager.ADJUST_LOWER,
-                            AudioManager.FLAG_VIBRATE);
-                    setKnobPosition()
+                    audioManager?.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, AudioManager.FLAG_VIBRATE)
+                    setVolumeKnobPosition()
                     true
                 }
                 else -> false
@@ -96,8 +116,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
 
     override fun onStart() {
         super.onStart()
-        requireContext().contentResolver
-            .registerContentObserver(Settings.System.CONTENT_URI, true, volumeObserver)
+        requireContext().contentResolver.registerContentObserver(Settings.System.CONTENT_URI, true, volumeObserver)
     }
 
     override fun onStop() {
@@ -105,18 +124,28 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         requireContext().contentResolver.unregisterContentObserver(volumeObserver)
     }
 
-    private fun setKnobPosition() {
+    private fun setVolumeKnobPosition() {
         val current = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC)?.toFloat() ?: 0f
         val max = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC)?.toFloat() ?: 1f
-        Log.d(TAG, "setKnobPosition: current=$current, max=$max (percentage=${(current / max) * 100f})")
         binding.volumeKnob.setKnobPosition((current / max) * 100f)
     }
 
     companion object {
+        /**
+         * Maps knob position [0..100] → pan [-1..1].
+         * 50 = centre = 0, 0 = full left = -1, 100 = full right = +1.
+         */
+        fun knobValueToPan(knobValue: Float): Float = ((knobValue - 50f) / 50f).coerceIn(-1f, 1f)
+
+        /**
+         * Maps pan [-1..1] → knob position [0..100].
+         * 0 (centre) → 50, -1 (full left) → 0, +1 (full right) → 100.
+         */
+        fun panToKnobValue(pan: Float): Float = ((pan * 50f) + 50f).coerceIn(0f, 100f)
+
         fun newInstance(): VolumeKnob {
-            val args = Bundle()
             val fragment = VolumeKnob()
-            fragment.arguments = args
+            fragment.arguments = Bundle()
             return fragment
         }
 
@@ -126,7 +155,6 @@ class VolumeKnob : ScopedBottomSheetFragment() {
                 dialog.show(supportFragmentManager, TAG)
                 return dialog
             }
-
             return supportFragmentManager.findFragmentByTag(TAG) as VolumeKnob
         }
 
@@ -136,13 +164,10 @@ class VolumeKnob : ScopedBottomSheetFragment() {
                 dialog.show(this, TAG)
                 return dialog
             }
-
             return findFragmentByTag(TAG) as VolumeKnob
         }
 
-        private fun FragmentManager.isVolumeKnobShowing(): Boolean {
-            return findFragmentByTag(TAG) != null
-        }
+        private fun FragmentManager.isVolumeKnobShowing(): Boolean = findFragmentByTag(TAG) != null
 
         const val TAG = "VolumeKnob"
     }
