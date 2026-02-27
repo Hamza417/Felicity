@@ -78,10 +78,40 @@
 
         </LinearLayout>
 
-        <app.simple.felicity.decorations.theme.ThemeDivider
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_marginVertical="@dimen/padding_10"
-            android:layout_height="1px" />
+            android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:orientation="horizontal">
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="wrap_content"
+                android:padding="@dimen/padding_15"
+                android:layout_height="wrap_content"
+                android:text="@string/text_size"
+                android:layout_gravity="center_vertical"
+                android:textSize="@dimen/text_size_14"
+                app:appFontStyle="bold"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.seekbars.FelicitySeekbar
+                android:id="@+id/text_size_seekbar"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/padding_10"
+                android:layout_gravity="center_vertical"
+                android:layout_marginEnd="@dimen/padding_1"
+                app:felicityAnimateInitial="true"
+                app:felicityLabelsEnabled="false"
+                app:felicityMax="24"
+                app:felicityMin="12"
+                app:felicityProgress="16"
+                app:felicityThumbRadius="@dimen/padding_10"
+                app:felicityThumbRingWidth="@dimen/padding_10"
+                app:felicityTrackHeight="@dimen/padding_10" />
+
+        </LinearLayout>
 
     </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
 

@@ -41,6 +41,7 @@ class Lyrics : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
         requireHiddenMiniPlayer()
         setAlignment()
+        setTextSize()
 
         binding.lrc.setOnLrcClickListener { timeInMillis, _ ->
             MediaManager.seekTo(timeInMillis)
@@ -69,11 +70,19 @@ class Lyrics : MediaFragment() {
         }
     }
 
+    private fun setTextSize() {
+        binding.lrc.setNormalTextSize(LyricsPreferences.getLrcTextSize())
+        binding.lrc.setCurrentTextSize(LyricsPreferences.getLrcTextSize().times(1.1f))
+    }
+
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             LyricsPreferences.LRC_ALIGNMENT -> {
                 setAlignment()
+            }
+            LyricsPreferences.LRC_TEXT_SIZE -> {
+                setTextSize()
             }
         }
     }

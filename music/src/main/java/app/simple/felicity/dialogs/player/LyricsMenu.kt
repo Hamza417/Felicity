@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import app.simple.felicity.databinding.DialogLyricsMenuBinding
+import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
 import app.simple.felicity.preferences.LyricsPreferences
 
@@ -20,6 +21,8 @@ class LyricsMenu : MediaBottomDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        binding.textSizeSeekbar.setProgress(LyricsPreferences.getLrcTextSize())
 
         when (LyricsPreferences.getLrcAlignment()) {
             LyricsPreferences.LEFT -> binding.left.isChecked = true
@@ -42,6 +45,14 @@ class LyricsMenu : MediaBottomDialogFragment() {
                 }
             }
         }
+
+        binding.textSizeSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
+            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
+                if (fromUser) {
+                    LyricsPreferences.setLrcTextSize(progress)
+                }
+            }
+        })
     }
 
     companion object {

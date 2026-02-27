@@ -1218,14 +1218,39 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     public void setNormalTextSize(float size) {
         this.normalTextSize = sp2px(getContext(), size);
         normalPaint.setTextSize(normalTextSize);
+        // Clear layout caches so heights/wrapping are recalculated at the new size.
+        // Animated heights will then spring-animate from old values to new ones.
+        normalLayoutCache.clear();
+        // Also clear current-size cache because the normal size is used as the base for
+        // animated sizes; stale current layouts can reference wrong metrics.
+        currentLayoutCache.clear();
+        // Clear animatedTextSizes so lines adopt the new normalTextSize immediately.
+        animatedTextSizes.clear();
+        // Cancel stale text-size spring animations to avoid fighting with the new sizes.
+        for (SpringAnimation anim : new java.util.ArrayList <>(textSizeAnimations.values())) {
+            if (anim != null && anim.isRunning()) {
+                anim.cancel();
+            }
+        }
+        textSizeAnimations.clear();
         invalidate();
     }
-    
+
     // Public API
     
     public void setCurrentTextSize(float size) {
         this.currentTextSize = sp2px(getContext(), size);
         currentPaint.setTextSize(currentTextSize);
+        // Same cache-clearing logic as setNormalTextSize.
+        currentLayoutCache.clear();
+        normalLayoutCache.clear();
+        animatedTextSizes.clear();
+        for (SpringAnimation anim : new java.util.ArrayList <>(textSizeAnimations.values())) {
+            if (anim != null && anim.isRunning()) {
+                anim.cancel();
+            }
+        }
+        textSizeAnimations.clear();
         invalidate();
     }
     
