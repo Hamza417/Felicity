@@ -427,6 +427,20 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val fallbackToSWToggle = Preference(
+                title = R.string.fallback_to_software_decoder,
+                summary = R.string.fallback_to_software_decoder_summary,
+                icon = R.drawable.ic_warning_12dp,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AudioPreferences.setFallbackToSoftwareDecoder((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    AudioPreferences.isFallbackToSoftwareDecoderEnabled()
+                }
+        )
+
         val playbackHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.playback)
 
         val hiresToggle = Preference(
@@ -473,6 +487,7 @@ open class PreferenceFragment : MediaFragment() {
 
         preferences.add(decoderHeader)
         preferences.add(currentDecoder)
+        preferences.add(fallbackToSWToggle)
         preferences.add(playbackHeader)
         preferences.add(hiresToggle)
         preferences.add(gaplessToggle)

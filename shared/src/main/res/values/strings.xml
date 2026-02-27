@@ -219,4 +219,6 @@
     <string name="center">Center</string>
     <string name="right">Right</string>
     <string name="text_size">Text Size</string>
+    <string name="fallback_to_software_decoder">Fallback To Software Decoder</string>
+    <string name="fallback_to_software_decoder_summary">Quietly fallback to software decoder if system hardware fails to play an audio file.</string>
 </resources>

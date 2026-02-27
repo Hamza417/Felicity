@@ -76,6 +76,19 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var periodicStateSaveJob: Job? = null
 
+    /**
+     * Tracks whether we are currently in a silent FFmpeg fallback retry for a failed track.
+     * When true the next decoding error on the same item is treated as a final failure,
+     * the original decoder is restored and the track is skipped.
+     */
+    private var ffmpegFallbackActive = false
+
+    /** The [MediaItem] that triggered the decoding error we are retrying via FFmpeg. */
+    private var ffmpegFallbackItem: MediaItem? = null
+
+    /** The decoder the user had configured before a fallback attempt was started. */
+    private var preFallbackDecoder: Int = AudioPreferences.LOCAL_DECODER
+
     override fun onCreate() {
         super.onCreate()
         initRegisterSharedPreferenceChangeListener(applicationContext)
@@ -324,9 +337,131 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     }
 
     /**
+     * Silently retries [failedItem] using the FFmpeg extension decoder.
+     *
+     * The full queue and playback position are preserved; only the renderer mode is changed.
+     * The preference store is NOT modified so the user's chosen decoder is kept intact.
+     * If [failedItem] is null the call is a no-op (track already gone).
+     */
+    private fun retryWithFfmpegFallback(failedItem: MediaItem?) {
+        if (failedItem == null) {
+            Log.w(TAG, "retryWithFfmpegFallback: no failed item, aborting.")
+            ffmpegFallbackActive = false
+            return
+        }
+
+        val mediaItems = (0 until player.mediaItemCount).map { player.getMediaItemAt(it) }
+        val currentIndex = player.currentMediaItemIndex
+
+        // Temporarily force the FFmpeg extension without touching user preferences.
+        renderersFactory?.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+
+        player.removeListener(playerListener)
+        player.release()
+
+        buildPlayerWithExtensionMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+
+        if (mediaItems.isNotEmpty()) {
+            player.setMediaItems(mediaItems, currentIndex, 0L)
+            player.playWhenReady = true
+            player.prepare()
+        }
+
+        mediaSession?.player = player
+        Log.i(TAG, "FFmpeg fallback: re-trying '${failedItem.mediaMetadata.title}' from the start with FFmpeg.")
+    }
+
+    /**
+     * Restores the engine to [decoderMode] without writing to shared preferences.
+     * Called after a failed FFmpeg fallback so the user sees no change in settings.
+     */
+    private fun restoreDecoderMode(decoderMode: Int) {
+        val extensionMode = if (decoderMode == AudioPreferences.FFMPEG) {
+            DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+        } else {
+            DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
+        }
+
+        val mediaItems = (0 until player.mediaItemCount).map { player.getMediaItemAt(it) }
+        val currentIndex = player.currentMediaItemIndex
+        val currentPos = player.currentPosition
+        val playWhenReady = player.playWhenReady
+
+        player.removeListener(playerListener)
+        player.release()
+
+        buildPlayerWithExtensionMode(extensionMode)
+
+        if (mediaItems.isNotEmpty()) {
+            player.setMediaItems(mediaItems, currentIndex, currentPos)
+            player.playWhenReady = playWhenReady
+            player.prepare()
+        }
+
+        mediaSession?.player = player
+        Log.d(TAG, "Decoder restored to mode $decoderMode (extensionMode=$extensionMode) without preference change.")
+    }
+
+    /**
+     * Skips to the next track if available; otherwise restarts the current item.
+     * Shared helper used by the fallback logic.
+     */
+    private fun skipOrRestartTrack() {
+        if (player.hasNextMediaItem()) {
+            player.seekToNextMediaItem()
+            Log.i(TAG, "Skipped to next track after decoder failure.")
+        } else {
+            player.seekToDefaultPosition()
+            Log.i(TAG, "Restarted current track (no next track available).")
+        }
+        player.prepare()
+        player.playWhenReady = true
+    }
+
+    /**
+     * Variant of [buildPlayer] that uses a specific [extensionMode] directly, bypassing the
+     * shared-preference read. Used for transient fallback / restore operations.
+     */
+    private fun buildPlayerWithExtensionMode(extensionMode: Int) {
+        renderersFactory?.setExtensionRendererMode(extensionMode)
+
+        val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
+        val loadControl = if (hiresEnabled) {
+            DefaultLoadControl.Builder()
+                .setBufferDurationsMs(5000, 15000, 2000, 3000)
+                .setPrioritizeTimeOverSizeThresholds(false)
+                .build()
+        } else {
+            DefaultLoadControl.Builder()
+                .setBufferDurationsMs(2500, 10000, 1000, 2000)
+                .setPrioritizeTimeOverSizeThresholds(true)
+                .build()
+        }
+
+        player = ExoPlayer.Builder(this, renderersFactory!!)
+            .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                        .setUsage(C.USAGE_MEDIA)
+                        .setSpatializationBehavior(C.SPATIALIZATION_BEHAVIOR_NEVER)
+                        .build(),
+                    true
+            )
+            .setLoadControl(loadControl)
+            .setHandleAudioBecomingNoisy(true)
+            .setWakeMode(C.WAKE_MODE_LOCAL)
+            .build()
+
+        setSilenceState()
+        configureGaplessPlayback()
+        applyRepeatMode(PlayerPreferences.getRepeatMode())
+        player.addListener(playerListener)
+    }
+
+    /**
      * Updates [balanceProcessor] with a constant-power panning matrix.
      *
-     * [pan] in [-1 .. 1]: -1 = full left, 0 = centre, +1 = full right.
+     * [pan] in [-1 .. 1]: -1 = full left, 0 = center, +1 = full right.
      *
      * Constant-power law: θ = (pan + 1) / 2 * π/2
      *   leftGain  = cos(θ)   → 1.0 at center, 0.707 at extremes, 0.0 at full right
@@ -421,22 +556,35 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             }
         }
 
-        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+        override fun onPlayerError(error: PlaybackException) {
             if (error.errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED) {
-                // The device can't decode this specific file.
-                // Automatically skip to the next track or show a Toast to the user.
                 Log.e(TAG, "Decoding error for current track: ${error.message} (code: ${error.errorCode})")
-                if (player.hasNextMediaItem()) {
-                    player.seekToNextMediaItem()
-                    Log.i(TAG, "Skipped to next track due to decoding error")
-                } else {
-                    // No media item to skip to, go back?
-                    player.seekToDefaultPosition()
-                    Log.i(TAG, "Restarted current track due to decoding error (no next track available)")
-                }
 
-                player.prepare()
-                player.playWhenReady = true
+                val failedItem = player.currentMediaItem
+
+                if (ffmpegFallbackActive) {
+                    // FFmpeg also failed – give up, restore original decoder and skip.
+                    Log.w(TAG, "FFmpeg fallback also failed for '${failedItem?.mediaMetadata?.title}', skipping track and restoring decoder.")
+                    ffmpegFallbackActive = false
+                    ffmpegFallbackItem = null
+                    // Restore user's original decoder choice silently (no pref write – just engine mode).
+                    restoreDecoderMode(preFallbackDecoder)
+                    skipOrRestartTrack()
+                } else if (AudioPreferences.isFallbackToSoftwareDecoderEnabled()
+                        && AudioPreferences.getAudioDecoder() != AudioPreferences.FFMPEG) {
+                    // Primary decoder failed and fallback is enabled – try FFmpeg silently.
+                    Log.i(TAG, "Primary decoder failed; silently retrying '${failedItem?.mediaMetadata?.title}' with FFmpeg.")
+                    preFallbackDecoder = AudioPreferences.getAudioDecoder()
+                    ffmpegFallbackActive = true
+                    ffmpegFallbackItem = failedItem
+                    retryWithFfmpegFallback(failedItem)
+                } else {
+                    // Fallback disabled, or already on FFmpeg – just skip.
+                    Log.w(TAG, "Skipping track (fallback disabled or already using FFmpeg).")
+                    ffmpegFallbackActive = false
+                    ffmpegFallbackItem = null
+                    skipOrRestartTrack()
+                }
             } else {
                 Log.e(TAG, "Playback error: ${error.message} (code: ${error.errorCode})")
                 Log.e(TAG, "Player error: ${error.errorCodeName}", error)
@@ -446,6 +594,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            // If a track transition happened naturally (not via fallback retry), clear any stale fallback state.
+            if (ffmpegFallbackActive && mediaItem != ffmpegFallbackItem) {
+                Log.d(TAG, "Track transitioned away from fallback item; restoring original decoder and clearing fallback state.")
+                ffmpegFallbackActive = false
+                ffmpegFallbackItem = null
+                restoreDecoderMode(preFallbackDecoder)
+            }
             MediaManager.notifyCurrentPosition(player.currentMediaItemIndex)
             savePlaybackStateToDatabase() // Save when track changes
         }
