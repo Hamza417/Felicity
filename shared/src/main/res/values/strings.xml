@@ -203,6 +203,13 @@
     <string name="minimum_audio_length_summary">Minimum audio length (in seconds) required to be scanned and shown in the app.</string>
     <string name="minimum_audio_size">Minimum Audio Size</string>
     <string name="minimum_audio_size_summary">Minimum audio file size required to be scanned and shown in the app.</string>
+    <string name="filters">Filters</string>
+    <string name="skip_nomedia_folders">Skip .nomedia Folders</string>
+    <string name="skip_nomedia_folders_summary">Exclude folders that contain a .nomedia file from the library scan.</string>
+    <string name="skip_hidden_files">Skip Hidden Files</string>
+    <string name="skip_hidden_files_summary">Exclude dot-prefixed audio files (e.g. .song.mp3) from the library scan.</string>
+    <string name="skip_hidden_folders">Skip Hidden Folders</string>
+    <string name="skip_hidden_folders_summary">Exclude dot-prefixed directories (e.g. .music/) and their contents from the library scan.</string>
     <string name="paste_lyrics_here">Paste Lyrics Here</string>
     <string name="save">Save</string>
     <string name="volume">Volume</string>

@@ -1,6 +1,7 @@
 package app.simple.felicity.repository.scanners
 
 import android.util.Log
+import app.simple.felicity.preferences.LibraryPreferences
 import java.io.File
 
 class AudioScanner() {
@@ -31,9 +32,6 @@ class AudioScanner() {
                 "pcm", // Pulse-Code Modulation
                 "dsf" // DSD Stream File
         )
-
-        private var SKIP_NOMEDIA = true // for .nomedia folders
-        private var SKIP_HIDDEN = true // for dot files and folders
     }
 
     fun getAudioFiles(root: File): List<File> {
@@ -44,7 +42,12 @@ class AudioScanner() {
             Log.d(TAG, "Scanning for audio files in: ${root.absolutePath}")
         }
 
-        return collectAudio(root)
+        // Read user preferences fresh on every scan
+        val skipNomedia = LibraryPreferences.isSkipNomedia()
+        val skipHiddenFiles = LibraryPreferences.isSkipHiddenFiles()
+        val skipHiddenFolders = LibraryPreferences.isSkipHiddenFolders()
+
+        return collectAudio(root, skipNomedia, skipHiddenFiles, skipHiddenFolders)
     }
 
     private fun File.isAudioFile(): Boolean {
@@ -53,23 +56,32 @@ class AudioScanner() {
         return AUDIO_EXTENSIONS.contains(ext.lowercase())
     }
 
-    private fun collectAudio(root: File): List<File> {
+    private fun collectAudio(
+            root: File,
+            skipNomedia: Boolean,
+            skipHiddenFiles: Boolean,
+            skipHiddenFolders: Boolean
+    ): List<File> {
         val result = mutableListOf<File>()
 
         root.walkTopDown()
             .onEnter { dir ->
-                if (SKIP_NOMEDIA && File(dir, ".nomedia").exists()) {
+                if (skipNomedia && File(dir, ".nomedia").exists()) {
                     Log.d(TAG, "Skipping .nomedia folder: ${dir.absolutePath}")
                     return@onEnter false
                 }
-                if (SKIP_HIDDEN && dir.name.startsWith(".")) {
+                if (skipHiddenFolders && dir.name.startsWith(".")) {
                     Log.d(TAG, "Skipping hidden folder: ${dir.absolutePath}")
                     return@onEnter false
                 }
                 return@onEnter true
-            }   // skip hidden dirs
+            }
             .forEach { file ->
                 if (file.isFile && file.length() > 0 && file.isAudioFile()) {
+                    if (skipHiddenFiles && file.name.startsWith(".")) {
+                        Log.d(TAG, "Skipping hidden file: ${file.absolutePath}")
+                        return@forEach
+                    }
                     result.add(file)
                 }
             }
@@ -77,3 +89,4 @@ class AudioScanner() {
         return result
     }
 }
+

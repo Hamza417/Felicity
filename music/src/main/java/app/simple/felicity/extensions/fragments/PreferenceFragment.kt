@@ -477,7 +477,7 @@ open class PreferenceFragment : MediaFragment() {
         val minimumAudioLength = Preference(
                 title = R.string.minimum_audio_length,
                 summary = R.string.minimum_audio_length_summary,
-                icon = R.drawable.ic_timer,
+                icon = R.drawable.ic_hourglass,
                 type = PreferenceType.SLIDER,
                 onPreferenceAction = { view, callback ->
                     LibraryPreferences.setMinimumAudioLength((view as FelicitySeekbar).getProgress().toInt())
@@ -496,7 +496,7 @@ open class PreferenceFragment : MediaFragment() {
         val minimumAudioSize = Preference(
                 title = R.string.minimum_audio_size,
                 summary = R.string.minimum_audio_size_summary,
-                icon = R.drawable.ic_storage,
+                icon = R.drawable.ic_filter,
                 type = PreferenceType.SLIDER,
                 onPreferenceAction = { view, callback ->
                     LibraryPreferences.setMinimumAudioSize((view as FelicitySeekbar).getProgress().toInt())
@@ -512,9 +512,57 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val filtersHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.filters)
+
+        val skipNomediaToggle = Preference(
+                title = R.string.skip_nomedia_folders,
+                summary = R.string.skip_nomedia_folders_summary,
+                icon = R.drawable.ic_hide,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    LibraryPreferences.setSkipNomedia((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    LibraryPreferences.isSkipNomedia()
+                }
+        )
+
+        val skipHiddenFilesToggle = Preference(
+                title = R.string.skip_hidden_files,
+                summary = R.string.skip_hidden_files_summary,
+                icon = R.drawable.ic_dot_16dp,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    LibraryPreferences.setSkipHiddenFiles((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    LibraryPreferences.isSkipHiddenFiles()
+                }
+        )
+
+        val skipHiddenFoldersToggle = Preference(
+                title = R.string.skip_hidden_folders,
+                summary = R.string.skip_hidden_folders_summary,
+                icon = R.drawable.ic_folder,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    LibraryPreferences.setSkipHiddenFolders((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    LibraryPreferences.isSkipHiddenFolders()
+                }
+        )
+
         preferences.add(scannerHeader)
         preferences.add(minimumAudioLength)
         preferences.add(minimumAudioSize)
+        preferences.add(filtersHeader)
+        preferences.add(skipNomediaToggle)
+        preferences.add(skipHiddenFilesToggle)
+        preferences.add(skipHiddenFoldersToggle)
 
         return preferences
     }

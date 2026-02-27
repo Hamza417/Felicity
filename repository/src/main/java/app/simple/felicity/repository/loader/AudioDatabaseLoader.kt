@@ -3,6 +3,7 @@ package app.simple.felicity.repository.loader
 import android.content.Context
 import android.util.Log
 import androidx.annotation.WorkerThread
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.metadata.MetaDataHelper.extractMetadata
 import app.simple.felicity.repository.models.Audio
@@ -191,9 +192,9 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         }
     }
 
-    // TODO: check for .nomedia and hidden files during sanitization as well
     /**
-     * Removes entries from the database that no longer exist on disk.
+     * Removes entries from the database that no longer exist on disk, or are excluded by the
+     * current filter preferences (.nomedia, hidden files, hidden folders).
      * SAFELY handles removable storage by only checking files on currently mounted volumes.
      */
     private suspend fun reconcileDatabase(mountedStorages: List<RemovableStorageDetector.StorageInfo?>) {
@@ -202,6 +203,11 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
         // Get list of currently mounted paths (e.g., /storage/emulated/0)
         val mounts = mountedStorages.mapNotNull { it?.path }
+
+        // Snapshot current filter preferences once for the whole reconcile pass
+        val skipNomedia = LibraryPreferences.isSkipNomedia()
+        val skipHiddenFiles = LibraryPreferences.isSkipHiddenFiles()
+        val skipHiddenFolders = LibraryPreferences.isSkipHiddenFolders()
 
         val toDelete = mutableListOf<Audio>()
         val toUpdate = mutableListOf<Audio>()
@@ -224,8 +230,15 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                             toDelete.add(audio)
                             indexedMap.remove(audio.path)
                         }
+                        isExcludedByFilter(file, skipNomedia, skipHiddenFiles, skipHiddenFolders) -> {
+                            // CASE 2: File now excluded by current filter prefs (e.g., user added .nomedia
+                            //         or toggled the preference). Remove it from the database.
+                            Log.d(TAG, "File excluded by current filter settings. Removing: ${audio.path}")
+                            toDelete.add(audio)
+                            indexedMap.remove(audio.path)
+                        }
                         !audio.isAvailable -> {
-                            // CASE 2: Restore (User inserted?, file is found)
+                            // CASE 3: Restore (file is found and no longer excluded)
                             Log.d(TAG, "Restoring available file: ${audio.path}")
                             audio.isAvailable = true
                             toUpdate.add(audio)
@@ -236,13 +249,11 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                     }
                 }
                 else -> {
-                    // CASE 3: Volume is NOT mounted (ejected?).
+                    // CASE 4: Volume is NOT mounted (ejected?).
                     when {
                         audio.isAvailable -> {
                             // DB says available, but storage is gone. Mark as unavailable.
                             Log.d(TAG, "Marking unavailable (storage ejected): ${audio.path}")
-
-                            // FIX: Use Setter instead of copy()
                             audio.isAvailable = false
                             toUpdate.add(audio)
                         }
@@ -261,6 +272,38 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         }
 
         Log.d(TAG, "Reconcile complete: Deleted ${toDelete.size}, Updated status for ${toUpdate.size}")
+    }
+
+    /**
+     * Returns true if the file should be excluded from the library based on current filter preferences.
+     * Walks up the directory tree to check every ancestor for .nomedia and hidden-folder rules.
+     */
+    private fun isExcludedByFilter(
+            file: File,
+            skipNomedia: Boolean,
+            skipHiddenFiles: Boolean,
+            skipHiddenFolders: Boolean
+    ): Boolean {
+        // Check the file itself for the hidden-file rule
+        if (skipHiddenFiles && file.name.startsWith(".")) {
+            Log.d(TAG, "Excluded (hidden file): ${file.absolutePath}")
+            return true
+        }
+
+        // Walk up the directory tree from the file's parent
+        var dir = file.parentFile
+        while (dir != null) {
+            if (skipNomedia && File(dir, ".nomedia").exists()) {
+                Log.d(TAG, "Excluded (.nomedia in ${dir.absolutePath}): ${file.absolutePath}")
+                return true
+            }
+            if (skipHiddenFolders && dir.name.startsWith(".")) {
+                Log.d(TAG, "Excluded (hidden folder ${dir.absolutePath}): ${file.absolutePath}")
+                return true
+            }
+            dir = dir.parentFile
+        }
+        return false
     }
 
     /**
