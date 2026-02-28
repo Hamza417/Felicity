@@ -3,6 +3,7 @@ package app.simple.felicity.repository.loader
 import android.content.Context
 import android.util.Log
 import androidx.annotation.WorkerThread
+import app.simple.felicity.core.utils.FileUtils
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.metadata.MetaDataHelper.extractMetadata
@@ -34,7 +35,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         private const val MIN_SEMAPHORE_PERMITS = 4
         private const val BATCH_SIZE = 50 // Number of audio items to accumulate before inserting to database
 
-        data class IndexedFile(val lastModified: Long, val size: Long)
+        data class IndexedFile(val lastModified: Long, val size: Long, val id: Long = 0L)
     }
 
     // Instance-specific indexed map (not shared across instances)
@@ -86,19 +87,24 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             // Create index of existing audio files in the database
             dao?.getAllAudioList().let { audioList ->
                 audioList?.forEach { audio ->
-                    indexedMap[audio.path] = IndexedFile(audio.dateModified, audio.size)
+                    indexedMap[audio.path] = IndexedFile(audio.dateModified, audio.size, audio.id)
                 }
             }
 
             Log.d(TAG, "Indexing complete. Found ${indexedMap.size} existing audio files in the database.")
+
+            // Build a set of paths that are already present in the DB, for upsert routing
+            val pathsInDb: HashSet<String> = dao?.getAllAudioList()
+                ?.mapTo(HashSet()) { it.path } ?: hashSetOf()
 
             // Clear any previous jobs and start fresh
             synchronized(activeJobs) {
                 activeJobs.clear()
             }
 
-            // Batch accumulator for audio items
-            val batchList = mutableListOf<Audio>()
+            // Batch accumulators – inserts for new files, updates for changed existing files
+            val insertBatchList = mutableListOf<Audio>()
+            val updateBatchList = mutableListOf<Audio>()
             val batchMutex = Mutex()
 
             storages.forEach { storage ->
@@ -130,18 +136,44 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                                 } else {
                                     Log.d(TAG, "Metadata extracted for ${file.name}: size=${audio.size}, dateModified=${audio.dateModified}")
 
-                                    // Add to batch list
                                     batchMutex.lock()
                                     try {
-                                        batchList.add(audio)
+                                        val isExistingPath = pathsInDb.contains(file.absolutePath)
+
+                                        if (isExistingPath) {
+                                            // File already has a DB row – look up the original id and
+                                            // carry it over so Room's @Update matches the right row.
+                                            // This prevents a duplicate entry when the file content
+                                            // hash (used as PK) changes after tag editing.
+                                            val existingId = dao?.getAudioByPath(file.absolutePath)?.id
+                                            if (existingId != null && existingId != 0L) {
+                                                audio.id = existingId
+                                                Log.d(TAG, "Updating existing entry (id=$existingId) for: ${file.name}")
+                                            } else {
+                                                // Fallback: id not found, treat as new insert
+                                                Log.w(TAG, "Could not find existing id for path, inserting fresh: ${file.name}")
+                                            }
+                                            updateBatchList.add(audio)
+                                        } else {
+                                            insertBatchList.add(audio)
+                                        }
+
                                         indexedMap[file.absolutePath] = IndexedFile(audio.dateModified, audio.size)
 
-                                        // Insert batch when it reaches the batch size
-                                        if (batchList.size >= BATCH_SIZE) {
-                                            val batchToInsert = batchList.toList()
-                                            batchList.clear()
+                                        // Flush insert batch when it reaches the batch size
+                                        if (insertBatchList.size >= BATCH_SIZE) {
+                                            val batchToInsert = insertBatchList.toList()
+                                            insertBatchList.clear()
                                             Log.d(TAG, "Inserting batch of ${batchToInsert.size} audio items")
                                             dao?.insertBatch(batchToInsert)
+                                        }
+
+                                        // Flush update batch when it reaches the batch size
+                                        if (updateBatchList.size >= BATCH_SIZE) {
+                                            val batchToUpdate = updateBatchList.toList()
+                                            updateBatchList.clear()
+                                            Log.d(TAG, "Updating batch of ${batchToUpdate.size} audio items")
+                                            dao?.update(batchToUpdate)
                                         }
                                     } finally {
                                         batchMutex.unlock()
@@ -169,11 +201,17 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             val jobsToWait = synchronized(activeJobs) { activeJobs.toList() }
             jobsToWait.joinAll()
 
-            // Insert any remaining items in the batch
-            if (batchList.isNotEmpty()) {
-                Log.d(TAG, "Inserting final batch of ${batchList.size} audio items")
-                dao?.insertBatch(batchList)
-                batchList.clear()
+            // Insert/update any remaining items in the batches
+            if (insertBatchList.isNotEmpty()) {
+                Log.d(TAG, "Inserting final batch of ${insertBatchList.size} audio items")
+                dao?.insertBatch(insertBatchList)
+                insertBatchList.clear()
+            }
+
+            if (updateBatchList.isNotEmpty()) {
+                Log.d(TAG, "Updating final batch of ${updateBatchList.size} audio items")
+                dao?.update(updateBatchList)
+                updateBatchList.clear()
             }
 
             Log.d(TAG, "Audio file processing complete in ${(System.currentTimeMillis() - startTime) / 1000} seconds.")
@@ -381,6 +419,17 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         if (existing.lastModified != fileModified) {
             Log.d(TAG, "Modified time changed for ${file.name}: DB=${existing.lastModified}, File=$fileModified")
             return true
+        }
+
+        // Size and timestamp are identical – but some tagger apps rewrite tags without
+        // updating lastModified (or restore the original timestamp after writing).
+        // Compute the content hash and compare with the stored id to catch these silent edits.
+        if (existing.id != 0L) {
+            val currentHash = FileUtils.generateXXHash64(file, Int.MAX_VALUE.toLong())
+            if (existing.id != currentHash) {
+                Log.d(TAG, "Content hash changed for ${file.name}: DB=${existing.id}, File=$currentHash (tagger edit detected)")
+                return true
+            }
         }
 
         return false                                             // unchanged → skip
