@@ -28,11 +28,14 @@ jobs:
             -   name: Extract Version Name and Version Code
                 run: |
                     # Extract versionName and versionCode from build.gradle
-                    VERSION_NAME=$(cat music/build.gradle | grep -oP 'versionName "\K[^"]*')
+                    BASE_VERSION_NAME=$(cat music/build.gradle | grep -oP 'versionName "\K[^"]*')
                     VERSION_CODE=$(cat music/build.gradle | grep -oP 'versionCode \K\d+')
 
-                    # Make the version name sentence case
-                    # VERSION_NAME=$(echo "$VERSION_NAME" | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2));}1')
+                    # Get the short Git commit SHA (first 7 characters)
+                    COMMIT_ID=$(git rev-parse --short HEAD)
+
+                    # Append the commit ID to the version name
+                    VERSION_NAME="${BASE_VERSION_NAME}-${COMMIT_ID}"
 
                     echo "Version Name: $VERSION_NAME"
                     echo "Version Code: $VERSION_CODE"
@@ -40,12 +43,6 @@ jobs:
                     # Set these values as environment variables for later steps
                     echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
                     echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
-
-            -   name: Set Tag
-                run: |
-                    TAG=$(echo ${{ env.VERSION_NAME }} | tr '[:upper:]' '[:lower:]')
-                    echo "TAG=${TAG}" >> $GITHUB_ENV
-                    echo "Tag: ${TAG}" # Print tag to console
 
             -   name: Accept Android SDK licenses
                 run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
@@ -62,12 +59,12 @@ jobs:
             -   name: Move APK to Temporary Directory
                 run: |
                     mkdir -p ${{ runner.temp }}
-                    ## Find apk first, then move it
-                    find music/ -name "*.apk" -exec mv {} ${{ runner.temp }}/music-release.apk \;
+                    ## Find apk first, then move it and append the version name to the file
+                    find music/ -name "*.apk" -exec mv {} ${{ runner.temp }}/music-release-${{ env.VERSION_NAME }}.apk \;
 
             -   name: Archive APKs
                 uses: actions/upload-artifact@v4
                 with:
                     name: ${{ env.VERSION_NAME }} APKs
                     path: |
-                        ${{ runner.temp }}/music-release.apk
+                        ${{ runner.temp }}/music-release-${{ env.VERSION_NAME }}.apk
