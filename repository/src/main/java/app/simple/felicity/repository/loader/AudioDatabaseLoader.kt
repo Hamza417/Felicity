@@ -3,7 +3,6 @@ package app.simple.felicity.repository.loader
 import android.content.Context
 import android.util.Log
 import androidx.annotation.WorkerThread
-import app.simple.felicity.core.utils.FileUtils
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.metadata.MetaDataHelper.extractMetadata
@@ -220,7 +219,12 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             synchronized(activeJobs) {
                 activeJobs.clear()
             }
-            scanMutex.unlock()
+
+            try {
+                scanMutex.unlock()
+            } catch (e: IllegalStateException) {
+                Log.w(TAG, "Mutex unlock skipped in finally block – not locked by current owner")
+            }
         }
     }
 
@@ -423,16 +427,6 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             return true
         }
 
-        // Size and timestamp are identical – but some tagger apps rewrite tags without
-        // updating lastModified (or restore the original timestamp after writing).
-        // Compute the content hash and compare with the stored id to catch these silent edits.
-        if (existing.id != 0L) {
-            val currentHash = FileUtils.generateXXHash64(file, Int.MAX_VALUE.toLong())
-            if (existing.id != currentHash) {
-                Log.d(TAG, "Content hash changed for ${file.name}: DB=${existing.id}, File=$currentHash (tagger edit detected)")
-                return true
-            }
-        }
 
         return false                                             // unchanged → skip
     }
