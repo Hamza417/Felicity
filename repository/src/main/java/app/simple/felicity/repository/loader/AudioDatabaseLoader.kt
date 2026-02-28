@@ -84,18 +84,19 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             reconcileDatabase(storages)
 
             Log.d(TAG, "Indexing existing audio files in the database...")
-            // Create index of existing audio files in the database
-            dao?.getAllAudioList().let { audioList ->
+            // Single pass: build both the change-detection index and the path→id lookup map.
+            // pathToStoredId lets us reuse the stable DB primary key when updating a row whose
+            // content hash (= id) changed after tag editing – no extra per-file DB query needed.
+            val pathToStoredId = HashMap<String, Long>()
+            dao?.getAllAudioListAll().let { audioList ->
                 audioList?.forEach { audio ->
                     indexedMap[audio.path] = IndexedFile(audio.dateModified, audio.size, audio.id)
+                    pathToStoredId[audio.path] = audio.id
                 }
             }
 
             Log.d(TAG, "Indexing complete. Found ${indexedMap.size} existing audio files in the database.")
 
-            // Build a set of paths that are already present in the DB, for upsert routing
-            val pathsInDb: HashSet<String> = dao?.getAllAudioList()
-                ?.mapTo(HashSet()) { it.path } ?: hashSetOf()
 
             // Clear any previous jobs and start fresh
             synchronized(activeJobs) {
@@ -138,21 +139,14 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
                                     batchMutex.lock()
                                     try {
-                                        val isExistingPath = pathsInDb.contains(file.absolutePath)
+                                        val storedId = pathToStoredId[file.absolutePath]
 
-                                        if (isExistingPath) {
-                                            // File already has a DB row – look up the original id and
-                                            // carry it over so Room's @Update matches the right row.
-                                            // This prevents a duplicate entry when the file content
-                                            // hash (used as PK) changes after tag editing.
-                                            val existingId = dao?.getAudioByPath(file.absolutePath)?.id
-                                            if (existingId != null && existingId != 0L) {
-                                                audio.id = existingId
-                                                Log.d(TAG, "Updating existing entry (id=$existingId) for: ${file.name}")
-                                            } else {
-                                                // Fallback: id not found, treat as new insert
-                                                Log.w(TAG, "Could not find existing id for path, inserting fresh: ${file.name}")
-                                            }
+                                        if (storedId != null && storedId != 0L) {
+                                            // File already has a DB row – reuse the stable PK so
+                                            // Room's @Update matches the right row and no orphan
+                                            // row (old id, same path) is left behind.
+                                            audio.id = storedId
+                                            Log.d(TAG, "Updating existing entry (id=$storedId) for: ${file.name}")
                                             updateBatchList.add(audio)
                                         } else {
                                             insertBatchList.add(audio)
@@ -236,8 +230,16 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
      * SAFELY handles removable storage by only checking files on currently mounted volumes.
      */
     private suspend fun reconcileDatabase(mountedStorages: List<RemovableStorageDetector.StorageInfo?>) {
-        // Get all audio from DB
-        val allAudio = audioDatabase.audioDao()?.getAllAudioList() ?: return
+        val dao = audioDatabase.audioDao() ?: return
+
+        // CASE 0: Purge any duplicate rows that share the same path.
+        // These can accumulate when a tagger app changes file content (hash changes → new PK)
+        // before this fix was applied. Run it unconditionally so existing bad data is cleaned up.
+        dao.deleteStalePathDuplicates()
+        Log.d(TAG, "Stale path-duplicate purge complete.")
+
+        // Get all audio from DB (include unavailable rows so they are also evaluated below)
+        val allAudio = dao.getAllAudioListAll()
 
         // Get list of currently mounted paths (e.g., /storage/emulated/0)
         val mounts = mountedStorages.mapNotNull { it?.path }
@@ -302,11 +304,11 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
         // Apply Batched Changes
         if (toDelete.isNotEmpty()) {
-            audioDatabase.audioDao()?.delete(toDelete)
+            dao.delete(toDelete)
         }
 
         if (toUpdate.isNotEmpty()) {
-            audioDatabase.audioDao()?.update(toUpdate)
+            dao.update(toUpdate)
         }
 
         Log.d(TAG, "Reconcile complete: Deleted ${toDelete.size}, Updated status for ${toUpdate.size}")

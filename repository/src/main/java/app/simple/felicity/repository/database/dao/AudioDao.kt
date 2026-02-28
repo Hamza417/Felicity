@@ -19,6 +19,33 @@ interface AudioDao {
     @Query("SELECT * FROM audio WHERE is_available = 1 ORDER BY title COLLATE NOCASE ASC")
     fun getAllAudioList(): MutableList<Audio>
 
+    /**
+     * Returns every row regardless of availability – used by reconcile and dedup passes.
+     */
+    @Query("SELECT * FROM audio")
+    fun getAllAudioListAll(): MutableList<Audio>
+
+    /**
+     * Deletes all duplicate rows that share the same path, keeping only the row whose
+     * date_modified is the highest (most recently scanned). If two rows share the same
+     * date_modified, the one with the larger id wins (arbitrary but deterministic).
+     * This is a pure-SQL single-statement dedup that runs entirely inside SQLite.
+     */
+    @Query("""
+        DELETE FROM audio
+        WHERE id NOT IN (
+            SELECT id FROM audio
+            GROUP BY path
+            HAVING id = MAX(id)
+        )
+        AND path IN (
+            SELECT path FROM audio
+            GROUP BY path
+            HAVING COUNT(*) > 1
+        )
+    """)
+    suspend fun deleteStalePathDuplicates()
+
     // Filtered queries – honour minimum duration (ms) and minimum size (bytes) at query level
     @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize ORDER BY title COLLATE NOCASE ASC")
     fun getFilteredAudio(minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
