@@ -22,3 +22,4 @@
 
 -dontobfuscate
 -keep class app.simple.felicity.activities.** { *; }
+-keepattributes Signature

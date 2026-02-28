@@ -9,6 +9,12 @@ android {
             freeCompilerArgs.add("-XXLanguage:+PropertyParamAnnotationDefaultTargetMode")
         }
     }
+
+    buildTypes {
+        release {
+
+        }
+    }
 }
 
 dependencies {

@@ -9,6 +9,12 @@ apply from: rootProject.file('common.gradle')
 
 android {
     namespace 'app.simple.felicity.repository'
+
+    buildTypes {
+        release {
+            consumerProguardFiles 'consumer-rules.pro'
+        }
+    }
 }
 
 dependencies {

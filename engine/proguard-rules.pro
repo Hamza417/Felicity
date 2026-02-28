@@ -19,11 +19,3 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
-
-# This is generated automatically by the Android Gradle plugin.
--dontwarn app.simple.felicity.repository.managers.MediaManager
--dontwarn app.simple.felicity.manager.SharedPreferences
--dontwarn app.simple.felicity.repository.repositories.MediaStoreRepository
-
--keeppackagenames
--dontobfuscate

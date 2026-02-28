@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
 import android.util.Log
+import androidx.annotation.Keep
 import app.simple.felicity.repository.loader.AudioDatabaseLoader
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -43,6 +44,7 @@ class AudioDatabaseService : Service() {
          * Cancel any running scan and immediately start a fresh one.
          * Use this on app resume so a zombie scan never blocks the refresh.
          */
+        @Keep
         fun refreshScan(context: Context) {
             val intent = Intent(context, AudioDatabaseService::class.java).apply {
                 action = ACTION_REFRESH_SCAN
