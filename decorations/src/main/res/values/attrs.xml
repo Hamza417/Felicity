@@ -180,6 +180,10 @@
         <attr name="felicityLabelBackgroundEnabled" format="boolean" />
         <attr name="felicityLabelBackgroundColor" format="color|reference" />
         <attr name="felicityLabelBackgroundCornerRadius" format="dimension" />
+        <!-- Step mode: when true the seekbar snaps to integer steps and emits Int values -->
+        <attr name="felicityStepMode" format="boolean" />
+        <!-- Step size (integer ≥ 1). Defaults to 1 when step mode is enabled. -->
+        <attr name="felicityStepSize" format="integer" />
     </declare-styleable>
 
     <declare-styleable name="FelicitySwitch">

@@ -13,7 +13,7 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.databinding.FragmentLyricsBinding
 import app.simple.felicity.decorations.lrc.view.ModernLrcView
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
-import app.simple.felicity.dialogs.player.LyricsMenu.Companion.showLyricsMenu
+import app.simple.felicity.dialogs.lyrics.LyricsMenu.Companion.showLyricsMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.constants.MediaConstants

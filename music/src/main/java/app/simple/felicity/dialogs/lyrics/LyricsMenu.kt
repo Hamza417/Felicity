@@ -1,4 +1,4 @@
-package app.simple.felicity.dialogs.player
+package app.simple.felicity.dialogs.lyrics
 
 import android.os.Bundle
 import android.view.LayoutInflater

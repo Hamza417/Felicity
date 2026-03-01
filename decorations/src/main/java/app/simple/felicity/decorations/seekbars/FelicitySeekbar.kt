@@ -46,6 +46,12 @@ class FelicitySeekbar @JvmOverloads constructor(
         fun onStopTrackingTouch(seekbar: FelicitySeekbar) {}
     }
 
+    interface OnStepSeekChangeListener {
+        fun onStepChanged(seekbar: FelicitySeekbar, step: Int, fromUser: Boolean)
+        fun onStartTrackingTouch(seekbar: FelicitySeekbar) {}
+        fun onStopTrackingTouch(seekbar: FelicitySeekbar) {}
+    }
+
     fun interface SideLabelProvider {
         /**
          * Called whenever the seekbar needs to render the side labels.
@@ -66,6 +72,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     }
 
     private var listener: OnSeekChangeListener? = null
+    private var stepListener: OnStepSeekChangeListener? = null
 
     // Range: [minProgress..maxProgress]
     private var minProgress = 0f
@@ -144,6 +151,46 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     // Reuse rect for default indicator to avoid allocations during draw
     private val defaultIndicatorRect = RectF()
+
+    // ----- Step mode -----
+    /**
+     * When true the seekbar operates in discrete step mode.
+     * Progress is quantized to integer multiples of [stepSize].
+     * Touch drag has an elastic snap: the thumb sticks to each step until the finger
+     * moves far enough away to detach it to the next step.
+     */
+    private var stepMode = false
+
+    /** Number of raw units per step. Must be ≥ 1. */
+    private var stepSize = 1
+
+    /** Currently snapped step index (in units of [stepSize] from [minProgress]). */
+    private var currentStep = 0
+
+    /**
+     * Fraction (0..1) of the half-step distance that the finger must travel beyond the
+     * step boundary before the thumb detaches and snaps to the next step.
+     * Higher = stickier.
+     */
+    private val stepStickyFactor = 0.45f
+
+    /**
+     * The raw x-position the finger is currently at during a step-mode drag.
+     * Used to compute the elastic pull between thumb and finger.
+     */
+    private var stepDragRawX = 0f
+
+    /** Step indicator marks (small tick lines on the track) */
+    private val stepIndicatorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+
+    @ColorInt
+    private var stepIndicatorColor: Int = Color.WHITE   // overwritten in applyThemeProps
+
+    /** Height (px) of step indicator ticks above/below the track centre */
+    private var stepIndicatorHeightPx: Float = 0f      // set in init
+
+    /** Width (px) of each step indicator tick */
+    private var stepIndicatorWidthPx: Float = 0f       // set in init
 
     // Reusable temp rects for thumb drawing to avoid allocations
     private val thumbOuterRect = RectF()
@@ -320,6 +367,9 @@ class FelicitySeekbar @JvmOverloads constructor(
         labelBackgroundCornerRadius = 6f * d
         labelBackgroundPaddingH = 6f * d
         labelBackgroundPaddingV = 3f * d
+        // Step indicator defaults
+        stepIndicatorHeightPx = trackHeightPx * 2.5f
+        stepIndicatorWidthPx = 2f * d
 
         context.theme.obtainStyledAttributes(attrs, R.styleable.FelicitySeekbar, defStyleAttr, 0).apply {
             try {
@@ -373,6 +423,9 @@ class FelicitySeekbar @JvmOverloads constructor(
                     leftLabelEnabled = true
                     rightLabelEnabled = true
                 }
+                // Step mode
+                stepMode = getBoolean(R.styleable.FelicitySeekbar_felicityStepMode, stepMode)
+                stepSize = getInt(R.styleable.FelicitySeekbar_felicityStepSize, stepSize).coerceAtLeast(1)
             } finally {
                 recycle()
             }
@@ -427,6 +480,8 @@ class FelicitySeekbar @JvmOverloads constructor(
         thumbPressRingPaint.strokeWidth = pressRingStrokePx
         // Default indicator paint
         defaultIndicatorPaint.color = defaultIndicatorColor
+        // Step indicator paint
+        stepIndicatorPaint.color = stepIndicatorColor
     }
 
     private fun applyThemeProps() {
@@ -439,6 +494,7 @@ class FelicitySeekbar @JvmOverloads constructor(
             thumbShadowColor = progressColor
             pressRingColor = progressColor
             defaultIndicatorColor = ThemeManager.accent.secondaryAccentColor
+            stepIndicatorColor = ThemeManager.theme.viewGroupTheme.backgroundColor
             labelTextColor = ThemeManager.theme.textViewTheme.secondaryTextColor
             labelBackgroundColor = ThemeManager.theme.viewGroupTheme.highlightColor
             setThumbCornerRadius(AppearancePreferences.getCornerRadius())
@@ -477,6 +533,80 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     fun setOnSeekChangeListener(listener: OnSeekChangeListener?) {
         this.listener = listener
+    }
+
+    fun setOnStepSeekChangeListener(listener: OnStepSeekChangeListener?) {
+        this.stepListener = listener
+    }
+
+    /**
+     * Enable or disable step (discrete) mode.
+     *
+     * In step mode the seekbar:
+     *  - Snaps to integer multiples of [stepSize] (from [minProgress]).
+     *  - Draws a small tick mark at each step position on the track.
+     *  - Emits integer values via [OnStepSeekChangeListener].
+     *  - Applies elastic/sticky snap behaviour: the thumb sticks to the current step
+     *    until the finger drags far enough to release it to the adjacent step.
+     */
+    fun setStepMode(enabled: Boolean) {
+        if (stepMode == enabled) return
+        stepMode = enabled
+        if (enabled) {
+            // Snap current progress to nearest step immediately
+            currentStep = progressToNearestStep(progressInternal)
+            progressInternal = stepToProgress(currentStep)
+        }
+        invalidate()
+    }
+
+    fun isStepMode(): Boolean = stepMode
+
+    /**
+     * Set the step size (in the same units as [minProgress] / [maxProgress]).
+     * Must be ≥ 1. Only meaningful when step mode is enabled.
+     */
+    fun setStepSize(size: Int) {
+        stepSize = size.coerceAtLeast(1)
+        if (stepMode) {
+            currentStep = progressToNearestStep(progressInternal)
+            progressInternal = stepToProgress(currentStep)
+            invalidate()
+        }
+    }
+
+    fun getStepSize(): Int = stepSize
+
+    /** Returns the current step index (integer). Only meaningful in step mode. */
+    fun getCurrentStep(): Int = if (stepMode) progressToNearestStep(progressInternal) else 0
+
+    /**
+     * Programmatically set the step by its integer index.
+     * Does nothing when step mode is off.
+     */
+    fun setStep(step: Int, animate: Boolean = false) {
+        if (!stepMode) return
+        val target = stepToProgress(step.coerceIn(0, totalSteps()))
+        setProgress(target, fromUser = false, animate = animate)
+    }
+
+    /** Set the color of step indicator ticks. */
+    fun setStepIndicatorColor(@ColorInt color: Int) {
+        stepIndicatorColor = color
+        stepIndicatorPaint.color = color
+        invalidate()
+    }
+
+    /** Set the height of step indicator ticks in pixels. */
+    fun setStepIndicatorHeight(heightPx: Float) {
+        stepIndicatorHeightPx = heightPx.coerceAtLeast(0f)
+        invalidate()
+    }
+
+    /** Set the width of step indicator ticks in pixels. */
+    fun setStepIndicatorWidth(widthPx: Float) {
+        stepIndicatorWidthPx = widthPx.coerceAtLeast(0f)
+        invalidate()
     }
 
     /**
@@ -602,6 +732,79 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     fun getMin(): Float = minProgress
 
+    // ---------- Step mode helpers ----------
+
+    /** Total number of discrete steps across the range. */
+    private fun totalSteps(): Int {
+        val range = (maxProgress - minProgress).toInt()
+        return if (stepSize <= 0) 0 else range / stepSize
+    }
+
+    /** Convert a step index to its absolute progress value. */
+    private fun stepToProgress(step: Int): Float =
+        (minProgress + step.coerceIn(0, totalSteps()) * stepSize).coerceIn(minProgress, maxProgress)
+
+    /** Convert an absolute progress value to the nearest step index. */
+    private fun progressToNearestStep(progress: Float): Int {
+        val range = progress - minProgress
+        val raw = range / stepSize
+        return raw.toInt().coerceIn(0, totalSteps())
+    }
+
+    /** Notify step listener when step changes. */
+    private fun notifyStepChanged(step: Int, fromUser: Boolean) {
+        stepListener?.onStepChanged(this, step, fromUser)
+    }
+
+    /**
+     * Snap the thumb elastically to [targetStep].
+     * Uses a spring so the snap feels physical.
+     */
+    private fun snapToStep(targetStep: Int, fromUser: Boolean) {
+        val targetProgress = stepToProgress(targetStep)
+        if (springAnimation.isRunning) springAnimation.cancel()
+        progressAnimator?.cancel()
+        // Use high-stiffness spring for snappy feel
+        springAnimation.spring?.stiffness = SpringForce.STIFFNESS_HIGH
+        springAnimation.spring?.dampingRatio = SpringForce.DAMPING_RATIO_LOW_BOUNCY
+        animateFromUser = fromUser
+        springAnimation.setStartValue(progressInternal)
+        springAnimation.animateToFinalPosition(targetProgress)
+    }
+
+    /**
+     * Compute the visually elastic thumb position during a step-mode drag.
+     *
+     * The thumb snaps firmly to [currentStep].  When the finger is within the sticky
+     * zone (less than [stepStickyFactor] × half-step-width away from the step centre)
+     * the thumb stays at the step centre.  Beyond that it follows the finger with a
+     * rubber-band pull-back force, so it *looks* like it's being stretched before
+     * releasing to the next step.
+     *
+     * @param fingerX   raw touch x in view coordinates
+     * @param left      x coordinate of the track's left edge (progress 0 position)
+     * @param right     x coordinate of the track's right edge (progress max position)
+     * @return          the x position the thumb should visually be rendered at
+     */
+    private fun elasticThumbX(fingerX: Float, left: Float, right: Float): Float {
+        val trackWidth = right - left
+        if (trackWidth <= 0f || totalSteps() <= 0) return fingerX.coerceIn(left, right)
+
+        val stepWidthPx = trackWidth / totalSteps()
+        val stepCentreX = left + currentStep * stepWidthPx
+        val delta = fingerX - stepCentreX
+        val stickyZone = stepWidthPx * stepStickyFactor
+
+        return if (abs(delta) <= stickyZone) {
+            stepCentreX
+        } else {
+            // Rubber-band: beyond sticky zone the displacement is dampened
+            val beyond = abs(delta) - stickyZone
+            val rubberBand = stickyZone + beyond * 0.35f
+            stepCentreX + rubberBand * (if (delta > 0) 1f else -1f)
+        }
+    }
+
     fun setRange(min: Float, max: Float) {
         // Preserve intent even if min>max: collapse to single point at the midpoint after ordering
         if (min <= max) {
@@ -623,12 +826,32 @@ class FelicitySeekbar @JvmOverloads constructor(
             return
         }
 
-        val target = progress.coerceIn(minProgress, maxProgress)
+        // In step mode, quantize the target to the nearest step
+        val rawTarget = progress.coerceIn(minProgress, maxProgress)
+        val target = if (stepMode) stepToProgress(progressToNearestStep(rawTarget)) else rawTarget
+
         if (!animate) {
             if (springAnimation.isRunning) springAnimation.cancel()
             progressAnimator?.cancel()
-            if (progressInternal == target) return
+            if (progressInternal == target) {
+                // Still notify step if mode just toggled
+                if (stepMode) {
+                    val step = progressToNearestStep(target)
+                    if (step != currentStep) {
+                        currentStep = step
+                        notifyStepChanged(currentStep, fromUser)
+                    }
+                }
+                return
+            }
             progressInternal = target
+            if (stepMode) {
+                val step = progressToNearestStep(target)
+                if (step != currentStep) {
+                    currentStep = step
+                    notifyStepChanged(currentStep, fromUser)
+                }
+            }
             refreshCachedLabels()
             invalidate()
             listener?.onProgressChanged(this, getProgress(), fromUser)
@@ -644,6 +867,13 @@ class FelicitySeekbar @JvmOverloads constructor(
                 interpolator = DecelerateInterpolator()
                 addUpdateListener { anim ->
                     progressInternal = (anim.animatedValue as Float).coerceIn(minProgress, maxProgress)
+                    if (stepMode) {
+                        val step = progressToNearestStep(progressInternal)
+                        if (step != currentStep) {
+                            currentStep = step
+                            notifyStepChanged(currentStep, progressAnimFromUser)
+                        }
+                    }
                     refreshCachedLabels()
                     invalidate()
                     listener?.onProgressChanged(this@FelicitySeekbar, getProgress(), progressAnimFromUser)
@@ -994,13 +1224,41 @@ class FelicitySeekbar @JvmOverloads constructor(
             canvas.drawRoundRect(defaultIndicatorRect, halfW, halfW, defaultIndicatorPaint)
         }
 
-        // Thumb
-        val cx = progressRight
+        // Step indicators — draw small tick marks at each step position
+        if (stepMode && stepIndicatorHeightPx > 0f && totalSteps() > 0) {
+            val steps = totalSteps()
+            val trackWidth = right - left
+            val halfTickW = (stepIndicatorWidthPx / 2f).coerceAtLeast(1f)
+            val tickHalf = stepIndicatorHeightPx / 2f
+            val tickTop = centerY - tickHalf
+            val tickBottom = centerY + tickHalf
+            for (i in 0..steps) {
+                val tickX = left + trackWidth * (i.toFloat() / steps)
+                // Use a slightly transparent color for steps behind progress
+                val fraction = i.toFloat() / steps
+                val isPassed = fraction <= clampedFraction
+                stepIndicatorPaint.color = if (isPassed) {
+                    // blend indicator over progress fill — use semi-transparent white
+                    (stepIndicatorColor and 0x00FFFFFF) or (0xCC shl 24)
+                } else {
+                    (stepIndicatorColor and 0x00FFFFFF) or (0x99 shl 24)
+                }
+                val tickRect = RectF(tickX - halfTickW, tickTop, tickX + halfTickW, tickBottom)
+                canvas.drawRoundRect(tickRect, halfTickW, halfTickW, stepIndicatorPaint)
+            }
+        }
+
+        // Thumb — in step mode during drag, render elastic offset from current step
+        val thumbCx = if (stepMode && isDragging && stepDragRawX != 0f) {
+            elasticThumbX(stepDragRawX, left, right)
+        } else {
+            progressRight
+        }
         val cy = trackRect.centerY()
         val scaledR = thumbRadiusPx * thumbScale
         val scaledHalfW = (thumbWidthPx / 2f) * thumbScale
 
-        thumbOuterRect.set(cx - scaledHalfW, cy - scaledR, cx + scaledHalfW, cy + scaledR)
+        thumbOuterRect.set(thumbCx - scaledHalfW, cy - scaledR, thumbCx + scaledHalfW, cy + scaledR)
 
         when (thumbShape) {
             ThumbShape.OVAL -> {
@@ -1049,17 +1307,17 @@ class FelicitySeekbar @JvmOverloads constructor(
                 }
             }
             ThumbShape.CIRCLE -> {
-                if (thumbShadowRadius > 0f) canvas.drawCircle(cx, cy, scaledR, thumbShadowPaint)
+                if (thumbShadowRadius > 0f) canvas.drawCircle(thumbCx, cy, scaledR, thumbShadowPaint)
                 if (thumbInnerColor != Color.TRANSPARENT) {
-                    canvas.drawCircle(cx, cy, max(0f, scaledR - thumbRingWidthPx / 2f), thumbInnerPaint)
+                    canvas.drawCircle(thumbCx, cy, max(0f, scaledR - thumbRingWidthPx / 2f), thumbInnerPaint)
                 }
-                canvas.drawCircle(cx, cy, max(0f, scaledR - thumbRingWidthPx / 2f), thumbRingPaint)
+                canvas.drawCircle(thumbCx, cy, max(0f, scaledR - thumbRingWidthPx / 2f), thumbRingPaint)
                 if (pressRingProgress > 0f) {
                     val extra = pressRingOutsetPx * pressRingProgress
                     val alpha = (0.35f * pressRingProgress * 255).toInt().coerceIn(0, 255)
                     thumbPressRingPaint.color = (pressRingColor and 0x00FFFFFF) or (alpha shl 24)
                     thumbPressRingPaint.strokeWidth = pressRingStrokePx
-                    canvas.drawCircle(cx, cy, scaledR + extra, thumbPressRingPaint)
+                    canvas.drawCircle(thumbCx, cy, scaledR + extra, thumbPressRingPaint)
                 }
             }
         }
@@ -1205,28 +1463,62 @@ class FelicitySeekbar @JvmOverloads constructor(
                 if (downOnThumb) {
                     startPressRing(true)
                 } else {
-                    // fast animate to tap position
-                    val hOut = horizontalOutset()
-                    val baseSafeInset = when (thumbShape) {
-                        ThumbShape.CIRCLE -> thumbRadiusPx
-                        else -> thumbWidthPx / 2f
-                    }
-                    val tapLeft = if (leftLabelAnimatedWidth > 0f) {
-                        paddingLeft.toFloat() + hOut + totalLabelReserve(leftLabelAnimatedWidth)
+                    if (stepMode && totalSteps() > 0) {
+                        // In step mode: snap to nearest step at tap position
+                        val hOut2 = horizontalOutset()
+                        val baseSafeInset2 = when (thumbShape) {
+                            ThumbShape.CIRCLE -> thumbRadiusPx
+                            else -> thumbWidthPx / 2f
+                        }
+                        val tapLeft = if (leftLabelAnimatedWidth > 0f) {
+                            paddingLeft.toFloat() + hOut2 + totalLabelReserve(leftLabelAnimatedWidth)
+                        } else {
+                            paddingLeft.toFloat() + hOut2 + baseSafeInset2
+                        }
+                        val tapRight = if (rightLabelAnimatedWidth > 0f) {
+                            (width - paddingRight).toFloat() - hOut2 - totalLabelReserve(rightLabelAnimatedWidth)
+                        } else {
+                            (width - paddingRight).toFloat() - hOut2 - baseSafeInset2
+                        }
+                        val clamped = min(max(event.x, tapLeft), tapRight)
+                        val fraction = if (tapRight > tapLeft) (clamped - tapLeft) / (tapRight - tapLeft) else 0f
+                        val newProgress = fractionToValue(fraction).coerceIn(minProgress, maxProgress)
+                        val tappedStep = progressToNearestStep(newProgress)
+                        if (tappedStep != currentStep) {
+                            currentStep = tappedStep
+                            snapToStep(currentStep, fromUser = true)
+                            notifyStepChanged(currentStep, true)
+                        }
+                        stepDragRawX = event.x.coerceIn(tapLeft, tapRight)
                     } else {
-                        paddingLeft.toFloat() + hOut + baseSafeInset
+                        // fast animate to tap position
+                        val hOut2 = horizontalOutset()
+                        val baseSafeInset2 = when (thumbShape) {
+                            ThumbShape.CIRCLE -> thumbRadiusPx
+                            else -> thumbWidthPx / 2f
+                        }
+                        val tapLeft = if (leftLabelAnimatedWidth > 0f) {
+                            paddingLeft.toFloat() + hOut2 + totalLabelReserve(leftLabelAnimatedWidth)
+                        } else {
+                            paddingLeft.toFloat() + hOut2 + baseSafeInset2
+                        }
+                        val tapRight = if (rightLabelAnimatedWidth > 0f) {
+                            (width - paddingRight).toFloat() - hOut2 - totalLabelReserve(rightLabelAnimatedWidth)
+                        } else {
+                            (width - paddingRight).toFloat() - hOut2 - baseSafeInset2
+                        }
+                        val clamped = min(max(event.x, tapLeft), tapRight)
+                        val fraction = if (tapRight > tapLeft) (clamped - tapLeft) / (tapRight - tapLeft) else 0f
+                        val newProgress = fractionToValue(fraction).coerceIn(minProgress, maxProgress)
+                        setProgress(newProgress, fromUser = true, animate = true)
                     }
-                    val tapRight = if (rightLabelAnimatedWidth > 0f) {
-                        (width - paddingRight).toFloat() - hOut - totalLabelReserve(rightLabelAnimatedWidth)
-                    } else {
-                        (width - paddingRight).toFloat() - hOut - baseSafeInset
-                    }
-                    val clamped = min(max(event.x, tapLeft), tapRight)
-                    val fraction = if (tapRight > tapLeft) (clamped - tapLeft) / (tapRight - tapLeft) else 0f
-                    val newProgress = fractionToValue(fraction).coerceIn(minProgress, maxProgress)
-                    setProgress(newProgress, fromUser = true, animate = true)
+                }
+                if (stepMode) {
+                    // init drag raw x so elastic works from first move
+                    stepDragRawX = event.x
                 }
                 listener?.onStartTrackingTouch(this)
+                stepListener?.onStartTrackingTouch(this)
                 if (leftLabelEnabled || rightLabelEnabled) animateLabelScale(true)
                 performClick()
                 return true
@@ -1238,6 +1530,13 @@ class FelicitySeekbar @JvmOverloads constructor(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (isDragging) {
                     isDragging = false
+                    if (stepMode) {
+                        // Spring-snap the thumb precisely to the current step on release
+                        stepDragRawX = 0f
+                        snapToStep(currentStep, fromUser = true)
+                        notifyStepChanged(currentStep, true)
+                        stepListener?.onStopTrackingTouch(this)
+                    }
                     listener?.onStopTrackingTouch(this)
                     if (leftLabelEnabled || rightLabelEnabled) animateLabelScale(false)
                 }
@@ -1271,10 +1570,49 @@ class FelicitySeekbar @JvmOverloads constructor(
             (width - paddingRight).toFloat() - hOut - baseSafeInset
         }
         if (right <= left) return
-        val clamped = min(max(x, left), right)
-        val fraction = (clamped - left) / (right - left)
-        val newProgress = fractionToValue(fraction).coerceIn(minProgress, maxProgress)
-        setProgress(newProgress, fromUser, animate = false)
+
+        if (stepMode && totalSteps() > 0) {
+            // Track raw finger for elastic rendering
+            stepDragRawX = x.coerceIn(left, right)
+
+            val trackWidth = right - left
+            val steps = totalSteps()
+            val stepWidthPx = trackWidth / steps
+
+            // Current step centre x
+            val stepCentreX = left + currentStep * stepWidthPx
+
+            // Distance from step centre at which we release to adjacent step
+            // = sticky zone + a small extra threshold
+            val releaseThreshold = stepWidthPx * (stepStickyFactor + 0.1f)
+
+            val delta = x - stepCentreX
+            if (abs(delta) >= releaseThreshold) {
+                val newStep = if (delta > 0) (currentStep + 1).coerceAtMost(steps)
+                else (currentStep - 1).coerceAtLeast(0)
+                if (newStep != currentStep) {
+                    currentStep = newStep
+                    val targetProgress = stepToProgress(currentStep)
+                    // Silently update internal progress (no animation yet; snap springs on UP)
+                    if (springAnimation.isRunning) springAnimation.cancel()
+                    progressAnimator?.cancel()
+                    progressInternal = targetProgress
+                    refreshCachedLabels()
+                    // Haptic click per step
+                    performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                    listener?.onProgressChanged(this, getProgress(), fromUser)
+                    notifyStepChanged(currentStep, fromUser)
+                }
+            }
+
+            // Always redraw for elastic visual
+            invalidate()
+        } else {
+            val clamped = min(max(x, left), right)
+            val fraction = (clamped - left) / (right - left)
+            val newProgress = fractionToValue(fraction).coerceIn(minProgress, maxProgress)
+            setProgress(newProgress, fromUser, animate = false)
+        }
     }
 
     // Thumb shape public API
@@ -1350,6 +1688,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         isResetAnimationInFlight = false
         pendingMaxAfterReset = null
         pendingProgressAfterReset = null
+        stepDragRawX = 0f
         progressAnimator?.cancel()
         pressRingAnimator?.cancel()
         leftLabelWidthAnimator?.cancel()

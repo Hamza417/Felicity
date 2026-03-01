@@ -25,6 +25,7 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
                                            SharedPreferences.OnSharedPreferenceChangeListener {
 
     open val handler = Handler(Looper.getMainLooper())
+    private var pendingRunnable: Runnable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -117,6 +118,12 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
     @Suppress("unused")
     protected fun requireApplication(): Application {
         return requireActivity().application
+    }
+
+    protected fun postDelayed(runnable: () -> Unit) {
+        pendingRunnable?.let { handler.removeCallbacks(it) }
+        pendingRunnable = Runnable { runnable() }
+        handler.postDelayed(pendingRunnable!!, 250)
     }
 
     /**
