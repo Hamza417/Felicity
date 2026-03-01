@@ -226,7 +226,7 @@ class FelicityPager @JvmOverloads constructor(
         val lo = max(0, center - pageRadius)
         val hi = minOf(count - 1, center + pageRadius)
         for (i in lo..hi) loadPage(i)
-        activePages.keys.filter { it < lo || it > hi }.forEach { recyclePage(it) }
+        activePages.keys.filter { it !in lo..hi }.forEach { recyclePage(it) }
     }
 
     // ── Scroll state ──────────────────────────────────────────────────────────────
