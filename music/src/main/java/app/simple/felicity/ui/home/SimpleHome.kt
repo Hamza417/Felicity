@@ -19,7 +19,9 @@ import app.simple.felicity.ui.panels.Folders
 import app.simple.felicity.ui.panels.FoldersHierarchy
 import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.panels.Preferences
+import app.simple.felicity.ui.panels.RecentlyAdded
 import app.simple.felicity.ui.panels.Songs
+import app.simple.felicity.ui.panels.Year
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Element
 
@@ -77,6 +79,12 @@ class SimpleHome : PanelFragment() {
                         }
                         R.string.folders_hierarchy -> {
                             openFragment(FoldersHierarchy.newInstance(), FoldersHierarchy.TAG)
+                        }
+                        R.string.recently_added -> {
+                            openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
+                        }
+                        R.string.year -> {
+                            openFragment(Year.newInstance(), Year.TAG)
                         }
                         R.string.preferences -> {
                             openFragment(Preferences.newInstance(), Preferences.TAG)

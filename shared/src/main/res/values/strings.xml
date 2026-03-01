@@ -37,6 +37,7 @@
     <string name="x_artists">%1$d Artists</string>
     <string name="x_genres">%1$d Genres</string>
     <string name="x_folders">%1$d Folders</string>
+    <string name="x_years">%1$d Years</string>
     <string name="no_songs">No Songs</string>
     <string name="albums_in_genre">Albums in %1$s</string>
     <string name="artists_in_genre">Artists in %1$s</string>
@@ -221,4 +222,5 @@
     <string name="text_size">Text Size</string>
     <string name="fallback_to_software_decoder">Fallback To Software Decoder</string>
     <string name="fallback_to_software_decoder_summary">Quietly fallback to software decoder if system hardware fails to play an audio file.</string>
+    <string name="playing_queue">Playing Queue</string>
 </resources>

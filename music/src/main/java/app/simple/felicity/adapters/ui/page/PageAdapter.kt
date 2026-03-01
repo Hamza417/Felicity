@@ -22,6 +22,7 @@ import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Folder
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.PageData
+import app.simple.felicity.repository.models.YearGroup
 import app.simple.felicity.shared.constants.PageConstants
 import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.shared.utils.ViewUtils.visible
@@ -48,6 +49,7 @@ class PageAdapter(
         data class ArtistPage(val artist: Artist) : PageType()
         data class GenrePage(val genre: Genre) : PageType()
         data class FolderPage(val folder: Folder) : PageType()
+        data class YearPage(val yearGroup: YearGroup) : PageType()
     }
 
     init {
@@ -176,6 +178,20 @@ class PageAdapter(
                         songs = data.songs
                 ))
             }
+            is PageType.YearPage -> {
+                items.add(PageItem.Header(
+                        album = Album(
+                                id = pageType.yearGroup.id,
+                                name = pageType.yearGroup.year,
+                                artist = "",
+                                artistId = 0L
+                        ),
+                        totalSongs = data.songs.size,
+                        totalDuration = data.songs.sumOf { it.duration },
+                        albumArtists = data.artists,
+                        songs = data.songs
+                ))
+            }
         }
 
         // Add all songs
@@ -194,6 +210,7 @@ class PageAdapter(
                 is PageType.ArtistPage -> pageType.artist.name
                 is PageType.GenrePage -> pageType.genre.name
                 is PageType.FolderPage -> pageType.folder.name
+                is PageType.YearPage -> pageType.yearGroup.year
             }
             items.add(PageItem.AlbumsSection(
                     albums = data.albums,
@@ -221,7 +238,7 @@ class PageAdapter(
         return when (viewType) {
             PageConstants.VIEW_TYPE_HEADER -> {
                 when (pageType) {
-                    is PageType.GenrePage, is PageType.FolderPage -> {
+                    is PageType.GenrePage, is PageType.FolderPage, is PageType.YearPage -> {
                         GenreHeader(AdapterHeaderArtistPageBinding.inflate(inflater, parent, false))
                     }
                     else -> {
@@ -343,6 +360,10 @@ class PageAdapter(
                         R.string.albums_in_folder,
                         item.artistName ?: context.getString(R.string.unknown)
                 )
+                is PageType.YearPage -> context.getString(
+                        R.string.albums_in_folder,
+                        item.artistName ?: context.getString(R.string.unknown)
+                )
             }
 
             if (binding.recyclerView.adapter == null) {
@@ -390,6 +411,10 @@ class PageAdapter(
                 is PageType.FolderPage -> context.getString(
                         R.string.artists_in_folder,
                         pageType.folder.name
+                )
+                is PageType.YearPage -> context.getString(
+                        R.string.artists_in_folder,
+                        pageType.yearGroup.year
                 )
             }
 
@@ -497,6 +522,7 @@ class PageAdapter(
                 name.text = when (pageType) {
                     is PageType.GenrePage -> pageType.genre.name ?: context.getString(R.string.unknown)
                     is PageType.FolderPage -> pageType.folder.name
+                    is PageType.YearPage -> pageType.yearGroup.year
                     else -> item.album.name ?: context.getString(R.string.unknown)
                 }
                 songs.text = item.totalSongs.toString()

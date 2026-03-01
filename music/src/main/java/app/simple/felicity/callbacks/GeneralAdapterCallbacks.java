@@ -11,6 +11,7 @@ import app.simple.felicity.repository.models.Artist;
 import app.simple.felicity.repository.models.Audio;
 import app.simple.felicity.repository.models.Folder;
 import app.simple.felicity.repository.models.Genre;
+import app.simple.felicity.repository.models.YearGroup;
 
 public interface GeneralAdapterCallbacks {
     
@@ -71,6 +72,10 @@ public interface GeneralAdapterCallbacks {
     }
     
     default void onFolderClicked(@NonNull Folder folder, @NonNull View view) {
+    
+    }
+    
+    default void onYearGroupClicked(@NonNull YearGroup yearGroup, @NonNull View view) {
     
     }
 }
