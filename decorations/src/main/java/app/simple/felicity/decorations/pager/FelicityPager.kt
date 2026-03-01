@@ -170,7 +170,7 @@ class FelicityPager @JvmOverloads constructor(
     // ── Configuration ─────────────────────────────────────────────────────────────
 
     /** Duration (ms) for programmatic smooth-scrolls via [setCurrentItem]. */
-    var animationDurationMs: Long = 420L
+    var animationDurationMs: Long = 620L
         set(v) {
             field = v.coerceAtLeast(0L)
         }
@@ -314,7 +314,9 @@ class FelicityPager @JvmOverloads constructor(
         val pos = posF.toInt().coerceIn(0, maxLastPage())
         val offset = (posF - pos).coerceIn(0f, 1f)
         val px = (offset * w).toInt()
-        pageChangeListeners.forEach { it.onPageScrolled(pos, offset, px) }
+        pageChangeListeners.forEach {
+            it.onPageScrolled(pos, offset, px)
+        }
     }
 
     private fun dispatchPageSelected(position: Int, fromUser: Boolean) {
@@ -330,7 +332,9 @@ class FelicityPager @JvmOverloads constructor(
     private fun dispatchStateChanged(newState: Int) {
         if (scrollState != newState) {
             scrollState = newState
-            pageChangeListeners.forEach { it.onPageScrollStateChanged(newState) }
+            pageChangeListeners.forEach {
+                it.onPageScrollStateChanged(newState)
+            }
         }
     }
 
@@ -479,12 +483,32 @@ class FelicityPager @JvmOverloads constructor(
     private fun smoothScrollTo(targetPx: Float, durationOverrideMs: Long?, fromUser: Boolean) {
         animFromUser = fromUser
         val clamped = targetPx.coerceIn(0f, maxScrollPx())
-        if (scrollPx == clamped) {
+        if (scrollPx == clamped && !animating) {
             dispatchPageSelected(pageForPx(clamped), fromUser)
             dispatchStateChanged(SCROLL_STATE_IDLE)
             return
         }
         dispatchStateChanged(SCROLL_STATE_SETTLING)
+
+        if (animating && clamped != animTo) {
+            // ── Mid-flight retarget ───────────────────────────────────────────────
+            // Don't restart from scratch. Pivot the animation so it continues from
+            // the current scroll position toward the new target. The duration is
+            // recalculated proportionally to the remaining distance so the speed
+            // stays consistent — no jerk, no sudden acceleration or deceleration.
+            val distPx = abs(clamped - scrollPx)
+            val pagesAway = distPx / width.toFloat().coerceAtLeast(1f)
+            val baseDuration = durationOverrideMs ?: animationDurationMs
+            val newDuration = (baseDuration * pagesAway.coerceAtLeast(0.5f))
+                .toLong().coerceIn(150L, 900L)
+            animFrom = scrollPx
+            animTo = clamped
+            animDuration = newDuration
+            animStartTime = -1L   // latch fresh on next vsync frame
+            // Animation loop is already running — no need to re-queue.
+            return
+        }
+
         animDuration = (durationOverrideMs ?: animationDurationMs).coerceAtLeast(0L)
         animFrom = scrollPx
         animTo = clamped
