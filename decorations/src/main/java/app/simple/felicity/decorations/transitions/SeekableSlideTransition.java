@@ -9,7 +9,6 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.transition.TransitionValues;
 import app.simple.felicity.decorations.artflow.ArtFlow;
-import app.simple.felicity.decorations.pager.FelicityPager;
 
 /**
  * A seekable transition that slides fragments horizontally with fade in/out.
@@ -53,7 +52,6 @@ public class SeekableSlideTransition extends BaseSeekableTransition {
     private Animator createAnimator(final View view, final float startTranslationX, final float endTranslationX,
             final float startAlpha, final float endAlpha) {
         ArtFlow artFlow = findCoverFlow(view);
-        FelicityPager felicityPager = findFelicityPager(view);
         
         ValueAnimator animator = createBaseAnimator();
         
@@ -71,10 +69,6 @@ public class SeekableSlideTransition extends BaseSeekableTransition {
             
             if (artFlow != null) {
                 artFlow.setAlpha(alpha);
-            }
-            
-            if (felicityPager != null) {
-                felicityPager.setAlpha(alpha);
             }
         });
         

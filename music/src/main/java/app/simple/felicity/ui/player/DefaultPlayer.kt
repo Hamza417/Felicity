@@ -1,6 +1,5 @@
 package app.simple.felicity.ui.player
 
-import android.graphics.Bitmap
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.util.Log
@@ -11,13 +10,16 @@ import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
 import app.simple.felicity.decorations.pager.FelicityPager
+import app.simple.felicity.decorations.pager.ImagePageAdapter
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
+import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
-import app.simple.felicity.repository.covers.AudioCover
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
+import com.bumptech.glide.Glide
 import kotlinx.coroutines.launch
 
 class DefaultPlayer : MediaFragment() {
@@ -35,15 +37,23 @@ class DefaultPlayer : MediaFragment() {
         requireHiddenMiniPlayer()
         updateState()
 
-        binding.pager.setAdapter(object : FelicityPager.Adapter {
-            override fun getCount(): Int {
-                return MediaManager.getSongs().size
-            }
-
-            override fun loadBitmap(position: Int): Bitmap? {
-                return AudioCover.load(MediaManager.getSongAt(position)!!)
-            }
-        })
+        binding.pager.setAdapter(ImagePageAdapter(
+                count = MediaManager.getSongs().size,
+                provider = { pos, iv ->
+                    val audio = MediaManager.getSongs()[pos]
+                    iv.loadArtCover(audio,
+                                    shadow = false,
+                                    crop = true,
+                                    roundedCorners = false,
+                                    blur = false,
+                                    skipCache = false,
+                                    greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
+                                    darken = false)
+                },
+                canceller = { iv ->
+                    Glide.with(iv).clear(iv)
+                }
+        ))
 
         binding.pager.setCurrentItem(MediaManager.getCurrentPosition(), false)
 
@@ -183,10 +193,6 @@ class DefaultPlayer : MediaFragment() {
                 updatePlayButtonState(false)
             }
         }
-    }
-
-    override fun getTransitionType(): TransitionType {
-        return TransitionType.SLIDE
     }
 
     companion object {
