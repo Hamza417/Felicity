@@ -9,7 +9,6 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.transition.TransitionValues;
 import app.simple.felicity.decorations.artflow.ArtFlow;
-import app.simple.felicity.decorations.pager.FelicityPager;
 
 /**
  * A seekable transition that animates fragments with a shared axis Z effect.
@@ -60,7 +59,6 @@ public class SeekableSharedAxisZTransition extends BaseSeekableTransition {
             final float endAlpha) {
         
         ArtFlow artFlow = findCoverFlow(view);
-        FelicityPager felicityPager = findFelicityPager(view);
         
         ValueAnimator animator = createBaseAnimator();
         
@@ -79,10 +77,6 @@ public class SeekableSharedAxisZTransition extends BaseSeekableTransition {
             
             if (artFlow != null) {
                 artFlow.setAlpha(alpha);
-            }
-            
-            if (felicityPager != null) {
-                felicityPager.setAlpha(alpha);
             }
         });
         

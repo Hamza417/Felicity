@@ -11,7 +11,6 @@ import androidx.annotation.NonNull;
 import androidx.transition.TransitionValues;
 import androidx.transition.Visibility;
 import app.simple.felicity.decorations.artflow.ArtFlow;
-import app.simple.felicity.decorations.pager.FelicityPager;
 
 /**
  * Base class for seekable transitions that support predictive back gestures.
@@ -52,27 +51,6 @@ public abstract class BaseSeekableTransition extends Visibility {
         if (root instanceof ViewGroup group) {
             for (int i = 0; i < group.getChildCount(); i++) {
                 ArtFlow found = findCoverFlow(group.getChildAt(i));
-                if (found != null) {
-                    return found;
-                }
-            }
-        }
-        return null;
-    }
-    
-    /**
-     * Finds a FelicityPager view in the view hierarchy and sets its alpha to 0.
-     * This allows us to control the alpha during the transition.
-     */
-    protected static FelicityPager findFelicityPager(View root) {
-        if (root instanceof FelicityPager) {
-            root.setAlpha(0f);
-            return (FelicityPager) root;
-        }
-        
-        if (root instanceof ViewGroup group) {
-            for (int i = 0; i < group.getChildCount(); i++) {
-                FelicityPager found = findFelicityPager(group.getChildAt(i));
                 if (found != null) {
                     return found;
                 }
