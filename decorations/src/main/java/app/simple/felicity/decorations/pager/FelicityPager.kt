@@ -28,7 +28,7 @@ import kotlin.math.roundToInt
  * To display images use [ImagePageAdapter] (a ready-made subclass that accepts a
  * [ImageBitmapProvider] + [ImageBitmapCanceller] pair) or write your own [PageAdapter].
  *
- * Behaviour summary
+ * Behavior summary
  * ──────────────────
  * • Page N is centred when `scrollPx == N * width`.
  * • Drag:   ACTION_MOVE shifts scrollPx continuously; bounds-clamped to [0, (count-1)*width].
@@ -135,11 +135,21 @@ class FelicityPager @JvmOverloads constructor(
         this.adapter = adapter
         cancelAnimation()
         scrollPx = 0f
-        currentPage = 0
+        currentPage = -1   // reset so dispatchPageSelected(0) always fires
         recycleAllPages()
         if (width > 0) {
             ensurePages()
             applyTranslations()
+        } else {
+            // Width is 0 — the view hasn't been laid out yet.
+            // Defer the initial page load until the first layout pass completes.
+            post {
+                if (this.adapter === adapter && width > 0) {
+                    ensurePages()
+                    applyTranslations()
+                    dispatchScrolled()
+                }
+            }
         }
         dispatchScrolled()
         dispatchPageSelected(0, fromUser = false)
@@ -242,6 +252,11 @@ class FelicityPager @JvmOverloads constructor(
     fun getCurrentItem(): Int = currentPage
 
     fun setCurrentItem(item: Int, smoothScroll: Boolean = false) {
+        if (width == 0) {
+            // Layout hasn't happened yet — defer until after the first layout pass.
+            post { setCurrentItem(item, smoothScroll) }
+            return
+        }
         val bounded = item.coerceIn(0, maxLastPage())
         if (!smoothScroll) {
             cancelAnimation()
@@ -270,9 +285,13 @@ class FelicityPager @JvmOverloads constructor(
         val w = r - l
         val h = b - t
         for (i in 0 until childCount) getChildAt(i).layout(0, 0, w, h)
-        if (changed && w > 0) {
-            // Re-anchor scroll so the current page stays centred after a size change
-            scrollPx = currentPage * w.toFloat()
+        if (w > 0) {
+            if (changed) {
+                // Re-anchor scroll so the current page stays centred after a size change
+                scrollPx = currentPage * w.toFloat()
+            }
+            // Always ensure pages are loaded — covers the case where the adapter was
+            // set before the first layout pass (width was 0 at that time).
             applyTranslations()
             ensurePages()
         }
@@ -558,7 +577,15 @@ class FelicityPager @JvmOverloads constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         if (width > 0) {
-            ensurePages(); applyTranslations()
+            ensurePages()
+            applyTranslations()
+        } else {
+            post {
+                if (width > 0) {
+                    ensurePages()
+                    applyTranslations()
+                }
+            }
         }
     }
 

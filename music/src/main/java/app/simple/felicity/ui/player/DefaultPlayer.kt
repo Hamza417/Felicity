@@ -37,25 +37,36 @@ class DefaultPlayer : MediaFragment() {
         requireHiddenMiniPlayer()
         updateState()
 
-        binding.pager.setAdapter(ImagePageAdapter(
-                count = MediaManager.getSongs().size,
-                provider = { pos, iv ->
-                    val audio = MediaManager.getSongs()[pos]
-                    iv.loadArtCover(audio,
-                                    shadow = false,
-                                    crop = true,
-                                    roundedCorners = false,
-                                    blur = false,
-                                    skipCache = false,
-                                    greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
-                                    darken = false)
-                },
-                canceller = { iv ->
-                    Glide.with(iv).clear(iv)
-                }
-        ))
+        binding.pager.setAdapter(
+                adapter = ImagePageAdapter(
+                        count = MediaManager.getSongs().size,
+                        provider = { pos, iv ->
+                            val audio = MediaManager.getSongs()[pos]
+                            iv.loadArtCover(audio,
+                                            shadow = false,
+                                            crop = true,
+                                            roundedCorners = false,
+                                            blur = false,
+                                            skipCache = false,
+                                            greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
+                                            darken = false)
+                        },
+                        canceller = { iv ->
+                            Glide.with(iv).clear(iv)
+                        }
+                ),
+        )
 
-        binding.pager.setCurrentItem(MediaManager.getCurrentPosition(), false)
+        // Jump to the currently playing song immediately after the adapter is set.
+        // Using smoothScroll=false so the correct page (and its cover art) is shown
+        // from the very first frame, even when position == 0.
+        val initialPosition = MediaManager.getCurrentPosition()
+        binding.pager.setCurrentItem(initialPosition, smoothScroll = false)
+        binding.count.text = buildString {
+            append(initialPosition + 1)
+            append("/")
+            append(MediaManager.getSongs().size)
+        }
 
         binding.pager.addOnPageChangeListener(object : FelicityPager.OnPageChangeListener {
             override fun onPageSelected(position: Int, fromUser: Boolean) {
