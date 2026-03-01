@@ -31,6 +31,9 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
                     Element(R.string.genres, R.drawable.ic_piano),
                     Element(R.string.folders, R.drawable.ic_folder),
                     Element(R.string.folders_hierarchy, R.drawable.ic_tree),
+                    Element(R.string.playing_queue, R.drawable.ic_queue),
+                    Element(R.string.recently_added, R.drawable.ic_recently_added),
+                    Element(R.string.year, R.drawable.ic_date_range),
                     // Element(R.string.playlists, R.drawable.ic_list),
                     Element(R.string.preferences, R.drawable.ic_settings)
             )

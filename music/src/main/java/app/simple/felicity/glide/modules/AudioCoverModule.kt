@@ -12,11 +12,13 @@ import app.simple.felicity.glide.foldercover.FolderCoverLoader
 import app.simple.felicity.glide.genres.GenreCoverLoader
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
+import app.simple.felicity.glide.yearcover.YearCoverLoader
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Folder
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.repository.models.YearGroup
 import com.bumptech.glide.Glide
 import com.bumptech.glide.GlideBuilder
 import com.bumptech.glide.Registry
@@ -59,5 +61,6 @@ class AudioCoverModule : AppGlideModule() {
         registry.append(Artist::class.java, Bitmap::class.java, ArtistCoverLoader.Factory(context))
         registry.append(Genre::class.java, Bitmap::class.java, GenreCoverLoader.Factory(context))
         registry.append(Folder::class.java, Bitmap::class.java, FolderCoverLoader.Factory())
+        registry.append(YearGroup::class.java, Bitmap::class.java, YearCoverLoader.Factory())
     }
 }

@@ -10,6 +10,7 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Folder
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.PageData
+import app.simple.felicity.repository.models.YearGroup
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -596,6 +597,81 @@ class AudioRepository @Inject constructor(
                     albums = albumsMap,
                     artists = artistsMap,
                     genres = genresMap
+            )
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Get all unique year groups that contain audio files, with aggregated data.
+     * This method groups audio files by their year tag and creates YearGroup objects.
+     * Songs with no year are grouped under a special "Unknown" year.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
+     * @return Flow of year groups with complete metadata
+     */
+    fun getAllYearsWithAggregation(): Flow<List<YearGroup>> {
+        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
+            audioList.groupBy { audio ->
+                audio.year?.takeIf { it.isNotBlank() } ?: "Unknown"
+            }.map { (year, songs) ->
+                val songPaths = songs.map { it.path }
+                val uniqueId = year.hashCode().toLong()
+                YearGroup(
+                        id = uniqueId,
+                        year = year,
+                        songPaths = songPaths,
+                        songCount = songs.size
+                )
+            }
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Get page data for a specific year group as a Flow.
+     * Returns all songs tagged with this year plus aggregated albums and artists.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
+     * @param yearGroup The year group to get data for
+     * @return Flow of PageData with songs, albums, and artists
+     */
+    fun getYearPageData(yearGroup: YearGroup): Flow<PageData> {
+        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
+            val yearAudios = if (yearGroup.year == "Unknown") {
+                audioList.filter { it.year.isNullOrBlank() }
+            } else {
+                audioList.filter { it.year == yearGroup.year }
+            }
+
+            val albumsMap = yearAudios.groupBy { it.album }
+                .mapNotNull { (albumName, albumSongs) ->
+                    if (albumName.isNullOrEmpty()) return@mapNotNull null
+                    val primaryArtist = albumSongs.firstOrNull()?.artist ?: ""
+                    Album(
+                            id = albumName.hashCode().toLong(),
+                            name = albumName,
+                            artist = primaryArtist,
+                            artistId = primaryArtist.hashCode().toLong(),
+                            songCount = albumSongs.size,
+                            songPaths = albumSongs.map { it.path }
+                    )
+                }
+
+            val artistsMap = yearAudios.groupBy { it.artist }
+                .mapNotNull { (artistName, _) ->
+                    if (artistName.isNullOrEmpty()) return@mapNotNull null
+                    val artistAllSongs = audioList.filter { it.artist == artistName }
+                    val uniqueAlbums = artistAllSongs.mapNotNull { it.album }.distinct().size
+                    Artist(
+                            id = artistName.hashCode().toLong(),
+                            name = artistName,
+                            albumCount = uniqueAlbums,
+                            trackCount = artistAllSongs.size,
+                            songPaths = artistAllSongs.map { it.path }
+                    )
+                }
+
+            PageData(
+                    songs = yearAudios,
+                    albums = albumsMap,
+                    // artists = artistsMap
             )
         } ?: throw IllegalStateException("AudioDao is null")
     }
