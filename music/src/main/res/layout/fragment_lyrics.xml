@@ -21,11 +21,12 @@
         android:orientation="horizontal"
         android:layout_marginTop="@dimen/padding_10">
 
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        <app.simple.felicity.decorations.views.Chip
             android:id="@+id/settings"
-            android:layout_width="@dimen/button_size"
-            android:src="@drawable/ic_settings"
-            android:layout_height="@dimen/button_size" />
+            android:layout_width="wrap_content"
+            android:text="@string/customize"
+            android:layout_gravity="center_vertical"
+            android:layout_height="wrap_content" />
 
         <app.simple.felicity.decorations.theme.ThemeDivider
             android:layout_width="0dp"

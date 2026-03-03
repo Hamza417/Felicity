@@ -140,6 +140,19 @@ class PlayingQueue : PanelFragment() {
         if (currentSong != null) {
             adapterPlayingQueue?.currentlyPlayingSong = currentSong
         }
+
+        // Check if current song is already visible; if not, scroll to it
+        if (binding.recyclerView.layoutManager is GridLayoutManager) {
+            val layoutManager = binding.recyclerView.layoutManager as GridLayoutManager
+            val firstVisible = layoutManager.findFirstVisibleItemPosition()
+            val lastVisible = layoutManager.findLastVisibleItemPosition()
+            val currentPosition = MediaManager.getCurrentPosition()
+            if (currentPosition !in firstVisible..lastVisible) {
+                (binding.recyclerView.layoutManager as GridLayoutManager)
+                    .scrollToPositionWithOffset(MediaManager.getCurrentPosition(), binding.recyclerView.height / 2)
+
+            }
+        }
     }
 
     override fun onAudio(audio: Audio) {

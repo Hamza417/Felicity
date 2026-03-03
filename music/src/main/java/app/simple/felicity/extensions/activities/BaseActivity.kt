@@ -95,6 +95,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
             mediaController = controllerFuture?.get()
             MediaManager.setMediaController(mediaController!!)
             restoreLastSongStateFromDatabase()
+            generateAlbumArtPalette()
         }
 
         controllerFuture?.addListener(listener, MoreExecutors.directExecutor())

@@ -7,6 +7,7 @@
     <dimen name="switch_padding">5dp</dimen>
     <dimen name="switch_thumb_dimensions">20dp</dimen>
     <dimen name="button_size">50dp</dimen>
+    <dimen name="play_button_size">64dp</dimen>
     <dimen name="checkbox_dimensions">20dp</dimen>
     <dimen name="prominent_threshold">72dp</dimen>
     <dimen name="seekbar_thumb_size">35dp</dimen>

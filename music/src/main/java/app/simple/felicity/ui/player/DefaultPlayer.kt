@@ -19,6 +19,8 @@ import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.ui.panels.PlayingQueue
+import app.simple.felicity.ui.panels.Search
 import com.bumptech.glide.Glide
 import kotlinx.coroutines.launch
 
@@ -89,6 +91,14 @@ class DefaultPlayer : MediaFragment() {
             MediaManager.flipState()
         }
 
+        binding.queue.setOnClickListener {
+            openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
+        }
+
+        binding.search.setOnClickListener {
+            openFragment(Search.newInstance(), Search.TAG)
+        }
+
         binding.repeat.setOnClickListener {
             val current = PlayerPreferences.getRepeatMode()
             val next = when (current) {
@@ -136,7 +146,6 @@ class DefaultPlayer : MediaFragment() {
         binding.title.text = audio.title
         binding.artist.text = audio.artist
         binding.album.text = audio.album
-        binding.info.text = audio.path
         binding.seekbar.setMax(audio.duration.toFloat())
         updatePlayButtonState(MediaManager.isPlaying())
     }
@@ -184,7 +193,6 @@ class DefaultPlayer : MediaFragment() {
         binding.title.text = audio.title
         binding.artist.text = audio.artist
         binding.album.text = audio.album
-        binding.info.text = audio.path
         binding.seekbar.setMaxWithReset(audio.duration.toFloat())
         binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
     }

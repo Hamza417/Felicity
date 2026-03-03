@@ -224,4 +224,5 @@
     <string name="fallback_to_software_decoder">Fallback To Software Decoder</string>
     <string name="fallback_to_software_decoder_summary">Quietly fallback to software decoder if system hardware fails to play an audio file.</string>
     <string name="playing_queue">Playing Queue</string>
+    <string name="customize">Customize</string>
 </resources>
