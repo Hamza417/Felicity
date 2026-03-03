@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -16,6 +17,7 @@ import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.drawable.toDrawable
+import androidx.core.graphics.scale
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.session.MediaController
@@ -43,6 +45,7 @@ import app.simple.felicity.theme.tools.MonetPalette
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,6 +58,12 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     private lateinit var content: FrameLayout
 
     private var predictiveBackCallback: OnBackInvokedCallback? = null
+
+    /** Active palette-extraction job. Cancelled when a new song fires before the old one finishes. */
+    private var paletteJob: Job? = null
+
+    /** ID of the song whose palette is already applied — skip re-extraction for the same track. */
+    private var lastPaletteSongId: Long = -1L
 
     override fun attachBaseContext(newBase: Context?) {
         app.simple.felicity.manager.SharedPreferences.init(newBase!!)
@@ -80,6 +89,22 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         makeAppFullScreen()
         initTheme()
         applyPredictiveBackGesture()
+        observeSongChangesForPalette()
+    }
+
+    /**
+     * Observes [MediaManager.songPositionFlow] so the album-art accent palette is refreshed
+     * every time the track changes, without blocking the main thread or the media controller.
+     */
+    private fun observeSongChangesForPalette() {
+        lifecycleScope.launch {
+            MediaManager.songPositionFlow.collect {
+                // Only regenerate when the AlbumArt accent is actually active.
+                if (AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER) {
+                    generateAlbumArtPalette()
+                }
+            }
+        }
     }
 
     private fun initMediaController() {
@@ -171,26 +196,56 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     }
 
     protected fun generateAlbumArtPalette() {
-        lifecycleScope.launch(Dispatchers.Default) {
-            if (AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER) {
-                try {
-                    val audio = MediaManager.getCurrentSong() ?: return@launch
-                    val bitmap = AudioCover.load(audio) ?: return@launch
-                    val albumArtAccent = AlbumArt()
-                    val monetAccents = MonetPalette(bitmap)
+        if (AppearancePreferences.getAccentColorName() != AlbumArt.IDENTIFIER) return
 
-                    albumArtAccent.primaryAccentColor = monetAccents.accent1_500
-                    albumArtAccent.secondaryAccentColor = monetAccents.accent1_300
+        val audio = MediaManager.getCurrentSong() ?: return
 
-                    withContext(Dispatchers.Main) {
-                        ThemeManager.accent = albumArtAccent
-                        Log.d(TAG, "Album art palette generated: ${albumArtAccent.hexes}")
+        // Skip re-extraction when the same track is already applied.
+        if (audio.id == lastPaletteSongId) return
+
+        // Cancel any in-flight extraction for a previous song (e.g. rapid skipping).
+        paletteJob?.cancel()
+
+        paletteJob = lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // Load raw bitmap on the IO dispatcher (file / MediaMetadataRetriever).
+                val rawBitmap: Bitmap = AudioCover.load(audio) ?: return@launch
+
+                // Downscale to a small thumbnail before palette math to keep CPU cost low.
+                // 128×128 gives MonetPalette's 64-sample grid more than enough data.
+                val thumb: Bitmap = withContext(Dispatchers.Default) {
+                    val size = 128
+                    if (rawBitmap.width > size || rawBitmap.height > size) {
+                        rawBitmap.scale(size, size, filter = false).also {
+                            if (it !== rawBitmap) rawBitmap.recycle()
+                        }
+                    } else {
+                        rawBitmap
                     }
-                } catch (e: NullPointerException) {
-                    e.printStackTrace()
-                } catch (e: FileNotFoundException) {
-                    e.printStackTrace()
                 }
+
+                // Run palette extraction on the Default (CPU) dispatcher.
+                val (primary, secondary) = withContext(Dispatchers.Default) {
+                    val palette = MonetPalette(thumb)
+                    thumb.recycle()
+                    Pair(palette.accent1_500, palette.accent1_300)
+                }
+
+                withContext(Dispatchers.Main) {
+                    // Guard: accent may have been changed while we were running.
+                    if (AppearancePreferences.getAccentColorName() != AlbumArt.IDENTIFIER) return@withContext
+                    val albumArtAccent = AlbumArt().apply {
+                        primaryAccentColor = primary
+                        secondaryAccentColor = secondary
+                    }
+                    lastPaletteSongId = audio.id
+                    ThemeManager.accent = albumArtAccent
+                    Log.d(TAG, "Album art palette applied for song ${audio.id}: ${albumArtAccent.hexes}")
+                }
+            } catch (e: FileNotFoundException) {
+                Log.w(TAG, "Album art not found for song ${audio.id}", e)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error generating album art palette for song ${audio.id}", e)
             }
         }
     }
