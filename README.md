@@ -65,4 +65,8 @@ Last Updated: 28 Feb 2026
 
 ## License
 
-The project is not yet available under any license.
+**Felicity Music Player** Copyright © 2026 - Hamza Rizwan
+
+**Felicity Music Player** is released as open source software under
+the [GNU AGPL v3](https://www.gnu.org/licenses/agpl-3.0.en.html)
+license, see the [LICENSE](./LICENSE) file in the project root for the full license text.
