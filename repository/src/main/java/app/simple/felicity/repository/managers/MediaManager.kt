@@ -156,6 +156,8 @@ object MediaManager {
         // Rebuild media items on the controller to reflect the new queue, but seek to the
         // existing track so playback is not interrupted.
         if (audios.isNotEmpty()) {
+            // Capture playback state before the async scope so we can restore it afterward.
+            val wasPlaying = mediaController?.isPlaying == true
             scope.launch {
                 val mediaItems = withContext(Dispatchers.Default) {
                     audios.map { audio ->
@@ -176,8 +178,11 @@ object MediaManager {
                 val currentPositionMs = mediaController?.currentPosition ?: 0L
                 mediaController?.setMediaItems(mediaItems, clampedPosition, currentPositionMs)
                 mediaController?.prepare()
-                mediaController?.play()
-                startSeekPositionUpdates()
+                // Only resume playback if it was already playing before this update.
+                if (wasPlaying) {
+                    mediaController?.play()
+                    startSeekPositionUpdates()
+                }
             }
         }
 
@@ -420,6 +425,74 @@ object MediaManager {
             else -> {
                 // No-op
             }
+        }
+    }
+
+    /**
+     * Appends [audio] to the end of the current queue. If the queue is empty, starts playing immediately.
+     * The new item is added both to the internal list and to the MediaController.
+     */
+    fun addToQueue(audio: Audio) {
+        val newList = songs.toMutableList()
+        newList.add(audio)
+
+        if (songs.isEmpty()) {
+            // Queue was empty — start fresh
+            setSongs(newList, 0)
+        } else {
+            songs = newList
+            scope.launch {
+                val uri = File(audio.path).toUri()
+                val mediaItem = MediaItem.Builder()
+                    .setMediaId(audio.id.toString())
+                    .setUri(uri)
+                    .setMediaMetadata(
+                            MediaMetadata.Builder()
+                                .setArtist(audio.artist)
+                                .setTitle(audio.title)
+                                .build()
+                    )
+                    .build()
+                mediaController?.addMediaItem(mediaItem)
+            }
+            scope.launch {
+                _songListFlow.emit(songs)
+            }
+        }
+    }
+
+    /**
+     * Inserts [audio] immediately after the currently playing song so it plays next.
+     * If the queue is empty, starts playing immediately.
+     */
+    fun playNext(audio: Audio) {
+        val newList = songs.toMutableList()
+
+        if (newList.isEmpty()) {
+            setSongs(mutableListOf(audio), 0)
+            return
+        }
+
+        val insertAt = (currentSongPosition + 1).coerceAtMost(newList.size)
+        newList.add(insertAt, audio)
+        songs = newList
+
+        scope.launch {
+            val uri = File(audio.path).toUri()
+            val mediaItem = MediaItem.Builder()
+                .setMediaId(audio.id.toString())
+                .setUri(uri)
+                .setMediaMetadata(
+                        MediaMetadata.Builder()
+                            .setArtist(audio.artist)
+                            .setTitle(audio.title)
+                            .build()
+                )
+                .build()
+            mediaController?.addMediaItem(insertAt, mediaItem)
+        }
+        scope.launch {
+            _songListFlow.emit(songs)
         }
     }
 

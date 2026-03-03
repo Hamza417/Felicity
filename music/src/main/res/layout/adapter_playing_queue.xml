@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:orientation="horizontal">
+
+    <ImageView
+        android:id="@+id/cover"
+        android:layout_width="@dimen/album_art_dimen"
+        android:layout_height="@dimen/album_art_dimen"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="ContentDescription" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="10dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="@dimen/text_size_16"
+        android:gravity="center_vertical"
+        android:drawablePadding="@dimen/padding_5"
+        app:appFontStyle="bold"
+        app:drawableTintStyle="custom"
+        app:layout_constraintBottom_toTopOf="@+id/secondary_detail"
+        app:layout_constraintEnd_toStartOf="@+id/drag_handle"
+        app:layout_constraintStart_toEndOf="@id/cover"
+        app:textColorStyle="primary" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/secondary_detail"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="10dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="@dimen/desc_text_size"
+        app:appFontStyle="regular"
+        app:layout_constraintBottom_toBottomOf="@+id/cover"
+        app:layout_constraintEnd_toStartOf="@+id/drag_handle"
+        app:layout_constraintStart_toEndOf="@id/cover"
+        app:layout_constraintTop_toTopOf="@+id/cover"
+        app:textColorStyle="accent" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/tertiary_detail"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="10dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="@dimen/desc_text_size"
+        app:appFontStyle="regular"
+        app:layout_constraintEnd_toStartOf="@+id/drag_handle"
+        app:layout_constraintStart_toEndOf="@id/cover"
+        app:layout_constraintTop_toBottomOf="@+id/secondary_detail"
+        app:textColorStyle="secondary" />
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        android:id="@+id/drag_handle"
+        android:layout_width="@dimen/button_size"
+        android:layout_height="@dimen/button_size"
+        android:src="@drawable/ic_drag_indicator"
+        android:layout_marginEnd="@dimen/padding_10"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="ContentDescription" />
+
+</app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout>
+

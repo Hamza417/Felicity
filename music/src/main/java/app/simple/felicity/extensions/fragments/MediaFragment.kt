@@ -26,6 +26,7 @@ import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils
 import app.simple.felicity.repository.utils.AudioUtils.createSongStat
+import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.player.DefaultPlayer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -257,6 +258,13 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 }
 
                 binding.addToQueue.setOnClickListener {
+                    MediaManager.addToQueue(audios[position])
+                    openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
+                    dismiss()
+                }
+
+                binding.playNext.setOnClickListener {
+                    MediaManager.playNext(audios[position])
                     dismiss()
                 }
 

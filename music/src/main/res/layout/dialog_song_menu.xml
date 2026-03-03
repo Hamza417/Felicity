@@ -98,6 +98,17 @@
         app:textColorStyle="primary" />
 
     <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+        android:id="@+id/play_next"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:padding="@dimen/padding_15"
+        android:text="@string/play_next"
+        android:textSize="@dimen/text_size_16"
+        app:appFontStyle="bold"
+        app:textColorStyle="primary" />
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleTextView
         android:id="@+id/add_to_playlist"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

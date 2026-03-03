@@ -18,6 +18,7 @@ import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Folders
 import app.simple.felicity.ui.panels.FoldersHierarchy
 import app.simple.felicity.ui.panels.Genres
+import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Preferences
 import app.simple.felicity.ui.panels.RecentlyAdded
 import app.simple.felicity.ui.panels.Songs
@@ -88,6 +89,9 @@ class SimpleHome : PanelFragment() {
                         }
                         R.string.preferences -> {
                             openFragment(Preferences.newInstance(), Preferences.TAG)
+                        }
+                        R.string.playing_queue -> {
+                            openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
                         }
                         else -> {
                             // Handle other cases or show a message

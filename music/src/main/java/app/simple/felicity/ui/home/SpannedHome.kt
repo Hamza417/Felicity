@@ -23,6 +23,7 @@ import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Genres
+import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.viewmodels.panels.HomeViewModel
 
@@ -90,6 +91,9 @@ class SpannedHome : MediaFragment() {
                         }
                         R.string.genres -> {
                             openFragment(Genres.newInstance(), Genres.TAG)
+                        }
+                        R.string.playing_queue -> {
+                            openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
                         }
                         else -> {
                             Log.w(TAG, "onButtonClicked: Unsupported button title: $title")
