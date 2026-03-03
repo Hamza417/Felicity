@@ -209,7 +209,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         paletteJob = lifecycleScope.launch(Dispatchers.IO) {
             try {
                 // Load raw bitmap on the IO dispatcher (file / MediaMetadataRetriever).
-                val rawBitmap: Bitmap = AudioCover.load(audio) ?: return@launch
+                val rawBitmap: Bitmap = AudioCover.load(audio) ?: return@launch // TODO: add a fallback bitmap?
 
                 // Downscale to a small thumbnail before palette math to keep CPU cost low.
                 // 128×128 gives MonetPalette's 64-sample grid more than enough data.

@@ -21,12 +21,16 @@
         android:orientation="horizontal"
         android:layout_marginTop="@dimen/padding_10">
 
-        <app.simple.felicity.decorations.views.Chip
+        <app.simple.felicity.decorations.views.HighlightTextView
             android:id="@+id/settings"
             android:layout_width="wrap_content"
             android:text="@string/customize"
             android:layout_gravity="center_vertical"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:padding="@dimen/padding_10"
+            android:textSize="@dimen/text_size_12"
+            app:appFontStyle="medium"
+            app:textColorStyle="primary" />
 
         <app.simple.felicity.decorations.theme.ThemeDivider
             android:layout_width="0dp"
