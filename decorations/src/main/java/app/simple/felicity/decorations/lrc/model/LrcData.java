@@ -85,4 +85,44 @@ public class LrcData {
     public int size() {
         return entries.size();
     }
+    
+    /**
+     * Returns a new LrcData with all entry timestamps shifted by {@code deltaMs} milliseconds.
+     * Metadata is copied as-is. The returned data is already sorted.
+     *
+     * @param deltaMs positive = shift forward in time, negative = shift backward
+     */
+    public LrcData shiftTimestamps(long deltaMs) {
+        LrcData shifted = new LrcData();
+        for (Map.Entry <String, String> entry : metadata.entrySet()) {
+            shifted.addMetadata(entry.getKey(), entry.getValue());
+        }
+        for (LrcEntry entry : entries) {
+            long newTime = Math.max(0, entry.getTimeInMillis() + deltaMs);
+            shifted.addEntry(new LrcEntry(newTime, entry.getText()));
+        }
+        shifted.sort();
+        return shifted;
+    }
+    
+    /**
+     * Serializes this LrcData back to a standard LRC-format string.
+     * Metadata tags appear first, followed by timed lyric lines.
+     */
+    public String toLrcString() {
+        StringBuilder sb = new StringBuilder();
+        // Write metadata tags
+        for (Map.Entry <String, String> entry : metadata.entrySet()) {
+            sb.append('[').append(entry.getKey()).append(':').append(entry.getValue()).append(']').append('\n');
+        }
+        // Write lyric lines
+        for (LrcEntry entry : entries) {
+            long t = entry.getTimeInMillis();
+            long minutes = t / 60000;
+            long seconds = (t % 60000) / 1000;
+            long millis = t % 1000;
+            sb.append(String.format(java.util.Locale.US, "[%02d:%02d.%03d]%s\n", minutes, seconds, millis, entry.getText()));
+        }
+        return sb.toString();
+    }
 }

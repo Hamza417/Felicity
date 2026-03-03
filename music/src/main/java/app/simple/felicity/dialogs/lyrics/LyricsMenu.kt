@@ -14,6 +14,8 @@ class LyricsMenu : MediaBottomDialogFragment() {
 
     private lateinit var binding: DialogLyricsMenuBinding
 
+    private var menuListener: LyricsMenuListener? = null
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = DialogLyricsMenuBinding.inflate(inflater, container, false)
         return binding.root
@@ -53,6 +55,19 @@ class LyricsMenu : MediaBottomDialogFragment() {
                 }
             }
         })
+
+        binding.minus.setOnClickListener {
+            menuListener?.onTimeMinusClicked()
+        }
+
+        binding.plus.setOnClickListener {
+            menuListener?.onTimePlusClicked()
+        }
+    }
+
+    fun setOnMenuListener(listener: LyricsMenuListener): LyricsMenu {
+        menuListener = listener
+        return this
     }
 
     companion object {
@@ -63,11 +78,18 @@ class LyricsMenu : MediaBottomDialogFragment() {
             return fragment
         }
 
-        fun FragmentManager.showLyricsMenu() {
+        fun FragmentManager.showLyricsMenu(): LyricsMenu {
             val dialog = newInstance()
             dialog.show(this, TAG)
+            return dialog
         }
 
         private const val TAG = "LyricsMenu"
+
+        interface LyricsMenuListener {
+            fun onTimeMinusClicked()
+            fun onTimePlusClicked()
+        }
     }
 }
+

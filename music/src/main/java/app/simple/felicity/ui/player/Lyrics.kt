@@ -13,6 +13,7 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.databinding.FragmentLyricsBinding
 import app.simple.felicity.decorations.lrc.view.ModernLrcView
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
+import app.simple.felicity.dialogs.lyrics.LyricsMenu
 import app.simple.felicity.dialogs.lyrics.LyricsMenu.Companion.showLyricsMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.LyricsPreferences
@@ -32,6 +33,9 @@ class Lyrics : MediaFragment() {
     /** Debounce handler – coalesces rapid text-size changes from the slider. */
     private val textSizeHandler = Handler(Looper.getMainLooper())
     private val textSizeRunnable = Runnable { applyTextSize() }
+
+    /** Tracks the current sync offset so onSeekChanged can apply it. */
+    private var syncOffset: Long = 0L
 
     private val lyricsViewModel: LyricsViewModel by viewModels(
             extrasProducer = {
@@ -58,7 +62,17 @@ class Lyrics : MediaFragment() {
         }
 
         binding.settings.setOnClickListener {
-            childFragmentManager.showLyricsMenu()
+            childFragmentManager.showLyricsMenu().setOnMenuListener(object : LyricsMenu.Companion.LyricsMenuListener {
+                override fun onTimeMinusClicked() {
+                    lyricsViewModel.seekBy(-SEEK_JUMP_MS)
+                    syncOffset -= SEEK_JUMP_MS
+                }
+
+                override fun onTimePlusClicked() {
+                    lyricsViewModel.seekBy(SEEK_JUMP_MS)
+                    syncOffset += SEEK_JUMP_MS
+                }
+            })
         }
 
         binding.next.setOnClickListener {
@@ -79,8 +93,15 @@ class Lyrics : MediaFragment() {
                 binding.lrc.reset()
             } else {
                 binding.lrc.setLrcData(lrcData)
-                binding.lrc.updateTime(MediaManager.getSeekPosition())
+                postDelayed {
+                    binding.lrc.updateTime(MediaManager.getSeekPosition() + syncOffset)
+                }
             }
+        }
+
+        // Sync offset changed: just nudge updateTime — LrcData and scroll stay untouched
+        lyricsViewModel.getSyncOffsetMs().observe(viewLifecycleOwner) { offset ->
+            Log.d(TAG, "Sync offset updated: ${offset}ms")
         }
 
         binding.seekbar.setLeftLabelProvider { progress, _, _ ->
@@ -155,7 +176,7 @@ class Lyrics : MediaFragment() {
 
     override fun onSeekChanged(seek: Long) {
         super.onSeekChanged(seek)
-        binding.lrc.updateTime(seek)
+        binding.lrc.updateTime(seek + syncOffset)
         binding.seekbar.setProgress(seek.toFloat(), fromUser = false, animate = true)
     }
 
@@ -194,6 +215,7 @@ class Lyrics : MediaFragment() {
 
         /** How long to wait after the last slider event before applying the text-size change. */
         private const val TEXT_SIZE_DEBOUNCE_MS = 150L
+        private const val SEEK_JUMP_MS = 500L
     }
 }
 

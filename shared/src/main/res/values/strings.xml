@@ -225,4 +225,8 @@
     <string name="fallback_to_software_decoder_summary">Quietly fallback to software decoder if system hardware fails to play an audio file.</string>
     <string name="playing_queue">Playing Queue</string>
     <string name="customize">Customize</string>
+    <string name="controls">Edit</string>
+    <string name="sync_adjust">Sync Adjust</string>
+    <string name="time_minus">- 1s</string>
+    <string name="time_plus">+ 1s</string>
 </resources>

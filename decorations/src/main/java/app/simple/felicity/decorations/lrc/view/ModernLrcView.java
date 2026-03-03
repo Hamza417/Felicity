@@ -766,6 +766,27 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
+     * Update lyrics data in-place for live sync adjustments.
+     * Unlike {@link #setLrcData(LrcData)}, this does NOT reset scroll position,
+     * line index, or caches – only the data reference is swapped and the current
+     * line index is re-evaluated against the supplied playback position so the
+     * highlighted line stays correct without any jarring scroll-to-top.
+     *
+     * @param data         new LrcData with shifted timestamps (same text, same line count)
+     * @param timeInMillis current playback position in milliseconds
+     */
+    public void updateLrcDataInPlace(LrcData data, long timeInMillis) {
+        this.lrcData = data;
+        // Re-evaluate current line without triggering auto-scroll reset
+        int newLineIndex = findLineIndexByTime(timeInMillis + (data != null ? data.getOffset() : 0));
+        if (newLineIndex != currentLineIndex) {
+            previousLineIndex = currentLineIndex;
+            currentLineIndex = newLineIndex;
+        }
+        invalidate();
+    }
+
+    /**
      * Set lyrics data
      */
     public void setLrcData(LrcData data) {

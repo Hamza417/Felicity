@@ -26,6 +26,40 @@
                 android:layout_width="0dp"
                 android:padding="@dimen/padding_15"
                 android:layout_height="wrap_content"
+                android:text="@string/sync_adjust"
+                android:layout_weight="1"
+                android:layout_gravity="center_vertical"
+                android:textSize="@dimen/text_size_14"
+                app:appFontStyle="bold"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+                android:id="@+id/minus"
+                android:layout_width="@dimen/button_size"
+                android:layout_height="@dimen/button_size"
+                android:src="@drawable/ic_remove_circle"
+                android:layout_marginEnd="@dimen/padding_5"
+                app:buttonTintType="regular" />
+
+            <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+                android:id="@+id/plus"
+                android:layout_width="@dimen/button_size"
+                android:layout_height="@dimen/button_size"
+                android:src="@drawable/ic_add_circle"
+                app:buttonTintType="regular" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:orientation="horizontal">
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="0dp"
+                android:padding="@dimen/padding_15"
+                android:layout_height="wrap_content"
                 android:text="@string/alignment"
                 android:layout_weight="1"
                 android:layout_gravity="center_vertical"
