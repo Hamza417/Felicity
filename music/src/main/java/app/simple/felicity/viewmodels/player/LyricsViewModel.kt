@@ -15,6 +15,7 @@ import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.LrcRepository
+import app.simple.felicity.viewmodels.player.LyricsViewModel.Companion.SYNC_SAVE_DEBOUNCE_MS
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -52,6 +53,9 @@ class LyricsViewModel @AssistedInject constructor(
      * Negative → view sees earlier time  → earlier line highlighted (fixes ahead lyrics).
      */
     private val syncOffsetMs = MutableLiveData(0L)
+
+    /** Tracks the current sync offset so onSeekChanged can apply it. */
+    var syncOffset: Long = 0L
 
     /** Accumulated offset that has not yet been baked into the on-disk .lrc file. */
     private var pendingSyncDeltaMs: Long = 0L

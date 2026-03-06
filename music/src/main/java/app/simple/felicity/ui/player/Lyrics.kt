@@ -34,9 +34,6 @@ class Lyrics : MediaFragment() {
     private val textSizeHandler = Handler(Looper.getMainLooper())
     private val textSizeRunnable = Runnable { applyTextSize() }
 
-    /** Tracks the current sync offset so onSeekChanged can apply it. */
-    private var syncOffset: Long = 0L
-
     private val lyricsViewModel: LyricsViewModel by viewModels(
             extrasProducer = {
                 defaultViewModelCreationExtras.withCreationCallback<LyricsViewModel.Factory> {
@@ -65,12 +62,12 @@ class Lyrics : MediaFragment() {
             childFragmentManager.showLyricsMenu().setOnMenuListener(object : LyricsMenu.Companion.LyricsMenuListener {
                 override fun onTimeMinusClicked() {
                     lyricsViewModel.seekBy(-SEEK_JUMP_MS)
-                    syncOffset -= SEEK_JUMP_MS
+                    lyricsViewModel.syncOffset -= SEEK_JUMP_MS
                 }
 
                 override fun onTimePlusClicked() {
                     lyricsViewModel.seekBy(SEEK_JUMP_MS)
-                    syncOffset += SEEK_JUMP_MS
+                    lyricsViewModel.syncOffset += SEEK_JUMP_MS
                 }
             })
         }
@@ -94,7 +91,7 @@ class Lyrics : MediaFragment() {
             } else {
                 binding.lrc.setLrcData(lrcData)
                 postDelayed {
-                    binding.lrc.updateTime(MediaManager.getSeekPosition() + syncOffset)
+                    binding.lrc.updateTime(MediaManager.getSeekPosition() + lyricsViewModel.syncOffset)
                 }
             }
         }
@@ -176,7 +173,7 @@ class Lyrics : MediaFragment() {
 
     override fun onSeekChanged(seek: Long) {
         super.onSeekChanged(seek)
-        binding.lrc.updateTime(seek + syncOffset)
+        binding.lrc.updateTime(seek + lyricsViewModel.syncOffset)
         binding.seekbar.setProgress(seek.toFloat(), fromUser = false, animate = true)
     }
 
