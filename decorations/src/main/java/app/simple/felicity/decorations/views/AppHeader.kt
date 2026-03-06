@@ -13,11 +13,9 @@ import android.view.animation.DecelerateInterpolator
 import androidx.annotation.LayoutRes
 import androidx.annotation.MainThread
 import androidx.core.view.children
-import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import app.simple.felicity.decoration.R
+import app.simple.felicity.decorations.itemdecorations.HeaderSpacingItemDecoration
 import app.simple.felicity.decorations.theme.ThemeFrameLayout
 import app.simple.felicity.shared.utils.WindowUtil
 import kotlin.math.max
@@ -30,6 +28,9 @@ import kotlin.math.min
  *  - Provides scroll behaviors: PINNED, HIDE_ON_SCROLL, SCROLL_WITH_CONTENT.
  *  - Lets caller supply arbitrary content view via [setContentView] or XML attribute `headerContentLayout`.
  *  - Exposes lifecycle-style callback [onContentViewCreated] after inflating or setting the content.
+ *
+ * Header spacing is achieved via [HeaderSpacingItemDecoration] added to the RecyclerView.
+ * This avoids any RecyclerView padding changes, which interfere with drag-and-drop operations.
  */
 @Suppress("unused")
 class AppHeader @JvmOverloads constructor(
@@ -43,28 +44,27 @@ class AppHeader @JvmOverloads constructor(
     private var recyclerView: RecyclerView? = null
     private var scrollMode: ScrollMode = ScrollMode.PINNED
     private var hideThresholdPx: Int = dpToPx(10)
-    private var accumulatedScroll = 0 // used as hidden offset in HIDE_ON_SCROLL (0..height)
+    private var accumulatedScroll = 0
     private var isHidden = false
 
     private var contentView: View? = null
     private var contentCreatedListener: ((View) -> Unit)? = null
 
-    // Padding management
-    private var originalRecyclerPaddingTop: Int = -1
-    private var lastAppliedHeaderHeight: Int = -1
-    private var adjustRecyclerPadding: Boolean = true
-    private var manualOverride = false // when true, scroll-based behavior is suspended
+    private var manualOverride = false
     private var statusBarPaddingApplied = false
-    private var isScrollListenerAttached = false // track if listener is currently attached
+    private var isScrollListenerAttached = false
+
+    /** Decoration owned by this header; added/removed alongside the scroll listener. */
+    private var spacingDecoration: HeaderSpacingItemDecoration? = null
 
     private val layoutChangeListener = OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-        maybeApplyRecyclerPadding()
+        updateSpacingDecoration()
     }
 
     private val scrollListener = object : RecyclerView.OnScrollListener() {
         override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
             if (dy == 0) return
-            if (manualOverride) return // ignore scroll-based hiding while manually overridden
+            if (manualOverride) return
             when (scrollMode) {
                 ScrollMode.PINNED -> Unit
                 ScrollMode.HIDE_ON_SCROLL -> handleHideOnScroll(dy)
@@ -89,10 +89,9 @@ class AppHeader @JvmOverloads constructor(
             }
 
             WindowUtil.getStatusBarHeightWhenAvailable(this@AppHeader) { height ->
-                if (statusBarPaddingApplied.not()) {
+                if (!statusBarPaddingApplied) {
                     setPadding(paddingLeft, height + paddingTop, paddingRight, paddingBottom)
-                    // Header height changed due to inset; reapply list padding
-                    post { maybeApplyRecyclerPadding(force = true) }
+                    post { updateSpacingDecoration() }
                 }
                 statusBarPaddingApplied = true
             }
@@ -101,53 +100,70 @@ class AppHeader @JvmOverloads constructor(
         addOnLayoutChangeListener(layoutChangeListener)
     }
 
+    // --------------------------
+    // Attach / Detach
+    // --------------------------
+
     /** Attach header to a RecyclerView so it can respond to scrolling. */
     @MainThread
     fun attachTo(rv: RecyclerView, mode: ScrollMode = scrollMode, adjustPadding: Boolean = true) {
-        Log.d(TAG, "Attaching to RecyclerView with mode=$mode, adjustPadding=$adjustPadding")
-        // If already attached to the same RecyclerView, just ensure listener and padding are correct
-        if (recyclerView == rv && scrollMode == mode && adjustRecyclerPadding == adjustPadding) {
-            // Always remove and re-add listener to ensure it's properly attached
-            // This handles cases where onDetachedFromWindow removed it
+        Log.d(TAG, "Attaching to RecyclerView with mode=$mode")
+        if (recyclerView == rv && scrollMode == mode) {
             rv.removeOnScrollListener(scrollListener)
             rv.addOnScrollListener(scrollListener)
             isScrollListenerAttached = true
-
-            // Just reapply padding in case it was lost during interrupted transitions
-            if (height > 0) {
-                maybeApplyRecyclerPadding(force = true)
-            } else {
-                post { maybeApplyRecyclerPadding(force = true) }
-            }
+            updateSpacingDecoration()
             return
         }
 
         detach()
         recyclerView = rv
         scrollMode = mode
-        adjustRecyclerPadding = adjustPadding
 
-        // Ensure we remove any existing listener first (defensive)
         rv.removeOnScrollListener(scrollListener)
         rv.addOnScrollListener(scrollListener)
         isScrollListenerAttached = true
 
-        // Apply padding after next layout pass if height not known yet
+        // Install our spacing decoration
+        val deco = HeaderSpacingItemDecoration(height)
+        spacingDecoration = deco
+        rv.addItemDecoration(deco, 0) // insert at index 0 so it runs first
+
+        // If height is already known, update now; otherwise the layoutChangeListener will fire
         if (height > 0) {
-            maybeApplyRecyclerPadding(force = true)
-        } else {
-            post { maybeApplyRecyclerPadding(force = true) }
+            deco.updateHeaderHeight(height)
         }
     }
 
     /** Detach from currently attached RecyclerView. */
     @MainThread
     fun detach() {
-        recyclerView?.removeOnScrollListener(scrollListener)
+        val rv = recyclerView ?: return
+        rv.removeOnScrollListener(scrollListener)
         isScrollListenerAttached = false
-        restoreRecyclerPaddingIfNeeded()
+        spacingDecoration?.detach()
+        spacingDecoration = null
         recyclerView = null
     }
+
+    // --------------------------
+    // Spacing decoration helpers
+    // --------------------------
+
+    /**
+     * Called whenever the header lays out so the decoration offset stays in sync.
+     * Safe to call at any time — the decoration itself only triggers invalidateItemDecorations()
+     * which does NOT scroll the list.
+     */
+    private fun updateSpacingDecoration() {
+        val h = height
+        if (h <= 0) return
+        spacingDecoration?.updateHeaderHeight(h)
+    }
+
+    // --------------------------
+    // Content
+    // --------------------------
 
     /** Inflate and set a layout resource as content of this header. */
     fun inflateContent(@LayoutRes layoutRes: Int): View {
@@ -163,8 +179,7 @@ class AppHeader @JvmOverloads constructor(
         contentView = view
         addView(view, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
         contentCreatedListener?.invoke(view)
-        // Reapply padding since header height may change
-        post { maybeApplyRecyclerPadding(force = true) }
+        post { updateSpacingDecoration() }
     }
 
     /** Alias for setContentView for semantic clarity */
@@ -180,6 +195,10 @@ class AppHeader @JvmOverloads constructor(
     fun onViewCreated(listener: (View) -> Unit) = onContentViewCreated(listener)
 
     fun getContentView(): View? = contentView
+
+    // --------------------------
+    // Scroll modes
+    // --------------------------
 
     fun setScrollMode(mode: ScrollMode) {
         scrollMode = mode
@@ -199,7 +218,6 @@ class AppHeader @JvmOverloads constructor(
     private fun handleHideOnScroll(dy: Int) {
         val h = height
         if (h <= 0) return
-        // Accumulate offset (0 visible -> h fully hidden)
         accumulatedScroll = (accumulatedScroll + dy).coerceIn(0, h)
         translationY = -accumulatedScroll.toFloat()
         val fullyHidden = accumulatedScroll == h
@@ -214,6 +232,7 @@ class AppHeader @JvmOverloads constructor(
         translationY = -clamped.toFloat()
     }
 
+    @Suppress("unused")
     private fun animateTranslation(target: Float) {
         animate().translationY(target)
             .setInterpolator(DecelerateInterpolator())
@@ -221,191 +240,30 @@ class AppHeader @JvmOverloads constructor(
             .start()
     }
 
-    private fun maybeApplyRecyclerPadding(force: Boolean = false) {
-        if (!adjustRecyclerPadding) return
-        val rv = recyclerView ?: return
-        val headerHeight = height
-        if (headerHeight <= 0) return
-        if (originalRecyclerPaddingTop == -1) {
-            originalRecyclerPaddingTop = rv.paddingTop
-        }
-        if (!force && headerHeight == lastAppliedHeaderHeight) return
-        val desiredTop = originalRecyclerPaddingTop + headerHeight
-        val previousPaddingTop = rv.paddingTop
-        val paddingDelta = desiredTop - previousPaddingTop
-        if (rv.paddingTop != desiredTop) {
-            rv.setPadding(rv.paddingLeft, desiredTop, rv.paddingRight, rv.paddingBottom)
-            rv.clipToPadding = false
-        }
-        lastAppliedHeaderHeight = headerHeight
+    // --------------------------
+    // Public API
+    // --------------------------
 
-        // Force proper positioning of items, especially when data loads instantly
-        ensureListStartBelowPadding(rv)
-
-        // Use multiple delayed attempts to ensure proper positioning
-        rv.post {
-            ensureListStartBelowPadding(rv)
-            if (rv.canScrollVertically(RecyclerView.VERTICAL)) {
-                rv.scrollBy(0, -paddingDelta)
-
-                // scrollBy may have made the header visible, so
-                // restore the header position to based on the last
-                // known scroll state (only if idle to avoid disrupting user scroll)
-                // TODO
-            }
-
-            // Second attempt after potential adapter notifications
-            rv.post {
-                ensureListStartBelowPadding(rv)
-                Log.d(TAG, "Applied padding adjustment of $paddingDelta, headerHeight=$headerHeight, desiredTop=$desiredTop")
-            }
-        }
+    /** Kept for API compatibility; no-op since padding is no longer used. */
+    fun reapplyRecyclerPadding() {
+        updateSpacingDecoration()
     }
 
-    private fun ensureListStartBelowPadding(rv: RecyclerView, retryCount: Int = 0) {
-        // Avoid interfering with active user drag/fast-scroll; only adjust when idle
-        if (rv.scrollState != RecyclerView.SCROLL_STATE_IDLE || rv.isComputingLayout) {
-            // Try again shortly when things settle
-            // Add retry limit to prevent infinite posting during interrupted transitions
-            if (retryCount < 10) {
-                rv.postDelayed({
-                                   if (rv.scrollState == RecyclerView.SCROLL_STATE_IDLE && !rv.isComputingLayout) {
-                                       ensureListStartBelowPadding(rv, 0)
-                                   } else {
-                                       // Still not idle, keep trying with exponential backoff
-                                       ensureListStartBelowPadding(rv, retryCount + 1)
-                                   }
-                               }, 50L * (retryCount + 1)) // 50ms, 100ms, 150ms, etc.
-            }
-            return
-        }
-
-        val firstChild = rv.getChildAt(0) ?: return
-        val desiredTop = rv.paddingTop
-        val currentTop = firstChild.top
-
-        // Calculate item decoration offset for the first item
-        val itemDecorationOffset = getFirstItemDecorationTopOffset(rv, firstChild)
-
-        // The actual desired position should account for item decoration spacing
-        val adjustedDesiredTop = desiredTop + itemDecorationOffset
-        val delta = adjustedDesiredTop - currentTop
-
-        // If the first item is positioned above the adjusted padding area, we need to adjust
-        if (delta > 0) {
-            // Check if we're at or near the top of the list to avoid disrupting user scroll
-            val scrollOffset = rv.computeVerticalScrollOffset()
-
-            // Get first visible item position for more accurate checking
-            val firstVisiblePosition = when (val layoutManager = rv.layoutManager) {
-                is GridLayoutManager -> layoutManager.findFirstVisibleItemPosition()
-                is LinearLayoutManager -> layoutManager.findFirstVisibleItemPosition()
-                is StaggeredGridLayoutManager -> {
-                    val positions = layoutManager.findFirstVisibleItemPositions(null)
-                    positions.minOrNull() ?: -1
-                }
-                else -> -1
-            }
-
-            // Allow adjustment in these scenarios:
-            // 1. At absolute top with no scroll history
-            // 2. Very close to top (within adjustment range)
-            // 3. First item is visible (position 0) regardless of scroll state
-            val isAtTop = scrollOffset == 0 && !rv.canScrollVertically(-1)
-            val isNearTop = scrollOffset <= delta
-            val isFirstItemVisible = firstVisiblePosition == 0
-
-            if (isAtTop || isNearTop || isFirstItemVisible) {
-                // For instant loading scenarios, we might need to invalidate layout first
-                if (scrollOffset == 0 && firstVisiblePosition == 0 && (rv.adapter?.itemCount ?: 0) > 0) {
-                    // This is likely an instant loading scenario - force a layout pass
-                    rv.requestLayout()
-                    rv.post {
-                        // Re-check after layout and adjust if needed (still only if idle)
-                        if (rv.scrollState != RecyclerView.SCROLL_STATE_IDLE || rv.isComputingLayout) return@post
-                        val updatedFirstChild = rv.getChildAt(0)
-                        if (updatedFirstChild != null) {
-                            val updatedItemDecorationOffset = getFirstItemDecorationTopOffset(rv, updatedFirstChild)
-                            val updatedAdjustedDesiredTop = rv.paddingTop + updatedItemDecorationOffset
-                            val updatedDelta = updatedAdjustedDesiredTop - updatedFirstChild.top
-                            if (updatedDelta > 0) {
-                                rv.scrollBy(0, -updatedDelta)
-                            }
-                        }
-                    }
-                } else {
-                    // Normal case - just scroll to correct position (only if idle)
-                    if (rv.scrollState == RecyclerView.SCROLL_STATE_IDLE && !rv.isComputingLayout) {
-                        rv.scrollBy(0, -delta)
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Calculate the top offset that should be applied to the first item due to item decorations.
-     * This accounts for spacing that gets applied after layout.
-     */
-    private fun getFirstItemDecorationTopOffset(rv: RecyclerView, firstChild: View): Int {
-        val tempRect = android.graphics.Rect()
-        var totalTopOffset = 0
-
-        // Iterate through all item decorations and calculate their contribution to top spacing
-        for (i in 0 until rv.itemDecorationCount) {
-            val decoration = rv.getItemDecorationAt(i)
-            val position = rv.getChildAdapterPosition(firstChild)
-
-            // Create a temporary state for calculation
-            val state = RecyclerView.State()
-
-            // Get the offsets this decoration would apply to the first item
-            tempRect.setEmpty()
-            decoration.getItemOffsets(tempRect, firstChild, rv, state)
-
-            // For the first item, we only care about top spacing
-            // Some decorations (like SongHolderSpacingItemDecoration) apply spacing to position 1
-            // Others (like SpacingItemDecoration) apply spacing to position 0
-            if (position <= 1) { // Cover both cases
-                totalTopOffset += tempRect.top
-            }
-        }
-
-        return totalTopOffset
-    }
-
-    private fun restoreRecyclerPaddingIfNeeded() {
-        val rv = recyclerView ?: return
-        if (originalRecyclerPaddingTop != -1) {
-            rv.setPadding(rv.paddingLeft, originalRecyclerPaddingTop, rv.paddingRight, rv.paddingBottom)
-        }
-        originalRecyclerPaddingTop = -1
-        lastAppliedHeaderHeight = -1
-    }
-
-    fun reapplyRecyclerPadding() = maybeApplyRecyclerPadding(force = true)
-
+    /** Kept for API compatibility; no-op since padding is no longer used. */
     fun setAdjustRecyclerPadding(adjust: Boolean) {
-        adjustRecyclerPadding = adjust
-        if (adjust) reapplyRecyclerPadding() else restoreRecyclerPaddingIfNeeded()
+        // No-op: spacing is handled by HeaderSpacingItemDecoration
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        Log.d(TAG, "Attached to window, re-attaching to RecyclerView if previously attached")
-        // If we had a RecyclerView before, re-attach to ensure listener is active and
-        // padding is correct (handles cases where we were detached during an interrupted transition)
         val rv = recyclerView
         if (rv != null) {
-            attachTo(rv, scrollMode, adjustRecyclerPadding)
+            attachTo(rv, scrollMode)
         }
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        Log.d(TAG, "Detached from window, detaching from RecyclerView if attached")
-        // Don't call detach() here - it resets padding state which breaks interrupted transitions
-        // Just remove the scroll listener to prevent leaks
         recyclerView?.removeOnScrollListener(scrollListener)
         isScrollListenerAttached = false
         removeOnLayoutChangeListener(layoutChangeListener)
@@ -414,31 +272,26 @@ class AppHeader @JvmOverloads constructor(
     @Suppress("SameParameterValue")
     private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
 
-    /** Convenience: true if header currently hidden (only for HIDE_ON_SCROLL mode). */
     fun isHeaderHidden(): Boolean = isHidden
 
-    /** Remove current content without adding a new one. */
     fun clearContent() {
         removeAllViews()
         contentView = null
     }
 
-    /** Iterate child views (normally just one) */
     fun forEachChild(action: (View) -> Unit) {
         children.forEach(action)
     }
 
-    /** Ratio [0f,1f] of how much header is hidden (only meaningful for HIDE_ON_SCROLL). */
     fun hiddenRatio(): Float = if (height > 0) accumulatedScroll / height.toFloat() else 0f
 
-    /** Manually hide the header. If [override] true, disables automatic scroll reactions until resumed. */
     fun hideHeader(animated: Boolean = true, override: Boolean = true) {
         val action = {
             accumulatedScroll = height
             isHidden = true
             translationY = -height.toFloat()
         }
-        if (height == 0) { // Not laid out yet
+        if (height == 0) {
             post { hideHeader(animated, override) }
             return
         }
@@ -453,7 +306,6 @@ class AppHeader @JvmOverloads constructor(
         if (override) manualOverride = true
     }
 
-    /** Manually show the header. If [override] true, keeps automatic behavior suspended until resumed. */
     fun showHeader(animated: Boolean = true, override: Boolean = true) {
         val action = {
             accumulatedScroll = 0
@@ -471,12 +323,10 @@ class AppHeader @JvmOverloads constructor(
         if (override) manualOverride = true
     }
 
-    /** Toggle header visibility manually (always sets manual override). */
     fun toggleHeader(animated: Boolean = true) {
         if (isHidden) showHeader(animated, override = true) else hideHeader(animated, override = true)
     }
 
-    /** Resume automatic scroll-based behavior. Optionally reset position. */
     fun resumeAutoBehavior(reset: Boolean = false) {
         manualOverride = false
         if (reset) {
@@ -494,17 +344,14 @@ class AppHeader @JvmOverloads constructor(
     // --------------------------
     // State saving / restoring
     // --------------------------
-    override fun onSaveInstanceState(): Parcelable? {
+
+    override fun onSaveInstanceState(): Parcelable {
         val superState = super.onSaveInstanceState()
         return SavedState(superState).apply {
             modeOrdinal = scrollMode.ordinal
             hideThreshold = hideThresholdPx
             savedAccumulatedScroll = accumulatedScroll
             savedIsHidden = isHidden
-            // Don't save manualOverride - it should reset on view recreation
-            savedAdjustRecyclerPadding = adjustRecyclerPadding
-            savedOriginalRecyclerPaddingTop = originalRecyclerPaddingTop
-            savedLastAppliedHeaderHeight = lastAppliedHeaderHeight
         }
     }
 
@@ -521,13 +368,8 @@ class AppHeader @JvmOverloads constructor(
         hideThresholdPx = state.hideThreshold
         accumulatedScroll = state.savedAccumulatedScroll
         isHidden = state.savedIsHidden
-        // Don't restore manualOverride - let it reset to false so scroll behavior works
         manualOverride = false
-        adjustRecyclerPadding = state.savedAdjustRecyclerPadding
-        originalRecyclerPaddingTop = state.savedOriginalRecyclerPaddingTop
-        lastAppliedHeaderHeight = state.savedLastAppliedHeaderHeight
 
-        // Apply translation after we're laid out so we know our height
         post {
             when (scrollMode) {
                 ScrollMode.PINNED -> {
@@ -547,23 +389,7 @@ class AppHeader @JvmOverloads constructor(
                     }
                 }
             }
-
-            // Critical: Force reapply padding even if we think it's already applied
-            // This handles interrupted transitions where the RV might be in an inconsistent state
-            val rv = recyclerView
-            if (rv != null) {
-                // Temporarily clear last applied height to force a fresh application
-                val savedLastHeight = lastAppliedHeaderHeight
-                lastAppliedHeaderHeight = -1
-                maybeApplyRecyclerPadding(force = true)
-                // If we had saved state, trust it over the newly calculated value
-                if (savedLastHeight > 0) {
-                    lastAppliedHeaderHeight = savedLastHeight
-                }
-            } else {
-                // No RecyclerView attached yet, just force apply when it gets attached
-                maybeApplyRecyclerPadding(force = true)
-            }
+            updateSpacingDecoration()
         }
     }
 
@@ -573,20 +399,12 @@ class AppHeader @JvmOverloads constructor(
         var savedAccumulatedScroll: Int = 0
         var savedIsHidden: Boolean = false
 
-        // Don't save manualOverride - it should reset on view recreation
-        var savedAdjustRecyclerPadding: Boolean = true
-        var savedOriginalRecyclerPaddingTop: Int = -1
-        var savedLastAppliedHeaderHeight: Int = -1
-
         constructor(superState: Parcelable?) : super(superState)
         private constructor(parcel: Parcel) : super(parcel) {
             modeOrdinal = parcel.readInt()
             hideThreshold = parcel.readInt()
             savedAccumulatedScroll = parcel.readInt()
             savedIsHidden = parcel.readInt() == 1
-            savedAdjustRecyclerPadding = parcel.readInt() == 1
-            savedOriginalRecyclerPaddingTop = parcel.readInt()
-            savedLastAppliedHeaderHeight = parcel.readInt()
         }
 
         override fun writeToParcel(out: Parcel, flags: Int) {
@@ -595,16 +413,11 @@ class AppHeader @JvmOverloads constructor(
             out.writeInt(hideThreshold)
             out.writeInt(savedAccumulatedScroll)
             out.writeInt(if (savedIsHidden) 1 else 0)
-            out.writeInt(if (savedAdjustRecyclerPadding) 1 else 0)
-            out.writeInt(savedOriginalRecyclerPaddingTop)
-            out.writeInt(savedLastAppliedHeaderHeight)
         }
 
         companion object CREATOR : Parcelable.Creator<SavedState> {
             override fun createFromParcel(source: Parcel): SavedState = SavedState(source)
             override fun newArray(size: Int): Array<SavedState?> = arrayOfNulls(size)
-
-            private const val TAG = "AppHeader.SavedState"
         }
     }
 

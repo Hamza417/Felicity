@@ -84,12 +84,16 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
 
     var currentlyPlayingSong: Audio? = null
         set(value) {
-            val oldIndex = previousIndex
-            field = value
-            val newIndex = value?.let { v -> songs.indexOfFirst { it.id == v.id } } ?: -1
-            if (newIndex != -1) notifyItemChanged(newIndex, PAYLOAD_PLAYBACK_STATE)
-            if (oldIndex != -1 && oldIndex != newIndex) notifyItemChanged(oldIndex, PAYLOAD_PLAYBACK_STATE)
-            previousIndex = newIndex
+            try {
+                val oldIndex = previousIndex
+                field = value
+                val newIndex = value?.let { v -> songs.indexOfFirst { it.id == v.id } } ?: -1
+                if (newIndex != -1) notifyItemChanged(newIndex, PAYLOAD_PLAYBACK_STATE)
+                if (oldIndex != -1 && oldIndex != newIndex) notifyItemChanged(oldIndex, PAYLOAD_PLAYBACK_STATE)
+                previousIndex = newIndex
+            } catch (_: IllegalStateException) {
+                // Ignore, can happen if the current song is not in the queue (e.g. after a shuffle)
+            }
         }
 
     override fun getItemId(position: Int): Long = songs[position].id
