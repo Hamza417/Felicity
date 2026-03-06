@@ -11,44 +11,43 @@ import android.view.VelocityTracker
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
+import app.simple.felicity.decorations.pager.FelicityPager.Companion.SCROLL_STATE_DRAGGING
+import app.simple.felicity.decorations.pager.FelicityPager.Companion.SCROLL_STATE_IDLE
+import app.simple.felicity.decorations.pager.FelicityPager.Companion.SCROLL_STATE_SETTLING
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * FelicityPager — raw horizontal pager ViewGroup.
+ * A raw horizontal pager [ViewGroup] that is intentionally free of any image-loading
+ * or Glide dependency. It is a pure scroll / layout / touch engine:
  *
- * This class is intentionally free of any image-loading or Glide dependency.
- * It is a pure scroll/layout/touch engine:
- *  - Pages are arbitrary [View]s produced and recycled entirely by [PageAdapter].
- *  - Positions are driven by translationX on each child view.
- *  - All drag, fling, snap and auto-slide logic lives here.
+ * - Pages are arbitrary [View]s produced and recycled entirely by [PageAdapter].
+ * - Positions are driven by `translationX` on each child view.
+ * - All drag, fling, snap, and auto-slide logic lives here.
  *
- * To display images use [ImagePageAdapter] (a ready-made subclass that accepts a
- * [ImageBitmapProvider] + [ImageBitmapCanceller] pair) or write your own [PageAdapter].
+ * To display images, use an [ImagePageAdapter] (a ready-made subclass that accepts an
+ * `ImageBitmapProvider` + `ImageBitmapCanceller` pair), or write your own [PageAdapter].
  *
- * Behavior summary
- * ──────────────────
- * • Page N is centred when `scrollPx == N * width`.
- * • Drag:   ACTION_MOVE shifts scrollPx continuously; bounds-clamped to [0, (count-1)*width].
- * • Fling:  velocity → pages-to-advance (vPagesPerSec × windowSec, capped at 3).
- * • Slow release: advance if |drag| > advanceThreshold (0.25) × width, else snap back.
- * • Settlement: Choreographer + easeOutCubic, start-time latched on the first vsync
- *   frame to avoid uptime/vsync clock-source jitter.
- * • [OnPageChangeListener]: DRAGGING → SETTLING → IDLE, onPageScrolled every frame,
- *   onPageSelected only after a settle completes (or immediately for instant jumps).
- * • fromUser flag distinguishes user swipes from programmatic [setCurrentItem].
- * • Auto-slide: [startAutoSlide] / [stopAutoSlide].
+ * **Scroll model:** Page N is centred when `scrollPx == N * width`.
  *
- * Adapter contract ([PageAdapter])
- * ──────────────────────────────────
- * • getCount()               — total pages.
- * • getItemId(position)      — stable id (default = position).
- * • onCreateView(position, parent)  — inflate/create the page View; must not attach it.
- * • onBindView(position, view)      — bind data into an existing view (called on create
- *                                     and on re-use after recycle).
- * • onRecycleView(position, view)   — release resources (cancel loads, clear images, …).
+ * **Drag:** `ACTION_MOVE` shifts `scrollPx` continuously; bounds-clamped to
+ * `[0, (count-1) * width]`.
+ *
+ * **Fling:** velocity → pages-to-advance (`vPagesPerSec × windowSec`, capped at 3).
+ *
+ * **Slow release:** advance if `|drag| > advanceThreshold (0.25) × width`, else snap back.
+ *
+ * **Settlement:** [Choreographer] + `easeOutCubic`; start-time latched on the first vsync
+ * frame to avoid uptime/vsync clock-source jitter.
+ *
+ * **[OnPageChangeListener]:** `DRAGGING → SETTLING → IDLE`; [OnPageChangeListener.onPageScrolled]
+ * fires every frame; [OnPageChangeListener.onPageSelected] fires only after a settle completes
+ * (or immediately for instant jumps). The `fromUser` overload distinguishes user swipes from
+ * programmatic [setCurrentItem].
+ *
+ * **Auto-slide:** [startAutoSlide] / [stopAutoSlide].
  *
  * @author Hamza417
  */
@@ -57,81 +56,114 @@ class FelicityPager @JvmOverloads constructor(
         attrs: AttributeSet? = null
 ) : ViewGroup(context, attrs), GestureDetector.OnGestureListener {
 
-    // ── PageAdapter ───────────────────────────────────────────────────────────────
-
     /**
-     * Base adapter for [FelicityPager].  Implement this directly for fully custom pages,
-     * or use [ImagePageAdapter] for the common image-display use-case.
+     * Base adapter for [FelicityPager]. Implement this directly for fully custom pages,
+     * or use `ImagePageAdapter` for the common image-display use-case.
      */
     interface PageAdapter {
-        /** Total number of pages. */
+        /** Returns the total number of pages. */
         fun getCount(): Int
 
         /**
-         * Stable, unique id for this position.
+         * Returns a stable, unique id for [position].
          * Used to avoid re-binding a view that already shows the right content.
-         * Default: position as Long.
+         * Defaults to [position] as [Long].
          */
         fun getItemId(position: Int): Long = position.toLong()
 
         /**
-         * Create a brand-new page view for [position].
+         * Creates a brand-new page view for [position].
          * **Do not** add it to any parent — [FelicityPager] will do that.
          */
         fun onCreateView(position: Int, parent: ViewGroup): View
 
         /**
-         * Bind data for [position] into [view].
+         * Binds data for [position] into [view].
          * Called both when a view is freshly created and when a recycled view is re-used.
          */
         fun onBindView(position: Int, view: View)
 
         /**
-         * The pager is about to remove [view] from the window.
-         * Release any async resources (cancel image loads, clear bitmaps, …).
+         * Called just before [view] is removed from the window.
+         * Release any async resources (cancel image loads, clear bitmaps, etc.).
          * The view is then placed in the recycle pool and may be re-bound later via [onBindView].
          */
         fun onRecycleView(position: Int, view: View)
     }
 
-    // ── OnPageChangeListener ──────────────────────────────────────────────────────
-
+    /**
+     * Listener for pager scroll events, page-selection changes, and scroll-state transitions.
+     *
+     * All methods have default no-op implementations so callers only need to override what
+     * they care about. The [onPageSelected] overload with `fromUser` lets callers distinguish
+     * between user-initiated swipes and programmatic [setCurrentItem] calls.
+     */
     interface OnPageChangeListener {
+        /** Called every frame while the pager is scrolling. */
         fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {}
+
+        /** Called when a new page becomes the selected page. */
         fun onPageSelected(position: Int) {}
 
-        /** Overload with fromUser flag — backward-compatible default no-op. */
+        /**
+         * Called when a new page becomes selected, with a flag indicating whether the
+         * change was triggered by the user (swipe/fling) or programmatically.
+         * Backward-compatible — defaults to a no-op.
+         */
         fun onPageSelected(position: Int, fromUser: Boolean) {}
+
+        /** Called when the scroll state changes between [SCROLL_STATE_IDLE],
+         *  [SCROLL_STATE_DRAGGING], and [SCROLL_STATE_SETTLING]. */
         fun onPageScrollStateChanged(state: Int) {}
     }
 
     companion object {
+        /** The pager is not being scrolled and no animation is running. */
         const val SCROLL_STATE_IDLE = 0
+
+        /** The pager is currently being dragged by the user. */
         const val SCROLL_STATE_DRAGGING = 1
+
+        /** The pager is animating toward a resting page position. */
         const val SCROLL_STATE_SETTLING = 2
     }
 
-    // ── Listeners ────────────────────────────────────────────────────────────────
-
+    /**
+     * The set of [OnPageChangeListener]s currently registered on this pager.
+     * Uses [CopyOnWriteArrayList] so listeners can be added/removed safely from callbacks.
+     */
     private val pageChangeListeners = CopyOnWriteArrayList<OnPageChangeListener>()
 
+    /** Registers [l] to receive page-scroll, page-selection, and state-change events. */
     fun addOnPageChangeListener(l: OnPageChangeListener) {
         pageChangeListeners.add(l)
     }
 
+    /** Unregisters [l] so it no longer receives events. */
     fun removeOnPageChangeListener(l: OnPageChangeListener) {
         pageChangeListeners.remove(l)
     }
 
+    /** Removes all registered [OnPageChangeListener]s at once. */
     fun clearOnPageChangeListeners() {
         pageChangeListeners.clear()
     }
 
-    // ── Adapter ──────────────────────────────────────────────────────────────────
-
+    /**
+     * The currently attached [PageAdapter], or `null` if none has been set.
+     * Changing this value resets scroll position, cancels any running animation,
+     * and recycles all active page views.
+     */
     private var adapter: PageAdapter? = null
 
+    /**
+     * Attaches [adapter] to this pager, resetting scroll state and reloading all pages.
+     * If the view has not yet been laid out (width == 0), the initial page load is deferred
+     * until the first layout pass completes.
+     */
     fun setAdapter(adapter: PageAdapter?) {
+        // Clear the recycle pool so stale views from a previous adapter are not reused.
+        recyclePool.clear()
         this.adapter = adapter
         cancelAnimation()
         scrollPx = 0f
@@ -140,22 +172,29 @@ class FelicityPager @JvmOverloads constructor(
         if (width > 0) {
             ensurePages()
             applyTranslations()
+            dispatchScrolled()
+            dispatchPageSelected(0, fromUser = false)
+            dispatchStateChanged(SCROLL_STATE_IDLE)
         } else {
-            // Width is 0 — the view hasn't been laid out yet.
+            // Width is 0 — the view has not been laid out yet.
             // Defer the initial page load until the first layout pass completes.
             post {
                 if (this.adapter === adapter && width > 0) {
                     ensurePages()
                     applyTranslations()
                     dispatchScrolled()
+                    dispatchPageSelected(0, fromUser = false)
+                    dispatchStateChanged(SCROLL_STATE_IDLE)
                 }
             }
         }
-        dispatchScrolled()
-        dispatchPageSelected(0, fromUser = false)
-        dispatchStateChanged(SCROLL_STATE_IDLE)
     }
 
+    /**
+     * Notifies the pager that the underlying data set has changed.
+     * All active pages are recycled and reloaded. If the current scroll position
+     * is now beyond the new end of the list, it is clamped to the last valid page.
+     */
     fun notifyDataSetChanged() {
         cancelAnimation()
         recycleAllPages()
@@ -167,37 +206,58 @@ class FelicityPager @JvmOverloads constructor(
         dispatchScrolled()
     }
 
-    // ── Configuration ─────────────────────────────────────────────────────────────
-
-    /** Duration (ms) for programmatic smooth-scrolls via [setCurrentItem]. */
+    /**
+     * Duration in milliseconds used for programmatic smooth-scrolls triggered by
+     * [setCurrentItem]. Values below 0 are clamped to 0 (instant jump).
+     */
     var animationDurationMs: Long = 620L
         set(v) {
             field = v.coerceAtLeast(0L)
         }
 
-    /** Fraction of page width required to advance on a slow release (no fling). */
+    /**
+     * Fraction of the page width that a drag must exceed in order to advance to the next
+     * page on a slow (sub-fling) release. Default is 0.25 (25 % of page width).
+     */
     private val advanceThreshold = 0.25f
 
+    /** Minimum velocity (px/s, scaled for the display) required to trigger a fling. */
     private val minFlingVelocity =
         ViewConfiguration.get(context).scaledMinimumFlingVelocity * 1.65f
 
-    /** Number of pages to keep loaded on each side of the visible page. */
+    /**
+     * Number of pages to keep loaded on each side of the currently visible page.
+     * A value of 1 loads the immediate neighbours; 2 loads two pages on each side, etc.
+     */
     private val pageRadius = 2
 
-    // ── Page pool ────────────────────────────────────────────────────────────────
-
-    /** Active pages currently attached to this ViewGroup, keyed by adapter position. */
+    /**
+     * Active pages currently attached to this [ViewGroup], keyed by adapter position.
+     * Only pages within [pageRadius] of the current scroll position are kept here;
+     * all others are recycled into [recyclePool].
+     */
     private val activePages = HashMap<Int, View>()
 
-    /** Views waiting to be re-bound — avoids inflation churn. */
+    /**
+     * A pool of detached views available for re-use. Views are placed here by [recyclePage]
+     * and retrieved by [obtainView], avoiding repeated inflation for the same view type.
+     */
     private val recyclePool = ArrayDeque<View>(8)
 
+    /**
+     * Returns a view for [position], either by rebinding a pooled view or by creating
+     * a fresh one via [PageAdapter.onCreateView].
+     */
     private fun obtainView(position: Int): View {
         val ad = adapter!!
         return recyclePool.removeLastOrNull()?.also { ad.onBindView(position, it) }
             ?: ad.onCreateView(position, this).also { ad.onBindView(position, it) }
     }
 
+    /**
+     * Recycles the active page at [position]: calls [PageAdapter.onRecycleView], moves the
+     * view to [recyclePool], and removes it from this [ViewGroup].
+     */
     private fun recyclePage(position: Int) {
         val v = activePages.remove(position) ?: return
         adapter?.onRecycleView(position, v)
@@ -205,10 +265,16 @@ class FelicityPager @JvmOverloads constructor(
         removeView(v)
     }
 
+    /** Recycles every currently active page. */
     private fun recycleAllPages() {
         activePages.keys.toList().forEach { recyclePage(it) }
     }
 
+    /**
+     * Loads and attaches the page at [position] if it is not already active.
+     * The view is immediately positioned via [applyTranslationTo] using the current
+     * [width] so it lands in the correct place even before the next layout pass.
+     */
     private fun loadPage(position: Int) {
         val ad = adapter ?: return
         if (position !in 0 until ad.getCount()) return
@@ -216,44 +282,71 @@ class FelicityPager @JvmOverloads constructor(
         val v = obtainView(position)
         activePages[position] = v
         addView(v)
+        // Measure and lay out the new child immediately so translationX is meaningful.
+        if (width > 0 && height > 0) {
+            val cw = MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY)
+            val ch = MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
+            v.measure(cw, ch)
+            v.layout(0, 0, width, height)
+        }
         applyTranslationTo(v, position)
     }
 
-    /** Ensure pages in [center ± pageRadius] are loaded; recycle those outside. */
+    /**
+     * Ensures that all pages within `[center - pageRadius, center + pageRadius]` are loaded
+     * and that any pages outside that window are recycled.
+     *
+     * The center is the page index closest to the current [scrollPx] (see [scrollPageIndex]).
+     */
     private fun ensurePages() {
         val count = adapter?.getCount() ?: return
-        val center = scrollPageIndex()
+        if (count == 0) return
+        // Use the resolved current page rather than scrollPageIndex() when width is not
+        // yet available, but guard against the sentinel value -1 used during adapter reset.
+        val center = if (width > 0) scrollPageIndex() else currentPage.coerceAtLeast(0)
         val lo = max(0, center - pageRadius)
         val hi = minOf(count - 1, center + pageRadius)
         for (i in lo..hi) loadPage(i)
         activePages.keys.filter { it !in lo..hi }.forEach { recyclePage(it) }
     }
 
-    // ── Scroll state ──────────────────────────────────────────────────────────────
-
     /**
-     * Continuous horizontal scroll in pixels.
+     * Continuous horizontal scroll position in pixels.
      * Page N is centred when `scrollPx == N * width`.
      */
     private var scrollPx = 0f
+
+    /** The adapter position of the page most recently reported as selected. */
     private var currentPage = 0
+
+    /** Current scroll state: one of [SCROLL_STATE_IDLE], [SCROLL_STATE_DRAGGING], [SCROLL_STATE_SETTLING]. */
     private var scrollState = SCROLL_STATE_IDLE
 
     private fun pageCount() = adapter?.getCount() ?: 0
     private fun maxLastPage() = (pageCount() - 1).coerceAtLeast(0)
     private fun maxScrollPx() = maxLastPage() * width.toFloat()
 
-    /** Integer page index closest to the current scroll position. */
+    /**
+     * Returns the integer page index closest to the current [scrollPx].
+     * Falls back to [currentPage] when the view width is not yet known.
+     */
     private fun scrollPageIndex(): Int {
-        val w = width.takeIf { it > 0 } ?: return currentPage
+        val w = width.takeIf { it > 0 } ?: return currentPage.coerceAtLeast(0)
         return (scrollPx / w).roundToInt().coerceIn(0, maxLastPage())
     }
 
+    /** Returns the adapter position of the currently selected page. */
     fun getCurrentItem(): Int = currentPage
 
+    /**
+     * Programmatically scrolls to [item].
+     *
+     * If [smoothScroll] is `false` (the default) the jump is instant; if `true` the pager
+     * animates using [animationDurationMs]. If the view has not been laid out yet the call
+     * is deferred until after the first layout pass.
+     */
     fun setCurrentItem(item: Int, smoothScroll: Boolean = false) {
         if (width == 0) {
-            // Layout hasn't happened yet — defer until after the first layout pass.
             post { setCurrentItem(item, smoothScroll) }
             return
         }
@@ -271,11 +364,9 @@ class FelicityPager @JvmOverloads constructor(
         }
     }
 
-    // ── Layout ────────────────────────────────────────────────────────────────────
-
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        // Every page fills the pager exactly
+        // Every page fills the pager exactly.
         val cw = MeasureSpec.makeMeasureSpec(measuredWidth, MeasureSpec.EXACTLY)
         val ch = MeasureSpec.makeMeasureSpec(measuredHeight, MeasureSpec.EXACTLY)
         for (i in 0 until childCount) getChildAt(i).measure(cw, ch)
@@ -287,27 +378,36 @@ class FelicityPager @JvmOverloads constructor(
         for (i in 0 until childCount) getChildAt(i).layout(0, 0, w, h)
         if (w > 0) {
             if (changed) {
-                // Re-anchor scroll so the current page stays centred after a size change
-                scrollPx = currentPage * w.toFloat()
+                // Re-anchor scroll so the current page stays centred after a size change.
+                scrollPx = currentPage.coerceAtLeast(0) * w.toFloat()
             }
             // Always ensure pages are loaded — covers the case where the adapter was
             // set before the first layout pass (width was 0 at that time).
-            applyTranslations()
             ensurePages()
+            applyTranslations()
         }
     }
 
+    /**
+     * Recomputes [View.translationX] for every active page based on the current [scrollPx].
+     */
     private fun applyTranslations() {
         val w = width.takeIf { it > 0 } ?: return
         for ((pos, view) in activePages) applyTranslationTo(view, pos, w)
     }
 
+    /**
+     * Sets [View.translationX] on [view] so that page [position] is centred at the current
+     * scroll position. Uses [w] as the page width (defaults to [width]).
+     */
     private fun applyTranslationTo(view: View, position: Int, w: Int = width) {
-        view.translationX = position * w.toFloat() - scrollPx
+        if (w > 0) view.translationX = position * w.toFloat() - scrollPx
     }
 
-    // ── Dispatch helpers ──────────────────────────────────────────────────────────
-
+    /**
+     * Fires [OnPageChangeListener.onPageScrolled] on all registered listeners with the
+     * position, fractional offset, and pixel offset derived from [scrollPx].
+     */
     private fun dispatchScrolled() {
         val w = width.takeIf { it > 0 } ?: return
         val posF = scrollPx / w
@@ -319,6 +419,12 @@ class FelicityPager @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Fires [OnPageChangeListener.onPageSelected] on all registered listeners if [position]
+     * differs from [currentPage], then updates [currentPage].
+     *
+     * @param fromUser `true` when the page change was triggered by a user gesture.
+     */
     private fun dispatchPageSelected(position: Int, fromUser: Boolean) {
         if (position != currentPage) {
             currentPage = position
@@ -329,6 +435,10 @@ class FelicityPager @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Fires [OnPageChangeListener.onPageScrollStateChanged] on all registered listeners if
+     * [newState] differs from the current [scrollState], then updates [scrollState].
+     */
     private fun dispatchStateChanged(newState: Int) {
         if (scrollState != newState) {
             scrollState = newState
@@ -337,8 +447,6 @@ class FelicityPager @JvmOverloads constructor(
             }
         }
     }
-
-    // ── Touch / gesture ───────────────────────────────────────────────────────────
 
     private val gestureDetector = GestureDetector(context, this)
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
@@ -397,6 +505,10 @@ class FelicityPager @JvmOverloads constructor(
 
     override fun performClick(): Boolean = super.performClick()
 
+    /**
+     * Translates [scrollPx] by [deltaPixels] (positive = scroll right / forward),
+     * then repaints all active pages and notifies listeners.
+     */
     private fun performDrag(deltaPixels: Float) {
         scrollPx = (scrollPx + deltaPixels).coerceIn(0f, maxScrollPx())
         applyTranslations()
@@ -404,6 +516,11 @@ class FelicityPager @JvmOverloads constructor(
         dispatchScrolled()
     }
 
+    /**
+     * Called when the user lifts their finger. Decides whether to fling to a distant page
+     * (when [velocityX] exceeds [minFlingVelocity]) or to snap to the nearest page using
+     * the [advanceThreshold] rule, then kicks off a settle animation.
+     */
     private fun finishDrag(velocityX: Float) {
         val w = width.takeIf { it > 0 } ?: return
         val dragDeltaPages = (scrollPx - dragStartScrollPx) / w
@@ -435,14 +552,11 @@ class FelicityPager @JvmOverloads constructor(
         isBeingDragged = false
     }
 
-    // ── GestureDetector ───────────────────────────────────────────────────────────
-
     override fun onDown(e: MotionEvent): Boolean = true
     override fun onShowPress(e: MotionEvent) {}
     override fun onSingleTapUp(e: MotionEvent): Boolean {
         performClick(); return true
     }
-
     override fun onScroll(e1: MotionEvent?, e2: MotionEvent, dx: Float, dy: Float): Boolean = false
     override fun onLongPress(e: MotionEvent) {}
 
@@ -464,8 +578,6 @@ class FelicityPager @JvmOverloads constructor(
         return true
     }
 
-    // ── Settle animation ──────────────────────────────────────────────────────────
-
     private var animating = false
     private var animStartTime = -1L   // -1 = latch on first vsync frame
     private var animDuration = 0L
@@ -480,6 +592,18 @@ class FelicityPager @JvmOverloads constructor(
         advanceAnimation(frameTimeNanos / 1_000_000L)
     }
 
+    /**
+     * Starts or retargets a smooth-scroll animation toward [targetPx].
+     *
+     * If an animation is already running and the target has changed, the animation is pivoted
+     * in-flight from the current [scrollPx] to [targetPx] without restarting from scratch.
+     * Duration is recalculated proportionally to the remaining distance so apparent speed
+     * stays consistent with no jerk or sudden acceleration.
+     *
+     * @param targetPx       Destination scroll position in pixels.
+     * @param durationOverrideMs Override the default [animationDurationMs]; `null` uses the default.
+     * @param fromUser       `true` when the scroll was initiated by a user gesture.
+     */
     private fun smoothScrollTo(targetPx: Float, durationOverrideMs: Long?, fromUser: Boolean) {
         animFromUser = fromUser
         val clamped = targetPx.coerceIn(0f, maxScrollPx())
@@ -491,11 +615,7 @@ class FelicityPager @JvmOverloads constructor(
         dispatchStateChanged(SCROLL_STATE_SETTLING)
 
         if (animating && clamped != animTo) {
-            // ── Mid-flight retarget ───────────────────────────────────────────────
-            // Don't restart from scratch. Pivot the animation so it continues from
-            // the current scroll position toward the new target. The duration is
-            // recalculated proportionally to the remaining distance so the speed
-            // stays consistent — no jerk, no sudden acceleration or deceleration.
+            // Pivot the in-flight animation toward the new target without restarting.
             val distPx = abs(clamped - scrollPx)
             val pagesAway = distPx / width.toFloat().coerceAtLeast(1f)
             val baseDuration = durationOverrideMs ?: animationDurationMs
@@ -517,6 +637,10 @@ class FelicityPager @JvmOverloads constructor(
         queueFrame()
     }
 
+    /**
+     * Posts [frameCallback] to [choreographer] if it is not already queued.
+     * Calling this when a frame is already pending is safe and is a no-op.
+     */
     private fun queueFrame() {
         if (!animPosted) {
             animPosted = true
@@ -524,6 +648,14 @@ class FelicityPager @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Advances the settle animation by one frame.
+     *
+     * The start timestamp is latched on the first call (when [animStartTime] == -1) to
+     * avoid clock-source jitter between [System.currentTimeMillis] and the vsync clock.
+     * When `t` reaches 1.0 the animation is finalised, [scrollPx] is snapped to [animTo],
+     * and [dispatchPageSelected] / [dispatchStateChanged] are fired.
+     */
     private fun advanceAnimation(nowMs: Long) {
         if (!animating) return
         if (animStartTime == -1L) animStartTime = nowMs
@@ -546,6 +678,10 @@ class FelicityPager @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Cancels any running settle animation and immediately transitions the scroll state
+     * to [SCROLL_STATE_IDLE]. The pager stays at its current [scrollPx].
+     */
     private fun cancelAnimation() {
         if (animating) {
             animating = false
@@ -555,14 +691,20 @@ class FelicityPager @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Cubic ease-out interpolator: starts fast and decelerates toward `t = 1`.
+     * Returns values in `[0, 1]` for inputs in `[0, 1]`.
+     */
     private fun easeOutCubic(t: Float): Float {
         val p = t - 1f; return p * p * p + 1f
     }
 
+    /**
+     * Converts a scroll position in pixels to the nearest integer page index,
+     * clamped to `[0, maxLastPage()]`.
+     */
     private fun pageForPx(px: Float): Int =
         (px / width.coerceAtLeast(1)).roundToInt().coerceIn(0, maxLastPage())
-
-    // ── Auto-slide ────────────────────────────────────────────────────────────────
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var autoSlideInterval = 0L
@@ -584,6 +726,13 @@ class FelicityPager @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Starts automatic page advancement, switching to the next page every [intervalMs]
+     * milliseconds. If [loop] is `true` (default) the pager wraps from the last page back
+     * to page 0; otherwise it stops at the last page.
+     *
+     * Call [stopAutoSlide] to cancel.
+     */
     fun startAutoSlide(intervalMs: Long, loop: Boolean = true) {
         autoSlideInterval = intervalMs
         autoSlideLoop = loop
@@ -591,12 +740,14 @@ class FelicityPager @JvmOverloads constructor(
         if (intervalMs > 0) mainHandler.postDelayed(autoSlideRunnable, intervalMs)
     }
 
+    /**
+     * Stops automatic page advancement started by [startAutoSlide].
+     */
     fun stopAutoSlide() {
         autoSlideInterval = 0
         mainHandler.removeCallbacks(autoSlideRunnable)
     }
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
