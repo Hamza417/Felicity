@@ -212,6 +212,7 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
         // Drag tracking
         private var dragFromPosition = -1
         private var dragToPosition = -1
+        private var isDragging = false // Tracks if the user's finger is actively holding the item
 
         override fun getMovementFlags(
                 recyclerView: RecyclerView,
@@ -252,8 +253,7 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
         // Suppress the default grey elevation shadow by returning 0
         // override fun getDefaultUIUtil() = super.getDefaultUIUtil()
 
-        // Start the shimmer when an item is selected for dragging, and stop it when released.
-
+        // Start the shimmer when an item is selected for dragging.
         override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
             super.onSelectedChanged(viewHolder, actionState)
             if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
@@ -270,9 +270,10 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
             }
             dragFromPosition = -1
             dragToPosition = -1
+            isDragging = false
 
-            // Stop the looping sweep and fade the shimmer out
-            stopShimmerAndFadeOut(viewHolder.itemView)
+            // Ensure alpha is fully reset in case the view settles faster than the animation
+            shimmerAlpha = 0f
         }
 
         // Draw the shimmer effect over the dragged item. The shimmer is a sweeping gradient band
@@ -288,7 +289,16 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
         ) {
             super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
 
-            if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && isCurrentlyActive && shimmerAlpha > 0f) {
+            // Detect the exact moment the user drops the item
+            if (isCurrentlyActive && !isDragging) {
+                isDragging = true
+            } else if (!isCurrentlyActive && isDragging) {
+                isDragging = false
+                stopShimmerAndFadeOut(viewHolder.itemView) // Start fade-out immediately on drop
+            }
+
+            // Draw the shimmer as long as we have alpha, regardless of isCurrentlyActive
+            if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && shimmerAlpha > 0f) {
                 val view = viewHolder.itemView
                 val left = view.left.toFloat()
                 val top = view.top.toFloat() + dY
@@ -342,7 +352,8 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
             releaseAnimator?.cancel()
             val capturedFraction = shimmerFraction
             releaseAnimator = ValueAnimator.ofFloat(1f, 0f).apply {
-                duration = 420
+                // Reduced duration to better match standard ItemTouchHelper settle time
+                duration = 250
                 interpolator = DecelerateInterpolator()
                 addUpdateListener {
                     shimmerAlpha = it.animatedValue as Float
