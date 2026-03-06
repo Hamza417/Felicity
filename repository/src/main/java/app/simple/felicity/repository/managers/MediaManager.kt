@@ -8,6 +8,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import app.simple.felicity.repository.constants.MediaConstants
+import app.simple.felicity.repository.managers.MediaManager.moveQueueItemSilently
+import app.simple.felicity.repository.managers.MediaManager.removeQueueItemSilently
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ProcessUtils.ensureOnMainThread
 import kotlinx.coroutines.CoroutineScope
@@ -144,47 +146,81 @@ object MediaManager {
     }
 
     /**
-     * Updates the internal song list and emits the new list to observers WITHOUT resetting
-     * the media controller or interrupting playback. Used when the queue composition changes
-     * but the currently-playing song should continue uninterrupted.
+     * Updates the internal song list and emits the new list to observers WITHOUT touching
+     * the media controller. Kept for compatibility; prefer [moveQueueItemSilently] or
+     * [removeQueueItemSilently] for drag/swipe gestures so the ExoPlayer queue is also
+     * updated surgically without any decoder reset.
      */
     fun updateQueueSilently(audios: List<Audio>, newPosition: Int) {
         this.songs = audios
         val clampedPosition = if (audios.isEmpty()) 0 else newPosition.coerceIn(0, audios.size - 1)
         currentSongPosition = clampedPosition
-
-        // Rebuild media items on the controller to reflect the new queue, but seek to the
-        // existing track so playback is not interrupted.
-        if (audios.isNotEmpty()) {
-            // Capture playback state before the async scope so we can restore it afterward.
-            val wasPlaying = mediaController?.isPlaying == true
-            scope.launch {
-                val mediaItems = withContext(Dispatchers.Default) {
-                    audios.map { audio ->
-                        val uri = File(audio.path).toUri()
-                        MediaItem.Builder()
-                            .setMediaId(audio.id.toString())
-                            .setUri(uri)
-                            .setMediaMetadata(
-                                    MediaMetadata.Builder()
-                                        .setArtist(audio.artist)
-                                        .setTitle(audio.title)
-                                        .build()
-                            )
-                            .build()
-                    }
-                }
-
-                val currentPositionMs = mediaController?.currentPosition ?: 0L
-                mediaController?.setMediaItems(mediaItems, clampedPosition, currentPositionMs)
-                mediaController?.prepare()
-                // Only resume playback if it was already playing before this update.
-                if (wasPlaying) {
-                    mediaController?.play()
-                    startSeekPositionUpdates()
-                }
-            }
+        scope.launch {
+            _songListFlow.emit(this@MediaManager.songs)
         }
+    }
+
+    /**
+     * Moves a single media item in the ExoPlayer queue from [fromIndex] to [toIndex] without
+     * interrupting playback. Also updates the internal song list to stay in sync.
+     * Safe to call for drag-reorder gestures — the decoder is never reset.
+     */
+    fun moveQueueItemSilently(fromIndex: Int, toIndex: Int) {
+        if (fromIndex == toIndex) return
+        if (fromIndex !in songs.indices || toIndex !in songs.indices) {
+            Log.w(TAG, "moveQueueItemSilently: invalid indices from=$fromIndex to=$toIndex (size=${songs.size})")
+            return
+        }
+
+        // Update internal list
+        val newList = songs.toMutableList()
+        val moved = newList.removeAt(fromIndex)
+        newList.add(toIndex, moved)
+        this.songs = newList
+
+        // Re-derive the position of the currently playing song after the move
+        val currentSong = getCurrentSong()
+        val newCurrentPosition = currentSong
+            ?.let { cs -> this.songs.indexOfFirst { it.id == cs.id } }
+            ?.coerceAtLeast(0) ?: currentSongPosition
+        currentSongPosition = newCurrentPosition
+
+        // Surgically move item in ExoPlayer — no setMediaItems, no prepare, no gap
+        mediaController?.moveMediaItem(fromIndex, toIndex)
+
+        scope.launch {
+            _songListFlow.emit(this@MediaManager.songs)
+        }
+    }
+
+    /**
+     * Removes the item at [index] from the ExoPlayer queue without interrupting playback.
+     * Also updates the internal song list. Safe to call for swipe-to-remove gestures.
+     */
+    fun removeQueueItemSilently(index: Int) {
+        if (index !in songs.indices) {
+            Log.w(TAG, "removeQueueItemSilently: invalid index=$index (size=${songs.size})")
+            return
+        }
+
+        val removedSong = songs[index]
+        val currentSong = getCurrentSong()
+        val newList = songs.toMutableList()
+        newList.removeAt(index)
+        this.songs = newList
+
+        // Figure out where the currently playing song lands after removal
+        val newCurrentPosition = if (currentSong?.id == removedSong.id) {
+            // The playing song itself was removed — stay at same index (clamped)
+            index.coerceAtMost((newList.size - 1).coerceAtLeast(0))
+        } else {
+            currentSong?.let { cs -> newList.indexOfFirst { it.id == cs.id } }
+                ?.coerceAtLeast(0) ?: currentSongPosition
+        }
+        currentSongPosition = newCurrentPosition
+
+        // Surgically remove item in ExoPlayer — no setMediaItems, no prepare, no gap
+        mediaController?.removeMediaItem(index)
 
         scope.launch {
             _songListFlow.emit(this@MediaManager.songs)

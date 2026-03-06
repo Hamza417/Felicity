@@ -96,34 +96,11 @@ class PlayingQueue : PanelFragment() {
             })
 
             adapterPlayingQueue?.setOnItemMovedCallback { from, to ->
-                val currentList = MediaManager.getSongs().toMutableList()
-                if (from in currentList.indices && to in currentList.indices) {
-                    val item = currentList.removeAt(from)
-                    currentList.add(to, item)
-                    // Figure out where the currently playing song ended up
-                    val currentSong = MediaManager.getCurrentSong()
-                    val newPosition = currentSong?.let { cs ->
-                        currentList.indexOfFirst { it.id == cs.id }
-                    }?.coerceAtLeast(0) ?: MediaManager.getCurrentPosition()
-                    MediaManager.updateQueueSilently(currentList, newPosition)
-                }
+                MediaManager.moveQueueItemSilently(from, to)
             }
 
             adapterPlayingQueue?.setOnItemSwipedCallback { position ->
-                val currentList = MediaManager.getSongs().toMutableList()
-                if (position in currentList.indices) {
-                    val removedSong = currentList.removeAt(position)
-                    val currentSong = MediaManager.getCurrentSong()
-                    val newPosition = if (currentSong?.id == removedSong.id) {
-                        // Currently playing song removed; stay at same index (clamped)
-                        position.coerceAtMost((currentList.size - 1).coerceAtLeast(0))
-                    } else {
-                        currentSong?.let { cs ->
-                            currentList.indexOfFirst { it.id == cs.id }
-                        }?.coerceAtLeast(0) ?: MediaManager.getCurrentPosition()
-                    }
-                    MediaManager.updateQueueSilently(currentList, newPosition)
-                }
+                MediaManager.removeQueueItemSilently(position)
             }
 
             binding.recyclerView.adapter = adapterPlayingQueue
