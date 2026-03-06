@@ -31,6 +31,7 @@ class PlayingQueue : PanelFragment() {
 
     private var adapterPlayingQueue: AdapterPlayingQueue? = null
     private var gridLayoutManager: GridLayoutManager? = null
+    private var hasScrolledToInitialPosition = false
 
     private val playingQueueViewModel: PlayingQueueViewModel by viewModels({ requireActivity() })
 
@@ -59,6 +60,7 @@ class PlayingQueue : PanelFragment() {
     override fun onDestroyView() {
         adapterPlayingQueue = null
         gridLayoutManager = null
+        hasScrolledToInitialPosition = false
         super.onDestroyView()
     }
 
@@ -70,7 +72,9 @@ class PlayingQueue : PanelFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 playingQueueViewModel.songs.collect { songs ->
-                    updateQueueList(songs)
+                    if (songs.isNotEmpty()) {
+                        updateQueueList(songs)
+                    }
                 }
             }
         }
@@ -141,16 +145,22 @@ class PlayingQueue : PanelFragment() {
             adapterPlayingQueue?.currentlyPlayingSong = currentSong
         }
 
-        // Check if current song is already visible; if not, scroll to it
-        if (binding.recyclerView.layoutManager is GridLayoutManager) {
+        // Check if current song is already visible; if not, scroll to it.
+        // Only do this once on initial load — subsequent queue updates (drag reorder,
+        // swipe-to-remove, song change) must NOT trigger a programmatic scroll because
+        // that creates a feedback loop: queue change → scroll → onScrolled → show/hide
+        // animations keep recycling, which floods the RV with continuous scroll calls.
+        if (!hasScrolledToInitialPosition && binding.recyclerView.layoutManager is GridLayoutManager) {
+            hasScrolledToInitialPosition = true
             val layoutManager = binding.recyclerView.layoutManager as GridLayoutManager
-            val firstVisible = layoutManager.findFirstVisibleItemPosition()
-            val lastVisible = layoutManager.findLastVisibleItemPosition()
             val currentPosition = MediaManager.getCurrentPosition()
-            if (currentPosition !in firstVisible..lastVisible) {
-                (binding.recyclerView.layoutManager as GridLayoutManager)
-                    .scrollToPositionWithOffset(MediaManager.getCurrentPosition(), binding.recyclerView.height / 2)
-
+            binding.recyclerView.post {
+                // Post so the layout has had a chance to measure before we read visible range
+                val firstVisible = layoutManager.findFirstVisibleItemPosition()
+                val lastVisible = layoutManager.findLastVisibleItemPosition()
+                if (currentPosition !in firstVisible..lastVisible) {
+                    layoutManager.scrollToPositionWithOffset(currentPosition, binding.appHeader.height)
+                }
             }
         }
     }

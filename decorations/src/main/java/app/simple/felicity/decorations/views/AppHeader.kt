@@ -257,6 +257,7 @@ class AppHeader @JvmOverloads constructor(
             // Second attempt after potential adapter notifications
             rv.post {
                 ensureListStartBelowPadding(rv)
+                Log.d(TAG, "Applied padding adjustment of $paddingDelta, headerHeight=$headerHeight, desiredTop=$desiredTop")
             }
         }
     }
