@@ -153,6 +153,7 @@ class Lyrics : MediaFragment() {
     private fun updateState() {
         val audio = MediaManager.getCurrentSong() ?: return
         binding.artist.text = audio.artist
+        binding.lrc.setDuration(audio.duration)
         binding.seekbar.setMax(audio.duration.toFloat())
         binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
         updatePlayButtonState(MediaManager.isPlaying())
@@ -182,6 +183,7 @@ class Lyrics : MediaFragment() {
         lyricsViewModel.loadLrcData()
         binding.name.text = audio.title
         binding.artist.text = audio.artist
+        binding.lrc.setDuration(audio.duration)
         binding.seekbar.setMaxWithReset(audio.duration.toFloat())
         binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
     }

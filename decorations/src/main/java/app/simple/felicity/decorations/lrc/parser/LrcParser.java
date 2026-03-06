@@ -51,6 +51,12 @@ public class LrcParser implements ILyricsParser {
                 continue;
             }
             
+            // Lines that don't start with '[' cannot be LRC metadata or lyric lines;
+            // treat them as plain-text annotations (e.g. copyright notices) and skip them.
+            if (!line.startsWith("[")) {
+                continue;
+            }
+            
             // Try to parse as metadata
             if (parseMetadata(line, lrcData)) {
                 continue;

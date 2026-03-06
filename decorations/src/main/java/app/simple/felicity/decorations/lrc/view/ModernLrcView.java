@@ -134,6 +134,13 @@ public class ModernLrcView extends View implements ThemeChangedListener {
      * Set to false (default) in a Fragment where there is no dismissible parent.
      */
     private boolean parentDismissEnabled = false;
+    
+    /**
+     * Total song duration in milliseconds, used for proportional scrolling in static (TXT) mode.
+     * Set via {@link #setDuration(long)}.
+     */
+    private long durationMs = 0L;
+    
     // Auto scroll resume
     private final Runnable autoScrollRunnable = () -> {
         isUserScrolling = false;
@@ -822,15 +829,32 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     
     /**
      * Update current playback time.
-     * This is a no-op when the view is in static (plain-text) mode.
+     * <p>
+     * For time-synced (LRC) lyrics: highlights the current line and auto-scrolls to it.
+     * <p>
+     * For static (plain-text / TXT) lyrics: scrolls the view proportionally from top to
+     * bottom based on the current position relative to the total song duration. Call
+     * {@link #setDuration} with the song length before calling this method.
+     * Manual user scrolling is respected – auto-scroll resumes after
+     * {@link #AUTO_SCROLL_DELAY} ms of inactivity.
      */
     public void updateTime(long timeInMillis) {
         if (lrcData == null || lrcData.isEmpty()) {
             return;
         }
         
-        // Plain-text lyrics have no timestamps; skip time-driven logic entirely.
+        // Plain-text lyrics have no timestamps; scroll proportionally through the content.
         if (isStaticMode()) {
+            if (!isUserScrolling && isAutoScrollEnabled && durationMs > 0) {
+                float maxScroll = getMaxScrollY();
+                if (maxScroll > 0) {
+                    float fraction = Math.max(0f, Math.min(1f, (float) timeInMillis / (float) durationMs));
+                    float targetY = fraction * maxScroll;
+                    if (Math.abs(targetY - scrollY) > 1f) {
+                        animateScroll(scrollY, targetY);
+                    }
+                }
+            }
             return;
         }
         
@@ -1192,7 +1216,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     /**
      * Update text alignment for paints.
      * Paint.Align only affects canvas.drawText() (used for the empty-text placeholder).
-     * StaticLayout.draw() also honours Paint.Align internally, so we always keep it LEFT
+     * StaticLayout.draw() also honors Paint.Align internally, so we always keep it LEFT
      * and handle alignment entirely via canvas translation in calculateXPositionForLayout().
      */
     private void updateTextAlignment() {
@@ -1398,12 +1422,25 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.isAutoScrollEnabled = enabled;
     }
     
+    /**
+     * Set the total song duration in milliseconds.
+     * This is used in static (plain-text / TXT) mode to drive proportional auto-scrolling.
+     * Call this whenever a new song is loaded, before (or immediately after) calling
+     * {@link #setLrcData(LrcData)}.
+     *
+     * @param durationMs song duration in milliseconds (0 disables static auto-scroll)
+     */
+    public void setDuration(long durationMs) {
+        this.durationMs = durationMs;
+    }
+    
     public void reset() {
         this.lrcData = null;
         this.currentLineIndex = -1;
         this.scrollY = 0f;
         this.targetScrollY = 0f;
         this.isUserScrolling = false;
+        this.durationMs = 0L;
         this.normalLayoutCache.clear();
         this.currentLayoutCache.clear();
         this.layoutHeights.clear();
