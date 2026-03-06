@@ -159,7 +159,9 @@ class PlayingQueue : PanelFragment() {
                 val firstVisible = layoutManager.findFirstVisibleItemPosition()
                 val lastVisible = layoutManager.findLastVisibleItemPosition()
                 if (currentPosition !in firstVisible..lastVisible) {
-                    layoutManager.scrollToPositionWithOffset(currentPosition, binding.appHeader.height)
+                    layoutManager.scrollToPositionWithOffset(
+                            /* position = */ currentPosition,
+                            /* offset = */ binding.appHeader.height + resources.getDimensionPixelSize(R.dimen.padding_8))
                 }
             }
         }
