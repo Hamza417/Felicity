@@ -95,6 +95,10 @@ class DefaultPlayer : MediaFragment() {
             openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
         }
 
+        binding.count.setOnClickListener {
+            binding.count.callOnClick()
+        }
+
         binding.search.setOnClickListener {
             openFragment(Search.newInstance(), Search.TAG)
         }
