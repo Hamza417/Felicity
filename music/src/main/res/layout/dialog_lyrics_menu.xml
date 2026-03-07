@@ -33,20 +33,30 @@
                 app:appFontStyle="bold"
                 app:textColorStyle="primary" />
 
-            <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            <app.simple.felicity.decorations.views.HighlightTextView
                 android:id="@+id/minus"
-                android:layout_width="@dimen/button_size"
-                android:layout_height="@dimen/button_size"
-                android:src="@drawable/ic_remove_circle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/time_minus"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_15"
+                android:layout_gravity="center_vertical"
                 android:layout_marginEnd="@dimen/padding_5"
-                app:buttonTintType="regular" />
+                app:appFontStyle="medium"
+                app:buttonTintType="regular"
+                app:textColorStyle="secondary" />
 
-            <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            <app.simple.felicity.decorations.views.HighlightTextView
                 android:id="@+id/plus"
-                android:layout_width="@dimen/button_size"
-                android:layout_height="@dimen/button_size"
-                android:src="@drawable/ic_add_circle"
-                app:buttonTintType="regular" />
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/time_plus"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_15"
+                android:layout_gravity="center_vertical"
+                app:appFontStyle="medium"
+                app:buttonTintType="regular"
+                app:textColorStyle="secondary" />
 
         </LinearLayout>
 

@@ -353,6 +353,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                         .setText(audios[position].title)
                         .setStream(uri)
                         .startChooser()
+
+                    dismiss()
                 }
 
                 binding.delete.setOnClickListener {
