@@ -87,6 +87,7 @@ class MiniPlayer @JvmOverloads constructor(
         defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr), GestureDetector.OnGestureListener, ThemeChangedListener {
 
+
     // ═══════════════════════════════════════════════════════════════════════════
     // Callbacks / public API
     // ═══════════════════════════════════════════════════════════════════════════
@@ -115,23 +116,56 @@ class MiniPlayer @JvmOverloads constructor(
     var callbacks: Callbacks? = null
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // Central configuration — all tunable values live here
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /** Title text size in SP. Change via [setTitleTextSize] or [setTextSizes]. */
+    private var titleTextSizeSp: Float = TITLE_TEXT_SIZE_SP
+
+    /** Artist text size in SP. Change via [setArtistTextSize] or [setTextSizes]. */
+    private var artistTextSizeSp: Float = ARTIST_TEXT_SIZE_SP
+
+    // ── Layout proportions / spacing constants ────────────────────────────────
+    /** Button zone height factor relative to view height (square = btnSz × btnSz). */
+    private val btnHeightFactor = BTN_HEIGHT_FACTOR
+
+    /** Horizontal padding on each side of the button zone in dp. */
+    private val btnHorizPaddingDp = BTN_HORIZ_PADDING_DP
+
+    /** Padding between art and text in dp. */
+    private val textPaddingDp = TEXT_PADDING_DP
+
+    /** Gap between title and artist lines in dp. */
+    private val textLineGapDp = TEXT_LINE_GAP_DP
+
+    /** Edge-fade width as a fraction of view width (clamped to a min dp). */
+    private val edgeFadeWidthFraction = EDGE_FADE_WIDTH_FRACTION
+
+    /** Minimum edge-fade width in dp. */
+    private val edgeFadeMinWidthDp = EDGE_FADE_MIN_WIDTH_DP
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // Text size setters (public)
     // ═══════════════════════════════════════════════════════════════════════════
 
     /** Override the title text size. Pass sp value, e.g. 14f. */
     fun setTitleTextSize(spValue: Float) {
+        titleTextSizeSp = spValue
         titlePaint.textSize = sp(spValue)
         invalidate()
     }
 
     /** Override the artist text size. Pass sp value, e.g. 12f. */
     fun setArtistTextSize(spValue: Float) {
+        artistTextSizeSp = spValue
         artistPaint.textSize = sp(spValue)
         invalidate()
     }
 
     /** Set both title and artist sizes in one call. */
     fun setTextSizes(titleSp: Float, artistSp: Float) {
+        titleTextSizeSp = titleSp
+        artistTextSizeSp = artistSp
         titlePaint.textSize = sp(titleSp)
         artistPaint.textSize = sp(artistSp)
         invalidate()
@@ -647,51 +681,10 @@ class MiniPlayer @JvmOverloads constructor(
     private fun isInPlayPauseZone(x: Float, @Suppress("UNUSED_PARAMETER") y: Float): Boolean =
         x >= width - btnZoneWidth
 
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-
-        val hF = h.toFloat()
-        val wF = w.toFloat()
-
-        cornerRadiusPx = AppearancePreferences.getCornerRadius()
-        invalidateOutline()
-
-        // Button zone = square centred in right portion
-        val btnSz = hF * 0.55f
-        btnZoneWidth = btnSz + dp(12f) * 2
-        btnCentreX = wF - btnZoneWidth / 2f
-        btnCentreY = hF / 2f
-
-        // Art slot = full height square, left-aligned
-        artSize = hF
-        artRect.set(0f, 0f, artSize, artSize)
-        artClipRect.set(0f, 0f, artSize, artSize)
-
-        // Text block
-        val textPad = dp(8f)
-        textLeft = artSize + textPad
-        textRight = wF - btnZoneWidth - textPad
-
-        // Card rect (for background drawing) + rounded clip path for content
-        cardRect.set(0f, 0f, wF, hF)
-        cardClipPath.rewind()
-        cardClipPath.addRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, Path.Direction.CW)
-
-        // Edge-fade width ≈ 15% of the view width, at least 48 dp
-        edgeFadeWidth = (wF * 0.15f).coerceAtLeast(dp(48f))
-        rebuildEdgeShaders(wF, hF)
-
-        // Refresh title/artist paint sizes in case density changed
-        titlePaint.textSize = sp(13f)
-        artistPaint.textSize = sp(11.5f)
-
-        // Typefaces
-        val font = AppearancePreferences.getAppFont()
-        titlePaint.typeface = TypeFace.getTypeFace(font, 3 /* BOLD */, context)
-        artistPaint.typeface = TypeFace.getTypeFace(font, 1 /* REGULAR */, context)
-
-        // Update play/pause geometry
-        updatePlayPauseGeometry(btnSz)
+        applyConfig(w.toFloat(), h.toFloat())
 
         // Re-anchor vertical hide offset after a size change
         if (h > 0 && oldh > 0 && translationY > 0f) {
@@ -705,6 +698,81 @@ class MiniPlayer @JvmOverloads constructor(
 
         if (w > 0) ensurePageBitmaps()
         applyPendingTy()
+    }
+
+    /**
+     * Single authoritative place that (re)computes ALL geometry and paint state.
+     * Called from the `init` block (with w=0, h=0 — only paints are configured),
+     * from [onSizeChanged] (full geometry + paints), and from [onThemeChanged]
+     * (colours + corner radius only, geometry left unchanged if size did not change).
+     *
+     * Passing `w <= 0 || h <= 0` skips the geometry recalculation so it is safe
+     * to call before the view has been laid out.
+     */
+    private fun applyConfig(w: Float = width.toFloat(), h: Float = height.toFloat()) {
+        // ── Colours from theme ─────────────────────────────────────────────
+        if (!isTransparent) {
+            cardColor = ThemeManager.theme.viewGroupTheme.backgroundColor
+            titleColor = ThemeManager.theme.textViewTheme.primaryTextColor
+            artistColor = ThemeManager.theme.textViewTheme.secondaryTextColor
+            iconColor = ThemeManager.theme.iconTheme.regularIconColor
+        }
+        bgPaint.color = cardColor
+        titlePaint.color = titleColor
+        artistPaint.color = artistColor
+        ppPaint.color = iconColor
+
+        // ── Text sizes ─────────────────────────────────────────────────────
+        titlePaint.textSize = sp(titleTextSizeSp)
+        artistPaint.textSize = sp(artistTextSizeSp)
+
+        // ── Typefaces ──────────────────────────────────────────────────────
+        val font = AppearancePreferences.getAppFont()
+        titlePaint.typeface = TypeFace.getTypeFace(font, 3 /* BOLD */, context)
+        artistPaint.typeface = TypeFace.getTypeFace(font, 1 /* REGULAR */, context)
+
+        // ── Corner radius ──────────────────────────────────────────────────
+        val newRadius = AppearancePreferences.getCornerRadius()
+        if (newRadius != cornerRadiusPx || cardRect.width() != w) {
+            cornerRadiusPx = newRadius
+            if (w > 0f && h > 0f) {
+                cardClipPath.rewind()
+                cardClipPath.addRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, Path.Direction.CW)
+            }
+            invalidateOutline()
+        }
+
+        // ── Geometry (only when the view has a real size) ──────────────────
+        if (w <= 0f || h <= 0f) return
+
+        // Button zone: square of side btnSz, padded horizontally
+        val btnSz = h * btnHeightFactor
+        val btnHorizPad = dp(btnHorizPaddingDp)
+        btnZoneWidth = btnSz + btnHorizPad * 2f
+        btnCentreX = w - btnZoneWidth / 2f
+        btnCentreY = h / 2f
+
+        // Art slot: full-height square, left-aligned
+        artSize = h
+        artRect.set(0f, 0f, artSize, artSize)
+        artClipRect.set(0f, 0f, artSize, artSize)
+
+        // Text block
+        val textPad = dp(textPaddingDp)
+        textLeft = artSize + textPad
+        textRight = w - btnZoneWidth - textPad
+
+        // Card rects and clip path
+        cardRect.set(0f, 0f, w, h)
+        cardClipPath.rewind()
+        cardClipPath.addRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, Path.Direction.CW)
+
+        // Edge-fade width
+        edgeFadeWidth = (w * edgeFadeWidthFraction).coerceAtLeast(dp(edgeFadeMinWidthDp))
+        rebuildEdgeShaders(w, h)
+
+        // Play/pause morphing geometry
+        updatePlayPauseGeometry(btnSz)
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -726,13 +794,13 @@ class MiniPlayer @JvmOverloads constructor(
     private val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = titleColor
-        textSize = sp(18f)
+        // textSize is set in applyConfig() — do NOT set it here
     }
 
     private val artistPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = artistColor
-        textSize = sp(12F)
+        // textSize is set in applyConfig() — do NOT set it here
     }
 
     // Placeholder art paint (when bitmap is null/loading)
@@ -848,6 +916,17 @@ class MiniPlayer @JvmOverloads constructor(
     private var isTransparent = false
     private var opaqueCardColor: Int = cardColor
     private var bgColorAnimator: ValueAnimator? = null
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // init — single startup entry-point, runs after ALL properties are initialized
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    init {
+        // Configure paint colours, typefaces, and text sizes from the central
+        // applyConfig() method. Geometry is deferred to onSizeChanged because
+        // width/height are 0 at this point.
+        applyConfig()
+    }
 
     fun makeTransparent(animated: Boolean = true) {
         if (isTransparent) return
@@ -1043,7 +1122,7 @@ class MiniPlayer @JvmOverloads constructor(
         // Height of each text line = descent - ascent  (ascent is negative)
         val titleLineH = tm.descent - tm.ascent
         val artistLineH = am.descent - am.ascent
-        val gap = dp(3f)
+        val gap = dp(textLineGapDp)
 
         // Total height of the two-line block (tight, like a vertical LinearLayout wrap_content)
         val blockH = titleLineH + gap + artistLineH
@@ -1347,18 +1426,7 @@ class MiniPlayer @JvmOverloads constructor(
 
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
         if (isTransparent) return   // stay white until makeOpaque()
-        cardColor = theme.viewGroupTheme.backgroundColor; bgPaint.color = cardColor
-        titleColor = theme.textViewTheme.primaryTextColor; titlePaint.color = titleColor
-        artistColor = theme.textViewTheme.secondaryTextColor; artistPaint.color = artistColor
-        iconColor = theme.iconTheme.regularIconColor; ppPaint.color = iconColor
-        // Refresh corner radius in case the user changed it in preferences
-        val newRadius = AppearancePreferences.getCornerRadius()
-        if (newRadius != cornerRadiusPx) {
-            cornerRadiusPx = newRadius
-            cardClipPath.rewind()
-            cardClipPath.addRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, Path.Direction.CW)
-            invalidateOutline()
-        }
+        applyConfig()
         setCustomizations()
         invalidate()
     }
@@ -1530,6 +1598,32 @@ class MiniPlayer @JvmOverloads constructor(
 
         /** Duration for elevation animation. */
         private const val ELEV_ANIM_MS = 220L
+
+        // ── Layout constants (all in one place — change here to tune the look) ──
+
+        /** Title text size in SP. */
+        private const val TITLE_TEXT_SIZE_SP = 18f
+
+        /** Artist text size in SP. */
+        private const val ARTIST_TEXT_SIZE_SP = 12f
+
+        /** Button zone height as a fraction of the view height. */
+        private const val BTN_HEIGHT_FACTOR = 0.55f
+
+        /** Horizontal padding on each side of the button zone, in dp. */
+        private const val BTN_HORIZ_PADDING_DP = 12f
+
+        /** Horizontal padding between the art square and the text block, in dp. */
+        private const val TEXT_PADDING_DP = 8f
+
+        /** Gap between the title and artist text lines, in dp. */
+        private const val TEXT_LINE_GAP_DP = 3f
+
+        /** Edge-fade width as a fraction of the view width. */
+        private const val EDGE_FADE_WIDTH_FRACTION = 0.15f
+
+        /** Minimum edge-fade width in dp (clamp floor). */
+        private const val EDGE_FADE_MIN_WIDTH_DP = 48f
     }
 }
 
