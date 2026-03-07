@@ -8,7 +8,6 @@ import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
-import android.widget.ImageView
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
@@ -17,13 +16,13 @@ import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.databinding.ActivityMainBinding
 import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
-import app.simple.felicity.decorations.views.MiniPlayer
 import app.simple.felicity.decorations.views.MiniPlayerItem
+import app.simple.felicity.decorations.views.MiniPlayerView
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.extensions.fragments.ScopedFragment
-import app.simple.felicity.glide.util.AudioCoverUtils.loadPeristyleArtCover
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtIntoBitmap
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.repository.constants.MediaConstants
@@ -58,14 +57,14 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.miniPlayer.callbacks = object : MiniPlayer.Callbacks {
+        binding.miniPlayer.callbacks = object : MiniPlayerView.Callbacks {
             override fun onPageSelected(position: Int) {
                 MediaManager.updatePosition(position)
             }
 
-            override fun onLoadArt(imageView: ImageView, payload: Any?) {
+            override fun onLoadArt(position: Int, payload: Any?, setBitmap: (android.graphics.Bitmap?) -> Unit) {
                 if (payload is Audio) {
-                    imageView.loadPeristyleArtCover(payload)
+                    loadArtIntoBitmap(payload, setBitmap)
                 }
             }
 

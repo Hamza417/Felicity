@@ -24,11 +24,13 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <app.simple.felicity.decorations.views.MiniPlayer
+    <app.simple.felicity.decorations.views.MiniPlayerView
         android:id="@+id/mini_player"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="@dimen/padding_15"
-        android:layout_gravity="bottom" />
+        android:layout_height="72dp"
+        android:layout_gravity="bottom"
+        android:layout_marginStart="@dimen/padding_15"
+        android:layout_marginEnd="@dimen/padding_15"
+        android:layout_marginBottom="@dimen/padding_15" />
 
 </app.simple.felicity.decorations.theme.ThemeCoordinatorLayout>
