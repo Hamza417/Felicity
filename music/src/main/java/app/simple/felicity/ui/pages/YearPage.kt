@@ -108,7 +108,7 @@ class YearPage : MediaFragment() {
             }
 
             override fun onShuffleClicked(audios: MutableList<Audio>, position: Int) {
-                setMediaItems(audios.shuffled().toMutableList(), position)
+                shuffleMediaItems(audios)
             }
 
             override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {
@@ -135,7 +135,7 @@ class YearPage : MediaFragment() {
                             onMenuItemClick = {
                                 when (it) {
                                     R.string.play -> setMediaItems(currentData.songs.toMutableList(), 0)
-                                    R.string.shuffle -> setMediaItems(currentData.songs.shuffled().toMutableList(), 0)
+                                    R.string.shuffle -> shuffleMediaItems(currentData.songs)
                                 }
                             },
                             onDismiss = {}

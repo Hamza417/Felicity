@@ -20,6 +20,7 @@ import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.dialogs.app.AudioInformation.Companion.showAudioInfo
 import app.simple.felicity.dialogs.lyrics.Lyrics.Companion.showLyrics
 import app.simple.felicity.interfaces.MiniPlayerPolicy
+import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.database.instances.SongStatDatabase
 import app.simple.felicity.repository.managers.MediaManager
@@ -27,6 +28,7 @@ import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.shuffle.Shuffle.shuffle
 import app.simple.felicity.repository.utils.AudioUtils
 import app.simple.felicity.repository.utils.AudioUtils.createSongStat
 import app.simple.felicity.shared.utils.ViewUtils.gone
@@ -121,6 +123,32 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 MediaManager.play()
                 createSongHistoryDatabase(songs)
             }
+        }
+    }
+
+    /**
+     * Shuffle [songs] using the algorithm from [ShufflePreferences], then:
+     *  - If a song from [songs] is currently playing → keep it playing but update the queue with
+     *    the shuffled order (the current song is placed at index 0 of the shuffled list so the
+     *    transition is seamless).
+     *  - If nothing from this list is playing → start playing from position 0 of the shuffled list.
+     */
+    protected fun shuffleMediaItems(songs: List<Audio>) {
+        val algorithm = ShufflePreferences.getShuffleAlgorithm()
+        val shuffled = songs.shuffle(algorithm).toMutableList()
+
+        val currentSong = MediaManager.getCurrentSong()
+        val currentInList = currentSong?.let { cs -> shuffled.indexOfFirst { it.id == cs.id } }
+
+        if (currentInList != null && currentInList != -1) {
+            // Current song is in the list — bubble it to position 0 so the queue update
+            // is transparent to the listener (song keeps playing, queue is now shuffled).
+            shuffled.removeAt(currentInList)
+            shuffled.add(0, currentSong)
+            setMediaItems(shuffled, 0)
+        } else {
+            // Nothing from this list is playing — start fresh from the top of the shuffled list.
+            setMediaItems(shuffled, 0)
         }
     }
 

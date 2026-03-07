@@ -107,6 +107,16 @@ class AlbumPage : MediaFragment() {
                 setMediaItems(songs, position)
             }
 
+            override fun onPlayClicked(audios: MutableList<Audio>, position: Int) {
+                Log.i(TAG, "onPlayClick: Play button clicked for album: ${album.name}, position: $position")
+                setMediaItems(audios, position)
+            }
+
+            override fun onShuffleClicked(audios: MutableList<Audio>, position: Int) {
+                Log.i(TAG, "onShuffleClick: Shuffle button clicked for album: ${album.name}")
+                shuffleMediaItems(audios)
+            }
+
             override fun onSongLongClicked(songs: List<Audio>, position: Int, view: View) {
                 super.onSongLongClicked(songs, position, view)
                 openSongsMenu(songs, position, view as ImageView)
@@ -144,7 +154,7 @@ class AlbumPage : MediaFragment() {
                                     }
                                     R.string.shuffle -> {
                                         Log.i(TAG, "onMenuItemClick: Shuffle clicked for album: ${album.name}")
-                                        setMediaItems(currentData.songs.shuffled().toMutableList(), 0)
+                                        shuffleMediaItems(currentData.songs)
                                     }
                                     R.string.send -> {
                                         Log.i(TAG, "onMenuItemClick: Send clicked for album: ${album.name}")

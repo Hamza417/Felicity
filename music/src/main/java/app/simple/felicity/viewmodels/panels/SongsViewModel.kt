@@ -74,6 +74,7 @@ class SongsViewModel @Inject constructor(
     fun shuffleSongs() {
         viewModelScope.launch(Dispatchers.Default) {
             val algorithm = ShufflePreferences.getShuffleAlgorithm()
+            Log.d(TAG, "shuffleSongs: Shuffling ${_songs.value.size} songs with algorithm $algorithm")
             val shuffled = _songs.value.shuffle(algorithm)
             _songs.value = shuffled
             Log.d(TAG, "shuffleSongs: ${shuffled.size} songs shuffled with algorithm $algorithm")

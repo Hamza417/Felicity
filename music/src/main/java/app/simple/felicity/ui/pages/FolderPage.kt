@@ -112,7 +112,7 @@ class FolderPage : MediaFragment() {
 
             override fun onShuffleClicked(audios: MutableList<Audio>, position: Int) {
                 Log.i(TAG, "onShuffleClicked: Shuffle clicked for folder: ${folder.name}")
-                setMediaItems(audios.shuffled().toMutableList(), position)
+                shuffleMediaItems(audios)
             }
 
             override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {
@@ -147,7 +147,7 @@ class FolderPage : MediaFragment() {
                                     }
                                     R.string.shuffle -> {
                                         Log.i(TAG, "onMenuItemClick: Shuffle clicked for folder: ${folder.name}")
-                                        setMediaItems(currentData.songs.shuffled().toMutableList(), 0)
+                                        shuffleMediaItems(currentData.songs)
                                     }
                                 }
                             },

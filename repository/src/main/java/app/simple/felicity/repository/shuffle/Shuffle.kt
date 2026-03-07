@@ -1,5 +1,6 @@
 package app.simple.felicity.repository.shuffle
 
+import android.util.Log
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.shuffle.Shuffle.FISHER_YATES
 import app.simple.felicity.repository.shuffle.Shuffle.MILLER
@@ -39,38 +40,32 @@ object Shuffle {
      * Time: O(n), Space: O(n).
      *
      * Reference: Miller, S. (2020). "A practical pseudo-random shuffle".
+     * Time: O(n), Space: O(n).
      */
     fun List<Audio>.millerShuffle(seed: Long = System.currentTimeMillis()): List<Audio> {
         val n = size
         if (n <= 1) return this.toList()
 
-        // Build a permutation table using a linear-congruential style hash
-        val indices = IntArray(n) { it }
         val prime = findNearestPrimeGreaterThan(n)
+
+        // Ensure offset is a positive number within 0 until n
         val offset = (seed % n).toInt().let { if (it < 0) it + n else it }
+
         val result = MutableList(n) { this[0] }
 
-        var filled = 0
         var k = offset
-        val visited = BooleanArray(n)
 
-        // Walk through prime-step hops, wrapping modulo n, skipping duplicates
-        while (filled < n) {
+        // Because 'prime' is coprime to 'n', this loop is guaranteed
+        // to visit every index exactly once. No collisions, no infinite loops.
+        for (filled in 0 until n) {
             val idx = k % n
-            if (!visited[idx]) {
-                result[filled++] = this[idx]
-                visited[idx] = true
-            }
-            k = (k + prime) % (prime * 2) // advance with prime step
-            if (k >= n * 3) k = k % n     // prevent runaway
+            result[filled] = this[idx]
+
+            // Advance k using modulo n
+            k = (k + prime) % n
         }
 
-        // Fallback: fill any remaining slots in order (shouldn't happen, but safety net)
-        if (filled < n) {
-            for (i in indices) {
-                if (!visited[i]) result[filled++] = this[i]
-            }
-        }
+        Log.d("Shuffle", "Miller shuffle completed with seed $seed, prime $prime, offset $offset, total results ${result.size}")
 
         return result
     }
@@ -87,8 +82,6 @@ object Shuffle {
             else -> fisherYatesShuffle()   // FISHER_YATES is default
         }
     }
-
-    // ── helpers ──────────────────────────────────────────────────────────────
 
     /** Returns the smallest prime number strictly greater than [n]. */
     private fun findNearestPrimeGreaterThan(n: Int): Int {
