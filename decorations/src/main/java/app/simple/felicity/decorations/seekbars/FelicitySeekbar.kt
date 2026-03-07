@@ -127,10 +127,10 @@ class FelicitySeekbar @JvmOverloads constructor(
     // Optional overrides for corner radii (rx=ry) of thumb fill only (ring follows thumb)
     private var thumbCornerRadiusPxOverride: Float? = null
 
-    // Thumb shape selection: PILL or OVAL (circle/ellipse)
-    enum class ThumbShape { PILL, OVAL, CIRCLE }
+    // Thumb shape selection: PILL or CIRCLE
+    enum class ThumbShape { PILL, CIRCLE }
 
-    private var thumbShape: ThumbShape = ThumbShape.OVAL
+    private var thumbShape: ThumbShape = ThumbShape.CIRCLE
 
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -403,11 +403,10 @@ class FelicitySeekbar @JvmOverloads constructor(
                 thumbShadowRadius = getDimension(R.styleable.FelicitySeekbar_felicityThumbShadowRadius, 6f * d)
                 thumbShadowColor = getColor(R.styleable.FelicitySeekbar_felicityThumbShadowColor, thumbShadowColor)
                 defaultIndicatorColor = getColor(R.styleable.FelicitySeekbar_felicityDefaultIndicatorColor, thumbRingColor)
-                // New: read thumb shape enum (0=pill, 1=oval, 2=circle)
+                // New: read thumb shape enum (0=pill, 1=circle)
                 if (hasValue(R.styleable.FelicitySeekbar_felicityThumbShape)) {
                     thumbShape = when (getInt(R.styleable.FelicitySeekbar_felicityThumbShape, 0)) {
-                        1 -> ThumbShape.OVAL
-                        2 -> ThumbShape.CIRCLE
+                        1 -> ThumbShape.CIRCLE
                         else -> ThumbShape.PILL
                     }
                 }
@@ -498,6 +497,7 @@ class FelicitySeekbar @JvmOverloads constructor(
             labelTextColor = ThemeManager.theme.textViewTheme.secondaryTextColor
             labelBackgroundColor = ThemeManager.theme.viewGroupTheme.highlightColor
             setThumbCornerRadius(AppearancePreferences.getCornerRadius())
+            applyThumbPreferences()
             applyPaintColors()
             setupSmudgeAndShadow()
             setupLabelPaint()
@@ -546,7 +546,7 @@ class FelicitySeekbar @JvmOverloads constructor(
      *  - Snaps to integer multiples of [stepSize] (from [minProgress]).
      *  - Draws a small tick mark at each step position on the track.
      *  - Emits integer values via [OnStepSeekChangeListener].
-     *  - Applies elastic/sticky snap behaviour: the thumb sticks to the current step
+     *  - Applies elastic/sticky snap behavior: the thumb sticks to the current step
      *    until the finger drags far enough to release it to the adjacent step.
      */
     fun setStepMode(enabled: Boolean) {
@@ -1261,26 +1261,6 @@ class FelicitySeekbar @JvmOverloads constructor(
         thumbOuterRect.set(thumbCx - scaledHalfW, cy - scaledR, thumbCx + scaledHalfW, cy + scaledR)
 
         when (thumbShape) {
-            ThumbShape.OVAL -> {
-                if (thumbShadowRadius > 0f) canvas.drawOval(thumbOuterRect, thumbShadowPaint)
-                if (thumbInnerColor != Color.TRANSPARENT) {
-                    thumbInnerRect.set(thumbOuterRect)
-                    thumbInnerRect.inset(thumbRingWidthPx / 2f, thumbRingWidthPx / 2f)
-                    canvas.drawOval(thumbInnerRect, thumbInnerPaint)
-                }
-                thumbStrokeRect.set(thumbOuterRect)
-                thumbStrokeRect.inset(thumbRingWidthPx / 2f, thumbRingWidthPx / 2f)
-                canvas.drawOval(thumbStrokeRect, thumbRingPaint)
-                if (pressRingProgress > 0f) {
-                    val extra = pressRingOutsetPx * pressRingProgress
-                    thumbPressRingRect.set(thumbOuterRect)
-                    thumbPressRingRect.inset(-extra, -extra)
-                    val alpha = (0.35f * pressRingProgress * 255).toInt().coerceIn(0, 255)
-                    thumbPressRingPaint.color = (pressRingColor and 0x00FFFFFF) or (alpha shl 24)
-                    thumbPressRingPaint.strokeWidth = pressRingStrokePx
-                    canvas.drawOval(thumbPressRingRect, thumbPressRingPaint)
-                }
-            }
             ThumbShape.PILL -> {
                 val baseThumbCornerR = 100f
                 if (thumbShadowRadius > 0f) canvas.drawRoundRect(thumbOuterRect, baseThumbCornerR, baseThumbCornerR, thumbShadowPaint)
@@ -1377,7 +1357,6 @@ class FelicitySeekbar @JvmOverloads constructor(
         }
     }
 
-    @Suppress("UnnecessaryVariable")
     private fun isPointOnThumb(x: Float, y: Float): Boolean {
         val hOut = horizontalOutset()
         val baseSafeInset = when (thumbShape) {
@@ -1403,11 +1382,6 @@ class FelicitySeekbar @JvmOverloads constructor(
         val halfW = (thumbWidthPx / 2f) * thumbScale
 
         return when (thumbShape) {
-            ThumbShape.OVAL -> {
-                val a = halfW
-                val b = halfH
-                if (a <= 0f || b <= 0f) false else (dx * dx) / (a * a) + (dy * dy) / (b * b) <= 1f
-            }
             ThumbShape.PILL -> {
                 val cornerR = min(thumbCornerRadiusPxOverride ?: halfH, min(halfH, halfW))
                 val bodyHalfW = max(0f, halfW - cornerR)
@@ -1643,9 +1617,12 @@ class FelicitySeekbar @JvmOverloads constructor(
             val shape = AppearancePreferences.getSeekbarThumbStyle()
             when (shape) {
                 AppearancePreferences.SEEKBAR_THUMB_PILL -> setThumbShape(ThumbShape.PILL)
-                AppearancePreferences.SEEKBAR_THUMB_CIRCLE -> setThumbShape(ThumbShape.CIRCLE)
-                else -> setThumbShape(ThumbShape.OVAL)
+                else -> setThumbShape(ThumbShape.CIRCLE)
             }
+            thumbRingWidthPx = AppearancePreferences.getSeekbarThumbRingSize()
+            val d = resources.displayMetrics.density
+            thumbRadiusPx = AppearancePreferences.getSeekbarThumbSize() * d
+            thumbWidthPx = max(thumbWidthPx, thumbRadiusPx * 2f)
         }
     }
 
@@ -1664,6 +1641,19 @@ class FelicitySeekbar @JvmOverloads constructor(
             }
             AppearancePreferences.SEEKBAR_THUMB_STYLE -> {
                 applyThumbPreferences()
+            }
+            AppearancePreferences.SEEKBAR_THUMB_RING_SIZE -> {
+                thumbRingWidthPx = AppearancePreferences.getSeekbarThumbRingSize()
+                thumbRingPaint.strokeWidth = thumbRingWidthPx
+                applyPaintColors()
+                invalidate()
+            }
+            AppearancePreferences.SEEKBAR_THUMB_SIZE -> {
+                val d = resources.displayMetrics.density
+                thumbRadiusPx = AppearancePreferences.getSeekbarThumbSize() * d
+                thumbWidthPx = max(thumbWidthPx, thumbRadiusPx * 2f)
+                requestLayout()
+                invalidate()
             }
             AppearancePreferences.APP_FONT -> {
                 setupLabelPaint()

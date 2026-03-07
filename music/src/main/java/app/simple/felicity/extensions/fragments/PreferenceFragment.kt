@@ -134,25 +134,19 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.POPUP,
                 valueProvider = {
                     when (AppearancePreferences.getSeekbarThumbStyle()) {
-                        AppearancePreferences.SEEKBAR_THUMB_OVAL -> getString(R.string.oval)
                         AppearancePreferences.SEEKBAR_THUMB_PILL -> getString(R.string.pill)
                         AppearancePreferences.SEEKBAR_THUMB_CIRCLE -> getString(R.string.circle)
-                        else -> getString(R.string.oval)
+                        else -> getString(R.string.circle)
                     }
                 },
                 onPreferenceAction = { view, callback ->
                     SharedScrollViewPopup(
                             container = requireContainerView(),
                             anchorView = view,
-                            menuItems = listOf(R.string.oval,
-                                               R.string.pill,
+                            menuItems = listOf(R.string.pill,
                                                R.string.circle),
                             onMenuItemClick = {
                                 when (it) {
-                                    R.string.oval -> {
-                                        AppearancePreferences.setSeekbarThumbStyle(AppearancePreferences.SEEKBAR_THUMB_OVAL)
-                                        (view as TextView).text = getString(R.string.oval)
-                                    }
                                     R.string.pill -> {
                                         AppearancePreferences.setSeekbarThumbStyle(AppearancePreferences.SEEKBAR_THUMB_PILL)
                                         (view as TextView).text = getString(R.string.pill)
@@ -167,6 +161,54 @@ open class PreferenceFragment : MediaFragment() {
                                 callback
                             }
                     ).show()
+                }
+        )
+
+        val thumbRingSize = Preference(
+                title = R.string.thumb_ring_size,
+                summary = R.string.thumb_ring_size_summary,
+                icon = R.drawable.ic_circle,
+                type = PreferenceType.SLIDER,
+                onPreferenceAction = { view, callback ->
+                    AppearancePreferences.setSeekbarThumbRingSize((view as FelicitySeekbar).getProgress())
+                    true
+                },
+                valueProvider = Supplier {
+                    SeekbarState(
+                            position = AppearancePreferences.getSeekbarThumbRingSize(),
+                            max = AppearancePreferences.MAX_RING_SIZE,
+                            min = AppearancePreferences.MIN_RING_SIZE,
+                            default = AppearancePreferences.DEFAULT_RING_SIZE,
+                            leftLabel = false,
+                            rightLabel = true,
+                            rightLabelProvider = { progress, _, _ ->
+                                String.format(Locale.getDefault(), "%.1f px", progress)
+                            },
+                    )
+                }
+        )
+
+        val thumbSize = Preference(
+                title = R.string.thumb_size,
+                summary = R.string.thumb_size_summary,
+                icon = R.drawable.ic_circle,
+                type = PreferenceType.SLIDER,
+                onPreferenceAction = { view, callback ->
+                    AppearancePreferences.setSeekbarThumbSize((view as FelicitySeekbar).getProgress())
+                    true
+                },
+                valueProvider = Supplier {
+                    SeekbarState(
+                            position = AppearancePreferences.getSeekbarThumbSize(),
+                            max = AppearancePreferences.MAX_THUMB_SIZE,
+                            min = AppearancePreferences.MIN_THUMB_SIZE,
+                            default = AppearancePreferences.DEFAULT_THUMB_SIZE,
+                            leftLabel = false,
+                            rightLabel = true,
+                            rightLabelProvider = { progress, _, _ ->
+                                String.format(Locale.getDefault(), "%.1f dp", progress)
+                            },
+                    )
                 }
         )
 
@@ -253,6 +295,8 @@ open class PreferenceFragment : MediaFragment() {
         preferences.add(cornerRadius)
         preferences.add(spacing)
         preferences.add(thumbShape)
+        //        preferences.add(thumbRingSize)
+        //        preferences.add(thumbSize)
         preferences.add(effects)
         preferences.add(shadowEffectToggle)
         preferences.add(albumArt)

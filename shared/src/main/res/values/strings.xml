@@ -162,6 +162,10 @@
     <string name="audio_desc">Configure decoder, audio engine, and output quality.</string>
     <string name="thumb_shape">Thumb Shape</string>
     <string name="thumb_shape_summary">Change seekbar/slider\'s thumb shape.</string>
+    <string name="thumb_ring_size">Thumb Ring Size</string>
+    <string name="thumb_ring_size_summary">Change the ring/border size of the seekbar thumb.</string>
+    <string name="thumb_size">Thumb Size</string>
+    <string name="thumb_size_summary">Change the size of the seekbar thumb.</string>
     <string name="oval">Oval</string>
     <string name="pill">Pill</string>
     <string name="circle">Circle</string>
