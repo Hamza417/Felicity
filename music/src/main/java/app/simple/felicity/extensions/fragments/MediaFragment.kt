@@ -391,7 +391,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 container = requireContainerView(),
                 inflateBinding = DialogSureBinding::inflate)
             .onViewCreated { binding ->
-
+                // Duck audio to create a sorta-kinda thinking zone
+                MediaManager.duck()
             }.onDialogInflated { binding, dismiss ->
                 binding.sure.setOnClickListener {
                     onResult(true)
@@ -402,6 +403,9 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     onResult(false)
                     dismiss()
                 }
+            }
+            .onDismiss {
+                MediaManager.unduck() // Ensure we unduck if user dismisses by tapping outside or pressing back
             }
             .build()
             .show()

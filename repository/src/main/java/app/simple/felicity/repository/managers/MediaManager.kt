@@ -1,8 +1,10 @@
 package app.simple.felicity.repository.managers
 
+import android.animation.ValueAnimator
 import android.util.Log
 import androidx.annotation.MainThread
 import androidx.core.net.toUri
+import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -576,6 +578,35 @@ object MediaManager {
             }
         } else {
             Log.w(TAG, "notifyCurrentPosition: Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")
+        }
+    }
+
+    // Keep track of the animator so we can cancel it if the opposite action is triggered
+    private var volumeAnimator: ValueAnimator? = null
+
+    fun duck(durationMs: Long = 1000L) {
+        fadeVolume(targetVolume = 0.2f, durationMs = durationMs)
+    }
+
+    fun unduck(durationMs: Long = 500L) {
+        fadeVolume(targetVolume = 1.0f, durationMs = durationMs)
+    }
+
+    private fun fadeVolume(targetVolume: Float, durationMs: Long) {
+        // Cancel any ongoing fade so they don't fight each other
+        volumeAnimator?.cancel()
+
+        // Assume current volume is 1.0f if we can't read it, though
+        // ideally, your mediaController has a getter for the current volume.
+        val currentVolume = mediaController?.volume ?: 1.0f
+
+        volumeAnimator = ValueAnimator.ofFloat(currentVolume, targetVolume).apply {
+            duration = durationMs
+            interpolator = LinearOutSlowInInterpolator()
+            addUpdateListener { animation ->
+                mediaController?.volume = animation.animatedValue as Float
+            }
+            start()
         }
     }
 }

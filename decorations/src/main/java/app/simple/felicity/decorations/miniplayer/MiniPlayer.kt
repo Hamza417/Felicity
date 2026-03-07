@@ -162,10 +162,10 @@ class MiniPlayer @JvmOverloads constructor(
         // Layout constants — change these to retune the look without touching logic
 
         /** Default title text size in SP. */
-        private const val TITLE_TEXT_SIZE_SP = 13f
+        private const val TITLE_TEXT_SIZE_SP = 16f
 
         /** Default artist text size in SP. */
-        private const val ARTIST_TEXT_SIZE_SP = 11.5f
+        private const val ARTIST_TEXT_SIZE_SP = 12f
 
         /** Button zone square side as a fraction of the view height. */
         private const val BTN_HEIGHT_FACTOR = 0.55f
