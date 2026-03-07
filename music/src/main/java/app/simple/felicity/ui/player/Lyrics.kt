@@ -117,11 +117,11 @@ class Lyrics : MediaFragment() {
         })
     }
 
-    private fun setAlignment() {
+    private fun setAlignment(animate: Boolean = false) {
         when (LyricsPreferences.getLrcAlignment()) {
-            LyricsPreferences.LEFT -> binding.lrc.setTextAlignment(ModernLrcView.Alignment.LEFT)
-            LyricsPreferences.CENTER -> binding.lrc.setTextAlignment(ModernLrcView.Alignment.CENTER)
-            LyricsPreferences.RIGHT -> binding.lrc.setTextAlignment(ModernLrcView.Alignment.RIGHT)
+            LyricsPreferences.LEFT -> binding.lrc.setTextAlignment(ModernLrcView.Alignment.LEFT, animate)
+            LyricsPreferences.CENTER -> binding.lrc.setTextAlignment(ModernLrcView.Alignment.CENTER, animate)
+            LyricsPreferences.RIGHT -> binding.lrc.setTextAlignment(ModernLrcView.Alignment.RIGHT, animate)
         }
     }
 
@@ -161,7 +161,7 @@ class Lyrics : MediaFragment() {
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
-            LyricsPreferences.LRC_ALIGNMENT -> setAlignment()
+            LyricsPreferences.LRC_ALIGNMENT -> setAlignment(animate = true)
             LyricsPreferences.LRC_TEXT_SIZE -> scheduleTextSizeUpdate()
         }
     }

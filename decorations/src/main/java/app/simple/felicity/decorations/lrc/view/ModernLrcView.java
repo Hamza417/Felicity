@@ -1,5 +1,6 @@
 package app.simple.felicity.decorations.lrc.view;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -88,7 +89,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     
     // Height animations
     private final HashMap <Integer, SpringAnimation> heightAnimations = new HashMap <>();
-
+    
     // Text size animation
     private final java.util.HashMap <Integer, Float> animatedTextSizes = new java.util.HashMap <>();
     
@@ -97,7 +98,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private final java.util.HashMap <Integer, Float> curtainScale = new java.util.HashMap <>();
     private final java.util.HashMap <Integer, Float> curtainAlpha = new java.util.HashMap <>();
     private final java.util.ArrayList <android.animation.Animator> curtainAnimators = new java.util.ArrayList <>();
-
+    
     // Paint objects
     private TextPaint normalPaint;
     private TextPaint currentPaint;
@@ -650,7 +651,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             if (cAlpha != null) {
                 paint.setAlpha(savedAlpha);
             }
-
+            
             canvas.restore();
         }
         
@@ -734,7 +735,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         
         // Cache it
         cache.put(lineIndex, layout);
-
+        
         // Update height tracking
         float newHeight = (float) layout.getHeight();
         Float previousHeight = layoutHeights.get(lineIndex);
@@ -794,10 +795,10 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         //   RIGHT  → text right-edge at paddingLeft + availableWidth
         String text = layout.getText().toString();
         float textWidth = Math.min(paint.measureText(text), availableWidth);
-
+        
         float xCenter = paddingLeft + (availableWidth - textWidth) / 2f;
         float xRight = paddingLeft + availableWidth - textWidth;
-
+        
         float fraction = alignmentFraction;
         if (fraction <= 0.5f) {
             float t = fraction * 2f;
@@ -852,7 +853,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         
         triggerRippleCurtainAnimation(currentLineIndex);
     }
-
+    
     /**
      * Set lyrics data
      */
@@ -1205,7 +1206,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             }
         });
     }
-
+    
     /**
      * Update current playback time.
      * <p>
@@ -1604,7 +1605,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     // Utility methods
-    public void setTextAlignment(Alignment alignment) {
+    public void setTextAlignment(Alignment alignment, boolean animate) {
         if (this.textAlignment == alignment) {
             return;
         }
@@ -1614,27 +1615,33 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         normalLayoutCache.clear();
         currentLayoutCache.clear();
         
-        // Animate alignmentFraction toward the target value for a smooth visual shift
-        float targetFraction = alignmentFractionFor(alignment);
-        if (alignmentAnimator != null && alignmentAnimator.isRunning()) {
-            alignmentAnimator.cancel();
-        }
-        alignmentAnimator = android.animation.ValueAnimator.ofFloat(alignmentFraction, targetFraction);
-        alignmentAnimator.setDuration(350);
-        alignmentAnimator.setInterpolator(new DecelerateInterpolator());
-        alignmentAnimator.addUpdateListener(anim -> {
-            alignmentFraction = (float) anim.getAnimatedValue();
-            invalidate();
-        });
-        alignmentAnimator.addListener(new android.animation.AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(android.animation.Animator animation) {
-                alignmentFraction = targetFraction;
-                invalidate();
+        if (animate) {
+            // Animate alignmentFraction toward the target value for a smooth visual shift
+            float targetFraction = alignmentFractionFor(alignment);
+            if (alignmentAnimator != null && alignmentAnimator.isRunning()) {
+                alignmentAnimator.cancel();
             }
-        });
-        alignmentAnimator.start();
-
+            alignmentAnimator = ValueAnimator.ofFloat(alignmentFraction, targetFraction);
+            alignmentAnimator.setDuration(350);
+            alignmentAnimator.setInterpolator(new DecelerateInterpolator());
+            alignmentAnimator.addUpdateListener(anim -> {
+                alignmentFraction = (float) anim.getAnimatedValue();
+                invalidate();
+            });
+            alignmentAnimator.addListener(new android.animation.AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(android.animation.Animator animation) {
+                    alignmentFraction = targetFraction;
+                    invalidate();
+                }
+            });
+            alignmentAnimator.start();
+            
+        } else {
+            // No animation, just update immediately
+            alignmentFraction = alignmentFractionFor(alignment);
+        }
+        
         updateTextAlignment();
         invalidate();
     }
@@ -1699,7 +1706,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         } else {
             animatedTextSizes.clear();
         }
-
+        
         invalidate();
     }
     
@@ -1708,9 +1715,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                 sp2px(getContext(), size);
         setTextSizes(size, newCurrent / getResources().getDisplayMetrics().scaledDensity);
     }
-
+    
     // Public API
-
+    
     public void setCurrentTextSize(float size) {
         setTextSizes(normalTextSize / getResources().getDisplayMetrics().scaledDensity, size);
     }
@@ -1848,7 +1855,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             blurAnimator.cancel();
         }
         blurInterpolation = 0f;
-
+        
         // Cancel and clear curtain animations
         for (android.animation.Animator anim : curtainAnimators) {
             if (anim != null && anim.isRunning()) {
