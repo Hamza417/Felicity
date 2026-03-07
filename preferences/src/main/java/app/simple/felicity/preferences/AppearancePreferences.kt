@@ -25,19 +25,9 @@ object AppearancePreferences {
     const val DEFAULT_CORNER_RADIUS = 20F
     const val DEFAULT_SPACING = 48F
 
-    const val SEEKBAR_THUMB_RING_SIZE = "seekbar_thumb_ring_size_"
-    const val SEEKBAR_THUMB_SIZE = "seekbar_thumb_size_"
-
-    const val MAX_RING_SIZE = 32F
-    const val MIN_RING_SIZE = 10F
-    const val DEFAULT_RING_SIZE = MAX_RING_SIZE
-
-    const val MAX_THUMB_SIZE = 14F
-    const val MIN_THUMB_SIZE = 4F
-    const val DEFAULT_THUMB_SIZE = 12F
-
     const val SEEKBAR_THUMB_CIRCLE = 0
     const val SEEKBAR_THUMB_PILL = 1
+    const val SEEKBAR_THUMB_OVAL = 2
 
     // ---------------------------------------------------------------------------------------------------------- //
 
@@ -155,31 +145,7 @@ object AppearancePreferences {
     }
 
     fun getSeekbarThumbStyle(): Int {
-        return getSharedPreferences().getInt(SEEKBAR_THUMB_STYLE, SEEKBAR_THUMB_CIRCLE)
-    }
-
-    // ---------------------------------------------------------------------------------------------------------- //
-
-    fun setSeekbarThumbRingSize(size: Float) {
-        getSharedPreferences().edit {
-            putFloat(SEEKBAR_THUMB_RING_SIZE, size.coerceIn(1F, MAX_RING_SIZE))
-        }
-    }
-
-    fun getSeekbarThumbRingSize(): Float {
-        return getSharedPreferences().getFloat(SEEKBAR_THUMB_RING_SIZE, DEFAULT_RING_SIZE)
-    }
-
-    // ---------------------------------------------------------------------------------------------------------- //
-
-    fun setSeekbarThumbSize(size: Float) {
-        getSharedPreferences().edit {
-            putFloat(SEEKBAR_THUMB_SIZE, size.coerceIn(MIN_THUMB_SIZE, MAX_THUMB_SIZE))
-        }
-    }
-
-    fun getSeekbarThumbSize(): Float {
-        return getSharedPreferences().getFloat(SEEKBAR_THUMB_SIZE, DEFAULT_THUMB_SIZE)
+        return getSharedPreferences().getInt(SEEKBAR_THUMB_STYLE, SEEKBAR_THUMB_OVAL)
     }
 
 
