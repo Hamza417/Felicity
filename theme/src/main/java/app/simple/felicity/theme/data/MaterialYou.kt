@@ -72,7 +72,7 @@ object MaterialYou {
         viewerBackground = ContextCompat.getColor(this, android.R.color.system_neutral1_100)
         highlightBackground = ContextCompat.getColor(this, android.R.color.system_neutral1_100)
         selectedBackground = ContextCompat.getColor(this, android.R.color.system_neutral1_200)
-        dividerBackground = ContextCompat.getColor(this, android.R.color.system_accent3_300)
+        dividerBackground = ContextCompat.getColor(this, android.R.color.system_neutral1_200)
         spotColor = ContextCompat.getColor(this, android.R.color.system_accent1_600)
 
         switchOffColor = ContextCompat.getColor(this, android.R.color.system_neutral1_100)
@@ -93,7 +93,7 @@ object MaterialYou {
         viewerBackgroundDark = ContextCompat.getColor(this, android.R.color.system_neutral1_800)
         highlightBackgroundDark = ContextCompat.getColor(this, android.R.color.system_accent1_700)
         selectedBackgroundDark = ContextCompat.getColor(this, android.R.color.system_accent2_600)
-        dividerBackgroundDark = ContextCompat.getColor(this, android.R.color.system_accent3_200)
+        dividerBackgroundDark = ContextCompat.getColor(this, android.R.color.system_neutral1_600)
         spotColorDark = ContextCompat.getColor(this, android.R.color.system_accent1_500)
 
         switchOffColorDark = ContextCompat.getColor(this, android.R.color.system_neutral1_800)

@@ -69,7 +69,6 @@
         android:layout_width="@dimen/button_size"
         android:layout_height="@dimen/button_size"
         android:src="@drawable/ic_drag_indicator"
-        android:layout_marginEnd="@dimen/padding_10"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"

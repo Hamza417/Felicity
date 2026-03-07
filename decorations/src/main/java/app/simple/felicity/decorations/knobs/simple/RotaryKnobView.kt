@@ -7,18 +7,24 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationAttributes
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.util.AttributeSet
-import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import androidx.annotation.ColorInt
+import androidx.annotation.RequiresApi
+import androidx.core.content.getSystemService
 import androidx.core.graphics.withRotation
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.knobs.simple.RotaryKnobView.Companion.END
+import app.simple.felicity.decorations.knobs.simple.RotaryKnobView.Companion.HAPTIC_TICK_INTERVAL_DEG
 import app.simple.felicity.decorations.knobs.simple.RotaryKnobView.Companion.START
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
@@ -377,13 +383,15 @@ class RotaryKnobView @JvmOverloads constructor(
                 recycle()
             }
         }
-        (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = { invalidate() }
+
         setOnTouchListener { _, event -> handleTouch(event) }
 
         if (isInEditMode.not()) {
             setThemeColors(ThemeManager.theme)
             setAccentColor(ThemeManager.accent)
         }
+
+        (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = { invalidate() }
     }
 
     override fun onAttachedToWindow() {
@@ -422,7 +430,7 @@ class RotaryKnobView @JvmOverloads constructor(
     fun setAccentColor(accent: Accent) {
         if (knobDrawable is SimpleRotaryKnobDrawable) {
             val drawable = knobDrawable as SimpleRotaryKnobDrawable
-            drawable.accentColor = accent.primaryAccentColor
+            drawable.setAccentColor(accent.primaryAccentColor)
         }
         divisionAccentColor = accent.primaryAccentColor
     }
@@ -432,11 +440,16 @@ class RotaryKnobView @JvmOverloads constructor(
         labelColor = theme.textViewTheme.primaryTextColor
         tickLabelColor = theme.textViewTheme.secondaryTextColor
         tickLabelPaint.color = theme.textViewTheme.secondaryTextColor
+        arcColor = theme.viewGroupTheme.dividerColor
+
         if (knobDrawable is SimpleRotaryKnobDrawable) {
             val drawable = knobDrawable as SimpleRotaryKnobDrawable
-            drawable.idleColor = theme.viewGroupTheme.highlightColor
+            drawable.setIdleColor(theme.viewGroupTheme.dividerColor)
+            drawable.setBodyColor(theme.viewGroupTheme.backgroundColor)
+            drawable.invalidateSelf()
         }
-        divisionIdleColor = theme.viewGroupTheme.highlightColor
+
+        divisionIdleColor = theme.viewGroupTheme.dividerColor
     }
 
     /**
@@ -916,22 +929,45 @@ class RotaryKnobView @JvmOverloads constructor(
     private fun valueToAngle(volume: Float): Float =
         START + (volume / 100f) * (END - START)
 
+    /**
+     * Vibrates using the [Vibrator] service with [VibrationAttributes.USAGE_MEDIA] on API 33+
+     * so the effect is never silenced by the "Touch vibration" system setting.
+     * Falls back to a [VibrationEffect.createPredefined] call (API 29+) without attributes,
+     * and ultimately to [performHapticFeedback] on older devices.
+     */
+    private fun vibrateEffect(effectId: Int) {
+        if (!hapticEnabled) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            vibrateWithAttributes(effectId)
+        } else {
+            // API 29-32: VibrationEffect without attributes — still not gated by touch setting
+            @Suppress("DEPRECATION")
+            context.getSystemService<Vibrator>()?.vibrate(VibrationEffect.createPredefined(effectId))
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun vibrateWithAttributes(effectId: Int) {
+        val attrs = VibrationAttributes.Builder()
+            .setUsage(VibrationAttributes.USAGE_MEDIA)
+            .build()
+        context.getSystemService<Vibrator>()
+            ?.vibrate(VibrationEffect.createPredefined(effectId), attrs)
+    }
+
     /** Light tick fired every [HAPTIC_TICK_INTERVAL_DEG] degrees of rotation. */
     private fun vibrateRotationTick() {
-        if (!hapticEnabled) return
-        performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        vibrateEffect(VibrationEffect.EFFECT_CLICK)
     }
 
     /** Heavy click fired when the knob hits an end-stop or the center snap position. */
     private fun vibrateHeavyTick() {
-        if (!hapticEnabled) return
-        performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        vibrateEffect(VibrationEffect.EFFECT_HEAVY_CLICK)
     }
 
     /** Single tap fired on finger-down to acknowledge the touch. */
     private fun vibrateTouchDown() {
-        if (!hapticEnabled) return
-        performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        vibrateEffect(VibrationEffect.EFFECT_TICK)
     }
 
     companion object {
@@ -955,6 +991,6 @@ class RotaryKnobView @JvmOverloads constructor(
          * 3° over a 300° arc with 200 division lines ≈ one tick every ~2 division lines,
          * giving a natural detent feel without over-firing.
          */
-        private const val HAPTIC_TICK_INTERVAL_DEG = 3f
+        private const val HAPTIC_TICK_INTERVAL_DEG = 12f
     }
 }

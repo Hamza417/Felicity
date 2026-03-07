@@ -15,7 +15,7 @@ import androidx.annotation.Px
  * A programmatic [RotaryKnobDrawable] that draws a circular knob with a small position
  * indicator dot at the top.
  *
- * **Idle state**: ring and indicator dot use [idleColor] (grey/muted).
+ * **Idle state**: ring and indicator dot use [idleColor] (gray/muted).
  * **Pressed state**: they animate to [accentColor].
  *
  * The arc track and min/max tick marks are intentionally NOT drawn here —
@@ -23,16 +23,16 @@ import androidx.annotation.Px
  * stationary while the knob rotates.
  *
  * @param accentColor              Color when touched.
- * @param idleColor                Color when not touched (grey/muted).
+ * @param idleColor                Color when not touched (gray/muted).
  * @param bodyColor                Fill color for the knob body circle.
  * @param strokeWidthFraction      Ring stroke width as a fraction of the knob radius (0..1).
  * @param indicatorRadiusFraction  Radius of the indicator dot as a fraction of the knob radius.
  * @param intrinsicSizePx          Reported intrinsic size in pixels so wrap_content works.
  */
 class SimpleRotaryKnobDrawable(
-        @ColorInt var accentColor: Int = DEFAULT_ACCENT_COLOR,
-        @ColorInt var idleColor: Int = DEFAULT_IDLE_COLOR,
-        @ColorInt var bodyColor: Int = DEFAULT_BODY_COLOR,
+        @ColorInt private var accentColor: Int = DEFAULT_ACCENT_COLOR,
+        @ColorInt private var idleColor: Int = DEFAULT_IDLE_COLOR,
+        @ColorInt private var bodyColor: Int = DEFAULT_BODY_COLOR,
         var strokeWidthFraction: Float = DEFAULT_STROKE_WIDTH_FRACTION,
         var indicatorRadiusFraction: Float = DEFAULT_INDICATOR_RADIUS_FRACTION,
         @Px private var intrinsicSizePx: Int = DEFAULT_INTRINSIC_SIZE_PX
@@ -147,6 +147,29 @@ class SimpleRotaryKnobDrawable(
         invalidateSelf()
     }
 
+    fun setIdleColor(@ColorInt color: Int) {
+        idleColor = color
+        if (colorAnimator == null || !colorAnimator!!.isRunning) {
+            currentStateColor = idleColor
+        }
+
+        invalidateSelf()
+    }
+
+    fun setAccentColor(@ColorInt color: Int) {
+        accentColor = color
+        if (colorAnimator == null || !colorAnimator!!.isRunning) {
+            currentStateColor = idleColor
+        }
+
+        invalidateSelf()
+    }
+
+    fun setBodyColor(@ColorInt color: Int) {
+        bodyColor = color
+        invalidateSelf()
+    }
+
     /**
      * Update the reported intrinsic size (in pixels). Call this once you know the
      * density-aware pixel size (e.g. from a dimension resource), then set the drawable on the view.
@@ -167,7 +190,7 @@ class SimpleRotaryKnobDrawable(
         const val DEFAULT_STROKE_WIDTH_FRACTION = 0.015f
         const val DEFAULT_INDICATOR_RADIUS_FRACTION = 0.074f
 
-        /** How far the indicator dot sits from centre, as a fraction of body radius. */
+        /** How far the indicator dot sits from center, as a fraction of body radius. */
         private const val INDICATOR_DISTANCE_FRACTION = 0.81f
 
         const val DEFAULT_INTRINSIC_SIZE_PX = 500

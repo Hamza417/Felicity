@@ -85,9 +85,10 @@ class Lyrics : MediaFragment() {
         }
 
         lyricsViewModel.getLrcData().observe(viewLifecycleOwner) { lrcData ->
+            binding.lrc.reset()
+
             if (lrcData.isEmpty) {
                 Log.d(TAG, "No lyrics found for the current song.")
-                binding.lrc.reset()
             } else {
                 binding.lrc.updateLrcDataInPlace(
                         lrcData, MediaManager.getSeekPosition() + lyricsViewModel.syncOffset)
