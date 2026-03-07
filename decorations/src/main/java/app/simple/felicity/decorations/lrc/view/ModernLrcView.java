@@ -66,6 +66,10 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private static final int DEFAULT_CURRENT_COLOR = Color.WHITE;
     private static final String DEFAULT_EMPTY_TEXT = "No lyrics";
     private static final long AUTO_SCROLL_DELAY = 3000; // 3 seconds after manual scroll
+    private static final float CURTAIN_INITIAL_BLUR = 30f; // Starting blur radius for curtain effect
+    private static final float CURTAIN_INITIAL_SCALE = 1.2f; // Starting scale for curtain effect
+    private static final long CURTAIN_STAGGER_MS = 40; // Delay between each line (ms)
+    private static final long CURTAIN_DURATION_MS = 250; // Duration of each line's animation
     // Data
     private LrcData lrcData;
     private int currentLineIndex = -1;
@@ -87,6 +91,13 @@ public class ModernLrcView extends View implements ThemeChangedListener {
 
     // Text size animation
     private final java.util.HashMap <Integer, Float> animatedTextSizes = new java.util.HashMap <>();
+    
+    // Curtain reveal animation: per-line blur radius (X -> 0), scale (1.2 -> 1), alpha (0 -> 1)
+    private final java.util.HashMap <Integer, Float> curtainBlur = new java.util.HashMap <>();
+    private final java.util.HashMap <Integer, Float> curtainScale = new java.util.HashMap <>();
+    private final java.util.HashMap <Integer, Float> curtainAlpha = new java.util.HashMap <>();
+    private final java.util.ArrayList <android.animation.Animator> curtainAnimators = new java.util.ArrayList <>();
+
     // Paint objects
     private TextPaint normalPaint;
     private TextPaint currentPaint;
@@ -555,8 +566,14 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             }
             
             // Calculate and apply blur based on distance from center (proportional to fade)
+            // Also blend in any curtain-reveal blur for this line
+            Float cBlur = curtainBlur.get(i);
             if (enableFade) {
                 float blurAmount = calculateBlurAmount(y, getHeight());
+                // Add curtain blur on top of edge blur (during reveal animation)
+                if (cBlur != null) {
+                    blurAmount = Math.max(blurAmount, cBlur);
+                }
                 if (blurAmount > 0.5f) { // Only apply blur if significant
                     // Round to nearest 0.5 to reduce unique filter instances
                     float roundedBlur = Math.round(blurAmount * 2f) / 2f;
@@ -572,7 +589,18 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                     paint.setMaskFilter(null);
                 }
             } else {
-                paint.setMaskFilter(null);
+                // Even without edge-fade, still apply curtain blur if active
+                if (cBlur != null && cBlur > 0.5f) {
+                    float roundedBlur = Math.round(cBlur * 2f) / 2f;
+                    BlurMaskFilter blurFilter = blurMaskFilters.get(roundedBlur);
+                    if (blurFilter == null) {
+                        blurFilter = new BlurMaskFilter(roundedBlur, BlurMaskFilter.Blur.NORMAL);
+                        blurMaskFilters.put(roundedBlur, blurFilter);
+                    }
+                    paint.setMaskFilter(blurFilter);
+                } else {
+                    paint.setMaskFilter(null);
+                }
             }
             
             // Draw ripple effect for tapped line (behind the text)
@@ -601,7 +629,28 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             float yOffset = y - (lineHeight / 2f);
             canvas.translate(x, yOffset);
             
+            // Apply curtain reveal scale (centered on the line's mid-point)
+            Float cScale = curtainScale.get(i);
+            if (cScale != null && Math.abs(cScale - 1f) > 0.001f) {
+                float halfW = layout.getWidth() / 2f;
+                float halfH = lineHeight / 2f;
+                canvas.scale(cScale, cScale, halfW, halfH);
+            }
+            
+            // Apply curtain reveal alpha (0 -> 1 spawn-in effect)
+            Float cAlpha = curtainAlpha.get(i);
+            int savedAlpha = paint.getAlpha();
+            if (cAlpha != null) {
+                paint.setAlpha(Math.round(savedAlpha * cAlpha));
+            }
+            
             layout.draw(canvas);
+            
+            // Restore paint alpha
+            if (cAlpha != null) {
+                paint.setAlpha(savedAlpha);
+            }
+
             canvas.restore();
         }
         
@@ -790,7 +839,15 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             previousLineIndex = currentLineIndex;
             currentLineIndex = newLineIndex;
         }
+        
+        // scroll to current line immediately
+        if (isAutoScrollEnabled && currentLineIndex >= 0) {
+            scrollToLine(currentLineIndex);
+        }
+        
         invalidate();
+        
+        triggerRippleCurtainAnimation(currentLineIndex);
     }
 
     /**
@@ -824,9 +881,328 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         }
         textSizeAnimations.clear();
         
+        // Cancel any running curtain animations
+        for (android.animation.Animator anim : curtainAnimators) {
+            if (anim != null && anim.isRunning()) {
+                anim.cancel();
+            }
+        }
+        curtainAnimators.clear();
+        curtainBlur.clear();
+        curtainScale.clear();
+        curtainAlpha.clear();
+        
         invalidate();
+        
+        // Trigger curtain reveal after data is set (post so layout heights are available)
+        if (data != null && !data.isEmpty()) {
+            post(this :: triggerCurtainAnimation);
+        }
     }
     
+    /**
+     * Trigger the curtain reveal animation for all lines top-to-bottom (used by {@link #setLrcData}).
+     * Each line animates individually with a staggered delay:
+     * - alpha:  0 → 1
+     * - blur:   CURTAIN_INITIAL_BLUR → 0
+     * - scale:  CURTAIN_INITIAL_SCALE → 1.0
+     */
+    private void triggerCurtainAnimation() {
+        if (lrcData == null || lrcData.isEmpty()) {
+            return;
+        }
+        
+        // Cancel any previous curtain animations
+        for (android.animation.Animator anim : curtainAnimators) {
+            if (anim != null && anim.isRunning()) {
+                anim.cancel();
+            }
+        }
+        curtainAnimators.clear();
+        
+        int count = lrcData.size();
+        for (int i = 0; i < count; i++) {
+            animateCurtainLine(i, (long) i * CURTAIN_STAGGER_MS);
+        }
+    }
+    
+    /**
+     * Trigger the ripple-from-highlight curtain when {@link #setLrcDataWithPosition} is used.
+     * Lines radiate outward from {@code anchorLine}:
+     * - Lines at/below anchor stagger downward (anchorLine first, then anchor+1, anchor+2 …)
+     * - Lines above anchor stagger upward   (anchor-1, anchor-2 …)
+     *
+     * @param anchorLine the currently highlighted line index to ripple from
+     */
+    private void triggerRippleCurtainAnimation(int anchorLine) {
+        if (lrcData == null || lrcData.isEmpty()) {
+            return;
+        }
+        
+        for (android.animation.Animator anim : curtainAnimators) {
+            if (anim != null && anim.isRunning()) {
+                anim.cancel();
+            }
+        }
+        curtainAnimators.clear();
+        
+        int count = lrcData.size();
+        int clampedAnchor = Math.max(0, Math.min(anchorLine, count - 1));
+        
+        // Lines from anchor downward
+        for (int i = clampedAnchor; i < count; i++) {
+            long delay = (long) (i - clampedAnchor) * CURTAIN_STAGGER_MS;
+            animateCurtainLine(i, delay);
+        }
+        
+        // Lines above anchor, going up
+        for (int i = clampedAnchor - 1; i >= 0; i--) {
+            long delay = (long) (clampedAnchor - i) * CURTAIN_STAGGER_MS;
+            animateCurtainLine(i, delay);
+        }
+    }
+    
+    /**
+     * Animate a single line's curtain reveal (alpha 0→1, blur X→0, scale 1.2→1) after {@code startDelay}.
+     */
+    private void animateCurtainLine(int index, long startDelay) {
+        // Set initial state
+        curtainAlpha.put(index, 0f);
+        curtainBlur.put(index, CURTAIN_INITIAL_BLUR);
+        curtainScale.put(index, CURTAIN_INITIAL_SCALE);
+        
+        // Alpha: 0 -> 1
+        android.animation.ValueAnimator alphaAnim = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        alphaAnim.setDuration(CURTAIN_DURATION_MS);
+        alphaAnim.setStartDelay(startDelay);
+        alphaAnim.setInterpolator(new DecelerateInterpolator(1.5f));
+        alphaAnim.addUpdateListener(anim -> {
+            curtainAlpha.put(index, (float) anim.getAnimatedValue());
+            invalidate();
+        });
+        alphaAnim.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                curtainAlpha.remove(index);
+                invalidate();
+            }
+        });
+        
+        // Blur: CURTAIN_INITIAL_BLUR -> 0
+        android.animation.ValueAnimator blurAnim = android.animation.ValueAnimator.ofFloat(CURTAIN_INITIAL_BLUR, 0f);
+        blurAnim.setDuration(CURTAIN_DURATION_MS);
+        blurAnim.setStartDelay(startDelay);
+        blurAnim.setInterpolator(new DecelerateInterpolator(1.5f));
+        blurAnim.addUpdateListener(anim -> {
+            curtainBlur.put(index, (float) anim.getAnimatedValue());
+            invalidate();
+        });
+        blurAnim.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                curtainBlur.remove(index);
+                invalidate();
+            }
+        });
+        
+        // Scale: CURTAIN_INITIAL_SCALE -> 1.0
+        android.animation.ValueAnimator scaleAnim = android.animation.ValueAnimator.ofFloat(CURTAIN_INITIAL_SCALE, 1f);
+        scaleAnim.setDuration(CURTAIN_DURATION_MS);
+        scaleAnim.setStartDelay(startDelay);
+        scaleAnim.setInterpolator(new DecelerateInterpolator(1.5f));
+        scaleAnim.addUpdateListener(anim -> {
+            curtainScale.put(index, (float) anim.getAnimatedValue());
+            invalidate();
+        });
+        scaleAnim.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                curtainScale.remove(index);
+                invalidate();
+            }
+        });
+        
+        curtainAnimators.add(alphaAnim);
+        curtainAnimators.add(blurAnim);
+        curtainAnimators.add(scaleAnim);
+        alphaAnim.start();
+        blurAnim.start();
+        scaleAnim.start();
+    }
+    
+    /**
+     * Convenience method that sets lyrics data <em>and</em> immediately positions the view at
+     * the given playback time in a single call.
+     * <p>
+     * Unlike calling {@link #setLrcData} followed by {@link #setPosition}, this method uses a
+     * <b>ripple curtain</b> reveal animation instead of the top-to-bottom curtain:
+     * <ul>
+     *   <li>The highlighted line and all lines below it animate outward downward.</li>
+     *   <li>All lines above the highlighted line animate outward upward.</li>
+     * </ul>
+     * The scroll position is snapped immediately to the correct line so there is no
+     * "stuck-at-top" delay.
+     *
+     * @param data         the {@link LrcData} to display
+     * @param timeInMillis current playback position in milliseconds
+     */
+    public void setLrcDataWithPosition(LrcData data, long timeInMillis) {
+        // ── Reset all state (same as setLrcData but skip the normal curtain trigger) ──
+        this.lrcData = data;
+        this.currentLineIndex = -1;
+        this.previousLineIndex = -1;
+        this.scrollY = 0f;
+        this.targetScrollY = 0f;
+        this.normalLayoutCache.clear();
+        this.currentLayoutCache.clear();
+        this.layoutHeights.clear();
+        this.animatedHeights.clear();
+        this.animatedTextSizes.clear();
+        this.blurMaskFilters.clear();
+        
+        for (SpringAnimation animation : new java.util.ArrayList <>(heightAnimations.values())) {
+            if (animation != null && animation.isRunning()) {
+                animation.cancel();
+            }
+        }
+        heightAnimations.clear();
+        
+        for (SpringAnimation animation : new java.util.ArrayList <>(textSizeAnimations.values())) {
+            if (animation != null && animation.isRunning()) {
+                animation.cancel();
+            }
+        }
+        textSizeAnimations.clear();
+        
+        for (android.animation.Animator anim : curtainAnimators) {
+            if (anim != null && anim.isRunning()) {
+                anim.cancel();
+            }
+        }
+        curtainAnimators.clear();
+        curtainBlur.clear();
+        curtainScale.clear();
+        curtainAlpha.clear();
+        
+        if (data == null || data.isEmpty()) {
+            invalidate();
+            return;
+        }
+        
+        // ── Apply position immediately (no animation) ──
+        if (!isStaticMode()) {
+            long adjustedTime = timeInMillis + data.getOffset();
+            currentLineIndex = findLineIndexByTime(adjustedTime);
+            
+            // Prime text sizes directly so the highlighted line is correct from frame 0
+            if (currentLineIndex >= 0 && currentLineIndex < data.size()) {
+                LrcEntry entry = data.getEntries().get(currentLineIndex);
+                String txt = entry.getText();
+                float targetSize = (txt != null && !txt.trim().isEmpty()) ? currentTextSize : normalTextSize;
+                animatedTextSizes.put(currentLineIndex, targetSize);
+            }
+        } else if (durationMs > 0) {
+            float maxScroll = getMaxScrollY();
+            if (maxScroll > 0) {
+                float fraction = Math.max(0f, Math.min(1f, (float) timeInMillis / (float) durationMs));
+                scrollY = fraction * maxScroll;
+                targetScrollY = scrollY;
+            }
+        }
+        
+        invalidate();
+        
+        // ── Post ripple curtain so layout heights are ready ──
+        final int anchorLine = currentLineIndex;
+        post(() -> {
+            // Now that a draw pass has happened, layout heights are cached → snap scroll
+            if (anchorLine >= 0) {
+                float targetY = getLineOffset(anchorLine);
+                scrollY = targetY;
+                targetScrollY = targetY;
+                if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
+                    scrollSpringAnimation.cancel();
+                }
+            }
+            triggerRippleCurtainAnimation(anchorLine);
+        });
+    }
+    
+    /**
+     * <p>
+     * This is the recommended method to call when opening a fragment / activity so that the
+     * view instantly shows the correct highlighted line and scroll position rather than
+     * staying at the top until the first {@code updateTime()} fires.
+     * <p>
+     * Unlike {@link #updateTime}, this method:
+     * <ul>
+     *   <li>Immediately applies {@code currentLineIndex} and text-size state.</li>
+     *   <li>Snaps the scroll position directly to the correct line (no spring animation delay).</li>
+     *   <li>Does NOT override user manual scrolling.</li>
+     * </ul>
+     *
+     * @param timeInMillis current playback position in milliseconds
+     */
+    public void setPosition(long timeInMillis) {
+        if (lrcData == null || lrcData.isEmpty()) {
+            return;
+        }
+        
+        if (isStaticMode()) {
+            if (durationMs > 0) {
+                float maxScroll = getMaxScrollY();
+                if (maxScroll > 0) {
+                    float fraction = Math.max(0f, Math.min(1f, (float) timeInMillis / (float) durationMs));
+                    scrollY = fraction * maxScroll;
+                    targetScrollY = scrollY;
+                    invalidate();
+                }
+            }
+            return;
+        }
+        
+        long adjustedTime = timeInMillis + lrcData.getOffset();
+        int newLineIndex = findLineIndexByTime(adjustedTime);
+        
+        // Apply line change immediately (same logic as updateTime but synchronous)
+        if (newLineIndex != currentLineIndex) {
+            if (previousLineIndex >= 0 && previousLineIndex < lrcData.size()) {
+                animatedTextSizes.put(previousLineIndex, normalTextSize);
+                normalLayoutCache.remove(previousLineIndex);
+                currentLayoutCache.remove(previousLineIndex);
+            }
+            
+            previousLineIndex = currentLineIndex;
+            currentLineIndex = newLineIndex;
+            
+            if (currentLineIndex >= 0 && currentLineIndex < lrcData.size()) {
+                LrcEntry entry = lrcData.getEntries().get(currentLineIndex);
+                String text = entry.getText();
+                float targetSize = (text != null && !text.trim().isEmpty()) ? currentTextSize : normalTextSize;
+                animatedTextSizes.put(currentLineIndex, targetSize);
+                normalLayoutCache.remove(currentLineIndex);
+                currentLayoutCache.remove(currentLineIndex);
+            }
+        }
+        
+        invalidate();
+        
+        // Post the scroll snap so that layout heights are guaranteed to be populated
+        // (getLineOffset relies on animatedHeights which are filled during the first draw pass)
+        final int lineToSnap = currentLineIndex;
+        post(() -> {
+            if (lineToSnap >= 0) {
+                float targetY = getLineOffset(lineToSnap);
+                scrollY = targetY;
+                targetScrollY = targetY;
+                if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
+                    scrollSpringAnimation.cancel();
+                }
+                invalidate();
+            }
+        });
+    }
+
     /**
      * Update current playback time.
      * <p>
@@ -1469,6 +1845,18 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             blurAnimator.cancel();
         }
         blurInterpolation = 0f;
+
+        // Cancel and clear curtain animations
+        for (android.animation.Animator anim : curtainAnimators) {
+            if (anim != null && anim.isRunning()) {
+                anim.cancel();
+            }
+        }
+        curtainAnimators.clear();
+        curtainBlur.clear();
+        curtainScale.clear();
+        curtainAlpha.clear();
+        
         if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
             scrollSpringAnimation.cancel();
         }

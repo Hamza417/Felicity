@@ -89,10 +89,8 @@ class Lyrics : MediaFragment() {
                 Log.d(TAG, "No lyrics found for the current song.")
                 binding.lrc.reset()
             } else {
-                binding.lrc.setLrcData(lrcData)
-                postDelayed {
-                    binding.lrc.updateTime(MediaManager.getSeekPosition() + lyricsViewModel.syncOffset)
-                }
+                binding.lrc.updateLrcDataInPlace(
+                        lrcData, MediaManager.getSeekPosition() + lyricsViewModel.syncOffset)
             }
         }
 
