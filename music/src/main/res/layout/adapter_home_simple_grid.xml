@@ -4,27 +4,29 @@
     android:id="@+id/container"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="@dimen/padding_10"
-    android:orientation="horizontal"
-    android:padding="@dimen/padding_20">
+    android:layout_margin="@dimen/padding_5"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="@dimen/padding_15">
 
     <app.simple.felicity.decorations.theme.ThemeIcon
         android:id="@+id/icon"
-        android:layout_width="@dimen/icon_size_30"
-        android:layout_height="@dimen/icon_size_30"
-        android:layout_gravity="center_vertical"
+        android:layout_width="@dimen/icon_size_40"
+        android:layout_height="@dimen/icon_size_40"
         app:tintType="accent" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
         android:id="@+id/title"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical"
-        android:layout_marginStart="@dimen/padding_20"
-        android:layout_weight="1"
-        android:textSize="@dimen/text_size_18"
+        android:layout_marginTop="@dimen/padding_8"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="2"
+        android:textSize="@dimen/text_size_14"
         app:appFontStyle="bold"
         app:textColorStyle="secondary" />
 
 
 </app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>
+

@@ -1,30 +1,31 @@
 package app.simple.felicity.viewmodels.panels
 
 import android.app.Application
+import android.content.SharedPreferences
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.preferences.HomePreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class SimpleHomeViewModel(application: Application) : WrappedViewModel(application) {
 
-    private val homeData: MutableLiveData<List<Element>> by lazy {
-        MutableLiveData<List<Element>>().apply {
+    private val homeData: MutableLiveData<MutableList<Element>> by lazy {
+        MutableLiveData<MutableList<Element>>().apply {
             setHomeData()
         }
     }
 
-    fun getHomeData(): LiveData<List<Element>> {
+    fun getHomeData(): LiveData<MutableList<Element>> {
         return homeData
     }
 
     private fun setHomeData() {
         viewModelScope.launch(Dispatchers.IO) {
-            // Simulate data fetching
-            val elements = listOf(
+            val defaultElements = listOf(
                     Element(R.string.songs, R.drawable.ic_song),
                     Element(R.string.albums, R.drawable.ic_album),
                     Element(R.string.artists, R.drawable.ic_artist),
@@ -38,7 +39,41 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
                     Element(R.string.preferences, R.drawable.ic_settings)
             )
 
-            homeData.postValue(elements)
+            val savedOrder = HomePreferences.getHomeItemsOrder()
+            val ordered = if (savedOrder.isBlank()) {
+                defaultElements.toMutableList()
+            } else {
+                val idList = savedOrder.split(",").mapNotNull { it.trim().toIntOrNull() }
+                val elementMap = defaultElements.associateBy { it.titleResId }
+                val reordered = idList.mapNotNull { elementMap[it] }.toMutableList()
+                // Add any new elements not yet in saved order
+                defaultElements.filter { it.titleResId !in idList }.forEach { reordered.add(it) }
+                reordered
+            }
+
+            homeData.postValue(ordered)
+        }
+    }
+
+    fun onItemMoved(fromPosition: Int, toPosition: Int) {
+        // The adapter already mutated the shared MutableList — just persist the new order.
+        val current = homeData.value ?: return
+        saveOrder(current)
+    }
+
+    private fun saveOrder(elements: List<Element>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val order = elements.joinToString(",") { it.titleResId.toString() }
+            HomePreferences.setHomeItemsOrder(order)
+        }
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            HomePreferences.HOME_ITEMS_ORDER -> {
+                setHomeData() // Refresh data to reflect new order
+            }
         }
     }
 
@@ -46,3 +81,4 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
         data class Element(val titleResId: Int, val iconResId: Int)
     }
 }
+

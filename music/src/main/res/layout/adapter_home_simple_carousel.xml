@@ -38,4 +38,5 @@
         android:src="@drawable/ic_carousel"
         app:buttonTintType="regular" />
 
+
 </app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>

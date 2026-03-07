@@ -31,7 +31,11 @@ class HeaderSpacingItemDecoration(headerHeight: Int = 0) : RecyclerView.ItemDeco
     override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
         attachedRecyclerView = parent
         val position = parent.getChildAdapterPosition(view)
-        if (position == RecyclerView.NO_ID.toInt()) return
+        // NO_POSITION (-1) is returned for items being dragged or not yet laid out — skip them
+        if (position == RecyclerView.NO_POSITION) {
+            outRect.top = 0
+            return
+        }
 
         if (isInFirstRow(view, parent, position)) {
             outRect.top = headerHeight
@@ -50,6 +54,7 @@ class HeaderSpacingItemDecoration(headerHeight: Int = 0) : RecyclerView.ItemDeco
      * - Everything else (linear): only position 0 is the "first row".
      */
     private fun isInFirstRow(view: View, parent: RecyclerView, position: Int): Boolean {
+        if (position < 0) return false
         return when (val lm = parent.layoutManager) {
             is GridLayoutManager -> {
                 val spanCount = lm.spanCount

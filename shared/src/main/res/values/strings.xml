@@ -237,4 +237,5 @@
     <string name="shuffle_algorithm_summary">Choose the algorithm used to shuffle songs.</string>
     <string name="fisher_yates_desc">True uniform random permutation (Knuth shuffle). Each song has equal probability of landing at any position.</string>
     <string name="miller_desc">Deterministic prime-step shuffle. Produces a reproducible permutation from a seed while distributing items evenly.</string>
+    <string name="grid_type">Grid Type</string>
 </resources>

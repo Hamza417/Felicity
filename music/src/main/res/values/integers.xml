@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Home grid span count: portrait -->
+    <integer name="home_grid_span_count">3</integer>
+</resources>
+
