@@ -14,8 +14,8 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.databinding.ActivityMainBinding
+import app.simple.felicity.decorations.miniplayer.MiniPlayer
 import app.simple.felicity.decorations.miniplayer.MiniPlayerItem
-import app.simple.felicity.decorations.miniplayer.MiniPlayerView
 import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
@@ -57,7 +57,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.miniPlayer.callbacks = object : MiniPlayerView.Callbacks {
+        binding.miniPlayer.callbacks = object : MiniPlayer.Callbacks {
             override fun onPageSelected(position: Int) {
                 MediaManager.updatePosition(position)
             }

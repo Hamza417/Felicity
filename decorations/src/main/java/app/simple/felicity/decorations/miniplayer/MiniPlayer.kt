@@ -1,16 +1,22 @@
 package app.simple.felicity.decorations.miniplayer
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.CornerPathEffect
+import android.graphics.LinearGradient
 import android.graphics.Outline
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Shader
 import android.os.Handler
 import android.os.Looper
 import android.os.Parcel
@@ -29,6 +35,7 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.ColorInt
+import androidx.core.graphics.withClip
 import androidx.core.graphics.withTranslation
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -37,6 +44,7 @@ import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.themes.Theme
 import com.google.android.material.math.MathUtils.lerp
 import java.util.concurrent.CopyOnWriteArrayList
@@ -73,7 +81,7 @@ import kotlin.math.sqrt
  *
  * @author Hamza417
  */
-class MiniPlayerView @JvmOverloads constructor(
+class MiniPlayer @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0
@@ -105,6 +113,29 @@ class MiniPlayerView @JvmOverloads constructor(
     }
 
     var callbacks: Callbacks? = null
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Text size setters (public)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /** Override the title text size. Pass sp value, e.g. 14f. */
+    fun setTitleTextSize(spValue: Float) {
+        titlePaint.textSize = sp(spValue)
+        invalidate()
+    }
+
+    /** Override the artist text size. Pass sp value, e.g. 12f. */
+    fun setArtistTextSize(spValue: Float) {
+        artistPaint.textSize = sp(spValue)
+        invalidate()
+    }
+
+    /** Set both title and artist sizes in one call. */
+    fun setTextSizes(titleSp: Float, artistSp: Float) {
+        titlePaint.textSize = sp(titleSp)
+        artistPaint.textSize = sp(artistSp)
+        invalidate()
+    }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Data
@@ -385,6 +416,9 @@ class MiniPlayerView @JvmOverloads constructor(
                     isBeingDragged = true
                     dispatchScrollState(SCROLL_STATE_DRAGGING)
                     parent?.requestDisallowInterceptTouchEvent(true)
+                    // Animate edge fades in and slide play button out
+                    animateEdgeFade(true)
+                    animatePpSlide(true)
                 }
                 if (isBeingDragged) {
                     scrollPx = (scrollPx - dx).coerceIn(0f, maxScrollPx())
@@ -406,6 +440,9 @@ class MiniPlayerView @JvmOverloads constructor(
                 velocityTracker?.recycle()
                 velocityTracker = null
                 isBeingDragged = false
+                // Fade edges back out and slide play button back in
+                animateEdgeFade(false)
+                animatePpSlide(false)
             }
         }
         return true
@@ -521,6 +558,92 @@ class MiniPlayerView @JvmOverloads constructor(
     private val artSrcRect = Rect()
     private val cardClipPath = Path()
 
+    // ── Edge-fade ─────────────────────────────────────────────────────────────
+    /** 0f = invisible, 1f = fully opaque fades on both sides. */
+    private var edgeFadeAlpha = 0f
+    private var edgeFadeAnimator: ValueAnimator? = null
+    private var edgeFadeWidth = 0f
+
+    // Pre-allocated rects for the gradient overlay (left / right)
+    private val edgeFadeLeftRect = RectF()
+    private val edgeFadeRightRect = RectF()
+
+    /** DST_OUT paint — erases content below the gradient mask, producing a soft-fade edge. */
+    private val edgeFadePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT)
+    }
+
+    private fun rebuildEdgeShaders(w: Float, h: Float) {
+        edgeFadeLeftRect.set(0f, 0f, edgeFadeWidth, h)
+        edgeFadeRightRect.set(w - edgeFadeWidth, 0f, w, h)
+    }
+
+    private fun animateEdgeFade(show: Boolean) {
+        val target = if (show) 1f else 0f
+        if (edgeFadeAlpha == target && edgeFadeAnimator == null) return
+        edgeFadeAnimator?.cancel()
+        edgeFadeAnimator = ValueAnimator.ofFloat(edgeFadeAlpha, target).apply {
+            duration = if (show) FADE_IN_MS else FADE_OUT_MS
+            interpolator = if (show) AccelerateInterpolator() else DecelerateInterpolator()
+            addUpdateListener {
+                edgeFadeAlpha = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    // ── Play/pause slide-out during drag ──────────────────────────────────────
+    /** 0f = normal position, 1f = fully slid off to the right + invisible. */
+    private var ppSlideOut = 0f
+    private var ppSlideAnimator: ValueAnimator? = null
+
+    private fun animatePpSlide(slideOut: Boolean) {
+        val target = if (slideOut) 1f else 0f
+        if (ppSlideOut == target && ppSlideAnimator == null) return
+        ppSlideAnimator?.cancel()
+        ppSlideAnimator = ValueAnimator.ofFloat(ppSlideOut, target).apply {
+            duration = if (slideOut) PP_SLIDE_OUT_MS else PP_SLIDE_IN_MS
+            interpolator = if (slideOut) AccelerateInterpolator() else DecelerateInterpolator()
+            addUpdateListener {
+                ppSlideOut = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    // ── Animated elevation ────────────────────────────────────────────────────
+    private var elevationAnimator: ValueAnimator? = null
+
+    /**
+     * Smoothly animate elevation to [targetDp] dp.
+     * @param animated false = instant set.
+     */
+    fun animateElevation(targetDp: Float, durationMs: Long = ELEV_ANIM_MS, animated: Boolean = true) {
+        elevationAnimator?.cancel()
+        val targetPx = dp(targetDp)
+        if (!animated || elevation == targetPx) {
+            elevation = targetPx
+            return
+        }
+        val fromPx = elevation
+        elevationAnimator = ValueAnimator.ofFloat(fromPx, targetPx).apply {
+            duration = durationMs
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { elevation = it.animatedValue as Float }
+            start()
+        }
+    }
+
+    /**
+     * Tint the drop-shadow color.
+     */
+    fun setElevationColor(@ColorInt color: Int) {
+        outlineAmbientShadowColor = color
+        outlineSpotShadowColor = color
+    }
+
     private fun isInPlayPauseZone(x: Float, @Suppress("UNUSED_PARAMETER") y: Float): Boolean =
         x >= width - btnZoneWidth
 
@@ -553,6 +676,10 @@ class MiniPlayerView @JvmOverloads constructor(
         cardRect.set(0f, 0f, wF, hF)
         cardClipPath.rewind()
         cardClipPath.addRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, Path.Direction.CW)
+
+        // Edge-fade width ≈ 15% of the view width, at least 48 dp
+        edgeFadeWidth = (wF * 0.15f).coerceAtLeast(dp(48f))
+        rebuildEdgeShaders(wF, hF)
 
         // Refresh title/artist paint sizes in case density changed
         titlePaint.textSize = sp(13f)
@@ -599,13 +726,13 @@ class MiniPlayerView @JvmOverloads constructor(
     private val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = titleColor
-        textSize = sp(13f)
+        textSize = sp(18f)
     }
 
     private val artistPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = artistColor
-        textSize = sp(11.5f)
+        textSize = sp(12F)
     }
 
     // Placeholder art paint (when bitmap is null/loading)
@@ -617,6 +744,7 @@ class MiniPlayerView @JvmOverloads constructor(
     // ── Stroke ───────────────────────────────────────────────────────────────
     private var strokeEnabled = false
     private var strokeWidthPx = 0f
+
     @ColorInt
     private var strokeColor: Int = Color.argb(80, 128, 128, 128)
 
@@ -646,7 +774,7 @@ class MiniPlayerView @JvmOverloads constructor(
     }
 
     /** One-shot convenience: enable stroke with given color and width (dp). */
-    fun setStroke(enabled: Boolean, @ColorInt color: Int, widthDp: Float = 1.5f) {
+    fun setStroke(enabled: Boolean, @ColorInt color: Int, widthDp: Float = 1f) {
         strokeEnabled = enabled
         strokeColor = color
         strokePaint.color = strokeColor
@@ -725,6 +853,8 @@ class MiniPlayerView @JvmOverloads constructor(
         if (isTransparent) return
         isTransparent = true
         opaqueCardColor = cardColor
+        // Elevation → 0 first, then fade background out
+        animateElevation(0f, ANIM_DURATION_MS, animated)
         animateBgColor(cardColor, Color.TRANSPARENT, animated)
         animateTextIcon(Color.WHITE, Color.WHITE, Color.WHITE, animated)
     }
@@ -734,7 +864,10 @@ class MiniPlayerView @JvmOverloads constructor(
         isTransparent = false
         val targetBg = if (opaqueCardColor != Color.TRANSPARENT) opaqueCardColor
         else ThemeManager.theme.viewGroupTheme.backgroundColor
-        animateBgColor(Color.TRANSPARENT, targetBg, animated)
+        // Step 1: animate background back in; Step 2: once bg is restored, bring elevation back
+        animateBgColor(Color.TRANSPARENT, targetBg, animated, onEnd = {
+            animateElevation(DEFAULT_ELEVATION_DP, ELEV_ANIM_MS, animated)
+        })
         animateTextIcon(
                 ThemeManager.theme.textViewTheme.primaryTextColor,
                 ThemeManager.theme.textViewTheme.secondaryTextColor,
@@ -742,12 +875,13 @@ class MiniPlayerView @JvmOverloads constructor(
                 animated)
     }
 
-    private fun animateBgColor(from: Int, to: Int, animated: Boolean) {
+    private fun animateBgColor(from: Int, to: Int, animated: Boolean, onEnd: (() -> Unit)? = null) {
         bgColorAnimator?.cancel()
         if (!animated || from == to) {
             cardColor = to
             bgPaint.color = to
             invalidate()
+            onEnd?.invoke()
             return
         }
         bgColorAnimator = ValueAnimator.ofArgb(from, to).apply {
@@ -758,6 +892,11 @@ class MiniPlayerView @JvmOverloads constructor(
                 bgPaint.color = cardColor
                 invalidate()
             }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    onEnd?.invoke()
+                }
+            })
             start()
         }
     }
@@ -770,8 +909,8 @@ class MiniPlayerView @JvmOverloads constructor(
             invalidate()
             return
         }
-        val oldTitle = titleColor;
-        val oldArtist = artistColor;
+        val oldTitle = titleColor
+        val oldArtist = artistColor
         val oldIcon = iconColor
         ValueAnimator.ofFloat(0f, 1f).apply {
             duration = ANIM_DURATION_MS
@@ -822,16 +961,25 @@ class MiniPlayerView @JvmOverloads constructor(
                                  (cornerRadiusPx - inset).coerceAtLeast(0f), strokePaint)
         }
 
-        // ── 3. Pages (clipped to rounded card + art slot + text slot) ─────────
+        // ── 3. Pages + edge fades ──────────────────────────────────────────
         val pageW = w.toInt()
         if (pageW > 0 && items.isNotEmpty()) {
-            canvas.save()
-            canvas.clipPath(cardClipPath)   // rounded clip for all content
-            drawPages(canvas, pageW, h)
-            canvas.restore()
+            if (edgeFadeAlpha > 0f) {
+                // Isolate onto its own layer so DST_OUT only erases content,
+                // never the card background that was already drawn below.
+                canvas.saveLayer(cardRect, null)
+                canvas.clipPath(cardClipPath)
+                drawPages(canvas, pageW, h)
+                drawEdgeFades(canvas)
+                canvas.restore()
+            } else {
+                canvas.withClip(cardClipPath) {
+                    drawPages(this, pageW, h)
+                }
+            }
         }
 
-        // ── 4. Play/Pause button ───────────────────────────────────────────
+        // ── 4. Play/Pause button (slides out during drag) ──────────────────
         drawPlayPause(canvas)
     }
 
@@ -923,6 +1071,7 @@ class MiniPlayerView @JvmOverloads constructor(
     /**
      * Draws the morphing play/pause icon into the button zone,
      * replicating the exact geometry of [app.simple.felicity.decorations.views.FlipPlayPauseView].
+     * While [ppSlideOut] > 0 the icon translates right and fades out.
      */
     private fun drawPlayPause(canvas: Canvas) {
         val h = ppH
@@ -955,7 +1104,12 @@ class MiniPlayerView @JvmOverloads constructor(
             ppLeftPath.lineTo(0f, h); ppLeftPath.close()
         }
 
-        canvas.withTranslation(btnCentreX, btnCentreY) {
+        // Slide-out: shift right by ppSlideOut * btnZoneWidth, fade to 0
+        val slideOffsetPx = ppSlideOut * btnZoneWidth
+        val buttonAlpha = ((1f - ppSlideOut) * 255f).toInt().coerceIn(0, 255)
+        if (buttonAlpha == 0) return   // fully gone — skip draw
+
+        canvas.withTranslation(btnCentreX + slideOffsetPx, btnCentreY) {
             val totalPauseWidth = barWidth * 2 + gap
             val totalPlayWidth = triHeight
             val offsetPause = -totalPauseWidth / 2f
@@ -964,13 +1118,42 @@ class MiniPlayerView @JvmOverloads constructor(
 
             translate(offsetX, -h / 2f)
             ppPaint.color = iconColor
-            ppPaint.alpha = 255
+            ppPaint.alpha = buttonAlpha
             drawPath(ppLeftPath, ppPaint)
             if (progress < 1f) {
-                ppPaint.alpha = (255 * (1f - progress)).toInt()
+                ppPaint.alpha = ((1f - progress) * buttonAlpha).toInt().coerceIn(0, 255)
                 drawPath(ppRightPath, ppPaint)
             }
             ppPaint.alpha = 255
+        }
+    }
+
+    /**
+     * Draws left and/or right horizontal fade masks using DST_OUT blending.
+     * Must be called inside a [Canvas.saveLayer] block.
+     * Only draws a side when there is content scrollable in that direction.
+     */
+    private fun drawEdgeFades(canvas: Canvas) {
+        if (edgeFadeAlpha <= 0f) return
+        val alpha = (edgeFadeAlpha * 255f).toInt().coerceIn(1, 255)
+
+        val canScrollLeft = scrollPx > 0.5f
+        val canScrollRight = scrollPx < maxScrollPx() - 0.5f
+
+        if (canScrollLeft) {
+            edgeFadePaint.shader = LinearGradient(
+                    edgeFadeLeftRect.left, 0f, edgeFadeLeftRect.right, 0f,
+                    intArrayOf(Color.argb(alpha, 0, 0, 0), Color.TRANSPARENT),
+                    null, Shader.TileMode.CLAMP)
+            canvas.drawRect(edgeFadeLeftRect, edgeFadePaint)
+        }
+
+        if (canScrollRight) {
+            edgeFadePaint.shader = LinearGradient(
+                    edgeFadeRightRect.left, 0f, edgeFadeRightRect.right, 0f,
+                    intArrayOf(Color.TRANSPARENT, Color.argb(alpha, 0, 0, 0)),
+                    null, Shader.TileMode.CLAMP)
+            canvas.drawRect(edgeFadeRightRect, edgeFadePaint)
         }
     }
 
@@ -1176,7 +1359,13 @@ class MiniPlayerView @JvmOverloads constructor(
             cardClipPath.addRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, Path.Direction.CW)
             invalidateOutline()
         }
+        setCustomizations()
         invalidate()
+    }
+
+    override fun onAccentChanged(accent: Accent) {
+        super.onAccentChanged(accent)
+        setCustomizations()
     }
 
     override fun onAttachedToWindow() {
@@ -1188,13 +1377,15 @@ class MiniPlayerView @JvmOverloads constructor(
         hadImmersiveDrag = false
 
         // Elevation + rounded shadow outline
-        elevation = dp(6f)
+        elevation = dp(DEFAULT_ELEVATION_DP)
         outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
                 outline.setRoundRect(0, 0, view.width, view.height, cornerRadiusPx)
             }
         }
         clipToOutline = false   // we clip art ourselves; don't clip the shadow
+
+        setCustomizations()
 
         // Margin / inset wiring
         post {
@@ -1204,6 +1395,7 @@ class MiniPlayerView @JvmOverloads constructor(
             lp.setMargins(m, m, m, m + navBarInsetPx)
             layoutParams = lp
         }
+
         ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
             val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
             navBarInsetPx = nav.bottom
@@ -1219,7 +1411,10 @@ class MiniPlayerView @JvmOverloads constructor(
         detachFromAllRecyclerViews()
         cancelPageAnimation()
         ppAnimator?.cancel()
+        ppSlideAnimator?.cancel()
         bgColorAnimator?.cancel()
+        elevationAnimator?.cancel()
+        edgeFadeAnimator?.cancel()
         resetManualHandler.removeCallbacks(resetManualRunnable)
         isManuallyControlled = false
         hadImmersiveDrag = false
@@ -1288,6 +1483,20 @@ class MiniPlayerView @JvmOverloads constructor(
         }
     }
 
+    private fun setCustomizations() {
+        if (isInEditMode.not()) {
+            if (AppearancePreferences.isStrokeAroundMiniplayerOn()) {
+                setStroke(
+                        enabled = true,
+                        color = ThemeManager.theme.textViewTheme.tertiaryTextColor,
+                        widthDp = 1f
+                )
+            } else {
+                setStrokeEnabled(false)
+            }
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // Helpers
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1303,6 +1512,24 @@ class MiniPlayerView @JvmOverloads constructor(
         const val SCROLL_STATE_DRAGGING = 1
         const val SCROLL_STATE_SETTLING = 2
         private const val ANIM_DURATION_MS = 180L
+
+        /** Fast fade-in when drag starts (edges appear quickly). */
+        private const val FADE_IN_MS = 240L
+
+        /** Slower fade-out after drag ends (edges dissolve gently). */
+        private const val FADE_OUT_MS = 540L
+
+        /** Play button slides out during drag. */
+        private const val PP_SLIDE_OUT_MS = 130L
+
+        /** Play button slides back in after drag. */
+        private const val PP_SLIDE_IN_MS = 280L
+
+        /** Default elevation of the card in dp. */
+        private const val DEFAULT_ELEVATION_DP = 24f
+
+        /** Duration for elevation animation. */
+        private const val ELEV_ANIM_MS = 220L
     }
 }
 

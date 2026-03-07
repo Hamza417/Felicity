@@ -18,6 +18,7 @@ object AppearancePreferences {
     const val ACCENT_COLOR = "app_accent_color"
     const val APP_FONT = "type_face"
     const val SEEKBAR_THUMB_STYLE = "seekbar_thumb_style"
+    const val STROKE_AROUND_MINIPLAYER = "stroke_around_miniplayer"
 
     const val MAX_CORNER_RADIUS = 80F
     const val MAX_SPACING = 80F
@@ -146,5 +147,15 @@ object AppearancePreferences {
 
     fun getSeekbarThumbStyle(): Int {
         return getSharedPreferences().getInt(SEEKBAR_THUMB_STYLE, SEEKBAR_THUMB_OVAL)
+    }
+
+    // ---------------------------------------------------------------------------------------------------------- //
+
+    fun setStrokeAroundMiniplayer(boolean: Boolean) {
+        getSharedPreferences().edit { putBoolean(STROKE_AROUND_MINIPLAYER, boolean) }
+    }
+
+    fun isStrokeAroundMiniplayerOn(): Boolean {
+        return getSharedPreferences().getBoolean(STROKE_AROUND_MINIPLAYER, false)
     }
 }
