@@ -5,8 +5,6 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Rect
 import android.graphics.drawable.ColorDrawable
@@ -15,14 +13,13 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.DecelerateInterpolator
+import android.view.animation.PathInterpolator
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.createBitmap
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.NestedScrollView
@@ -42,14 +39,16 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.roundToLong
 import kotlin.math.sign
+import kotlin.math.sin
 
 open class SharedScrollViewPopup @JvmOverloads constructor(
         private val container: ViewGroup,
         private val anchorView: View,
-        private val menuItems: List<Int>,
-        private val menuIcons: List<Int>? = null,
-        private val onMenuItemClick: (itemResId: Int) -> Unit,
+        private val menuItems: List<Int>, // String resource IDs
+        private val menuIcons: List<Int>? = null, // Optional icons
+        private val onMenuItemClick: (itemResId: Int) -> Unit, // Callback
         private val onDismiss: (() -> Unit)? = null
 ) {
 
@@ -67,45 +66,31 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
     private var translationXAnimation: SpringAnimation? = null
     private var translationYAnimation: SpringAnimation? = null
 
+    // Rects captured once per show/dismiss
     private val anchorRect = Rect()
     private val finalRect = Rect()
     private val containerRect = Rect()
 
     companion object {
-        private const val OPEN_DURATION = 520L
-        private const val CLOSE_DURATION = 480L
+        private const val DURATION = 450L
         private const val MARGIN = 16 // dp
-
         private const val MAX_WIGGLE_THRESHOLD = 72F
         private const val MAX_FINGER_DISTANCE = 0.05f
 
-        // Z-depth: lifts from 0 → PEAK during open, settles to FINAL at rest
-        private const val PEAK_Z_DP = 28f
-        private const val FINAL_Z_DP = 14f
+        // Content starts fading in from this morph progress (0..1)
+        private const val CONTENT_FADE_START = 0.30f
 
-        // Single smooth decelerate for everything — feels natural, no jank
-        private val OPEN_INTERPOLATOR = DecelerateInterpolator(2.5f)
-        private val CLOSE_INTERPOLATOR = DecelerateInterpolator(1.8f)
+        // Peak elevation (dp) reached at the midpoint of the morph — the "cylinder top"
+        private const val PEAK_ELEVATION_DP = 24f
 
+        // Resting elevation once fully open
+        private const val FINAL_ELEVATION_DP = 12f
+
+        // Material 3 "emphasized" spring-like easing
+        private val OPEN_INTERPOLATOR = PathInterpolator(0.05f, 0.7f, 0.1f, 1.0f)
+        private val CLOSE_INTERPOLATOR = PathInterpolator(0.3f, 0f, 1f, 1f)
         private val ARG_EVALUATOR = ArgbEvaluator()
     }
-
-    // ─── Anchor snapshot ────────────────────────────────────────────────────────
-
-    private fun captureAnchorBitmap(): Bitmap? {
-        if (anchorView.width <= 0 || anchorView.height <= 0) return null
-        return try {
-            val bmp = createBitmap(anchorView.width, anchorView.height)
-            val canvas = Canvas(bmp)
-            anchorView.background?.draw(canvas)
-            anchorView.draw(canvas)
-            bmp
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    // ─── Build & show ────────────────────────────────────────────────────────────
 
     @SuppressLint("ClickableViewAccessibility")
     fun show() {
@@ -113,25 +98,30 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
         var initialY = 0F
         var isInitialTouch = true
 
-        // 1. Capture anchor geometry and snapshot BEFORE hiding it
+        // ── 1. Capture anchor rect in container coordinates ───────────────────
         container.getGlobalVisibleRect(containerRect)
         anchorView.getGlobalVisibleRect(anchorRect)
         anchorRect.offset(-containerRect.left, -containerRect.top)
 
-        val anchorBmp = captureAnchorBitmap()
+        // Resolve anchor background color — fall back to the app background color
         val anchorColor = resolveAnchorColor()
         val finalColor = ThemeManager.theme.viewGroupTheme.backgroundColor
         val accentColor = ThemeManager.accent.primaryAccentColor
-        val cornerRadius = AppearancePreferences.getCornerRadius()
-        val density = container.resources.displayMetrics.density
-        val peakZPx = PEAK_Z_DP * density
-        val finalZPx = FINAL_Z_DP * density
 
-        // 2. Build menu items
+        // Corner radius: anchor starts at half the final radius, so it "blooms" open
+        val anchorCorner = AppearancePreferences.getCornerRadius()
+        val finalCorner = AppearancePreferences.getCornerRadius()
+
+        val density = container.resources.displayMetrics.density
+        val peakElevationPx = PEAK_ELEVATION_DP * density
+        val finalElevationPx = FINAL_ELEVATION_DP * density
+
+        // ── 2. Build menu content ─────────────────────────────────────────────
         linearLayout = LinearLayout(container.context).apply {
             layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT)
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            )
             orientation = LinearLayout.VERTICAL
         }
 
@@ -142,7 +132,8 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
                 setPadding(hp, vp, hp * 2, vp)
                 layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT)
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                )
                 setTypeFaceStyle(TypefaceStyle.BOLD.style)
                 gravity = Gravity.CENTER_VERTICAL
                 compoundDrawablePadding = (16 * density).toInt()
@@ -151,11 +142,14 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                 isClickable = true
                 isFocusable = true
-                setOnClickListener { onMenuItemClick(resId); dismiss() }
-                val textSizePx = textSize * 1.3f
-                val iconResId = menuIcons?.getOrNull(menuItems.indexOf(resId)) ?: 0
-                val drawable = if (iconResId != 0) {
-                    ContextCompat.getDrawable(context, iconResId)?.apply {
+                setOnClickListener {
+                    onMenuItemClick(resId)
+                    dismiss()
+                }
+                val textSizePx = textSize * 1.3F
+                val drawableResId = menuIcons?.getOrNull(menuItems.indexOf(resId)) ?: 0
+                val drawable = if (drawableResId != 0) {
+                    ContextCompat.getDrawable(context, drawableResId)?.apply {
                         setBounds(0, 0, textSizePx.toInt(), textSizePx.toInt())
                     }
                 } else null
@@ -165,7 +159,7 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
             linearLayout.addView(tv)
         }
 
-        // 3. Scroll view — no background, morphHost clips it
+        // ── 3. Build scroll view — no background, MorphLayout owns it ─────────
         popupScrollView = DynamicCornersNestedScrollView(container.context).apply {
             background = null
             isFillViewport = true
@@ -180,10 +174,13 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
                 when (event.action) {
                     MotionEvent.ACTION_MOVE -> {
                         if (isInitialTouch) {
-                            initialX = event.rawX; initialY = event.rawY
+                            initialX = event.rawX
+                            initialY = event.rawY
                             isInitialTouch = false
-                            translationXAnimation?.cancel(); translationYAnimation?.cancel()
-                            scaleXAnimation?.cancel(); scaleYAnimation?.cancel()
+                            translationXAnimation?.cancel()
+                            translationYAnimation?.cancel()
+                            scaleXAnimation?.cancel()
+                            scaleYAnimation?.cancel()
                         }
                         val dx = event.rawX - initialX
                         val dy = event.rawY - initialY
@@ -193,26 +190,17 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
                         val ny = (abs(dampY) / MAX_WIGGLE_THRESHOLD).coerceAtMost(1f)
                         val easedX = easeOutDecay(nx) * MAX_WIGGLE_THRESHOLD * sign(dampX)
                         val easedY = easeOutDecay(ny) * MAX_WIGGLE_THRESHOLD * sign(dampY)
-                        morphLayout.morphHost.translationX = easedX
-                        morphLayout.morphHost.translationY = easedY
-                        morphLayout.shadowHost.translationX = easedX
-                        morphLayout.shadowHost.translationY = easedY
+                        morphLayout.translationX = easedX
+                        morphLayout.translationY = easedY
                         val intensity = max(nx, ny)
-                        val scale = 1f - easeOutDecay(intensity) * 0.08f
-                        morphLayout.morphHost.scaleX = scale
-                        morphLayout.morphHost.scaleY = scale
-                        morphLayout.shadowHost.scaleX = scale
-                        morphLayout.shadowHost.scaleY = scale
+                        morphLayout.scaleX = 1f - (easeOutDecay(intensity) * 0.15f)
+                        morphLayout.scaleY = 1f - (easeOutDecay(intensity) * 0.15f)
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        translationXAnimation = startSpring(morphLayout.morphHost, SpringAnimation.TRANSLATION_X, 0f, morphLayout.morphHost.translationX)
-                        translationYAnimation = startSpring(morphLayout.morphHost, SpringAnimation.TRANSLATION_Y, 0f, morphLayout.morphHost.translationY)
-                        scaleXAnimation = startSpring(morphLayout.morphHost, SpringAnimation.SCALE_X, 1f, morphLayout.morphHost.scaleX)
-                        scaleYAnimation = startSpring(morphLayout.morphHost, SpringAnimation.SCALE_Y, 1f, morphLayout.morphHost.scaleY)
-                        startSpring(morphLayout.shadowHost, SpringAnimation.TRANSLATION_X, 0f, morphLayout.shadowHost.translationX)
-                        startSpring(morphLayout.shadowHost, SpringAnimation.TRANSLATION_Y, 0f, morphLayout.shadowHost.translationY)
-                        startSpring(morphLayout.shadowHost, SpringAnimation.SCALE_X, 1f, morphLayout.shadowHost.scaleX)
-                        startSpring(morphLayout.shadowHost, SpringAnimation.SCALE_Y, 1f, morphLayout.shadowHost.scaleY)
+                        translationXAnimation = startSpring(morphLayout, SpringAnimation.TRANSLATION_X, 0f, morphLayout.translationX)
+                        translationYAnimation = startSpring(morphLayout, SpringAnimation.TRANSLATION_Y, 0f, morphLayout.translationY)
+                        scaleXAnimation = startSpring(morphLayout, SpringAnimation.SCALE_X, 1f, morphLayout.scaleX)
+                        scaleYAnimation = startSpring(morphLayout, SpringAnimation.SCALE_Y, 1f, morphLayout.scaleY)
                         isInitialTouch = true
                     }
                 }
@@ -220,16 +208,17 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
             }
         }
 
-        // 4. Compute final popup rect
+        // ── 4. Compute final popup rect ───────────────────────────────────────
         val marginPx = (MARGIN * density).toInt()
-        val insets = ViewCompat.getRootWindowInsets(container)
-        val sysBars = insets?.getInsets(WindowInsetsCompat.Type.systemBars())
-        val statusBarH = sysBars?.top ?: 0
-        val navBarH = sysBars?.bottom ?: 0
+        val windowInsets = ViewCompat.getRootWindowInsets(container)
+        val systemBars = windowInsets?.getInsets(WindowInsetsCompat.Type.systemBars())
+        val statusBarH = systemBars?.top ?: 0
+        val navBarH = systemBars?.bottom ?: 0
 
         linearLayout.measure(
                 View.MeasureSpec.makeMeasureSpec(container.width, View.MeasureSpec.AT_MOST),
-                View.MeasureSpec.UNSPECIFIED)
+                View.MeasureSpec.UNSPECIFIED
+        )
 
         val pad2 = container.resources.getDimensionPixelSize(R.dimen.padding_10) * 2
         val naturalW = linearLayout.measuredWidth + pad2
@@ -244,33 +233,38 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
         finalTop = max(marginPx + statusBarH, min(finalTop, container.height - finalH - marginPx - navBarH))
         finalRect.set(finalLeft, finalTop, finalLeft + finalW, finalTop + finalH)
 
-        // 5. Build MorphLayout
+        // ── 5. Build MorphLayout ──────────────────────────────────────────────
+        // Use FrameLayout.LayoutParams for the child to avoid MarginLayoutParams crash
         morphLayout = MorphLayout(container.context).apply {
+            elevation = 0f
             outlineAmbientShadowColor = accentColor
             outlineSpotShadowColor = accentColor
-            // Content starts slightly scaled-down (never zero — zero = invisible + broken layout)
-            // and fully transparent. Anchor bitmap starts fully opaque (alpha=0 means show bitmap).
-            contentAlpha = 0f
-            contentScale = 0.92f
-            anchorBitmapAlpha = 0f
-            anchorBitmap = anchorBmp
-            elevation = 0f
+            // FrameLayout.LayoutParams avoids the ViewGroup.LayoutParams → MarginLayoutParams CCE
             addView(popupScrollView, FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT))
+                    FrameLayout.LayoutParams.MATCH_PARENT
+            ))
+            contentAlpha = 0f
+            // Place it at anchor bounds to start
+            setMorphState(anchorRect, anchorCorner, anchorColor)
         }
 
+        // CoordinatorLayout.LayoutParams needed for OverScrollBehavior — but we must NOT
+        // set width/height here to something that would trigger CoordinatorLayout's own
+        // measure — use WRAP_CONTENT, the actual size is driven by layout() in setMorphState.
         morphLayout.layoutParams = CoordinatorLayout.LayoutParams(
-                CoordinatorLayout.LayoutParams.MATCH_PARENT,
-                CoordinatorLayout.LayoutParams.MATCH_PARENT).apply {
+                CoordinatorLayout.LayoutParams.WRAP_CONTENT,
+                CoordinatorLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
             behavior = OverScrollBehavior(container.context, null)
         }
 
-        // 6. Scrim
+        // ── 6. Scrim ──────────────────────────────────────────────────────────
         scrimView = View(container.context).apply {
             layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT)
+                    ViewGroup.LayoutParams.MATCH_PARENT
+            )
             setBackgroundColor(Color.TRANSPARENT)
             isClickable = true
             setOnClickListener { dismiss() }
@@ -279,63 +273,48 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
         container.addView(scrimView)
         container.addView(morphLayout)
         anchorView.visibility = View.INVISIBLE
-        morphLayout.visibility = View.INVISIBLE
+        morphLayout.visibility = View.VISIBLE
 
-        // 7. Animate — single continuous pass, all driven by one interpolated value p ∈ [0,1]
-        //
-        //   Rect + corner + color : p 0→1  (full duration, smoothly decelerating)
-        //   Z elevation           : 0→peakZ→finalZ arc
-        //   Anchor bitmap         : fades out over first 60% of animation
-        //   Content alpha         : fades in over full duration
-        //   Content scale         : 0.92→1.0 over full duration
-        //   Scrim                 : fades in over first 70%
-
+        // ── 7. Animate: rect lerp + elevation arc + color + corner + content fade ──
         morphAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = OPEN_DURATION
+            duration = DURATION
             interpolator = OPEN_INTERPOLATOR
 
             addUpdateListener { anim ->
                 val p = anim.animatedValue as Float
 
-                // First frame: position the card at the anchor, then reveal
-                if (morphLayout.visibility != View.VISIBLE) {
-                    morphLayout.setMorphState(anchorRect, cornerRadius, anchorColor)
-                    morphLayout.visibility = View.VISIBLE
-                }
-
-                // ── Rect morph (full duration) ────────────────────────────────
+                // Rect interpolation
                 val l = lerp(anchorRect.left, finalRect.left, p)
                 val t = lerp(anchorRect.top, finalRect.top, p)
                 val r = lerp(anchorRect.right, finalRect.right, p)
                 val b = lerp(anchorRect.bottom, finalRect.bottom, p)
+
+                // Corner: full radius throughout (anchor is already at full radius)
+                val corner = lerp(anchorCorner, finalCorner, p)
+
+                // Color
                 val color = ARG_EVALUATOR.evaluate(p, anchorColor, finalColor) as Int
-                morphLayout.setMorphState(l, t, r, b, cornerRadius, color)
 
-                // ── Z elevation arc ───────────────────────────────────────────
-                // Rises quickly to peak then gently settles — like lifting off a table
-                val zArc = if (p < 0.4f) lerp(0f, peakZPx, p / 0.4f)
-                else lerp(peakZPx, finalZPx, (p - 0.4f) / 0.6f)
-                morphLayout.elevation = zArc
+                morphLayout.setMorphState(l, t, r, b, corner, color)
 
-                // ── Anchor bitmap cross-fade out (first 60%) ──────────────────
-                morphLayout.anchorBitmapAlpha = (p / 0.6f).coerceIn(0f, 1f)
+                // Elevation arc: rises like a cylinder lifting from the surface.
+                // sin(p*π) peaks at p=0.5, settles at finalElevation at p=1.
+                val elevArc = sin(p * Math.PI).toFloat()          // 0 → 1 → 0
+                val elev = lerp(0f, finalElevationPx, p) + elevArc * (peakElevationPx - finalElevationPx)
+                morphLayout.elevation = elev
 
-                // ── Content reveal (full duration, delayed start at 20%) ──────
-                val contentP = ((p - 0.20f) / 0.80f).coerceIn(0f, 1f)
-                morphLayout.contentAlpha = contentP
-                morphLayout.contentScale = lerp(0.92f, 1.0f, contentP)
+                // Scrim
+                scrimView.alpha = min(p / 0.5f, 1f) * 0.55f
 
-                // ── Scrim ─────────────────────────────────────────────────────
-                scrimView.alpha = (p / 0.7f).coerceIn(0f, 1f) * 0.55f
+                // Content fades in after CONTENT_FADE_START
+                val cp = ((p - CONTENT_FADE_START) / (1f - CONTENT_FADE_START)).coerceIn(0f, 1f)
+                morphLayout.contentAlpha = cp
             }
 
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
-                    morphLayout.elevation = finalZPx
+                    morphLayout.elevation = finalElevationPx
                     morphLayout.contentAlpha = 1f
-                    morphLayout.contentScale = 1f
-                    morphLayout.anchorBitmapAlpha = 1f
-                    scrimView.alpha = 0.55f
                     onPopupCreated(popupScrollView, linearLayout)
                     setupBackPressListener()
                 }
@@ -344,8 +323,6 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
             start()
         }
     }
-
-    // ─── Dismiss ─────────────────────────────────────────────────────────────────
 
     fun dismiss() {
         if (isDismissing) return
@@ -356,41 +333,39 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
 
         val anchorColor = resolveAnchorColor()
         val finalColor = ThemeManager.theme.viewGroupTheme.backgroundColor
-        val cornerRadius = AppearancePreferences.getCornerRadius()
+        val anchorCorner = AppearancePreferences.getCornerRadius()
+        val finalCorner = AppearancePreferences.getCornerRadius()
         val density = container.resources.displayMetrics.density
-        val finalZPx = FINAL_Z_DP * density
+        val finalElevationPx = FINAL_ELEVATION_DP * density
 
+        // Re-capture anchor in case it moved
         container.getGlobalVisibleRect(containerRect)
         anchorView.getGlobalVisibleRect(anchorRect)
         anchorRect.offset(-containerRect.left, -containerRect.top)
 
         morphAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = CLOSE_DURATION
+            duration = (DURATION * 0.75f).roundToLong()
             interpolator = CLOSE_INTERPOLATOR
 
             addUpdateListener { anim ->
                 val p = anim.animatedValue as Float
 
-                // Rect collapses back to anchor
                 val l = lerp(finalRect.left, anchorRect.left, p)
                 val t = lerp(finalRect.top, anchorRect.top, p)
                 val r = lerp(finalRect.right, anchorRect.right, p)
                 val b = lerp(finalRect.bottom, anchorRect.bottom, p)
+
+                val corner = lerp(finalCorner, anchorCorner, p)
                 val color = ARG_EVALUATOR.evaluate(p, finalColor, anchorColor) as Int
-                morphLayout.setMorphState(l, t, r, b, cornerRadius, color)
 
-                // Z drops back to surface as card lands
-                morphLayout.elevation = lerp(finalZPx, 0f, p)
+                morphLayout.setMorphState(l, t, r, b, corner, color)
 
-                // Content fades + collapses quickly
-                val contentP = (1f - p * 1.5f).coerceIn(0f, 1f)
-                morphLayout.contentAlpha = contentP
-                morphLayout.contentScale = lerp(1.0f, 0.92f, p)
+                // Elevation drops back to 0 as it returns to the anchor surface
+                morphLayout.elevation = lerp(finalElevationPx, 0f, p)
 
-                // Anchor bitmap fades back in over last 50%
-                morphLayout.anchorBitmapAlpha = (1f - p).coerceIn(0f, 1f)
-
+                // Scrim and content fade out fast
                 scrimView.alpha = (1f - p).coerceIn(0f, 1f) * 0.55f
+                morphLayout.contentAlpha = (1f - p * 2.5f).coerceIn(0f, 1f)
             }
 
             addListener(object : AnimatorListenerAdapter() {
@@ -402,13 +377,12 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
         }
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────────
-
     private fun resolveAnchorColor(): Int {
         return try {
             when (val bg = anchorView.background) {
                 is ColorDrawable -> bg.color
-                is MaterialShapeDrawable -> bg.fillColor?.defaultColor
+                is MaterialShapeDrawable ->
+                    bg.fillColor?.defaultColor
                         ?: ThemeManager.theme.viewGroupTheme.backgroundColor
                 else -> ThemeManager.theme.viewGroupTheme.backgroundColor
             }
@@ -419,7 +393,6 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
 
     private fun cleanup() {
         anchorView.visibility = View.VISIBLE
-        morphLayout.clearAnchorBitmap()
         if (morphLayout.parent != null) container.removeView(morphLayout)
         if (scrimView.parent != null) container.removeView(scrimView)
         onDismiss?.invoke()
@@ -436,21 +409,26 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
         activity.onBackPressedDispatcher.addCallback(backCallback!!)
     }
 
-    private fun startSpring(view: View, property: FloatPropertyCompat<View>,
-                            final: Float, start: Float): SpringAnimation =
-        SpringAnimation(view, property).apply {
-            spring = SpringForce(final).apply {
-                stiffness = SpringForce.STIFFNESS_VERY_LOW
-                dampingRatio = SpringForce.DAMPING_RATIO_LOW_BOUNCY
-            }
-            setStartValue(start)
-            start()
+    private fun startSpring(
+            view: View,
+            property: FloatPropertyCompat<View>,
+            final: Float,
+            start: Float
+    ): SpringAnimation = SpringAnimation(view, property).apply {
+        spring = SpringForce(final).apply {
+            stiffness = SpringForce.STIFFNESS_VERY_LOW
+            dampingRatio = SpringForce.DAMPING_RATIO_LOW_BOUNCY
         }
+        setStartValue(start)
+        start()
+    }
 
+    // lerp overloads for Int and Float
     private fun lerp(a: Int, b: Int, t: Float): Int = (a + (b - a) * t).toInt()
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
 
     fun easeOutDecay(normalized: Float): Float = 1f - (1f - normalized).pow(5)
 
+    // Optional hook
     open fun onPopupCreated(scrollView: NestedScrollView, contentLayout: LinearLayout) {}
 }
