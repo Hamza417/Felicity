@@ -69,7 +69,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private static final float CURTAIN_INITIAL_BLUR = 30f; // Starting blur radius for curtain effect
     private static final float CURTAIN_INITIAL_SCALE = 1.2f; // Starting scale for curtain effect
     private static final long CURTAIN_STAGGER_MS = 40; // Delay between each line (ms)
-    private static final long CURTAIN_DURATION_MS = 250; // Duration of each line's animation
+    private static final long CURTAIN_DURATION_MS = 450; // Duration of each line's animation
     // Data
     private LrcData lrcData;
     private int currentLineIndex = -1;
@@ -843,6 +843,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         // scroll to current line immediately
         if (isAutoScrollEnabled && currentLineIndex >= 0) {
             scrollToLine(currentLineIndex);
+            
+            // snap the line to center
+            scrollY = targetScrollY;
         }
         
         invalidate();
