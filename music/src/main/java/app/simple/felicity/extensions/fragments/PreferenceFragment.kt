@@ -134,25 +134,18 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.POPUP,
                 valueProvider = {
                     when (AppearancePreferences.getSeekbarThumbStyle()) {
-                        AppearancePreferences.SEEKBAR_THUMB_OVAL -> getString(R.string.oval)
                         AppearancePreferences.SEEKBAR_THUMB_PILL -> getString(R.string.pill)
                         AppearancePreferences.SEEKBAR_THUMB_CIRCLE -> getString(R.string.circle)
-                        else -> getString(R.string.oval)
+                        else -> getString(R.string.pill)
                     }
                 },
                 onPreferenceAction = { view, callback ->
                     SharedScrollViewPopup(
                             container = requireContainerView(),
                             anchorView = view,
-                            menuItems = listOf(R.string.oval,
-                                               R.string.pill,
-                                               R.string.circle),
+                            menuItems = listOf(R.string.pill, R.string.circle),
                             onMenuItemClick = {
                                 when (it) {
-                                    R.string.oval -> {
-                                        AppearancePreferences.setSeekbarThumbStyle(AppearancePreferences.SEEKBAR_THUMB_OVAL)
-                                        (view as TextView).text = getString(R.string.oval)
-                                    }
                                     R.string.pill -> {
                                         AppearancePreferences.setSeekbarThumbStyle(AppearancePreferences.SEEKBAR_THUMB_PILL)
                                         (view as TextView).text = getString(R.string.pill)

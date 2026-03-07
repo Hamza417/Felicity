@@ -17,7 +17,7 @@ object AppearancePreferences {
     const val THEME = "current_app_theme"
     const val ACCENT_COLOR = "app_accent_color"
     const val APP_FONT = "type_face"
-    const val SEEKBAR_THUMB_STYLE = "seekbar_thumb_style"
+    const val SEEKBAR_THUMB_STYLE = "seekbar_thumb_style1"
 
     const val MAX_CORNER_RADIUS = 80F
     const val MAX_SPACING = 80F
@@ -27,7 +27,6 @@ object AppearancePreferences {
 
     const val SEEKBAR_THUMB_CIRCLE = 0
     const val SEEKBAR_THUMB_PILL = 1
-    const val SEEKBAR_THUMB_OVAL = 2
 
     // ---------------------------------------------------------------------------------------------------------- //
 
@@ -145,8 +144,7 @@ object AppearancePreferences {
     }
 
     fun getSeekbarThumbStyle(): Int {
-        return getSharedPreferences().getInt(SEEKBAR_THUMB_STYLE, SEEKBAR_THUMB_OVAL)
+        return getSharedPreferences().getInt(SEEKBAR_THUMB_STYLE, SEEKBAR_THUMB_PILL)
     }
-
 
 }
