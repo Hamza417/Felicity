@@ -19,15 +19,20 @@ import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.dialogs.app.AudioInformation.Companion.showAudioInfo
 import app.simple.felicity.dialogs.lyrics.Lyrics.Companion.showLyrics
-import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.database.instances.SongStatDatabase
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.managers.PlaybackStateManager
+import app.simple.felicity.repository.models.Album
+import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils
 import app.simple.felicity.repository.utils.AudioUtils.createSongStat
+import app.simple.felicity.shared.utils.BitmapUtils.toBitmap
+import app.simple.felicity.shared.utils.ViewUtils.gone
+import app.simple.felicity.ui.pages.AlbumPage
+import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.player.DefaultPlayer
 import kotlinx.coroutines.Dispatchers
@@ -266,10 +271,27 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 inflateBinding = DialogSongMenuBinding::inflate,
                 targetImageViewProvider = { it.cover })
             .onViewCreated { binding ->
-                binding.cover.loadArtCoverWithPayload(audios[position])
+                binding.cover.setImageBitmap(imageView.drawable.toBitmap())
                 binding.title.text = audios[position].title
                 binding.secondaryDetail.text = audios[position].artist
                 binding.tertiaryDetail.text = audios[position].album
+
+                // Hide "Add to Queue" and "Play Next" when the song is already playing
+                val isCurrentlyPlaying = MediaManager.getCurrentSong()?.id == audios[position].id
+                if (isCurrentlyPlaying) {
+                    binding.addToQueue.gone(animate = false)
+                    binding.playNext.gone(animate = false)
+                }
+
+                // Hide "Go to Artist" if artist is unknown/empty
+                if (audios[position].artist.isNullOrBlank()) {
+                    binding.goToArtist.gone(animate = false)
+                }
+
+                // Hide "Go to Album" if album is unknown/empty
+                if (audios[position].album.isNullOrBlank()) {
+                    binding.goToAlbum.gone(animate = false)
+                }
             }.onDialogInflated { binding, dismiss ->
                 binding.play.setOnClickListener {
                     val pos = audios.indexOfFirst { it.id == audios[position].id }.coerceAtLeast(0)
@@ -290,6 +312,33 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
                 binding.addToPlaylist.setOnClickListener {
 
+                }
+
+                binding.goToArtist.setOnClickListener {
+                    val audio = audios[position]
+                    val artistName = audio.artist ?: return@setOnClickListener
+                    val artist = Artist(
+                            id = artistName.hashCode().toLong(),
+                            name = artistName,
+                            albumCount = 0,
+                            trackCount = 0
+                    )
+                    openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
+                    dismiss()
+                }
+
+                binding.goToAlbum.setOnClickListener {
+                    val audio = audios[position]
+                    val albumName = audio.album ?: return@setOnClickListener
+                    val artistName = audio.artist ?: ""
+                    val album = Album(
+                            id = audio.albumId,
+                            name = albumName,
+                            artist = artistName,
+                            artistId = artistName.hashCode().toLong()
+                    )
+                    openFragment(AlbumPage.newInstance(album), AlbumPage.TAG)
+                    dismiss()
                 }
 
                 binding.share.setOnClickListener {
@@ -373,9 +422,13 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     val audioDatabase = AudioDatabase.getInstance(requireContext())
                     audioDatabase.audioDao()?.delete(audio)
 
-                    // If the deleted song is currently playing, skip to next
-                    val currentSong = MediaManager.getCurrentSong()
-                    if (currentSong?.id == audio.id) {
+                    // Remove the song from the queue (this handles skip-to-next if it's playing)
+                    val queueIndex = MediaManager.getSongs().indexOfFirst { it.id == audio.id }
+                    if (queueIndex != -1) {
+                        // removeQueueItemSilently handles skip/playback continuation
+                        MediaManager.removeQueueItemSilently(queueIndex)
+                    } else if (MediaManager.getCurrentSong()?.id == audio.id) {
+                        // Song was playing but not in queue list — just skip
                         MediaManager.next()
                     }
 

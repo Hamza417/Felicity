@@ -205,12 +205,13 @@ object MediaManager {
 
         val removedSong = songs[index]
         val currentSong = getCurrentSong()
+        val wasPlayingRemovedSong = currentSong?.id == removedSong.id
         val newList = songs.toMutableList()
         newList.removeAt(index)
         this.songs = newList
 
         // Figure out where the currently playing song lands after removal
-        val newCurrentPosition = if (currentSong?.id == removedSong.id) {
+        val newCurrentPosition = if (wasPlayingRemovedSong) {
             // The playing song itself was removed — stay at same index (clamped)
             index.coerceAtMost((newList.size - 1).coerceAtLeast(0))
         } else {
@@ -221,6 +222,18 @@ object MediaManager {
 
         // Surgically remove item in ExoPlayer — no setMediaItems, no prepare, no gap
         mediaController?.removeMediaItem(index)
+
+        // If the removed song was the one playing, skip to next (ExoPlayer may auto-advance,
+        // but we ensure playback continues and the UI is notified)
+        if (wasPlayingRemovedSong && newList.isNotEmpty()) {
+            scope.launch {
+                // Give ExoPlayer a tick to process the removal before seeking
+                if (mediaController?.isPlaying == true) {
+                    mediaController?.seekTo(newCurrentPosition, 0L)
+                }
+                _songPositionFlow.emit(newCurrentPosition)
+            }
+        }
 
         scope.launch {
             _songListFlow.emit(this@MediaManager.songs)
@@ -499,6 +512,7 @@ object MediaManager {
 
     /**
      * Inserts [audio] immediately after the currently playing song so it plays next.
+     * If the song already exists in the queue, it is repositioned (no duplicate is added).
      * If the queue is empty, starts playing immediately.
      */
     fun playNext(audio: Audio) {
@@ -510,25 +524,43 @@ object MediaManager {
         }
 
         val insertAt = (currentSongPosition + 1).coerceAtMost(newList.size)
-        newList.add(insertAt, audio)
-        songs = newList
+        val existingIndex = newList.indexOfFirst { it.id == audio.id }
 
-        scope.launch {
-            val uri = File(audio.path).toUri()
-            val mediaItem = MediaItem.Builder()
-                .setMediaId(audio.id.toString())
-                .setUri(uri)
-                .setMediaMetadata(
-                        MediaMetadata.Builder()
-                            .setArtist(audio.artist)
-                            .setTitle(audio.title)
-                            .build()
-                )
-                .build()
-            mediaController?.addMediaItem(insertAt, mediaItem)
-        }
-        scope.launch {
-            _songListFlow.emit(songs)
+        if (existingIndex != -1) {
+            // Song already in queue — move it to the desired position instead of duplicating
+            if (existingIndex == currentSongPosition + 1) {
+                // Already right after current song, nothing to do
+                return
+            }
+            // When moving an item that comes before the insert point, the target index shifts by -1
+            // because the removal happens first. moveQueueItemSilently handles this correctly.
+            val targetIndex = if (existingIndex < insertAt) {
+                (insertAt - 1).coerceAtMost((newList.size - 1).coerceAtLeast(0))
+            } else {
+                insertAt.coerceAtMost((newList.size - 1).coerceAtLeast(0))
+            }
+            moveQueueItemSilently(existingIndex, targetIndex)
+        } else {
+            newList.add(insertAt, audio)
+            songs = newList
+
+            scope.launch {
+                val uri = File(audio.path).toUri()
+                val mediaItem = MediaItem.Builder()
+                    .setMediaId(audio.id.toString())
+                    .setUri(uri)
+                    .setMediaMetadata(
+                            MediaMetadata.Builder()
+                                .setArtist(audio.artist)
+                                .setTitle(audio.title)
+                                .build()
+                    )
+                    .build()
+                mediaController?.addMediaItem(insertAt, mediaItem)
+            }
+            scope.launch {
+                _songListFlow.emit(songs)
+            }
         }
     }
 

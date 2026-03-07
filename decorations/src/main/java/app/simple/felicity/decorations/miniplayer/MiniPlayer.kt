@@ -368,7 +368,7 @@ class MiniPlayer @JvmOverloads constructor(
                     parent?.requestDisallowInterceptTouchEvent(true)
                     animateEdgeFade(show = true)
                     animatePlayPauseSlide(slideOut = true)
-                    // Drag cancelled the tap — dissolve both ripples
+                    // Drag canceled the tap — dissolve both ripples
                     releaseAllRipples()
                 }
                 if (isBeingDragged) {
@@ -423,8 +423,6 @@ class MiniPlayer @JvmOverloads constructor(
         scrollEngine.finishDrag(velocityX, dragStartScrollPx)
         return true
     }
-
-    override fun performClick(): Boolean = super.performClick()
 
     private fun performPlayPauseClick() {
         togglePlayPause()

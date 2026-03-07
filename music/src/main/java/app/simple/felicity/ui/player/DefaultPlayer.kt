@@ -103,6 +103,14 @@ class DefaultPlayer : MediaFragment() {
             openFragment(Search.newInstance(), Search.TAG)
         }
 
+        binding.menu.setOnClickListener {
+            openSongsMenu(
+                    audios = MediaManager.getSongs(),
+                    position = MediaManager.getCurrentPosition(),
+                    imageView = binding.pager.getCurrentImageView()
+            )
+        }
+
         binding.repeat.setOnClickListener {
             val current = PlayerPreferences.getRepeatMode()
             val next = when (current) {

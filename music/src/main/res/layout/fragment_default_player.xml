@@ -42,6 +42,14 @@
             android:layout_marginHorizontal="@dimen/padding_10" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/menu"
+            android:layout_width="@dimen/button_size"
+            android:layout_height="@dimen/button_size"
+            android:layout_marginEnd="@dimen/padding_1"
+            android:src="@drawable/ic_menu"
+            app:buttonTintType="regular" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/lyrics"
             android:layout_width="@dimen/button_size"
             android:layout_height="@dimen/button_size"

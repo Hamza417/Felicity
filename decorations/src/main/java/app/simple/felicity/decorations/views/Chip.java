@@ -4,16 +4,23 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.util.AttributeSet;
+import android.util.Log;
 
 import com.google.android.material.shape.CornerFamily;
 import com.google.android.material.shape.ShapeAppearanceModel;
 
+import androidx.annotation.NonNull;
 import app.simple.felicity.decorations.typeface.TypeFace;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.shared.utils.ViewUtils;
+import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
+import app.simple.felicity.theme.models.Accent;
+import app.simple.felicity.theme.themes.Theme;
 
-public class Chip extends com.google.android.material.chip.Chip {
+public class Chip
+        extends com.google.android.material.chip.Chip
+        implements ThemeChangedListener {
     
     public Chip(Context context) {
         super(context);
@@ -39,29 +46,17 @@ public class Chip extends com.google.android.material.chip.Chip {
         
         setCheckedIcon(null);
         setTypeface(TypeFace.INSTANCE.getBoldTypeFace(getContext()));
-        setTextColor(ColorStateList.valueOf(ThemeManager.INSTANCE.getTheme().getTextViewTheme().getPrimaryTextColor()));
-        setChipBackgroundColor(new ColorStateList(new int[][] {
-                new int[] {
-                        android.R.attr.state_checked
-                },
-                new int[] {
-                
-                }},
-                new int[] {
-                        ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(),
-                        ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor()
-                }
-        ));
+        
+        setTheme(ThemeManager.INSTANCE.getTheme());
         
         setShapeAppearanceModel(new ShapeAppearanceModel()
                 .toBuilder()
                 .setAllCorners(CornerFamily.ROUNDED, AppearancePreferences.INSTANCE.getCornerRadius() / 2)
                 .build());
         
-        ViewUtils.INSTANCE.addShadow(this, ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
-        setRippleColor(ColorStateList.valueOf(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor()));
-        setChipStrokeColor(ColorStateList.valueOf(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor()));
+        setAccent(ThemeManager.INSTANCE.getAccent());
         setChipStrokeWidth(2);
+        ThemeManager.INSTANCE.addListener(this);
     }
     
     @Override
@@ -107,5 +102,66 @@ public class Chip extends com.google.android.material.chip.Chip {
     
     public void useRegularTypeface() {
         setTypeface(TypeFace.INSTANCE.getRegularTypeFace(getContext()));
+    }
+    
+    private void setTheme(Theme theme) {
+        setTextColor(ColorStateList.valueOf(theme.getTextViewTheme().getPrimaryTextColor()));
+        setChipBackgroundColor(new ColorStateList(new int[][] {
+                new int[] {
+                        android.R.attr.state_checked
+                },
+                new int[] {
+                
+                }},
+                new int[] {
+                        ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(),
+                        theme.getViewGroupTheme().getHighlightColor()
+                }
+        ));
+        
+        invalidate();
+    }
+    
+    private void setAccent(Accent accent) {
+        setRippleColor(ColorStateList.valueOf(accent.getPrimaryAccentColor()));
+        ViewUtils.INSTANCE.addShadow(this, accent.getPrimaryAccentColor());
+        setRippleColor(ColorStateList.valueOf(accent.getPrimaryAccentColor()));
+        setChipStrokeColor(ColorStateList.valueOf(accent.getPrimaryAccentColor()));
+        
+        setChipBackgroundColor(new ColorStateList(new int[][] {
+                new int[] {
+                        android.R.attr.state_checked
+                },
+                new int[] {
+                
+                }},
+                new int[] {
+                        accent.getPrimaryAccentColor(),
+                        ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor()
+                }
+        ));
+        
+        invalidate();
+    }
+    
+    @Override
+    public void onThemeChanged(@NonNull Theme theme, boolean animate) {
+        ThemeChangedListener.super.onThemeChanged(theme, animate);
+        setTheme(theme);
+    }
+    
+    @Override
+    public void onAccentChanged(@NonNull Accent accent) {
+        ThemeChangedListener.super.onAccentChanged(accent);
+        Log.d("Chip", "Accent changed: " + accent.getIdentifier());
+        setAccent(accent);
+    }
+    
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        if (!isInEditMode()) {
+            ThemeManager.INSTANCE.removeListener(this);
+        }
     }
 }

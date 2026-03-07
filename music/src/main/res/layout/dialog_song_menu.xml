@@ -119,6 +119,28 @@
         app:appFontStyle="bold"
         app:textColorStyle="primary" />
 
+    <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+        android:id="@+id/go_to_artist"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:padding="@dimen/padding_15"
+        android:text="@string/go_to_artist"
+        android:textSize="@dimen/text_size_16"
+        app:appFontStyle="bold"
+        app:textColorStyle="primary" />
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+        android:id="@+id/go_to_album"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:padding="@dimen/padding_15"
+        android:text="@string/go_to_album"
+        android:textSize="@dimen/text_size_16"
+        app:appFontStyle="bold"
+        app:textColorStyle="primary" />
+
     <app.simple.felicity.decorations.theme.ThemeDivider
         android:layout_width="match_parent"
         android:layout_height="1px"

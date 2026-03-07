@@ -11,6 +11,7 @@ import android.view.VelocityTracker
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
+import android.widget.ImageView
 import app.simple.felicity.decorations.pager.FelicityPager.Companion.SCROLL_STATE_DRAGGING
 import app.simple.felicity.decorations.pager.FelicityPager.Companion.SCROLL_STATE_IDLE
 import app.simple.felicity.decorations.pager.FelicityPager.Companion.SCROLL_STATE_SETTLING
@@ -769,5 +770,10 @@ class FelicityPager @JvmOverloads constructor(
         stopAutoSlide()
         cancelAnimation()
         recycleAllPages()
+    }
+
+    fun getCurrentImageView(): ImageView {
+        val currentView = activePages[currentPage]
+        return currentView as? ImageView ?: ImageView(context)
     }
 }
