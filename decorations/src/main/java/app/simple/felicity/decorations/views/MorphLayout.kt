@@ -9,11 +9,9 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
@@ -24,13 +22,18 @@ import com.google.android.material.shape.MaterialShapeDrawable
 import com.google.android.material.shape.ShapeAppearanceModel
 
 /**
- * Full-screen transparent overlay performing a MaterialContainerTransform morph.
+ * Full-screen transparent overlay that performs a true MaterialContainerTransform-style morph.
  *
- *  - [morphHost] is a card-sized FrameLayout manually positioned to the morph rect
- *    each frame. It owns the background, shadow (elevation), outline clipping.
- *  - The overlay itself draws the scrim dim + the anchor bitmap cross-fade on top.
- *  - Touch events outside [morphHost] bounds are passed to [onOutsideTouchListener]
- *    so the caller can dismiss.
+ * Architecture:
+ *  - The overlay itself is MATCH_PARENT and transparent — it never intercepts touches.
+ *  - [morphHost] is an inner FrameLayout sized/positioned to the current morph rect.
+ *    It carries the animated background, clipToOutline, and all content children.
+ *  - A [shadowHost] sits behind [morphHost] at the same rect and owns elevation +
+ *    a matching rounded outline so the system shadow is always correctly shaped and cast.
+ *  - [anchorBitmap] is an optional snapshot of the origin view drawn on top of the
+ *    morphHost background (fading out) so the card appears to *convert* rather than pop.
+ *  - Content children are scaled from 0→1 pivoted at the anchor center so they grow
+ *    out of the origin shape rather than just fading in at full size.
  */
 class MorphLayout @JvmOverloads constructor(
         context: Context,
@@ -38,47 +41,43 @@ class MorphLayout @JvmOverloads constructor(
         defStyleAttr: Int = 0
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
-    // ── Card host ────────────────────────────────────────────────────────────────
+    // ── Inner views ──────────────────────────────────────────────────────────────
+
+    /** Carries elevation + outline so the system casts a correctly-shaped shadow. */
+    val shadowHost: FrameLayout
+
+    /** Carries the background shape + clips content to the rounded rect. */
     val morphHost: FrameLayout
 
-    // ── Shape state ──────────────────────────────────────────────────────────────
+    // ── Shape ────────────────────────────────────────────────────────────────────
+
     private val shapeDrawable = MaterialShapeDrawable()
-    private var currentCornerRadius = 0f
+    private var currentCornerRadius: Float = 0f
 
-    // ── Morph rect (overlay-local coords) ────────────────────────────────────────
-    private var morphLeft = 0
-    private var morphTop = 0
-    private var morphRight = 0
-    private var morphBottom = 0
+    // ── Morph rect (overlay-local coordinates) ───────────────────────────────────
 
-    // ── Scrim ────────────────────────────────────────────────────────────────────
-    var scrimAlpha: Float = 0f
-        set(value) {
-            field = value.coerceIn(0f, 1f); invalidate()
-        }
+    private var morphLeft: Int = 0
+    private var morphTop: Int = 0
+    private var morphRight: Int = 0
+    private var morphBottom: Int = 0
 
-    private val scrimPaint = Paint().apply { color = Color.BLACK }
+    // ── Anchor cross-fade bitmap ─────────────────────────────────────────────────
 
-    // ── Anchor cross-fade ────────────────────────────────────────────────────────
+    /** Snapshot of the origin view — drawn on top of the background fading out to 0. */
     var anchorBitmap: Bitmap? = null
-    var anchorBitmapAlpha: Float = 0f          // 0 = bitmap opaque, 1 = bitmap gone
-        set(value) {
-            field = value.coerceIn(0f, 1f); invalidate()
-        }
+
+    /** 0 → anchor fully visible, 1 → anchor fully gone. Driven externally. */
+    var anchorBitmapAlpha: Float = 0f
 
     private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val bitmapSrcRect = Rect()
     private val bitmapDstRect = RectF()
-    private val bitmapClip = Path()
 
-    // ── Content reveal ───────────────────────────────────────────────────────────
-    var contentAlpha: Float = 1f
-        set(value) {
-            field = value
-            for (i in 0 until morphHost.childCount) morphHost.getChildAt(i).alpha = value
-        }
+    // ── Content scale-up from anchor pivot ───────────────────────────────────────
 
-    var contentScale: Float = 1f
+    /** Scale applied to all content children — driven from 0→1 by the animator. */
+    @Suppress("unused")
+    var contentScale: Float = 0f
         set(value) {
             field = value
             for (i in 0 until morphHost.childCount) {
@@ -87,17 +86,38 @@ class MorphLayout @JvmOverloads constructor(
             }
         }
 
-    // ── Outside-touch dismiss callback ───────────────────────────────────────────
-    var onOutsideTouchListener: (() -> Unit)? = null
+    /** Alpha applied to all content children — driven by the animator. */
+    var contentAlpha: Float = 0f
+        set(value) {
+            field = value
+            for (i in 0 until morphHost.childCount) {
+                morphHost.getChildAt(i).alpha = value
+            }
+        }
+
+    @ColorInt
+    private var currentColor: Int = Color.WHITE
 
     // ── Init ─────────────────────────────────────────────────────────────────────
+
     init {
-        setBackgroundColor(Color.TRANSPARENT)
-        setWillNotDraw(false)
-        // The overlay itself must NOT be clickable/focusable — we handle touch manually
+        background = null
+        setWillNotDraw(false)      // we draw the anchor bitmap cross-fade ourselves
         isClickable = false
         isFocusable = false
 
+        // Shadow host — behind the morph card, same rect, just for system shadow
+        shadowHost = FrameLayout(context).apply {
+            background = MaterialShapeDrawable()   // opaque so shadow renders
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, currentCornerRadius)
+                }
+            }
+            clipToOutline = false
+        }
+
+        // Morph host — clips children + owns visible background
         morphHost = FrameLayout(context).apply {
             background = shapeDrawable
             clipChildren = true
@@ -107,151 +127,144 @@ class MorphLayout @JvmOverloads constructor(
                     outline.setRoundRect(0, 0, view.width, view.height, currentCornerRadius)
                 }
             }
-            // Card intercepts its own touches so scroll works, but does NOT consume
-            // touches that fall outside the card bounds (handled by overlay below).
-            isClickable = true
         }
 
-        super.addView(morphHost, LayoutParams(0, 0))  // size driven entirely by layout()
+        // Add shadow first (behind), then morph content on top
+        super.addView(shadowHost, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+        super.addView(morphHost, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
     }
 
-    // ── addView: route content into morphHost, stamp pending alpha/scale ─────────
+    // ── Route external addView calls into morphHost ───────────────────────────────
+
     override fun addView(child: View, index: Int, params: ViewGroup.LayoutParams) {
-        if (child === morphHost) {
+        if (child === shadowHost || child === morphHost) {
             super.addView(child, index, params)
         } else {
             val lp = params as? FrameLayout.LayoutParams
                 ?: FrameLayout.LayoutParams(params.width, params.height)
             morphHost.addView(child, lp)
+            // Apply pending values so pre-set contentAlpha/contentScale take effect
+            // even though the child didn't exist when the setters first ran
             child.alpha = contentAlpha
             child.scaleX = contentScale
             child.scaleY = contentScale
         }
     }
 
-    // ── Elevation → morphHost ────────────────────────────────────────────────────
+    // ── Forward elevation to shadowHost ──────────────────────────────────────────
+
     override fun setElevation(elevation: Float) {
-        morphHost.elevation = elevation
+        shadowHost.elevation = elevation
+        // morphHost sits directly on top — no elevation needed (would double shadow)
+        morphHost.elevation = 0f
     }
 
-    override fun getElevation(): Float = morphHost.elevation
+    override fun getElevation(): Float = shadowHost.elevation
+
     override fun setOutlineAmbientShadowColor(color: Int) {
-        morphHost.outlineAmbientShadowColor = color
+        shadowHost.outlineAmbientShadowColor = color
     }
 
     override fun setOutlineSpotShadowColor(color: Int) {
-        morphHost.outlineSpotShadowColor = color
+        shadowHost.outlineSpotShadowColor = color
     }
 
-    // ── Layout ───────────────────────────────────────────────────────────────────
+    // ── Layout ────────────────────────────────────────────────────────────────────
+
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        // Always use the stored morph rect — never the MATCH_PARENT overlay bounds.
-        layoutMorphHost()
-    }
-
-    private fun layoutMorphHost() {
-        val w = (morphRight - morphLeft).coerceAtLeast(0)
-        val h = (morphBottom - morphTop).coerceAtLeast(0)
+        val w = morphRight - morphLeft
+        val h = morphBottom - morphTop
+        shadowHost.layout(morphLeft, morphTop, morphRight, morphBottom)
         morphHost.layout(morphLeft, morphTop, morphRight, morphBottom)
-        // Fill every content child to the full card size
         for (i in 0 until morphHost.childCount) {
             morphHost.getChildAt(i).layout(0, 0, w, h)
         }
     }
 
-    // ── Touch: outside card = dismiss ─────────────────────────────────────────────
-    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-        // If touch is outside the card rect, intercept it so we can dismiss
-        if (ev.action == MotionEvent.ACTION_DOWN) {
-            if (ev.x < morphLeft || ev.x > morphRight ||
-                    ev.y < morphTop || ev.y > morphBottom) {
-                return true
-            }
-        }
-        return false
-    }
+    // ── Draw anchor bitmap cross-fade on top of morphHost content ───────────────
 
-    override fun onTouchEvent(ev: MotionEvent): Boolean {
-        if (ev.action == MotionEvent.ACTION_DOWN) {
-            onOutsideTouchListener?.invoke()
-            return true
-        }
-        return true
-    }
+    override fun dispatchDraw(canvas: Canvas) {
+        super.dispatchDraw(canvas)   // shadowHost + morphHost (with content) drawn first
 
-    override fun performClick(): Boolean {
-        onOutsideTouchListener?.invoke()
-        return super.performClick()
-    }
-
-    // ── Draw: scrim behind card, anchor bitmap cross-fade on top of card ──────────
-    override fun draw(canvas: Canvas) {
-        // 1. Scrim — drawn before super.draw so it appears behind the card
-        if (scrimAlpha > 0f) {
-            scrimPaint.alpha = (scrimAlpha * 255f).toInt().coerceIn(0, 255)
-            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), scrimPaint)
-        }
-
-        // 2. Card + content children
-        super.draw(canvas)
-
-        // 3. Anchor bitmap cross-fade — drawn ON TOP of card content, fading out
-        drawAnchorBitmap(canvas)
-    }
-
-    private fun drawAnchorBitmap(canvas: Canvas) {
         val bmp = anchorBitmap ?: return
+        // anchorBitmapAlpha 0→1 means bitmap fades from fully visible to fully gone
         val alpha = ((1f - anchorBitmapAlpha) * 255f).toInt().coerceIn(0, 255)
         if (alpha == 0) return
 
-        val l = morphLeft.toFloat();
-        val t = morphTop.toFloat()
-        val r = morphRight.toFloat();
-        val b = morphBottom.toFloat()
-        if (r <= l || b <= t) return
+        val left = morphLeft.toFloat()
+        val top = morphTop.toFloat()
+        val right = morphRight.toFloat()
+        val bottom = morphBottom.toFloat()
+        val clipW = right - left
+        val clipH = bottom - top
+        if (clipW <= 0 || clipH <= 0) return
 
         bitmapSrcRect.set(0, 0, bmp.width, bmp.height)
-        bitmapDstRect.set(l, t, r, b)
+        bitmapDstRect.set(left, top, right, bottom)
         bitmapPaint.alpha = alpha
 
-        bitmapClip.rewind()
-        bitmapClip.addRoundRect(l, t, r, b, currentCornerRadius, currentCornerRadius, Path.Direction.CW)
-
         canvas.save()
-        canvas.clipPath(bitmapClip)
+        // Clip the bitmap draw to the rounded morph rect
+        canvas.clipPath(android.graphics.Path().apply {
+            addRoundRect(left, top, right, bottom,
+                         currentCornerRadius, currentCornerRadius,
+                         android.graphics.Path.Direction.CW)
+        })
         canvas.drawBitmap(bmp, bitmapSrcRect, bitmapDstRect, bitmapPaint)
         canvas.restore()
     }
 
     // ── Core morph API ────────────────────────────────────────────────────────────
+
     fun setMorphState(
             left: Int, top: Int, right: Int, bottom: Int,
             cornerRadius: Float,
             @ColorInt color: Int
     ) {
-        val w = (right - left).coerceAtLeast(1)
-        val h = (bottom - top).coerceAtLeast(1)
+        val w = right - left
+        val h = bottom - top
 
-        morphLeft = left; morphTop = top
-        morphRight = right; morphBottom = bottom
+        morphLeft = left
+        morphTop = top
+        morphRight = right
+        morphBottom = bottom
         currentCornerRadius = cornerRadius
+        currentColor = color
 
+        // Update background shape in-place
         shapeDrawable.shapeAppearanceModel = ShapeAppearanceModel.builder()
-            .setAllCorners(CornerFamily.ROUNDED, cornerRadius).build()
+            .setAllCorners(CornerFamily.ROUNDED, cornerRadius)
+            .build()
         shapeDrawable.fillColor = ColorStateList.valueOf(color)
         shapeDrawable.setBounds(0, 0, w, h)
 
-        layoutMorphHost()
+        // Sync shadow host background shape too (drives shadow shape)
+        (shadowHost.background as? MaterialShapeDrawable)?.let { sd ->
+            sd.shapeAppearanceModel = ShapeAppearanceModel.builder()
+                .setAllCorners(CornerFamily.ROUNDED, cornerRadius)
+                .build()
+            sd.fillColor = ColorStateList.valueOf(color)
+            sd.setBounds(0, 0, w, h)
+        }
+
+        shadowHost.layout(left, top, right, bottom)
+        morphHost.layout(left, top, right, bottom)
+        for (i in 0 until morphHost.childCount) {
+            morphHost.getChildAt(i).layout(0, 0, w, h)
+        }
+
+        shadowHost.invalidateOutline()
         morphHost.invalidateOutline()
         invalidate()
     }
 
-    fun setMorphState(rect: Rect, cornerRadius: Float, @ColorInt color: Int) =
+    fun setMorphState(rect: Rect, cornerRadius: Float, @ColorInt color: Int) {
         setMorphState(rect.left, rect.top, rect.right, rect.bottom, cornerRadius, color)
+    }
 
+    /** Release bitmap resources. Call when popup is fully dismissed. */
     fun clearAnchorBitmap() {
         anchorBitmap?.recycle()
         anchorBitmap = null
-        invalidate()
     }
 }
