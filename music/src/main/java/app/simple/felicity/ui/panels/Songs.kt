@@ -20,6 +20,7 @@ import app.simple.felicity.databinding.HeaderSongsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
+import app.simple.felicity.dialogs.songs.ShuffleAlgorithmDialog.Companion.showShuffleAlgorithmDialog
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.PanelFragment
@@ -96,6 +97,15 @@ class Songs : PanelFragment() {
 
         headerBinding.menu.setOnClickListener {
             childFragmentManager.showSongsMenu()
+        }
+
+        headerBinding.shuffle.setOnClickListener {
+            songsViewModel.shuffleSongs()
+        }
+
+        headerBinding.shuffle.setOnLongClickListener {
+            childFragmentManager.showShuffleAlgorithmDialog()
+            true
         }
 
         headerBinding.sortStyle.setOnClickListener {

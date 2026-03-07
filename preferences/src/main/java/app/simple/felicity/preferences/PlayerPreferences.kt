@@ -6,6 +6,8 @@ import app.simple.felicity.manager.SharedPreferences
 object PlayerPreferences {
     const val REPEAT_MODE = "repeat_mode"
 
+    private const val SHUFFLE_ID = "shuffle_id"
+
     /**
      * Stereo pan/balance stored as a float in [-1 .. 1].
      * -1 = full left, 0 = centre (default), +1 = full right.
@@ -34,5 +36,13 @@ object PlayerPreferences {
     /** Returns the persisted pan value, defaulting to 0 (centre). */
     fun getBalance(): Float {
         return SharedPreferences.getSharedPreferences().getFloat(BALANCE, 0f)
+    }
+
+    fun setShuffleId(id: String) {
+        SharedPreferences.getSharedPreferences().edit { putString(SHUFFLE_ID, id) }
+    }
+
+    fun getShuffleId(): String? {
+        return SharedPreferences.getSharedPreferences().getString(SHUFFLE_ID, null)
     }
 }

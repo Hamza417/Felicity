@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:padding="@dimen/padding_15"
+    android:layout_height="wrap_content">
+
+    <app.simple.felicity.decorations.corners.DynamicCornerLinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/padding_15"
+        android:orientation="vertical">
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/shuffle_algorithm"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="black"
+            app:textColorStyle="primary" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/algorithm_chip_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:selectionRequired="true"
+            app:singleSelection="true">
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/fisher_yates"
+                android:layout_width="wrap_content"
+                android:text="@string/fisher_yates"
+                android:layout_height="wrap_content" />
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/miller"
+                android:layout_width="wrap_content"
+                android:text="@string/miller"
+                android:layout_height="wrap_content" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/algorithm_description"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="@dimen/text_size_12"
+            app:appFontStyle="regular"
+            app:textColorStyle="secondary" />
+
+    </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+
+</FrameLayout>
+
