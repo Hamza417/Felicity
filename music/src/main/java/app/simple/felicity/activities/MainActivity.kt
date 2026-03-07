@@ -14,10 +14,10 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.databinding.ActivityMainBinding
+import app.simple.felicity.decorations.miniplayer.MiniPlayerItem
+import app.simple.felicity.decorations.miniplayer.MiniPlayerView
 import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
-import app.simple.felicity.decorations.views.MiniPlayerItem
-import app.simple.felicity.decorations.views.MiniPlayerView
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.extensions.fragments.MediaFragment

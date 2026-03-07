@@ -1,4 +1,4 @@
-package app.simple.felicity.decorations.views
+package app.simple.felicity.decorations.miniplayer
 
 /**
  * Lightweight data holder for a single mini-player page.

@@ -1,4 +1,4 @@
-package app.simple.felicity.decorations.views
+package app.simple.felicity.decorations.miniplayer
 
 import android.animation.ValueAnimator
 import android.content.Context
@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.CornerPathEffect
+import android.graphics.Outline
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
@@ -23,9 +24,11 @@ import android.view.VelocityTracker
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
+import androidx.annotation.ColorInt
 import androidx.core.graphics.withTranslation
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -50,7 +53,7 @@ import kotlin.math.sqrt
  *  - Rounded card background (drawn with [Paint], corner radius matches theme)
  *  - Album-art bitmaps (one per page, clipped to the art slot)
  *  - Title + artist text (canvas drawText, app-font typeface, ellipsized)
- *  - Play/Pause morphing icon (same geometry as [FlipPlayPauseView])
+ *  - Play/Pause morphing icon (same geometry as [app.simple.felicity.decorations.views.FlipPlayPauseView])
  *
  * **Scroll engine** is a verbatim port of [FelicityPager]:
  *  - [Choreographer]-driven vsync animation
@@ -513,7 +516,10 @@ class MiniPlayerView @JvmOverloads constructor(
     private val artRect = RectF()
     private val artClipRect = RectF()
     private val cardRect = RectF()
+    private val strokeRect = RectF()
+    private val artDstRect = RectF()
     private val artSrcRect = Rect()
+    private val cardClipPath = Path()
 
     private fun isInPlayPauseZone(x: Float, @Suppress("UNUSED_PARAMETER") y: Float): Boolean =
         x >= width - btnZoneWidth
@@ -524,7 +530,8 @@ class MiniPlayerView @JvmOverloads constructor(
         val hF = h.toFloat()
         val wF = w.toFloat()
 
-        cornerRadiusPx = dp(18f)
+        cornerRadiusPx = AppearancePreferences.getCornerRadius()
+        invalidateOutline()
 
         // Button zone = square centred in right portion
         val btnSz = hF * 0.55f
@@ -542,8 +549,10 @@ class MiniPlayerView @JvmOverloads constructor(
         textLeft = artSize + textPad
         textRight = wF - btnZoneWidth - textPad
 
-        // Card rect (for background drawing)
+        // Card rect (for background drawing) + rounded clip path for content
         cardRect.set(0f, 0f, wF, hF)
+        cardClipPath.rewind()
+        cardClipPath.addRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, Path.Direction.CW)
 
         // Refresh title/artist paint sizes in case density changed
         titlePaint.textSize = sp(13f)
@@ -603,6 +612,47 @@ class MiniPlayerView @JvmOverloads constructor(
     private val artPlaceholderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = Color.argb(40, 128, 128, 128)
+    }
+
+    // ── Stroke ───────────────────────────────────────────────────────────────
+    private var strokeEnabled = false
+    private var strokeWidthPx = 0f
+    @ColorInt
+    private var strokeColor: Int = Color.argb(80, 128, 128, 128)
+
+    private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = strokeColor
+    }
+
+    /** Enable / disable the border stroke around the mini-player. */
+    fun setStrokeEnabled(enabled: Boolean) {
+        strokeEnabled = enabled
+        invalidate()
+    }
+
+    /** Set the stroke width in dp. */
+    fun setStrokeWidth(dp: Float) {
+        strokeWidthPx = this.dp(dp)
+        strokePaint.strokeWidth = strokeWidthPx
+        invalidate()
+    }
+
+    /** Set the stroke color. */
+    fun setStrokeColor(@ColorInt color: Int) {
+        strokeColor = color
+        strokePaint.color = strokeColor
+        invalidate()
+    }
+
+    /** One-shot convenience: enable stroke with given color and width (dp). */
+    fun setStroke(enabled: Boolean, @ColorInt color: Int, widthDp: Float = 1.5f) {
+        strokeEnabled = enabled
+        strokeColor = color
+        strokePaint.color = strokeColor
+        strokeWidthPx = dp(widthDp)
+        strokePaint.strokeWidth = strokeWidthPx
+        invalidate()
     }
 
     // ── Play/Pause icon geometry ──────────────────────────────────────────────
@@ -759,13 +809,29 @@ class MiniPlayerView @JvmOverloads constructor(
         bgPaint.color = cardColor
         canvas.drawRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, bgPaint)
 
-        // ── 2. Pages (clipped to art slot + text slot) ─────────────────────
-        val pageW = w.toInt()
-        if (pageW > 0 && items.isNotEmpty()) {
-            drawPages(canvas, pageW, h)
+        // ── 2. Stroke border (optional) ────────────────────────────────────
+        if (strokeEnabled && strokeWidthPx > 0f) {
+            val inset = strokeWidthPx / 2f
+            strokeRect.set(
+                    cardRect.left + inset,
+                    cardRect.top + inset,
+                    cardRect.right - inset,
+                    cardRect.bottom - inset
+            )
+            canvas.drawRoundRect(strokeRect, (cornerRadiusPx - inset).coerceAtLeast(0f),
+                                 (cornerRadiusPx - inset).coerceAtLeast(0f), strokePaint)
         }
 
-        // ── 3. Play/Pause button ───────────────────────────────────────────
+        // ── 3. Pages (clipped to rounded card + art slot + text slot) ─────────
+        val pageW = w.toInt()
+        if (pageW > 0 && items.isNotEmpty()) {
+            canvas.save()
+            canvas.clipPath(cardClipPath)   // rounded clip for all content
+            drawPages(canvas, pageW, h)
+            canvas.restore()
+        }
+
+        // ── 4. Play/Pause button ───────────────────────────────────────────
         drawPlayPause(canvas)
     }
 
@@ -795,11 +861,11 @@ class MiniPlayerView @JvmOverloads constructor(
             canvas.clipRect(tx, 0f, tx + artSize, h)
             if (bmp != null && !bmp.isRecycled) {
                 artSrcRect.set(0, 0, bmp.width, bmp.height)
-                val dst = RectF(tx, 0f, tx + artSize, h)
-                canvas.drawBitmap(bmp, artSrcRect, dst, bmpPaint)
+                artDstRect.set(tx, 0f, tx + artSize, h)
+                canvas.drawBitmap(bmp, artSrcRect, artDstRect, bmpPaint)
             } else {
-                val placeholderRect = RectF(tx, 0f, tx + artSize, h)
-                canvas.drawRect(placeholderRect, artPlaceholderPaint)
+                artDstRect.set(tx, 0f, tx + artSize, h)
+                canvas.drawRect(artDstRect, artPlaceholderPaint)
             }
             canvas.restore()
 
@@ -823,17 +889,23 @@ class MiniPlayerView @JvmOverloads constructor(
             h: Float
     ) {
         val maxW = right - left
-        val titleMetrics = titlePaint.fontMetrics
-        val artistMetrics = artistPaint.fontMetrics
-        val titleLineH = titleMetrics.descent - titleMetrics.ascent
-        val artistLineH = artistMetrics.descent - artistMetrics.ascent
-        val gap = dp(2f)
-        val totalH = titleLineH + gap + artistLineH
-        val blockTop = (h - totalH) / 2f
+        val tm = titlePaint.fontMetrics
+        val am = artistPaint.fontMetrics
 
-        // baseline = blockTop + (-ascent)   (ascent is negative)
-        val titleBaseline = blockTop - titleMetrics.ascent
-        val artistBaseline = titleBaseline + titleLineH + gap - artistMetrics.ascent
+        // Height of each text line = descent - ascent  (ascent is negative)
+        val titleLineH = tm.descent - tm.ascent
+        val artistLineH = am.descent - am.ascent
+        val gap = dp(3f)
+
+        // Total height of the two-line block (tight, like a vertical LinearLayout wrap_content)
+        val blockH = titleLineH + gap + artistLineH
+
+        // Top of the block so that it is vertically centered in the view
+        val blockTop = (h - blockH) / 2f
+
+        // Baseline of each line = top-of-line + (-ascent)
+        val titleBaseline = blockTop + (-tm.ascent)
+        val artistBaseline = blockTop + titleLineH + gap + (-am.ascent)
 
         canvas.drawText(ellipsize(title, titlePaint, maxW), left, titleBaseline, titlePaint)
         canvas.drawText(ellipsize(artist, artistPaint, maxW), left, artistBaseline, artistPaint)
@@ -850,7 +922,7 @@ class MiniPlayerView @JvmOverloads constructor(
 
     /**
      * Draws the morphing play/pause icon into the button zone,
-     * replicating the exact geometry of [FlipPlayPauseView].
+     * replicating the exact geometry of [app.simple.felicity.decorations.views.FlipPlayPauseView].
      */
     private fun drawPlayPause(canvas: Canvas) {
         val h = ppH
@@ -1096,6 +1168,14 @@ class MiniPlayerView @JvmOverloads constructor(
         titleColor = theme.textViewTheme.primaryTextColor; titlePaint.color = titleColor
         artistColor = theme.textViewTheme.secondaryTextColor; artistPaint.color = artistColor
         iconColor = theme.iconTheme.regularIconColor; ppPaint.color = iconColor
+        // Refresh corner radius in case the user changed it in preferences
+        val newRadius = AppearancePreferences.getCornerRadius()
+        if (newRadius != cornerRadiusPx) {
+            cornerRadiusPx = newRadius
+            cardClipPath.rewind()
+            cardClipPath.addRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, Path.Direction.CW)
+            invalidateOutline()
+        }
         invalidate()
     }
 
@@ -1106,6 +1186,15 @@ class MiniPlayerView @JvmOverloads constructor(
         resetManualHandler.removeCallbacks(resetManualRunnable)
         isManuallyControlled = false
         hadImmersiveDrag = false
+
+        // Elevation + rounded shadow outline
+        elevation = dp(6f)
+        outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) {
+                outline.setRoundRect(0, 0, view.width, view.height, cornerRadiusPx)
+            }
+        }
+        clipToOutline = false   // we clip art ourselves; don't clip the shadow
 
         // Margin / inset wiring
         post {
