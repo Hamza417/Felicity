@@ -15,4 +15,6 @@
     <string name="ffmpeg">FFmpeg</string>
     <string name="time_minus">- 1s</string>
     <string name="time_plus">+ 1s</string>
+    <string name="fisher_yates">Fisher-Yates</string>
+    <string name="miller">Miller</string>
 </resources>

@@ -20,6 +20,7 @@ import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.LibraryPreferences
+import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.ui.preferences.sub.AccentColors
 import app.simple.felicity.ui.preferences.sub.Themes
 import app.simple.felicity.ui.preferences.sub.TypeFaces
@@ -500,6 +501,44 @@ open class PreferenceFragment : MediaFragment() {
     protected fun createLibraryPanel(): List<Preference> {
         val preferences = mutableListOf<Preference>()
 
+        val shuffleHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.shuffle)
+
+        val currentShuffle = Preference(
+                title = R.string.shuffle,
+                summary = R.string.shuffle_algorithm_summary,
+                icon = R.drawable.ic_shuffle,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (ShufflePreferences.getShuffleAlgorithm()) {
+                        ShufflePreferences.ALGORITHM_FISHER_YATES -> getString(R.string.fisher_yates)
+                        ShufflePreferences.ALGORITHM_MILLER -> getString(R.string.miller)
+                        else -> getString(R.string.fisher_yates)
+                    }
+                },
+                onPreferenceAction = { view, callback ->
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(R.string.fisher_yates, R.string.miller),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.fisher_yates -> {
+                                        ShufflePreferences.setShuffleAlgorithm(ShufflePreferences.ALGORITHM_FISHER_YATES)
+                                        (view as TextView).text = getString(R.string.fisher_yates)
+                                    }
+                                    R.string.miller -> {
+                                        ShufflePreferences.setShuffleAlgorithm(ShufflePreferences.ALGORITHM_MILLER)
+                                        (view as TextView).text = getString(R.string.miller)
+                                    }
+                                }
+                            },
+                            onDismiss = {
+
+                            }
+                    ).show()
+                }
+        )
+
         val scannerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.scanner)
 
         val minimumAudioLength = Preference(
@@ -594,6 +633,8 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        preferences.add(shuffleHeader)
+        preferences.add(currentShuffle)
         preferences.add(scannerHeader)
         preferences.add(minimumAudioLength)
         preferences.add(minimumAudioSize)
