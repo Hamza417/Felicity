@@ -227,6 +227,7 @@
     <string name="customize">Customize</string>
     <string name="controls">Edit</string>
     <string name="sync_adjust">Sync Adjust</string>
-    <string name="time_minus">- 1s</string>
-    <string name="time_plus">+ 1s</string>
+    <string name="accessibility">Accessibility</string>
+    <string name="accessibility_desc">Configure accessibility features in the app to improve usability of the app.</string>
+    <string name="stroke_around_miniplayer">Stroke Around Miniplayer</string>
 </resources>

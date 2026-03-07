@@ -4,6 +4,7 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -39,6 +40,9 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.ARTIST_TEXT_SIZE_SP
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.TITLE_TEXT_SIZE_SP
 import app.simple.felicity.decorations.typeface.TypeFace
+import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
+import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
@@ -73,7 +77,10 @@ class MiniPlayer @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr), GestureDetector.OnGestureListener, ThemeChangedListener {
+) : View(context, attrs, defStyleAttr),
+    GestureDetector.OnGestureListener,
+    ThemeChangedListener,
+    SharedPreferences.OnSharedPreferenceChangeListener {
 
     // -------------------------------------------------------------------------
     // Public callbacks
@@ -1212,13 +1219,13 @@ class MiniPlayer @JvmOverloads constructor(
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
         if (isTransparent) return
         applyConfig()
-        setCustomizations()
+        updateStroke()
         invalidate()
     }
 
     override fun onAccentChanged(accent: Accent) {
         super.onAccentChanged(accent)
-        setCustomizations()
+        updateStroke()
     }
 
     // -------------------------------------------------------------------------
@@ -1241,7 +1248,7 @@ class MiniPlayer @JvmOverloads constructor(
         }
         clipToOutline = false // art clipping is handled manually; shadow must not be clipped
 
-        setCustomizations()
+        updateStroke()
 
         post {
             val lp = layoutParams as? ViewGroup.MarginLayoutParams ?: return@post
@@ -1260,6 +1267,10 @@ class MiniPlayer @JvmOverloads constructor(
             v.layoutParams = lp
             insets
         }
+
+        if (isInEditMode.not()) {
+            registerSharedPreferenceChangeListener()
+        }
     }
 
     override fun onDetachedFromWindow() {
@@ -1275,6 +1286,7 @@ class MiniPlayer @JvmOverloads constructor(
         isManuallyControlled = false
         hadImmersiveDrag = false
         super.onDetachedFromWindow()
+        unregisterSharedPreferenceChangeListener()
     }
 
     // -------------------------------------------------------------------------
@@ -1344,15 +1356,23 @@ class MiniPlayer @JvmOverloads constructor(
     // Preferences-driven customizations
     // -------------------------------------------------------------------------
 
-    private fun setCustomizations() {
+    private fun updateStroke() {
         if (!isInEditMode) {
-            if (AppearancePreferences.isStrokeAroundMiniplayerOn()) {
+            if (AccessibilityPreferences.isStrokeAroundMiniplayerOn()) {
                 setStroke(
                         enabled = true,
                         color = ThemeManager.theme.textViewTheme.tertiaryTextColor,
                         widthDp = 1f)
             } else {
                 setStrokeEnabled(false)
+            }
+        }
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        when (key) {
+            AccessibilityPreferences.STROKE_AROUND_MINIPLAYER -> {
+                updateStroke()
             }
         }
     }

@@ -31,6 +31,7 @@ import app.simple.felicity.repository.utils.AudioUtils.createSongStat
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.player.DefaultPlayer
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -184,6 +185,18 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 }
             }
         })
+    }
+
+    protected fun peekMiniPlayer() {
+        // show mini player briefly then hide it again
+        showMiniPlayer()
+        viewLifecycleOwner.lifecycleScope.launch {
+            delay(2000) // Show for 2 seconds
+
+            if (wantsMiniPlayerVisible.not()) {
+                hideMiniPlayer()
+            }
+        }
     }
 
     protected fun RecyclerView.requireAttachedMiniPlayer() {

@@ -13,4 +13,6 @@
     <string name="csv" translatable="false">.CSV</string>
     <string name="z_spread">z Spread</string>
     <string name="ffmpeg">FFmpeg</string>
+    <string name="time_minus">- 1s</string>
+    <string name="time_plus">+ 1s</string>
 </resources>

@@ -1,6 +1,8 @@
 package app.simple.felicity.preferences
 
+import androidx.core.content.edit
 import app.simple.felicity.manager.SharedPreferences
+import app.simple.felicity.manager.SharedPreferences.getSharedPreferences
 import app.simple.felicity.shared.constants.Colors
 
 object AccessibilityPreferences {
@@ -13,6 +15,8 @@ object AccessibilityPreferences {
     private const val IS_DIVIDER_ENABLED = "is_divider_enabled"
     private const val REDUCE_ANIMATIONS = "reduce_animations"
     private const val IS_COLORFUL_ICONS = "is_colorful_icons"
+
+    const val STROKE_AROUND_MINIPLAYER = "stroke_around_miniplayer"
 
     // ---------------------------------------------------------------------------------------------------------- //
 
@@ -82,5 +86,15 @@ object AccessibilityPreferences {
 
     fun getColorfulIconsPalette(): Int {
         return SharedPreferences.getSharedPreferences().getInt(COLORFUL_ICONS_PALETTE, Colors.PASTEL)
+    }
+
+    // ---------------------------------------------------------------------------------------------------------- //
+
+    fun setStrokeAroundMiniplayer(boolean: Boolean) {
+        getSharedPreferences().edit { putBoolean(STROKE_AROUND_MINIPLAYER, boolean) }
+    }
+
+    fun isStrokeAroundMiniplayerOn(): Boolean {
+        return getSharedPreferences().getBoolean(STROKE_AROUND_MINIPLAYER, false)
     }
 }

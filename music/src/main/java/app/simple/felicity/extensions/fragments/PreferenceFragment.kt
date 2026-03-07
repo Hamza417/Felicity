@@ -13,6 +13,7 @@ import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.models.Preference
 import app.simple.felicity.models.SeekbarState
 import app.simple.felicity.popups.home.PopupHomeInterfaceMenu
+import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.AudioPreferences
@@ -600,6 +601,31 @@ open class PreferenceFragment : MediaFragment() {
         preferences.add(skipNomediaToggle)
         preferences.add(skipHiddenFilesToggle)
         preferences.add(skipHiddenFoldersToggle)
+
+        return preferences
+    }
+
+    protected fun createAccessibilityPanel(): List<Preference> {
+        val preferences = mutableListOf<Preference>()
+
+        val userInterfaceHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.user_interface)
+
+        val strokeAroundMiniplayer = Preference(
+                title = R.string.stroke_around_miniplayer,
+                summary = R.string.stroke_around_miniplayer_summary,
+                icon = R.drawable.ic_border_outer,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AccessibilityPreferences.setStrokeAroundMiniplayer((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    AccessibilityPreferences.isStrokeAroundMiniplayerOn()
+                }
+        )
+
+        preferences.add(userInterfaceHeader)
+        preferences.add(strokeAroundMiniplayer)
 
         return preferences
     }
