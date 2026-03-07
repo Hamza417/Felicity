@@ -17,6 +17,7 @@ import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
 import android.os.Parcel
@@ -39,6 +40,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.ARTIST_TEXT_SIZE_SP
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.TITLE_TEXT_SIZE_SP
+import app.simple.felicity.decorations.ripple.FelicityRippleDrawable
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
@@ -346,6 +348,15 @@ class MiniPlayer @JvmOverloads constructor(
                 velocityTracker?.recycle()
                 velocityTracker = VelocityTracker.obtain().apply { addMovement(event) }
                 parent?.requestDisallowInterceptTouchEvent(true)
+
+                // Start the appropriate ripple immediately on touch-down
+                if (isInPlayPauseZone(event.x)) {
+                    ppRipple.setHotspot(event.x - ppRippleBounds.left, event.y)
+                    ppRipple.setState(intArrayOf(android.R.attr.state_pressed))
+                } else {
+                    contentRipple.setHotspot(event.x, event.y)
+                    contentRipple.setState(intArrayOf(android.R.attr.state_pressed))
+                }
             }
 
             MotionEvent.ACTION_MOVE -> {
@@ -357,6 +368,8 @@ class MiniPlayer @JvmOverloads constructor(
                     parent?.requestDisallowInterceptTouchEvent(true)
                     animateEdgeFade(show = true)
                     animatePlayPauseSlide(slideOut = true)
+                    // Drag cancelled the tap — dissolve both ripples
+                    releaseAllRipples()
                 }
                 if (isBeingDragged) {
                     scrollEngine.applyDragDelta(dx)
@@ -378,6 +391,8 @@ class MiniPlayer @JvmOverloads constructor(
                 isBeingDragged = false
                 animateEdgeFade(show = false)
                 animatePlayPauseSlide(slideOut = false)
+                // Release both ripples — the one that wasn't pressed will be a no-op
+                releaseAllRipples()
             }
         }
         return true
@@ -435,7 +450,72 @@ class MiniPlayer @JvmOverloads constructor(
     private val cardClipPath = Path()
 
     // -------------------------------------------------------------------------
-    // Edge-fade effect
+    // Touch-feedback ripples
+    // -------------------------------------------------------------------------
+
+    /**
+     * Ripple for the content area (art + text), spanning the left portion of the card.
+     * Drawn on top of everything else so it sits visually above art and text.
+     */
+    private val contentRipple = FelicityRippleDrawable(
+            ThemeManager.theme.iconTheme.regularIconColor).apply {
+        setCornerRadius(AppearancePreferences.getCornerRadius())
+        setStartColor(ThemeManager.theme.viewGroupTheme.highlightColor)
+        callback = object : Drawable.Callback {
+            override fun invalidateDrawable(who: Drawable) = invalidate()
+            override fun scheduleDrawable(who: Drawable, what: Runnable, `when`: Long) = Unit
+            override fun unscheduleDrawable(who: Drawable, what: Runnable) = Unit
+        }
+    }
+
+    /**
+     * Ripple for the play/pause button zone on the right edge.
+     * Scoped to the button area so it does not bleed into the content.
+     */
+    private val ppRipple = FelicityRippleDrawable(
+            ThemeManager.theme.iconTheme.regularIconColor).apply {
+        setCornerRadius(AppearancePreferences.getCornerRadius())
+        setStartColor(ThemeManager.theme.viewGroupTheme.highlightColor)
+        callback = object : Drawable.Callback {
+            override fun invalidateDrawable(who: Drawable) = invalidate()
+            override fun scheduleDrawable(who: Drawable, what: Runnable, `when`: Long) = Unit
+            override fun unscheduleDrawable(who: Drawable, what: Runnable) = Unit
+        }
+    }
+
+    /** Reusable bounds rects; set in [applyConfig] whenever geometry changes. */
+    private val contentRippleBounds = Rect()
+    private val ppRippleBounds = Rect()
+
+    /** Sync ripple accent color, highlight color, and corner radius from the current theme. */
+    private fun refreshRippleTheme() {
+        val accent = ThemeManager.accent.primaryAccentColor
+        val highlight = ThemeManager.theme.viewGroupTheme.highlightColor
+        val radius = AppearancePreferences.getCornerRadius()
+        contentRipple.setRippleColor(accent)
+        contentRipple.setStartColor(highlight)
+        contentRipple.setCornerRadius(radius)
+        ppRipple.setRippleColor(accent)
+        ppRipple.setStartColor(highlight)
+        ppRipple.setCornerRadius(radius)
+    }
+
+    /** Update bounds for both ripples from current geometry. Only valid when `w > 0`. */
+    private fun updateRippleBounds(w: Int, h: Int) {
+        contentRippleBounds.set(0, 0, (w - btnZoneWidth).toInt().coerceAtLeast(0), h)
+        ppRippleBounds.set((w - btnZoneWidth).toInt().coerceAtLeast(0), 0, w, h)
+        contentRipple.bounds = contentRippleBounds
+        ppRipple.bounds = ppRippleBounds
+    }
+
+    /**
+     * Release both ripples immediately — called when a drag gesture begins so
+     * the press feedback dissolves instead of staying frozen under the swipe.
+     */
+    private fun releaseAllRipples() {
+        contentRipple.setState(intArrayOf())
+        ppRipple.setState(intArrayOf())
+    }
     // -------------------------------------------------------------------------
 
     /** Whether the edge-fade effect is enabled. Toggle with [setEdgeFadeEnabled]. */
@@ -566,6 +646,7 @@ class MiniPlayer @JvmOverloads constructor(
         titlePaint.color = titleColor
         artistPaint.color = artistColor
         playPauseDrawer.color = iconColor
+        refreshRippleTheme()
 
         titlePaint.textSize = sp(titleTextSizeSp)
         artistPaint.textSize = sp(artistTextSizeSp)
@@ -608,6 +689,9 @@ class MiniPlayer @JvmOverloads constructor(
         playPauseDrawer.updateGeometry(btnSz)
 
         scrollEngine.viewWidth = w.toInt()
+
+        // Keep ripple bounds in sync with the new geometry
+        updateRippleBounds(w.toInt(), h.toInt())
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -848,8 +932,8 @@ class MiniPlayer @JvmOverloads constructor(
             iconColor = newIcon; playPauseDrawer.color = newIcon
             invalidate(); return
         }
-        val oldTitle = titleColor;
-        val oldArtist = artistColor;
+        val oldTitle = titleColor
+        val oldArtist = artistColor
         val oldIcon = iconColor
         ValueAnimator.ofFloat(0f, 1f).apply {
             duration = ANIM_DURATION_MS
@@ -918,6 +1002,12 @@ class MiniPlayer @JvmOverloads constructor(
 
         // 4. Play/pause button (slides off during drag)
         playPauseDrawer.draw(canvas)
+
+        // 5. Touch-feedback ripples — drawn on top of everything, clipped to the card shape
+        canvas.withClip(cardClipPath) {
+            contentRipple.draw(this)
+            ppRipple.draw(this)
+        }
     }
 
     private fun drawPages(canvas: Canvas, pageW: Int, h: Float) {
@@ -1277,6 +1367,7 @@ class MiniPlayer @JvmOverloads constructor(
         ThemeManager.removeListener(this)
         detachFromAllRecyclerViews()
         scrollEngine.cancelAnimation()
+        releaseAllRipples()
         ppAnimator?.cancel()
         ppSlideAnimator?.cancel()
         bgColorAnimator?.cancel()
@@ -1362,7 +1453,7 @@ class MiniPlayer @JvmOverloads constructor(
                 setStroke(
                         enabled = true,
                         color = ThemeManager.theme.textViewTheme.tertiaryTextColor,
-                        widthDp = 1f)
+                        widthDp = 0.5f)
             } else {
                 setStrokeEnabled(false)
             }
