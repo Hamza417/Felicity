@@ -25,8 +25,39 @@ import com.bumptech.glide.Glide
 class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHolder>() {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
-    private var previousIndex = -1
     private var attachedRecyclerView: RecyclerView? = null
+
+    // Backing field — always reflects the ID of the song the adapter last highlighted.
+    // Write directly (no notifications) to sync without triggering extra redraws.
+    // Use setCurrentSong() / currentlyPlayingSong setter for change-with-notify.
+    private var trackedSongId: Long? = null
+
+    /**
+     * Notify the adapter that the playing song changed.
+     * Clears the old highlight and sets the new one using surgical item updates.
+     */
+    var currentlyPlayingSong: Audio?
+        get() = songs.firstOrNull { it.id == trackedSongId }
+        set(value) {
+            val newId = value?.id
+            val oldId = trackedSongId
+            trackedSongId = newId
+            // Un-highlight the old item
+            if (oldId != null && oldId != newId) {
+                val oldIndex = songs.indexOfFirst { it.id == oldId }
+                if (oldIndex != -1) notifyItemChanged(oldIndex, PAYLOAD_PLAYBACK_STATE)
+            }
+            // Highlight the new item
+            val newIndex = if (newId != null) songs.indexOfFirst { it.id == newId } else -1
+            if (newIndex != -1) notifyItemChanged(newIndex, PAYLOAD_PLAYBACK_STATE)
+        }
+
+    /** Re-evaluates selection state for every item.
+     *  Syncs the tracked ID first so the next song change knows the correct old item. */
+    fun notifyCurrentSong() {
+        trackedSongId = MediaManager.getCurrentSongId()
+        notifyItemRangeChanged(0, itemCount, PAYLOAD_PLAYBACK_STATE)
+    }
 
     private val listUpdateCallback = object : ListUpdateCallback {
         @SuppressLint("NotifyDataSetChanged")
@@ -76,18 +107,12 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
 
     init {
         setHasStableIds(true)
+        // Seed the tracked ID so the first song-change correctly un-highlights the
+        // item that was highlighted by the initial full bind (which reads MediaManager directly).
+        trackedSongId = MediaManager.getCurrentSongId()
         differ.submitList(initial.toList())
     }
 
-    var currentlyPlayingSong: Audio? = null
-        set(value) {
-            val oldIndex = previousIndex
-            field = value
-            val newIndex = value?.let { v -> songs.indexOfFirst { it.id == v.id } } ?: -1
-            if (newIndex != -1) notifyItemChanged(newIndex, PAYLOAD_PLAYBACK_STATE)
-            if (oldIndex != -1 && oldIndex != newIndex) notifyItemChanged(oldIndex, PAYLOAD_PLAYBACK_STATE)
-            previousIndex = newIndex
-        }
 
     override fun getItemId(position: Int): Long = songs[position].id
 
@@ -156,7 +181,11 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
     }
 
     fun updateSongs(newSongs: List<Audio>) {
-        differ.submitList(newSongs.toList())
+        differ.submitList(newSongs.toList()) {
+            // After the diff is applied, re-evaluate selection so newly visible items
+            // reflecting the current song are highlighted correctly.
+            notifyCurrentSong()
+        }
     }
 
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {

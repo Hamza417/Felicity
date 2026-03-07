@@ -145,6 +145,11 @@ class YearPage : MediaFragment() {
         })
     }
 
+    override fun onAudio(audio: Audio) {
+        super.onAudio(audio)
+        pageAdapter?.notifyCurrentSong()
+    }
+
     companion object {
         const val TAG = "YearPage"
 

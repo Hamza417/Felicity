@@ -7,8 +7,10 @@ import android.widget.ImageView
 import androidx.core.app.ShareCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.databinding.DialogSongMenuBinding
@@ -60,14 +62,19 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            MediaManager.songPositionFlow.collect { position ->
-                Log.d(TAG, "Song position: $position")
-                MediaManager.getCurrentSong()?.let { song ->
-                    onAudio(song)
+            // repeatOnLifecycle(STARTED) ensures we re-subscribe and replay the last
+            // emitted position every time the fragment comes back to the foreground.
+            // This guarantees onAudio() fires on resume, clearing any stale highlights.
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                MediaManager.songPositionFlow.collect { position ->
+                    Log.d(TAG, "Song position: $position")
+                    MediaManager.getCurrentSong()?.let { song ->
+                        onAudio(song)
+                    }
+                    onPositionChanged(position)
+                    // Save state when song position changes
+                    saveCurrentPlaybackState()
                 }
-                onPositionChanged(position)
-                // Save state when song position changes
-                saveCurrentPlaybackState()
             }
         }
 

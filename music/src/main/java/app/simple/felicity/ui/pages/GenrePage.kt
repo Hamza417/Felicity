@@ -155,6 +155,11 @@ class GenrePage : MediaFragment() {
         })
     }
 
+    override fun onAudio(audio: Audio) {
+        super.onAudio(audio)
+        pageAdapter?.notifyCurrentSong()
+    }
+
     companion object {
         fun newInstance(genre: Genre): GenrePage {
             val args = Bundle()
