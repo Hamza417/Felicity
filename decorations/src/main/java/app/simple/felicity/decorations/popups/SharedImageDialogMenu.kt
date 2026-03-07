@@ -8,8 +8,6 @@ import android.animation.ValueAnimator
 import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.Rect
-import android.os.Handler
-import android.os.Looper
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -141,9 +139,8 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
     private fun setupAnimatingImageView() {
         val cornerRadius = AppearancePreferences.getCornerRadius()
 
-        // Capture source properties before layout
+        // Capture source scale properties — used only for the dismiss return trip
         sourceScaleType = sourceImageView.scaleType
-        // targetScaleType will be read after layout in animateShow(), once targetImageView is measured
 
         animatingImageView = ImageView(container.context).apply {
             layoutParams = FrameLayout.LayoutParams(
@@ -153,6 +150,7 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
                 leftMargin = sourceRect.left
                 topMargin = sourceRect.top
             }
+            // Start with source scaleType so the first frame is pixel-identical to the source
             scaleType = sourceScaleType
             adjustViewBounds = sourceImageView.adjustViewBounds
             cropToPadding = sourceImageView.cropToPadding
@@ -207,10 +205,21 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         val cornerRadius = AppearancePreferences.getCornerRadius()
         val targetCornerRadius = getTargetCornerRadius()
 
-        // Inherit target ImageView's display properties now that layout is done
+        // Read target display properties now that layout is complete
         targetScaleType = targetImageView.scaleType
-        // If target has a different scaleType, switch on the animating image halfway through
-        // so the crop/fit style visually matches the destination for the latter half of the animation
+
+        // Push the source drawable into the target ImageView so it is pixel-identical
+        // to the animating view when it becomes visible — no reload, no flicker.
+        targetImageView.setImageDrawable(sourceImageView.drawable)
+        targetImageView.scaleType = targetScaleType
+
+        // Immediately adopt the target's rendering properties on the animating view.
+        // Because the frame bounds are about to grow from source → target size, using
+        // the target's scaleType ensures the image crops/fits consistently throughout
+        // the entire animation and lands identically on the destination ImageView.
+        animatingImageView.scaleType = targetScaleType
+        animatingImageView.adjustViewBounds = targetImageView.adjustViewBounds
+        animatingImageView.cropToPadding = targetImageView.cropToPadding
 
         // Set initial scale on the binding root (like Inure's popup_in animation)
         binding.root.scaleX = CONTENT_SCALE_X_START
@@ -308,29 +317,12 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
             )
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
-                    // Adopt target's display properties on the animating view
-                    // (it's hidden right after, but keeps state consistent for dismiss)
-                    animatingImageView.scaleType = targetScaleType
-                    animatingImageView.adjustViewBounds = targetImageView.adjustViewBounds
-                    animatingImageView.cropToPadding = targetImageView.cropToPadding
-                    // Show target image and hide animating image
+                    // animatingImageView already has target properties — just swap visibility
                     targetImageView.alpha = 1f
                     animatingImageView.alpha = 0f
                 }
             })
             start()
-        }
-
-        // Switch scaleType to target's halfway through so the crop style matches
-        // the destination for the second half of the morph
-        if (sourceScaleType != targetScaleType) {
-            Handler(Looper.getMainLooper()).postDelayed({
-                                                            if (!isDismissing) {
-                                                                animatingImageView.scaleType = targetScaleType
-                                                                animatingImageView.adjustViewBounds = targetImageView.adjustViewBounds
-                                                                animatingImageView.cropToPadding = targetImageView.cropToPadding
-                                                            }
-                                                        }, DURATION / 2)
         }
     }
 
@@ -347,28 +339,21 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         targetImageView.getGlobalVisibleRect(targetRect)
         targetRect.offset(-containerRect.left, -containerRect.top)
 
-        // Show animating image at target position, hide target
+        // Show animating image at target position with source drawable, hide target
         val imageParams = animatingImageView.layoutParams as FrameLayout.LayoutParams
         imageParams.leftMargin = targetRect.left
         imageParams.topMargin = targetRect.top
         imageParams.width = targetRect.width()
         imageParams.height = targetRect.height()
         animatingImageView.layoutParams = imageParams
-        // Start return trip with target's display properties
-        animatingImageView.scaleType = targetScaleType
-        animatingImageView.adjustViewBounds = targetImageView.adjustViewBounds
-        animatingImageView.cropToPadding = targetImageView.cropToPadding
+        // Return trip: adopt source display properties immediately so the image renders
+        // consistently as it shrinks back towards the source item's bounds.
+        animatingImageView.setImageDrawable(sourceImageView.drawable)
+        animatingImageView.scaleType = sourceScaleType
+        animatingImageView.adjustViewBounds = sourceImageView.adjustViewBounds
+        animatingImageView.cropToPadding = sourceImageView.cropToPadding
         animatingImageView.alpha = 1f
         targetImageView.alpha = 0f
-
-        // Switch back to source display properties halfway through the return animation
-        if (sourceScaleType != targetScaleType) {
-            Handler(Looper.getMainLooper()).postDelayed({
-                                                            animatingImageView.scaleType = sourceScaleType
-                                                            animatingImageView.adjustViewBounds = sourceImageView.adjustViewBounds
-                                                            animatingImageView.cropToPadding = sourceImageView.cropToPadding
-                                                        }, DURATION / 2)
-        }
 
         // Scrim fade out
         val scrimAnimator = ValueAnimator.ofArgb(SCRIM_COLOR.toColorInt(), Color.TRANSPARENT).apply {

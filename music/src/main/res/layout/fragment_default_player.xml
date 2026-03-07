@@ -35,6 +35,17 @@
             app:appFontStyle="bold"
             app:textColorStyle="primary" />
 
+        <app.simple.felicity.decorations.views.HighlightTextView
+            android:id="@+id/lyrics"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="@dimen/padding_5"
+            android:padding="@dimen/padding_5"
+            android:text="@string/lyrics"
+            app:appFontStyle="bold"
+            app:textColorStyle="primary" />
+
         <Space
             android:layout_width="0dp"
             android:layout_weight="1"
@@ -42,19 +53,11 @@
             android:layout_marginHorizontal="@dimen/padding_10" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-            android:id="@+id/menu"
+            android:id="@+id/favorite"
             android:layout_width="@dimen/button_size"
             android:layout_height="@dimen/button_size"
             android:layout_marginEnd="@dimen/padding_1"
-            android:src="@drawable/ic_menu"
-            app:buttonTintType="regular" />
-
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-            android:id="@+id/lyrics"
-            android:layout_width="@dimen/button_size"
-            android:layout_height="@dimen/button_size"
-            android:layout_marginEnd="@dimen/padding_1"
-            android:src="@drawable/ic_lyrics"
+            android:src="@drawable/ic_favorite_border"
             app:buttonTintType="regular" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
@@ -63,6 +66,13 @@
             android:layout_height="@dimen/button_size"
             android:layout_marginEnd="@dimen/padding_1"
             android:src="@drawable/ic_search"
+            app:buttonTintType="regular" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/menu"
+            android:layout_width="@dimen/button_size"
+            android:layout_height="@dimen/button_size"
+            android:src="@drawable/ic_menu"
             app:buttonTintType="regular" />
 
     </LinearLayout>

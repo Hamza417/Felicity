@@ -29,7 +29,6 @@ import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils
 import app.simple.felicity.repository.utils.AudioUtils.createSongStat
-import app.simple.felicity.shared.utils.BitmapUtils.toBitmap
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
@@ -271,7 +270,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 inflateBinding = DialogSongMenuBinding::inflate,
                 targetImageViewProvider = { it.cover })
             .onViewCreated { binding ->
-                binding.cover.setImageBitmap(imageView.drawable.toBitmap())
+                miniPlayerCallbacks?.onHideMiniPlayer()
                 binding.title.text = audios[position].title
                 binding.secondaryDetail.text = audios[position].artist
                 binding.tertiaryDetail.text = audios[position].album
@@ -358,7 +357,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
                 binding.delete.setOnClickListener {
                     dismiss()
-                    showDeleteConfirmation() { confirmed ->
+                    showDeleteConfirmation { confirmed ->
                         if (confirmed) {
                             deleteSong(audios[position])
                         } else {
@@ -379,6 +378,9 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                         dismiss()
                     }
                 }
+            }
+            .onDismiss {
+                miniPlayerCallbacks?.onShowMiniPlayer()
             }
             .build()
             .show()

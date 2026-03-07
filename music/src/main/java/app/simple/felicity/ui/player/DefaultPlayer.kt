@@ -96,7 +96,7 @@ class DefaultPlayer : MediaFragment() {
         }
 
         binding.count.setOnClickListener {
-            binding.count.callOnClick()
+            binding.queue.callOnClick()
         }
 
         binding.search.setOnClickListener {
