@@ -59,13 +59,13 @@
         android:gravity="center_vertical"
         android:paddingStart="@dimen/padding_15"
         android:paddingEnd="@dimen/padding_5"
-        android:paddingVertical="@dimen/padding_15"
-        android:textSize="@dimen/text_size_12"
-        app:appFontStyle="regular"
+        android:paddingVertical="@dimen/padding_10"
+        android:textSize="@dimen/text_size_14"
+        app:appFontStyle="medium"
         app:drawableTintStyle="accent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:textColorStyle="tertiary" />
+        app:textColorStyle="primary" />
 
 </app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout>
