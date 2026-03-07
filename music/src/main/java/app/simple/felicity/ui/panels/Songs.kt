@@ -100,7 +100,8 @@ class Songs : PanelFragment() {
         }
 
         headerBinding.shuffle.setOnClickListener {
-            songsViewModel.shuffleSongs()
+            val songs = songsViewModel.songs.value
+            if (songs.isNotEmpty()) shuffleMediaItems(songs)
         }
 
         headerBinding.shuffle.setOnLongClickListener {

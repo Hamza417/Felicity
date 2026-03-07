@@ -119,6 +119,11 @@ class Search : PanelFragment() {
         headerBinding.scroll.setOnClickListener {
             binding.recyclerView.smoothScrollToPosition(0)
         }
+
+        headerBinding.shuffle.setOnClickListener {
+            val songs = searchViewModel.songs.value
+            if (songs.isNotEmpty()) shuffleMediaItems(songs)
+        }
     }
 
     private fun updateSongsList(songs: List<Audio>) {

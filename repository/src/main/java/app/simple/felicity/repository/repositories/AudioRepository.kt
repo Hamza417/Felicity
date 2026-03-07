@@ -678,11 +678,12 @@ class AudioRepository @Inject constructor(
 
     /**
      * Get recent audio files from the database as a Flow.
-     * Returns the 25 most recently added audio files.
+     * Returns all audio files added in the last 30 days, ordered by date added descending.
      * Filtered in real-time by [LibraryPreferences] minimum duration and size.
      */
     fun getRecentAudio(): Flow<MutableList<Audio>> {
-        return audioDatabase.audioDao()?.getFilteredRecentAudio(minDurationMs(), minSizeBytes())
+        val thirtyDaysAgoMs = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000
+        return audioDatabase.audioDao()?.getFilteredRecentAudio(minDurationMs(), minSizeBytes(), thirtyDaysAgoMs)
             ?: throw IllegalStateException("AudioDao is null")
     }
 

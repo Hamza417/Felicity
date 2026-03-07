@@ -6,11 +6,9 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.LibraryPreferences
-import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
-import app.simple.felicity.repository.shuffle.Shuffle.shuffle
 import app.simple.felicity.repository.sort.SongSort.sorted
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -68,18 +66,6 @@ class SongsViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Shuffle the current song list using the algorithm stored in [ShufflePreferences].
-     */
-    fun shuffleSongs() {
-        viewModelScope.launch(Dispatchers.Default) {
-            val algorithm = ShufflePreferences.getShuffleAlgorithm()
-            Log.d(TAG, "shuffleSongs: Shuffling ${_songs.value.size} songs with algorithm $algorithm")
-            val shuffled = _songs.value.shuffle(algorithm)
-            _songs.value = shuffled
-            Log.d(TAG, "shuffleSongs: ${shuffled.size} songs shuffled with algorithm $algorithm")
-        }
-    }
 
     fun setCarouselPosition(position: Int) {
         carouselPosition = position

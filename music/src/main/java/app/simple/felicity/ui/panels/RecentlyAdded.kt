@@ -81,6 +81,11 @@ class RecentlyAdded : PanelFragment() {
         headerBinding.gridSize.setGridSizeValue(RecentlyAddedPreferences.getGridSize())
         headerBinding.gridType.setGridTypeValue(RecentlyAddedPreferences.getGridType())
 
+        headerBinding.shuffle.setOnClickListener {
+            val songs = recentlyAddedViewModel.songs.value
+            if (songs.isNotEmpty()) shuffleMediaItems(songs)
+        }
+
         headerBinding.search.setOnClickListener {
             openSearch()
         }
