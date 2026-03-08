@@ -228,7 +228,7 @@ class FelicityPager @JvmOverloads constructor(
 
     /**
      * Number of pages to keep loaded on each side of the currently visible page.
-     * A value of 1 loads the immediate neighbours; 2 loads two pages on each side, etc.
+     * A value of 1 loads the immediate neighbors; 2 loads two pages on each side, etc.
      */
     private val pageRadius = 2
 
@@ -654,7 +654,7 @@ class FelicityPager @JvmOverloads constructor(
      *
      * The start timestamp is latched on the first call (when [animStartTime] == -1) to
      * avoid clock-source jitter between [System.currentTimeMillis] and the vsync clock.
-     * When `t` reaches 1.0 the animation is finalised, [scrollPx] is snapped to [animTo],
+     * When `t` reaches 1.0 the animation is finalized, [scrollPx] is snapped to [animTo],
      * and [dispatchPageSelected] / [dispatchStateChanged] are fired.
      */
     private fun advanceAnimation(nowMs: Long) {
@@ -682,6 +682,7 @@ class FelicityPager @JvmOverloads constructor(
     /**
      * Cancels any running settle animation and immediately transitions the scroll state
      * to [SCROLL_STATE_IDLE]. The pager stays at its current [scrollPx].
+     * Also cancels any in-progress wrap-around animation.
      */
     private fun cancelAnimation() {
         if (animating) {
@@ -690,6 +691,7 @@ class FelicityPager @JvmOverloads constructor(
             animPosted = false
             dispatchStateChanged(SCROLL_STATE_IDLE)
         }
+        cancelWrapAnimation()
     }
 
     /**
@@ -715,14 +717,135 @@ class FelicityPager @JvmOverloads constructor(
         override fun run() {
             val count = pageCount()
             if (autoSlideInterval > 0 && count > 1 && scrollState != SCROLL_STATE_DRAGGING) {
-                if (autoSlideLoop) {
-                    if (currentPage >= count - 1) setCurrentItem(0, smoothScroll = false)
-                    else setCurrentItem(currentPage + 1, smoothScroll = true)
+                if (autoSlideLoop && currentPage >= count - 1) {
+                    // Smooth wrap-around: scroll *forward* past last page to a virtual
+                    // page-0 copy (train passing effect), then silently snap back once done.
+                    smoothScrollToWrap()
                 } else {
-                    val next = (currentPage + 1).coerceAtMost(count - 1)
+                    val next = if (autoSlideLoop) currentPage + 1 else (currentPage + 1).coerceAtMost(count - 1)
                     if (next != currentPage) setCurrentItem(next, smoothScroll = true)
                 }
                 mainHandler.postDelayed(this, autoSlideInterval)
+            }
+        }
+    }
+
+    /**
+     * Scrolls forward from the last page to a virtual copy of page 0 placed immediately
+     * after the last real page. When the animation completes the scroll position is
+     * silently reset to 0 so the illusion of a circular tape is seamless.
+     *
+     * Visual effect: the images appear to slide forward in a continuous strip (train effect)
+     * rather than cutting back abruptly to the start.
+     */
+    private fun smoothScrollToWrap() {
+        if (width == 0) return
+        val count = pageCount()
+        if (count <= 1) return
+
+        // Preload page 0 so it is visible as soon as we scroll past the last page.
+        // Position it at scrollPx = count * width (one page beyond the last).
+        val wrapPos = count   // virtual index of the page-0 clone
+        val wrapPx = wrapPos * width.toFloat()
+
+        // Load the real page 0 and position it at the wrap slot.
+        adapter?.let { ad ->
+            if (!activePages.containsKey(WRAP_PAGE_KEY)) {
+                val v = recyclePool.removeLastOrNull()
+                    ?.also { ad.onBindView(0, it) }
+                    ?: ad.onCreateView(0, this).also { ad.onBindView(0, it) }
+                activePages[WRAP_PAGE_KEY] = v
+                addView(v)
+                if (width > 0 && height > 0) {
+                    val cw = MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY)
+                    val ch = MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
+                    v.measure(cw, ch)
+                    v.layout(0, 0, width, height)
+                }
+                v.translationX = wrapPx - scrollPx
+            }
+        }
+
+        // Animate scrollPx from its current position (≈ last page) to wrapPx.
+        val duration = (animationDurationMs * 1.1f).toLong().coerceIn(300L, 1200L)
+
+        // Drive a manual animation so we can intercept the completion and reset.
+        wrapAnimFrom = scrollPx
+        wrapAnimTo = wrapPx
+        wrapAnimDuration = duration
+        wrapAnimStartMs = -1L
+        wrapAnimating = true
+        queueWrapFrame()
+    }
+
+    // Sentinel key for the virtual wrap-around page-0 clone in activePages.
+    private val WRAP_PAGE_KEY = Int.MAX_VALUE
+
+    private var wrapAnimating = false
+    private var wrapAnimFrom = 0f
+    private var wrapAnimTo = 0f
+    private var wrapAnimDuration = 0L
+    private var wrapAnimStartMs = -1L
+    private var wrapAnimPosted = false
+
+    private val wrapFrameCallback = Choreographer.FrameCallback { frameTimeNanos ->
+        wrapAnimPosted = false
+        advanceWrapAnimation(frameTimeNanos / 1_000_000L)
+    }
+
+    private fun queueWrapFrame() {
+        if (!wrapAnimPosted) {
+            wrapAnimPosted = true
+            choreographer.postFrameCallback(wrapFrameCallback)
+        }
+    }
+
+    private fun advanceWrapAnimation(nowMs: Long) {
+        if (!wrapAnimating) return
+        if (wrapAnimStartMs == -1L) wrapAnimStartMs = nowMs
+        val elapsed = (nowMs - wrapAnimStartMs).coerceAtLeast(0L)
+        val tRaw = if (wrapAnimDuration > 0L) (elapsed.toFloat() / wrapAnimDuration).coerceIn(0f, 1f) else 1f
+
+        scrollPx = wrapAnimFrom + (wrapAnimTo - wrapAnimFrom) * easeOutCubic(tRaw)
+
+        // Update translations for real pages + the wrap clone.
+        applyTranslations()
+        activePages[WRAP_PAGE_KEY]?.translationX = wrapAnimTo - scrollPx
+
+        dispatchScrolled()
+
+        if (tRaw < 1f) {
+            queueWrapFrame()
+        } else {
+            // Animation complete — silently teleport back to page 0.
+            wrapAnimating = false
+            // Remove the clone
+            activePages.remove(WRAP_PAGE_KEY)?.let { v ->
+                adapter?.onRecycleView(0, v)
+                recyclePool.addLast(v)
+                removeView(v)
+            }
+            // Reset scroll to page 0 without any visual change (page 0 is already in view).
+            scrollPx = 0f
+            currentPage = -1   // force dispatchPageSelected to fire
+            applyTranslations()
+            ensurePages()
+            dispatchScrolled()
+            dispatchPageSelected(0, fromUser = false)
+            dispatchStateChanged(SCROLL_STATE_IDLE)
+        }
+    }
+
+    private fun cancelWrapAnimation() {
+        if (wrapAnimating) {
+            wrapAnimating = false
+            if (wrapAnimPosted) choreographer.removeFrameCallback(wrapFrameCallback)
+            wrapAnimPosted = false
+            // Clean up the clone view if present.
+            activePages.remove(WRAP_PAGE_KEY)?.let { v ->
+                adapter?.onRecycleView(0, v)
+                recyclePool.addLast(v)
+                removeView(v)
             }
         }
     }
@@ -747,6 +870,7 @@ class FelicityPager @JvmOverloads constructor(
     fun stopAutoSlide() {
         autoSlideInterval = 0
         mainHandler.removeCallbacks(autoSlideRunnable)
+        cancelWrapAnimation()
     }
 
 
@@ -769,6 +893,7 @@ class FelicityPager @JvmOverloads constructor(
         super.onDetachedFromWindow()
         stopAutoSlide()
         cancelAnimation()
+        cancelWrapAnimation()
         recycleAllPages()
     }
 

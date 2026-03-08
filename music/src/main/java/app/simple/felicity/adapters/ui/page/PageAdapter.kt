@@ -8,7 +8,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
-import app.simple.felicity.adapters.home.sub.ArtistArtFlowAdapter
+import app.simple.felicity.adapters.home.sub.ArtFlowSliderAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
 import app.simple.felicity.databinding.AdapterHeaderArtistPageBinding
@@ -497,17 +497,19 @@ class PageAdapter(
                 // Show art flow for albums and artists
                 when (pageType) {
                     is PageType.AlbumPage, is PageType.ArtistPage, is PageType.FolderPage -> {
+                        artFlow.visibility = View.VISIBLE
                         when {
                             item.songs.isNotEmpty() -> {
-                                artFlow.setSliderAdapter(ArtistArtFlowAdapter(ArtFlowData(R.string.songs, item.songs)))
+                                artFlow.setAdapter(ArtFlowSliderAdapter(ArtFlowData(R.string.songs, item.songs)))
                             }
                             pageData.albums.isNotEmpty() -> {
-                                artFlow.setSliderAdapter(ArtistArtFlowAdapter(ArtFlowData(R.string.albums, pageData.albums)))
+                                artFlow.setAdapter(ArtFlowSliderAdapter(ArtFlowData(R.string.albums, pageData.albums)))
                             }
                             pageData.artists.isNotEmpty() -> {
-                                artFlow.setSliderAdapter(ArtistArtFlowAdapter(ArtFlowData(R.string.artists, pageData.artists)))
+                                artFlow.setAdapter(ArtFlowSliderAdapter(ArtFlowData(R.string.artists, pageData.artists)))
                             }
                         }
+                        artFlow.start()
                     }
                     is PageType.GenrePage -> {
                         artFlow.visible(false)
@@ -544,7 +546,8 @@ class PageAdapter(
                 artists.text = pageData.artists.size.toString()
                 albums.text = pageData.albums.size.toString()
                 totalTime.text = item.totalDuration.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
-                artFlow.setSliderAdapter(ArtistArtFlowAdapter(ArtFlowData(R.string.songs, item.songs)))
+                artFlow.setAdapter(ArtFlowSliderAdapter(ArtFlowData(R.string.songs, item.songs)))
+                artFlow.start()
 
                 play.setOnClickListener {
                     listener?.onPlayClicked(item.songs, 0)

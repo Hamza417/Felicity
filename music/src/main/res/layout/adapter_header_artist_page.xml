@@ -8,16 +8,15 @@
     android:orientation="vertical"
     android:layout_height="wrap_content">
 
-    <FrameLayout
+    <app.simple.felicity.decorations.pager.FelicitySlider
+        android:id="@+id/art_flow"
         android:layout_width="match_parent"
-        android:layout_height="256dp">
-
-        <app.simple.felicity.decorations.views.FelicityImageSlider
-            android:id="@+id/art_flow"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-
-    </FrameLayout>
+        android:layout_height="256dp"
+        app:showIndicator="true"
+        app:slideIntervalMs="3000"
+        app:slideSwiftness="0.65"
+        app:springDamping="0.60"
+        app:springStiffness="420" />
 
     <LinearLayout
         android:layout_width="match_parent"

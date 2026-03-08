@@ -208,4 +208,18 @@
         <attr name="hideThreshold" format="dimension" />
     </declare-styleable>
 
+    <!-- FelicitySlider: auto-sliding image pager with elastic dot indicators -->
+    <declare-styleable name="FelicitySlider">
+        <!-- Milliseconds between automatic page advances. 0 = disabled. Default: 3000. -->
+        <attr name="slideIntervalMs" format="integer" />
+        <!-- 0.0 (slow, ~900 ms) .. 1.0 (fast, ~220 ms). Default: 0.6. -->
+        <attr name="slideSwiftness" format="float" />
+        <!-- Spring stiffness for the dot blob animation. Default: 420. -->
+        <attr name="springStiffness" format="float" />
+        <!-- Spring damping ratio. <1 = bouncy. Default: 0.62. -->
+        <attr name="springDamping" format="float" />
+        <!-- Whether to show the bottom dot indicator. Default: true. -->
+        <attr name="showIndicator" format="boolean" />
+    </declare-styleable>
+
 </resources>
