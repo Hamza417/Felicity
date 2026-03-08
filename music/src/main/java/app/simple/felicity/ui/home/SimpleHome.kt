@@ -70,13 +70,14 @@ class SimpleHome : PanelFragment() {
             if (adapterSimpleHome == null) {
                 adapterSimpleHome = AdapterSimpleHome(list)
                 adapterSimpleHome!!.setLayoutType(HomePreferences.getHomeLayoutType())
-                adapterSimpleHome!!.attachItemTouchHelper(binding.recyclerView)
                 setupAdapterCallbacks()
+            }
+            // Always (re-)attach the touch helper and adapter to the current RecyclerView.
+            // The view may have been recreated (back-navigation) so we must re-bind every time.
+            adapterSimpleHome!!.attachItemTouchHelper(binding.recyclerView)
+            if (binding.recyclerView.adapter !== adapterSimpleHome) {
                 binding.recyclerView.adapter = adapterSimpleHome
             }
-            // When the adapter already exists, do nothing —
-            // it already holds a reference to the same MutableList and
-            // called notifyItemMoved itself during drag.
         }
     }
 
@@ -124,6 +125,14 @@ class SimpleHome : PanelFragment() {
             override fun onItemMoved(fromPosition: Int, toPosition: Int) {
                 homeViewModel?.onItemMoved(fromPosition, toPosition)
             }
+
+            override fun onDragEnd() {
+                // After drag completes, reset any accumulated header-scroll offset that
+                // may have built up due to auto-scroll while dragging near the top of
+                // the list, then resume normal hide-on-scroll behavior.
+                binding.appHeader.resetScrollingState()
+                binding.appHeader.resumeAutoBehavior(reset = false)
+            }
         })
     }
 
@@ -152,5 +161,3 @@ class SimpleHome : PanelFragment() {
         const val TAG = "SimpleHome"
     }
 }
-
-

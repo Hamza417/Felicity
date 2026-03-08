@@ -27,11 +27,17 @@ class AdapterSimpleHome(private val data: MutableList<Element>) : RecyclerView.A
     }
 
     fun attachItemTouchHelper(recyclerView: RecyclerView) {
+        // Detach from any previously attached RecyclerView first
+        itemTouchHelper?.attachToRecyclerView(null)
+
         val callback = object : ItemTouchHelper.SimpleCallback(
                 ItemTouchHelper.UP or ItemTouchHelper.DOWN or
                         ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT,
                 0
         ) {
+            private var dragFrom = RecyclerView.NO_POSITION
+            private var dragTo = RecyclerView.NO_POSITION
+
             override fun onMove(
                     recyclerView: RecyclerView,
                     viewHolder: RecyclerView.ViewHolder,
@@ -40,12 +46,12 @@ class AdapterSimpleHome(private val data: MutableList<Element>) : RecyclerView.A
                 val from = viewHolder.bindingAdapterPosition
                 val to = target.bindingAdapterPosition
                 if (from == RecyclerView.NO_POSITION || to == RecyclerView.NO_POSITION) return false
+                if (dragFrom == RecyclerView.NO_POSITION) dragFrom = from
+                dragTo = to
                 // Move item in the backing list and notify adapter directly
                 val item = data.removeAt(from)
                 data.add(to, item)
                 notifyItemMoved(from, to)
-                // Persist the new order via callback
-                adapterSimpleHomeCallbacks?.onItemMoved(from, to)
                 return true
             }
 
@@ -54,6 +60,18 @@ class AdapterSimpleHome(private val data: MutableList<Element>) : RecyclerView.A
             }
 
             override fun isLongPressDragEnabled(): Boolean = true
+
+            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
+                super.clearView(recyclerView, viewHolder)
+                // Persist the final order only once when drag completes (not on every onMove)
+                if (dragFrom != RecyclerView.NO_POSITION && dragTo != RecyclerView.NO_POSITION
+                        && dragFrom != dragTo) {
+                    adapterSimpleHomeCallbacks?.onItemMoved(dragFrom, dragTo)
+                }
+                dragFrom = RecyclerView.NO_POSITION
+                dragTo = RecyclerView.NO_POSITION
+                adapterSimpleHomeCallbacks?.onDragEnd()
+            }
         }
         itemTouchHelper = ItemTouchHelper(callback)
         itemTouchHelper?.attachToRecyclerView(recyclerView)
@@ -139,6 +157,7 @@ class AdapterSimpleHome(private val data: MutableList<Element>) : RecyclerView.A
             fun onItemClicked(element: Element, position: Int, view: View)
             fun onCarouselClicked(element: Element, position: Int, view: View)
             fun onItemMoved(fromPosition: Int, toPosition: Int)
+            fun onDragEnd() {}
         }
     }
 }

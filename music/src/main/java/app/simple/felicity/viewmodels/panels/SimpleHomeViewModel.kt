@@ -70,15 +70,13 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
-        when (key) {
-            HomePreferences.HOME_ITEMS_ORDER -> {
-                setHomeData() // Refresh data to reflect new order
-            }
-        }
+        // HOME_ITEMS_ORDER is only written by this ViewModel itself (via saveOrder).
+        // There is no need to react to our own writes — the adapter already holds
+        // the correct in-memory order. Re-calling setHomeData() would post a NEW
+        // MutableList object that the adapter does not reference.
     }
 
     companion object {
         data class Element(val titleResId: Int, val iconResId: Int)
     }
 }
-
