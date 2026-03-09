@@ -92,10 +92,19 @@ object MediaManager {
 
         this.songs = audios
         val clampedPosition = if (audios.isEmpty()) 0 else position.coerceIn(0, audios.size - 1)
+        // Directly update field to bypass the "no change" guard in the setter, then always emit
+        // so observers are notified even when the index stays the same but the song list changed
+        // (e.g. after shuffling, position 0 is a completely different song).
         currentSongPosition = clampedPosition
 
         // Line 83 inside setSongs
         if (audios.isNotEmpty()) {
+            // Always emit position so UI reflects the new queue's first song, and reset seek to 0
+            scope.launch {
+                _songPositionFlow.emit(clampedPosition)
+                _songSeekPositionFlow.emit(startPositionMs)
+            }
+
             // Move heavy mapping to background thread
             scope.launch {
                 val mediaItems = withContext(Dispatchers.Default) {
@@ -198,6 +207,8 @@ object MediaManager {
     /**
      * Removes the item at [index] from the ExoPlayer queue without interrupting playback.
      * Also updates the internal song list. Safe to call for swipe-to-remove gestures.
+     * When the currently playing song is removed, ExoPlayer auto-advances to the next item;
+     * we ensure internal state and UI position are kept in sync.
      */
     fun removeQueueItemSilently(index: Int) {
         if (index !in songs.indices) {
@@ -214,24 +225,32 @@ object MediaManager {
 
         // Figure out where the currently playing song lands after removal
         val newCurrentPosition = if (wasPlayingRemovedSong) {
-            // The playing song itself was removed — stay at same index (clamped)
+            // The playing song itself was removed — clamp to valid range
             index.coerceAtMost((newList.size - 1).coerceAtLeast(0))
         } else {
             currentSong?.let { cs -> newList.indexOfFirst { it.id == cs.id } }
                 ?.coerceAtLeast(0) ?: currentSongPosition
         }
+        // Update internal position before ExoPlayer removal so listeners see correct state
         currentSongPosition = newCurrentPosition
 
-        // Surgically remove item in ExoPlayer — no setMediaItems, no prepare, no gap
+        // Surgically remove item in ExoPlayer — no setMediaItems, no prepare, no gap.
+        // ExoPlayer will automatically advance to the next item when the current item is removed.
         mediaController?.removeMediaItem(index)
 
-        // If the removed song was the one playing, skip to next (ExoPlayer may auto-advance,
-        // but we ensure playback continues and the UI is notified)
-        if (wasPlayingRemovedSong && newList.isNotEmpty()) {
+        if (wasPlayingRemovedSong) {
             scope.launch {
-                // Give ExoPlayer a tick to process the removal before seeking
-                if (mediaController?.isPlaying == true) {
+                if (newList.isEmpty()) {
+                    // Queue is now empty — stop playback
+                    mediaController?.stop()
+                    stopSeekPositionUpdates()
+                    _playbackStateFlow.emit(MediaConstants.PLAYBACK_STOPPED)
+                    _songSeekPositionFlow.emit(0L)
+                } else {
+                    // ExoPlayer auto-advances; force seek to confirm correct item and ensure
+                    // playback continues even if we were in a buffering state.
                     mediaController?.seekTo(newCurrentPosition, 0L)
+                    mediaController?.play()
                 }
                 _songPositionFlow.emit(newCurrentPosition)
             }

@@ -39,6 +39,7 @@ import app.simple.felicity.ui.player.DefaultPlayer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
@@ -127,29 +128,17 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     /**
-     * Shuffle [songs] using the algorithm from [ShufflePreferences], then:
-     *  - If a song from [songs] is currently playing → keep it playing but update the queue with
-     *    the shuffled order (the current song is placed at index 0 of the shuffled list so the
-     *    transition is seamless).
-     *  - If nothing from this list is playing → start playing from position 0 of the shuffled list.
+     * Shuffle [songs] using the algorithm from [ShufflePreferences], then always start
+     * playing from position 0 of the shuffled list. The shuffled queue replaces the current
+     * queue entirely so the player always starts fresh from the first shuffled song.
      */
     protected fun shuffleMediaItems(songs: List<Audio>) {
         val algorithm = ShufflePreferences.getShuffleAlgorithm()
         val shuffled = songs.shuffle(algorithm).toMutableList()
-
-        val currentSong = MediaManager.getCurrentSong()
-        val currentInList = currentSong?.let { cs -> shuffled.indexOfFirst { it.id == cs.id } }
-
-        if (currentInList != null && currentInList != -1) {
-            // Current song is in the list — bubble it to position 0 so the queue update
-            // is transparent to the listener (song keeps playing, queue is now shuffled).
-            shuffled.removeAt(currentInList)
-            shuffled.add(0, currentSong)
-            setMediaItems(shuffled, 0)
-        } else {
-            // Nothing from this list is playing — start fresh from the top of the shuffled list.
-            setMediaItems(shuffled, 0)
-        }
+        // Always replace queue and start from position 0, regardless of what is currently playing.
+        MediaManager.setSongs(shuffled, 0)
+        MediaManager.play()
+        createSongHistoryDatabase(shuffled)
     }
 
     private fun openDefaultPlayer() {
@@ -458,14 +447,17 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     val audioDatabase = AudioDatabase.getInstance(requireContext())
                     audioDatabase.audioDao()?.delete(audio)
 
-                    // Remove the song from the queue (this handles skip-to-next if it's playing)
-                    val queueIndex = MediaManager.getSongs().indexOfFirst { it.id == audio.id }
-                    if (queueIndex != -1) {
-                        // removeQueueItemSilently handles skip/playback continuation
-                        MediaManager.removeQueueItemSilently(queueIndex)
-                    } else if (MediaManager.getCurrentSong()?.id == audio.id) {
-                        // Song was playing but not in queue list — just skip
-                        MediaManager.next()
+                    // Switch to Main thread: MediaController calls must happen on Main.
+                    withContext(Dispatchers.Main) {
+                        // Remove the song from the queue (this handles skip-to-next if it's playing)
+                        val queueIndex = MediaManager.getSongs().indexOfFirst { it.id == audio.id }
+                        if (queueIndex != -1) {
+                            // removeQueueItemSilently handles skip/playback continuation
+                            MediaManager.removeQueueItemSilently(queueIndex)
+                        } else if (MediaManager.getCurrentSong()?.id == audio.id) {
+                            // Song was playing but not in queue list — just skip
+                            MediaManager.next()
+                        }
                     }
 
                     Log.d(TAG, "Song deleted successfully: ${audio.title}")
