@@ -44,6 +44,14 @@ class LyricsViewModel @AssistedInject constructor(
      */
     private var bakedLrcData: LrcData? = null
 
+    /** Guards against concurrent duplicate load calls (e.g. lazy init + onAudio firing together). */
+    @Volatile
+    private var isLoading = false
+
+    /** Path of the last song whose lyrics were successfully kicked off, to avoid redundant reloads. */
+    @Volatile
+    private var lastLoadedPath: String? = null
+
     /**
      * The running sync offset in milliseconds. Adding this to the current playback
      * position before calling updateTime shifts which line is highlighted without
@@ -70,6 +78,22 @@ class LyricsViewModel @AssistedInject constructor(
     fun getSyncOffsetMs(): LiveData<Long> = syncOffsetMs
 
     fun loadLrcData() {
+        // Prevent duplicate concurrent loads (e.g. lazy init racing with onAudio callback)
+        if (isLoading) {
+            Log.d(TAG, "loadLrcData() skipped – already in progress.")
+            return
+        }
+
+        // Skip redundant reload for the same song (e.g. onAudio firing right after lazy init)
+        val currentSongPath = (audio ?: MediaManager.getCurrentSong())?.path
+        if (currentSongPath != null && currentSongPath == lastLoadedPath) {
+            Log.d(TAG, "loadLrcData() skipped – same song already loaded.")
+            return
+        }
+
+        isLoading = true
+        lastLoadedPath = currentSongPath
+
         // Reset sync offset whenever we load fresh lyrics
         pendingSyncDeltaMs = 0L
         syncOffsetMs.value = 0L
@@ -77,49 +101,53 @@ class LyricsViewModel @AssistedInject constructor(
         syncSaveHandler.removeCallbacks(syncSaveRunnable)
 
         viewModelScope.launch(Dispatchers.IO) {
-            val currentSong = audio ?: MediaManager.getCurrentSong()
-            if (currentSong == null) {
-                lrcData.postValue(LrcData())
-                return@launch
-            }
+            try {
+                val currentSong = audio ?: MediaManager.getCurrentSong()
+                if (currentSong == null) {
+                    lrcData.postValue(LrcData())
+                    return@launch
+                }
 
-            val loadResult = lrcRepository.loadLrcFromFile(currentSong.path)
+                val loadResult = lrcRepository.loadLrcFromFile(currentSong.path)
 
-            loadResult.onSuccess { lrcContent ->
-                if (lrcContent != null) {
-                    Log.d(TAG, "Existing LRC file found for ${currentSong.title}, loading lyrics.")
-                    try {
-                        val lrcDataLoaded = LrcParser().parse(lrcContent)
-                        lrcData.postValue(lrcDataLoaded)
-                    } catch (e: LyricsParseException) {
-                        e.printStackTrace()
-                        lrcData.postValue(LrcData())
-                    }
-                } else {
-                    Log.d(TAG, "No existing LRC file found for ${currentSong.title}, checking for TXT sidecar.")
-                    val txtResult = lrcRepository.loadTxtFromFile(currentSong.path)
-                    val txtContent = txtResult.getOrNull()
-                    if (!txtContent.isNullOrBlank()) {
-                        Log.d(TAG, "TXT sidecar found for ${currentSong.title}, loading plain-text lyrics.")
+                loadResult.onSuccess { lrcContent ->
+                    if (lrcContent != null) {
+                        Log.d(TAG, "Existing LRC file found for ${currentSong.title}, loading lyrics.")
                         try {
-                            val txtLrcData = TxtParser().parse(txtContent)
-                            lrcData.postValue(txtLrcData)
+                            val lrcDataLoaded = LrcParser().parse(lrcContent)
+                            lrcData.postValue(lrcDataLoaded)
                         } catch (e: LyricsParseException) {
                             e.printStackTrace()
                             lrcData.postValue(LrcData())
                         }
                     } else {
-                        Log.d(TAG, "No TXT sidecar found for ${currentSong.title}, attempting to fetch automatically.")
-                        fetchAndSaveLrc(
-                                trackName = currentSong.title ?: currentSong.name,
-                                artistName = currentSong.artist ?: "",
-                                audioPath = currentSong.path
-                        )
+                        Log.d(TAG, "No existing LRC file found for ${currentSong.title}, checking for TXT sidecar.")
+                        val txtResult = lrcRepository.loadTxtFromFile(currentSong.path)
+                        val txtContent = txtResult.getOrNull()
+                        if (!txtContent.isNullOrBlank()) {
+                            Log.d(TAG, "TXT sidecar found for ${currentSong.title}, loading plain-text lyrics.")
+                            try {
+                                val txtLrcData = TxtParser().parse(txtContent)
+                                lrcData.postValue(txtLrcData)
+                            } catch (e: LyricsParseException) {
+                                e.printStackTrace()
+                                lrcData.postValue(LrcData())
+                            }
+                        } else {
+                            Log.d(TAG, "No TXT sidecar found for ${currentSong.title}, attempting to fetch automatically.")
+                            fetchAndSaveLrc(
+                                    trackName = currentSong.title ?: currentSong.name,
+                                    artistName = currentSong.artist ?: "",
+                                    audioPath = currentSong.path
+                            )
+                        }
                     }
+                }.onFailure { exception ->
+                    exception.printStackTrace()
+                    lrcData.postValue(LrcData())
                 }
-            }.onFailure { exception ->
-                exception.printStackTrace()
-                lrcData.postValue(LrcData())
+            } finally {
+                isLoading = false
             }
         }
     }
@@ -135,7 +163,9 @@ class LyricsViewModel @AssistedInject constructor(
                     val lrcDataLoaded = withContext(Dispatchers.Default) {
                         LrcParser().parse(syncedLyrics)
                     }
+
                     lrcRepository.saveLrcToFile(syncedLyrics, audioPath)
+                    Log.d(TAG, "Fetched and saved synced lyrics for $trackName by $artistName")
                     lrcData.postValue(lrcDataLoaded)
                 } catch (e: LyricsParseException) {
                     e.printStackTrace()
@@ -151,6 +181,7 @@ class LyricsViewModel @AssistedInject constructor(
     }
 
     fun reloadLrcData() {
+        lastLoadedPath = null // Force reload even for the same song
         loadLrcData()
     }
 
