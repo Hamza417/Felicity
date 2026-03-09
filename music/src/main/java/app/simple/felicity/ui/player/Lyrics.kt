@@ -10,6 +10,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
+import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentLyricsBinding
 import app.simple.felicity.decorations.lrc.view.ModernLrcView
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
@@ -20,6 +21,7 @@ import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.shared.utils.TextViewUtils.setTypeWriting
 import app.simple.felicity.ui.player.Lyrics.Companion.TEXT_SIZE_DEBOUNCE_MS
 import app.simple.felicity.viewmodels.player.LyricsViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -68,6 +70,17 @@ class Lyrics : MediaFragment() {
                 override fun onTimePlusClicked() {
                     lyricsViewModel.seekBy(SEEK_JUMP_MS)
                     lyricsViewModel.syncOffset += SEEK_JUMP_MS
+                }
+
+                override fun onLyricsDelete() {
+                    showDeleteConfirmation {
+                        if (it) {
+                            lyricsViewModel.deleteLrc {
+                                binding.lrc.reset()
+                                Log.d(TAG, "Lyrics deleted successfully.")
+                            }
+                        }
+                    }
                 }
             })
         }
@@ -152,6 +165,7 @@ class Lyrics : MediaFragment() {
 
     private fun updateState() {
         val audio = MediaManager.getCurrentSong() ?: return
+        binding.name.text = audio.title
         binding.artist.text = audio.artist
         binding.lrc.setDuration(audio.duration)
         binding.seekbar.setMax(audio.duration.toFloat())
@@ -180,9 +194,10 @@ class Lyrics : MediaFragment() {
 
     override fun onAudio(audio: Audio) {
         super.onAudio(audio)
+        binding.lrc.reset()
         lyricsViewModel.loadLrcData()
-        binding.name.text = audio.title
-        binding.artist.text = audio.artist
+        binding.name.setTypeWriting(audio.title ?: getString(R.string.unknown))
+        binding.artist.setTypeWriting(audio.artist ?: getString(R.string.unknown))
         binding.lrc.setDuration(audio.duration)
         binding.seekbar.setMaxWithReset(audio.duration.toFloat())
         binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)

@@ -130,7 +130,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     // Thumb shape selection: PILL or OVAL (circle/ellipse)
     enum class ThumbShape { PILL, OVAL, CIRCLE }
 
-    private var thumbShape: ThumbShape = ThumbShape.OVAL
+    private var thumbShape: ThumbShape = ThumbShape.PILL
 
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }

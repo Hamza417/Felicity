@@ -257,6 +257,26 @@ class LyricsViewModel @AssistedInject constructor(
         persistSyncAdjustment()
     }
 
+    fun deleteLrc(onSuccess: (() -> Unit)? = null) {
+        val currentSong = audio ?: MediaManager.getCurrentSong() ?: return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            lrcRepository.deleteLrcFile(currentSong.path)
+
+            withContext(Dispatchers.Main) {
+                // Clear the view immediately
+                lrcData.value = LrcData()
+                // Reset sync state
+                pendingSyncDeltaMs = 0L
+                syncOffsetMs.value = 0L
+                bakedLrcData = null
+                syncSaveHandler.removeCallbacks(syncSaveRunnable)
+
+                onSuccess?.invoke()
+            }
+        }
+    }
+
     @AssistedFactory
     interface Factory {
         fun create(audio: Audio?): LyricsViewModel

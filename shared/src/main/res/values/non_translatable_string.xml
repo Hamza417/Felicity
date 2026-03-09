@@ -14,7 +14,9 @@
     <string name="z_spread">z Spread</string>
     <string name="ffmpeg">FFmpeg</string>
     <string name="time_minus">- 1s</string>
+    <string name="time_minus_ms">- 0.5s</string>
     <string name="time_plus">+ 1s</string>
+    <string name="time_plus_ms">+ 0.5s</string>
     <string name="fisher_yates">Fisher-Yates</string>
     <string name="miller">Miller</string>
 </resources>

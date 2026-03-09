@@ -9,6 +9,7 @@ import app.simple.felicity.databinding.DialogLyricsMenuBinding
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
 import app.simple.felicity.preferences.LyricsPreferences
+import java.util.Locale
 
 class LyricsMenu : MediaBottomDialogFragment() {
 
@@ -56,12 +57,21 @@ class LyricsMenu : MediaBottomDialogFragment() {
             }
         })
 
+        binding.textSizeSeekbar.setRightLabelProvider { progress, f1, f2 ->
+            String.format(Locale.getDefault(), "%.1f px", progress)
+        }
+
         binding.minus.setOnClickListener {
             menuListener?.onTimeMinusClicked()
         }
 
         binding.plus.setOnClickListener {
             menuListener?.onTimePlusClicked()
+        }
+
+        binding.delete.setOnClickListener {
+            menuListener?.onLyricsDelete()
+            dismiss()
         }
     }
 
@@ -89,6 +99,7 @@ class LyricsMenu : MediaBottomDialogFragment() {
         interface LyricsMenuListener {
             fun onTimeMinusClicked()
             fun onTimePlusClicked()
+            fun onLyricsDelete()
         }
     }
 }

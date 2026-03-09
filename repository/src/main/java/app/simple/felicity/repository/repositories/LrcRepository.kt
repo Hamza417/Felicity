@@ -234,6 +234,29 @@ class LrcRepository @Inject constructor() {
         }
     }
 
+    fun deleteLrcFile(path: String) {
+        val lrcFilePath = path.substringBeforeLast(".") + ".lrc"
+        val txtFilePath = path.substringBeforeLast(".") + ".txt"
+
+        val lrcFile = File(lrcFilePath)
+        if (lrcFile.exists()) {
+            if (lrcFile.delete()) {
+                Log.d(TAG, "LRC file deleted successfully: $lrcFilePath")
+            } else {
+                Log.e(TAG, "Failed to delete LRC file: $lrcFilePath")
+            }
+        }
+
+        val txtFile = File(txtFilePath)
+        if (txtFile.exists()) {
+            if (txtFile.delete()) {
+                Log.d(TAG, "TXT file deleted successfully: $txtFilePath")
+            } else {
+                Log.e(TAG, "Failed to delete TXT file: $txtFilePath")
+            }
+        }
+    }
+
     companion object {
         private const val TAG = "LrcRepository"
         private const val USER_AGENT = "Felicity Music Player (https://github.com/Hamza417/Felicity)"
