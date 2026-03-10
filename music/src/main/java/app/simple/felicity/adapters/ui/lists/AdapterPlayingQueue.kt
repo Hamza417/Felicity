@@ -13,11 +13,8 @@ import android.view.MotionEvent
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.ColorInt
-import androidx.recyclerview.widget.AsyncDifferConfig
-import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ItemTouchHelper
-import androidx.recyclerview.widget.ListUpdateCallback
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterPlayingQueueBinding
@@ -38,14 +35,17 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
     private var onItemMovedCallback: ((fromPosition: Int, toPosition: Int) -> Unit)? = null
     private var onItemSwipedCallback: ((position: Int) -> Unit)? = null
 
-    // Backing field — always reflects the ID of the song the adapter last highlighted.
-    // Write directly (no notifications) to sync without triggering extra redraws.
+    // Plain mutable list — single source of truth, mutated directly on the main thread.
+    // No AsyncListDiffer: async diffs race with ItemTouchHelper and cause wrong highlights.
+    private val songs: MutableList<Audio> = mutableListOf()
+
+    // True while a drag gesture is in progress — defers external list updates.
+    private var isDragInProgress = false
+    private var pendingList: List<Audio>? = null
+
+    // ID of the song currently highlighted as "playing".
     private var trackedSongId: Long? = null
 
-    /**
-     * Notify the adapter that the playing song changed.
-     * Clears the old highlight and sets the new one using surgical item updates.
-     */
     var currentlyPlayingSong: Audio?
         get() = songs.firstOrNull { it.id == trackedSongId }
         set(value) {
@@ -60,57 +60,16 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
             if (newIndex != -1) notifyItemChanged(newIndex, PAYLOAD_PLAYBACK_STATE)
         }
 
-    /** Re-evaluates selection state for every item.
-     *  Syncs the tracked ID first so the next song change knows the correct old item. */
     fun notifyCurrentSong() {
         trackedSongId = MediaManager.getCurrentSongId()
         notifyItemRangeChanged(0, itemCount, PAYLOAD_PLAYBACK_STATE)
     }
 
-    private val listUpdateCallback = object : ListUpdateCallback {
-        @SuppressLint("NotifyDataSetChanged")
-        override fun onInserted(position: Int, count: Int) {
-            if (count > 100) notifyDataSetChanged() else notifyItemRangeInserted(position, count)
-        }
-
-        @SuppressLint("NotifyDataSetChanged")
-        override fun onRemoved(position: Int, count: Int) {
-            if (count > 100) notifyDataSetChanged() else notifyItemRangeRemoved(position, count)
-        }
-
-        override fun onMoved(fromPosition: Int, toPosition: Int) {
-            notifyItemMoved(fromPosition, toPosition)
-        }
-
-        override fun onChanged(position: Int, count: Int, payload: Any?) {
-            notifyItemRangeChanged(position, count, payload)
-        }
-    }
-
-    private val diffCallback = object : DiffUtil.ItemCallback<Audio>() {
-        override fun areItemsTheSame(oldItem: Audio, newItem: Audio) = oldItem.id == newItem.id
-        override fun areContentsTheSame(oldItem: Audio, newItem: Audio): Boolean {
-            return oldItem.title == newItem.title &&
-                    oldItem.artist == newItem.artist &&
-                    oldItem.album == newItem.album &&
-                    oldItem.duration == newItem.duration &&
-                    oldItem.path == newItem.path
-        }
-    }
-
-    private val differ = AsyncListDiffer(
-            listUpdateCallback,
-            AsyncDifferConfig.Builder(diffCallback).build()
-    )
-
-    private val songs: List<Audio> get() = differ.currentList
-
     init {
         setHasStableIds(true)
         trackedSongId = MediaManager.getCurrentSongId()
-        differ.submitList(initial.toList())
+        songs.addAll(initial)
     }
-
 
     override fun getItemId(position: Int): Long = songs[position].id
 
@@ -166,10 +125,50 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
         this.onItemSwipedCallback = callback
     }
 
+    /**
+     * Apply a new list from outside (ViewModel / MediaManager flow).
+     * Deferred while a drag is in progress to avoid visual conflicts.
+     * Uses synchronous DiffUtil — queue sizes are always small.
+     */
     fun updateSongs(newSongs: List<Audio>) {
-        differ.submitList(newSongs.toList()) {
-            // After the diff is applied, re-evaluate selection so all visible items
-            // reflecting the current song are highlighted correctly.
+        if (isDragInProgress) {
+            pendingList = newSongs.toList()
+            return
+        }
+        applyListWithDiff(newSongs)
+    }
+
+    private fun applyListWithDiff(newSongs: List<Audio>) {
+        val oldSongs = songs.toList()
+        val result = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = oldSongs.size
+            override fun getNewListSize() = newSongs.size
+            override fun areItemsTheSame(o: Int, n: Int) = oldSongs[o].id == newSongs[n].id
+            override fun areContentsTheSame(o: Int, n: Int): Boolean {
+                val a = oldSongs[o];
+                val b = newSongs[n]
+                return a.title == b.title && a.artist == b.artist &&
+                        a.album == b.album && a.duration == b.duration && a.path == b.path
+            }
+        })
+        songs.clear()
+        songs.addAll(newSongs)
+        result.dispatchUpdatesTo(this)
+        notifyCurrentSong()
+    }
+
+    internal fun onDragStarted() {
+        isDragInProgress = true
+        pendingList = null
+    }
+
+    internal fun onDragEnded() {
+        isDragInProgress = false
+        val pending = pendingList
+        pendingList = null
+        if (pending != null) {
+            applyListWithDiff(pending)
+        } else {
             notifyCurrentSong()
         }
     }
@@ -209,30 +208,24 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
         }
     }
 
-    // Custom ItemTouchHelper.Callback that draws a shimmer effect
-    // on the dragged item and notifies the adapter of moves and swipes.
     private inner class DragShimmerCallback(
             context: Context,
             @ColorInt private val accentColor: Int
     ) : ItemTouchHelper.Callback() {
 
         private val density = context.resources.displayMetrics.density
-
-        // Paint for the traveling shimmer band
         private val shimmerPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         private val shimmerRect = RectF()
         private val cornerRadius = 12f * density
 
-        // Shimmer sweep fraction [0..1] driven by a looping animator while dragging
         private var shimmerFraction = 0f
-        private var shimmerAlpha = 0f                     // 0 = invisible, 1 = fully visible
-        private var shimmerAnimator: ValueAnimator? = null // looping sweep
-        private var releaseAnimator: ValueAnimator? = null // fade-out after drop
+        private var shimmerAlpha = 0f
+        private var shimmerAnimator: ValueAnimator? = null
+        private var releaseAnimator: ValueAnimator? = null
 
-        // Drag tracking
         private var dragFromPosition = -1
         private var dragToPosition = -1
-        private var isDragging = false // Tracks if the user's finger is actively holding the item
+        private var isDragging = false
 
         override fun getMovementFlags(
                 recyclerView: RecyclerView,
@@ -249,34 +242,34 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
         ): Boolean {
             val from = viewHolder.bindingAdapterPosition
             val to = target.bindingAdapterPosition
-            if (from == RecyclerView.NO_ID.toInt() || to == RecyclerView.NO_ID.toInt()) return false
+            if (from < 0 || to < 0 || from >= songs.size || to >= songs.size) return false
 
             if (dragFromPosition == -1) dragFromPosition = from
             dragToPosition = to
 
-            val currentList = songs.toMutableList()
-            val moved = currentList.removeAt(from)
-            currentList.add(to, moved)
-            differ.submitList(currentList)
+            // Mutate backing list directly — no DiffUtil, no async, no races.
+            songs.add(to, songs.removeAt(from))
+            // Tell RecyclerView exactly what moved — ItemTouchHelper owns the animation.
+            notifyItemMoved(from, to)
+            // Mirror the move in MediaManager silently (no songPositionFlow, no ExoPlayer call).
+            MediaManager.moveQueueItemSilently(from, to)
+
             return true
         }
 
         override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
             val position = viewHolder.bindingAdapterPosition
-            if (position != RecyclerView.NO_ID.toInt()) {
+            if (position >= 0) {
                 onItemSwipedCallback?.invoke(position)
             }
         }
 
         override fun isLongPressDragEnabled(): Boolean = false
 
-        // Suppress the default grey elevation shadow by returning 0
-        // override fun getDefaultUIUtil() = super.getDefaultUIUtil()
-
-        // Start the shimmer when an item is selected for dragging.
         override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
             super.onSelectedChanged(viewHolder, actionState)
             if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
+                onDragStarted()
                 startShimmer(viewHolder?.itemView?.width?.toFloat() ?: 0f)
             }
         }
@@ -284,40 +277,34 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
         override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
             super.clearView(recyclerView, viewHolder)
 
-            // Commit the reorder
-            if (dragFromPosition != -1 && dragToPosition != -1 && dragFromPosition != dragToPosition) {
-                onItemMovedCallback?.invoke(dragFromPosition, dragToPosition)
-            }
+            // MediaManager's list and ExoPlayer queue are already fully synced by the
+            // incremental moveQueueItemSilently calls in onMove — no extra callback needed.
+
             dragFromPosition = -1
             dragToPosition = -1
             isDragging = false
-
-            // Ensure alpha is fully reset in case the view settles faster than the animation
             shimmerAlpha = 0f
+
+            onDragEnded()
         }
 
-        // Draw the shimmer effect over the dragged item. The shimmer is a sweeping gradient band
-        // that moves across the item while dragging, and then fades out after release.
         override fun onChildDraw(
                 c: Canvas,
                 recyclerView: RecyclerView,
                 viewHolder: RecyclerView.ViewHolder,
-                dX: Float,
-                dY: Float,
+                dX: Float, dY: Float,
                 actionState: Int,
                 isCurrentlyActive: Boolean
         ) {
             super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
 
-            // Detect the exact moment the user drops the item
             if (isCurrentlyActive && !isDragging) {
                 isDragging = true
             } else if (!isCurrentlyActive && isDragging) {
                 isDragging = false
-                stopShimmerAndFadeOut(viewHolder.itemView) // Start fade-out immediately on drop
+                stopShimmerAndFadeOut(viewHolder.itemView)
             }
 
-            // Draw the shimmer as long as we have alpha, regardless of isCurrentlyActive
             if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && shimmerAlpha > 0f) {
                 val view = viewHolder.itemView
                 val left = view.left.toFloat()
@@ -325,14 +312,10 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
                 val right = view.right.toFloat()
                 val bottom = view.bottom.toFloat() + dY
                 val width = right - left
-
-                // Shimmer band: a 30 % wide feathered band sweeping left → right
                 val bandWidth = width * 0.35f
                 val center = left + shimmerFraction * (width + bandWidth) - bandWidth * 0.5f
-
                 val solidColor = changeAlpha(accentColor, (shimmerAlpha * 90).toInt())
                 val edgeColor = changeAlpha(accentColor, 0)
-
                 shimmerPaint.shader = LinearGradient(
                         center - bandWidth * 0.5f, top,
                         center + bandWidth * 0.5f, top,
@@ -340,27 +323,21 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
                         floatArrayOf(0f, 0.5f, 1f),
                         Shader.TileMode.CLAMP
                 )
-
                 shimmerRect.set(left, top, right, bottom)
                 c.drawRoundRect(shimmerRect, cornerRadius, cornerRadius, shimmerPaint)
             }
         }
 
-        // Helpers
-
         private fun startShimmer(itemWidth: Float) {
             releaseAnimator?.cancel()
             shimmerAlpha = 1f
-
             shimmerAnimator?.cancel()
             shimmerAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
                 duration = 900
                 repeatCount = ValueAnimator.INFINITE
                 repeatMode = ValueAnimator.RESTART
                 interpolator = DecelerateInterpolator(0.7f)
-                addUpdateListener {
-                    shimmerFraction = it.animatedValue as Float
-                }
+                addUpdateListener { shimmerFraction = it.animatedValue as Float }
                 start()
             }
         }
@@ -368,16 +345,13 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
         private fun stopShimmerAndFadeOut(itemView: android.view.View) {
             shimmerAnimator?.cancel()
             shimmerAnimator = null
-
             releaseAnimator?.cancel()
             val capturedFraction = shimmerFraction
             releaseAnimator = ValueAnimator.ofFloat(1f, 0f).apply {
-                // Reduced duration to better match standard ItemTouchHelper settle time
                 duration = 250
                 interpolator = DecelerateInterpolator()
                 addUpdateListener {
                     shimmerAlpha = it.animatedValue as Float
-                    // Keep band at the last position so it "shimmers away" from the drop point
                     shimmerFraction = capturedFraction + (1f - capturedFraction) * (1f - shimmerAlpha)
                     itemView.invalidate()
                 }

@@ -95,9 +95,6 @@ class PlayingQueue : PanelFragment() {
                 }
             })
 
-            adapterPlayingQueue?.setOnItemMovedCallback { from, to ->
-                MediaManager.moveQueueItemSilently(from, to)
-            }
 
             adapterPlayingQueue?.setOnItemSwipedCallback { position ->
                 MediaManager.removeQueueItemSilently(position)

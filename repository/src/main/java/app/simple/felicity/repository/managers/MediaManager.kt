@@ -10,6 +10,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import app.simple.felicity.repository.constants.MediaConstants
+import app.simple.felicity.repository.managers.MediaManager._songPositionFlow
 import app.simple.felicity.repository.managers.MediaManager.moveQueueItemSilently
 import app.simple.felicity.repository.managers.MediaManager.removeQueueItemSilently
 import app.simple.felicity.repository.models.Audio
@@ -40,15 +41,21 @@ object MediaManager {
     // Backing store for the queue provided by UI/db. Treat as read-only outside.
     private var songs: List<Audio> = emptyList()
 
+    // When true the currentSongPosition setter will NOT emit _songPositionFlow.
+    // Used during queue reorders so that moving the playing song's index does not
+    // trigger onAudio() in every observer — the song itself hasn't changed.
+    private var suppressPositionEmit: Boolean = false
+
     // Current queue index. Setter also emits to observers when valid and changed.
     private var currentSongPosition: Int = 0
         set(value) {
             if (value in songs.indices) {
                 if (field != value) {
                     field = value
-                    // Emit position change to observers on the manager scope
-                    scope.launch {
-                        _songPositionFlow.emit(value)
+                    if (!suppressPositionEmit) {
+                        scope.launch {
+                            _songPositionFlow.emit(value)
+                        }
                     }
                 }
             } else {
@@ -175,6 +182,10 @@ object MediaManager {
      * Moves a single media item in the ExoPlayer queue from [fromIndex] to [toIndex] without
      * interrupting playback. Also updates the internal song list to stay in sync.
      * Safe to call for drag-reorder gestures — the decoder is never reset.
+     *
+     * Does NOT emit [_songPositionFlow]. A queue reorder means the same song is still playing —
+     * just at a different index. Emitting songPositionFlow would trigger onAudio() in every
+     * observer which re-highlights the wrong adapter position while a drag is in progress.
      */
     fun moveQueueItemSilently(fromIndex: Int, toIndex: Int) {
         if (fromIndex == toIndex) return
@@ -183,18 +194,23 @@ object MediaManager {
             return
         }
 
+        // Capture the currently playing song BEFORE mutating the list
+        val currentSong = getCurrentSong()
+
         // Update internal list
         val newList = songs.toMutableList()
         val moved = newList.removeAt(fromIndex)
         newList.add(toIndex, moved)
         this.songs = newList
 
-        // Re-derive the position of the currently playing song after the move
-        val currentSong = getCurrentSong()
+        // Re-derive where the playing song ended up, suppressing the position flow emission —
+        // the song itself hasn't changed, only its index in the queue.
         val newCurrentPosition = currentSong
             ?.let { cs -> this.songs.indexOfFirst { it.id == cs.id } }
             ?.coerceAtLeast(0) ?: currentSongPosition
+        suppressPositionEmit = true
         currentSongPosition = newCurrentPosition
+        suppressPositionEmit = false
 
         // Surgically move item in ExoPlayer — no setMediaItems, no prepare, no gap
         mediaController?.moveMediaItem(fromIndex, toIndex)
