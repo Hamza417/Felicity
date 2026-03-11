@@ -186,6 +186,15 @@ class Lyrics : MediaFragment() {
         textSizeHandler.removeCallbacks(textSizeRunnable)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // If lyrics data is missing after returning from a long background session,
+        // force a fresh reload so the view is not left blank.
+        if (lyricsViewModel.getLrcData().value?.isEmpty == true) {
+            lyricsViewModel.reloadLrcData()
+        }
+    }
+
     override fun onSeekChanged(seek: Long) {
         super.onSeekChanged(seek)
         binding.lrc.updateTime(seek + lyricsViewModel.syncOffset)

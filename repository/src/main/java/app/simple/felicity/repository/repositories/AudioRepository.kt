@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.sqlite.db.SimpleSQLiteQuery
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
+import app.simple.felicity.repository.database.instances.SongStatDatabase
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
@@ -30,6 +31,24 @@ class AudioRepository @Inject constructor(
 
     private val audioDatabase: AudioDatabase by lazy {
         AudioDatabase.getInstance(context)
+    }
+
+    private val songStatDatabase: SongStatDatabase by lazy {
+        SongStatDatabase.getInstance(context)
+    }
+
+    /**
+     * Get all audio files that have been marked as favorite, ordered by title.
+     * Joins song_stats favorites with the audio table by songId.
+     */
+    fun getFavoriteAudio(): Flow<List<Audio>> {
+        return songStatDatabase.songStatDao().getFavoriteSongIds().map { favoriteIds ->
+            if (favoriteIds.isEmpty()) return@map emptyList()
+            val dao = audioDatabase.audioDao() ?: return@map emptyList()
+            val allAudio = withContext(Dispatchers.IO) { dao.getAllAudioList() }
+            allAudio.filter { it.id in favoriteIds }
+                .sortedBy { it.title?.lowercase() }
+        }
     }
 
     /**

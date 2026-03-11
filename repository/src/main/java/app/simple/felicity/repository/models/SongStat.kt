@@ -22,7 +22,8 @@ data class SongStat(
         val lastPlayed: Long = 0L,
         val playCount: Int = 0,
         val skipCount: Int = 0,
-        val isFavorite: Boolean = false
+        val isFavorite: Boolean = false,
+        val alwaysSkip: Boolean = false
 ) : Parcelable {
     override fun toString(): String {
         return "SongStat(id=$id, " +
@@ -31,6 +32,7 @@ data class SongStat(
                 "lastPlayed=$lastPlayed, " +
                 "playCount=$playCount, " +
                 "skipCount=$skipCount, " +
-                "isFavorite=$isFavorite)"
+                "isFavorite=$isFavorite, " +
+                "alwaysSkip=$alwaysSkip)"
     }
 }

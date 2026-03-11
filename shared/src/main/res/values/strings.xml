@@ -240,4 +240,8 @@
     <string name="grid_type">Grid Type</string>
     <string name="options">Options</string>
     <string name="delete_lyrics">Delete Lyrics</string>
+    <string name="always_skip">Always Skip</string>
+    <string name="never_skip">Never Skip</string>
+    <string name="add_to_favorites">Add to Favorites</string>
+    <string name="remove_from_favorites">Remove from Favorites</string>
 </resources>

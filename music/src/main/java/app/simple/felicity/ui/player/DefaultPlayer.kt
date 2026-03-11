@@ -17,13 +17,18 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
+import app.simple.felicity.repository.database.instances.SongStatDatabase
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.utils.AudioUtils
+import app.simple.felicity.repository.utils.AudioUtils.createSongStat
 import app.simple.felicity.shared.utils.TextViewUtils.setTypeWriting
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Search
 import com.bumptech.glide.Glide
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class DefaultPlayer : MediaFragment() {
 
@@ -152,6 +157,10 @@ class DefaultPlayer : MediaFragment() {
         binding.lyrics.setOnClickListener {
             openFragment(Lyrics.newInstance(), Lyrics.TAG)
         }
+
+        binding.favorite.setOnClickListener {
+            toggleFavorite()
+        }
     }
 
     private fun updateState() {
@@ -160,7 +169,9 @@ class DefaultPlayer : MediaFragment() {
         binding.artist.text = audio.artist
         binding.album.text = audio.album
         binding.seekbar.setMax(audio.duration.toFloat())
+        binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = false)
         updatePlayButtonState(MediaManager.isPlaying())
+        updateFavoriteIcon(audio)
     }
 
     private fun updatePlayButtonState(isPlaying: Boolean) {
@@ -208,6 +219,7 @@ class DefaultPlayer : MediaFragment() {
         binding.album.setTypeWriting(audio.album ?: getString(R.string.unknown))
         binding.seekbar.setMaxWithReset(audio.duration.toFloat())
         binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
+        updateFavoriteIcon(audio)
     }
 
     override fun onSeekChanged(seek: Long) {
@@ -223,6 +235,41 @@ class DefaultPlayer : MediaFragment() {
             }
             MediaConstants.PLAYBACK_PAUSED -> {
                 updatePlayButtonState(false)
+            }
+        }
+    }
+
+    private fun toggleFavorite() {
+        val audio = MediaManager.getCurrentSong() ?: return
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val stableId = AudioUtils.generateStableId(audio).toString()
+            val dao = SongStatDatabase.getInstance(requireContext()).songStatDao()
+            val existing = dao.getSongStatByStableId(stableId)
+            val newFavorite: Boolean
+            if (existing == null) {
+                newFavorite = true
+                dao.insertSongStat(audio.createSongStat(null).copy(isFavorite = true))
+            } else {
+                newFavorite = !existing.isFavorite
+                dao.setFavorite(stableId, newFavorite)
+            }
+            withContext(Dispatchers.Main) {
+                binding.favorite.setImageResource(
+                        if (newFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border
+                )
+            }
+        }
+    }
+
+    fun updateFavoriteIcon(audio: Audio) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val stableId = AudioUtils.generateStableId(audio).toString()
+            val dao = SongStatDatabase.getInstance(requireContext()).songStatDao()
+            val stat = dao.getSongStatByStableId(stableId)
+            withContext(Dispatchers.Main) {
+                binding.favorite.setImageResource(
+                        if (stat?.isFavorite == true) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border
+                )
             }
         }
     }

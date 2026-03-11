@@ -12,6 +12,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.R
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.databinding.DialogSongMenuBinding
 import app.simple.felicity.databinding.DialogSureBinding
@@ -177,7 +178,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val songStatDatabase = SongStatDatabase.getInstance(requireContext())
             val songStatDao = songStatDatabase.songStatDao()
-            val existingStat = songStatDao.getSongStatByStableId(AudioUtils.generateStableId(song))
+            val existingStat = songStatDao.getSongStatByStableId(AudioUtils.generateStableId(song).toString())
 
             if (existingStat == null) {
                 songStatDao.insertSongStat(song.createSongStat(existingStat))
@@ -308,6 +309,23 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 if (audios[position].album.isNullOrBlank()) {
                     binding.goToAlbum.gone(animate = false)
                 }
+
+                // Load SongStat to update dynamic labels (favorites, always skip)
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    val stableId = AudioUtils.generateStableId(audios[position]).toString()
+                    val songStatDao = SongStatDatabase.getInstance(requireContext()).songStatDao()
+                    val stat = songStatDao.getSongStatByStableId(stableId)
+                    withContext(Dispatchers.Main) {
+                        if (stat?.isFavorite == true) {
+                            binding.addToFavorites.text = getString(R.string.remove_from_favorites)
+                        }
+                        if (stat?.alwaysSkip == true) {
+                            binding.alwaysSkip.gone(animate = false)
+                        } else {
+                            binding.neverSkip.gone(animate = false)
+                        }
+                    }
+                }
             }.onDialogInflated { binding, dismiss ->
                 binding.play.setOnClickListener {
                     val pos = audios.indexOfFirst { it.id == audios[position].id }.coerceAtLeast(0)
@@ -354,6 +372,48 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                             artistId = artistName.hashCode().toLong()
                     )
                     openFragment(AlbumPage.newInstance(album), AlbumPage.TAG)
+                    dismiss()
+                }
+
+                binding.addToFavorites.setOnClickListener {
+                    val audio = audios[position]
+                    viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                        val stableId = AudioUtils.generateStableId(audio).toString()
+                        val songStatDao = SongStatDatabase.getInstance(requireContext()).songStatDao()
+                        val existing = songStatDao.getSongStatByStableId(stableId)
+                        if (existing == null) {
+                            songStatDao.insertSongStat(audio.createSongStat(null).copy(isFavorite = true))
+                        } else {
+                            songStatDao.setFavorite(stableId, !existing.isFavorite)
+                        }
+                    }
+                    dismiss()
+                }
+
+                binding.alwaysSkip.setOnClickListener {
+                    val audio = audios[position]
+                    viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                        val stableId = AudioUtils.generateStableId(audio).toString()
+                        val songStatDao = SongStatDatabase.getInstance(requireContext()).songStatDao()
+                        val existing = songStatDao.getSongStatByStableId(stableId)
+                        if (existing == null) {
+                            songStatDao.insertSongStat(audio.createSongStat(null).copy(alwaysSkip = true))
+                        } else {
+                            songStatDao.setAlwaysSkip(stableId, true)
+                        }
+                    }
+                    dismiss()
+                }
+
+                binding.neverSkip.setOnClickListener {
+                    val audio = audios[position]
+                    viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                        val stableId = AudioUtils.generateStableId(audio).toString()
+                        val songStatDao = SongStatDatabase.getInstance(requireContext()).songStatDao()
+                        songStatDao.getSongStatByStableId(stableId)?.let {
+                            songStatDao.setAlwaysSkip(stableId, false)
+                        }
+                    }
                     dismiss()
                 }
 

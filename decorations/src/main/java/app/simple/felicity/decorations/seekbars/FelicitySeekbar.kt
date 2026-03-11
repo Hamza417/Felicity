@@ -619,6 +619,12 @@ class FelicitySeekbar @JvmOverloads constructor(
      *    (the progress call is deferred until after the max is applied).
      */
     fun setMaxWithReset(max: Float, progress: Float? = null) {
+        if (getMax() == max) {
+            // No change, just apply progress if provided
+            if (progress != null) setProgress(progress, fromUser = false, animate = true)
+            return
+        }
+
         // Store what we eventually want to apply
         pendingMaxAfterReset = max
         if (progress != null) pendingProgressAfterReset = progress
