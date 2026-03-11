@@ -239,9 +239,7 @@ class DefaultPlayer : MediaFragment() {
      * No database query required — the model is the source of truth.
      */
     private fun updateFavoriteIcon(audio: Audio) {
-        binding.favorite.setImageResource(
-                if (audio.isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border
-        )
+        binding.favorite.setFavorite(audio.isFavorite, animate = true)
     }
 
     companion object {

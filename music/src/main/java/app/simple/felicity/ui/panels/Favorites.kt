@@ -1,4 +1,4 @@
-package app.simple.felicity.ui
+package app.simple.felicity.ui.panels
 
 import android.os.Bundle
 import android.view.LayoutInflater

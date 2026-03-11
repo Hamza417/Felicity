@@ -51,7 +51,7 @@
             android:layout_height="match_parent"
             android:layout_marginHorizontal="@dimen/padding_10" />
 
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        <app.simple.felicity.decorations.views.FavoriteButton
             android:id="@+id/favorite"
             android:layout_width="@dimen/button_size"
             android:layout_height="@dimen/button_size"

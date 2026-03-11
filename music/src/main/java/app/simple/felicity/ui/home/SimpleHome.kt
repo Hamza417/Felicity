@@ -16,10 +16,10 @@ import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.HomePreferences
-import app.simple.felicity.ui.Favorites
 import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.ArtFlow
 import app.simple.felicity.ui.panels.Artists
+import app.simple.felicity.ui.panels.Favorites
 import app.simple.felicity.ui.panels.Folders
 import app.simple.felicity.ui.panels.FoldersHierarchy
 import app.simple.felicity.ui.panels.Genres
