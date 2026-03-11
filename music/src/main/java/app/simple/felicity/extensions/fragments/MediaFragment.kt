@@ -289,58 +289,53 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 targetImageViewProvider = { it.cover })
             .onViewCreated { binding ->
                 miniPlayerCallbacks?.onHideMiniPlayer()
-                binding.title.text = audios[position].title
-                binding.secondaryDetail.text = audios[position].artist
-                binding.tertiaryDetail.text = audios[position].album
+                val audio = audios[position]
+                binding.title.text = audio.title
+                binding.secondaryDetail.text = audio.artist
+                binding.tertiaryDetail.text = audio.album
 
                 // Hide "Add to Queue" and "Play Next" when the song is already playing
-                val isCurrentlyPlaying = MediaManager.getCurrentSong()?.id == audios[position].id
+                val isCurrentlyPlaying = MediaManager.getCurrentSong()?.id == audio.id
                 if (isCurrentlyPlaying) {
                     binding.addToQueue.gone(animate = false)
                     binding.playNext.gone(animate = false)
                 }
 
                 // Hide "Go to Artist" if artist is unknown/empty
-                if (audios[position].artist.isNullOrBlank()) {
+                if (audio.artist.isNullOrBlank()) {
                     binding.goToArtist.gone(animate = false)
                 }
 
                 // Hide "Go to Album" if album is unknown/empty
-                if (audios[position].album.isNullOrBlank()) {
+                if (audio.album.isNullOrBlank()) {
                     binding.goToAlbum.gone(animate = false)
                 }
 
-                // Load SongStat to update dynamic labels (favorites, always skip)
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    val stableId = AudioUtils.generateStableId(audios[position]).toString()
-                    val songStatDao = SongStatDatabase.getInstance(requireContext()).songStatDao()
-                    val stat = songStatDao.getSongStatByStableId(stableId)
-                    withContext(Dispatchers.Main) {
-                        if (stat?.isFavorite == true) {
-                            binding.addToFavorites.text = getString(R.string.remove_from_favorites)
-                        }
-                        if (stat?.alwaysSkip == true) {
-                            binding.alwaysSkip.gone(animate = false)
-                        } else {
-                            binding.neverSkip.gone(animate = false)
-                        }
-                    }
+                // Update dynamic labels based on Audio model state (no DB query needed)
+                if (audio.isFavorite) {
+                    binding.addToFavorites.text = getString(R.string.remove_from_favorites)
+                }
+                // "Always Skip" toggles: show "Never Skip" label when song is already skipped
+                if (audio.isAlwaysSkip) {
+                    binding.alwaysSkip.text = getString(R.string.never_skip)
                 }
             }.onDialogInflated { binding, dismiss ->
+                val audio = audios[position]
+
                 binding.play.setOnClickListener {
-                    val pos = audios.indexOfFirst { it.id == audios[position].id }.coerceAtLeast(0)
+                    val pos = audios.indexOfFirst { it.id == audio.id }.coerceAtLeast(0)
                     setMediaItems(audios, pos)
                     dismiss()
                 }
 
                 binding.addToQueue.setOnClickListener {
-                    MediaManager.addToQueue(audios[position])
+                    MediaManager.addToQueue(audio)
                     openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
                     dismiss()
                 }
 
                 binding.playNext.setOnClickListener {
-                    MediaManager.playNext(audios[position])
+                    MediaManager.playNext(audio)
                     dismiss()
                 }
 
@@ -349,7 +344,6 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 }
 
                 binding.goToArtist.setOnClickListener {
-                    val audio = audios[position]
                     val artistName = audio.artist ?: return@setOnClickListener
                     val artist = Artist(
                             id = artistName.hashCode().toLong(),
@@ -362,7 +356,6 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 }
 
                 binding.goToAlbum.setOnClickListener {
-                    val audio = audios[position]
                     val albumName = audio.album ?: return@setOnClickListener
                     val artistName = audio.artist ?: ""
                     val album = Album(
@@ -376,49 +369,33 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 }
 
                 binding.addToFavorites.setOnClickListener {
-                    val audio = audios[position]
                     viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                        val stableId = AudioUtils.generateStableId(audio).toString()
-                        val songStatDao = SongStatDatabase.getInstance(requireContext()).songStatDao()
-                        val existing = songStatDao.getSongStatByStableId(stableId)
-                        if (existing == null) {
-                            songStatDao.insertSongStat(audio.createSongStat(null).copy(isFavorite = true))
-                        } else {
-                            songStatDao.setFavorite(stableId, !existing.isFavorite)
+                        val newFav = !audio.isFavorite
+                        AudioDatabase.getInstance(requireContext()).audioDao()?.setFavorite(audio.id, newFav)
+                        audio.setFavorite(newFav)
+                        if (MediaManager.getCurrentSong()?.id == audio.id) {
+                            withContext(Dispatchers.Main) { MediaManager.notifyCurrentSongUpdated() }
                         }
                     }
                     dismiss()
                 }
 
+                // Single toggle button: "Always Skip" when not skipped, "Never Skip" when already skipped
                 binding.alwaysSkip.setOnClickListener {
-                    val audio = audios[position]
                     viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                        val stableId = AudioUtils.generateStableId(audio).toString()
-                        val songStatDao = SongStatDatabase.getInstance(requireContext()).songStatDao()
-                        val existing = songStatDao.getSongStatByStableId(stableId)
-                        if (existing == null) {
-                            songStatDao.insertSongStat(audio.createSongStat(null).copy(alwaysSkip = true))
-                        } else {
-                            songStatDao.setAlwaysSkip(stableId, true)
-                        }
-                    }
-                    dismiss()
-                }
-
-                binding.neverSkip.setOnClickListener {
-                    val audio = audios[position]
-                    viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                        val stableId = AudioUtils.generateStableId(audio).toString()
-                        val songStatDao = SongStatDatabase.getInstance(requireContext()).songStatDao()
-                        songStatDao.getSongStatByStableId(stableId)?.let {
-                            songStatDao.setAlwaysSkip(stableId, false)
+                        val newSkip = !audio.isAlwaysSkip
+                        AudioDatabase.getInstance(requireContext()).audioDao()?.setAlwaysSkip(audio.id, newSkip)
+                        audio.setAlwaysSkip(newSkip)
+                        // If this song is currently playing and was just marked always-skip, advance
+                        if (newSkip && MediaManager.getCurrentSong()?.id == audio.id) {
+                            withContext(Dispatchers.Main) { MediaManager.next() }
                         }
                     }
                     dismiss()
                 }
 
                 binding.share.setOnClickListener {
-                    val file = audios[position].file
+                    val file = audio.file
                     val uri = FileProvider.getUriForFile(
                             requireContext(),
                             "${requireContext().packageName}.provider",
@@ -427,7 +404,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
                     ShareCompat.IntentBuilder(requireContext())
                         .setType("audio/*")
-                        .setText(audios[position].title)
+                        .setText(audio.title)
                         .setStream(uri)
                         .startChooser()
 
@@ -438,7 +415,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     dismiss()
                     showDeleteConfirmation { confirmed ->
                         if (confirmed) {
-                            deleteSong(audios[position])
+                            deleteSong(audio)
                         } else {
                             // Reopen the menu if user cancels
                             openSongsMenu(audios, position, imageView)
@@ -447,13 +424,13 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 }
 
                 binding.lyrics.setOnClickListener {
-                    childFragmentManager.showLyrics(audios[position]).also {
+                    childFragmentManager.showLyrics(audio).also {
                         dismiss()
                     }
                 }
 
                 binding.info.setOnClickListener {
-                    childFragmentManager.showAudioInfo(audios[position]).also {
+                    childFragmentManager.showAudioInfo(audio).also {
                         dismiss()
                     }
                 }
@@ -463,6 +440,23 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             }
             .build()
             .show()
+    }
+
+    /**
+     * Toggles the favorite state of the currently playing song.
+     * Updates the [AudioDatabase] and the in-memory [Audio] object, then re-emits
+     * [MediaManager.notifyCurrentSongUpdated] so observers (e.g. [DefaultPlayer]) refresh their UI.
+     */
+    protected fun toggleFavorite() {
+        val audio = MediaManager.getCurrentSong() ?: return
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val newFavorite = !audio.isFavorite
+            AudioDatabase.getInstance(requireContext()).audioDao()?.setFavorite(audio.id, newFavorite)
+            audio.setFavorite(newFavorite)
+            withContext(Dispatchers.Main) {
+                MediaManager.notifyCurrentSongUpdated()
+            }
+        }
     }
 
     protected fun showDeleteConfirmation(onResult: (Boolean) -> Unit) {

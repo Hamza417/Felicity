@@ -180,16 +180,6 @@
                 app:appFontStyle="bold"
                 app:textColorStyle="primary" />
 
-            <app.simple.felicity.decorations.ripple.DynamicRippleTextView
-                android:id="@+id/never_skip"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:padding="@dimen/padding_15"
-                android:text="@string/never_skip"
-                android:textSize="@dimen/text_size_16"
-                app:appFontStyle="bold"
-                app:textColorStyle="primary" />
 
             <app.simple.felicity.decorations.theme.ThemeDivider
                 android:layout_width="match_parent"

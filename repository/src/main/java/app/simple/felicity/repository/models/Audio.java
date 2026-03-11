@@ -103,6 +103,10 @@ public class Audio implements Parcelable {
     private String writer;
     @ColumnInfo (name = "is_available", defaultValue = "1")
     private boolean isAvailable = true;
+    @ColumnInfo (name = "is_favorite", defaultValue = "0")
+    private boolean isFavorite = false;
+    @ColumnInfo (name = "always_skip", defaultValue = "0")
+    private boolean alwaysSkip = false;
     
     public Audio() {
     }
@@ -131,6 +135,8 @@ public class Audio implements Parcelable {
         dateTaken = in.readLong();
         albumId = in.readLong();
         isAvailable = in.readByte() != 0;
+        isFavorite = in.readByte() != 0;
+        alwaysSkip = in.readByte() != 0;
     }
     
     @Override
@@ -158,6 +164,8 @@ public class Audio implements Parcelable {
         dest.writeLong(dateTaken);
         dest.writeLong(albumId);
         dest.writeByte((byte) (isAvailable ? 1 : 0));
+        dest.writeByte((byte) (isFavorite ? 1 : 0));
+        dest.writeByte((byte) (alwaysSkip ? 1 : 0));
     }
     
     @Override
@@ -414,6 +422,22 @@ public class Audio implements Parcelable {
         isAvailable = available;
     }
     
+    public boolean isFavorite() {
+        return isFavorite;
+    }
+    
+    public void setFavorite(boolean favorite) {
+        isFavorite = favorite;
+    }
+    
+    public boolean isAlwaysSkip() {
+        return alwaysSkip;
+    }
+    
+    public void setAlwaysSkip(boolean alwaysSkip) {
+        this.alwaysSkip = alwaysSkip;
+    }
+    
     @NonNull
     @Override
     public String toString() {
@@ -447,6 +471,8 @@ public class Audio implements Parcelable {
                 ", bitPerSample=" + bitPerSample +
                 ", writer='" + writer + '\'' +
                 ", isAvailable=" + isAvailable +
+                ", isFavorite=" + isFavorite +
+                ", alwaysSkip=" + alwaysSkip +
                 '}';
     }
     
@@ -549,6 +575,12 @@ public class Audio implements Parcelable {
         if (isAvailable != audio.isAvailable) {
             return false;
         }
+        if (isFavorite != audio.isFavorite) {
+            return false;
+        }
+        if (alwaysSkip != audio.alwaysSkip) {
+            return false;
+        }
         return writer != null ? writer.equals(audio.writer) : audio.writer == null;
     }
     
@@ -584,6 +616,8 @@ public class Audio implements Parcelable {
         result = 31 * result + Long.hashCode(bitPerSample);
         result = 31 * result + (writer != null ? writer.hashCode() : 0);
         result = 31 * result + (isAvailable ? 1 : 0);
+        result = 31 * result + (isFavorite ? 1 : 0);
+        result = 31 * result + (alwaysSkip ? 1 : 0);
         return result;
     }
     
@@ -617,6 +651,8 @@ public class Audio implements Parcelable {
         audio.setSamplingRate(getSamplingRate());
         audio.setBitPerSample(getBitPerSample());
         audio.setWriter(getWriter());
+        audio.setFavorite(isFavorite());
+        audio.setAlwaysSkip(isAlwaysSkip());
         return audio;
     }
     

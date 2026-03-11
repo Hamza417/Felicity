@@ -17,18 +17,13 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
-import app.simple.felicity.repository.database.instances.SongStatDatabase
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.utils.AudioUtils
-import app.simple.felicity.repository.utils.AudioUtils.createSongStat
 import app.simple.felicity.shared.utils.TextViewUtils.setTypeWriting
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Search
 import com.bumptech.glide.Glide
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class DefaultPlayer : MediaFragment() {
 
@@ -239,39 +234,14 @@ class DefaultPlayer : MediaFragment() {
         }
     }
 
-    private fun toggleFavorite() {
-        val audio = MediaManager.getCurrentSong() ?: return
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val stableId = AudioUtils.generateStableId(audio).toString()
-            val dao = SongStatDatabase.getInstance(requireContext()).songStatDao()
-            val existing = dao.getSongStatByStableId(stableId)
-            val newFavorite: Boolean
-            if (existing == null) {
-                newFavorite = true
-                dao.insertSongStat(audio.createSongStat(null).copy(isFavorite = true))
-            } else {
-                newFavorite = !existing.isFavorite
-                dao.setFavorite(stableId, newFavorite)
-            }
-            withContext(Dispatchers.Main) {
-                binding.favorite.setImageResource(
-                        if (newFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border
-                )
-            }
-        }
-    }
-
-    fun updateFavoriteIcon(audio: Audio) {
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val stableId = AudioUtils.generateStableId(audio).toString()
-            val dao = SongStatDatabase.getInstance(requireContext()).songStatDao()
-            val stat = dao.getSongStatByStableId(stableId)
-            withContext(Dispatchers.Main) {
-                binding.favorite.setImageResource(
-                        if (stat?.isFavorite == true) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border
-                )
-            }
-        }
+    /**
+     * Updates the favorite button icon from the [Audio] model's [Audio.isFavorite] field.
+     * No database query required — the model is the source of truth.
+     */
+    private fun updateFavoriteIcon(audio: Audio) {
+        binding.favorite.setImageResource(
+                if (audio.isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border
+        )
     }
 
     companion object {

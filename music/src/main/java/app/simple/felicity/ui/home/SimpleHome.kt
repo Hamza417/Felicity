@@ -16,6 +16,7 @@ import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.HomePreferences
+import app.simple.felicity.ui.Favorites
 import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.ArtFlow
 import app.simple.felicity.ui.panels.Artists
@@ -97,16 +98,39 @@ class SimpleHome : PanelFragment() {
         adapterSimpleHome!!.setAdapterSimpleHomeCallbacks(object : AdapterSimpleHome.Companion.AdapterSimpleHomeCallbacks {
             override fun onItemClicked(element: Element, position: Int, view: View) {
                 when (element.titleResId) {
-                    R.string.songs -> openFragment(Songs.newInstance(), Songs.TAG)
-                    R.string.albums -> openFragment(Albums.newInstance(), Albums.TAG)
-                    R.string.artists -> openFragment(Artists.newInstance(), Artists.TAG)
-                    R.string.genres -> openFragment(Genres.newInstance(), Genres.TAG)
-                    R.string.folders -> openFragment(Folders.newInstance(), Folders.TAG)
-                    R.string.folders_hierarchy -> openFragment(FoldersHierarchy.newInstance(), FoldersHierarchy.TAG)
-                    R.string.recently_added -> openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
-                    R.string.year -> openFragment(Year.newInstance(), Year.TAG)
-                    R.string.preferences -> openFragment(Preferences.newInstance(), Preferences.TAG)
-                    R.string.playing_queue -> openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
+                    R.string.songs -> {
+                        openFragment(Songs.newInstance(), Songs.TAG)
+                    }
+                    R.string.albums -> {
+                        openFragment(Albums.newInstance(), Albums.TAG)
+                    }
+                    R.string.artists -> {
+                        openFragment(Artists.newInstance(), Artists.TAG)
+                    }
+                    R.string.genres -> {
+                        openFragment(Genres.newInstance(), Genres.TAG)
+                    }
+                    R.string.folders -> {
+                        openFragment(Folders.newInstance(), Folders.TAG)
+                    }
+                    R.string.folders_hierarchy -> {
+                        openFragment(FoldersHierarchy.newInstance(), FoldersHierarchy.TAG)
+                    }
+                    R.string.recently_added -> {
+                        openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
+                    }
+                    R.string.year -> {
+                        openFragment(Year.newInstance(), Year.TAG)
+                    }
+                    R.string.preferences -> {
+                        openFragment(Preferences.newInstance(), Preferences.TAG)
+                    }
+                    R.string.playing_queue -> {
+                        openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
+                    }
+                    R.string.favorites -> {
+                        openFragment(Favorites.newInstance(), Favorites.TAG)
+                    }
                     else -> {
                         // Handle other cases or show a message
                     }

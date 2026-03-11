@@ -21,17 +21,6 @@ interface SongStatDao {
     @Query("SELECT * FROM song_stats WHERE stableId = :stableId")
     suspend fun getSongStatByStableId(stableId: String): SongStat?
 
-    @Query("SELECT * FROM song_stats WHERE isFavorite = 1")
-    fun getFavorites(): Flow<List<SongStat>>
-
-    @Query("SELECT songId FROM song_stats WHERE isFavorite = 1")
-    fun getFavoriteSongIds(): Flow<List<Long>>
-
-    @Query("UPDATE song_stats SET isFavorite = :isFavorite WHERE stableId = :stableId")
-    suspend fun setFavorite(stableId: String, isFavorite: Boolean)
-
-    @Query("UPDATE song_stats SET alwaysSkip = :alwaysSkip WHERE stableId = :stableId")
-    suspend fun setAlwaysSkip(stableId: String, alwaysSkip: Boolean)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSongStat(songStat: SongStat)

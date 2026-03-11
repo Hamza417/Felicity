@@ -119,6 +119,16 @@ interface AudioDao {
     @Query("SELECT * FROM audio WHERE path = :path LIMIT 1")
     fun getAudioByPath(path: String): Audio?
 
+    // Favorite / always-skip flag queries
+    @Query("SELECT * FROM audio WHERE is_favorite = 1 AND is_available = 1 ORDER BY title COLLATE NOCASE ASC")
+    fun getFavoriteAudio(): Flow<MutableList<Audio>>
+
+    @Query("UPDATE audio SET is_favorite = :isFavorite WHERE id = :id")
+    suspend fun setFavorite(id: Long, isFavorite: Boolean)
+
+    @Query("UPDATE audio SET always_skip = :alwaysSkip WHERE id = :id")
+    suspend fun setAlwaysSkip(id: Long, alwaysSkip: Boolean)
+
     @RawQuery
     fun getQueriedData(query: SupportSQLiteQuery): MutableList<Audio>
 

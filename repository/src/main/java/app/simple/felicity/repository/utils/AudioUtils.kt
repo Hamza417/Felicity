@@ -31,8 +31,7 @@ object AudioUtils {
                 stableId = generateStableId(this).toString(),
                 lastPlayed = System.currentTimeMillis(),
                 playCount = 1,
-                skipCount = 0,
-                isFavorite = false
+                skipCount = 0
         )
     }
 }

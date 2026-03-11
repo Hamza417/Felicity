@@ -34,7 +34,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         private const val MIN_SEMAPHORE_PERMITS = 4
         private const val BATCH_SIZE = 50 // Number of audio items to accumulate before inserting to database
 
-        data class IndexedFile(val lastModified: Long, val size: Long, val id: Long = 0L)
+        data class IndexedFile(val lastModified: Long, val size: Long, val id: Long = 0L, val isFavorite: Boolean = false, val alwaysSkip: Boolean = false)
     }
 
     // Instance-specific indexed map (not shared across instances)
@@ -89,7 +89,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             val pathToStoredId = HashMap<String, Long>()
             dao?.getAllAudioListAll().let { audioList ->
                 audioList?.forEach { audio ->
-                    indexedMap[audio.path] = IndexedFile(audio.dateModified, audio.size, audio.id)
+                    indexedMap[audio.path] = IndexedFile(audio.dateModified, audio.size, audio.id, audio.isFavorite, audio.isAlwaysSkip)
                     pathToStoredId[audio.path] = audio.id
                 }
             }
@@ -145,6 +145,10 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                                             // Room's @Update matches the right row and no orphan
                                             // row (old id, same path) is left behind.
                                             audio.id = storedId
+                                            // Preserve user-controlled state flags from the stored record
+                                            val stored = indexedMap[file.absolutePath]
+                                            audio.setFavorite(stored?.isFavorite ?: false)
+                                            audio.setAlwaysSkip(stored?.alwaysSkip ?: false)
                                             Log.d(TAG, "Updating existing entry (id=$storedId) for: ${file.name}")
                                             updateBatchList.add(audio)
                                         } else {

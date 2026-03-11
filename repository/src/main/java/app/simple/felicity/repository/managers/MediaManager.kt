@@ -347,10 +347,11 @@ object MediaManager {
     }
 
     fun next() {
-        if (mediaController?.hasNextMediaItem() == true) {
+        val nextPos = findNextNonSkippedPosition(currentSongPosition)
+        if (nextPos != null) {
+            mediaController?.seekTo(nextPos, 0L)
+        } else if (mediaController?.hasNextMediaItem() == true) {
             mediaController?.seekToNextMediaItem()
-            // Let ExoPlayer handle the transition naturally for gapless playback
-            // Don't force position updates here
         }
     }
 
@@ -604,6 +605,16 @@ object MediaManager {
     // Notify UI about current media item index changes originating from the player/service without reconfiguring playback
     fun notifyCurrentPosition(position: Int) {
         if (position in songs.indices) {
+            val song = songs[position]
+            if (song.isAlwaysSkip) {
+                // Skip over this song to the next non-skipped one
+                val nextPos = findNextNonSkippedPosition(position)
+                if (nextPos != null) {
+                    mediaController?.seekTo(nextPos, 0L)
+                    return
+                }
+                // All songs are always-skip → play anyway to avoid infinite loop
+            }
             // Check if position actually changed to avoid unnecessary emissions
             if (currentSongPosition != position) {
                 // Directly update without using setter to avoid potential feedback loops
@@ -614,6 +625,33 @@ object MediaManager {
         } else {
             Log.w(TAG, "notifyCurrentPosition: Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")
         }
+    }
+
+    /**
+     * Returns the index of the next song in the queue that does NOT have [Audio.isAlwaysSkip] set,
+     * starting from the position after [from]. Returns null when every song in the queue is
+     * marked as always-skip (caller should fall back to normal behaviour).
+     */
+    private fun findNextNonSkippedPosition(from: Int): Int? {
+        if (songs.isEmpty()) return null
+        if (songs.all { it.isAlwaysSkip }) return null
+        var pos = (from + 1) % songs.size
+        var attempts = 0
+        while (attempts < songs.size) {
+            if (!songs[pos].isAlwaysSkip) return pos
+            pos = (pos + 1) % songs.size
+            attempts++
+        }
+        return null
+    }
+
+    /**
+     * Re-emits the current position so that all [MediaFragment] observers receive an updated
+     * [onAudio] callback. Call this after mutating an [Audio] object in the queue in-place
+     * (e.g. after toggling [Audio.isFavorite]).
+     */
+    fun notifyCurrentSongUpdated() {
+        scope.launch { _songPositionFlow.emit(currentSongPosition) }
     }
 
     // Keep track of the animator so we can cancel it if the opposite action is triggered
