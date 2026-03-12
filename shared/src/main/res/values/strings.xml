@@ -171,6 +171,7 @@
     <string name="audio_pipeline_summary">Select the primary engine used to process audio data.</string>
     <string name="are_you_sure">Are you sure?</string>
     <string name="yes">Yes</string>
+    <string name="delete_audio_summary">%1$s will be permanently deleted from storage.</string>
     <string name="gapless_playback">Gapless Playback</string>
     <string name="gapless_playback_summary">Play audio files gaplessly.</string>
     <string name="high_resolution_output_summary">"Enable Hi-Res (32bit Float) mode instead of standard 16bit mode. Supported device is required otherwise the quality may drop instead of improving."</string>
@@ -245,4 +246,5 @@
     <string name="add_to_favorites">Add to Favorites</string>
     <string name="remove_from_favorites">Remove from Favorites</string>
     <string name="no_lyrics_found">No Lyrics Found</string>
+    <string name="delete_lyrics_too">Delete Lyrics Files Too</string>
 </resources>

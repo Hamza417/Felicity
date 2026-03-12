@@ -1,6 +1,11 @@
 package app.simple.felicity.extensions.fragments
 
+import android.graphics.Typeface
 import android.os.Bundle
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.util.Log
 import android.view.View
 import android.widget.ImageView
@@ -14,6 +19,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
+import app.simple.felicity.databinding.DialogDeleteSongBinding
 import app.simple.felicity.databinding.DialogSongMenuBinding
 import app.simple.felicity.databinding.DialogSureBinding
 import app.simple.felicity.decorations.popups.SimpleDialog
@@ -33,10 +39,12 @@ import app.simple.felicity.repository.shuffle.Shuffle.shuffle
 import app.simple.felicity.repository.utils.AudioUtils
 import app.simple.felicity.repository.utils.AudioUtils.createSongStat
 import app.simple.felicity.shared.utils.ViewUtils.gone
+import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.player.DefaultPlayer
+import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -291,6 +299,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 miniPlayerCallbacks?.onHideMiniPlayer()
                 val audio = audios[position]
                 binding.title.text = audio.title
+                binding.title.addAudioQualityIcon(audio)
                 binding.secondaryDetail.text = audio.artist
                 binding.tertiaryDetail.text = audio.album
 
@@ -413,9 +422,9 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
                 binding.delete.setOnClickListener {
                     dismiss()
-                    showDeleteConfirmation { confirmed ->
+                    showAudioDeleteConfirmation(audio) { confirmed, lyrics ->
                         if (confirmed) {
-                            deleteSong(audio)
+                            deleteSong(audio, lyrics)
                         } else {
                             // Reopen the menu if user cancels
                             openSongsMenu(audios, position, imageView)
@@ -452,11 +461,63 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val newFavorite = !audio.isFavorite
             AudioDatabase.getInstance(requireContext()).audioDao()?.setFavorite(audio.id, newFavorite)
-            audio.setFavorite(newFavorite)
+            audio.isFavorite = newFavorite
             withContext(Dispatchers.Main) {
                 MediaManager.notifyCurrentSongUpdated()
             }
         }
+    }
+
+    protected fun showAudioDeleteConfirmation(audio: Audio, onResult: (Boolean, Boolean) -> Unit) {
+        SimpleDialog.Builder(
+                container = requireContainerView(),
+                inflateBinding = DialogDeleteSongBinding::inflate)
+            .onViewCreated { binding ->
+                // Duck audio to create a sorta-kinda thinking zone
+                MediaManager.duck()
+
+                val title = audio.title
+                val fullText = getString(R.string.delete_audio_summary, title)
+
+                val startIndex = fullText.indexOf(title ?: "")
+                val spannable = SpannableString(fullText)
+
+                if (startIndex >= 0) {
+                    val endIndex = startIndex + title!!.length
+
+                    spannable.setSpan(
+                            StyleSpan(Typeface.BOLD),
+                            startIndex,
+                            endIndex,
+                            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+
+                    val color = ThemeManager.theme.textViewTheme.primaryTextColor
+                    spannable.setSpan(
+                            ForegroundColorSpan(color),
+                            startIndex,
+                            endIndex,
+                            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+
+                binding.deleteSummary.text = spannable
+            }.onDialogInflated { binding, dismiss ->
+                binding.sure.setOnClickListener {
+                    onResult(true, binding.deleteLyricsCheckbox.isChecked)
+                    dismiss()
+                }
+
+                binding.cancel.setOnClickListener {
+                    onResult(false, false)
+                    dismiss()
+                }
+            }
+            .onDismiss {
+                MediaManager.unduck() // Ensure we unduck if user dismisses by tapping outside or pressing back
+            }
+            .build()
+            .show()
     }
 
     protected fun showDeleteConfirmation(onResult: (Boolean) -> Unit) {
@@ -464,8 +525,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 container = requireContainerView(),
                 inflateBinding = DialogSureBinding::inflate)
             .onViewCreated { binding ->
-                // Duck audio to create a sorta-kinda thinking zone
-                MediaManager.duck()
+                /* no-op */
             }.onDialogInflated { binding, dismiss ->
                 binding.sure.setOnClickListener {
                     onResult(true)
@@ -478,13 +538,13 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 }
             }
             .onDismiss {
-                MediaManager.unduck() // Ensure we unduck if user dismisses by tapping outside or pressing back
+                /* no-op */
             }
             .build()
             .show()
     }
 
-    private fun deleteSong(audio: Audio) {
+    private fun deleteSong(audio: Audio, lyrics: Boolean) {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
                 // Delete the physical file
@@ -515,6 +575,30 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     }
 
                     Log.d(TAG, "Song deleted successfully: ${audio.title}")
+
+                    if (lyrics) {
+                        // Also delete associated lyrics file if it exists
+                        val lyricsFile = File(audio.path.substringBeforeLast('.'), "${audio.title}.txt")
+                        val lrcFile = File(audio.path.substringBeforeLast('.'), "${audio.title}.lrc")
+
+                        if (lyricsFile.exists()) {
+                            val lyricsDeleted = lyricsFile.delete()
+                            if (lyricsDeleted) {
+                                Log.d(TAG, "Associated lyrics file deleted: ${lyricsFile.absolutePath}")
+                            } else {
+                                Log.e(TAG, "Failed to delete associated lyrics file: ${lyricsFile.absolutePath}")
+                            }
+                        }
+
+                        if (lrcFile.exists()) {
+                            val lrcDeleted = lrcFile.delete()
+                            if (lrcDeleted) {
+                                Log.d(TAG, "Associated LRC file deleted: ${lrcFile.absolutePath}")
+                            } else {
+                                Log.e(TAG, "Failed to delete associated LRC file: ${lrcFile.absolutePath}")
+                            }
+                        }
+                    }
                 } else {
                     Log.e(TAG, "Failed to delete file: ${audio.path}")
                 }

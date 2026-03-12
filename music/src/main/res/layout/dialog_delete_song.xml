@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.corners.DynamicCornerLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_height="wrap_content"
+    android:layout_width="match_parent"
+    android:orientation="vertical"
+    android:clipToPadding="false"
+    android:clipChildren="false"
+    android:padding="@dimen/dialog_padding">
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:text="@string/are_you_sure"
+        android:textSize="@dimen/popup_text_size"
+        app:appFontStyle="bold"
+        app:textColorStyle="primary" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/delete_summary"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:layout_width="match_parent"
+        android:textSize="@dimen/text_size_14"
+        app:appFontStyle="regular"
+        app:textColorStyle="secondary" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:layout_marginTop="@dimen/padding_15"
+        android:orientation="horizontal">
+
+        <app.simple.felicity.decorations.toggles.CheckBox
+            android:id="@+id/delete_lyrics_checkbox"
+            android:layout_width="@dimen/checkbox_dimensions"
+            android:layout_height="@dimen/checkbox_dimensions" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="@dimen/padding_10"
+            android:text="@string/delete_lyrics_too"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="regular"
+            app:textColorStyle="primary" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:animateLayoutChanges="true"
+        android:layout_gravity="end"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/dialog_padding"
+        android:layout_width="wrap_content"
+        android:orientation="horizontal">
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/cancel"
+            android:gravity="center"
+            android:layout_gravity="end|center_vertical"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:padding="@dimen/padding_15"
+            android:text="@string/cancel"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:textColorStyle="accent" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/sure"
+            android:gravity="center"
+            android:layout_gravity="end|center_vertical"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_width="wrap_content"
+            android:padding="@dimen/padding_15"
+            android:text="@string/yes"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:textColorStyle="accent" />
+
+    </LinearLayout>
+
+</app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
