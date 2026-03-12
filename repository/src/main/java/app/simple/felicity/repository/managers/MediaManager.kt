@@ -15,7 +15,10 @@ import app.simple.felicity.repository.managers.MediaManager.currentSongPosition
 import app.simple.felicity.repository.managers.MediaManager.mediaController
 import app.simple.felicity.repository.managers.MediaManager.moveQueueItemSilently
 import app.simple.felicity.repository.managers.MediaManager.notifyCurrentPosition
+import app.simple.felicity.repository.managers.MediaManager.pendingSeekPositions
 import app.simple.felicity.repository.managers.MediaManager.removeQueueItemSilently
+import app.simple.felicity.repository.managers.MediaManager.setSongs
+import app.simple.felicity.repository.managers.MediaManager.updatePosition
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ProcessUtils.ensureOnMainThread
 import kotlinx.coroutines.CoroutineScope
@@ -135,6 +138,11 @@ object MediaManager {
                 _songSeekPositionFlow.emit(startPositionMs)
             }
 
+            // Mark the user-chosen start position as pending so the first onMediaItemTransition
+            // callback from setMediaItems is treated as user-initiated and always-skip is
+            // never applied to an explicitly chosen song.
+            pendingSeekPositions.add(clampedPosition)
+
             // Move heavy mapping to background thread
             scope.launch {
                 val mediaItems = withContext(Dispatchers.Default) {
@@ -147,9 +155,9 @@ object MediaManager {
                                     MediaMetadata.Builder()
                                         .setArtist(audio.artist)
                                         .setTitle(audio.title)
-                                        .build()
-                            )
+                                        .build())
                             .build()
+
                     }
                 }
 
@@ -628,31 +636,39 @@ object MediaManager {
         }
     }
 
-    // Notify UI about current media item index changes originating from the player/service without reconfiguring playback
+    /**
+     * Notify the manager that ExoPlayer has moved to [position].
+     *
+     * User-initiated seeks (via [updatePosition] or [setSongs]) are registered in
+     * [pendingSeekPositions]. When the callback arrives for such a position it is
+     * treated as a confirmed user action and the always-skip flag is intentionally
+     * ignored — the user explicitly chose to play that song.
+     *
+     * The always-skip check only fires for natural, automatic advances (end-of-track,
+     * gapless play, etc.) so that "Always Skip" only applies to the auto-queue, never
+     * to deliberate user interaction.
+     */
     fun notifyCurrentPosition(position: Int) {
         if (position in songs.indices) {
-            val song = songs[position]
-            if (song.isAlwaysSkip) {
-                // Skip over this song to the next non-skipped one
-                val nextPos = findNextNonSkippedPosition(position)
-                if (nextPos != null) {
-                    mediaController?.seekTo(nextPos, 0L)
-                    return
-                }
-                // All songs are always-skip → play anyway to avoid infinite loop
-            }
-
             if (pendingSeekPositions.remove(position)) {
-                // This is ExoPlayer confirming a user-initiated seekTo call.
-                // currentSongPosition has already been updated by updatePosition();
-                // only emit if the position still matches (rapid swipes may have moved further).
+                // User-initiated seek confirmed by ExoPlayer.
+                // Never apply always-skip — the user explicitly chose this song.
                 if (currentSongPosition == position) {
                     scope.launch { _songPositionFlow.emit(position) }
                 }
                 // If currentSongPosition != position the user already moved on — discard.
             } else {
                 // Natural ExoPlayer advance (end of track, auto-next, gapless, etc.).
-                // Update our tracking position and notify the UI.
+                // Honour the always-skip flag only here, in the auto-queue path.
+                val song = songs[position]
+                if (song.isAlwaysSkip) {
+                    val nextPos = findNextNonSkippedPosition(position)
+                    if (nextPos != null) {
+                        mediaController?.seekTo(nextPos, 0L)
+                        return
+                    }
+                    // Every song is marked always-skip → play anyway to avoid an infinite loop.
+                }
                 if (currentSongPosition != position) {
                     currentSongPosition = position
                     scope.launch { _songPositionFlow.emit(position) }

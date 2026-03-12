@@ -155,7 +155,7 @@ class FavoriteButton @JvmOverloads constructor(
      * One torn-rubber fragment used in the balloon-burst explosion.
      *
      * @param x / y          Current screen position (updated each frame).
-     * @param originX/Y      Starting position (near the icon centre perimeter).
+     * @param originX/Y      Starting position (near the icon center perimeter).
      * @param destX/Y        Final resting position (well outside the icon).
      * @param startRotation  Initial rotation angle in degrees.
      * @param totalRotation  Total degrees rotated by the time the shard reaches [destX/Y].
@@ -297,7 +297,7 @@ class FavoriteButton @JvmOverloads constructor(
             val baseAngle = (2.0 * Math.PI * i / count).toFloat()
             val jitter = (Random.nextFloat() - 0.5f) * 0.55f
             val angle = baseAngle + jitter
-            // Shards start near the perimeter of the icon, not at dead-centre,
+            // Shards start near the perimeter of the icon, not at dead-center,
             // to reinforce the illusion that the icon itself is fragmenting.
             val startR = iconSize * (0.08f + Random.nextFloat() * 0.22f)
             val destR = iconSize * (0.68f + Random.nextFloat() * 0.52f)

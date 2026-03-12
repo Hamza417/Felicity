@@ -1,9 +1,11 @@
 package app.simple.felicity.activities
 
 import android.app.SearchManager
+import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Bundle
+import android.os.IBinder
 import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
@@ -80,6 +82,14 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             }
         }
 
+        // Seek via long-press drag on the miniplayer
+        binding.miniPlayer.seekListener = { fraction ->
+            val duration = MediaManager.getDuration()
+            if (duration > 0L) {
+                MediaManager.seekTo((fraction * duration).toLong())
+            }
+        }
+
         // Keep screen on
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
@@ -89,7 +99,10 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
         lifecycleScope.launch {
             MediaManager.songSeekPositionFlow.collect { position ->
-
+                val duration = MediaManager.getDuration()
+                if (duration > 0L) {
+                    binding.miniPlayer.setProgress(position.toFloat() / duration.toFloat())
+                }
             }
         }
 
@@ -118,6 +131,8 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                         if (songPosition < songs.size) songPosition else 0,
                         smoothScroll = false
                 )
+                // Reset the progress bar whenever the queue is replaced
+                binding.miniPlayer.setProgress(0f)
             }
         }
 
@@ -131,12 +146,12 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         }
 
         serviceConnection = object : ServiceConnection {
-            override fun onServiceConnected(name: android.content.ComponentName?, service: android.os.IBinder?) {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 val binder = service as? AudioDatabaseService.AudioDatabaseBinder
                 audioDatabaseService = binder?.getService() ?: return
             }
 
-            override fun onServiceDisconnected(name: android.content.ComponentName?) {
+            override fun onServiceDisconnected(name: ComponentName?) {
                 audioDatabaseService = null
             }
         }
