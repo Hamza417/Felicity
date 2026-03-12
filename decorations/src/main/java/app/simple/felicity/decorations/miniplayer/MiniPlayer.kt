@@ -146,6 +146,15 @@ class MiniPlayer @JvmOverloads constructor(
         /** Duration for show/hide slide animation in ms. */
         private const val ANIM_DURATION_MS = 180L
 
+        /**
+         * How long after [MotionEvent.ACTION_DOWN] the ripple is automatically released.
+         * Keeping this short makes the ripple a non-blocking cherry-on-top effect that
+         * plays out its own expand+fade without any gesture state cancelling it.
+         *
+         * @author Hamza417
+         */
+        private const val RIPPLE_AUTO_RELEASE_MS = 80L
+
         /** Duration for the elevation change animation in ms. */
         private const val ELEV_ANIM_MS = 220L
 
@@ -347,12 +356,31 @@ class MiniPlayer @JvmOverloads constructor(
     private var dragStartScrollPx = 0f
     private var velocityTracker: VelocityTracker? = null
 
+    /**
+     * Finger X and progress value captured at the moment seek mode is entered.
+     * Used to compute a relative seek delta so the progress bar never jumps
+     * to an absolute finger position.
+     *
+     * @author Hamza417
+     */
+    private var seekStartX = 0f
+    private var seekStartProgress = 0f
+
+    /**
+     * Handler that auto-releases the ripple a short time after it is armed on
+     * [MotionEvent.ACTION_DOWN].  This makes the ripple a "fire-and-forget"
+     * cherry-on-top visual that plays out its own expand+fade animation without
+     * being cancelled mid-way by any subsequent gesture state.
+     *
+     * @author Hamza417
+     */
+    private val rippleAutoReleaseHandler = Handler(Looper.getMainLooper())
+    private val rippleAutoReleaseRunnable = Runnable { releaseAllRipples() }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_UP && !isBeingDragged && !isInSeekMode) {
             if (isInPlayPauseZone(event.x)) {
-                // Always release the ripple before returning so it never freezes
-                releaseAllRipples()
                 performPlayPauseClick()
                 return true
             }
@@ -369,21 +397,25 @@ class MiniPlayer @JvmOverloads constructor(
                 velocityTracker = VelocityTracker.obtain().apply { addMovement(event) }
                 parent?.requestDisallowInterceptTouchEvent(true)
 
-                // Arm the full-card ripple at the touch point
+                // Fire the ripple as a one-shot touch indicator.  The auto-release
+                // schedules the expand+fade immediately so no other gesture path can
+                // cancel or fight it — the ripple simply plays out on its own.
                 fullRipple.setHotspot(event.x, event.y)
                 fullRipple.setState(intArrayOf(android.R.attr.state_pressed))
+                rippleAutoReleaseHandler.removeCallbacks(rippleAutoReleaseRunnable)
+                rippleAutoReleaseHandler.postDelayed(rippleAutoReleaseRunnable, RIPPLE_AUTO_RELEASE_MS)
             }
 
             MotionEvent.ACTION_MOVE -> {
                 velocityTracker?.addMovement(event)
                 val dx = event.x - lastMotionX
                 if (isInSeekMode) {
-                    // Seek mode: long-press is active — map X to a fraction and forward to
-                    // the caller.  Write progress directly (not via setProgress) so the
-                    // isInSeekMode guard inside setProgress is never hit from this path.
-                    val seekAreaLeft = artSize
-                    val seekAreaWidth = (width.toFloat() - seekAreaLeft).coerceAtLeast(1f)
-                    val seekFraction = ((event.x - seekAreaLeft) / seekAreaWidth).coerceIn(0f, 1f)
+                    // Seek mode: compute a relative delta from the anchor position captured
+                    // when seek mode started.  This avoids the abrupt jump to absolute
+                    // finger position that absolute mapping produces.
+                    val seekAreaWidth = (width.toFloat() - artSize).coerceAtLeast(1f)
+                    val seekDelta = (event.x - seekStartX) / seekAreaWidth
+                    val seekFraction = (seekStartProgress + seekDelta).coerceIn(0f, 1f)
                     progress = seekFraction
                     invalidate()
                     seekListener?.invoke(seekFraction)
@@ -394,9 +426,8 @@ class MiniPlayer @JvmOverloads constructor(
                         parent?.requestDisallowInterceptTouchEvent(true)
                         animateEdgeFade(show = true)
                         animatePlayPauseSlide(slideOut = true)
-                        // Drag cancelled the tap — fade progress, dissolve ripples
+                        // Drag cancelled the tap — fade progress bar out
                         animateProgressAlpha(0f)
-                        releaseAllRipples()
                     }
                     if (isBeingDragged) {
                         scrollEngine.applyDragDelta(dx)
@@ -423,7 +454,9 @@ class MiniPlayer @JvmOverloads constructor(
                 isBeingDragged = false
                 animateEdgeFade(show = false)
                 animatePlayPauseSlide(slideOut = false)
-                // Always release ripples on finger-up so they can never freeze
+                // Safety catch: cancel any pending auto-release and release immediately
+                // in case the finger lifts before the 80 ms timer fires.
+                rippleAutoReleaseHandler.removeCallbacks(rippleAutoReleaseRunnable)
                 releaseAllRipples()
             }
         }
@@ -448,12 +481,14 @@ class MiniPlayer @JvmOverloads constructor(
         if (!isInPlayPauseZone(e.x)) {
             if (!isBeingDragged) {
                 // Enter seek mode: cancel any page animation, give haptic feedback once,
-                // then subsequent drags will seek the song rather than change pages.
+                // then subsequent drags will seek the track rather than change pages.
+                // Record the anchor so that seek movement is offset-based, not absolute.
                 isInSeekMode = true
                 isBeingDragged = false
+                seekStartX = e.x
+                seekStartProgress = progress
                 scrollEngine.cancelAnimation()
                 animateEdgeFade(show = false)
-                releaseAllRipples()
                 performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             } else {
                 callbacks?.onItemLongClick(scrollEngine.currentPage.coerceAtLeast(0))
@@ -1202,12 +1237,10 @@ class MiniPlayer @JvmOverloads constructor(
         // 4. Play/pause button (slides off during drag)
         playPauseDrawer.draw(canvas)
 
-        // 5. Full-card ripple — only drawn while not swiping or seeking so it
-        //    never visually fights the scroll or progress bar movement.
-        if (!isBeingDragged && !isInSeekMode) {
-            canvas.withClip(cardClipPath) {
-                fullRipple.draw(this)
-            }
+        // 5. Full-card ripple — always rendered; it auto-releases and fades on its own
+        //    so it never visually fights scroll or seek content.
+        canvas.withClip(cardClipPath) {
+            fullRipple.draw(this)
         }
     }
 
@@ -1576,6 +1609,7 @@ class MiniPlayer @JvmOverloads constructor(
         ThemeManager.removeListener(this)
         detachFromAllRecyclerViews()
         scrollEngine.cancelAnimation()
+        rippleAutoReleaseHandler.removeCallbacks(rippleAutoReleaseRunnable)
         releaseAllRipples()
         ppAnimator?.cancel()
         ppSlideAnimator?.cancel()
