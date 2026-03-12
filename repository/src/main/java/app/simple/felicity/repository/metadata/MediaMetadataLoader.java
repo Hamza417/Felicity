@@ -62,6 +62,7 @@ public class MediaMetadataLoader {
      * @noinspection DataFlowIssue
      */
     private void setAudioMetadata(Audio audio) {
+        audio.setTitle(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE));
         audio.setName(file.getName());
         audio.setPath(file.getAbsolutePath());
         audio.setAlbum(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM));

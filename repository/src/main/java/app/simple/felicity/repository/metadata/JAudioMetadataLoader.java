@@ -154,44 +154,65 @@ public class JAudioMetadataLoader {
     }
     
     private long getBitrate() {
-        Log.d(TAG, "Bitrate: " + audioFile.getAudioHeader().getBitRateAsNumber() + " for file: " + file.getAbsolutePath());
+        long bitrate = audioFile.getAudioHeader().getBitRateAsNumber();
+        
+        if (bitrate == Long.MAX_VALUE || bitrate <= 0) {
+            throw new IllegalStateException("Bitrate is invalid (either MAX_VALUE or non-positive), which likely indicates an error." +
+                    " This may be due to an unsupported audio format or a problem with the file.");
+        }
+        
         return audioFile.getAudioHeader().getBitRateAsNumber();
     }
     
-    private long getDuration() {
+    private long getDuration
+            () {
         // Get precise track length in seconds (can be a decimal)
         // in format 30.450 which means 30 seconds and 450 milliseconds
         double length = audioFile.getAudioHeader().getPreciseTrackLength();
         // Convert to exact milliseconds
-        return (long) (length * 1000);
+        long duration = (long) (length * 1000);
+        
+        if (duration <= 0) {
+            throw new IllegalStateException("Duration is negative, which likely indicates an error." +
+                    " This may be due to an unsupported audio format or a problem with the file.");
+        }
+        
+        return duration;
     }
     
-    private String getNumTracks() {
+    private String getNumTracks
+            () {
         return getAudioFileTag(FieldKey.TRACK_TOTAL);
     }
     
-    private String getDiscNumber() {
+    private String getDiscNumber
+            () {
         return getAudioFileTag(FieldKey.DISC_NO);
     }
     
-    private String getTrackNumber() {
+    private String getTrackNumber
+            () {
         return getAudioFileTag(FieldKey.TRACK);
     }
     
-    private String getMIMEType() {
+    private String getMIMEType
+            () {
         return audioFile.getExt();
     }
     
-    private long getSamplingRate() {
+    private long getSamplingRate
+            () {
         return audioFile.getAudioHeader().getSampleRateAsNumber();
     }
     
-    private long getBitPerSample() {
+    private long getBitPerSample
+            () {
         Log.d("JAudioMetadataLoader", "Bits per sample: " + audioFile.getAudioHeader().getBitsPerSample());
         return audioFile.getAudioHeader().getBitsPerSample();
     }
     
-    private long generateId() {
+    private long generateId
+            () {
         return FileUtils.INSTANCE.generateXXHash64(file, Integer.MAX_VALUE);
     }
 }

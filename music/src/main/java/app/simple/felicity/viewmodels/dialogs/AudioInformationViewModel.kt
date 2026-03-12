@@ -52,10 +52,9 @@ class AudioInformationViewModel @AssistedInject constructor(
                 add(data(R.string.album_artist, audio.albumArtist ?: "–"))
                 add(data(R.string.duration, audio.duration.toDynamicTimeString()))
                 add(data(R.string.size, Formatter.formatShortFileSize(getApplication(), audio.size)))
-                add(data(R.string.bitrate, "${audio.bitrate / 1000} kbps"))
+                add(data(R.string.bitrate, "${audio.bitrate} kbps"))
                 add(data(R.string.sample_rate, "${audio.samplingRate} Hz"))
-                add(data(R.string.bit_depth,
-                         if (audio.bitPerSample > 0) "${audio.bitPerSample}-bit" else "–"))
+                add(data(R.string.bit_depth, if (audio.bitPerSample > 0) "${audio.bitPerSample}-bit" else "–"))
                 add(data(R.string.mime_type, audio.mimeType ?: "–"))
                 add(data(R.string.format, audio.path.getAudioFormat() ?: "–"))
                 add(data(R.string.genre, audio.genre ?: "–"))
@@ -102,7 +101,7 @@ class AudioInformationViewModel @AssistedInject constructor(
             val art = retriever.embeddedPicture
             retriever.release()
             art != null
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }
