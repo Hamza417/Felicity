@@ -99,9 +99,16 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
         lifecycleScope.launch {
             MediaManager.songSeekPositionFlow.collect { position ->
+                // Skip external updates while the user is scrubbing to avoid
+                // the flow fighting the touch handler and causing jitter.
+                if (binding.miniPlayer.isSeeking) return@collect
                 val duration = MediaManager.getDuration()
                 if (duration > 0L) {
-                    binding.miniPlayer.setProgress(position.toFloat() / duration.toFloat())
+                    // animate = false: snap directly for real-time ticks; no tween lag.
+                    binding.miniPlayer.setProgress(
+                            fraction = position.toFloat() / duration.toFloat(),
+                            animate = false
+                    )
                 }
             }
         }
@@ -110,7 +117,10 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             MediaManager.songPositionFlow.collect { position ->
                 val currentPagerItem = binding.miniPlayer.currentItem
                 if (currentPagerItem != position) {
-                    binding.miniPlayer.setCurrentItem(position, smoothScroll = true)
+                    binding.miniPlayer.setCurrentItem(
+                            position = position,
+                            // Smooth scroll if the new position is within 5 items of the current position
+                            smoothScroll = currentPagerItem - position < 5)
                 }
             }
         }

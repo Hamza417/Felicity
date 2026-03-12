@@ -55,6 +55,7 @@ class Lyrics : MediaFragment() {
         setAlignment()
         applyTextSize()
         updateState()
+        binding.lrc.setEmptyText(getString(R.string.no_lyrics_found))
 
         binding.lrc.setOnLrcClickListener { timeInMillis, _ ->
             MediaManager.seekTo(timeInMillis)

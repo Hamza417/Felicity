@@ -3,6 +3,7 @@ package app.simple.felicity.decorations.miniplayer
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Bitmap
@@ -247,10 +248,22 @@ class MiniPlayer @JvmOverloads constructor(
 
             override fun onPageSettled(page: Int, fromUser: Boolean) {
                 dispatchPageSelected(page, fromUser)
+                // Cancel any in-flight progress tween and reset to 0 so the freshly
+                // settled page always starts clean.  The caller will push the real
+                // seek position shortly via setProgress(), animating from 0 if needed.
+                progressValueAnimator?.cancel()
+                progress = 0f
+                // Now fade the progress bar back in
+                if (!isInSeekMode) animateProgressAlpha(1f)
             }
 
             override fun onScrollStateChanged(state: Int) {
                 dispatchScrollState(state)
+                // Fade the progress bar out the moment the user starts swiping so it
+                // doesn't appear to lag behind or look disconnected from the motion
+                if (state == SCROLL_STATE_DRAGGING && !isInSeekMode) {
+                    animateProgressAlpha(0f)
+                }
             }
         }
     }
@@ -283,6 +296,9 @@ class MiniPlayer @JvmOverloads constructor(
         scrollEngine.clampScrollPx()
         scrollEngine.clampCurrentPage()
         if (width > 0) ensurePageBitmaps()
+        // Snap progress to 0 — a fresh queue has no known seek position yet
+        progressValueAnimator?.cancel()
+        progress = 0f
         invalidate()
         dispatchScrolled()
     }
@@ -331,9 +347,12 @@ class MiniPlayer @JvmOverloads constructor(
     private var dragStartScrollPx = 0f
     private var velocityTracker: VelocityTracker? = null
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.actionMasked == MotionEvent.ACTION_UP && !isBeingDragged) {
+        if (event.actionMasked == MotionEvent.ACTION_UP && !isBeingDragged && !isInSeekMode) {
             if (isInPlayPauseZone(event.x)) {
+                // Always release the ripple before returning so it never freezes
+                releaseAllRipples()
                 performPlayPauseClick()
                 return true
             }
@@ -350,26 +369,23 @@ class MiniPlayer @JvmOverloads constructor(
                 velocityTracker = VelocityTracker.obtain().apply { addMovement(event) }
                 parent?.requestDisallowInterceptTouchEvent(true)
 
-                // Start the appropriate ripple immediately on touch-down
-                if (isInPlayPauseZone(event.x)) {
-                    ppRipple.setHotspot(event.x - ppRippleBounds.left, event.y)
-                    ppRipple.setState(intArrayOf(android.R.attr.state_pressed))
-                } else {
-                    contentRipple.setHotspot(event.x, event.y)
-                    contentRipple.setState(intArrayOf(android.R.attr.state_pressed))
-                }
+                // Arm the full-card ripple at the touch point
+                fullRipple.setHotspot(event.x, event.y)
+                fullRipple.setState(intArrayOf(android.R.attr.state_pressed))
             }
 
             MotionEvent.ACTION_MOVE -> {
                 velocityTracker?.addMovement(event)
                 val dx = event.x - lastMotionX
                 if (isInSeekMode) {
-                    // Seek mode: long-press is active — map X position to a seek fraction
-                    // and forward it to the caller; do NOT scroll pages.
+                    // Seek mode: long-press is active — map X to a fraction and forward to
+                    // the caller.  Write progress directly (not via setProgress) so the
+                    // isInSeekMode guard inside setProgress is never hit from this path.
                     val seekAreaLeft = artSize
                     val seekAreaWidth = (width.toFloat() - seekAreaLeft).coerceAtLeast(1f)
                     val seekFraction = ((event.x - seekAreaLeft) / seekAreaWidth).coerceIn(0f, 1f)
-                    setProgress(seekFraction)
+                    progress = seekFraction
+                    invalidate()
                     seekListener?.invoke(seekFraction)
                 } else {
                     if (!isBeingDragged && abs(dx) > touchSlop * 0.6f) {
@@ -378,7 +394,8 @@ class MiniPlayer @JvmOverloads constructor(
                         parent?.requestDisallowInterceptTouchEvent(true)
                         animateEdgeFade(show = true)
                         animatePlayPauseSlide(slideOut = true)
-                        // Drag canceled the tap — dissolve both ripples
+                        // Drag cancelled the tap — fade progress, dissolve ripples
+                        animateProgressAlpha(0f)
                         releaseAllRipples()
                     }
                     if (isBeingDragged) {
@@ -393,8 +410,9 @@ class MiniPlayer @JvmOverloads constructor(
                 velocityTracker?.computeCurrentVelocity(1000)
                 val vx = velocityTracker?.xVelocity ?: 0f
                 if (isInSeekMode) {
-                    // Seek mode ends — do not trigger a page change
+                    // Seek mode ends — restore progress bar, do NOT trigger a page change
                     isInSeekMode = false
+                    animateProgressAlpha(1f)
                 } else if (isBeingDragged) {
                     scrollEngine.finishDrag(vx, dragStartScrollPx)
                 } else if (event.actionMasked == MotionEvent.ACTION_UP) {
@@ -405,7 +423,7 @@ class MiniPlayer @JvmOverloads constructor(
                 isBeingDragged = false
                 animateEdgeFade(show = false)
                 animatePlayPauseSlide(slideOut = false)
-                // Release both ripples — the one that wasn't pressed will be a no-op
+                // Always release ripples on finger-up so they can never freeze
                 releaseAllRipples()
             }
         }
@@ -473,14 +491,18 @@ class MiniPlayer @JvmOverloads constructor(
     private val cardClipPath = Path()
 
     // -------------------------------------------------------------------------
-    // Touch-feedback ripples
+    // Touch-feedback ripple — single full-card drawable
     // -------------------------------------------------------------------------
 
     /**
-     * Ripple for the content area (art + text), spanning the left portion of the card.
-     * Drawn on top of everything else so it sits visually above art and text.
+     * One ripple that spans the entire card surface so taps anywhere produce
+     * consistent, correctly-bounded feedback.  The drawable is drawn on top of
+     * every other layer but is suppressed while a swipe or seek is in progress
+     * so it never visually fights the scrolling or progress content.
+     *
+     * @author Hamza417
      */
-    private val contentRipple = FelicityRippleDrawable(
+    private val fullRipple = FelicityRippleDrawable(
             ThemeManager.theme.iconTheme.regularIconColor).apply {
         setCornerRadius(AppearancePreferences.getCornerRadius())
         setStartColor(ThemeManager.theme.viewGroupTheme.highlightColor)
@@ -490,54 +512,28 @@ class MiniPlayer @JvmOverloads constructor(
             override fun unscheduleDrawable(who: Drawable, what: Runnable) = Unit
         }
     }
-
-    /**
-     * Ripple for the play/pause button zone on the right edge.
-     * Scoped to the button area so it does not bleed into the content.
-     */
-    private val ppRipple = FelicityRippleDrawable(
-            ThemeManager.theme.iconTheme.regularIconColor).apply {
-        setCornerRadius(AppearancePreferences.getCornerRadius())
-        setStartColor(ThemeManager.theme.viewGroupTheme.highlightColor)
-        callback = object : Drawable.Callback {
-            override fun invalidateDrawable(who: Drawable) = invalidate()
-            override fun scheduleDrawable(who: Drawable, what: Runnable, `when`: Long) = Unit
-            override fun unscheduleDrawable(who: Drawable, what: Runnable) = Unit
-        }
-    }
-
-    /** Reusable bounds rects; set in [applyConfig] whenever geometry changes. */
-    private val contentRippleBounds = Rect()
-    private val ppRippleBounds = Rect()
 
     /** Sync ripple accent color, highlight color, and corner radius from the current theme. */
     private fun refreshRippleTheme() {
         val accent = ThemeManager.accent.primaryAccentColor
         val highlight = ThemeManager.theme.viewGroupTheme.highlightColor
         val radius = AppearancePreferences.getCornerRadius()
-        contentRipple.setRippleColor(accent)
-        contentRipple.setStartColor(highlight)
-        contentRipple.setCornerRadius(radius)
-        ppRipple.setRippleColor(accent)
-        ppRipple.setStartColor(highlight)
-        ppRipple.setCornerRadius(radius)
+        fullRipple.setRippleColor(accent)
+        fullRipple.setStartColor(highlight)
+        fullRipple.setCornerRadius(radius)
     }
 
-    /** Update bounds for both ripples from current geometry. Only valid when `w > 0`. */
+    /** Size the ripple to fill the whole card. Called from [applyConfig]. */
     private fun updateRippleBounds(w: Int, h: Int) {
-        contentRippleBounds.set(0, 0, (w - btnZoneWidth).toInt().coerceAtLeast(0), h)
-        ppRippleBounds.set((w - btnZoneWidth).toInt().coerceAtLeast(0), 0, w, h)
-        contentRipple.bounds = contentRippleBounds
-        ppRipple.bounds = ppRippleBounds
+        fullRipple.bounds = Rect(0, 0, w, h)
     }
 
     /**
-     * Release both ripples immediately — called when a drag gesture begins so
-     * the press feedback dissolves instead of staying frozen under the swipe.
+     * Cancel the ripple press state so the animation plays out or stops immediately.
+     * Called on drag-start, long-press enter, and finger-up in all gesture paths.
      */
     private fun releaseAllRipples() {
-        contentRipple.setState(intArrayOf())
-        ppRipple.setState(intArrayOf())
+        fullRipple.setState(intArrayOf())
     }
 
     // -------------------------------------------------------------------------
@@ -546,34 +542,104 @@ class MiniPlayer @JvmOverloads constructor(
 
     /**
      * Current playback progress fraction in [0, 1].
-     * The filled region spans from [artSize] to the right edge of the card.
+     * Drawn per-page inside [drawPageProgress] so it scrolls with the album art and text.
      */
     private var progress: Float = 0f
 
     /**
-     * Semi-transparent track (unfilled portion) drawn behind the progress fill.
-     * Color is refreshed from the accent palette in [applyConfig].
+     * Visibility alpha of the progress bar in [0, 1].
+     * Animated to 1 on the first [setProgress] call and to 0 / back during page swipes.
      */
-    private val progressTrackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
+    private var progressBarAlpha: Float = 0f
 
     /**
-     * Solid fill (filled portion) representing elapsed playback.
-     * Color is refreshed from the accent palette in [applyConfig].
+     * RGB of the accent color; alpha is computed dynamically each frame so that
+     * [progressBarAlpha] changes are reflected without re-calling [refreshProgressColors].
      */
-    private val progressFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
+    private var progressAccentColor: Int = Color.GRAY
+
+    private val progressTrackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val progressFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+
+    private var progressBarAlphaAnimator: ValueAnimator? = null
+
+    /**
+     * Animator used to tween [progress] for large jumps (first value, seek scrub, song change).
+     * Cancelled immediately for tiny real-time increments to avoid visible lag.
+     */
+    private var progressValueAnimator: ValueAnimator? = null
+
+    /**
+     * Whether the player is currently in seek mode (triggered by long-press).
+     * In this mode horizontal drags seek the track instead of changing pages.
+     * Exposed so callers can skip pushing seek-position updates while the user
+     * is actively scrubbing — avoids the external value fighting the touch position.
+     *
+     * @author Hamza417
+     */
+    var isSeeking: Boolean
+        get() = isInSeekMode
+        private set(value) {
+            isInSeekMode = value
+        }
+
+    private var isInSeekMode = false
 
     /**
      * Set the current playback progress.
      *
-     * @param fraction value in [0, 1] where 0 = start and 1 = end of track
+     * When [animate] is `true`, large deltas are smoothly tweened (covers first-load
+     * and state-restore scenarios). When [animate] is `false` the value is applied
+     * immediately without any animation — use this for real-time playback ticks to
+     * keep the bar perfectly in sync with the audio engine.
+     *
+     * Calls during an active seek drag ([isSeeking] = true) are silently ignored;
+     * the touch handler owns progress while the user is scrubbing.
+     *
+     * @param fraction value in [0, 1] where 0 = track start and 1 = track end
+     * @param animate  `true` to tween large jumps, `false` to snap immediately
      */
-    fun setProgress(fraction: Float) {
-        progress = fraction.coerceIn(0f, 1f)
-        invalidate()
+    fun setProgress(fraction: Float, animate: Boolean = false) {
+        // External callers must not fight the seek-drag touch handler
+        if (isInSeekMode) return
+
+        val target = fraction.coerceIn(0f, 1f)
+
+        // Fade the bar in the first time it receives a real value
+        if (progressBarAlpha < 0.5f && !isBeingDragged) {
+            animateProgressAlpha(1f)
+        }
+
+        if (!animate) {
+            progressValueAnimator?.cancel()
+            progress = target
+            invalidate()
+            return
+        }
+
+        val delta = abs(target - progress)
+        when {
+            delta < 0.005f -> {
+                // Sub-half-percent increment: stay in sync without an animator
+                progressValueAnimator?.cancel()
+                progress = target
+                invalidate()
+            }
+            else -> {
+                // Large jump (first value, state restore): smooth tween
+                progressValueAnimator?.cancel()
+                val from = progress
+                progressValueAnimator = ValueAnimator.ofFloat(from, target).apply {
+                    duration = (delta * 1800L).toLong().coerceIn(120L, 350L)
+                    interpolator = DecelerateInterpolator()
+                    addUpdateListener {
+                        progress = it.animatedValue as Float
+                        invalidate()
+                    }
+                    start()
+                }
+            }
+        }
     }
 
     /**
@@ -582,27 +648,71 @@ class MiniPlayer @JvmOverloads constructor(
      */
     var seekListener: ((fraction: Float) -> Unit)? = null
 
-    /**
-     * Whether the player is currently in seek mode (triggered by long-press).
-     * In this mode horizontal drags seek the track instead of changing pages.
-     */
-    private var isInSeekMode = false
 
-    /** Refreshes progress paint colors from the current accent palette. */
+    /**
+     * Animate the visibility of the progress bar to [target].
+     *
+     * @param target 0 = hidden, 1 = fully visible
+     */
+    private fun animateProgressAlpha(target: Float) {
+        val clamped = target.coerceIn(0f, 1f)
+        if (progressBarAlpha == clamped && progressBarAlphaAnimator?.isRunning != true) return
+        progressBarAlphaAnimator?.cancel()
+        progressBarAlphaAnimator = ValueAnimator.ofFloat(progressBarAlpha, clamped).apply {
+            duration = if (clamped > 0f) 280L else 180L
+            interpolator = if (clamped > 0f) DecelerateInterpolator() else AccelerateInterpolator()
+            addUpdateListener {
+                progressBarAlpha = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    /**
+     * Caches the current accent RGB so that [drawPageProgress] can compose the correct
+     * ARGB colors per-frame without allocating new color objects.
+     */
     private fun refreshProgressColors() {
-        val accent = ThemeManager.accent.primaryAccentColor
-        progressTrackPaint.color = Color.argb(
-                35,
-                Color.red(accent),
-                Color.green(accent),
-                Color.blue(accent)
-        )
-        progressFillPaint.color = Color.argb(
-                75,
-                Color.red(accent),
-                Color.green(accent),
-                Color.blue(accent)
-        )
+        progressAccentColor = ThemeManager.accent.primaryAccentColor
+        invalidate()
+    }
+
+    /**
+     * Draws the progress track and fill for a single page.
+     *
+     * Because this is called inside [drawPages] with the page translation already applied,
+     * the progress bar scrolls naturally with the album art and text during a swipe.
+     * Only the currently settled page renders the real [progress] value; neighbouring
+     * pages render an empty track so they slide in cleanly without a stale fill.
+     *
+     * @param canvas the canvas, already clipped to this page's horizontal rect
+     * @param tx     left edge of this page in canvas coordinates (negative when sliding in from right)
+     * @param pageW  page width in pixels (equals view width)
+     * @param h      view height in pixels
+     * @param fill   fill fraction in [0, 1] to render for this page
+     */
+    private fun drawPageProgress(canvas: Canvas, tx: Float, pageW: Float, h: Float, fill: Float) {
+        if (progressBarAlpha <= 0f) return
+        val r = Color.red(progressAccentColor)
+        val g = Color.green(progressAccentColor)
+        val b = Color.blue(progressAccentColor)
+        val trackAlpha = (35 * progressBarAlpha).toInt().coerceIn(0, 255)
+        val fillAlpha = (80 * progressBarAlpha).toInt().coerceIn(0, 255)
+
+        val progressLeft = tx + artSize
+        val progressRight = tx + pageW
+
+        // Track (unfilled background)
+        progressTrackPaint.color = Color.argb(trackAlpha, r, g, b)
+        canvas.drawRect(progressLeft, 0f, progressRight, h, progressTrackPaint)
+
+        // Filled portion
+        if (fill > 0f && fillAlpha > 0) {
+            val fillRight = progressLeft + (progressRight - progressLeft) * fill
+            progressFillPaint.color = Color.argb(fillAlpha, r, g, b)
+            canvas.drawRect(progressLeft, 0f, fillRight, h, progressFillPaint)
+        }
     }
     // -------------------------------------------------------------------------
 
@@ -1060,24 +1170,7 @@ class MiniPlayer @JvmOverloads constructor(
         bgPaint.color = cardColor
         canvas.drawRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, bgPaint)
 
-        // 2. Playback progress bar — drawn behind text/art so it appears as a
-        //    semi-transparent tinted fill spanning from the album-art slot to the
-        //    right edge of the card.
-        if (items.isNotEmpty() && artSize > 0f) {
-            val progressAreaLeft = artSize
-            val progressAreaRight = width.toFloat()
-            val progressFillRight = progressAreaLeft + (progressAreaRight - progressAreaLeft) * progress
-            canvas.withClip(cardClipPath) {
-                // Unfilled track
-                drawRect(progressAreaLeft, 0f, progressAreaRight, height.toFloat(), progressTrackPaint)
-                // Filled portion
-                if (progress > 0f) {
-                    drawRect(progressAreaLeft, 0f, progressFillRight, height.toFloat(), progressFillPaint)
-                }
-            }
-        }
-
-        // 3. Optional stroke border
+        // 2. Optional stroke border
         if (strokeEnabled && strokeWidthPx > 0f) {
             val inset = strokeWidthPx / 2f
             strokeRect.set(
@@ -1089,7 +1182,7 @@ class MiniPlayer @JvmOverloads constructor(
                                  strokePaint)
         }
 
-        // 4. Pages (art + text) with optional edge fades
+        // 3. Pages (art + progress bar + text) with optional edge fades
         val pageW = w.toInt()
         if (pageW > 0 && items.isNotEmpty()) {
             if (edgeFadeEnabled && edgeFadeAlpha > 0f) {
@@ -1106,13 +1199,15 @@ class MiniPlayer @JvmOverloads constructor(
             }
         }
 
-        // 5. Play/pause button (slides off during drag)
+        // 4. Play/pause button (slides off during drag)
         playPauseDrawer.draw(canvas)
 
-        // 6. Touch-feedback ripples — drawn on top of everything, clipped to the card shape
-        canvas.withClip(cardClipPath) {
-            contentRipple.draw(this)
-            ppRipple.draw(this)
+        // 5. Full-card ripple — only drawn while not swiping or seeking so it
+        //    never visually fights the scroll or progress bar movement.
+        if (!isBeingDragged && !isInSeekMode) {
+            canvas.withClip(cardClipPath) {
+                fullRipple.draw(this)
+            }
         }
     }
 
@@ -1133,6 +1228,11 @@ class MiniPlayer @JvmOverloads constructor(
 
             val item = items[i]
             val bmp = bitmapCache[i]
+
+            // Progress bar — drawn first so it sits behind art and text.
+            // Only the settled page shows the real progress; others show an empty track.
+            val pageFill = if (i == scrollEngine.currentPage) progress else 0f
+            drawPageProgress(canvas, tx, pageW.toFloat(), h, pageFill)
 
             // Art slot — square on the left edge
             canvas.save()
@@ -1422,6 +1522,7 @@ class MiniPlayer @JvmOverloads constructor(
     override fun onAccentChanged(accent: Accent) {
         super.onAccentChanged(accent)
         updateStroke()
+        refreshRippleTheme()
         refreshProgressColors()
         invalidate()
     }
@@ -1481,6 +1582,8 @@ class MiniPlayer @JvmOverloads constructor(
         bgColorAnimator?.cancel()
         elevationAnimator?.cancel()
         edgeFadeAnimator?.cancel()
+        progressBarAlphaAnimator?.cancel()
+        progressValueAnimator?.cancel()
         resetManualHandler.removeCallbacks(resetManualRunnable)
         isManuallyControlled = false
         hadImmersiveDrag = false

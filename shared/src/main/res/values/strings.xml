@@ -244,4 +244,5 @@
     <string name="never_skip">Never Skip</string>
     <string name="add_to_favorites">Add to Favorites</string>
     <string name="remove_from_favorites">Remove from Favorites</string>
+    <string name="no_lyrics_found">No Lyrics Found</string>
 </resources>
