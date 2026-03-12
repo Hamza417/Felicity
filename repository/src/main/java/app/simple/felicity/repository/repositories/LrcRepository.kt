@@ -1,6 +1,7 @@
 package app.simple.felicity.repository.repositories
 
 import android.util.Log
+import app.simple.felicity.repository.metadata.LyricsMetaHelper
 import app.simple.felicity.repository.models.LrcLibResponse
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -184,15 +185,21 @@ class LrcRepository @Inject constructor() {
     suspend fun loadLrcFromFile(audioFilePath: String): Result<String?> {
         return withContext(Dispatchers.IO) {
             try {
+                val lyrics = LyricsMetaHelper.extractEmbeddedLyrics(audioFilePath)
+                if (!lyrics.isNullOrBlank()) {
+                    return@withContext Result.success(lyrics)
+                }
+
                 val lrcFilePath = audioFilePath.substringBeforeLast(".") + ".lrc"
                 val lrcFile = File(lrcFilePath)
 
+                // TODO - which should I prioritize first.
                 if (lrcFile.exists()) {
                     val content = lrcFile.readText()
                     return@withContext Result.success(content)
-                } else {
-                    return@withContext Result.success(null)
                 }
+
+                return@withContext Result.success(null)
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading LRC from file", e)
                 return@withContext Result.failure(e)

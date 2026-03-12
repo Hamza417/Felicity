@@ -5,6 +5,9 @@ import app.simple.felicity.repository.models.Audio
 import java.io.File
 
 object MetaDataHelper {
+
+    private const val TAG = "MetaDataHelper"
+
     fun File.extractMetadata(): Audio? {
         return runCatching {
             JAudioMetadataLoader.loadFromFile(this)
