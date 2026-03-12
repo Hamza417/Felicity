@@ -323,6 +323,18 @@ class FelicityPager @JvmOverloads constructor(
     /** Current scroll state: one of [SCROLL_STATE_IDLE], [SCROLL_STATE_DRAGGING], [SCROLL_STATE_SETTLING]. */
     private var scrollState = SCROLL_STATE_IDLE
 
+    /**
+     * The current scroll state exposed as a read-only property.
+     * Useful for callers that need to know whether the user is actively dragging
+     * before pushing a programmatic position update.
+     *
+     * @see SCROLL_STATE_IDLE
+     * @see SCROLL_STATE_DRAGGING
+     * @see SCROLL_STATE_SETTLING
+     * @author Hamza417
+     */
+    val currentScrollState: Int get() = scrollState
+
     private fun pageCount() = adapter?.getCount() ?: 0
     private fun maxLastPage() = (pageCount() - 1).coerceAtLeast(0)
     private fun maxScrollPx() = maxLastPage() * width.toFloat()

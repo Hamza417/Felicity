@@ -11,7 +11,10 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager._songPositionFlow
+import app.simple.felicity.repository.managers.MediaManager.currentSongPosition
+import app.simple.felicity.repository.managers.MediaManager.mediaController
 import app.simple.felicity.repository.managers.MediaManager.moveQueueItemSilently
+import app.simple.felicity.repository.managers.MediaManager.notifyCurrentPosition
 import app.simple.felicity.repository.managers.MediaManager.removeQueueItemSilently
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ProcessUtils.ensureOnMainThread
@@ -45,6 +48,22 @@ object MediaManager {
     // Used during queue reorders so that moving the playing song's index does not
     // trigger onAudio() in every observer — the song itself hasn't changed.
     private var suppressPositionEmit: Boolean = false
+
+    /**
+     * Tracks positions for which a user-initiated [mediaController.seekTo] has been issued
+     * but the corresponding [notifyCurrentPosition] callback has not yet arrived.
+     *
+     * When the user swipes songs rapidly, ExoPlayer fires [Player.Listener.onMediaItemTransition]
+     * for every intermediate seek — including ones the user has already moved past.
+     * By recording every seekTo target here and consuming entries in [notifyCurrentPosition],
+     * stale callbacks that would otherwise revert [currentSongPosition] and fight the user
+     * are silently discarded.
+     *
+     * All access happens on the main thread, so a plain [MutableSet] is safe.
+     *
+     * @author Hamza417
+     */
+    private val pendingSeekPositions = mutableSetOf<Int>()
 
     // Current queue index. Setter also emits to observers when valid and changed.
     private var currentSongPosition: Int = 0
@@ -86,6 +105,7 @@ object MediaManager {
 
     fun clearMediaController() {
         stopSeekPositionUpdates()
+        pendingSeekPositions.clear()
         mediaController = null
     }
 
@@ -96,6 +116,9 @@ object MediaManager {
      */
     fun setSongs(audios: List<Audio>, position: Int = 0, startPositionMs: Long = 0L) {
         Log.d(TAG, "setSongs called: count=${audios.size}, position=$position, startPositionMs=$startPositionMs")
+
+        // Discard any seeks queued for the previous queue.
+        pendingSeekPositions.clear()
 
         this.songs = audios
         val clampedPosition = if (audios.isEmpty()) 0 else position.coerceIn(0, audios.size - 1)
@@ -396,6 +419,9 @@ object MediaManager {
                 // Let ExoPlayer handle the transition naturally for gapless playback
                 // Only seek if the controller is not already on this track
                 if (mediaController?.currentMediaItemIndex != position) {
+                    // Register before seekTo so the arriving onMediaItemTransition callback
+                    // is identified as a confirmation rather than a natural advance.
+                    pendingSeekPositions.add(position)
                     mediaController?.seekTo(position, 0L)
                     // Only start playing if we were already playing, otherwise just prepare
                     if (mediaController?.isPlaying == true) {
@@ -615,12 +641,22 @@ object MediaManager {
                 }
                 // All songs are always-skip → play anyway to avoid infinite loop
             }
-            // Check if position actually changed to avoid unnecessary emissions
-            if (currentSongPosition != position) {
-                // Directly update without using setter to avoid potential feedback loops
-                // But we need to emit manually since we're not using the setter
-                currentSongPosition = position
-                scope.launch { _songPositionFlow.emit(position) }
+
+            if (pendingSeekPositions.remove(position)) {
+                // This is ExoPlayer confirming a user-initiated seekTo call.
+                // currentSongPosition has already been updated by updatePosition();
+                // only emit if the position still matches (rapid swipes may have moved further).
+                if (currentSongPosition == position) {
+                    scope.launch { _songPositionFlow.emit(position) }
+                }
+                // If currentSongPosition != position the user already moved on — discard.
+            } else {
+                // Natural ExoPlayer advance (end of track, auto-next, gapless, etc.).
+                // Update our tracking position and notify the UI.
+                if (currentSongPosition != position) {
+                    currentSongPosition = position
+                    scope.launch { _songPositionFlow.emit(position) }
+                }
             }
         } else {
             Log.w(TAG, "notifyCurrentPosition: Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")

@@ -56,6 +56,7 @@
             android:layout_width="@dimen/button_size"
             android:layout_height="@dimen/button_size"
             android:layout_marginEnd="@dimen/padding_1"
+            android:padding="6dp"
             android:src="@drawable/ic_favorite_border"
             app:buttonTintType="regular" />
 

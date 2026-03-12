@@ -10,13 +10,18 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.Rect
 import android.os.Bundle
 import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.withScale
+import androidx.core.graphics.withTranslation
 import androidx.core.os.BundleCompat
+import app.simple.felicity.decoration.R
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
@@ -27,20 +32,25 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * A custom heart-shaped favorite button with rich state animations:
+ * A favorite/unfavorite toggle button backed by [R.drawable.ic_favorite_filled] and
+ * [R.drawable.ic_favorite_border], with two distinct direction-aware animations:
  *
- * - **Pop balloon explode** — particle burst on every state toggle when [isExplosionEnabled] = true
- * - **Heartbeat overshoot** — the heart shrinks to zero then bounces back when [isExplosionEnabled] = false
- * - **Continuous lub-dub pulse** — a natural double-beat heartbeat while the button stays in the
- *   favorite state (frequency = [beatsPerSecond], scale amplitude = [beatIntensity])
- * - Accent color when favorited; regular icon color otherwise
- * - Fully theme-aware via [ThemeChangedListener]
+ * ### Unfavoriting (favorite → not-favorite)  `isExplosionEnabled = true`
+ * **Balloon burst** — the filled icon briefly swells (~12 % scale-up), then the icon
+ * snaps away and 10–12 irregular torn-rubber polygon shards fly outward in all
+ * directions, spinning and fading. When the debris clears the outline icon is revealed.
  *
- * ### Heartbeat tuning
- * | Property         | Description                                        | Recommended |
- * |------------------|----------------------------------------------------|-------------|
- * | [beatsPerSecond] | Heartbeat frequency                                | 1.0 – 2.0   |
- * | [beatIntensity]  | Scale-up expansion per beat (0.0 = none, 1.0 = max)| 0.10 – 0.30 |
+ * ### Favoriting (not-favorite → favorite)  `isExplosionEnabled = true`
+ * **Resurrection** — the filled icon appears immediately. Three escalating *lub-dub*
+ * beats play over ~3.5 s — the first barely a flutter, the second medium, the third
+ * full-strength — then the animation hands off to the infinite [startHeartbeat] loop.
+ *
+ * ### `isExplosionEnabled = false`
+ * Both directions fall back to a gentle scale-in with a barely-perceptible overshoot.
+ *
+ * ### Colors
+ * - Favorited   → [favoriteColor] (default: accent)
+ * - Unfavorited → [normalColor]   (default: regular icon color)
  */
 class FavoriteButton @JvmOverloads constructor(
         context: Context,
@@ -50,67 +60,65 @@ class FavoriteButton @JvmOverloads constructor(
 
     // ── State ─────────────────────────────────────────────────────────────────
 
-    /**
-     * Current favorite state. Use [setFavorite] or [toggle] to change it.
-     */
+    /** Current favorite state. Change via [setFavorite] or [toggle]. */
     var isFavorite: Boolean = false
         private set
 
     // ── Colors ────────────────────────────────────────────────────────────────
 
-    /**
-     * Color used while the button is in the *favorite* state.
-     * Defaults to the current accent color.
-     */
+    /** Tint color when favorited. Defaults to the accent color. */
     var favoriteColor: Int = if (isInEditMode) 0xFFE91E63.toInt() else ThemeManager.accent.primaryAccentColor
         set(value) {
             field = value
             if (isFavorite) {
-                currentColor = value
-                heartPaint.color = value
-                invalidate()
+                currentColor = value; invalidate()
             }
         }
 
-    /**
-     * Color used while the button is *not* in the favorite state.
-     * Defaults to the regular icon color from the active theme.
-     */
+    /** Tint color when not favorited. Defaults to the regular icon color. */
     var normalColor: Int = if (isInEditMode) 0xFFAAAAAA.toInt() else ThemeManager.theme.iconTheme.regularIconColor
         set(value) {
             field = value
             if (!isFavorite) {
-                currentColor = value
-                heartPaint.color = value
-                invalidate()
+                currentColor = value; invalidate()
             }
         }
 
-    /** Currently displayed / interpolated color. */
-    private var currentColor: Int = if (isInEditMode) 0xFFAAAAAA.toInt() else ThemeManager.theme.iconTheme.regularIconColor
+    /** Currently displayed / animating tint color. */
+    private var currentColor: Int =
+        if (isInEditMode) 0xFFAAAAAA.toInt() else ThemeManager.theme.iconTheme.regularIconColor
 
-    // ── Animation options ─────────────────────────────────────────────────────
+    // ── Drawables ─────────────────────────────────────────────────────────────
+
+    private val filledDrawable = if (!isInEditMode)
+        ContextCompat.getDrawable(context, R.drawable.ic_favorite_filled)?.mutate() else null
+
+    private val borderDrawable = if (!isInEditMode)
+        ContextCompat.getDrawable(context, R.drawable.ic_favorite_border)?.mutate() else null
+
+    private var currentDrawable = borderDrawable
+
+    // ── Options ───────────────────────────────────────────────────────────────
 
     /**
-     * When `true` a particle-burst explosion plays on each state toggle.
-     * When `false` a heartbeat-style overshoot scale animation is used instead.
+     * `true`  → direction-aware animations (burst on unfav, resurrection on fav).
+     * `false` → gentle scale-in overshoot in both directions.
      */
     var isExplosionEnabled: Boolean = true
 
     /**
-     * How many heartbeats per second while the button is in the favorite state.
-     * Recommended: 1.0 – 2.0  (default **1.2**).
+     * Heartbeat frequency while favorited (beats per second).
+     * Recommended: 0.5 – 1.5  (default **0.6**).
      */
-    var beatsPerSecond: Float = 0.6F
+    var beatsPerSecond: Float = 0.6f
         set(value) {
             field = value.coerceAtLeast(0.1f)
             if (isFavorite) restartHeartbeat()
         }
 
     /**
-     * Peak scale expansion on each heartbeat.
-     * `0.0` = no visible pulse · `0.3` = 30 % expansion.
-     * Recommended: 0.10 – 0.30  (default **0.20**).
+     * Peak scale expansion per heartbeat (0 = none, 1 = max).
+     * Recommended: 0.05 – 0.20  (default **0.10**).
      */
     var beatIntensity: Float = 0.10f
         set(value) {
@@ -118,52 +126,70 @@ class FavoriteButton @JvmOverloads constructor(
             if (isFavorite) restartHeartbeat()
         }
 
-    // ── Paints ────────────────────────────────────────────────────────────────
-
-    private val heartPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
-
-    private val particlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
-
     // ── Geometry ──────────────────────────────────────────────────────────────
 
-    private val heartPath = Path()
-    private var heartSize = 0f
+    private var iconSize = 0f
+    private val drawableBounds = Rect()
 
-    // ── Runtime scale ─────────────────────────────────────────────────────────
+    // ── Animated values ───────────────────────────────────────────────────────
 
-    /** Uniform scale factor applied to the heart during all animations. */
-    private var heartScale = 1f
+    private var iconScale = 1f
 
-    // ── Animators ─────────────────────────────────────────────────────────────
+    /**
+     * Scale of the [borderDrawable] while it is simultaneously revealed behind
+     * the balloon-burst shards (0 = hidden, 1 = full size). Only non-zero during
+     * an active [burstAnimation]; reset to 0 on completion or cancellation.
+     */
+    private var borderRevealScale = 0f
 
-    private var toggleAnimator: ValueAnimator? = null
-    private var heartbeatAnimator: ValueAnimator? = null
-    private var colorAnimator: ValueAnimator? = null
-    private var particleAnimator: ValueAnimator? = null
+    /**
+     * Tracks how far the shard burst has progressed (0 = origin, 1 = destination).
+     * Used in [onDraw] to compute each shard's current rotation angle without
+     * accumulating floating-point error per frame.
+     */
+    private var shardProgress = 0f
 
-    // ── Particles ─────────────────────────────────────────────────────────────
+    // ── Shard model ───────────────────────────────────────────────────────────
 
-    private data class Particle(
+    /**
+     * One torn-rubber fragment used in the balloon-burst explosion.
+     *
+     * @param x / y          Current screen position (updated each frame).
+     * @param originX/Y      Starting position (near the icon centre perimeter).
+     * @param destX/Y        Final resting position (well outside the icon).
+     * @param startRotation  Initial rotation angle in degrees.
+     * @param totalRotation  Total degrees rotated by the time the shard reaches [destX/Y].
+     * @param path           Irregular polygon centered at the local origin.
+     * @param color          ARGB shard color (carries the accent color of the burst icon).
+     * @param alpha          0–1 opacity, faded to 0 as the animation progresses.
+     */
+    private data class Shard(
             var x: Float,
             var y: Float,
             val originX: Float,
             val originY: Float,
             val destX: Float,
             val destY: Float,
-            val radius: Float,
+            val startRotation: Float,
+            val totalRotation: Float,
+            val path: Path,
             val color: Int,
-            var alpha: Float = 1f,
+            var alpha: Float = 0f, // starts invisible; revealed only after the burst moment
     )
 
-    private val particles = mutableListOf<Particle>()
+    private val shards = mutableListOf<Shard>()
+    private val shardPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
 
-    // ── Listener ──────────────────────────────────────────────────────────────
+    // ── Animators ─────────────────────────────────────────────────────────────
 
-    /** Invoked whenever the favorite state changes, passing the new state. */
+    private var toggleAnimator: ValueAnimator? = null
+    private var burstAnimator: ValueAnimator? = null
+    private var heartbeatAnimator: ValueAnimator? = null
+    private var colorAnimator: ValueAnimator? = null
+
+    // ── Callback ──────────────────────────────────────────────────────────────
+
+    /** Invoked whenever the favorite state changes. */
     var onFavoriteChanged: ((Boolean) -> Unit)? = null
 
     // ── Init ──────────────────────────────────────────────────────────────────
@@ -172,158 +198,165 @@ class FavoriteButton @JvmOverloads constructor(
         isClickable = true
         isFocusable = true
         setOnClickListener { toggle() }
-        heartPaint.color = currentColor
     }
 
     // ── Layout ────────────────────────────────────────────────────────────────
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        heartSize = min(
-                w - paddingLeft - paddingRight,
-                h - paddingTop - paddingBottom,
-        ).toFloat() * 0.72f
-        buildHeartPath(heartSize)
+        iconSize = min(w - paddingLeft - paddingRight, h - paddingTop - paddingBottom).toFloat() * 0.72f
+        val half = (iconSize / 2).toInt()
+        drawableBounds.set(-half, -half, half, half)
+        filledDrawable?.bounds = drawableBounds
+        borderDrawable?.bounds = drawableBounds
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    /** Toggles between favorite and not-favorite with animation. */
+    /** Toggles the favorite state with animation. */
     fun toggle() = setFavorite(!isFavorite, animate = true)
 
     /**
      * Explicitly sets the favorite state.
      *
-     * @param favorite  The desired state.
-     * @param animate   Whether to animate the transition (default `true`).
+     * @param favorite Desired state.
+     * @param animate  Whether to animate the transition (default `true`).
      */
     fun setFavorite(favorite: Boolean, animate: Boolean = true) {
         if (isFavorite == favorite) return
+        val fromColor = currentColor
         isFavorite = favorite
-
         val targetColor = if (favorite) favoriteColor else normalColor
 
-        // Cancel any in-flight animation before starting new ones.
         stopHeartbeat()
-        toggleAnimator?.cancel()
-        particleAnimator?.cancel()
-        particles.clear()
-        colorAnimator?.cancel()
-        heartScale = 1f
+        cancelTransitionAnimators()
 
         if (animate) {
-            animateColorTo(currentColor, targetColor)
+            animateColorTo(fromColor, targetColor)
             if (isExplosionEnabled) {
-                spawnExplosion(targetColor)
+                if (favorite) {
+                    // ── Favoriting: resurrection ──────────────────────────────
+                    // Switch to the filled icon straight away; the animation
+                    // drives the scale so the heart "comes back to life" gradually.
+                    currentDrawable = filledDrawable
+                    startHeartbeatWithResurrection()
+                } else {
+                    // ── Unfavoriting: balloon burst ───────────────────────────
+                    // currentDrawable is still filledDrawable (we're leaving fav);
+                    // it will be replaced by borderDrawable at the end of the burst.
+                    burstAnimation(fromColor)
+                }
             } else {
-                animateToggle()
+                currentDrawable = if (favorite) filledDrawable else borderDrawable
+                animateSubtlePop()
+                if (favorite) startHeartbeat()
             }
         } else {
             currentColor = targetColor
-            heartPaint.color = targetColor
+            currentDrawable = if (favorite) filledDrawable else borderDrawable
+            iconScale = 1f
             invalidate()
+            if (favorite) startHeartbeat()
         }
 
-        if (favorite) startHeartbeat()
         onFavoriteChanged?.invoke(isFavorite)
     }
 
-    // ── Color animation ───────────────────────────────────────────────────────
+    // ── Color ─────────────────────────────────────────────────────────────────
 
     private fun animateColorTo(from: Int, to: Int) {
         colorAnimator = ValueAnimator.ofObject(ArgbEvaluator(), from, to).apply {
-            duration = 360L
-            addUpdateListener {
-                currentColor = it.animatedValue as Int
-                heartPaint.color = currentColor
-                invalidate()
-            }
+            duration = 380L
+            addUpdateListener { currentColor = it.animatedValue as Int; invalidate() }
             start()
         }
     }
 
-    // ── Toggle animation (explosion-off path) ─────────────────────────────────
+    // ── Balloon burst (unfavoriting) ──────────────────────────────────────────
 
     /**
-     * Shrinks the heart to zero then bounces it back to full size via an
-     * overshoot interpolator — giving a satisfying "pop" without particles.
-     */
-    private fun animateToggle() {
-        heartScale = 0f
-        toggleAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 450L
-            interpolator = OvershootInterpolator(2.8f)
-            addUpdateListener {
-                heartScale = it.animatedValue as Float
-                invalidate()
-            }
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    heartScale = 1f
-                    invalidate()
-                }
-            })
-            start()
-        }
-    }
-
-    // ── Explosion ─────────────────────────────────────────────────────────────
-
-    /**
-     * Spawns a radial burst of circular particles from the button centre.
-     * Simultaneously the heart icon pops in from scale 0 with a short overshoot.
+     * Three-phase balloon burst:
      *
-     * @param color Target color (used to tint some particles).
+     * 1. **Pre-pop swell** (t = 0 → 0.14): icon scales from 1.0 → 1.12. Shards are
+     *    spawned but invisible (`alpha = 0`), ready to fire.
+     * 2. **Burst** (t = 0.14+): icon scale snaps to 0, shards explode outward with
+     *    random rotation and deceleration, fading as they travel.
+     * 3. **End**: shards cleared, [borderDrawable] shown at full scale.
+     *
+     * @param fromColor The accent/favorite color — shards carry this tint.
      */
-    private fun spawnExplosion(color: Int) {
-        particles.clear()
+    private fun burstAnimation(fromColor: Int) {
+        shards.clear()
+        shardProgress = 0f
+
         val cx = width / 2f
         val cy = height / 2f
-        val maxDist = heartSize * 0.92f
-        val count = 14
+        val count = 11
 
         repeat(count) { i ->
             val baseAngle = (2.0 * Math.PI * i / count).toFloat()
-            val jitter = Random.nextFloat() * 0.45f - 0.225f
+            val jitter = (Random.nextFloat() - 0.5f) * 0.55f
             val angle = baseAngle + jitter
-            val dist = maxDist * (0.50f + Random.nextFloat() * 0.50f)
-            val radius = heartSize * (0.035f + Random.nextFloat() * 0.055f)
-            val pColor = if (Random.nextBoolean()) color else blendColors(color, currentColor, Random.nextFloat())
-            particles += Particle(
-                    x = cx, y = cy,
-                    originX = cx, originY = cy,
-                    destX = cx + cos(angle) * dist,
-                    destY = cy + sin(angle) * dist,
-                    radius = radius,
-                    color = pColor,
+            // Shards start near the perimeter of the icon, not at dead-centre,
+            // to reinforce the illusion that the icon itself is fragmenting.
+            val startR = iconSize * (0.08f + Random.nextFloat() * 0.22f)
+            val destR = iconSize * (0.68f + Random.nextFloat() * 0.52f)
+            val shardSize = iconSize * (0.07f + Random.nextFloat() * 0.09f)
+
+            shards += Shard(
+                    x = cx + cos(angle) * startR,
+                    y = cy + sin(angle) * startR,
+                    originX = cx + cos(angle) * startR,
+                    originY = cy + sin(angle) * startR,
+                    destX = cx + cos(angle) * destR,
+                    destY = cy + sin(angle) * destR,
+                    startRotation = Random.nextFloat() * 360f,
+                    totalRotation = (Random.nextFloat() - 0.5f) * 640f, // ±320 °
+                    path = buildShardPath(shardSize),
+                    color = fromColor,
+                    alpha = 0f,
             )
         }
 
-        heartScale = 0f
-        particleAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 540L
+        iconScale = 1f
+        burstAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 620L
             interpolator = DecelerateInterpolator(1.5f)
             addUpdateListener { va ->
                 val t = va.animatedValue as Float
+                if (t < 0.14f) {
+                    // Pre-pop swell — icon grows slightly under pressure
+                    iconScale = lerp(1f, 1.12f, t / 0.14f)
+                    shardProgress = 0f
+                    borderRevealScale = 0f
+                } else {
+                    // Burst — filled icon vanishes, border scales in simultaneously behind shards
+                    val bt = (t - 0.14f) / 0.86f
+                    shardProgress = bt
+                    iconScale = 0f
 
-                // Move particles outward and fade them
-                particles.forEach { p ->
-                    p.x = lerp(p.originX, p.destX, t)
-                    p.y = lerp(p.originY, p.destY, t)
-                    p.alpha = (1f - t).coerceIn(0f, 1f)
-                }
+                    // Border scales in over the first 65 % of the burst using a smooth-step
+                    // curve so it feels like it surfaces from behind the explosion.
+                    val revealT = (bt / 0.65f).coerceIn(0f, 1f)
+                    borderRevealScale = smoothStep(revealT)
 
-                // Heart: 0→0.38 scale from 0→1.18 (overshoot), 0.38→1.0 settle to 1.0
-                heartScale = when {
-                    t < 0.38f -> (t / 0.38f) * 1.18f
-                    else -> lerp(1.18f, 1f, (t - 0.38f) / 0.62f)
+                    shards.forEach { s ->
+                        s.x = lerp(s.originX, s.destX, bt)
+                        s.y = lerp(s.originY, s.destY, bt)
+                        // Fade starts full at burst moment and reaches 0 slightly
+                        // before the shards hit their destinations.
+                        s.alpha = (1f - bt * 1.18f).coerceIn(0f, 1f)
+                    }
                 }
                 invalidate()
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
-                    particles.clear()
-                    heartScale = 1f
+                    shards.clear()
+                    shardProgress = 0f
+                    borderRevealScale = 0f
+                    currentDrawable = borderDrawable
+                    iconScale = 1f
                     invalidate()
                 }
             })
@@ -331,22 +364,123 @@ class FavoriteButton @JvmOverloads constructor(
         }
     }
 
-    // ── Heartbeat ─────────────────────────────────────────────────────────────
+    /**
+     * Builds an irregular polygon [Path] centered at the local origin `(0, 0)`.
+     *
+     * A random number of vertices (3 or 4) are placed around the origin with
+     * small angular and radial jitter to produce an uneven, torn-edge silhouette.
+     */
+    private fun buildShardPath(size: Float): Path {
+        val path = Path()
+        val sides = 3 + Random.nextInt(2)
+        val firstAngle = Random.nextFloat() * (2f * Math.PI.toFloat())
+        val angleStep = (2f * Math.PI.toFloat()) / sides
+
+        path.moveTo(
+                cos(firstAngle) * size * (0.40f + Random.nextFloat() * 0.60f),
+                sin(firstAngle) * size * (0.40f + Random.nextFloat() * 0.60f),
+        )
+        for (k in 1 until sides) {
+            val a = firstAngle + angleStep * k + (Random.nextFloat() - 0.5f) * angleStep * 0.70f
+            val r = size * (0.35f + Random.nextFloat() * 0.65f)
+            path.lineTo(cos(a) * r, sin(a) * r)
+        }
+        path.close()
+        return path
+    }
+
+    // ── Subtle pop (explosion disabled) ──────────────────────────────────────
 
     /**
-     * Starts the continuous lub-dub heartbeat animation that runs while
-     * [isFavorite] is `true`.
+     * Used when [isExplosionEnabled] is `false`.
+     * Scales the icon in from 82 % with a barely-there overshoot (~2 %).
+     */
+    private fun animateSubtlePop() {
+        iconScale = 0.82f
+        toggleAnimator = ValueAnimator.ofFloat(0.82f, 1f).apply {
+            duration = 300L
+            interpolator = OvershootInterpolator(0.6f)
+            addUpdateListener { iconScale = it.animatedValue as Float; invalidate() }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    iconScale = 1f; invalidate()
+                }
+            })
+            start()
+        }
+    }
+
+    // ── Resurrection heartbeat (favoriting) ───────────────────────────────────
+
+    /**
+     * Plays a one-shot warm-up sequence before handing off to the infinite
+     * [startHeartbeat] loop. The three escalating beats simulate a heart
+     * "waking up" after being dormant:
      *
-     * The keyframe profile (fraction → scale):
      * ```
-     *  0.00 → 1.0          (rest)
-     *  0.09 → 1.0 + I      (lub — first, larger beat)
-     *  0.17 → 1.0 − I×0.08 (brief dip between the two beats)
-     *  0.26 → 1.0 + I×0.65 (dub — second, slightly softer beat)
-     *  0.38 → 1.0          (settle back to rest)
-     *  1.00 → 1.0          (hold rest until next cycle)
+     * fraction → scale             description
+     * ──────────────────────────────────────────────────────────────
+     *  0.00  →  1.0                silence
+     *  0.09  →  1 + I × 0.25      beat 1 — barely a flutter
+     *  0.20  →  1.0                silence
+     *  0.34  →  1 + I × 0.55      beat 2 — lub, medium
+     *  0.42  →  1 − I × 0.04      dip
+     *  0.49  →  1 + I × 0.38      beat 2 — dub, softer
+     *  0.59  →  1.0                silence
+     *  0.71  →  1 + I             beat 3 — lub, full strength
+     *  0.77  →  1 − I × 0.08      dip
+     *  0.84  →  1 + I × 0.65      beat 3 — dub
+     *  1.00  →  1.0                final rest → hand off to normal loop
      * ```
-     * where I = [beatIntensity].
+     * Total warm-up duration: 3 500 ms.
+     */
+    private fun startHeartbeatWithResurrection() {
+        heartbeatAnimator?.cancel()
+        val i = beatIntensity
+
+        val pvh = PropertyValuesHolder.ofKeyframe(
+                "s",
+                Keyframe.ofFloat(0.00f, 1f),
+                // Beat 1 — barely alive
+                Keyframe.ofFloat(0.09f, 1f + i * 0.25f),
+                Keyframe.ofFloat(0.20f, 1f),
+                // Beat 2 — medium, first dub appearing
+                Keyframe.ofFloat(0.34f, 1f + i * 0.55f),
+                Keyframe.ofFloat(0.42f, 1f - i * 0.04f),
+                Keyframe.ofFloat(0.49f, 1f + i * 0.38f),
+                Keyframe.ofFloat(0.59f, 1f),
+                // Beat 3 — full lub-dub, ready to loop
+                Keyframe.ofFloat(0.71f, 1f + i),
+                Keyframe.ofFloat(0.77f, 1f - i * 0.08f),
+                Keyframe.ofFloat(0.84f, 1f + i * 0.65f),
+                Keyframe.ofFloat(1.00f, 1f),
+        )
+
+        heartbeatAnimator = ValueAnimator.ofPropertyValuesHolder(pvh).apply {
+            duration = 3_500L
+            addUpdateListener { iconScale = it.getAnimatedValue("s") as Float; invalidate() }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    if (isFavorite) startHeartbeat()
+                }
+            })
+            start()
+        }
+    }
+
+    // ── Normal heartbeat loop ─────────────────────────────────────────────────
+
+    /**
+     * Infinite *lub-dub* heartbeat running while [isFavorite] is `true`.
+     *
+     * ```
+     *  0.00 → 1.0           rest
+     *  0.09 → 1.0 + I       lub  (primary)
+     *  0.17 → 1.0 − I×0.08  inter-beat dip
+     *  0.26 → 1.0 + I×0.65  dub  (secondary)
+     *  0.38 → 1.0           settle
+     *  1.00 → 1.0           hold
+     * ```
      */
     private fun startHeartbeat() {
         heartbeatAnimator?.cancel()
@@ -367,10 +501,7 @@ class FavoriteButton @JvmOverloads constructor(
             duration = periodMs
             repeatCount = ValueAnimator.INFINITE
             repeatMode = ValueAnimator.RESTART
-            addUpdateListener {
-                heartScale = it.getAnimatedValue("s") as Float
-                invalidate()
-            }
+            addUpdateListener { iconScale = it.getAnimatedValue("s") as Float; invalidate() }
             start()
         }
     }
@@ -378,7 +509,6 @@ class FavoriteButton @JvmOverloads constructor(
     private fun stopHeartbeat() {
         heartbeatAnimator?.cancel()
         heartbeatAnimator = null
-        heartScale = 1f
     }
 
     private fun restartHeartbeat() {
@@ -386,7 +516,19 @@ class FavoriteButton @JvmOverloads constructor(
         if (isFavorite) startHeartbeat()
     }
 
-    // ── Drawing ───────────────────────────────────────────────────────────────
+    // ── Cancel helpers ────────────────────────────────────────────────────────
+
+    private fun cancelTransitionAnimators() {
+        toggleAnimator?.cancel(); toggleAnimator = null
+        burstAnimator?.cancel(); burstAnimator = null
+        colorAnimator?.cancel(); colorAnimator = null
+        shards.clear()
+        shardProgress = 0f
+        borderRevealScale = 0f
+        iconScale = 1f
+    }
+
+    // ── Draw ──────────────────────────────────────────────────────────────────
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -394,77 +536,56 @@ class FavoriteButton @JvmOverloads constructor(
         val cx = width / 2f
         val cy = height / 2f
 
-        // Particles drawn behind the heart
-        for (p in particles) {
-            particlePaint.color = p.color
-            particlePaint.alpha = (p.alpha * 255).toInt().coerceIn(0, 255)
-            canvas.drawCircle(p.x, p.y, p.radius, particlePaint)
+        // 1 — Border icon revealed simultaneously behind the burst shards.
+        //     Only drawn when borderRevealScale > 0 (i.e. during an active burst).
+        if (borderRevealScale > 0f) {
+            borderDrawable?.let { bd ->
+                bd.setTint(normalColor)
+                canvas.withScale(borderRevealScale, borderRevealScale, cx, cy) {
+                    translate(cx, cy)
+                    bd.draw(this)
+                }
+            }
         }
 
-        // Heart — centered at (cx, cy) with animated scale pivot
-        canvas.save()
-        canvas.scale(heartScale, heartScale, cx, cy)
-        canvas.translate(cx, cy)
-        heartPaint.color = currentColor
-        canvas.drawPath(heartPath, heartPaint)
-        canvas.restore()
-    }
+        // 2 — Main icon (drawn above the border reveal; during burst this has iconScale = 0
+        //     so nothing is visible, letting the border show through unobstructed).
+        val d = currentDrawable ?: return
+        d.setTint(currentColor)
+        canvas.withScale(iconScale, iconScale, cx, cy) {
+            translate(cx, cy)
+            d.draw(this)
+        }
 
-    // ── Heart path ────────────────────────────────────────────────────────────
-
-    /**
-     * Builds a symmetric heart [Path] centered at the origin `(0, 0)`,
-     * fitting tightly within a square of side [size].
-     *
-     * The path is constructed from four cubic Bézier segments:
-     * bottom-tip → left-centre → top-dip → right-centre → bottom-tip.
-     */
-    private fun buildHeartPath(size: Float) {
-        heartPath.reset()
-        val w = size / 2f   // half-width
-        val h = size / 2f   // half-height
-
-        // Bottom tip
-        heartPath.moveTo(0f, h * 0.90f)
-
-        // Bottom-left → left-centre
-        heartPath.cubicTo(
-                -w * 0.09f, h * 0.60f,
-                -w * 0.90f, h * 0.30f,
-                -w * 0.90f, -h * 0.10f,
-        )
-        // Left-centre → top dip (through left lobe)
-        heartPath.cubicTo(
-                -w * 0.90f, -h * 0.65f,
-                -w * 0.38f, -h * 0.90f,
-                0f, -h * 0.50f,
-        )
-        // Top dip → right-centre (through right lobe)
-        heartPath.cubicTo(
-                w * 0.38f, -h * 0.90f,
-                w * 0.90f, -h * 0.65f,
-                w * 0.90f, -h * 0.10f,
-        )
-        // Right-centre → bottom tip
-        heartPath.cubicTo(
-                w * 0.90f, h * 0.30f,
-                w * 0.09f, h * 0.60f,
-                0f, h * 0.90f,
-        )
-        heartPath.close()
+        // 3 — Shards (drawn on top of everything; only present during the burst animation)
+        for (shard in shards) {
+            if (shard.alpha <= 0f) continue
+            val alphaInt = (shard.alpha * 255f).toInt().coerceIn(0, 255)
+            // Encode animated alpha into the shard's RGB color.
+            shardPaint.color = shard.color
+            shardPaint.alpha = alphaInt
+            // Rotation angle is derived from shardProgress so it is always
+            // consistent with the shard's current position — no per-frame accumulation.
+            val rotation = shard.startRotation + shard.totalRotation * shardProgress
+            canvas.withTranslation(shard.x, shard.y) {
+                rotate(rotation)
+                drawPath(shard.path, shardPaint)
+            }
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
 
-    private fun blendColors(c1: Int, c2: Int, ratio: Float): Int {
-        val a = lerp(((c1 shr 24) and 0xFF).toFloat(), ((c2 shr 24) and 0xFF).toFloat(), ratio).toInt()
-        val r = lerp(((c1 shr 16) and 0xFF).toFloat(), ((c2 shr 16) and 0xFF).toFloat(), ratio).toInt()
-        val g = lerp(((c1 shr 8) and 0xFF).toFloat(), ((c2 shr 8) and 0xFF).toFloat(), ratio).toInt()
-        val b = lerp((c1 and 0xFF).toFloat(), (c2 and 0xFF).toFloat(), ratio).toInt()
-        return (a shl 24) or (r shl 16) or (g shl 8) or b
-    }
+    /**
+     * Classic smooth-step curve: starts and ends with zero derivative for a
+     * natural ease-in / ease-out feel. [t] must be in [0, 1].
+     *
+     * @author Hamza417
+     */
+    private fun smoothStep(t: Float): Float = t * t * (3f - 2f * t)
+
 
     // ── State persistence ─────────────────────────────────────────────────────
 
@@ -505,10 +626,8 @@ class FavoriteButton @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         ThemeManager.removeListener(this)
-        toggleAnimator?.cancel()
-        heartbeatAnimator?.cancel()
-        particleAnimator?.cancel()
-        colorAnimator?.cancel()
+        cancelTransitionAnimators()
+        stopHeartbeat()
     }
 
     // ── Companion ─────────────────────────────────────────────────────────────

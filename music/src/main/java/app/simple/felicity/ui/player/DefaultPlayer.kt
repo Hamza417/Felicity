@@ -197,8 +197,11 @@ class DefaultPlayer : MediaFragment() {
     override fun onPositionChanged(position: Int) {
         super.onPositionChanged(position)
         Log.i(TAG, "Position changed to $position")
-        if (binding.pager.getCurrentItem() != position) {
-            binding.pager.setCurrentItem(position, true)
+        // Never move the pager while the user's finger is on it — that would fight the gesture.
+        if (binding.pager.currentScrollState != FelicityPager.SCROLL_STATE_DRAGGING) {
+            if (binding.pager.getCurrentItem() != position) {
+                binding.pager.setCurrentItem(position, true)
+            }
         }
         binding.count.text = buildString {
             append(position + 1)
