@@ -8,6 +8,7 @@ import android.os.Vibrator
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.content.getSystemService
+import app.simple.felicity.preferences.BehaviourPreferences
 
 object VibrateUtils {
     /**
@@ -17,6 +18,11 @@ object VibrateUtils {
      * and ultimately to [performHapticFeedback] on older devices.
      */
     fun Context.vibrateEffect(effectId: Int, tag: String = "VibrateUtils") {
+        if (!BehaviourPreferences.isHapticFeedbackEnabled()) {
+            Log.d(tag, "Haptic feedback is disabled in preferences, skipping vibration.")
+            return
+        }
+
         Log.d(tag, "Attempting to vibrate with effectId: $effectId")
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -28,8 +34,24 @@ object VibrateUtils {
         }
     }
 
+    fun Context.vibrate(amplitude: Int, duration: Long = 100L, tag: String = "VibrateUtils") {
+        if (!BehaviourPreferences.isHapticFeedbackEnabled()) {
+            Log.d(tag, "Haptic feedback is disabled in preferences, skipping vibration.")
+            return
+        }
+
+        Log.d(tag, "Attempting to vibrate with amplitude: $amplitude, duration: $duration")
+        getSystemService<Vibrator>()?.vibrate(
+                VibrationEffect.createOneShot(duration, amplitude)
+        )
+    }
+
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun Context.vibrateWithAttributes(effectId: Int) {
+        if (!BehaviourPreferences.isHapticFeedbackEnabled()) {
+            return
+        }
+
         val attrs = VibrationAttributes.Builder()
             .setUsage(VibrationAttributes.USAGE_MEDIA)
             .build()

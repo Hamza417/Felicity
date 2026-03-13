@@ -11,6 +11,7 @@ object BehaviourPreferences {
     const val DAMPING_RATIO = "scrolling_damping_ratio"
     private const val MARQUEE = "is_marquee_on"
     private const val FAST_SCROLL_BEHAVIOR = "fast_scroll_behavior"
+    private const val HAPTIC_FEEDBACK = "haptic_feedback"
 
     const val HIDE_FAST_SCROLLBAR = 0
     const val FADE_FAST_SCROLLBAR = 1
@@ -70,5 +71,18 @@ object BehaviourPreferences {
     fun getFastScrollBehavior(): Int {
         return SharedPreferences.getSharedPreferences()
             .getInt(FAST_SCROLL_BEHAVIOR, FADE_FAST_SCROLLBAR)
+    }
+
+    // ---------------------------------------------------------------------------------------------------------- //
+
+    fun setHapticFeedback(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit {
+            putBoolean(HAPTIC_FEEDBACK, enabled)
+        }
+    }
+
+    fun isHapticFeedbackEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences()
+            .getBoolean(HAPTIC_FEEDBACK, true)
     }
 }

@@ -253,4 +253,7 @@
     <string name="force_stereo_downmixing">Forced Stereo Downmixing</string>
     <string name="force_stereo_downmixing_summary">Force downmixing of multichannel audio (e.g. 5.1, 7.1) to stereo (2.0). Unless you are using compatible hardware for audio output to multichannel devices, keep it enabled or you may experience freezes on audio files with higher channels.</string>
     <string name="stereo_widening">Stereo Widening</string>
+    <string name="application">Application</string>
+    <string name="haptic_feedback">Haptic Feedbacks</string>
+    <string name="haptic_feedback_summary">Toggle haptic feedbacks on various interactions in the app.</string>
 </resources>

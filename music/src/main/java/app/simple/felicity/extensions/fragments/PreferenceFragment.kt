@@ -376,6 +376,8 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val applicationHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.application)
+
         val predictiveBackToggle = Preference(
                 title = R.string.predictive_back,
                 summary = R.string.predictive_back_summary,
@@ -391,11 +393,28 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val hapticToggle = Preference(
+                title = R.string.haptic_feedback,
+                summary = R.string.haptic_feedback_summary,
+                icon = R.drawable.ic_vibration,
+                type = PreferenceType.SWITCH,
+                valueProvider = {
+                    BehaviourPreferences.isHapticFeedbackEnabled()
+                },
+                onPreferenceAction = { view, callback ->
+                    val isChecked = (view as FelicitySwitch).isChecked
+                    BehaviourPreferences.setHapticFeedback(isChecked)
+                    true
+                }
+        )
+
         preferences.add(listHeader)
         preferences.add(fastScrollBehavior)
+        preferences.add(applicationHeader)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             preferences.add(predictiveBackToggle)
         }
+        preferences.add(hapticToggle)
 
         return preferences
     }

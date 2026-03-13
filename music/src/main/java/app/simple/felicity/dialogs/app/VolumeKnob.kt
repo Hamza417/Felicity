@@ -15,6 +15,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentManager
+import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogVolumeKnobBinding
 import app.simple.felicity.decorations.knobs.simple.RotaryKnobListener
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
@@ -116,7 +117,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
                 val width = knobValueToWidth(value)
                 return when {
                     width < 0.02f -> "Mono"
-                    width in 0.98f..1.02f -> "Normal"
+                    width in 0.98f..1.02f -> getString(R.string.normal)
                     width > 1.0f -> "+${"%.0f".format((width - 1f) * 100)}%"
                     else -> "-${"%.0f".format((1f - width) * 100)}%"
                 }
