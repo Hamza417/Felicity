@@ -9,6 +9,8 @@ object AudioPreferences {
     const val GAPLESS_PLAYBACK = "gapless_playback"
     const val HIRES_OUTPUT = "hires_output"
     const val SKIP_SILENCE = "skip_silence"
+    const val IS_STEREO_DOWNMIX_FORCED = "is_stereo_downmix_forced"
+
     private const val FALLBACK_TO_SW_DECODER = "fallback_to_sw_decoder"
 
     const val LOCAL_DECODER = 0
@@ -62,5 +64,15 @@ object AudioPreferences {
 
     fun isFallbackToSoftwareDecoderEnabled(): Boolean {
         return SharedPreferences.getSharedPreferences().getBoolean(FALLBACK_TO_SW_DECODER, true)
+    }
+
+    // --------------------------------------------------------------------------------------------- //
+
+    fun setIsStereoDownmixForced(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(IS_STEREO_DOWNMIX_FORCED, enabled) }
+    }
+
+    fun isStereoDownmixForced(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(IS_STEREO_DOWNMIX_FORCED, true)
     }
 }

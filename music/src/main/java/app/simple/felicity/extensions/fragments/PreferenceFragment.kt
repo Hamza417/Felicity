@@ -400,7 +400,7 @@ open class PreferenceFragment : MediaFragment() {
         return preferences
     }
 
-    protected fun createAudioPanel(): List<Preference> {
+    protected fun createEnginePanel(): List<Preference> {
         val preferences = mutableListOf<Preference>()
 
         val decoderHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.decoder)
@@ -471,6 +471,20 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val stereoDownmixing = Preference(
+                title = R.string.force_stereo_downmixing,
+                summary = R.string.force_stereo_downmixing_summary,
+                icon = R.drawable.ic_speaker,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AudioPreferences.setIsStereoDownmixForced((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    AudioPreferences.isStereoDownmixForced()
+                }
+        )
+
         val gaplessToggle = Preference(
                 title = R.string.gapless_playback,
                 summary = R.string.gapless_playback_summary,
@@ -504,6 +518,7 @@ open class PreferenceFragment : MediaFragment() {
         preferences.add(fallbackToSWToggle)
         preferences.add(playbackHeader)
         preferences.add(hiresToggle)
+        preferences.add(stereoDownmixing)
         preferences.add(gaplessToggle)
         preferences.add(skipSilenceToggle)
 

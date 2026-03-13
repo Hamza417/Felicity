@@ -29,7 +29,7 @@ class Engine : PreferenceFragment() {
         headerBinding.icon.setImageResource(R.drawable.ic_volume_up)
         binding.header.setContentView(headerBinding.root)
         binding.recyclerView.setHasFixedSize(false)
-        binding.recyclerView.adapter = GenericPreferencesAdapter(createAudioPanel())
+        binding.recyclerView.adapter = GenericPreferencesAdapter(createEnginePanel())
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
     }
 

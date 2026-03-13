@@ -13,13 +13,13 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.common.audio.ChannelMixingAudioProcessor
-import androidx.media3.common.audio.ChannelMixingMatrix
+import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
@@ -32,6 +32,8 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import app.simple.felicity.engine.R
+import app.simple.felicity.engine.notifications.PlaybackErrorNotifier
+import app.simple.felicity.engine.processors.AudioProcessorManager
 import app.simple.felicity.manager.SharedPreferences.initRegisterSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AudioPreferences
@@ -53,8 +55,6 @@ import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.math.cos
-import kotlin.math.sin
 
 /**
  * Service responsible for managing audio playback using ExoPlayer with dynamic decoder switching support.
@@ -70,8 +70,17 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     private lateinit var player: ExoPlayer
     private var renderersFactory: DefaultRenderersFactory? = null
 
-    /** Reusable processor that applies stereo balance without rebuilding the whole pipeline. */
-    private val balanceProcessor = ChannelMixingAudioProcessor()
+    /**
+     * Manages the balance and downmix [androidx.media3.common.audio.ChannelMixingAudioProcessor]
+     * instances. Extracted to keep audio processing logic out of the service.
+     */
+    private val audioProcessorManager = AudioProcessorManager()
+
+    /**
+     * Posts silent error notifications when a track cannot be played.
+     * Initialized in [onCreate] once a valid [Context] is available.
+     */
+    private lateinit var playbackErrorNotifier: PlaybackErrorNotifier
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var periodicStateSaveJob: Job? = null
@@ -92,25 +101,43 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     override fun onCreate() {
         super.onCreate()
         initRegisterSharedPreferenceChangeListener(applicationContext)
+        playbackErrorNotifier = PlaybackErrorNotifier(applicationContext)
 
         // Initialize the RenderersFactory once.
         renderersFactory = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableOffload: Boolean): AudioSink {
-                // Check hi-res preference to determine output format
                 val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
 
-                // Apply the saved balance to the processor before building the sink.
-                applyBalanceToProcessor(PlayerPreferences.getBalance())
+                // Check if the user WANTS to preserve surround sound for their USB DAC
+                // You'd add this boolean to your AudioPreferences
+                val forceStereoDownmix = AudioPreferences.isStereoDownmixForced()
+
+                audioProcessorManager.applyBalance(PlayerPreferences.getBalance())
+
+                // Build the processor array dynamically
+                val processors = mutableListOf<AudioProcessor>()
+                if (forceStereoDownmix) {
+                    processors.add(audioProcessorManager.downmixProcessor)
+                }
+
+                processors.add(audioProcessorManager.balanceProcessor)
 
                 val audioSink = DefaultAudioSink.Builder(context)
-                    .setEnableFloatOutput(hiresEnabled) // 32-bit float if hi-res, 16-bit PCM otherwise
-                    .setAudioProcessors(arrayOf(balanceProcessor))
+                    .setEnableFloatOutput(hiresEnabled)
+                    // CRITICAL FOR USB DACs: Tell ExoPlayer to read the USB/HDMI capabilities
+                    .setAudioCapabilities(AudioCapabilities.getCapabilities(context))
+                    .setAudioProcessors(processors.toTypedArray())
                     .build()
 
-                // Disable offload mode for consistent processing
-                audioSink.setOffloadMode(DefaultAudioSink.OFFLOAD_MODE_DISABLED)
+                // If the user has a home theater / USB DAC, we MIGHT want offload for Atmos/Dolby
+                val offloadMode = if (!forceStereoDownmix) {
+                    DefaultAudioSink.OFFLOAD_MODE_ENABLED_GAPLESS_NOT_REQUIRED
+                } else {
+                    DefaultAudioSink.OFFLOAD_MODE_DISABLED
+                }
 
-                Log.i(TAG, "AudioSink configured: Hi-Res=${hiresEnabled} (${if (hiresEnabled) "32-bit Float" else "16-bit PCM"})")
+                audioSink.setOffloadMode(offloadMode)
+
                 return audioSink
             }
 
@@ -459,36 +486,18 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     }
 
     /**
-     * Updates [balanceProcessor] with a constant-power panning matrix.
+     * Delegates balance panning to [audioProcessorManager] and persists the value.
      *
-     * [pan] in [-1 .. 1]: -1 = full left, 0 = center, +1 = full right.
-     *
-     * Constant-power law: θ = (pan + 1) / 2 * π/2
-     *   leftGain  = cos(θ)   → 1.0 at center, 0.707 at extremes, 0.0 at full right
-     *   rightGain = sin(θ)   → same mirrored
-     * This keeps the perceived loudness constant while panning.
+     * @param pan Stereo pan value in the range [-1.0, 1.0].
      */
     private fun applyBalanceToProcessor(pan: Float) {
-        val p = pan.coerceIn(-1f, 1f)
-        val theta = ((p + 1f) / 2f) * (Math.PI / 2.0)
-        val l = cos(theta).toFloat()
-        val r = sin(theta).toFloat()
-        // 2-in / 2-out mixing matrix (row-major):
-        //   [0] out_L <- in_L (left gain),   [1] out_L <- in_R (no cross-talk)
-        //   [2] out_R <- in_L (no cross-talk), [3] out_R <- in_R (right gain)
-        val mixingMatrix = ChannelMixingMatrix(
-                /* inputChannelCount = */ 2,
-                /* outputChannelCount = */ 2,
-                /* coefficients = */ floatArrayOf(l, 0f, 0f, r)
-        )
-        balanceProcessor.putChannelMixingMatrix(mixingMatrix)
-        Log.d(TAG, "Constant-power pan applied: pan=$p → L=$l, R=$r")
+        audioProcessorManager.applyBalance(pan)
     }
 
     /** Apply a new pan value immediately to the processor and persist it. */
     fun setBalance(pan: Float) {
         PlayerPreferences.setBalance(pan)
-        applyBalanceToProcessor(pan)
+        audioProcessorManager.applyBalance(pan)
     }
 
     private val playerListener = object : Player.Listener {
@@ -557,39 +566,59 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            if (error.errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED) {
-                Log.e(TAG, "Decoding error for current track: ${error.message} (code: ${error.errorCode})")
+            when (error.errorCode) {
+                PlaybackException.ERROR_CODE_DECODING_FAILED,
+                PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED,
+                PlaybackException.ERROR_CODE_AUDIO_TRACK_WRITE_FAILED,
+                PlaybackException.ERROR_CODE_DECODER_INIT_FAILED -> {
+                    Log.e(TAG, "Decoding error for current track: ${error.message} (code: ${error.errorCode})")
 
-                val failedItem = player.currentMediaItem
+                    val failedItem = player.currentMediaItem
 
-                if (ffmpegFallbackActive) {
-                    // FFmpeg also failed – give up, restore original decoder and skip.
-                    Log.w(TAG, "FFmpeg fallback also failed for '${failedItem?.mediaMetadata?.title}', skipping track and restoring decoder.")
-                    ffmpegFallbackActive = false
-                    ffmpegFallbackItem = null
-                    // Restore user's original decoder choice silently (no pref write – just engine mode).
-                    restoreDecoderMode(preFallbackDecoder)
-                    skipOrRestartTrack()
-                } else if (AudioPreferences.isFallbackToSoftwareDecoderEnabled()
-                        && AudioPreferences.getAudioDecoder() != AudioPreferences.FFMPEG) {
-                    // Primary decoder failed and fallback is enabled – try FFmpeg silently.
-                    Log.i(TAG, "Primary decoder failed; silently retrying '${failedItem?.mediaMetadata?.title}' with FFmpeg.")
-                    preFallbackDecoder = AudioPreferences.getAudioDecoder()
-                    ffmpegFallbackActive = true
-                    ffmpegFallbackItem = failedItem
-                    retryWithFfmpegFallback(failedItem)
-                } else {
-                    // Fallback disabled, or already on FFmpeg – just skip.
-                    Log.w(TAG, "Skipping track (fallback disabled or already using FFmpeg).")
-                    ffmpegFallbackActive = false
-                    ffmpegFallbackItem = null
-                    skipOrRestartTrack()
+                    if (ffmpegFallbackActive) {
+                        // FFmpeg also failed – give up, restore original decoder and skip.
+                        Log.w(TAG, "FFmpeg fallback also failed for '${failedItem?.mediaMetadata?.title}', skipping track and restoring decoder.")
+                        ffmpegFallbackActive = false
+                        ffmpegFallbackItem = null
+                        // Notify user that the track could not be played by any available decoder.
+                        playbackErrorNotifier.notifyPlaybackError(
+                                failedItem?.mediaMetadata?.title?.toString(),
+                                error
+                        )
+                        // Restore user's original decoder choice silently (no pref write – just engine mode).
+                        restoreDecoderMode(preFallbackDecoder)
+                        skipOrRestartTrack()
+                    } else if (AudioPreferences.isFallbackToSoftwareDecoderEnabled()
+                            && AudioPreferences.getAudioDecoder() != AudioPreferences.FFMPEG) {
+                        // Primary decoder failed and fallback is enabled – try FFmpeg silently.
+                        Log.i(TAG, "Primary decoder failed; silently retrying '${failedItem?.mediaMetadata?.title}' with FFmpeg.")
+                        preFallbackDecoder = AudioPreferences.getAudioDecoder()
+                        ffmpegFallbackActive = true
+                        ffmpegFallbackItem = failedItem
+                        retryWithFfmpegFallback(failedItem)
+                    } else {
+                        // Fallback disabled, or already on FFmpeg – just skip.
+                        Log.w(TAG, "Skipping track (fallback disabled or already using FFmpeg).")
+                        ffmpegFallbackActive = false
+                        ffmpegFallbackItem = null
+                        // Notify user why the track was skipped.
+                        playbackErrorNotifier.notifyPlaybackError(
+                                failedItem?.mediaMetadata?.title?.toString(),
+                                error
+                        )
+                        skipOrRestartTrack()
+                    }
                 }
-            } else {
-                Log.e(TAG, "Playback error: ${error.message} (code: ${error.errorCode})")
-                Log.e(TAG, "Player error: ${error.errorCodeName}", error)
-                MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ERROR)
-                stopPeriodicStateSaving()
+                else -> {
+                    Log.e(TAG, "Playback error: ${error.message} (code: ${error.errorCode})")
+                    Log.e(TAG, "Player error: ${error.errorCodeName}", error)
+                    playbackErrorNotifier.notifyPlaybackError(
+                            player.currentMediaItem?.mediaMetadata?.title?.toString(),
+                            error
+                    )
+                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ERROR)
+                    stopPeriodicStateSaving()
+                }
             }
         }
 
@@ -627,6 +656,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             AudioPreferences.SKIP_SILENCE -> {
                 setSilenceState()
                 Log.d(TAG, "Skip silence preference changed to: ${AudioPreferences.isSkipSilenceEnabled()} (Note: Skip silence is currently disabled for all modes)")
+            }
+            AudioPreferences.IS_STEREO_DOWNMIX_FORCED -> {
+                val enabled = AudioPreferences.isStereoDownmixForced()
+                Log.d(TAG, "Stereo downmix preference changed to: $enabled — rebuilding audio pipeline...")
+                // Rebuilding the player re-invokes buildAudioSink which re-reads the preference
+                // and re-assembles the processor chain with or without the downmix processor.
+                switchAudioMode()
             }
             PlayerPreferences.REPEAT_MODE -> {
                 val repeatMode = PlayerPreferences.getRepeatMode()
@@ -676,6 +712,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 savePlaybackStateToDatabase()
             }
         }
+
         Log.d(TAG, "Started periodic state saving")
     }
 
