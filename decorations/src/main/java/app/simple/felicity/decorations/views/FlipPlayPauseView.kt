@@ -9,13 +9,11 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.os.Bundle
 import android.os.Parcelable
-import android.os.VibrationEffect
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import androidx.core.graphics.withTranslation
 import androidx.core.os.BundleCompat
-import app.simple.felicity.decorations.utils.VibrateUtils.vibrateEffect
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.themes.Theme
@@ -107,7 +105,9 @@ class FlipPlayPauseView @JvmOverloads constructor(
 
     init {
         isClickable = true
-        setOnClickListener { toggle() }
+        setOnClickListener {
+            toggle()
+        }
 
         if (!isInEditMode) {
             iconColor = ThemeManager.theme.iconTheme.regularIconColor
@@ -128,8 +128,6 @@ class FlipPlayPauseView @JvmOverloads constructor(
      * @param animate Whether to animate transition
      */
     fun setPlaying(playing: Boolean, animate: Boolean = true) {
-        context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
-
         if (isPlaying == playing) return
 
         isPlaying = playing

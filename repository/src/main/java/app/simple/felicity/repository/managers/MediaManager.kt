@@ -492,7 +492,7 @@ object MediaManager {
      * Emit seek position periodically while playing to keep UI in sync.
      * Only runs when actually needed to avoid overhead.
      */
-    fun startSeekPositionUpdates(intervalMs: Long = 200L) {
+    fun startSeekPositionUpdates(intervalMs: Long = 100L) {
         // Don't start multiple jobs - check if already running
         if (seekJob?.isActive == true) {
             return
