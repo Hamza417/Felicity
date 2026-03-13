@@ -50,6 +50,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlin.math.abs
 
 open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
@@ -70,7 +71,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 val song = MediaManager.getCurrentSong()
                 if (song != null) {
                     val threshold = maxOf(5000L, song.duration / 20) // 5 seconds or 5% of duration
-                    if (kotlin.math.abs(position - lastSavedSeekPosition) > threshold) {
+                    if (abs(position - lastSavedSeekPosition) > threshold) {
                         lastSavedSeekPosition = position
                         saveCurrentPlaybackState()
                     }

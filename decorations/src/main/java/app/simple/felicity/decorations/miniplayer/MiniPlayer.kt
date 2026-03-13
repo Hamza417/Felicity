@@ -23,9 +23,9 @@ import android.os.Handler
 import android.os.Looper
 import android.os.Parcel
 import android.os.Parcelable
+import android.os.VibrationEffect
 import android.util.AttributeSet
 import android.view.GestureDetector
-import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.VelocityTracker
 import android.view.View
@@ -45,6 +45,7 @@ import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.ARTIST_TE
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.TITLE_TEXT_SIZE_SP
 import app.simple.felicity.decorations.ripple.FelicityRippleDrawable
 import app.simple.felicity.decorations.typeface.TypeFace
+import app.simple.felicity.decorations.utils.VibrateUtils.vibrateEffect
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AccessibilityPreferences
@@ -138,6 +139,8 @@ class MiniPlayer @JvmOverloads constructor(
     // -------------------------------------------------------------------------
 
     companion object {
+        private const val TAG = "MiniPlayer"
+
         const val SCROLL_STATE_IDLE = MiniPlayerScrollEngine.IDLE
         const val SCROLL_STATE_DRAGGING = MiniPlayerScrollEngine.DRAGGING
         const val SCROLL_STATE_SETTLING = MiniPlayerScrollEngine.SETTLING
@@ -491,7 +494,7 @@ class MiniPlayer @JvmOverloads constructor(
                 seekStartProgress = progress
                 scrollEngine.cancelAnimation()
                 animateEdgeFade(show = false)
-                performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                context.vibrateEffect(VibrationEffect.EFFECT_CLICK, TAG)
             } else {
                 callbacks?.onItemLongClick(scrollEngine.currentPage.coerceAtLeast(0))
             }
@@ -538,7 +541,6 @@ class MiniPlayer @JvmOverloads constructor(
      * @author Hamza417
      */
     private var isFlatMode = false
-
 
     private val cardRect = RectF()
     private val strokeRect = RectF()
@@ -602,7 +604,6 @@ class MiniPlayer @JvmOverloads constructor(
         cardClipPath.rewind()
         cardClipPath.addRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, Path.Direction.CW)
     }
-
 
     /**
      * Reads [UserInterfacePreferences.isMarginAroundMiniplayer] and instantly switches the

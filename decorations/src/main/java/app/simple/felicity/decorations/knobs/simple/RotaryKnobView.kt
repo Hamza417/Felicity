@@ -7,26 +7,22 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.os.VibrationAttributes
 import android.os.VibrationEffect
-import android.os.Vibrator
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import androidx.annotation.ColorInt
-import androidx.annotation.RequiresApi
-import androidx.core.content.getSystemService
 import androidx.core.graphics.withRotation
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.knobs.simple.RotaryKnobView.Companion.END
 import app.simple.felicity.decorations.knobs.simple.RotaryKnobView.Companion.HAPTIC_TICK_INTERVAL_DEG
 import app.simple.felicity.decorations.knobs.simple.RotaryKnobView.Companion.START
 import app.simple.felicity.decorations.typeface.TypeFace
+import app.simple.felicity.decorations.utils.VibrateUtils.vibrateEffect
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
@@ -929,45 +925,24 @@ class RotaryKnobView @JvmOverloads constructor(
     private fun valueToAngle(volume: Float): Float =
         START + (volume / 100f) * (END - START)
 
-    /**
-     * Vibrates using the [Vibrator] service with [VibrationAttributes.USAGE_MEDIA] on API 33+
-     * so the effect is never silenced by the "Touch vibration" system setting.
-     * Falls back to a [VibrationEffect.createPredefined] call (API 29+) without attributes,
-     * and ultimately to [performHapticFeedback] on older devices.
-     */
-    private fun vibrateEffect(effectId: Int) {
-        if (!hapticEnabled) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            vibrateWithAttributes(effectId)
-        } else {
-            // API 29-32: VibrationEffect without attributes — still not gated by touch setting
-            @Suppress("DEPRECATION")
-            context.getSystemService<Vibrator>()?.vibrate(VibrationEffect.createPredefined(effectId))
-        }
-    }
 
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private fun vibrateWithAttributes(effectId: Int) {
-        val attrs = VibrationAttributes.Builder()
-            .setUsage(VibrationAttributes.USAGE_MEDIA)
-            .build()
-        context.getSystemService<Vibrator>()
-            ?.vibrate(VibrationEffect.createPredefined(effectId), attrs)
-    }
 
     /** Light tick fired every [HAPTIC_TICK_INTERVAL_DEG] degrees of rotation. */
     private fun vibrateRotationTick() {
-        vibrateEffect(VibrationEffect.EFFECT_CLICK)
+        if (!hapticEnabled) return
+        context.vibrateEffect(VibrationEffect.EFFECT_CLICK, TAG)
     }
 
     /** Heavy click fired when the knob hits an end-stop or the center snap position. */
     private fun vibrateHeavyTick() {
-        vibrateEffect(VibrationEffect.EFFECT_HEAVY_CLICK)
+        if (!hapticEnabled) return
+        context.vibrateEffect(VibrationEffect.EFFECT_HEAVY_CLICK, TAG)
     }
 
     /** Single tap fired on finger-down to acknowledge the touch. */
     private fun vibrateTouchDown() {
-        vibrateEffect(VibrationEffect.EFFECT_TICK)
+        if (!hapticEnabled) return
+        context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
     }
 
     companion object {
@@ -992,5 +967,7 @@ class RotaryKnobView @JvmOverloads constructor(
          * giving a natural detent feel without over-firing.
          */
         private const val HAPTIC_TICK_INTERVAL_DEG = 12f
+
+        private const val TAG = "RotaryKnobView"
     }
 }
