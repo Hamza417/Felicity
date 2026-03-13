@@ -21,6 +21,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -44,11 +45,23 @@ class LyricsViewModel @AssistedInject constructor(
      */
     private var bakedLrcData: LrcData? = null
 
-    /** Guards against concurrent duplicate load calls (e.g. lazy init + onAudio firing together). */
-    @Volatile
-    private var isLoading = false
+    /**
+     * Active coroutine job for the current lyrics load operation.
+     * Replaces the old `isLoading` boolean — checking [Job.isActive] lets us distinguish
+     * a genuinely in-progress fetch from a completed (or never-started) one, and allows
+     * clean cancellation when a new song arrives mid-load.
+     *
+     * @author Hamza417
+     */
+    private var loadingJob: Job? = null
 
-    /** Path of the last song whose lyrics were successfully kicked off, to avoid redundant reloads. */
+    /**
+     * Path of the song whose load was last kicked off.
+     * Combined with [loadingJob] this guards against redundant reloads
+     * (e.g. predictive-back resume firing [loadLrcData] for the same song again).
+     *
+     * @author Hamza417
+     */
     @Volatile
     private var lastLoadedPath: String? = null
 
@@ -78,29 +91,33 @@ class LyricsViewModel @AssistedInject constructor(
     fun getSyncOffsetMs(): LiveData<Long> = syncOffsetMs
 
     fun loadLrcData() {
-        // Prevent duplicate concurrent loads (e.g. lazy init racing with onAudio callback)
-        if (isLoading) {
-            Log.d(TAG, "loadLrcData() skipped – already in progress.")
-            return
-        }
-
-        // Skip redundant reload for the same song (e.g. onAudio firing right after lazy init)
         val currentSongPath = (audio ?: MediaManager.getCurrentSong())?.path
+
         if (currentSongPath != null && currentSongPath == lastLoadedPath) {
-            Log.d(TAG, "loadLrcData() skipped – same song already loaded.")
-            return
+            if (loadingJob?.isActive == true) {
+                // A fetch is already running for this exact path — let it finish.
+                Log.d(TAG, "loadLrcData() skipped – job still in progress for same path.")
+                return
+            }
+            if (lrcData.value != null) {
+                // Data (even empty) was already delivered for this path — no need to re-fetch.
+                Log.d(TAG, "loadLrcData() skipped – data already available for same path.")
+                return
+            }
         }
 
-        isLoading = true
+        // Cancel any in-flight job (different song or stale retry) before starting a new one.
+        loadingJob?.cancel()
         lastLoadedPath = currentSongPath
 
-        // Reset sync offset whenever we load fresh lyrics
+        // Reset sync state for the incoming song.
+        syncOffset = 0L
         pendingSyncDeltaMs = 0L
         syncOffsetMs.value = 0L
         bakedLrcData = null
         syncSaveHandler.removeCallbacks(syncSaveRunnable)
 
-        viewModelScope.launch(Dispatchers.IO) {
+        loadingJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 val currentSong = audio ?: MediaManager.getCurrentSong()
                 if (currentSong == null) {
@@ -147,7 +164,9 @@ class LyricsViewModel @AssistedInject constructor(
                     lrcData.postValue(LrcData())
                 }
             } finally {
-                isLoading = false
+                // Job reference is intentionally left non-null here so isActive == false
+                // signals "completed" rather than "never started", which the same-path guard
+                // uses to decide whether a re-fetch is needed.
             }
         }
     }
@@ -181,7 +200,9 @@ class LyricsViewModel @AssistedInject constructor(
     }
 
     fun reloadLrcData() {
-        lastLoadedPath = null // Force reload even for the same song
+        loadingJob?.cancel()
+        loadingJob = null
+        lastLoadedPath = null // Force a fresh load even for the same song.
         loadLrcData()
     }
 

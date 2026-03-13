@@ -32,6 +32,16 @@ class Lyrics : MediaFragment() {
 
     private lateinit var binding: FragmentLyricsBinding
 
+    /**
+     * Path of the song whose lyrics are currently rendered in the lrc view.
+     * Compared in [onAudio] to distinguish a genuine song change from a
+     * predictive-back resume that replays [MediaManager.songPositionFlow] for
+     * the same song — the latter must NOT reset the view.
+     *
+     * @author Hamza417
+     */
+    private var currentAudioPath: String? = null
+
     /** Debounce handler – coalesces rapid text-size changes from the slider. */
     private val textSizeHandler = Handler(Looper.getMainLooper())
     private val textSizeRunnable = Runnable { applyTextSize() }
@@ -202,12 +212,21 @@ class Lyrics : MediaFragment() {
 
     override fun onAudio(audio: Audio) {
         super.onAudio(audio)
-        binding.lrc.reset()
-        lyricsViewModel.loadLrcData()
-        binding.name.setTypeWriting(audio.title ?: getString(R.string.unknown))
-        binding.artist.setTypeWriting(audio.artist ?: getString(R.string.unknown))
-        binding.lrc.setDuration(audio.duration)
-        binding.seekbar.setMaxWithReset(audio.duration.toFloat())
+
+        val isSameSong = audio.path == currentAudioPath
+        currentAudioPath = audio.path
+
+        if (!isSameSong) {
+            // Real song change — reset the view and kick off a fresh lyrics load.
+            binding.lrc.reset()
+            lyricsViewModel.loadLrcData()
+            binding.name.setTypeWriting(audio.title ?: getString(R.string.unknown))
+            binding.artist.setTypeWriting(audio.artist ?: getString(R.string.unknown))
+            binding.lrc.setDuration(audio.duration)
+            binding.seekbar.setMaxWithReset(audio.duration.toFloat())
+        }
+
+        // Always refresh the seek position (covers predictive-back resume and actual changes).
         binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
     }
 
