@@ -17,8 +17,8 @@ android {
     defaultConfig {
         applicationId "app.simple.felicity"
 
-        versionCode 3
-        versionName "0.0.3-preview"
+        versionCode 4
+        versionName "0.0.4-preview"
     }
 
     signingConfigs {
@@ -94,7 +94,7 @@ dependencies {
 
     // AndroidX
     implementation 'androidx.fragment:fragment-ktx:1.8.9'
-    implementation 'androidx.activity:activity-ktx:1.12.4'
+    implementation 'androidx.activity:activity-ktx:1.13.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.10.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.10.0'
