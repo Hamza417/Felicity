@@ -20,6 +20,7 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.TextViewUtils.setTypeWriting
+import app.simple.felicity.ui.panels.Lyrics
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Search
 import com.bumptech.glide.Glide
@@ -164,7 +165,7 @@ class DefaultPlayer : MediaFragment() {
         binding.artist.text = audio.artist
         binding.album.text = audio.album
         binding.seekbar.setMax(audio.duration.toFloat())
-        binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = false)
+        binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
         updatePlayButtonState(MediaManager.isPlaying())
         updateFavoriteIcon(audio)
     }

@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.player
+package app.simple.felicity.ui.panels
 
 import android.content.SharedPreferences
 import android.os.Bundle
@@ -22,7 +22,7 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.TextViewUtils.setTypeWriting
-import app.simple.felicity.ui.player.Lyrics.Companion.TEXT_SIZE_DEBOUNCE_MS
+import app.simple.felicity.ui.panels.Lyrics.Companion.TEXT_SIZE_DEBOUNCE_MS
 import app.simple.felicity.viewmodels.player.LyricsViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
@@ -240,4 +240,3 @@ class Lyrics : MediaFragment() {
         private const val SEEK_JUMP_MS = 500L
     }
 }
-
