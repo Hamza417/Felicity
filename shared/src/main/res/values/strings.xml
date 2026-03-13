@@ -252,4 +252,5 @@
     <string name="margin_around_miniplayer_summary">Toggle margin around the miniplayer, if enabled the miniplayer at the bottom will have space around it.</string>
     <string name="force_stereo_downmixing">Forced Stereo Downmixing</string>
     <string name="force_stereo_downmixing_summary">Force downmixing of multichannel audio (e.g. 5.1, 7.1) to stereo (2.0). Unless you are using compatible hardware for audio output to multichannel devices, keep it enabled or you may experience freezes on audio files with higher channels.</string>
+    <string name="stereo_widening">Stereo Widening</string>
 </resources>

@@ -113,6 +113,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 val forceStereoDownmix = AudioPreferences.isStereoDownmixForced()
 
                 audioProcessorManager.applyBalance(PlayerPreferences.getBalance())
+                audioProcessorManager.applyStereoWidth(PlayerPreferences.getStereoWidth())
 
                 // Build the processor array dynamically
                 val processors = mutableListOf<AudioProcessor>()
@@ -120,7 +121,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     processors.add(audioProcessorManager.downmixProcessor)
                 }
 
-                processors.add(audioProcessorManager.balanceProcessor)
+                processors.add(audioProcessorManager.wideningProcessor) // Always keep widening
+                processors.add(audioProcessorManager.balanceProcessor)   // Always keep balance
 
                 val audioSink = DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(hiresEnabled)
@@ -494,6 +496,15 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         audioProcessorManager.applyBalance(pan)
     }
 
+    /**
+     * Delegates stereo width to [audioProcessorManager].
+     *
+     * @param width Stereo width in the range [0.0, 2.0]. 1.0 = natural stereo (no change).
+     */
+    private fun applyStereoWidthToProcessor(width: Float) {
+        audioProcessorManager.applyStereoWidth(width)
+    }
+
     /** Apply a new pan value immediately to the processor and persist it. */
     fun setBalance(pan: Float) {
         PlayerPreferences.setBalance(pan)
@@ -673,6 +684,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 val pan = PlayerPreferences.getBalance()
                 Log.d(TAG, "Balance preference changed to: $pan")
                 applyBalanceToProcessor(pan)
+            }
+            PlayerPreferences.STEREO_WIDTH -> {
+                val width = PlayerPreferences.getStereoWidth()
+                Log.d(TAG, "Stereo width preference changed to: $width")
+                applyStereoWidthToProcessor(width)
             }
         }
     }

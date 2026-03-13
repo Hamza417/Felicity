@@ -15,6 +15,8 @@ import kotlin.math.sin
  *  - Maintaining a reusable [ChannelMixingAudioProcessor] for stereo balance panning.
  *  - Building and owning an all-rounder downmix [ChannelMixingAudioProcessor] that handles
  *    any input channel layout from mono (1 ch) up to 24 channels, mixing everything to stereo.
+ *  - Owning a [StereoWideningAudioProcessor] that applies M/S widening directly on PCM samples,
+ *    supporting the full width range [0.0, 2.0] including negative cross-gain coefficients.
  *
  * Keeping processor construction out of the service makes the service smaller and makes
  * audio processing logic independently testable.
@@ -35,6 +37,15 @@ class AudioProcessorManager {
      * Built once at construction time since its matrices are static.
      */
     val downmixProcessor: ChannelMixingAudioProcessor = buildDownmixProcessor()
+
+    /**
+     * Custom M/S processor for stereo widening/narrowing.
+     * Starts in neutral state (width = 1.0, identity passthrough). Updated via [applyStereoWidth].
+     * Uses [StereoWideningAudioProcessor] instead of [ChannelMixingAudioProcessor] because
+     * widening beyond natural stereo requires negative cross-channel coefficients, which
+     * [androidx.media3.common.audio.ChannelMixingMatrix] explicitly forbids.
+     */
+    val wideningProcessor: StereoWideningAudioProcessor = StereoWideningAudioProcessor()
 
     /**
      * Updates [balanceProcessor] with a constant-power panning matrix.
@@ -63,6 +74,16 @@ class AudioProcessorManager {
         )
         balanceProcessor.putChannelMixingMatrix(mixingMatrix)
         Log.d(TAG, "Constant-power pan applied: pan=$p → L=$l, R=$r")
+    }
+
+    /**
+     * Delegates stereo width to [wideningProcessor].
+     * See [StereoWideningAudioProcessor.applyStereoWidth] for the full M/S math.
+     *
+     * @param width Stereo width in [0.0, 2.0]. 0.0 = mono, 1.0 = natural stereo, 2.0 = max wide.
+     */
+    fun applyStereoWidth(width: Float) {
+        wideningProcessor.applyStereoWidth(width)
     }
 
     /**
@@ -150,4 +171,3 @@ class AudioProcessorManager {
         private const val TAG = "AudioProcessorManager"
     }
 }
-

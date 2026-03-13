@@ -6,14 +6,20 @@ import app.simple.felicity.manager.SharedPreferences
 object PlayerPreferences {
     const val REPEAT_MODE = "repeat_mode"
 
-    private const val SHUFFLE_ID = "shuffle_id"
-
     /**
      * Stereo pan/balance stored as a float in [-1 .. 1].
-     * -1 = full left, 0 = centre (default), +1 = full right.
+     * -1 = full left, 0 = center (default), +1 = full right.
      * Applied via constant-power panning in the audio engine.
      */
     const val BALANCE = "player_balance"
+
+    /**
+     * Stereo widening width stored as a float in [0 .. 2].
+     * 0.0 = full mono, 1.0 = natural stereo (default, no processing),
+     * 2.0 = maximum widening.
+     * Applied via mid/side matrix in the audio engine.
+     */
+    const val STEREO_WIDTH = "player_stereo_width"
 
     fun setRepeatMode(value: Int) {
         SharedPreferences.getSharedPreferences().edit { putInt(REPEAT_MODE, value) }
@@ -38,11 +44,20 @@ object PlayerPreferences {
         return SharedPreferences.getSharedPreferences().getFloat(BALANCE, 0f)
     }
 
-    fun setShuffleId(id: String) {
-        SharedPreferences.getSharedPreferences().edit { putString(SHUFFLE_ID, id) }
+    /**
+     * Persist [width] in [0f .. 2f].
+     * 0.0 = mono, 1.0 = natural stereo (no change), 2.0 = maximum widening.
+     */
+    fun setStereoWidth(width: Float) {
+        SharedPreferences.getSharedPreferences().edit {
+            putFloat(STEREO_WIDTH, width.coerceIn(0f, 2f))
+        }
     }
 
-    fun getShuffleId(): String? {
-        return SharedPreferences.getSharedPreferences().getString(SHUFFLE_ID, null)
+    /**
+     * Returns the persisted stereo width value, defaulting to 1.0 (natural stereo, no processing).
+     */
+    fun getStereoWidth(): Float {
+        return SharedPreferences.getSharedPreferences().getFloat(STEREO_WIDTH, 1f)
     }
 }

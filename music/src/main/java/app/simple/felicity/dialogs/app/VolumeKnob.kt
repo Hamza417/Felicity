@@ -96,6 +96,33 @@ class VolumeKnob : ScopedBottomSheetFragment() {
             }
         })
 
+        // Stereo widening knob (mid/side matrix).
+        // Knob value 0-100 maps to width 0.0 (mono) … 1.0 (normal) … 2.0 (max wide).
+        // Center (50) = width 1.0 = natural stereo passthrough (no processing).
+        // Center-snap ensures the knob easily returns to the neutral position.
+        binding.stereoWideningKnob.centerSnapEnabled = true
+        binding.stereoWideningKnob.setTickTexts("M", "W")
+        binding.stereoWideningKnob.setKnobPosition(widthToKnobValue(PlayerPreferences.getStereoWidth()), animate = false)
+        binding.stereoWideningKnob.setListener(object : RotaryKnobListener {
+            override fun onIncrement(value: Float) {}
+
+            override fun onRotate(value: Float) {
+                val width = knobValueToWidth(value)
+                PlayerPreferences.setStereoWidth(width)
+                Log.d(TAG, "Stereo width updated: width=$width")
+            }
+
+            override fun onLabel(value: Float): String {
+                val width = knobValueToWidth(value)
+                return when {
+                    width < 0.02f -> "Mono"
+                    width in 0.98f..1.02f -> "Normal"
+                    width > 1.0f -> "+${"%.0f".format((width - 1f) * 100)}%"
+                    else -> "-${"%.0f".format((1f - width) * 100)}%"
+                }
+            }
+        })
+
         // Hardware volume keys
         dialog?.setOnKeyListener { _, keyCode, _ ->
             when (keyCode) {
@@ -142,6 +169,18 @@ class VolumeKnob : ScopedBottomSheetFragment() {
          * 0 (center) → 50, -1 (full left) → 0, +1 (full right) → 100.
          */
         fun panToKnobValue(pan: Float): Float = ((pan * 50f) + 50f).coerceIn(0f, 100f)
+
+        /**
+         * Maps knob position [0..100] → stereo width [0..2].
+         * 0 = mono (0.0), 50 = natural stereo (1.0), 100 = max wide (2.0).
+         */
+        fun knobValueToWidth(knobValue: Float): Float = (knobValue / 50f).coerceIn(0f, 2f)
+
+        /**
+         * Maps stereo width [0..2] → knob position [0..100].
+         * 0.0 (mono) → 0, 1.0 (natural) → 50, 2.0 (max wide) → 100.
+         */
+        fun widthToKnobValue(width: Float): Float = (width * 50f).coerceIn(0f, 100f)
 
         fun newInstance(): VolumeKnob {
             val fragment = VolumeKnob()

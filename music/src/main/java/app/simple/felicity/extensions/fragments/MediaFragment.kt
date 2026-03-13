@@ -206,9 +206,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 hideMiniPlayer()
             }
 
-            // TODO fix delay in showing up?
-            override fun onDestroy(owner: LifecycleOwner) {
-                super.onDestroy(owner)
+            override fun onPause(owner: LifecycleOwner) {
+                super.onPause(owner)
                 // Don't force-show during configuration changes; preserve current state
                 if (requireActivity().isChangingConfigurations.not()) {
                     shouldShowMiniPlayer = true
