@@ -114,6 +114,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
                 audioProcessorManager.applyBalance(PlayerPreferences.getBalance())
                 audioProcessorManager.applyStereoWidth(PlayerPreferences.getStereoWidth())
+                audioProcessorManager.applyTapeSaturationDrive(PlayerPreferences.getTapeSaturationDrive())
 
                 // Build the processor array dynamically
                 val processors = mutableListOf<AudioProcessor>()
@@ -121,8 +122,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     processors.add(audioProcessorManager.downmixProcessor)
                 }
 
-                processors.add(audioProcessorManager.wideningProcessor) // Always keep widening
-                processors.add(audioProcessorManager.balanceProcessor)   // Always keep balance
+                processors.add(audioProcessorManager.tapeSaturationProcessor)  // Harmonic coloring first
+                processors.add(audioProcessorManager.wideningProcessor)        // Then spatial processing
+                processors.add(audioProcessorManager.balanceProcessor)         // Then channel routing
 
                 val audioSink = DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(hiresEnabled)
@@ -505,6 +507,15 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         audioProcessorManager.applyStereoWidth(width)
     }
 
+    /**
+     * Delegates tape saturation drive to [audioProcessorManager].
+     *
+     * @param drive Saturation drive in [0.0, 4.0]. 0.0 = off (clean bypass).
+     */
+    private fun applyTapeSaturationDriveToProcessor(drive: Float) {
+        audioProcessorManager.applyTapeSaturationDrive(drive)
+    }
+
     /** Apply a new pan value immediately to the processor and persist it. */
     fun setBalance(pan: Float) {
         PlayerPreferences.setBalance(pan)
@@ -689,6 +700,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 val width = PlayerPreferences.getStereoWidth()
                 Log.d(TAG, "Stereo width preference changed to: $width")
                 applyStereoWidthToProcessor(width)
+            }
+            PlayerPreferences.TAPE_SATURATION_DRIVE -> {
+                val drive = PlayerPreferences.getTapeSaturationDrive()
+                Log.d(TAG, "Tape saturation drive preference changed to: $drive")
+                applyTapeSaturationDriveToProcessor(drive)
             }
         }
     }

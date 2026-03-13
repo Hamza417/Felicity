@@ -48,6 +48,14 @@ class AudioProcessorManager {
     val wideningProcessor: StereoWideningAudioProcessor = StereoWideningAudioProcessor()
 
     /**
+     * Tape-style soft saturation processor.
+     * Starts in bypass state (drive = 0.0, no processing). Updated via [applyTapeSaturationDrive].
+     * Placed before [wideningProcessor] in the chain so harmonic coloring occurs on the
+     * full stereo signal before any spatial processing.
+     */
+    val tapeSaturationProcessor: TapeSaturationProcessor = TapeSaturationProcessor()
+
+    /**
      * Updates [balanceProcessor] with a constant-power panning matrix.
      *
      * [pan] in [-1 .. 1]: -1 = full left, 0 = center, +1 = full right.
@@ -84,6 +92,16 @@ class AudioProcessorManager {
      */
     fun applyStereoWidth(width: Float) {
         wideningProcessor.applyStereoWidth(width)
+    }
+
+    /**
+     * Delegates tape saturation drive to [tapeSaturationProcessor].
+     * See [TapeSaturationProcessor.applyDrive] for the full transfer-function details.
+     *
+     * @param drive Saturation drive in [0.0, 4.0]. 0.0 = off (bypass), 4.0 = maximum saturation.
+     */
+    fun applyTapeSaturationDrive(drive: Float) {
+        tapeSaturationProcessor.applyDrive(drive)
     }
 
     /**

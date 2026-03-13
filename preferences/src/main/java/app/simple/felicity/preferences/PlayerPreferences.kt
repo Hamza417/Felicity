@@ -60,4 +60,29 @@ object PlayerPreferences {
     fun getStereoWidth(): Float {
         return SharedPreferences.getSharedPreferences().getFloat(STEREO_WIDTH, 1f)
     }
+
+    /**
+     * Tape saturation drive stored as a float in [0 .. 4].
+     * 0.0 = clean bypass (default, no processing), 1.0 = subtle warmth,
+     * 2.0 = punchy saturation, 4.0 = maximum drive.
+     * Applied via algebraic soft-clip transfer function in the audio engine.
+     */
+    const val TAPE_SATURATION_DRIVE = "player_tape_saturation_drive"
+
+    /**
+     * Persist [drive] in [0f .. 4f].
+     * 0.0 = clean/off, 4.0 = maximum saturation.
+     */
+    fun setTapeSaturationDrive(drive: Float) {
+        SharedPreferences.getSharedPreferences().edit {
+            putFloat(TAPE_SATURATION_DRIVE, drive.coerceIn(0f, 4f))
+        }
+    }
+
+    /**
+     * Returns the persisted tape saturation drive, defaulting to 0.0 (off, no processing).
+     */
+    fun getTapeSaturationDrive(): Float {
+        return SharedPreferences.getSharedPreferences().getFloat(TAPE_SATURATION_DRIVE, 0f)
+    }
 }

@@ -124,6 +124,26 @@ class VolumeKnob : ScopedBottomSheetFragment() {
             }
         })
 
+        // Tape saturation knob (algebraic soft-clip drive).
+        // Knob value 0-100 maps to drive 0.0 (clean/off) … 4.0 (maximum saturation).
+        // No center-snap — this is a one-directional effect; more = more saturation.
+        binding.tapeSaturationKnob.setTickTexts("0", "4")
+        binding.tapeSaturationKnob.setKnobPosition(driveToKnobValue(PlayerPreferences.getTapeSaturationDrive()), animate = false)
+        binding.tapeSaturationKnob.setListener(object : RotaryKnobListener {
+            override fun onIncrement(value: Float) {}
+
+            override fun onRotate(value: Float) {
+                val drive = knobValueToDrive(value)
+                PlayerPreferences.setTapeSaturationDrive(drive)
+                Log.d(TAG, "Tape saturation drive updated: drive=$drive")
+            }
+
+            override fun onLabel(value: Float): String {
+                val drive = knobValueToDrive(value)
+                return if (drive < 0.05f) "Off" else "%.1f".format(drive)
+            }
+        })
+
         // Hardware volume keys
         dialog?.setOnKeyListener { _, keyCode, _ ->
             when (keyCode) {
@@ -182,6 +202,18 @@ class VolumeKnob : ScopedBottomSheetFragment() {
          * 0.0 (mono) → 0, 1.0 (natural) → 50, 2.0 (max wide) → 100.
          */
         fun widthToKnobValue(width: Float): Float = (width * 50f).coerceIn(0f, 100f)
+
+        /**
+         * Maps knob position [0..100] → tape saturation drive [0..4].
+         * 0 = off (0.0), 100 = maximum drive (4.0).
+         */
+        fun knobValueToDrive(knobValue: Float): Float = (knobValue / 100f * 4f).coerceIn(0f, 4f)
+
+        /**
+         * Maps tape saturation drive [0..4] → knob position [0..100].
+         * 0.0 (off) → 0, 4.0 (max drive) → 100.
+         */
+        fun driveToKnobValue(drive: Float): Float = (drive / 4f * 100f).coerceIn(0f, 100f)
 
         fun newInstance(): VolumeKnob {
             val fragment = VolumeKnob()
