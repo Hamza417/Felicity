@@ -248,6 +248,6 @@
     <string name="no_lyrics_found">No Lyrics Found</string>
     <string name="delete_lyrics_too">Delete Lyrics Files Too</string>
     <string name="miniplayer">Mini Player</string>
-    <string name="marginless_miniplayer">Marginless Miniplayer</string>
-    <string name="marginless_miniplayer_summary">Toggle margin around the miniplayer, if enabled the minipayer at the bottom will have space around it.</string>
+    <string name="margin_around_miniplayer">Margin Around Miniplayer</string>
+    <string name="margin_around_miniplayer_summary">Toggle margin around the miniplayer, if enabled the miniplayer at the bottom will have space around it.</string>
 </resources>

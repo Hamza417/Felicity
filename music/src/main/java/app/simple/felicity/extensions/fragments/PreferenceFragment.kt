@@ -312,8 +312,8 @@ open class PreferenceFragment : MediaFragment() {
         val miniPlayerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.miniplayer)
 
         val marginAroundMiniplayerToggle = Preference(
-                title = R.string.marginless_miniplayer,
-                summary = R.string.marginless_miniplayer_summary,
+                title = R.string.margin_around_miniplayer,
+                summary = R.string.margin_around_miniplayer_summary,
                 icon = R.drawable.ic_border_outer,
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->

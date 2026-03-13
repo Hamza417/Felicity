@@ -1056,12 +1056,12 @@ class MiniPlayer @JvmOverloads constructor(
         artistPaint.typeface = TypeFace.getTypeFace(font, 1 /* REGULAR */, context)
 
         val newRadius = AppearancePreferences.getCornerRadius()
-        if (newRadius != cornerRadiusPx || cardRect.width() != w) {
+        baseCornerRadiusPx = newRadius
+        // In flat mode the corner radius is driven by the applyMarginMode animator;
+        // overwriting it here would fight the animation and cause visual glitches.
+        // In normal mode snap to the preference value and rebuild the outline if it changed.
+        if (!isFlatMode && newRadius != cornerRadiusPx) {
             cornerRadiusPx = newRadius
-            if (w > 0f && h > 0f) {
-                cardClipPath.rewind()
-                cardClipPath.addRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, Path.Direction.CW)
-            }
             invalidateOutline()
         }
 
@@ -1087,7 +1087,18 @@ class MiniPlayer @JvmOverloads constructor(
         playPauseDrawer.centerY = h / 2f
         playPauseDrawer.updateGeometry(btnSz)
 
-        scrollEngine.viewWidth = w.toInt()
+        // Re-anchor the scroll position to the current page whenever the view width
+        // changes (e.g., during the margin animation).  Without this, the absolute
+        // scrollPx value—originally page * oldWidth—maps to a fractional page index
+        // with the new width, causing the miniplayer to show the wrong song mid-animation.
+        val newViewWidth = w.toInt()
+        if (newViewWidth != scrollEngine.viewWidth && scrollEngine.viewWidth > 0) {
+            val savedPage = scrollEngine.currentPage
+            scrollEngine.viewWidth = newViewWidth
+            scrollEngine.jumpToPage(savedPage)
+        } else {
+            scrollEngine.viewWidth = newViewWidth
+        }
 
         // Keep ripple bounds in sync with the new geometry
         updateRippleBounds(w.toInt(), h.toInt())
@@ -1701,6 +1712,15 @@ class MiniPlayer @JvmOverloads constructor(
                 if (suppressAutoFromRecyclerUntilIdle) return
                 when (newState) {
                     RecyclerView.SCROLL_STATE_IDLE -> {
+                        // When at the bottom of the list the player must always be visible.
+                        // This also recovers the case where DRAGGING hid the player
+                        // mid-overscroll and IDLE fires with the player fully hidden.
+                        if (!rv.canScrollVertically(1) && !isManuallyControlled) {
+                            if (!isFullyShown()) {
+                                animate().translationY(0f).setDuration(250).setInterpolator(showInterpolator).start()
+                            }
+                            return
+                        }
                         if (isFullyShown() || isFullyHidden()) return
                         if (translationY <= hideDistance / 2f)
                             animate().translationY(0f).setDuration(250).setInterpolator(showInterpolator).start()
@@ -1708,7 +1728,12 @@ class MiniPlayer @JvmOverloads constructor(
                             animate().translationY(hideDistance).setDuration(250).setInterpolator(hideInterpolator).start()
                     }
                     RecyclerView.SCROLL_STATE_DRAGGING -> {
-                        if (isFullyShown()) animate().translationY(hideDistance).setDuration(250).setInterpolator(hideInterpolator).start()
+                        // Only hide on drag-start when there is more list content below.
+                        // At the end of the list the player was just shown — hiding it
+                        // immediately on the next drag would create an instant flicker.
+                        if (isFullyShown() && rv.canScrollVertically(1)) {
+                            animate().translationY(hideDistance).setDuration(250).setInterpolator(hideInterpolator).start()
+                        }
                     }
                 }
             }
