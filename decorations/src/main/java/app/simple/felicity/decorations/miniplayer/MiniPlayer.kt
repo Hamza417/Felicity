@@ -175,7 +175,7 @@ class MiniPlayer @JvmOverloads constructor(
         // Layout constants — change these to retune the look without touching logic
 
         /** Default title text size in SP. */
-        private const val TITLE_TEXT_SIZE_SP = 16f
+        private const val TITLE_TEXT_SIZE_SP = 18f
 
         /** Default artist text size in SP. */
         private const val ARTIST_TEXT_SIZE_SP = 12f
