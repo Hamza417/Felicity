@@ -247,4 +247,7 @@
     <string name="remove_from_favorites">Remove from Favorites</string>
     <string name="no_lyrics_found">No Lyrics Found</string>
     <string name="delete_lyrics_too">Delete Lyrics Files Too</string>
+    <string name="miniplayer">Mini Player</string>
+    <string name="marginless_miniplayer">Marginless Miniplayer</string>
+    <string name="marginless_miniplayer_summary">Toggle margin around the miniplayer, if enabled the minipayer at the bottom will have space around it.</string>
 </resources>

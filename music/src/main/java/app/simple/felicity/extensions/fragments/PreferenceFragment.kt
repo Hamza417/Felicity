@@ -21,6 +21,7 @@ import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.preferences.ShufflePreferences
+import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.ui.preferences.sub.AccentColors
 import app.simple.felicity.ui.preferences.sub.Themes
 import app.simple.felicity.ui.preferences.sub.TypeFaces
@@ -308,8 +309,26 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val miniPlayerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.miniplayer)
+
+        val marginAroundMiniplayerToggle = Preference(
+                title = R.string.marginless_miniplayer,
+                summary = R.string.marginless_miniplayer_summary,
+                icon = R.drawable.ic_border_outer,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    UserInterfacePreferences.setMarginAroundMiniplayer((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    UserInterfacePreferences.isMarginAroundMiniplayer()
+                }
+        )
+
         preferences.add(homeHeader)
         preferences.add(homeInterface)
+        preferences.add(miniPlayerHeader)
+        preferences.add(marginAroundMiniplayerToggle)
 
         return preferences
     }

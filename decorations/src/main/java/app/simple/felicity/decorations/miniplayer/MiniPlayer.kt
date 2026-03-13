@@ -40,7 +40,9 @@ import androidx.core.graphics.withClip
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.decorations.itemdecorations.FooterSpacingItemDecoration
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.ARTIST_TEXT_SIZE_SP
+import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.MARGIN_ANIM_MS
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.TITLE_TEXT_SIZE_SP
 import app.simple.felicity.decorations.ripple.FelicityRippleDrawable
 import app.simple.felicity.decorations.typeface.TypeFace
@@ -48,6 +50,7 @@ import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceCha
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
@@ -198,6 +201,14 @@ class MiniPlayer @JvmOverloads constructor(
 
         /** Margin applied around the view on all sides when attached to a window, in dp. */
         private const val SIDE_MARGIN_DP = 15f
+
+        /**
+         * Duration for the animated margin and corner-radius transition when toggling
+         * flat (marginless) mode via [UserInterfacePreferences.MARGIN_AROUND_MINIPLAYER], in ms.
+         *
+         * @author Hamza417
+         */
+        private const val MARGIN_ANIM_MS = 300L
     }
 
     // -------------------------------------------------------------------------
@@ -519,6 +530,33 @@ class MiniPlayer @JvmOverloads constructor(
     private var textRight = 0f
     private var cornerRadiusPx = 0f
 
+    /**
+     * The corner radius sourced directly from theme preferences, before any flat-mode
+     * override is applied. Updated every time [applyConfig] runs so theme changes are
+     * reflected even while the view is in flat mode.
+     *
+     * @author Hamza417
+     */
+    private var baseCornerRadiusPx = 0f
+
+    /**
+     * Whether the miniplayer is currently in flat (marginless) mode.
+     * Toggled by [UserInterfacePreferences.MARGIN_AROUND_MINIPLAYER] and drives both
+     * the margin animation and the corner-radius animation in [applyMarginMode].
+     *
+     * @author Hamza417
+     */
+    private var isFlatMode = false
+
+    /**
+     * Drives the simultaneous margin and corner-radius transition when flat mode is
+     * toggled. Only one animator runs at a time; any in-flight animation is cancelled
+     * before a new one starts.
+     *
+     * @author Hamza417
+     */
+    private var marginAnimator: ValueAnimator? = null
+
     private val cardRect = RectF()
     private val strokeRect = RectF()
     private val artDstRect = RectF()
@@ -552,7 +590,7 @@ class MiniPlayer @JvmOverloads constructor(
     private fun refreshRippleTheme() {
         val accent = ThemeManager.accent.primaryAccentColor
         val highlight = ThemeManager.theme.viewGroupTheme.highlightColor
-        val radius = AppearancePreferences.getCornerRadius()
+        val radius = if (isFlatMode) 0f else AppearancePreferences.getCornerRadius()
         fullRipple.setRippleColor(accent)
         fullRipple.setStartColor(highlight)
         fullRipple.setCornerRadius(radius)
@@ -569,6 +607,135 @@ class MiniPlayer @JvmOverloads constructor(
      */
     private fun releaseAllRipples() {
         fullRipple.setState(intArrayOf())
+    }
+
+    /**
+     * Rebuilds [cardClipPath] using the current [cardRect] and [cornerRadiusPx].
+     * Must be called after either value changes so that clipping and drawing stay in sync.
+     *
+     * @author Hamza417
+     */
+    private fun rebuildCardClipPath() {
+        cardClipPath.rewind()
+        cardClipPath.addRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, Path.Direction.CW)
+    }
+
+    /**
+     * Linear interpolation helper.
+     *
+     * @param from     start value
+     * @param to       end value
+     * @param fraction interpolation fraction in [0, 1]
+     * @return interpolated value between [from] and [to]
+     * @author Hamza417
+     */
+    private fun lerp(from: Float, to: Float, fraction: Float): Float =
+        from + (to - from) * fraction.coerceIn(0f, 1f)
+
+    /**
+     * Reads [UserInterfacePreferences.isMarginAroundMiniplayer] and transitions the view
+     * between its normal (margined, rounded) and flat (marginless, sharp-cornered) layouts.
+     *
+     * When [animated] is `true` a [ValueAnimator] smoothly interpolates all four margins
+     * and [cornerRadiusPx] simultaneously over [MARGIN_ANIM_MS] milliseconds.
+     * When `false` all values are applied instantly.
+     *
+     * The footer decorations are updated after each frame so the [RecyclerView] spacing
+     * always reflects the current visual footprint of the player.
+     *
+     * @param animated `true` to animate, `false` to apply immediately
+     * @author Hamza417
+     */
+    private fun applyMarginMode(animated: Boolean) {
+        isFlatMode = !UserInterfacePreferences.isMarginAroundMiniplayer()
+        val targetSideMargin = if (isFlatMode) 0 else baseSideMarginPx
+        val targetBottomMargin = if (isFlatMode) 0 else baseSideMarginPx + navBarInsetPx
+        val targetRadius = if (isFlatMode) 0f else baseCornerRadiusPx
+
+        val lp = layoutParams as? ViewGroup.MarginLayoutParams ?: run {
+            cornerRadiusPx = targetRadius
+            if (width > 0 && height > 0) {
+                rebuildCardClipPath()
+                invalidateOutline()
+                invalidate()
+            }
+            return
+        }
+
+        if (!animated) {
+            lp.setMargins(targetSideMargin, targetSideMargin, targetSideMargin, targetBottomMargin)
+            layoutParams = lp
+            cornerRadiusPx = targetRadius
+            rebuildCardClipPath()
+            invalidateOutline()
+            refreshRippleTheme()
+            updateFooterDecorations()
+            invalidate()
+            return
+        }
+
+        val fromLeft = lp.leftMargin
+        val fromTop = lp.topMargin
+        val fromRight = lp.rightMargin
+        val fromBottom = lp.bottomMargin
+        val fromRadius = cornerRadiusPx
+
+        marginAnimator?.cancel()
+        marginAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = MARGIN_ANIM_MS
+            interpolator = AccelerateDecelerateInterpolator()
+            addUpdateListener { va ->
+                val f = va.animatedFraction
+                val currentLp = layoutParams as? ViewGroup.MarginLayoutParams
+                    ?: return@addUpdateListener
+                currentLp.leftMargin = lerp(fromLeft.toFloat(), targetSideMargin.toFloat(), f).toInt()
+                currentLp.topMargin = lerp(fromTop.toFloat(), targetSideMargin.toFloat(), f).toInt()
+                currentLp.rightMargin = lerp(fromRight.toFloat(), targetSideMargin.toFloat(), f).toInt()
+                currentLp.bottomMargin = lerp(fromBottom.toFloat(), targetBottomMargin.toFloat(), f).toInt()
+                layoutParams = currentLp
+                cornerRadiusPx = lerp(fromRadius, targetRadius, f)
+                if (width > 0 && height > 0) rebuildCardClipPath()
+                invalidateOutline()
+                updateFooterDecorations()
+                invalidate()
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    refreshRippleTheme()
+                }
+            })
+            start()
+        }
+    }
+
+    /**
+     * Returns the total bottom-spacing height that [RecyclerView] items need to avoid
+     * being obscured by the floating miniplayer.
+     *
+     * The value equals the view's measured height plus its current bottom margin so that
+     * the last list item is always fully visible above the player's bottom edge.
+     *
+     * @return spacing in pixels, or 0 when the view has not been laid out yet
+     * @author Hamza417
+     */
+    private fun getRequiredFooterSpacing(): Int {
+        if (height <= 0) return 0
+        val bm = (layoutParams as? ViewGroup.MarginLayoutParams)?.bottomMargin ?: 0
+        return height + bm
+    }
+
+    /**
+     * Pushes the current [getRequiredFooterSpacing] value to every [FooterSpacingItemDecoration]
+     * that was registered when a [RecyclerView] was attached via [attachToRecyclerView].
+     *
+     * Safe to call at any time; no-ops when [footerDecorations] is empty.
+     *
+     * @author Hamza417
+     */
+    private fun updateFooterDecorations() {
+        if (footerDecorations.isEmpty()) return
+        val spacing = getRequiredFooterSpacing()
+        footerDecorations.values.forEach { it.updateFooterHeight(spacing) }
     }
 
     // -------------------------------------------------------------------------
@@ -682,7 +849,6 @@ class MiniPlayer @JvmOverloads constructor(
      * Receives a fraction in [0, 1] representing the desired playback position.
      */
     var seekListener: ((fraction: Float) -> Unit)? = null
-
 
     /**
      * Animate the visibility of the progress bar to [target].
@@ -911,8 +1077,7 @@ class MiniPlayer @JvmOverloads constructor(
         textRight = w - btnZoneWidth - textPad
 
         cardRect.set(0f, 0f, w, h)
-        cardClipPath.rewind()
-        cardClipPath.addRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, Path.Direction.CW)
+        rebuildCardClipPath()
 
         edgeFadeWidth = (w * EDGE_FADE_WIDTH_FRACTION).coerceAtLeast(dp(EDGE_FADE_MIN_WIDTH_DP))
         rebuildEdgeFadeRects(w, h)
@@ -931,6 +1096,7 @@ class MiniPlayer @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         applyConfig(w.toFloat(), h.toFloat())
+        updateFooterDecorations()
 
         // Re-anchor vertical hide offset after a size change
         if (h > 0 && oldh > 0 && translationY > 0f) {
@@ -1347,6 +1513,16 @@ class MiniPlayer @JvmOverloads constructor(
     // -------------------------------------------------------------------------
 
     private val attached: MutableMap<RecyclerView, RecyclerView.OnScrollListener> = mutableMapOf()
+
+    /**
+     * Footer spacing decorations keyed by [RecyclerView].
+     * Each decoration reserves space at the bottom of the list equal to the player's
+     * visual footprint (height + bottom margin) so the last item is never obscured.
+     *
+     * @author Hamza417
+     */
+    private val footerDecorations: MutableMap<RecyclerView, FooterSpacingItemDecoration> = mutableMapOf()
+
     private val showInterpolator = DecelerateInterpolator()
     private val hideInterpolator = AccelerateInterpolator()
     private val slideInterpolator = AccelerateDecelerateInterpolator()
@@ -1481,6 +1657,20 @@ class MiniPlayer @JvmOverloads constructor(
         val listener = object : RecyclerView.OnScrollListener() {
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
                 if (!isRvScrollable(rv)) return
+                // When the list has reached its bottom end, slide the miniplayer back into
+                // view so it is always reachable without scrolling back up.
+                if (!rv.canScrollVertically(1)
+                        && !isManuallyControlled
+                        && !suppressAutoFromRecyclerUntilIdle) {
+                    animate().cancel()
+                    if (!isFullyShown()) {
+                        animate().translationY(0f)
+                            .setDuration(250)
+                            .setInterpolator(showInterpolator)
+                            .start()
+                    }
+                    return
+                }
                 updateForScrollDelta(dy)
             }
 
@@ -1525,13 +1715,23 @@ class MiniPlayer @JvmOverloads constructor(
         }
         recyclerView.addOnScrollListener(listener)
         attached[recyclerView] = listener
+
+        // Add a footer spacing decoration so the last list item is never permanently
+        // hidden beneath the floating miniplayer — mirrors AppHeader's header decoration.
+        val footerDeco = FooterSpacingItemDecoration(getRequiredFooterSpacing())
+        footerDecorations[recyclerView] = footerDeco
+        recyclerView.addItemDecoration(footerDeco)
+
         suppressAutoFromRecyclerUntilIdle = false
     }
 
     @Suppress("unused")
     fun attachToRecyclerViews(vararg rvs: RecyclerView) = rvs.forEach { attachToRecyclerView(it) }
 
-    fun detachFromRecyclerView(rv: RecyclerView) = attached.remove(rv)?.let { rv.removeOnScrollListener(it) }
+    fun detachFromRecyclerView(rv: RecyclerView) {
+        attached.remove(rv)?.let { rv.removeOnScrollListener(it) }
+        footerDecorations.remove(rv)?.detach()
+    }
 
     @Suppress("unused")
     fun detachFromRecyclerViews(vararg rvs: RecyclerView) = rvs.forEach { detachFromRecyclerView(it) }
@@ -1539,6 +1739,8 @@ class MiniPlayer @JvmOverloads constructor(
     fun detachFromAllRecyclerViews() {
         attached.forEach { (rv, l) -> rv.removeOnScrollListener(l) }
         attached.clear()
+        footerDecorations.forEach { (_, deco) -> deco.detach() }
+        footerDecorations.clear()
     }
 
     // -------------------------------------------------------------------------
@@ -1586,17 +1788,31 @@ class MiniPlayer @JvmOverloads constructor(
             val lp = layoutParams as? ViewGroup.MarginLayoutParams ?: return@post
             val m = dp(SIDE_MARGIN_DP).toInt()
             baseSideMarginPx = m
-            lp.setMargins(m, m, m, m + navBarInsetPx)
-            layoutParams = lp
+            baseCornerRadiusPx = AppearancePreferences.getCornerRadius()
+            isFlatMode = !UserInterfacePreferences.isMarginAroundMiniplayer()
+            if (isFlatMode) {
+                cornerRadiusPx = 0f
+                lp.setMargins(0, 0, 0, 0)
+                layoutParams = lp
+                rebuildCardClipPath()
+                invalidateOutline()
+                refreshRippleTheme()
+            } else {
+                lp.setMargins(m, m, m, m + navBarInsetPx)
+                layoutParams = lp
+            }
+            updateFooterDecorations()
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
             val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
             navBarInsetPx = nav.bottom
-            val lp = v.layoutParams as? ViewGroup.MarginLayoutParams
-                ?: return@setOnApplyWindowInsetsListener insets
-            lp.bottomMargin = baseSideMarginPx + navBarInsetPx
-            v.layoutParams = lp
+            if (!isFlatMode) {
+                val lp = v.layoutParams as? ViewGroup.MarginLayoutParams
+                    ?: return@setOnApplyWindowInsetsListener insets
+                lp.bottomMargin = baseSideMarginPx + navBarInsetPx
+                v.layoutParams = lp
+            }
             insets
         }
 
@@ -1618,6 +1834,7 @@ class MiniPlayer @JvmOverloads constructor(
         edgeFadeAnimator?.cancel()
         progressBarAlphaAnimator?.cancel()
         progressValueAnimator?.cancel()
+        marginAnimator?.cancel()
         resetManualHandler.removeCallbacks(resetManualRunnable)
         isManuallyControlled = false
         hadImmersiveDrag = false
@@ -1709,6 +1926,9 @@ class MiniPlayer @JvmOverloads constructor(
         when (key) {
             AccessibilityPreferences.STROKE_AROUND_MINIPLAYER -> {
                 updateStroke()
+            }
+            UserInterfacePreferences.MARGIN_AROUND_MINIPLAYER -> {
+                applyMarginMode(animated = true)
             }
         }
     }
