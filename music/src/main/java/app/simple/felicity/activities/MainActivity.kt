@@ -94,6 +94,10 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         if (savedInstanceState.isNull()) {
+            // Cold start: push the miniplayer off-screen immediately so it is not
+            // visible before the song queue and themes are fully restored.
+            // onStateReady() will reveal it once everything is ready.
+            binding.miniPlayer.hide(animated = false)
             setHomePanel()
         }
 
@@ -243,6 +247,22 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
     override fun onHideMiniPlayer() {
         binding.miniPlayer.hide(animated = true)
+    }
+
+    /**
+     * Called by [BaseActivity] once the media queue and playback state have been fully
+     * restored.  At this point it is safe to reveal the miniplayer without showing it
+     * while the screen is still loading.
+     *
+     * @author Hamza417
+     */
+    override fun onStateReady() {
+        if (MediaManager.getSongs().isEmpty()) return
+        val fragment = supportFragmentManager.fragments.lastOrNull { it.isVisible }
+        val wantsVisible = (fragment as? MiniPlayerPolicy)?.wantsMiniPlayerVisible ?: true
+        if (wantsVisible) {
+            binding.miniPlayer.show(animated = true)
+        }
     }
 
     override fun onShowMiniPlayer() {

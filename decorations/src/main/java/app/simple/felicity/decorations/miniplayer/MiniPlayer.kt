@@ -42,7 +42,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decorations.itemdecorations.FooterSpacingItemDecoration
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.ARTIST_TEXT_SIZE_SP
-import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.MARGIN_ANIM_MS
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.TITLE_TEXT_SIZE_SP
 import app.simple.felicity.decorations.ripple.FelicityRippleDrawable
 import app.simple.felicity.decorations.typeface.TypeFace
@@ -201,14 +200,6 @@ class MiniPlayer @JvmOverloads constructor(
 
         /** Margin applied around the view on all sides when attached to a window, in dp. */
         private const val SIDE_MARGIN_DP = 15f
-
-        /**
-         * Duration for the animated margin and corner-radius transition when toggling
-         * flat (marginless) mode via [UserInterfacePreferences.MARGIN_AROUND_MINIPLAYER], in ms.
-         *
-         * @author Hamza417
-         */
-        private const val MARGIN_ANIM_MS = 300L
     }
 
     // -------------------------------------------------------------------------
@@ -381,7 +372,7 @@ class MiniPlayer @JvmOverloads constructor(
      * Handler that auto-releases the ripple a short time after it is armed on
      * [MotionEvent.ACTION_DOWN].  This makes the ripple a "fire-and-forget"
      * cherry-on-top visual that plays out its own expand+fade animation without
-     * being cancelled mid-way by any subsequent gesture state.
+     * being canceled mid-way by any subsequent gesture state.
      *
      * @author Hamza417
      */
@@ -437,7 +428,7 @@ class MiniPlayer @JvmOverloads constructor(
                         parent?.requestDisallowInterceptTouchEvent(true)
                         animateEdgeFade(show = true)
                         animatePlayPauseSlide(slideOut = true)
-                        // Drag cancelled the tap — fade progress bar out
+                        // Drag canceled the tap — fade progress bar out
                         animateProgressAlpha(0f)
                     }
                     if (isBeingDragged) {
@@ -542,20 +533,12 @@ class MiniPlayer @JvmOverloads constructor(
     /**
      * Whether the miniplayer is currently in flat (marginless) mode.
      * Toggled by [UserInterfacePreferences.MARGIN_AROUND_MINIPLAYER] and drives both
-     * the margin animation and the corner-radius animation in [applyMarginMode].
+     * the margin reset and the corner-radius change in [applyMarginMode].
      *
      * @author Hamza417
      */
     private var isFlatMode = false
 
-    /**
-     * Drives the simultaneous margin and corner-radius transition when flat mode is
-     * toggled. Only one animator runs at a time; any in-flight animation is cancelled
-     * before a new one starts.
-     *
-     * @author Hamza417
-     */
-    private var marginAnimator: ValueAnimator? = null
 
     private val cardRect = RectF()
     private val strokeRect = RectF()
@@ -620,33 +603,24 @@ class MiniPlayer @JvmOverloads constructor(
         cardClipPath.addRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, Path.Direction.CW)
     }
 
-    /**
-     * Linear interpolation helper.
-     *
-     * @param from     start value
-     * @param to       end value
-     * @param fraction interpolation fraction in [0, 1]
-     * @return interpolated value between [from] and [to]
-     * @author Hamza417
-     */
-    private fun lerp(from: Float, to: Float, fraction: Float): Float =
-        from + (to - from) * fraction.coerceIn(0f, 1f)
 
     /**
-     * Reads [UserInterfacePreferences.isMarginAroundMiniplayer] and transitions the view
-     * between its normal (margined, rounded) and flat (marginless, sharp-cornered) layouts.
+     * Reads [UserInterfacePreferences.isMarginAroundMiniplayer] and instantly switches the
+     * view between its normal (margined, rounded) and flat (marginless, sharp-cornered) layouts.
      *
-     * When [animated] is `true` a [ValueAnimator] smoothly interpolates all four margins
-     * and [cornerRadiusPx] simultaneously over [MARGIN_ANIM_MS] milliseconds.
-     * When `false` all values are applied instantly.
+     * All four margins are applied at once with no animation so the change is imperceptible
+     * in the Preferences screen where the miniplayer is not visible.  Both the absolute
+     * left/right margins and the RTL-aware [ViewGroup.MarginLayoutParams.marginStart] /
+     * [ViewGroup.MarginLayoutParams.marginEnd] fields are updated so the correct value is
+     * used regardless of layout direction.
      *
-     * The footer decorations are updated after each frame so the [RecyclerView] spacing
-     * always reflects the current visual footprint of the player.
+     * The translationY value is re-anchored after the new layout pass so the view stays
+     * in its current show/hide state even though the margins (and therefore
+     * [hideDistance]) have changed.
      *
-     * @param animated `true` to animate, `false` to apply immediately
      * @author Hamza417
      */
-    private fun applyMarginMode(animated: Boolean) {
+    private fun applyMarginMode() {
         isFlatMode = !UserInterfacePreferences.isMarginAroundMiniplayer()
         val targetSideMargin = if (isFlatMode) 0 else baseSideMarginPx
         val targetBottomMargin = if (isFlatMode) 0 else baseSideMarginPx + navBarInsetPx
@@ -662,49 +636,34 @@ class MiniPlayer @JvmOverloads constructor(
             return
         }
 
-        if (!animated) {
-            lp.setMargins(targetSideMargin, targetSideMargin, targetSideMargin, targetBottomMargin)
-            layoutParams = lp
-            cornerRadiusPx = targetRadius
-            rebuildCardClipPath()
-            invalidateOutline()
-            refreshRippleTheme()
-            updateFooterDecorations()
-            invalidate()
-            return
-        }
+        // Capture fraction BEFORE altering margins so the re-anchor below is correct.
+        val priorHide = hideDistance
+        val savedFraction = if (priorHide > 0f) (translationY / priorHide).coerceIn(0f, 1f) else 0f
 
-        val fromLeft = lp.leftMargin
-        val fromTop = lp.topMargin
-        val fromRight = lp.rightMargin
-        val fromBottom = lp.bottomMargin
-        val fromRadius = cornerRadiusPx
+        lp.setMargins(targetSideMargin, targetSideMargin, targetSideMargin, targetBottomMargin)
+        // Also update start/end so RTL-priority fields never override the zeroed left/right.
+        lp.marginStart = targetSideMargin
+        lp.marginEnd = targetSideMargin
+        layoutParams = lp
 
-        marginAnimator?.cancel()
-        marginAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = MARGIN_ANIM_MS
-            interpolator = AccelerateDecelerateInterpolator()
-            addUpdateListener { va ->
-                val f = va.animatedFraction
-                val currentLp = layoutParams as? ViewGroup.MarginLayoutParams
-                    ?: return@addUpdateListener
-                currentLp.leftMargin = lerp(fromLeft.toFloat(), targetSideMargin.toFloat(), f).toInt()
-                currentLp.topMargin = lerp(fromTop.toFloat(), targetSideMargin.toFloat(), f).toInt()
-                currentLp.rightMargin = lerp(fromRight.toFloat(), targetSideMargin.toFloat(), f).toInt()
-                currentLp.bottomMargin = lerp(fromBottom.toFloat(), targetBottomMargin.toFloat(), f).toInt()
-                layoutParams = currentLp
-                cornerRadiusPx = lerp(fromRadius, targetRadius, f)
-                if (width > 0 && height > 0) rebuildCardClipPath()
-                invalidateOutline()
-                updateFooterDecorations()
-                invalidate()
-            }
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    refreshRippleTheme()
+        cornerRadiusPx = targetRadius
+        rebuildCardClipPath()
+        invalidateOutline()
+        refreshRippleTheme()
+        updateFooterDecorations()
+        invalidate()
+
+        // After the layout system has recalculated the view's position with the new margins,
+        // restore the translationY to the equivalent show/hide fraction.
+        post {
+            val newHide = hideDistance
+            if (newHide > 0f) {
+                translationY = when {
+                    savedFraction >= 0.95f -> newHide
+                    savedFraction <= 0.05f -> 0f
+                    else -> (savedFraction * newHide).coerceIn(0f, newHide)
                 }
-            })
-            start()
+            }
         }
     }
 
@@ -767,7 +726,7 @@ class MiniPlayer @JvmOverloads constructor(
 
     /**
      * Animator used to tween [progress] for large jumps (first value, seek scrub, song change).
-     * Cancelled immediately for tiny real-time increments to avoid visible lag.
+     * Canceled immediately for tiny real-time increments to avoid visible lag.
      */
     private var progressValueAnimator: ValueAnimator? = null
 
@@ -884,7 +843,7 @@ class MiniPlayer @JvmOverloads constructor(
      *
      * Because this is called inside [drawPages] with the page translation already applied,
      * the progress bar scrolls naturally with the album art and text during a swipe.
-     * Only the currently settled page renders the real [progress] value; neighbouring
+     * Only the currently settled page renders the real [progress] value; neighboring
      * pages render an empty track so they slide in cleanly without a stale fill.
      *
      * @param canvas the canvas, already clipped to this page's horizontal rect
@@ -1109,15 +1068,25 @@ class MiniPlayer @JvmOverloads constructor(
         applyConfig(w.toFloat(), h.toFloat())
         updateFooterDecorations()
 
-        // Re-anchor vertical hide offset after a size change
-        if (h > 0 && oldh > 0 && translationY > 0f) {
-            val bm = (layoutParams as? ViewGroup.MarginLayoutParams)?.bottomMargin ?: 0
-            val oldHide = oldh.toFloat() + bm
-            if (oldHide > 0f) {
-                val fraction = (translationY / oldHide).coerceIn(0f, 1f)
-                translationY = (fraction * hideDistance).coerceIn(0f, hideDistance)
+        // Re-anchor the vertical hide offset whenever the view geometry changes
+        // (size change, margin change, or nav-bar inset update).
+        // We intentionally use [prevHideDistance] — captured at the END of the previous
+        // onSizeChanged — as the denominator so the fraction is computed against the actual
+        // old hideDistance rather than the approximation "oldh + newBm" which gives a wrong
+        // result when bottom margin changes between calls (e.g. nav-bar inset applied after
+        // the first layout pass or flat-mode toggled).
+        if (h > 0 && oldh > 0 && translationY > 0f && prevHideDistance > 0f) {
+            val fraction = (translationY / prevHideDistance).coerceIn(0f, 1f)
+            translationY = when {
+                fraction >= 0.95f -> hideDistance          // was fully hidden → snap fully hidden
+                fraction <= 0.05f -> 0f                   // was fully shown → snap fully shown
+                else -> (fraction * hideDistance).coerceIn(0f, hideDistance)
             }
         }
+
+        // Always keep prevHideDistance in sync BEFORE applyPendingTy so a subsequent
+        // onSizeChanged from an insets change gets the correct denominator.
+        prevHideDistance = hideDistance
 
         if (w > 0) ensurePageBitmaps()
         applyPendingTy()
@@ -1548,6 +1517,17 @@ class MiniPlayer @JvmOverloads constructor(
     private val resetManualHandler = Handler(Looper.getMainLooper())
     private val resetManualRunnable = Runnable { isManuallyControlled = false }
 
+    /**
+     * The [hideDistance] value captured at the end of the most recent [onSizeChanged] call.
+     * Used by the next [onSizeChanged] to compute the correct translationY fraction when the
+     * view size or its margins change (e.g. on configuration change or nav-bar inset update).
+     * Using the stale new margin as oldHide would produce a wrong fraction and leave a few
+     * pixels of the player visible after rotation.
+     *
+     * @author Hamza417
+     */
+    private var prevHideDistance: Float = 0f
+
     private val hideDistance: Float
         get() {
             val bm = (layoutParams as? ViewGroup.MarginLayoutParams)?.bottomMargin ?: 0
@@ -1809,21 +1789,30 @@ class MiniPlayer @JvmOverloads constructor(
 
         updateStroke()
 
-        post {
-            val lp = layoutParams as? ViewGroup.MarginLayoutParams ?: return@post
-            val m = dp(SIDE_MARGIN_DP).toInt()
-            baseSideMarginPx = m
-            baseCornerRadiusPx = AppearancePreferences.getCornerRadius()
-            isFlatMode = !UserInterfacePreferences.isMarginAroundMiniplayer()
+        // Apply margins synchronously so that hideDistance is already correct when
+        // onRestoreInstanceState → applyPendingTy runs.  Using post{} caused a race where
+        // applyPendingTy consumed pendingRestoreFraction with the XML margins, and then
+        // post{} changed the margins → wrong hideDistance → a sliver of the player visible.
+        val m = dp(SIDE_MARGIN_DP).toInt()
+        baseSideMarginPx = m
+        baseCornerRadiusPx = AppearancePreferences.getCornerRadius()
+        isFlatMode = !UserInterfacePreferences.isMarginAroundMiniplayer()
+        prevHideDistance = 0f // reset so first onSizeChanged does not try to re-anchor
+
+        (layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
             if (isFlatMode) {
                 cornerRadiusPx = 0f
                 lp.setMargins(0, 0, 0, 0)
+                lp.marginStart = 0
+                lp.marginEnd = 0
                 layoutParams = lp
                 rebuildCardClipPath()
                 invalidateOutline()
                 refreshRippleTheme()
             } else {
                 lp.setMargins(m, m, m, m + navBarInsetPx)
+                lp.marginStart = m
+                lp.marginEnd = m
                 layoutParams = lp
             }
             updateFooterDecorations()
@@ -1836,6 +1825,9 @@ class MiniPlayer @JvmOverloads constructor(
                 val lp = v.layoutParams as? ViewGroup.MarginLayoutParams
                     ?: return@setOnApplyWindowInsetsListener insets
                 lp.bottomMargin = baseSideMarginPx + navBarInsetPx
+                lp.setMargins(baseSideMarginPx, baseSideMarginPx, baseSideMarginPx, baseSideMarginPx + navBarInsetPx)
+                lp.marginStart = baseSideMarginPx
+                lp.marginEnd = baseSideMarginPx
                 v.layoutParams = lp
             }
             insets
@@ -1859,10 +1851,10 @@ class MiniPlayer @JvmOverloads constructor(
         edgeFadeAnimator?.cancel()
         progressBarAlphaAnimator?.cancel()
         progressValueAnimator?.cancel()
-        marginAnimator?.cancel()
         resetManualHandler.removeCallbacks(resetManualRunnable)
         isManuallyControlled = false
         hadImmersiveDrag = false
+        prevHideDistance = 0f
         super.onDetachedFromWindow()
         unregisterSharedPreferenceChangeListener()
     }
@@ -1953,7 +1945,7 @@ class MiniPlayer @JvmOverloads constructor(
                 updateStroke()
             }
             UserInterfacePreferences.MARGIN_AROUND_MINIPLAYER -> {
-                applyMarginMode(animated = true)
+                applyMarginMode()
             }
         }
     }

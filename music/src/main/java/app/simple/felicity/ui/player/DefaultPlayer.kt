@@ -238,6 +238,9 @@ class DefaultPlayer : MediaFragment() {
         }
     }
 
+    override val wantsMiniPlayerVisible: Boolean
+        get() = false
+
     /**
      * Updates the favorite button icon from the [Audio] model's [Audio.isFavorite] field.
      * No database query required — the model is the source of truth.

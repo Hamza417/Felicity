@@ -135,6 +135,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
             // Re-sync MediaManager's in-memory queue with what the service has
             val currentIndex = mediaController?.currentMediaItemIndex ?: 0
             MediaManager.notifyCurrentPosition(currentIndex)
+            onStateReady()
             return
         }
 
@@ -157,6 +158,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                         )
                         // Don't call play() automatically - let user initiate playback
                         Log.d(TAG, "Playback state restored successfully")
+                        onStateReady()
                     }
                 } else {
                     // No saved queue (e.g. first-ever launch) – the DB may be empty because the
@@ -176,8 +178,10 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                                             startPositionMs = 0L,
                                     )
                                     Log.d(TAG, "Default queue loaded on first launch: ${firstSongs.size} songs")
+                                    onStateReady()
                                 } else {
                                     Log.d(TAG, "Queue already populated by the time scan finished – skipping default load")
+                                    onStateReady()
                                 }
                             }
                         } catch (e: Exception) {
@@ -194,6 +198,17 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
             }
         }
     }
+
+    /**
+     * Called on the main thread once the media queue and playback state have been fully
+     * restored from the database (or determined to be empty on first launch).
+     *
+     * Subclasses should override this to perform any UI initialisation that must wait
+     * until songs and themes are ready, such as revealing the miniplayer.
+     *
+     * @author Hamza417
+     */
+    protected open fun onStateReady() = Unit
 
     protected fun generateAlbumArtPalette() {
         if (AppearancePreferences.getAccentColorName() != AlbumArt.IDENTIFIER) return
