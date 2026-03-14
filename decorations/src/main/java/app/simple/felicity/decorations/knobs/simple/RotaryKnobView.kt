@@ -3,6 +3,7 @@ package app.simple.felicity.decorations.knobs.simple
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
@@ -347,6 +348,36 @@ class RotaryKnobView @JvmOverloads constructor(
     }
 
     /**
+     * Paint for the directional glow drawn behind the end-stop tick that corresponds to the
+     * current rotation direction. Uses [BlurMaskFilter] — requires [LAYER_TYPE_SOFTWARE].
+     */
+    private val tickGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
+    /**
+     * Normalized glow intensity [0, 1] for the minimum (start) end-stop tick.
+     * Animated to 1 while the knob rotates counter-clockwise and back to 0 when released.
+     */
+    private var startTickGlowIntensity = 0f
+
+    /**
+     * Normalized glow intensity [0, 1] for the maximum (end) end-stop tick.
+     * Animated to 1 while the knob rotates clockwise and back to 0 when released.
+     */
+    private var endTickGlowIntensity = 0f
+
+    /** Currently scheduled target for [startTickGlowIntensity] (avoids redundant animator restarts). */
+    private var startTickGlowTarget = 0f
+
+    /** Currently scheduled target for [endTickGlowIntensity] (avoids redundant animator restarts). */
+    private var endTickGlowTarget = 0f
+
+    private var startTickGlowAnimator: ValueAnimator? = null
+    private var endTickGlowAnimator: ValueAnimator? = null
+
+    /**
      * Fraction of [knobRadiusPx] at which the indicator dot sits inside the knob circle.
      * Must match [SimpleRotaryKnobDrawable.INDICATOR_DISTANCE_FRACTION] (0.81).
      * Used to compute the exact tip position for the pan-lean divider line.
@@ -372,6 +403,9 @@ class RotaryKnobView @JvmOverloads constructor(
     private val arcOval = RectF()
 
     init {
+        // Software layer required for BlurMaskFilter (knob glow + tick directional glow).
+        setLayerType(LAYER_TYPE_SOFTWARE, null)
+
         context.theme.obtainStyledAttributes(attrs, R.styleable.RotaryKnobView, 0, 0).apply {
             try {
                 value = getInt(R.styleable.RotaryKnobView_initialValue, 50)
@@ -403,6 +437,8 @@ class RotaryKnobView @JvmOverloads constructor(
         (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = null
         rotationAnimator?.cancel()
         divisionAnimators.forEach { it?.cancel() }
+        startTickGlowAnimator?.cancel()
+        endTickGlowAnimator?.cancel()
         if (isInEditMode.not()) {
             ThemeManager.removeListener(this)
         }
@@ -506,10 +542,18 @@ class RotaryKnobView @JvmOverloads constructor(
         labelYPx = knobBottom + (height - knobBottom) / 2f + labelSizePx / 2f
 
         val kr = knobRadiusPx.toInt()
-        knobDrawable.setBounds(
-                (cx - knobRadiusPx).toInt(), (cy - knobRadiusPx).toInt(),
-                (cx - knobRadiusPx).toInt() + kr * 2, (cy - knobRadiusPx).toInt() + kr * 2
-        )
+        if (knobDrawable is NeoKnobDrawable) {
+            // NeoKnobDrawable renders its own full plate, track ring, and progress arc,
+            // so it needs the full available radius rather than just the knob circle.
+            val ri = r.toInt()
+            knobDrawable.setBounds((cx - r).toInt(), (cy - r).toInt(),
+                                   (cx - r).toInt() + ri * 2, (cy - r).toInt() + ri * 2)
+        } else {
+            knobDrawable.setBounds(
+                    (cx - knobRadiusPx).toInt(), (cy - knobRadiusPx).toInt(),
+                    (cx - knobRadiusPx).toInt() + kr * 2, (cy - knobRadiusPx).toInt() + kr * 2
+            )
+        }
         invalidate()
     }
 
@@ -603,8 +647,8 @@ class RotaryKnobView @JvmOverloads constructor(
         // End-stop tick marks at the min (ARC_START_ANGLE) and max (ARC_START_ANGLE + ARC_SWEEP).
         tickPaint.strokeWidth = tickStrokeWidthPx
         tickPaint.color = currentArcColor()
-        drawTick(canvas, ARC_START_ANGLE, tickStartText)
-        drawTick(canvas, ARC_START_ANGLE + ARC_SWEEP, tickEndText)
+        drawTick(canvas, ARC_START_ANGLE, tickStartText, startTickGlowIntensity)
+        drawTick(canvas, ARC_START_ANGLE + ARC_SWEEP, tickEndText, endTickGlowIntensity)
 
         // Center-snap tick: a taller, accent-colored mark at the exact midpoint of the arc.
         if (centerSnapEnabled) {
@@ -661,7 +705,15 @@ class RotaryKnobView @JvmOverloads constructor(
         }
 
         // Knob circle — rotated around the view center; visually clamped to START..END.
-        canvas.withRotation(knobRotation.coerceIn(START, END), cx, cy) {
+        val clampedRotation = knobRotation.coerceIn(START, END)
+
+        // NeoKnobDrawable needs the current rotation and normalized progress so it can
+        // counter-rotate its world-space static layers (plate, track, arc, specular) inside draw().
+        (knobDrawable as? NeoKnobDrawable)?.let { neo ->
+            neo.knobRotationDegrees = clampedRotation
+        }
+
+        canvas.withRotation(clampedRotation, cx, cy) {
             knobDrawable.draw(this)
         }
     }
@@ -719,13 +771,33 @@ class RotaryKnobView @JvmOverloads constructor(
      * [tickEndRadiusPx] at the given canvas-space angle, then renders [label] just beyond
      * the tick end along the same radial direction when the string is non-empty.
      *
-     * The label text is sized by [tickLabelTextSizeFraction] — intentionally tiny so it
-     * never competes visually with the arc ring or value label.
+     * When [glowIntensity] is greater than 0 a blurred accent-colored halo is drawn behind
+     * the tick mark to indicate that the knob is rotating toward this end-stop. The halo
+     * requires [LAYER_TYPE_SOFTWARE] on the parent view (already set in [init]).
+     *
+     * @param glowIntensity Normalized intensity in [0, 1]; 0 = no glow, 1 = full glow.
      */
-    private fun drawTick(canvas: Canvas, angleDeg: Float, label: String = "") {
+    private fun drawTick(canvas: Canvas, angleDeg: Float, label: String = "", glowIntensity: Float = 0f) {
         val rad = Math.toRadians(angleDeg.toDouble())
         val cosA = cos(rad).toFloat()
         val sinA = sin(rad).toFloat()
+
+        // Directional glow halo — drawn first so it sits behind the solid tick mark.
+        if (glowIntensity > 0f) {
+            val glowBlur = (tickEndRadiusPx - tickStartRadiusPx) * 1.5f * glowIntensity
+            val glowAlpha = (220 * glowIntensity).toInt().coerceIn(0, 255)
+            tickGlowPaint.color = (divisionAccentColor and 0x00FFFFFF) or (glowAlpha shl 24)
+            tickGlowPaint.strokeWidth = tickStrokeWidthPx * 5f
+            tickGlowPaint.maskFilter = BlurMaskFilter(glowBlur.coerceAtLeast(1f), BlurMaskFilter.Blur.NORMAL)
+            canvas.drawLine(
+                    cx + cosA * (tickStartRadiusPx - glowBlur * 0.3f),
+                    cy + sinA * (tickStartRadiusPx - glowBlur * 0.3f),
+                    cx + cosA * (tickEndRadiusPx + glowBlur * 0.3f),
+                    cy + sinA * (tickEndRadiusPx + glowBlur * 0.3f),
+                    tickGlowPaint
+            )
+            tickGlowPaint.maskFilter = null
+        }
 
         // Tick line
         canvas.drawLine(
@@ -772,6 +844,15 @@ class RotaryKnobView @JvmOverloads constructor(
                 knobRotation = (knobRotation + delta).coerceIn(START, END)
                 lastMoveAngle = currentAngle
 
+                // Directional glow: light up the end-stop tick we are rotating toward.
+                if (delta > 0f) {
+                    animateTickGlowTo(isEndTick = true, target = 1f)
+                    animateTickGlowTo(isEndTick = false, target = 0f)
+                } else if (delta < 0f) {
+                    animateTickGlowTo(isEndTick = false, target = 1f)
+                    animateTickGlowTo(isEndTick = true, target = 0f)
+                }
+
                 // Rotation tick haptics: accumulate travel and fire a light tick every HAPTIC_TICK_INTERVAL_DEG.
                 val actualDelta = knobRotation - prevRotation
                 if (actualDelta != 0f) {
@@ -809,6 +890,9 @@ class RotaryKnobView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 knobDrawable.onPressedStateChanged(false, 300)
+                // Fade out both tick glows when the user lifts their finger.
+                animateTickGlowTo(isEndTick = true, target = 0f)
+                animateTickGlowTo(isEndTick = false, target = 0f)
                 // Snap to center (50 %) if within the snap threshold
                 if (centerSnapEnabled) {
                     val centreAngle = valueToAngle(50f)
@@ -926,7 +1010,43 @@ class RotaryKnobView @JvmOverloads constructor(
     private fun valueToAngle(volume: Float): Float =
         START + (volume / 100f) * (END - START)
 
+    /**
+     * Animates a tick glow intensity toward [target], skipping the animation if [target] matches
+     * the currently scheduled goal.
+     *
+     * @param isEndTick  `true` for the maximum end-stop tick, `false` for the minimum.
+     * @param target     Desired glow intensity in [0, 1].
+     */
+    private fun animateTickGlowTo(isEndTick: Boolean, target: Float) {
+        val currentTarget = if (isEndTick) endTickGlowTarget else startTickGlowTarget
+        if (currentTarget == target) return
 
+        if (isEndTick) endTickGlowTarget = target else startTickGlowTarget = target
+
+        val fromValue = if (isEndTick) endTickGlowIntensity else startTickGlowIntensity
+        val appearDuration = 120L
+        val fadeDuration = 350L
+        val animDuration = if (target > fromValue) appearDuration else fadeDuration
+
+        val anim = ValueAnimator.ofFloat(fromValue, target).apply {
+            duration = animDuration
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener { va ->
+                if (isEndTick) endTickGlowIntensity = va.animatedValue as Float
+                else startTickGlowIntensity = va.animatedValue as Float
+                invalidate()
+            }
+        }
+
+        if (isEndTick) {
+            endTickGlowAnimator?.cancel()
+            endTickGlowAnimator = anim
+        } else {
+            startTickGlowAnimator?.cancel()
+            startTickGlowAnimator = anim
+        }
+        anim.start()
+    }
 
     /** Light tick fired every [HAPTIC_TICK_INTERVAL_DEG] degrees of rotation. */
     private fun vibrateRotationTick() {
