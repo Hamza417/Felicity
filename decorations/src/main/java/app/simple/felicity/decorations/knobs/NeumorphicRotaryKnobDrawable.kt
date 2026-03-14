@@ -26,17 +26,20 @@ import app.simple.felicity.theme.themes.Theme
  * a raised surface lit from the top-left corner.
  *
  * Layers drawn bottom-to-top:
- * 1. **Dark shadow** — a [RadialGradient] whose center is displaced toward the bottom-right,
- *    creating a soft shadow cast by the raised knob surface.
- * 2. **Light highlight** — a [RadialGradient] whose center is displaced toward the top-left,
+ * 1. **Light highlight** — a [RadialGradient] whose center is displaced toward the top-left,
  *    creating a soft specular reflection on the raised surface.
- * 3. **Body fill** — a circle filled with a [LinearGradient] that runs from a slightly
+ * 2. **Body fill** — a circle filled with a [LinearGradient] that runs from a slightly
  *    lighter tint (top-left) through the base color to a slightly darker tint (bottom-right),
  *    reinforcing the convex curvature illusion.
- * 4. **Ring** — a thin circular stroke whose color animates between idle and accent on
- *    press / release.
- * 5. **Indicator dot** — a small filled circle near the top of the knob that also animates
- *    between idle and accent, drawn with a subtle inner [RadialGradient] glow.
+ * 3. **Ring** — a thin circular stroke whose color animates between idle and accent on
+ *    press / release. A centered [Paint.setShadowLayer] (dx=0, dy=0) produces a pure radial
+ *    luminance bloom around the stroke that also animates with state.
+ * 4. **Indicator dot** — a small filled circle near the top of the knob drawn with a
+ *    subtle inner [RadialGradient] glow and a [Paint.setShadowLayer] outer bloom,
+ *    both animating between idle and accent.
+ *
+ * Both [Paint.setShadowLayer] usages require [LAYER_TYPE_SOFTWARE] on the host view;
+ * [requiresSoftwareLayer] returns `true` to signal this to [RotaryKnobView].
  *
  * Theme colors are managed internally: the drawable registers with [ThemeManager] during
  * [onAttachedToKnobView] and unregisters during [onDetachedFromKnobView], so
@@ -44,7 +47,6 @@ import app.simple.felicity.theme.themes.Theme
  *
  * @param strokeWidthFraction      Ring stroke width as a fraction of the knob radius (0..1).
  * @param indicatorRadiusFraction  Radius of the indicator dot as a fraction of the knob radius.
- * @param shadowAlpha              Alpha (0..255) applied to the dark shadow layer.
  * @param highlightAlpha           Alpha (0..255) applied to the light highlight layer.
  * @param intrinsicSizePx          Reported intrinsic size in pixels so wrap_content works.
  *
@@ -53,7 +55,6 @@ import app.simple.felicity.theme.themes.Theme
 class NeumorphicRotaryKnobDrawable(
         var strokeWidthFraction: Float = DEFAULT_STROKE_WIDTH_FRACTION,
         var indicatorRadiusFraction: Float = DEFAULT_INDICATOR_RADIUS_FRACTION,
-        var shadowAlpha: Int = DEFAULT_SHADOW_ALPHA,
         var highlightAlpha: Int = DEFAULT_HIGHLIGHT_ALPHA,
         @Px private var intrinsicSizePx: Int = DEFAULT_INTRINSIC_SIZE_PX
 ) : RotaryKnobDrawable(), ThemeChangedListener {
@@ -70,9 +71,6 @@ class NeumorphicRotaryKnobDrawable(
     private var bodyColor: Int = SimpleRotaryKnobDrawable.DEFAULT_BODY_COLOR
 
     @ColorInt
-    private var shadowColor: Int = DEFAULT_SHADOW_COLOR
-
-    @ColorInt
     private var highlightColor: Int = DEFAULT_HIGHLIGHT_COLOR
 
     // ── State ────────────────────────────────────────────────────────────────────
@@ -83,14 +81,6 @@ class NeumorphicRotaryKnobDrawable(
     private var colorAnimator: ValueAnimator? = null
 
     // ── Paints ──────────────────────────────────────────────────────────────────
-
-    /**
-     * Paint used for the dark-shadow displaced radial gradient. Shader is rebuilt in
-     * [rebuildShaders] whenever the bounds change or colors update.
-     */
-    private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
 
     /**
      * Paint used for the light-highlight displaced radial gradient. Shader is rebuilt in
@@ -108,17 +98,14 @@ class NeumorphicRotaryKnobDrawable(
         style = Paint.Style.FILL
     }
 
-    /** Paint for the outer ring stroke. Color animates between idle and accent. */
+    /** Ring stroke. Luminance glow is achieved via [Paint.setShadowLayer] — requires software layer. */
     private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
 
-    /**
-     * Paint for the indicator dot. Uses a [RadialGradient] centered at the dot position
-     * to add a subtle inner glow when in the accent state.
-     */
+    /** Indicator dot. Luminance glow is achieved via [Paint.setShadowLayer] — requires software layer. */
     private val indicatorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
@@ -182,31 +169,28 @@ class NeumorphicRotaryKnobDrawable(
         val strokeWidth = knobRadius * strokeWidthFraction
         val halfStroke = strokeWidth / 2f
         val bodyRadius = knobRadius - halfStroke
-
-        // The shadow and highlight gradient circles are drawn slightly larger than the body
-        // so their soft edges bleed outward and are not clipped by the solid body fill.
-        val glowRadius = bodyRadius + knobRadius * GLOW_RADIUS_EXTRA_FRACTION
-
-        // Layer 1: dark shadow (displaced bottom-right)
-        canvas.drawCircle(cx, cy, glowRadius, shadowPaint)
-
-        // Layer 2: light highlight (displaced top-left)
-        canvas.drawCircle(cx, cy, glowRadius, highlightPaint)
-
-        // Layer 3: body fill with subtle top-left → bottom-right gradient
-        canvas.drawCircle(cx, cy, bodyRadius, bodyPaint)
-
-        // Layer 4: ring outline (state-colored)
-        ringPaint.color = currentStateColor
-        ringPaint.strokeWidth = strokeWidth
-        canvas.drawOval(
-                RectF(cx - bodyRadius, cy - bodyRadius, cx + bodyRadius, cy + bodyRadius),
-                ringPaint
-        )
-
-        // Layer 5: indicator dot near the top (state-colored with gradient glow)
         val indicatorRadius = knobRadius * indicatorRadiusFraction
         val indicatorCy = cy - bodyRadius * SimpleRotaryKnobDrawable.INDICATOR_DISTANCE_FRACTION
+        val ringRect = RectF(cx - bodyRadius, cy - bodyRadius, cx + bodyRadius, cy + bodyRadius)
+
+        // The highlight gradient circle is drawn slightly larger than the body so its soft
+        // edges bleed outward and are not clipped by the solid body fill.
+        val highlightRadius = bodyRadius + knobRadius * GLOW_RADIUS_EXTRA_FRACTION
+
+        // Layer 1: light highlight (displaced top-left)
+        canvas.drawCircle(cx, cy, highlightRadius, highlightPaint)
+
+        // Layer 2: body fill with subtle top-left → bottom-right gradient
+        canvas.drawCircle(cx, cy, bodyRadius, bodyPaint)
+
+        // Layer 3: ring — setShadowLayer(dx=0, dy=0) produces a pure radial luminance bloom
+        ringPaint.setShadowLayer(strokeWidth * GLOW_RADIUS_FRACTION, 0f, 0f, currentStateColor)
+        ringPaint.color = currentStateColor
+        ringPaint.strokeWidth = strokeWidth
+        canvas.drawOval(ringRect, ringPaint)
+
+        // Layer 4: indicator dot — inner gradient glow (shader) + outer setShadowLayer bloom
+        indicatorPaint.setShadowLayer(indicatorRadius * GLOW_RADIUS_FRACTION, 0f, 0f, currentStateColor)
         canvas.drawCircle(cx, indicatorCy, indicatorRadius, indicatorPaint)
     }
 
@@ -214,7 +198,6 @@ class NeumorphicRotaryKnobDrawable(
     override fun getIntrinsicHeight(): Int = intrinsicSizePx
 
     override fun setAlpha(alpha: Int) {
-        shadowPaint.alpha = alpha
         highlightPaint.alpha = alpha
         bodyPaint.alpha = alpha
         ringPaint.alpha = alpha
@@ -223,7 +206,6 @@ class NeumorphicRotaryKnobDrawable(
     }
 
     override fun setColorFilter(colorFilter: ColorFilter?) {
-        shadowPaint.colorFilter = colorFilter
         highlightPaint.colorFilter = colorFilter
         bodyPaint.colorFilter = colorFilter
         ringPaint.colorFilter = colorFilter
@@ -252,17 +234,7 @@ class NeumorphicRotaryKnobDrawable(
         val halfStroke = strokeWidth / 2f
         val bodyRadius = knobRadius - halfStroke
         val glowRadius = bodyRadius + knobRadius * GLOW_RADIUS_EXTRA_FRACTION
-        val offset = knobRadius * SHADOW_OFFSET_FRACTION
-
-        // Dark shadow: displaced gradient — dense at bottom-right edge, transparent at center.
-        val shadowRaw = colorWithAlpha(shadowColor, shadowAlpha)
-        shadowPaint.shader = RadialGradient(
-                cx + offset, cy + offset,
-                glowRadius,
-                intArrayOf(Color.TRANSPARENT, shadowRaw),
-                floatArrayOf(0.55f, 1f),
-                Shader.TileMode.CLAMP
-        )
+        val offset = knobRadius * HIGHLIGHT_OFFSET_FRACTION
 
         // Light highlight: displaced gradient — dense at top-left edge, transparent at center.
         val highlightRaw = colorWithAlpha(highlightColor, highlightAlpha)
@@ -290,7 +262,7 @@ class NeumorphicRotaryKnobDrawable(
 
     /**
      * Rebuilds only the indicator dot shader so it can be refreshed independently on every
-     * state-color animation frame without reconstructing all the heavier shadow gradients.
+     * state-color animation frame without reconstructing all the heavier gradient shaders.
      */
     private fun rebuildIndicatorShader() {
         val b = bounds
@@ -305,7 +277,7 @@ class NeumorphicRotaryKnobDrawable(
         val indicatorCy = cy - bodyRadius * SimpleRotaryKnobDrawable.INDICATOR_DISTANCE_FRACTION
         val cx = b.exactCenterX()
 
-        // Indicator glow: radial gradient from a brighter center to the state color at the edge.
+        // Indicator inner glow: radial gradient from a brighter center to the state color at the edge.
         val innerGlow = blendColors(currentStateColor, Color.WHITE, INDICATOR_GLOW_BLEND)
         indicatorPaint.shader = RadialGradient(
                 cx, indicatorCy,
@@ -325,6 +297,7 @@ class NeumorphicRotaryKnobDrawable(
     private fun colorWithAlpha(@ColorInt color: Int, alpha: Int): Int =
         (color and 0x00FFFFFF) or (alpha.coerceIn(0, 255) shl 24)
 
+
     /**
      * Linearly blends [colorA] toward [colorB] by [fraction] (0 = pure A, 1 = pure B)
      * in the RGB channels. Alpha from [colorA] is preserved.
@@ -342,7 +315,6 @@ class NeumorphicRotaryKnobDrawable(
     private fun applyTheme(theme: Theme) {
         bodyColor = theme.viewGroupTheme.backgroundColor
         idleColor = theme.viewGroupTheme.dividerColor
-        shadowColor = theme.viewGroupTheme.spotColor
         highlightColor = theme.viewGroupTheme.highlightColor
         if (colorAnimator == null || colorAnimator?.isRunning == false) {
             currentStateColor = idleColor
@@ -360,31 +332,31 @@ class NeumorphicRotaryKnobDrawable(
         const val DEFAULT_STROKE_WIDTH_FRACTION = 0.015f
         const val DEFAULT_INDICATOR_RADIUS_FRACTION = 0.074f
 
-        /** Alpha for the dark shadow overlay layer (0..255). */
-        const val DEFAULT_SHADOW_ALPHA = 120
-
-        /** Alpha for the light highlight overlay layer (0..255). */
+        /** Alpha (0..255) applied to the light highlight overlay layer. */
         const val DEFAULT_HIGHLIGHT_ALPHA = 100
 
         const val DEFAULT_INTRINSIC_SIZE_PX = 500
 
         @ColorInt
-        private val DEFAULT_SHADOW_COLOR: Int = 0xFF000000.toInt()
-
-        @ColorInt
         private val DEFAULT_HIGHLIGHT_COLOR: Int = 0xFFFFFFFF.toInt()
 
-        /** Extra radius beyond bodyRadius for the glow gradient circles, as a fraction of knobRadius. */
+        /** Extra radius beyond bodyRadius for the highlight gradient circle, as a fraction of knobRadius. */
         private const val GLOW_RADIUS_EXTRA_FRACTION = 0.18f
 
-        /** How far to displace the shadow / highlight gradient centers, as a fraction of knobRadius. */
-        private const val SHADOW_OFFSET_FRACTION = 0.20f
+        /** How far to displace the highlight gradient center toward the top-left, as a fraction of knobRadius. */
+        private const val HIGHLIGHT_OFFSET_FRACTION = 0.20f
 
         /** How much white / black to mix into the body color at the gradient ends (0..1). */
         private const val BODY_GRADIENT_TINT = 0.12f
 
-        /** How much white to blend into the state color for the indicator dot inner glow. */
+        /** How much white to blend into the state color for the indicator dot inner gradient glow. */
         private const val INDICATOR_GLOW_BLEND = 0.45f
+
+        /**
+         * Multiplier applied to the ring stroke width (and indicator radius) to derive the
+         * [Paint.setShadowLayer] blur radius. A centered shadow (dx=0, dy=0) produces a pure
+         * radial luminance bloom — the larger this value the wider and softer the glow.
+         */
+        private const val GLOW_RADIUS_FRACTION = 3.5f
     }
 }
-

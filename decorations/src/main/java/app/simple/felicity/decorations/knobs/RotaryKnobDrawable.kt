@@ -53,6 +53,17 @@ abstract class RotaryKnobDrawable : Drawable() {
      */
     open fun onDetachedFromKnobView() {}
 
+    /**
+     * Returns `true` if this drawable uses [android.graphics.Paint.setShadowLayer] for glow
+     * or bloom effects, which requires the host view to operate in software rendering mode
+     * ([android.view.View.LAYER_TYPE_SOFTWARE]).
+     *
+     * [RotaryKnobView] calls this after every drawable swap and adjusts its layer type
+     * accordingly. Override and return `true` in any subclass that relies on
+     * [android.graphics.Paint.setShadowLayer].
+     */
+    open fun requiresSoftwareLayer(): Boolean = false
+
     companion object {
         const val DEFAULT_TRANSITION_DURATION = 400
     }

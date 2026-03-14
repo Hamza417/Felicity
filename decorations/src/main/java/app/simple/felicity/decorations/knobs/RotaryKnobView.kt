@@ -7,6 +7,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
 import android.os.VibrationEffect
@@ -392,6 +393,7 @@ class RotaryKnobView @JvmOverloads constructor(
         super.onAttachedToWindow()
         knobDrawable.callback = this
         knobDrawable.onAttachedToKnobView()
+        applyLayerType()
         if (isInEditMode.not()) {
             ThemeManager.addListener(this)
         }
@@ -412,6 +414,15 @@ class RotaryKnobView @JvmOverloads constructor(
         super.onSizeChanged(w, h, oldw, oldh)
         recalcGeometry()
     }
+
+    /**
+     * Tells [android.view.View] that [knobDrawable] is a managed drawable of this view so
+     * that [android.graphics.drawable.Drawable.invalidateSelf] propagates correctly through
+     * [invalidateDrawable] → [invalidate]. Without this, [View.invalidateDrawable] silently
+     * drops the call and state-color animations triggered by touch-down are never reflected in
+     * the arc and tick marks until the view is redrawn for another reason (e.g., finger move).
+     */
+    override fun verifyDrawable(who: Drawable): Boolean = who === knobDrawable || super.verifyDrawable(who)
 
     override fun onAccentChanged(accent: Accent) {
         super.onAccentChanged(accent)
@@ -918,8 +929,22 @@ class RotaryKnobView @JvmOverloads constructor(
         knobDrawable.callback = this
         if (isAttachedToWindow) {
             knobDrawable.onAttachedToKnobView()
+            applyLayerType()
         }
         recalcGeometry()
+    }
+
+    /**
+     * Sets the view's rendering layer type based on what the current [knobDrawable] requires.
+     * If the drawable uses [android.graphics.Paint.setShadowLayer] for glow effects it returns
+     * `true` from [RotaryKnobDrawable.requiresSoftwareLayer] and the view switches to
+     * [LAYER_TYPE_SOFTWARE]; otherwise hardware acceleration is restored.
+     */
+    private fun applyLayerType() {
+        setLayerType(
+                if (knobDrawable.requiresSoftwareLayer()) LAYER_TYPE_SOFTWARE else LAYER_TYPE_HARDWARE,
+                null
+        )
     }
 
     /** Maps a knob angle in [START]..[END] to a value in 0..100. */

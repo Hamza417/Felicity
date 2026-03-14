@@ -57,12 +57,14 @@ class SimpleRotaryKnobDrawable(
         style = Paint.Style.FILL
     }
 
+    /** Ring outline. Glow is achieved via [Paint.setShadowLayer] — requires software layer. */
     private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
 
+    /** Indicator dot. Glow is achieved via [Paint.setShadowLayer] — requires software layer. */
     private val indicatorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
@@ -79,6 +81,9 @@ class SimpleRotaryKnobDrawable(
     // ── RotaryKnobDrawable ───────────────────────────────────────────────────────
 
     override fun getCurrentStateColor(): Int = currentStateColor
+
+    /** Returns `true` — [ringPaint] and [indicatorPaint] rely on [Paint.setShadowLayer] for glow. */
+    override fun requiresSoftwareLayer(): Boolean = true
 
     override fun onPressedStateChanged(pressed: Boolean, animationDuration: Int) {
         val targetColor = if (pressed) accentColor else idleColor
@@ -129,22 +134,23 @@ class SimpleRotaryKnobDrawable(
         val strokeWidth = knobRadius * strokeWidthFraction
         val halfStroke = strokeWidth / 2f
         val bodyRadius = knobRadius - halfStroke
+        val indicatorRadius = knobRadius * indicatorRadiusFraction
+        val indicatorCy = cy - bodyRadius * INDICATOR_DISTANCE_FRACTION
+        val glowRadius = knobRadius * GLOW_RADIUS_FRACTION
+        val ringRect = RectF(cx - bodyRadius, cy - bodyRadius, cx + bodyRadius, cy + bodyRadius)
 
-        // Body fill
+        // Body fill — no glow
         bodyPaint.color = bodyColor
         canvas.drawCircle(cx, cy, bodyRadius, bodyPaint)
 
-        // Ring outline
+        // Ring with luminance glow (centered shadow = radial bloom)
+        ringPaint.setShadowLayer(glowRadius, 0f, 0f, currentStateColor)
         ringPaint.color = currentStateColor
         ringPaint.strokeWidth = strokeWidth
-        canvas.drawOval(
-                RectF(cx - bodyRadius, cy - bodyRadius, cx + bodyRadius, cy + bodyRadius),
-                ringPaint
-        )
+        canvas.drawOval(ringRect, ringPaint)
 
-        // Indicator dot — near the top
-        val indicatorRadius = knobRadius * indicatorRadiusFraction
-        val indicatorCy = cy - bodyRadius * INDICATOR_DISTANCE_FRACTION
+        // Indicator dot with luminance glow
+        indicatorPaint.setShadowLayer(glowRadius, 0f, 0f, currentStateColor)
         indicatorPaint.color = currentStateColor
         canvas.drawCircle(cx, indicatorCy, indicatorRadius, indicatorPaint)
     }
@@ -218,5 +224,12 @@ class SimpleRotaryKnobDrawable(
         const val INDICATOR_DISTANCE_FRACTION = 0.81f
 
         const val DEFAULT_INTRINSIC_SIZE_PX = 500
+
+        /**
+         * Blur radius of the [Paint.setShadowLayer] glow, as a fraction of the knob radius.
+         * A centered shadow (dx=0, dy=0) produces a pure radial luminance bloom around the
+         * ring and indicator dot.
+         */
+        private const val GLOW_RADIUS_FRACTION = 0.15f
     }
 }
