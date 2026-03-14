@@ -12,7 +12,7 @@ object AppearancePreferences {
     const val LIST_SPACING = "list_spacing"
     private const val LAST_LIGHT_THEME = "last_light_theme"
     private const val LAST_DARK_THEME = "last_dark_theme"
-    private const val SHADOW_EFFECT = "shadow_effect"
+    const val SHADOW_EFFECT = "shadow_effect"
     private const val KNOB_STYLE = "knob_style"
 
     const val THEME = "current_app_theme"

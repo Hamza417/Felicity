@@ -3,6 +3,7 @@ package app.simple.felicity.decorations.knobs
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
@@ -57,7 +58,7 @@ class RotaryKnobView @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr), ThemeChangedListener {
+) : View(context, attrs, defStyleAttr), ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
 
     /** The drawable used to paint the rotating knob circle. Must be a [RotaryKnobDrawable]. */
     private var knobDrawable: RotaryKnobDrawable = SimpleRotaryKnobDrawable()
@@ -397,6 +398,7 @@ class RotaryKnobView @JvmOverloads constructor(
         applyLayerType()
         if (isInEditMode.not()) {
             ThemeManager.addListener(this)
+            app.simple.felicity.manager.SharedPreferences.registerListener(this)
         }
     }
 
@@ -408,6 +410,7 @@ class RotaryKnobView @JvmOverloads constructor(
         divisionAnimators.forEach { it?.cancel() }
         if (isInEditMode.not()) {
             ThemeManager.removeListener(this)
+            app.simple.felicity.manager.SharedPreferences.unregisterListener(this)
         }
     }
 
@@ -454,6 +457,22 @@ class RotaryKnobView @JvmOverloads constructor(
         tickLabelPaint.color = theme.textViewTheme.secondaryTextColor
         arcColor = theme.viewGroupTheme.dividerColor
         divisionIdleColor = theme.viewGroupTheme.dividerColor
+    }
+
+    /**
+     * Reacts to runtime preference changes relevant to the knob view.
+     *
+     * When [AppearancePreferences.SHADOW_EFFECT] is toggled the layer type is re-evaluated
+     * so the view switches between software (glow enabled) and hardware (glow disabled)
+     * rendering without requiring an app restart.
+     */
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        when (key) {
+            AppearancePreferences.SHADOW_EFFECT -> {
+                applyLayerType()
+                invalidate()
+            }
+        }
     }
 
     /**
@@ -853,17 +872,32 @@ class RotaryKnobView @JvmOverloads constructor(
      * If [animate] is true the move is debounced and driven by a [ValueAnimator] using
      * [OvershootInterpolator] on the first call and [DecelerateInterpolator] thereafter.
      * If [animate] is false the knob snaps instantly.
+     *
+     * In either path a brief indicator-only glow pulse is fired via
+     * [RotaryKnobDrawable.onProgrammaticPositionChanged] so the user can see the knob
+     * respond to an external volume change without the ring or arc elements lighting up.
+     * The pulse is skipped on the very first call (initial position setup) to avoid a
+     * spurious glow when the view first appears.
      */
     fun setKnobPosition(volume: Float, animate: Boolean = true) {
         if (animate) {
             pendingVolume = volume
             debounceRunnable?.let { debounceHandler.removeCallbacks(it) }
-            debounceRunnable = Runnable { animateTo(valueToAngle(pendingVolume)) }
+            debounceRunnable = Runnable {
+                // Pulse indicator only when this is a genuine external update, not the initial setup.
+                if (!firstPositionSet) {
+                    knobDrawable.onProgrammaticPositionChanged()
+                }
+                animateTo(valueToAngle(pendingVolume))
+            }
             debounceHandler.postDelayed(debounceRunnable!!, 100)
         } else {
             rotationAnimator?.cancel()
             knobRotation = valueToAngle(volume)
             labelText = listener?.onLabel(volume) ?: ""
+            if (!firstPositionSet) {
+                knobDrawable.onProgrammaticPositionChanged()
+            }
             firstPositionSet = false
             invalidate()
         }
@@ -956,7 +990,9 @@ class RotaryKnobView @JvmOverloads constructor(
      */
     private fun applyLayerType() {
         setLayerType(
-                if (knobDrawable.requiresSoftwareLayer()) LAYER_TYPE_SOFTWARE else LAYER_TYPE_HARDWARE,
+                if (knobDrawable.requiresSoftwareLayer()) {
+                    LAYER_TYPE_SOFTWARE
+                } else LAYER_TYPE_HARDWARE,
                 null
         )
     }

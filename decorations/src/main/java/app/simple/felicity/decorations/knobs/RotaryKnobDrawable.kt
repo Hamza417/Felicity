@@ -54,6 +54,18 @@ abstract class RotaryKnobDrawable : Drawable() {
     open fun onDetachedFromKnobView() {}
 
     /**
+     * Called by [RotaryKnobView] when the knob position is changed programmatically via
+     * [RotaryKnobView.setKnobPosition], as opposed to a direct user touch.
+     *
+     * Implementations should animate a brief glow-pulse on the indicator dot only —
+     * the ring and arc elements should remain at their idle state so the user can
+     * distinguish a programmatic update from a manual interaction.
+     *
+     * The default implementation is a no-op; override in concrete subclasses.
+     */
+    open fun onProgrammaticPositionChanged() {}
+
+    /**
      * Returns `true` if this drawable uses [android.graphics.Paint.setShadowLayer] for glow
      * or bloom effects, which requires the host view to operate in software rendering mode
      * ([android.view.View.LAYER_TYPE_SOFTWARE]).
@@ -66,6 +78,9 @@ abstract class RotaryKnobDrawable : Drawable() {
 
     companion object {
         const val DEFAULT_TRANSITION_DURATION = 400
+
+        /** Total duration in milliseconds of the programmatic indicator glow pulse (0 → peak → 0). */
+        const val PROGRAMMATIC_GLOW_DURATION = 250L
     }
 }
 

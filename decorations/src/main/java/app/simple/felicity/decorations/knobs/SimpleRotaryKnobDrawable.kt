@@ -1,15 +1,18 @@
 package app.simple.felicity.decorations.knobs
 
-import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.ColorFilter
 import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.RectF
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
+import android.view.animation.LinearInterpolator
 import androidx.annotation.ColorInt
 import androidx.annotation.Px
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
@@ -29,6 +32,11 @@ import app.simple.felicity.theme.themes.Theme
  * Theme colors are managed internally: the drawable registers with
  * [ThemeManager] during [onAttachedToKnobView] and unregisters during
  * [onDetachedFromKnobView], so [RotaryKnobView] never needs to forward theme events.
+ *
+ * The glow effect (when [AppearancePreferences.isShadowEffectOn] is true) animates both
+ * the blur radius and the color together, giving a capacitor-charging / discharging feel:
+ * the luminance bloom grows from zero on press and decays back on release rather than
+ * only cross-fading alpha.
  *
  * @param strokeWidthFraction      Ring stroke width as a fraction of the knob radius (0..1).
  * @param indicatorRadiusFraction  Radius of the indicator dot as a fraction of the knob radius.
@@ -57,42 +65,92 @@ class SimpleRotaryKnobDrawable(
         style = Paint.Style.FILL
     }
 
-    /** Ring outline. Glow is achieved via [Paint.setShadowLayer] — requires software layer. */
+    /**
+     * Ring outline. When [AppearancePreferences.isShadowEffectOn] is true, a luminance
+     * glow bloom is produced via [Paint.setShadowLayer] with an animated blur radius.
+     * Requires software layer on the host view.
+     */
     private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
 
-    /** Indicator dot. Glow is achieved via [Paint.setShadowLayer] — requires software layer. */
+    /**
+     * Indicator dot. When [AppearancePreferences.isShadowEffectOn] is true, a luminance
+     * glow bloom is produced via [Paint.setShadowLayer] with an animated blur radius.
+     * Requires software layer on the host view.
+     */
     private val indicatorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
 
-    // ── State ────────────────────────────────────────────────────────────────────
+    // ── Animation state ──────────────────────────────────────────────────────────
+
+    /**
+     * Normalized press / release state in [0..1].
+     *
+     *  - 0 = fully idle: idle color, zero glow radius.
+     *  - 1 = fully pressed: accent color, maximum glow radius.
+     *
+     * Drives [currentStateColor] (ring + arc sync) and the ring glow radius.
+     */
+    private var stateProgress: Float = 0f
+    private var stateAnimator: ValueAnimator? = null
+
+    /**
+     * Normalized indicator-only glow pulse for programmatic position changes.
+     * Animates 0 → 1 → 0 independently of [stateProgress] so the ring is unaffected.
+     */
+    private var indicatorGlowProgress: Float = 0f
+    private var indicatorGlowAnimator: ValueAnimator? = null
+
+    // ── State color ───────────────────────────────────────────────────────────────
 
     @ColorInt
     @get:JvmName("getAnimatedStateColor")
     var currentStateColor: Int = idleColor
         private set
 
-    private var colorAnimator: ValueAnimator? = null
-
     // ── RotaryKnobDrawable ───────────────────────────────────────────────────────
 
     override fun getCurrentStateColor(): Int = currentStateColor
 
-    /** Returns `true` — [ringPaint] and [indicatorPaint] rely on [Paint.setShadowLayer] for glow. */
-    override fun requiresSoftwareLayer(): Boolean = true
+    /**
+     * Returns `true` when [AppearancePreferences.isShadowEffectOn] is enabled, because
+     * [Paint.setShadowLayer] requires software rendering on the host view.
+     * Returns `false` when the shadow effect preference is off, allowing hardware acceleration.
+     */
+    override fun requiresSoftwareLayer(): Boolean = AppearancePreferences.isShadowEffectOn()
 
     override fun onPressedStateChanged(pressed: Boolean, animationDuration: Int) {
-        val targetColor = if (pressed) accentColor else idleColor
-        colorAnimator?.cancel()
-        colorAnimator = ValueAnimator.ofObject(ArgbEvaluator(), currentStateColor, targetColor).apply {
+        val targetProgress = if (pressed) 1f else 0f
+        stateAnimator?.cancel()
+        stateAnimator = ValueAnimator.ofFloat(stateProgress, targetProgress).apply {
             duration = animationDuration.toLong()
-            interpolator = DecelerateInterpolator()
-            addUpdateListener { animator ->
-                currentStateColor = animator.animatedValue as Int
+            // Press: AccelerateDecelerateInterpolator gives a capacitor-charging feel —
+            // the glow builds quickly then settles at peak.
+            // Release: DecelerateInterpolator gives a capacitor-discharging feel —
+            // the glow drains quickly at first then fades to nothing.
+            interpolator = if (pressed) AccelerateDecelerateInterpolator() else DecelerateInterpolator()
+            addUpdateListener { anim ->
+                stateProgress = anim.animatedValue as Float
+                currentStateColor = lerpColor(idleColor, accentColor, stateProgress)
+                invalidateSelf()
+            }
+            start()
+        }
+    }
+
+    override fun onProgrammaticPositionChanged() {
+        // Pulse only the indicator: 0 → peak → 0.  Ring and arc remain at idle.
+        indicatorGlowAnimator?.cancel()
+        indicatorGlowProgress = 0f
+        indicatorGlowAnimator = ValueAnimator.ofFloat(0f, 1f, 0f).apply {
+            duration = PROGRAMMATIC_GLOW_DURATION
+            interpolator = LinearInterpolator()
+            addUpdateListener { anim ->
+                indicatorGlowProgress = anim.animatedValue as Float
                 invalidateSelf()
             }
             start()
@@ -110,6 +168,8 @@ class SimpleRotaryKnobDrawable(
 
     override fun onDetachedFromKnobView() {
         ThemeManager.removeListener(this)
+        stateAnimator?.cancel()
+        indicatorGlowAnimator?.cancel()
     }
 
     // ── ThemeChangedListener ──────────────────────────────────────────────────────
@@ -136,22 +196,37 @@ class SimpleRotaryKnobDrawable(
         val bodyRadius = knobRadius - halfStroke
         val indicatorRadius = knobRadius * indicatorRadiusFraction
         val indicatorCy = cy - bodyRadius * INDICATOR_DISTANCE_FRACTION
-        val glowRadius = knobRadius * GLOW_RADIUS_FRACTION
+        val maxGlowRadius = knobRadius * GLOW_RADIUS_FRACTION
         val ringRect = RectF(cx - bodyRadius, cy - bodyRadius, cx + bodyRadius, cy + bodyRadius)
+        val glowEnabled = AppearancePreferences.isShadowEffectOn()
 
-        // Body fill — no glow
+        // Body fill — no glow.
         bodyPaint.color = bodyColor
         canvas.drawCircle(cx, cy, bodyRadius, bodyPaint)
 
-        // Ring with luminance glow (centered shadow = radial bloom)
-        ringPaint.setShadowLayer(glowRadius, 0f, 0f, currentStateColor)
+        // Ring: glow radius scales with stateProgress — grows like a capacitor charging,
+        // shrinks like a capacitor discharging on release.
+        val ringGlowRadius = if (glowEnabled) maxGlowRadius * stateProgress else 0f
+        if (ringGlowRadius > 0f) {
+            ringPaint.setShadowLayer(ringGlowRadius, 0f, 0f, currentStateColor)
+        } else {
+            ringPaint.clearShadowLayer()
+        }
         ringPaint.color = currentStateColor
         ringPaint.strokeWidth = strokeWidth
         canvas.drawOval(ringRect, ringPaint)
 
-        // Indicator dot with luminance glow
-        indicatorPaint.setShadowLayer(glowRadius, 0f, 0f, currentStateColor)
-        indicatorPaint.color = currentStateColor
+        // Indicator: independent glow that also responds to programmatic position pulses.
+        // Taking max() means a programmatic pulse is visible only when the knob is not pressed.
+        val indicatorT = maxOf(stateProgress, indicatorGlowProgress)
+        val indicatorColor = lerpColor(idleColor, accentColor, indicatorT)
+        val indicatorGlowRadius = if (glowEnabled) maxGlowRadius * indicatorT else 0f
+        if (indicatorGlowRadius > 0f) {
+            indicatorPaint.setShadowLayer(indicatorGlowRadius, 0f, 0f, indicatorColor)
+        } else {
+            indicatorPaint.clearShadowLayer()
+        }
+        indicatorPaint.color = indicatorColor
         canvas.drawCircle(cx, indicatorCy, indicatorRadius, indicatorPaint)
     }
 
@@ -177,15 +252,18 @@ class SimpleRotaryKnobDrawable(
 
     // ── Helpers ──────────────────────────────────────────────────────────────────
 
-    /** Immediately snaps to the idle color without animation (useful when attaching to a new view). */
+    /** Immediately snaps to the idle state without animation (useful when attaching to a new view). */
     fun resetToIdle() {
-        colorAnimator?.cancel()
+        stateAnimator?.cancel()
+        indicatorGlowAnimator?.cancel()
+        stateProgress = 0f
+        indicatorGlowProgress = 0f
         currentStateColor = idleColor
         invalidateSelf()
     }
 
     /**
-     * Update the reported intrinsic size in pixels. Call this once you know the
+     * Updates the reported intrinsic size in pixels. Call this once you know the
      * density-aware pixel size (e.g., from a dimension resource), then set the drawable on the view.
      */
     fun setIntrinsicSize(@Px sizePx: Int) {
@@ -193,10 +271,25 @@ class SimpleRotaryKnobDrawable(
         invalidateSelf()
     }
 
+    /**
+     * Linearly interpolates between [colorFrom] and [colorTo] by [t] (0 = pure from, 1 = pure to),
+     * blending all four ARGB channels independently.
+     */
+    private fun lerpColor(@ColorInt colorFrom: Int, @ColorInt colorTo: Int, t: Float): Int {
+        val f = t.coerceIn(0f, 1f)
+        return Color.argb(
+                (Color.alpha(colorFrom) + (Color.alpha(colorTo) - Color.alpha(colorFrom)) * f).toInt(),
+                (Color.red(colorFrom) + (Color.red(colorTo) - Color.red(colorFrom)) * f).toInt(),
+                (Color.green(colorFrom) + (Color.green(colorTo) - Color.green(colorFrom)) * f).toInt(),
+                (Color.blue(colorFrom) + (Color.blue(colorTo) - Color.blue(colorFrom)) * f).toInt()
+        )
+    }
+
     private fun applyTheme(theme: Theme) {
         idleColor = theme.viewGroupTheme.dividerColor
         bodyColor = theme.viewGroupTheme.backgroundColor
-        if (colorAnimator == null || colorAnimator?.isRunning == false) {
+        if (stateAnimator?.isRunning != true) {
+            stateProgress = 0f
             currentStateColor = idleColor
         }
         invalidateSelf()
@@ -204,6 +297,8 @@ class SimpleRotaryKnobDrawable(
 
     private fun applyAccent(accent: Accent) {
         accentColor = accent.primaryAccentColor
+        // Refresh currentStateColor so the arc / tick marks stay in sync with the new accent.
+        currentStateColor = lerpColor(idleColor, accentColor, stateProgress)
         invalidateSelf()
     }
 
@@ -226,10 +321,11 @@ class SimpleRotaryKnobDrawable(
         const val DEFAULT_INTRINSIC_SIZE_PX = 500
 
         /**
-         * Blur radius of the [Paint.setShadowLayer] glow, as a fraction of the knob radius.
-         * A centered shadow (dx=0, dy=0) produces a pure radial luminance bloom around the
-         * ring and indicator dot.
+         * Maximum blur radius of [Paint.setShadowLayer] as a fraction of the knob radius.
+         * The actual value applied equals this fraction multiplied by the current [stateProgress]
+         * or indicator glow progress (both in [0..1]), so the luminance bloom grows from
+         * nothing to full intensity — like a capacitor charging up to its rated voltage.
          */
-        private const val GLOW_RADIUS_FRACTION = 0.15f
+        private const val GLOW_RADIUS_FRACTION = 0.05f
     }
 }

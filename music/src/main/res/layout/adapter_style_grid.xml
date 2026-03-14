@@ -17,9 +17,10 @@
         android:id="@+id/title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="@dimen/padding_5"
         android:ellipsize="end"
+        android:singleLine="true"
         android:maxLines="1"
+        android:gravity="center"
         android:textSize="@dimen/text_size_16"
         app:appFontStyle="bold"
         app:textColorStyle="primary" />
@@ -28,9 +29,10 @@
         android:id="@+id/secondary_detail"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="@dimen/padding_5"
         android:ellipsize="end"
+        android:singleLine="true"
         android:maxLines="1"
+        android:gravity="center"
         android:textSize="@dimen/desc_text_size"
         app:appFontStyle="regular"
         app:textColorStyle="accent" />
@@ -39,11 +41,11 @@
         android:id="@+id/tertiary_detail"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="@dimen/padding_5"
         android:ellipsize="end"
+        android:singleLine="true"
         android:maxLines="1"
+        android:gravity="center"
         android:textSize="@dimen/desc_text_size"
-        android:layout_marginBottom="@dimen/padding_5"
         app:appFontStyle="regular"
         app:textColorStyle="secondary" />
 

@@ -186,13 +186,23 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         dialog?.setOnKeyListener { _, keyCode, _ ->
             when (keyCode) {
                 KeyEvent.KEYCODE_VOLUME_UP -> {
-                    audioManager?.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_VIBRATE)
-                    setVolumeKnobPosition()
+                    withUnregisteredVolumeObserver {
+                        audioManager?.adjustStreamVolume(
+                                /* streamType = */ AudioManager.STREAM_MUSIC,
+                                /* direction = */ AudioManager.ADJUST_RAISE,
+                                /* flags = */ AudioManager.FLAG_VIBRATE)
+                        setVolumeKnobPosition()
+                    }
                     true
                 }
                 KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                    audioManager?.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, AudioManager.FLAG_VIBRATE)
-                    setVolumeKnobPosition()
+                    withUnregisteredVolumeObserver {
+                        audioManager?.adjustStreamVolume(
+                                /* streamType = */ AudioManager.STREAM_MUSIC,
+                                /* direction = */ AudioManager.ADJUST_LOWER,
+                                /* flags = */ AudioManager.FLAG_VIBRATE)
+                        setVolumeKnobPosition()
+                    }
                     true
                 }
                 else -> false
@@ -200,9 +210,22 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         }
     }
 
+    private fun withUnregisteredVolumeObserver(action: () -> Unit) {
+        requireContext().contentResolver.unregisterContentObserver(volumeObserver)
+        try {
+            action()
+        } finally {
+            postDelayed(delayMillis = 1000) {
+                requireContext().contentResolver.registerContentObserver(
+                        Settings.System.CONTENT_URI, true, volumeObserver)
+            }
+        }
+    }
+
     override fun onStart() {
         super.onStart()
-        requireContext().contentResolver.registerContentObserver(Settings.System.CONTENT_URI, true, volumeObserver)
+        requireContext().contentResolver.registerContentObserver(
+                Settings.System.CONTENT_URI, true, volumeObserver)
     }
 
     override fun onStop() {

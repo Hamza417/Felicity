@@ -61,7 +61,10 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                 val preference = preferences[position]
                 holder.binding.title.setText(preference.title)
                 holder.binding.summary.setText(preference.summary)
-                holder.binding.icon.setImageResource(preference.icon)
+
+                if (preference.icon != -1) {
+                    holder.binding.icon.setImageResource(preference.icon)
+                }
 
                 holder.binding.popup.setOnClickListener {
                     preference.onPreferenceAction?.invoke(it) {
@@ -75,7 +78,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                 val preference = preferences[position]
                 holder.binding.title.setText(preference.title)
                 holder.binding.summary.setText(preference.summary)
-                holder.binding.icon.setImageResource(preference.icon)
+                if (preference.icon != -1) {
+                    holder.binding.icon.setImageResource(preference.icon)
+                }
                 holder.binding.root.parent?.requestLayout()
 
                 holder.binding.container.setOnClickListener {
@@ -91,7 +96,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
 
                 holder.binding.title.setText(preference.title)
                 holder.binding.summary.setText(preference.summary)
-                holder.binding.icon.setImageResource(preference.icon)
+                if (preference.icon != -1) {
+                    holder.binding.icon.setImageResource(preference.icon)
+                }
                 holder.binding.slider.setProgress(seekbarState.position, false)
                 holder.binding.slider.setDefaultProgress(seekbarState.default)
                 holder.binding.slider.setMax(seekbarState.max)
@@ -125,7 +132,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                 val preference = preferences[position]
                 holder.binding.title.setText(preference.title)
                 holder.binding.summary.setText(preference.summary)
-                holder.binding.icon.setImageResource(preference.icon)
+                if (preference.icon != -1) {
+                    holder.binding.icon.setImageResource(preference.icon)
+                }
 
                 holder.binding.container.setOnClickListener {
                     preference.onPreferenceAction?.invoke(it) {
@@ -137,7 +146,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                 val preference = preferences[position]
                 holder.binding.title.setText(preference.title)
                 holder.binding.summary.setText(preference.summary)
-                holder.binding.icon.setImageResource(preference.icon)
+                if (preference.icon != -1) {
+                    holder.binding.icon.setImageResource(preference.icon)
+                }
                 holder.binding.switchToggle.setChecked(preference.valueAsBooleanProvider ?: false, false)
 
                 holder.binding.switchToggle.setOnCheckedChangeListener { switch, isChecked ->

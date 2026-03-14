@@ -131,7 +131,7 @@ open class PreferenceFragment : MediaFragment() {
         val thumbShape = Preference(
                 title = R.string.thumb_shape,
                 summary = R.string.thumb_shape_summary,
-                icon = R.drawable.ic_circle,
+                icon = -1,
                 type = PreferenceType.POPUP,
                 valueProvider = {
                     when (AppearancePreferences.getSeekbarThumbStyle()) {
@@ -167,7 +167,7 @@ open class PreferenceFragment : MediaFragment() {
         val knobStyle = Preference(
                 title = R.string.knob_style,
                 summary = R.string.knob_style_summary,
-                icon = R.drawable.ic_circle,
+                icon = -1,
                 type = PreferenceType.POPUP,
                 valueProvider = {
                     when (AppearancePreferences.getKnobStyle()) {

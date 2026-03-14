@@ -126,6 +126,12 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
         handler.postDelayed(pendingRunnable!!, 250)
     }
 
+    protected fun postDelayed(delayMillis: Long = 250L, runnable: () -> Unit) {
+        pendingRunnable?.let { handler.removeCallbacks(it) }
+        pendingRunnable = Runnable { runnable() }
+        handler.postDelayed(pendingRunnable!!, delayMillis)
+    }
+
     /**
      * Make sure the dialog is launched using childFragmentManager not parentFragmentManager.
      */

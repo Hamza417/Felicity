@@ -24,9 +24,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
+            android:gravity="center"
             android:textSize="@dimen/text_size_14"
             android:maxLines="1"
-            android:ellipsize="end"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:singleLine="true"
             app:appFontStyle="bold"
             app:textColorStyle="primary" />
 
@@ -37,7 +40,10 @@
             android:layout_gravity="bottom"
             android:textSize="@dimen/text_size_12"
             android:maxLines="1"
-            android:ellipsize="end"
+            android:gravity="center"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:ellipsize="marquee"
+            android:singleLine="true"
             app:appFontStyle="regular"
             app:textColorStyle="tertiary" />
 
