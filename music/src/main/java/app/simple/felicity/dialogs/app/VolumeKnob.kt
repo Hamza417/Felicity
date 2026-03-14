@@ -18,6 +18,7 @@ import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogVolumeKnobBinding
+import app.simple.felicity.decorations.knobs.NeumorphicRotaryKnobDrawable
 import app.simple.felicity.decorations.knobs.RotaryKnobListener
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.PlayerPreferences
@@ -53,6 +54,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
 
         // Volume Knob
         setVolumeKnobPosition()
+        binding.volumeKnob.setKnobDrawable(NeumorphicRotaryKnobDrawable())
         binding.volumeKnob.setTickTexts("0", "100")
         binding.volumeKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {

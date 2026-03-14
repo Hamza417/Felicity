@@ -10,33 +10,46 @@ import android.graphics.RectF
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.ColorInt
 import androidx.annotation.Px
+import app.simple.felicity.theme.interfaces.ThemeChangedListener
+import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.theme.models.Accent
+import app.simple.felicity.theme.themes.Theme
 
 /**
  * A programmatic [RotaryKnobDrawable] that draws a circular knob with a small position
  * indicator dot at the top.
  *
- * **Idle state**: ring and indicator dot use [idleColor] (gray/muted).
+ * **Idle state**: ring and indicator dot use [idleColor] (gray / muted).
  * **Pressed state**: they animate to [accentColor].
  *
- * The arc track and min/max tick marks are intentionally NOT drawn here —
+ * The arc track and min / max tick marks are intentionally NOT drawn here —
  * they are drawn by [RotaryKnobView] directly on its own canvas so they stay
  * stationary while the knob rotates.
  *
- * @param accentColor              Color when touched.
- * @param idleColor                Color when not touched (gray/muted).
- * @param bodyColor                Fill color for the knob body circle.
+ * Theme colors are managed internally: the drawable registers with
+ * [ThemeManager] during [onAttachedToKnobView] and unregisters during
+ * [onDetachedFromKnobView], so [RotaryKnobView] never needs to forward theme events.
+ *
  * @param strokeWidthFraction      Ring stroke width as a fraction of the knob radius (0..1).
  * @param indicatorRadiusFraction  Radius of the indicator dot as a fraction of the knob radius.
  * @param intrinsicSizePx          Reported intrinsic size in pixels so wrap_content works.
+ *
+ * @author Hamza417
  */
 class SimpleRotaryKnobDrawable(
-        @ColorInt private var accentColor: Int = DEFAULT_ACCENT_COLOR,
-        @ColorInt private var idleColor: Int = DEFAULT_IDLE_COLOR,
-        @ColorInt private var bodyColor: Int = DEFAULT_BODY_COLOR,
         var strokeWidthFraction: Float = DEFAULT_STROKE_WIDTH_FRACTION,
         var indicatorRadiusFraction: Float = DEFAULT_INDICATOR_RADIUS_FRACTION,
         @Px private var intrinsicSizePx: Int = DEFAULT_INTRINSIC_SIZE_PX
-) : RotaryKnobDrawable() {
+) : RotaryKnobDrawable(), ThemeChangedListener {
+
+    @ColorInt
+    private var accentColor: Int = DEFAULT_ACCENT_COLOR
+
+    @ColorInt
+    private var idleColor: Int = DEFAULT_IDLE_COLOR
+
+    @ColorInt
+    private var bodyColor: Int = DEFAULT_BODY_COLOR
 
     // ── Paints ──────────────────────────────────────────────────────────────────
 
@@ -57,19 +70,15 @@ class SimpleRotaryKnobDrawable(
     // ── State ────────────────────────────────────────────────────────────────────
 
     @ColorInt
+    @get:JvmName("getAnimatedStateColor")
     var currentStateColor: Int = idleColor
         private set
-
-    /**
-     * Optional callback invoked on every animation frame when the state color changes.
-     * [RotaryKnobView] uses this to keep its arc/tick drawing in sync without needing
-     * to hijack the drawable's [Callback].
-     */
-    var onColorChanged: (() -> Unit)? = null
 
     private var colorAnimator: ValueAnimator? = null
 
     // ── RotaryKnobDrawable ───────────────────────────────────────────────────────
+
+    override fun getCurrentStateColor(): Int = currentStateColor
 
     override fun onPressedStateChanged(pressed: Boolean, animationDuration: Int) {
         val targetColor = if (pressed) accentColor else idleColor
@@ -80,10 +89,32 @@ class SimpleRotaryKnobDrawable(
             addUpdateListener { animator ->
                 currentStateColor = animator.animatedValue as Int
                 invalidateSelf()
-                onColorChanged?.invoke()
             }
             start()
         }
+    }
+
+    override fun onAttachedToKnobView() {
+        ThemeManager.addListener(this)
+        val theme = ThemeManager.theme
+        if (theme.viewGroupTheme != null) {
+            applyTheme(theme)
+        }
+        applyAccent(ThemeManager.accent)
+    }
+
+    override fun onDetachedFromKnobView() {
+        ThemeManager.removeListener(this)
+    }
+
+    // ── ThemeChangedListener ──────────────────────────────────────────────────────
+
+    override fun onThemeChanged(theme: Theme, animate: Boolean) {
+        applyTheme(theme)
+    }
+
+    override fun onAccentChanged(accent: Accent) {
+        applyAccent(accent)
     }
 
     // ── Drawable ─────────────────────────────────────────────────────────────────
@@ -140,58 +171,51 @@ class SimpleRotaryKnobDrawable(
 
     // ── Helpers ──────────────────────────────────────────────────────────────────
 
-    /** Immediately snap to the idle color without animation (useful when attaching to a new view). */
+    /** Immediately snaps to the idle color without animation (useful when attaching to a new view). */
     fun resetToIdle() {
         colorAnimator?.cancel()
         currentStateColor = idleColor
         invalidateSelf()
     }
 
-    fun setIdleColor(@ColorInt color: Int) {
-        idleColor = color
-        if (colorAnimator == null || !colorAnimator!!.isRunning) {
-            currentStateColor = idleColor
-        }
-
-        invalidateSelf()
-    }
-
-    fun setAccentColor(@ColorInt color: Int) {
-        accentColor = color
-        if (colorAnimator == null || !colorAnimator!!.isRunning) {
-            currentStateColor = idleColor
-        }
-
-        invalidateSelf()
-    }
-
-    fun setBodyColor(@ColorInt color: Int) {
-        bodyColor = color
-        invalidateSelf()
-    }
-
     /**
-     * Update the reported intrinsic size (in pixels). Call this once you know the
-     * density-aware pixel size (e.g. from a dimension resource), then set the drawable on the view.
+     * Update the reported intrinsic size in pixels. Call this once you know the
+     * density-aware pixel size (e.g., from a dimension resource), then set the drawable on the view.
      */
     fun setIntrinsicSize(@Px sizePx: Int) {
         intrinsicSizePx = sizePx
         invalidateSelf()
     }
 
+    private fun applyTheme(theme: Theme) {
+        idleColor = theme.viewGroupTheme.dividerColor
+        bodyColor = theme.viewGroupTheme.backgroundColor
+        if (colorAnimator == null || colorAnimator?.isRunning == false) {
+            currentStateColor = idleColor
+        }
+        invalidateSelf()
+    }
+
+    private fun applyAccent(accent: Accent) {
+        accentColor = accent.primaryAccentColor
+        invalidateSelf()
+    }
+
     companion object {
         @ColorInt
         val DEFAULT_ACCENT_COLOR: Int = 0xFF2D85E6.toInt()
+
         @ColorInt
         val DEFAULT_IDLE_COLOR: Int = 0x7A464646
+
         @ColorInt
         val DEFAULT_BODY_COLOR: Int = 0xFFFFFFFF.toInt()
 
         const val DEFAULT_STROKE_WIDTH_FRACTION = 0.015f
         const val DEFAULT_INDICATOR_RADIUS_FRACTION = 0.074f
 
-        /** How far the indicator dot sits from center, as a fraction of body radius. */
-        private const val INDICATOR_DISTANCE_FRACTION = 0.81f
+        /** How far the indicator dot sits from the center, as a fraction of body radius. */
+        const val INDICATOR_DISTANCE_FRACTION = 0.81f
 
         const val DEFAULT_INTRINSIC_SIZE_PX = 500
     }

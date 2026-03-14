@@ -33,6 +33,9 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
+// Default idle color used for arc / tick paints before any theme is applied.
+private const val DEFAULT_ARC_IDLE_COLOR = 0x7A464646
+
 /**
  * A fully custom rotary knob view drawn entirely on canvas — no XML layout or child views.
  *
@@ -144,12 +147,9 @@ class RotaryKnobView @JvmOverloads constructor(
         }
     }
 
-    /** Fallback arc/tick color used when no [SimpleRotaryKnobDrawable] is attached. */
+    /** Fallback arc/tick color used before the first theme change arrives. */
     @ColorInt
-    var arcColor: Int = SimpleRotaryKnobDrawable.DEFAULT_IDLE_COLOR
-        set(value) {
-            field = value; invalidate()
-        }
+    private var arcColor: Int = DEFAULT_ARC_IDLE_COLOR
 
     /**
      * Fraction of the total available radius (= min(w,h)/2) occupied by the knob circle.
@@ -230,14 +230,14 @@ class RotaryKnobView @JvmOverloads constructor(
 
     /** Color of accent (progressed) division lines. */
     @ColorInt
-    var divisionAccentColor: Int = SimpleRotaryKnobDrawable.DEFAULT_ACCENT_COLOR
+    var divisionAccentColor: Int = 0xFF2D85E6.toInt()
         set(value) {
             field = value; invalidate()
         }
 
     /** Color of idle (remaining-region) arc segments. */
     @ColorInt
-    var divisionIdleColor: Int = SimpleRotaryKnobDrawable.DEFAULT_IDLE_COLOR
+    var divisionIdleColor: Int = DEFAULT_ARC_IDLE_COLOR
         set(value) {
             field = value; invalidate()
         }
@@ -250,7 +250,7 @@ class RotaryKnobView @JvmOverloads constructor(
 
     /** Color of the value label rendered between the end-stop ticks. */
     @ColorInt
-    var labelColor: Int = SimpleRotaryKnobDrawable.DEFAULT_IDLE_COLOR
+    var labelColor: Int = DEFAULT_ARC_IDLE_COLOR
         set(value) {
             field = value; invalidate()
         }
@@ -288,7 +288,7 @@ class RotaryKnobView @JvmOverloads constructor(
      * Defaults to the theme secondary text color, updated automatically on theme changes.
      */
     @ColorInt
-    var tickLabelColor: Int = SimpleRotaryKnobDrawable.DEFAULT_IDLE_COLOR
+    var tickLabelColor: Int = DEFAULT_ARC_IDLE_COLOR
         set(value) {
             field = value; invalidate()
         }
@@ -386,13 +386,12 @@ class RotaryKnobView @JvmOverloads constructor(
             setThemeColors(ThemeManager.theme)
             setAccentColor(ThemeManager.accent)
         }
-
-        (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = { invalidate() }
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = { invalidate() }
+        knobDrawable.callback = this
+        knobDrawable.onAttachedToKnobView()
         if (isInEditMode.not()) {
             ThemeManager.addListener(this)
         }
@@ -400,7 +399,8 @@ class RotaryKnobView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = null
+        knobDrawable.onDetachedFromKnobView()
+        knobDrawable.callback = null
         rotationAnimator?.cancel()
         divisionAnimators.forEach { it?.cancel() }
         if (isInEditMode.not()) {
@@ -423,28 +423,24 @@ class RotaryKnobView @JvmOverloads constructor(
         setThemeColors(theme)
     }
 
+    /**
+     * Applies the accent color to the view's own progressed-region division lines.
+     * The knob drawable manages its own accent color internally via [ThemeChangedListener].
+     */
     fun setAccentColor(accent: Accent) {
-        if (knobDrawable is SimpleRotaryKnobDrawable) {
-            val drawable = knobDrawable as SimpleRotaryKnobDrawable
-            drawable.setAccentColor(accent.primaryAccentColor)
-        }
         divisionAccentColor = accent.primaryAccentColor
     }
 
+    /**
+     * Applies theme colors to the view's own arc, tick, and label paints.
+     * The knob drawable manages its own colors internally via [ThemeChangedListener].
+     */
     fun setThemeColors(theme: Theme) {
         labelPaint.color = theme.textViewTheme.primaryTextColor
         labelColor = theme.textViewTheme.primaryTextColor
         tickLabelColor = theme.textViewTheme.secondaryTextColor
         tickLabelPaint.color = theme.textViewTheme.secondaryTextColor
         arcColor = theme.viewGroupTheme.dividerColor
-
-        if (knobDrawable is SimpleRotaryKnobDrawable) {
-            val drawable = knobDrawable as SimpleRotaryKnobDrawable
-            drawable.setIdleColor(theme.viewGroupTheme.dividerColor)
-            drawable.setBodyColor(theme.viewGroupTheme.backgroundColor)
-            drawable.invalidateSelf()
-        }
-
         divisionIdleColor = theme.viewGroupTheme.dividerColor
     }
 
@@ -666,9 +662,8 @@ class RotaryKnobView @JvmOverloads constructor(
         }
     }
 
-    /** Returns the color to use for static elements (ticks). Mirrors the knob drawable's animated state color. */
-    private fun currentArcColor(): Int =
-        (knobDrawable as? SimpleRotaryKnobDrawable)?.currentStateColor ?: arcColor
+    /** Returns the current state color from the knob drawable for use on static arc / tick elements. */
+    private fun currentArcColor(): Int = knobDrawable.getCurrentStateColor()
 
     /**
      * Compares each line's desired target against [knobCanvasAngle] and starts a new
@@ -909,12 +904,21 @@ class RotaryKnobView @JvmOverloads constructor(
 
     /**
      * Replaces the knob visual with a custom [RotaryKnobDrawable] implementation.
-     * The drawable's bounds are updated immediately.
+     *
+     * The previous drawable's [RotaryKnobDrawable.onDetachedFromKnobView] is called first so
+     * it can unregister any listeners. The new drawable's
+     * [RotaryKnobDrawable.onAttachedToKnobView] is then called immediately if the view is
+     * already attached to a window, and [Drawable.Callback] is wired so that
+     * [android.graphics.drawable.Drawable.invalidateSelf] correctly triggers [invalidate].
      */
     fun setKnobDrawable(drawable: RotaryKnobDrawable) {
-        (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = null
+        knobDrawable.onDetachedFromKnobView()
+        knobDrawable.callback = null
         knobDrawable = drawable
-        (knobDrawable as? SimpleRotaryKnobDrawable)?.onColorChanged = { invalidate() }
+        knobDrawable.callback = this
+        if (isAttachedToWindow) {
+            knobDrawable.onAttachedToKnobView()
+        }
         recalcGeometry()
     }
 
