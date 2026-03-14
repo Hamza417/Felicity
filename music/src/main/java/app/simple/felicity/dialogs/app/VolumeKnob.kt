@@ -18,7 +18,7 @@ import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogVolumeKnobBinding
-import app.simple.felicity.decorations.knobs.simple.RotaryKnobListener
+import app.simple.felicity.decorations.knobs.RotaryKnobListener
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.PlayerPreferences
 import kotlinx.coroutines.Dispatchers
@@ -51,7 +51,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // ── Volume knob ──────────────────────────────────────────────────────────
+        // Volume Knob
         setVolumeKnobPosition()
         binding.volumeKnob.setTickTexts("0", "100")
         binding.volumeKnob.setListener(object : RotaryKnobListener {

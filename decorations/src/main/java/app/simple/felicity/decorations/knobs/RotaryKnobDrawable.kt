@@ -1,4 +1,4 @@
-package app.simple.felicity.decorations.knobs.simple
+package app.simple.felicity.decorations.knobs
 
 import android.graphics.drawable.Drawable
 

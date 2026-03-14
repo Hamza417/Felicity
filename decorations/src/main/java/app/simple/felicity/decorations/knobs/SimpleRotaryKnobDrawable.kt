@@ -1,4 +1,4 @@
-package app.simple.felicity.decorations.knobs.simple
+package app.simple.felicity.decorations.knobs
 
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
@@ -63,7 +63,7 @@ class SimpleRotaryKnobDrawable(
     /**
      * Optional callback invoked on every animation frame when the state color changes.
      * [RotaryKnobView] uses this to keep its arc/tick drawing in sync without needing
-     * to hijack the drawable's [android.graphics.drawable.Drawable.Callback].
+     * to hijack the drawable's [Callback].
      */
     var onColorChanged: (() -> Unit)? = null
 

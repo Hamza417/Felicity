@@ -1,4 +1,4 @@
-package app.simple.felicity.decorations.knobs.simple
+package app.simple.felicity.decorations.knobs
 
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
@@ -18,9 +18,9 @@ import android.view.animation.OvershootInterpolator
 import androidx.annotation.ColorInt
 import androidx.core.graphics.withRotation
 import app.simple.felicity.decoration.R
-import app.simple.felicity.decorations.knobs.simple.RotaryKnobView.Companion.END
-import app.simple.felicity.decorations.knobs.simple.RotaryKnobView.Companion.HAPTIC_TICK_INTERVAL_DEG
-import app.simple.felicity.decorations.knobs.simple.RotaryKnobView.Companion.START
+import app.simple.felicity.decorations.knobs.RotaryKnobView.Companion.END
+import app.simple.felicity.decorations.knobs.RotaryKnobView.Companion.HAPTIC_TICK_INTERVAL_DEG
+import app.simple.felicity.decorations.knobs.RotaryKnobView.Companion.START
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.decorations.utils.VibrateUtils.vibrateEffect
 import app.simple.felicity.theme.interfaces.ThemeChangedListener

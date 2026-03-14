@@ -1,4 +1,4 @@
-package app.simple.felicity.decorations.knobs.simple
+package app.simple.felicity.decorations.knobs
 
 interface RotaryKnobListener {
     fun onRotate(value: Float)
