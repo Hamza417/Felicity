@@ -84,8 +84,7 @@ class StereoWideningAudioProcessor : AudioProcessor {
      */
     override fun configure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         active = inputAudioFormat.channelCount == 2 &&
-                (inputAudioFormat.encoding == C.ENCODING_PCM_16BIT ||
-                        inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT)
+                PcmUtils.isEncodingSupported(inputAudioFormat.encoding)
         return if (active) {
             inputFormat = inputAudioFormat
             inputAudioFormat
@@ -114,37 +113,18 @@ class StereoWideningAudioProcessor : AudioProcessor {
         val remaining = inputBuffer.remaining()
         val buf = acquireOutputBuffer(remaining)
 
-        // Snapshot gains to avoid a torn read if applyStereoWidth is called concurrently.
         val d = directGain
         val c = crossGain
+        val encoding = inputFormat.encoding
+        val frameSize = PcmUtils.bytesPerSample(encoding) * 2
 
-        when (inputFormat.encoding) {
-            C.ENCODING_PCM_16BIT -> {
-                // 2 bytes per sample × 2 channels = 4 bytes per stereo frame
-                while (inputBuffer.remaining() >= 4) {
-                    val l = inputBuffer.getShort().toFloat()
-                    val r = inputBuffer.getShort().toFloat()
-                    buf.putShort((l * d + r * c).coerceIn(-32768f, 32767f).toInt().toShort())
-                    buf.putShort((l * c + r * d).coerceIn(-32768f, 32767f).toInt().toShort())
-                }
-            }
-            C.ENCODING_PCM_FLOAT -> {
-                // 4 bytes per sample × 2 channels = 8 bytes per stereo frame
-                while (inputBuffer.remaining() >= 8) {
-                    val l = inputBuffer.getFloat()
-                    val r = inputBuffer.getFloat()
-                    buf.putFloat(l * d + r * c)
-                    buf.putFloat(l * c + r * d)
-                }
-            }
-            else -> {
-                // Unsupported encoding — configure() guards against this, but if reached,
-                // copy input to output unchanged so the pipeline does not stall.
-                buf.put(inputBuffer)
-            }
+        while (inputBuffer.remaining() >= frameSize) {
+            val l = PcmUtils.readFloat(inputBuffer, encoding)
+            val r = PcmUtils.readFloat(inputBuffer, encoding)
+            PcmUtils.writeFloat(buf, l * d + r * c, encoding)
+            PcmUtils.writeFloat(buf, l * c + r * d, encoding)
         }
 
-        // Flip to make the buffer readable: position=0, limit=bytes written.
         buf.flip()
         outputBuffer = buf
     }

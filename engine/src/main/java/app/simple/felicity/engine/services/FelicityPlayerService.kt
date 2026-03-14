@@ -135,7 +135,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
                 // If the user has a home theater / USB DAC, we MIGHT want offload for Atmos/Dolby
                 val offloadMode = if (!forceStereoDownmix) {
-                    DefaultAudioSink.OFFLOAD_MODE_ENABLED_GAPLESS_NOT_REQUIRED
+                    if (AudioPreferences.isGaplessPlaybackEnabled()) {
+                        DefaultAudioSink.OFFLOAD_MODE_ENABLED_GAPLESS_REQUIRED
+                    } else {
+                        DefaultAudioSink.OFFLOAD_MODE_ENABLED_GAPLESS_NOT_REQUIRED
+                    }
                 } else {
                     DefaultAudioSink.OFFLOAD_MODE_DISABLED
                 }

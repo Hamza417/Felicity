@@ -62,8 +62,7 @@ class TapeSaturationProcessor : AudioProcessor {
      * to signal the pipeline to bypass this processor entirely.
      */
     override fun configure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
-        active = inputAudioFormat.encoding == C.ENCODING_PCM_16BIT ||
-                inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT
+        active = PcmUtils.isEncodingSupported(inputAudioFormat.encoding)
         return if (active) {
             inputFormat = inputAudioFormat
             inputAudioFormat
@@ -95,48 +94,24 @@ class TapeSaturationProcessor : AudioProcessor {
 
         val d = drive
 
-        // When drive is zero the compensation formula divides by zero and the effect is
-        // completely silent anyway. Forward the input unchanged as a clean bypass.
         if (d < DRIVE_EPSILON) {
             outputBuffer = inputBuffer
             return
         }
 
+        val encoding = inputFormat.encoding
+        val bps = PcmUtils.bytesPerSample(encoding)
         val remaining = inputBuffer.remaining()
         val buf = acquireOutputBuffer(remaining)
 
-        // Pre-compute the compensation scalar to avoid repeating the division per sample.
         val compensation = (1f + d) / d
 
-        when (inputFormat.encoding) {
-            C.ENCODING_PCM_16BIT -> {
-                while (inputBuffer.remaining() >= 2) {
-                    // Normalize 16-bit short to [-1.0, 1.0] float range.
-                    var s = inputBuffer.getShort().toFloat() / 32768f
-                    // Apply soft-clip transfer function.
-                    s *= d
-                    s /= (1f + abs(s))
-                    // Compensate for gain reduction at loud signals.
-                    s *= compensation
-                    buf.putShort((s * 32767f)
-                                     .coerceIn(Short.MIN_VALUE.toFloat(), Short.MAX_VALUE.toFloat())
-                                     .toInt().toShort())
-                }
-            }
-            C.ENCODING_PCM_FLOAT -> {
-                while (inputBuffer.remaining() >= 4) {
-                    var s = inputBuffer.getFloat()
-                    s *= d
-                    s /= (1f + abs(s))
-                    s *= compensation
-                    buf.putFloat(s)
-                }
-            }
-            else -> {
-                // Unsupported encoding — configure() guards against this, but copy
-                // input to output unchanged so the pipeline does not stall.
-                buf.put(inputBuffer)
-            }
+        while (inputBuffer.remaining() >= bps) {
+            var s = PcmUtils.readFloat(inputBuffer, encoding)
+            s *= d
+            s /= (1f + abs(s))
+            s *= compensation
+            PcmUtils.writeFloat(buf, s, encoding)
         }
 
         buf.flip()
