@@ -118,6 +118,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
                 // Build the processor array dynamically
                 val processors = mutableListOf<AudioProcessor>()
+
+                if (AudioPreferences.isSkipSilenceEnabled()) {
+                    // Trim the digital silence FIRST while the file is perfectly pure
+                    processors.add(audioProcessorManager.silenceTrimmingProcessor)
+                }
+
                 if (forceStereoDownmix) {
                     processors.add(audioProcessorManager.downmixProcessor)
                 }

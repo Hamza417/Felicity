@@ -23,6 +23,14 @@ import androidx.media3.common.util.UnstableApi
 class AudioProcessorManager {
 
     /**
+     * Removes leading and trailing silence from the audio stream. Always active in the chain.
+     * The threshold can be adjusted via [SilenceTrimmingProcessor.setThreshold] if needed.
+     * Default threshold is 0.001f (roughly -60dB), which should trim most silent sections without
+     * affecting quiet music.
+     */
+    val silenceTrimmingProcessor: SilenceTrimmingProcessor = SilenceTrimmingProcessor()
+
+    /**
      * Downmixes any multichannel stream (1–24 ch) to stereo.
      * Inactive for stereo input (pass-through). Added to the chain only when
      * forced stereo downmix is enabled in AudioPreferences.
