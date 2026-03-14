@@ -680,7 +680,8 @@ class RotaryKnobView @JvmOverloads constructor(
      * When [centreCanvasAngle] is [Float.NaN] the original left-to-knob sweep is used.
      */
     private fun updateDivisionAnimators(knobCanvasAngle: Float, centreCanvasAngle: Float = Float.NaN) {
-        val interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+        val interpolator = DecelerateInterpolator(decelerateFactor).takeIf { !firstPositionSet }
+            ?: OvershootInterpolator(overshootTension)
         val centreMode = centreCanvasAngle.isFinite()
         for (i in divisionAngles.indices) {
             val lineAngle = divisionAngles[i]

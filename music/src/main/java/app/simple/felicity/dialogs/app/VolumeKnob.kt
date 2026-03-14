@@ -15,11 +15,14 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentManager
+import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogVolumeKnobBinding
 import app.simple.felicity.decorations.knobs.simple.RotaryKnobListener
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.PlayerPreferences
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 class VolumeKnob : ScopedBottomSheetFragment() {
@@ -57,8 +60,10 @@ class VolumeKnob : ScopedBottomSheetFragment() {
             }
 
             override fun onRotate(value: Float) {
-                val index = ((value / 100.0f) * audioManager!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC)).roundToInt()
-                audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0)
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Default) {
+                    val index = ((value / 100.0f) * audioManager!!.getStreamMaxVolume(AudioManager.STREAM_MUSIC)).roundToInt()
+                    audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, index, 0)
+                }
             }
 
             override fun onUserInteractionStart() {
@@ -104,6 +109,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         binding.stereoWideningKnob.centerSnapEnabled = true
         binding.stereoWideningKnob.setTickTexts("M", "W")
         binding.stereoWideningKnob.setKnobPosition(widthToKnobValue(PlayerPreferences.getStereoWidth()), animate = false)
+        binding.stereoWideningKnob.divisionCount = 10 * 10
         binding.stereoWideningKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
@@ -129,6 +135,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         // No center-snap — this is a one-directional effect; more = more saturation.
         binding.tapeSaturationKnob.setTickTexts("0", "4")
         binding.tapeSaturationKnob.setKnobPosition(driveToKnobValue(PlayerPreferences.getTapeSaturationDrive()), animate = false)
+        binding.tapeSaturationKnob.divisionCount = 4 * 10
         binding.tapeSaturationKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 

@@ -161,11 +161,17 @@ class Dashboard : MediaFragment() {
         // IMPORTANT: Update the grid's height to fit its content
         // (otherwise the shuffle animation will cause it to collapse to zero height and disappear).
         binding.recommendedGrid.post {
-            binding.recommendedGrid.layoutParams.height =
-                layoutManager.getTotalHeight() +
-                        binding.recommendedGrid.paddingTop +
-                        binding.recommendedGrid.paddingBottom
-            binding.recommendedGrid.requestLayout()
+            try {
+                binding.recommendedGrid.layoutParams.height =
+                    layoutManager.getTotalHeight() +
+                            binding.recommendedGrid.paddingTop +
+                            binding.recommendedGrid.paddingBottom
+                binding.recommendedGrid.requestLayout()
+            } catch (_: UninitializedPropertyAccessException) {
+                // This can occur if the user navigates away from the dashboard before the first
+                // data emission, causing the grid to be destroyed before the posted runnable executes.
+                // In this case, we can safely ignore the exception since the grid will no longer be visible.
+            }
         }
 
         binding.recommendedSection.visible(false)
