@@ -1,6 +1,5 @@
 package app.simple.felicity.adapters.home.dashboard
 
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -19,8 +18,7 @@ class AdapterRecommended(private val list: List<Audio>) :
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
         if (list.isNotEmpty()) {
-            val shuffledList = list.shuffled()
-            val item = shuffledList[position]
+            val item = list[position]
 
             holder.binding.art.loadArtCover(
                     item = item,
@@ -31,7 +29,7 @@ class AdapterRecommended(private val list: List<Audio>) :
 
             holder.binding.container.setOnClickListener {
                 if (list.isNotEmpty()) {
-                    callbacks.onItemClicked(shuffledList, position)
+                    callbacks.onItemClicked(list, position)
                 }
             }
 
@@ -40,18 +38,14 @@ class AdapterRecommended(private val list: List<Audio>) :
     }
 
     override fun getItemCount(): Int {
-        return list.size.coerceAtMost(6)
+        return list.size
     }
 
     override fun getItemId(position: Int): Long {
         return list[position].id
     }
 
-    inner class Holder(val binding: AdapterGridImageBinding) : RecyclerView.ViewHolder(binding.root) {
-        init {
-            binding.title.setTextColor(Color.LTGRAY)
-        }
-    }
+    inner class Holder(val binding: AdapterGridImageBinding) : RecyclerView.ViewHolder(binding.root)
 
     fun randomize() {
         for (i in 0 until itemCount) {

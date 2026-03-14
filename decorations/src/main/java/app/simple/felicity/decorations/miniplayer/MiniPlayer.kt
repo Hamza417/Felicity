@@ -39,6 +39,8 @@ import androidx.annotation.ColorInt
 import androidx.core.graphics.withClip
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.marginBottom
+import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decorations.itemdecorations.FooterSpacingItemDecoration
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.ARTIST_TEXT_SIZE_SP
@@ -203,6 +205,13 @@ class MiniPlayer @JvmOverloads constructor(
 
         /** Margin applied around the view on all sides when attached to a window, in dp. */
         private const val SIDE_MARGIN_DP = 15f
+
+        /**
+         * How long (ms) to wait after the last [NestedScrollView] scroll event before
+         * snapping the player to fully shown or fully hidden, mimicking the
+         * [RecyclerView.SCROLL_STATE_IDLE] snap that the RecyclerView path uses.
+         */
+        private const val SCROLL_SNAP_DELAY_MS = 150L
     }
 
     // -------------------------------------------------------------------------
@@ -1068,6 +1077,7 @@ class MiniPlayer @JvmOverloads constructor(
         super.onSizeChanged(w, h, oldw, oldh)
         applyConfig(w.toFloat(), h.toFloat())
         updateFooterDecorations()
+        updateScrollViewPaddings()
 
         // Re-anchor the vertical hide offset whenever the view geometry changes
         // (size change, margin change, or nav-bar inset update).
@@ -1750,8 +1760,162 @@ class MiniPlayer @JvmOverloads constructor(
     }
 
     // -------------------------------------------------------------------------
-    // Theme callbacks
+    // NestedScrollView scroll-hide support
     // -------------------------------------------------------------------------
+
+    /** Attached scroll views mapped to their [NestedScrollView.OnScrollChangeListener]. */
+    private val attachedScrollViews: MutableMap<NestedScrollView, NestedScrollView.OnScrollChangeListener> = mutableMapOf()
+
+    /**
+     * Original bottom padding of each attached [NestedScrollView] recorded at attach time
+     * so it can be fully restored on [detachFromScrollView].
+     */
+    private val scrollViewOriginalPaddings: MutableMap<NestedScrollView, Int> = mutableMapOf()
+
+    /**
+     * Per-NSV [Runnable] that snaps the player to fully shown or fully hidden once
+     * the scroll view comes to rest, mirroring [RecyclerView.SCROLL_STATE_IDLE] behavior.
+     */
+    private val scrollViewSnapRunnables: MutableMap<NestedScrollView, Runnable> = mutableMapOf()
+
+    /** Handler used to post snap runnables from [attachedScrollViews]. */
+    private val scrollSnapHandler = Handler(Looper.getMainLooper())
+
+    /**
+     * Returns whether [nsv] can scroll vertically in at least one direction.
+     *
+     * @param nsv The [NestedScrollView] to check.
+     * @return `true` if the scroll view has scrollable content.
+     */
+    private fun isNsvScrollable(nsv: NestedScrollView): Boolean =
+        nsv.canScrollVertically(1) || nsv.canScrollVertically(-1)
+
+    /**
+     * Applies the current footer spacing to [scrollView] by adding it on top of the
+     * original bottom padding that was stored at attach time. The view's
+     * [NestedScrollView.clipToPadding] is set to `false` so content is never clipped.
+     *
+     * @param scrollView The [NestedScrollView] to update.
+     */
+    private fun applyScrollViewPadding(scrollView: NestedScrollView) {
+        val orig = scrollViewOriginalPaddings[scrollView] ?: return
+        val spacing = getRequiredFooterSpacing()
+        scrollView.setPadding(
+                scrollView.paddingLeft,
+                scrollView.paddingTop,
+                scrollView.paddingRight,
+                orig + spacing + marginBottom
+        )
+        scrollView.clipToPadding = false
+    }
+
+    /**
+     * Pushes the current [getRequiredFooterSpacing] value to every attached
+     * [NestedScrollView], called from [onSizeChanged] in the same way as
+     * [updateFooterDecorations] handles [RecyclerView] footer decorations.
+     */
+    private fun updateScrollViewPaddings() {
+        if (attachedScrollViews.isEmpty()) return
+        attachedScrollViews.keys.forEach {
+            applyScrollViewPadding(it)
+        }
+    }
+
+    /**
+     * Attaches this [MiniPlayer] to a [NestedScrollView] so the player auto-hides while
+     * scrolling downward and re-appears when the bottom of the content is reached.
+     *
+     * Dynamically adds bottom padding equal to the player's visible footprint so the last
+     * piece of content is never permanently hidden beneath the floating player.
+     *
+     * @param scrollView The [NestedScrollView] to observe.
+     * @author Hamza417
+     */
+    fun attachToScrollView(scrollView: NestedScrollView) {
+        if (attachedScrollViews.containsKey(scrollView)) return
+
+        // Record the original padding before we modify it.
+        scrollViewOriginalPaddings[scrollView] = scrollView.paddingBottom
+
+        val snapRunnable = Runnable {
+            if (!isManuallyControlled) {
+                animate().cancel()
+                if (!scrollView.canScrollVertically(1)) {
+                    if (!isFullyShown()) {
+                        animate().translationY(0f)
+                            .setDuration(250)
+                            .setInterpolator(showInterpolator)
+                            .start()
+                    }
+                } else {
+                    if (translationY <= hideDistance / 2f) {
+                        animate().translationY(0f)
+                            .setDuration(250)
+                            .setInterpolator(showInterpolator)
+                            .start()
+                    } else {
+                        animate().translationY(hideDistance)
+                            .setDuration(250)
+                            .setInterpolator(hideInterpolator)
+                            .start()
+                    }
+                }
+            }
+        }
+        scrollViewSnapRunnables[scrollView] = snapRunnable
+
+        val listener = NestedScrollView.OnScrollChangeListener { nsv, _, scrollY, _, oldScrollY ->
+            val dy = scrollY - oldScrollY
+            if (!isNsvScrollable(nsv)) return@OnScrollChangeListener
+
+            // At the bottom: always bring the player back into view.
+            if (!nsv.canScrollVertically(1)
+                    && !isManuallyControlled
+                    && !suppressAutoFromRecyclerUntilIdle) {
+                animate().cancel()
+                if (!isFullyShown()) {
+                    animate().translationY(0f)
+                        .setDuration(250)
+                        .setInterpolator(showInterpolator)
+                        .start()
+                }
+                return@OnScrollChangeListener
+            }
+
+            updateForScrollDelta(dy)
+
+            // Snap to fully shown or hidden once scrolling comes to rest.
+            scrollSnapHandler.removeCallbacks(snapRunnable)
+            scrollSnapHandler.postDelayed(snapRunnable, SCROLL_SNAP_DELAY_MS)
+        }
+
+        scrollView.setOnScrollChangeListener(listener)
+        attachedScrollViews[scrollView] = listener
+        applyScrollViewPadding(scrollView)
+        suppressAutoFromRecyclerUntilIdle = false
+    }
+
+    /**
+     * Detaches from a previously attached [NestedScrollView], removing its scroll listener
+     * and restoring the original bottom padding.
+     *
+     * @param scrollView The [NestedScrollView] to detach from.
+     * @author Hamza417
+     */
+    fun detachFromScrollView(scrollView: NestedScrollView) {
+        scrollViewSnapRunnables.remove(scrollView)?.let { scrollSnapHandler.removeCallbacks(it) }
+        attachedScrollViews.remove(scrollView)?.let {
+            scrollView.setOnScrollChangeListener(null as NestedScrollView.OnScrollChangeListener?)
+        }
+        scrollViewOriginalPaddings.remove(scrollView)?.let { orig ->
+            scrollView.setPadding(
+                    scrollView.paddingLeft,
+                    scrollView.paddingTop,
+                    scrollView.paddingRight,
+                    orig
+            )
+        }
+    }
 
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
         if (isTransparent) return

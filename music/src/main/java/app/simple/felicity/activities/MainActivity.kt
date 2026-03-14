@@ -11,6 +11,7 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.viewModels
+import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
@@ -297,6 +298,18 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         Log.d("MainActivity", "Detaching mini player from RecyclerView")
         recyclerView?.let {
             binding.miniPlayer.detachFromRecyclerView(it)
+        }
+    }
+
+    override fun onAttachMiniPlayerScrollView(scrollView: NestedScrollView?) {
+        scrollView?.let {
+            binding.miniPlayer.attachToScrollView(it)
+        }
+    }
+
+    override fun onDetachMiniPlayerScrollView(scrollView: NestedScrollView?) {
+        scrollView?.let {
+            binding.miniPlayer.detachFromScrollView(it)
         }
     }
 

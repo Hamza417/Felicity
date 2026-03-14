@@ -16,13 +16,11 @@ import app.simple.felicity.adapters.home.dashboard.AdapterDashboardSongs
 import app.simple.felicity.adapters.home.dashboard.AdapterDashboardSongs.Companion.AdapterDashboardSongsCallbacks
 import app.simple.felicity.adapters.home.dashboard.AdapterRecommended
 import app.simple.felicity.adapters.home.dashboard.AdapterRecommended.Companion.AdapterRecommendedCallbacks
-import app.simple.felicity.adapters.home.sub.AdapterGridArt
-import app.simple.felicity.databinding.FragmentHomeDahsboardBinding
+import app.simple.felicity.databinding.FragmentHomeDashboardBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
 import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.extensions.fragments.MediaFragment
-import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.TextViewUtils.setTypeWriting
@@ -50,19 +48,22 @@ import kotlinx.coroutines.launch
  *
  * Displays a scrollable dashboard composed of:
  * - A header with the app name, search, and settings buttons.
- * - A spanned art grid of recommended songs that continuously shuffles its cells.
+ * - A spanned art grid of recommended songs refreshed periodically by the ViewModel.
  * - A horizontal carousel of recently played songs.
  * - A four-column browse grid of seven panel navigation shortcuts with an inline
  *   expand/collapse button that reveals the full panel list without navigation.
  * - A horizontal carousel of recently added songs.
  * - A horizontal carousel of favorite songs.
  *
+ * The recommended grid data is driven entirely by [DashboardViewModel], which fetches
+ * a fresh random selection of 5-9 songs from the database on each cycle.
+ *
  * @author Hamza417
  */
 @AndroidEntryPoint
 class Dashboard : MediaFragment() {
 
-    private lateinit var binding: FragmentHomeDahsboardBinding
+    private lateinit var binding: FragmentHomeDashboardBinding
 
     private val dashboardViewModel: DashboardViewModel by viewModels()
 
@@ -70,40 +71,8 @@ class Dashboard : MediaFragment() {
     private var recentlyAddedAdapter: AdapterDashboardSongs? = null
     private var favoritesAdapter: AdapterDashboardSongs? = null
 
-    /**
-     * Periodically fades the entire recommended spanned grid out, triggers
-     * [AdapterGridArt.randomize] on its adapter (which re-shuffles every cell), schedules
-     * the grid's layout animation, then fades back in — identical to the effect seen in
-     * [SpannedHome].
-     */
-    private val recommendedRandomizer: Runnable = object : Runnable {
-        override fun run() {
-            try {
-                val adapter = binding.recommendedGrid.adapter as? AdapterGridArt
-                if (adapter != null) {
-                    binding.recommendedGrid.animate()
-                        .alpha(0F)
-                        .setDuration(resources.getInteger(android.R.integer.config_longAnimTime).toLong())
-                        .withEndAction {
-                            adapter.randomize()
-                            binding.recommendedGrid.scheduleLayoutAnimation()
-                            binding.recommendedGrid.animate()
-                                .alpha(1F)
-                                .setDuration(resources.getInteger(android.R.integer.config_shortAnimTime).toLong())
-                                .start()
-                        }
-                        .start()
-                }
-            } catch (_: Exception) {
-                // Ignore transient errors during animation.
-            }
-
-            handler.postDelayed(this, RANDOMIZER_DELAY)
-        }
-    }
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        binding = FragmentHomeDahsboardBinding.inflate(inflater, container, false)
+        binding = FragmentHomeDashboardBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -115,6 +84,8 @@ class Dashboard : MediaFragment() {
         setupPanelsGrid()
         setupCarouselSpacing()
         observeData()
+
+        binding.scrollView.requireAttachedMiniPlayer()
 
         binding.openAppSettings.setOnClickListener {
             openPreferencesPanel()
@@ -151,9 +122,12 @@ class Dashboard : MediaFragment() {
 
     /**
      * Configures the recommended spanned art grid with [SpannedGridLayoutManager] using the
-     * same random span-size pattern as [SpannedHome], then attaches an [AdapterGridArt].
+     * same random span-size pattern as [SpannedHome], then attaches an [AdapterRecommended].
      *
-     * @param data The [ArtFlowData] block of songs to display in the grid.
+     * The grid is fully replaced on every call so each ViewModel-driven cycle shows a fresh
+     * selection with a new random layout pattern.
+     *
+     * @param data The fresh list of [Audio] items emitted by [DashboardViewModel.recommended].
      */
     private fun setupRecommendedGrid(data: List<Audio>) {
         val randomSpanPositions = intArrayOf(1, 2, 3, 4, 5, 7).let { arr ->
@@ -184,6 +158,8 @@ class Dashboard : MediaFragment() {
             }
         })
 
+        // IMPORTANT: Update the grid's height to fit its content
+        // (otherwise the shuffle animation will cause it to collapse to zero height and disappear).
         binding.recommendedGrid.post {
             binding.recommendedGrid.layoutParams.height =
                 layoutManager.getTotalHeight() +
@@ -305,24 +281,12 @@ class Dashboard : MediaFragment() {
         }
     }
 
-    override fun onPause() {
-        super.onPause()
-        handler.removeCallbacks(recommendedRandomizer)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        handler.removeCallbacks(recommendedRandomizer)
-        handler.postDelayed(recommendedRandomizer, RANDOMIZER_DELAY)
-    }
-
     override fun onDestroyView() {
         // Null adapter references so they are cleanly re-created when the view is
         // re-inflated after returning from another fragment (mirrors Songs.kt behavior).
         recentlyPlayedAdapter = null
         recentlyAddedAdapter = null
         favoritesAdapter = null
-        handler.removeCallbacks(recommendedRandomizer)
         super.onDestroyView()
     }
 
@@ -351,8 +315,5 @@ class Dashboard : MediaFragment() {
 
         /** Number of span columns for the recommended art grid. */
         private const val RECOMMENDED_GRID_SPANS = 3
-
-        /** Interval in milliseconds between each shuffle animation tick. */
-        private const val RANDOMIZER_DELAY = 10_000L
     }
 }

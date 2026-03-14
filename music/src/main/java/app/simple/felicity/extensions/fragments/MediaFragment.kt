@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.ImageView
 import androidx.core.app.ShareCompat
 import androidx.core.content.FileProvider
+import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -239,6 +240,28 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             override fun onPause(owner: LifecycleOwner) {
                 super.onPause(owner)
                 miniPlayerCallbacks?.onDetachMiniPlayer(this@requireAttachedMiniPlayer)
+            }
+        })
+    }
+
+    /**
+     * Attaches the mini player auto-hide behavior to this [NestedScrollView] for the
+     * lifetime of the current fragment view. When the fragment starts the mini player
+     * begins tracking scroll events; when the fragment pauses the listener is removed.
+     *
+     * Call this in [onViewCreated] on the root [NestedScrollView] of your layout whenever
+     * you want the same hide-on-scroll behavior that RecyclerView-based screens use.
+     */
+    protected fun NestedScrollView.requireAttachedMiniPlayer() {
+        viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) {
+                super.onStart(owner)
+                miniPlayerCallbacks?.onAttachMiniPlayerScrollView(this@requireAttachedMiniPlayer)
+            }
+
+            override fun onPause(owner: LifecycleOwner) {
+                super.onPause(owner)
+                miniPlayerCallbacks?.onDetachMiniPlayerScrollView(this@requireAttachedMiniPlayer)
             }
         })
     }
