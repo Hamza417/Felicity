@@ -6,6 +6,8 @@ import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PathMeasure;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
@@ -13,7 +15,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.view.animation.DecelerateInterpolator;
-import android.view.animation.OvershootInterpolator;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -31,10 +32,43 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
     private final Paint elevationPaint = new Paint();
     private final Paint check = new Paint();
     
+    /**
+     * Paint used to stroke the animated tick path.
+     * Style is STROKE with round caps/joins for a smooth checkmark appearance.
+     */
+    private final Paint checkStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    
+    /**
+     * Raw two-segment path that describes the checkmark shape in view-space.
+     */
+    private final Path checkPath = new Path();
+    
+    /**
+     * Reusable destination path for {@link PathMeasure#getSegment} — reset each frame.
+     */
+    private final Path segmentPath = new Path();
+    
+    /**
+     * Measures {@link #checkPath} so we can animate the visible stroke length.
+     */
+    private PathMeasure pathMeasure = null;
+    
+    /**
+     * Total arc length of {@link #checkPath}, cached after each {@link #buildCheckPath()} call.
+     */
+    private float pathLength = 0f;
+    
+    /**
+     * Fraction of the checkmark stroke that is currently visible, in [0, 1].
+     * 0 = nothing drawn (unchecked), 1 = fully drawn (checked).
+     * Driven by {@link #animator}.
+     */
+    private float checkPhase = 0f;
+
     private final RectF backgroundRect = new RectF();
-    
+
     private Drawable checkedIcon;
-    
+
     private ValueAnimator animator = null;
     private ValueAnimator colorAnimator = null;
     private ValueAnimator elevationAnimator = null;
@@ -48,8 +82,8 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
     
     private float x;
     private float y;
-    private float checkIconRatio = 0.8f;
-    private int duration = 200;
+    private float checkIconRatio = 0.7f;
+    private int duration = 150;
     private float cornerRadius = 10;
     private float shadowRadius = 10F;
     
@@ -82,7 +116,13 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         check.setAntiAlias(true);
         check.setStyle(Paint.Style.FILL);
         
+        checkStrokePaint.setStyle(Paint.Style.STROKE);
+        checkStrokePaint.setStrokeCap(Paint.Cap.ROUND);
+        checkStrokePaint.setStrokeJoin(Paint.Join.ROUND);
+        checkStrokePaint.setColor(Color.WHITE);
+        
         checkedIcon = ContextCompat.getDrawable(getContext(), R.drawable.ic_check);
+        
         if (checkedIcon != null) {
             checkedIcon.setTint(Color.WHITE);
         }
@@ -131,6 +171,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         post(() -> {
             x = getWidth() / 2f;
             y = getHeight() / 2f;
+            buildCheckPath();
             updateChecked(); // Update everything post layout to avoid missing graphics issues
             
             try { // I like cheating :)
@@ -158,7 +199,13 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         background.setShadowLayer(shadowRadius, 0, 0, elevationColor);
         canvas.drawRoundRect(backgroundRect, cornerRadius, cornerRadius, background);
         
-        checkedIcon.draw(canvas);
+        // Draw the animated tick mark as a stroked path.
+        if (checkPhase > 0f && pathMeasure != null && pathLength > 0f) {
+            segmentPath.reset();
+            pathMeasure.getSegment(0f, checkPhase * pathLength, segmentPath, true);
+            checkStrokePaint.setStrokeWidth(Math.min(getWidth(), getHeight()) * 0.12f);
+            canvas.drawPath(segmentPath, checkStrokePaint);
+        }
         
         super.onDraw(canvas);
     }
@@ -167,16 +214,12 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         clearAnimation();
         
         if (isChecked) {
-            animator = ValueAnimator.ofFloat(0, 1);
+            // Animate the tick stroke drawing itself from start to end.
+            animator = ValueAnimator.ofFloat(checkPhase, 1f);
             animator.setDuration(duration);
-            animator.setInterpolator(new OvershootInterpolator());
+            animator.setInterpolator(new DecelerateInterpolator(3));
             animator.addUpdateListener(animation -> {
-                float value = (float) animation.getAnimatedValue();
-                checkedIcon.setAlpha((int) (255 * value));
-                checkedIcon.setBounds((int) (x - (x * checkIconRatio * value)),
-                        (int) (y - (y * checkIconRatio * value)),
-                        (int) (x + (x * checkIconRatio * value)),
-                        (int) (y + (y * checkIconRatio * value)));
+                checkPhase = (float) animation.getAnimatedValue();
                 invalidate();
             });
             
@@ -205,18 +248,12 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
                 invalidate();
             });
         } else {
-            animator = ValueAnimator.ofFloat(1, 0);
+            // Animate the tick stroke erasing itself from end back toward the start.
+            animator = ValueAnimator.ofFloat(checkPhase, 0f);
             animator.setDuration(duration);
-            animator.setInterpolator(new DecelerateInterpolator());
+            animator.setInterpolator(new DecelerateInterpolator(3f));
             animator.addUpdateListener(animation -> {
-                float value = (float) animation.getAnimatedValue();
-                // checkRect.set(x - (x * value), y - (y * value), x + (x * value), y + (y * value));
-                checkedIcon.setAlpha((int) (255 * value));
-                checkedIcon.setBounds((int) (x - (x * checkIconRatio * value)),
-                        (int) (y - (y * checkIconRatio * value)),
-                        (int) (x + (x * checkIconRatio * value)),
-                        (int) (y + (y * checkIconRatio * value)));
-                
+                checkPhase = (float) animation.getAnimatedValue();
                 invalidate();
             });
             
@@ -249,32 +286,57 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         if (isChecked) {
             backgroundColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
             elevationColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
-            // shadowRadius = 10F;
-            checkedIcon.setAlpha(255);
-            checkedIcon.setBounds(
-                    (int) (x - (x * checkIconRatio)),
-                    (int) (y - (y * checkIconRatio * 1)),
-                    (int) (x + (x * checkIconRatio * 1)),
-                    (int) (y + (y * checkIconRatio * 1)));
+            checkPhase = 1f;
         } else {
             if (!isInEditMode()) {
                 backgroundColor = ThemeManager.INSTANCE.getTheme().getSwitchTheme().getSwitchOffColor();
             }
             elevationColor = Color.TRANSPARENT;
-            // shadowRadius = 0F;
-            checkedIcon.setAlpha(0);
-            checkedIcon.setBounds(
-                    (int) (x - (x * checkIconRatio)),
-                    (int) (y - (y * checkIconRatio * 0F)),
-                    (int) (x + (x * checkIconRatio * 0F)),
-                    (int) (y + (y * checkIconRatio * 0F)));
-            
-            // ^ You could just set it to 0 or 1, where's fun in that?
+            checkPhase = 0f;
         }
         
         invalidate();
     }
     
+    /**
+     * Rebuilds the two-segment checkmark {@link Path} in view-space coordinates.
+     *
+     * <p>The path occupies the inner bounding box defined by {@link #checkIconRatio} and the
+     * current view dimensions. Three key points describe the classic ✓ shape:</p>
+     * <ol>
+     *   <li>Start  — left-center of the bounding box</li>
+     *   <li>Dip    — lower-center (the bottom vertex of the V)</li>
+     *   <li>End    — upper-right of the bounding box</li>
+     * </ol>
+     *
+     * <p>Must be called whenever {@code x}, {@code y}, or {@link #checkIconRatio} changes.</p>
+     */
+    private void buildCheckPath() {
+        if (x == 0f || y == 0f) {
+            return;
+        }
+        
+        float bLeft = x * (1f - checkIconRatio);
+        float bTop = y * (1f - checkIconRatio);
+        float bW = 2f * x * checkIconRatio;
+        float bH = 2f * y * checkIconRatio;
+        
+        float sx = bLeft + bW * 0.15f;
+        float sy = bTop + bH * 0.52f;
+        float mx = bLeft + bW * 0.42f;
+        float my = bTop + bH * 0.78f;
+        float ex = bLeft + bW * 0.85f;
+        float ey = bTop + bH * 0.22f;
+        
+        checkPath.reset();
+        checkPath.moveTo(sx, sy);
+        checkPath.lineTo(mx, my);
+        checkPath.lineTo(ex, ey);
+        
+        pathMeasure = new PathMeasure(checkPath, false);
+        pathLength = pathMeasure.getLength();
+    }
+
     public int getDuration() {
         return duration;
     }
@@ -388,6 +450,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
     
     public void setCheckIconRatio(float ratio) {
         checkIconRatio = ratio;
+        buildCheckPath();
         invalidate();
     }
     
@@ -414,6 +477,14 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         invalidate();
     }
     
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        x = w / 2f;
+        y = h / 2f;
+        buildCheckPath();
+    }
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int desiredWidth = getResources().getDimensionPixelSize(R.dimen.checkbox_dimensions);

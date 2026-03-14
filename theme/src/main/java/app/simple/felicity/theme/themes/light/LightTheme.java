@@ -12,7 +12,7 @@ public class LightTheme extends Theme {
 
     public LightTheme() {
         setSwitchTheme(new SwitchTheme(
-                Color.parseColor("#2E2E2E")  // Regular Switch Color
+                Color.parseColor("#EDEDED")  // Regular Switch Color
         ));
 
         setTextViewTheme(new TextViewTheme(
