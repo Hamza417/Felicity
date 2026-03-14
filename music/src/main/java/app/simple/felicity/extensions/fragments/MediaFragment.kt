@@ -206,8 +206,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 hideMiniPlayer()
             }
 
-            override fun onPause(owner: LifecycleOwner) {
-                super.onPause(owner)
+            override fun onDestroy(owner: LifecycleOwner) {
+                super.onDestroy(owner)
                 // Don't force-show during configuration changes; preserve current state
                 if (requireActivity().isChangingConfigurations.not()) {
                     shouldShowMiniPlayer = true

@@ -270,6 +270,7 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.POPUP,
                 valueProvider = {
                     when (HomePreferences.getHomeInterface()) {
+                        HomePreferences.HOME_INTERFACE_DASHBOARD -> getString(R.string.dashboard)
                         HomePreferences.HOME_INTERFACE_ARTFLOW -> getString(R.string.artflow)
                         HomePreferences.HOME_INTERFACE_SPANNED -> getString(R.string.spanned)
                         HomePreferences.HOME_INTERFACE_SIMPLE -> getString(R.string.simple)
@@ -280,14 +281,20 @@ open class PreferenceFragment : MediaFragment() {
                     PopupHomeInterfaceMenu(
                             container = requireContainerView(),
                             anchorView = view,
-                            menuItems = listOf(R.string.spanned,
+                            menuItems = listOf(R.string.dashboard,
+                                               R.string.spanned,
                                                R.string.artflow,
                                                R.string.simple),
-                            menuIcons = listOf(R.drawable.ic_spanned_16dp,
+                            menuIcons = listOf(R.drawable.ic_dot_16dp,
+                                               R.drawable.ic_spanned_16dp,
                                                R.drawable.ic_flow_16dp,
                                                R.drawable.ic_list_16dp),
                             onMenuItemClick = {
                                 when (it) {
+                                    R.string.dashboard -> {
+                                        HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_DASHBOARD)
+                                        (view as TextView).text = getString(R.string.dashboard)
+                                    }
                                     R.string.spanned -> {
                                         HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_SPANNED)
                                         (view as TextView).text = getString(R.string.spanned)
