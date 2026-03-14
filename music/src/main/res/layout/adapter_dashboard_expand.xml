@@ -11,12 +11,13 @@
 
     <app.simple.felicity.decorations.theme.ThemeIcon
         android:id="@+id/icon"
-        android:layout_width="@dimen/icon_size_40"
-        android:layout_height="@dimen/icon_size_40"
+        android:layout_width="@dimen/icon_size_30"
+        android:layout_height="@dimen/icon_size_30"
         android:src="@drawable/ic_unfold"
         app:tintType="accent" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/padding_8"

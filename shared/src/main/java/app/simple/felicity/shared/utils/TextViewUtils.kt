@@ -161,51 +161,62 @@ object TextViewUtils {
 
         val scope = this.findViewTreeLifecycleOwner()?.lifecycleScope ?: return
 
-        if (this.text == text) return // No need to animate if the text is already the same
+        if (this.text.toString() == text) return // No need to animate if the text is already the same
 
         activeAnimationJobs[this] = scope.launch {
             val current = this@setTypeWriting.text.toString()
             val builder = StringBuilder(current)
 
-            // If no limit is provided, treat it as virtually infinite
             val limit = animateLimit ?: Int.MAX_VALUE
+            var flipCount = 0 // Tracks actual UI mutations rather than the string index
             var limitReached = false
 
-            // Flip & Typewriter
+            // 1. Flip & Typewriter Phase
             for (i in text.indices) {
-                if (i >= limit) {
+                if (flipCount >= limit) {
                     limitReached = true
                     break // Stop animating, jump to the end
                 }
 
+                val isAppending = i >= builder.length
+                val isDifferent = !isAppending && builder[i] != text[i]
+
+                // OPTIMIZATION: If the character exists and is identical, skip the delay and UI update
+                if (!isAppending && !isDifferent) {
+                    continue
+                }
+
+                // Animate the difference
                 delay(delayTime)
 
-                if (i < builder.length) {
-                    builder.setCharAt(i, text[i])
-                } else {
+                if (isAppending) {
                     builder.append(text[i])
+                } else {
+                    builder.setCharAt(i, text[i])
                 }
+
                 this@setTypeWriting.text = builder.toString()
+                flipCount++ // Only increment the limit counter when an actual change happens
             }
 
-            // Cleanup (Delete Extra Characters)
-            if (!limitReached && current.length > text.length) {
-                for (i in text.length until current.length) {
-                    if (i >= limit) {
+            // 2. Cleanup Phase (Delete Extra Characters)
+            if (!limitReached && builder.length > text.length) {
+                val charsToDelete = builder.length - text.length
+
+                for (i in 0 until charsToDelete) {
+                    if (flipCount >= limit) {
                         limitReached = true
                         break // Stop deleting one-by-one, jump to the end
                     }
 
                     delay(delayTime)
-
-                    if (builder.isNotEmpty()) {
-                        builder.deleteCharAt(builder.lastIndex)
-                        this@setTypeWriting.text = builder.toString()
-                    }
+                    builder.deleteCharAt(builder.lastIndex)
+                    this@setTypeWriting.text = builder.toString()
+                    flipCount++
                 }
             }
 
-            // Set final text if we exited early due to limit
+            // 3. Finalization
             if (limitReached) {
                 // Instantly apply the full target text, bypassing any further delays
                 this@setTypeWriting.text = text

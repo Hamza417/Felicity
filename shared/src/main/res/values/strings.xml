@@ -13,6 +13,7 @@
     <string name="recently_played">Recently Played</string>
     <string name="browse">Browse</string>
     <string name="more">More</string>
+    <string name="less">Less</string>
     <string name="player">Player</string>
     <string name="search">Search</string>
     <string name="preferences">Preferences</string>
@@ -261,4 +262,5 @@
     <string name="haptic_feedback_summary">Toggle haptic feedbacks on various interactions in the app.</string>
     <string name="tape_saturation">Tape Saturation</string>
     <string name="dashboard">Dashboard</string>
+    <string name="now_playing">Now Playing: %1$s</string>
 </resources>

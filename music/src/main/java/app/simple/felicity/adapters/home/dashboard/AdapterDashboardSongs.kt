@@ -58,6 +58,23 @@ class AdapterDashboardSongs(
     }
 
     /**
+     * Randomizes the visible content of [holder] by swapping its displayed song to a
+     * randomly chosen entry from the backing list. Intended for use with the
+     * SpannedHome-style periodic shuffle animation in the recently played carousel.
+     *
+     * @param holder The [Holder] whose displayed song should be replaced.
+     */
+    fun randomize(holder: Holder) {
+        if (songs.isEmpty()) return
+        val randomSong = songs.random()
+        holder.binding.art.loadArtCoverWithPayload(randomSong)
+        holder.binding.title.text = randomSong.title
+            ?: holder.itemView.context.getString(R.string.unknown)
+        holder.binding.artist.text = randomSong.artist
+            ?: holder.itemView.context.getString(R.string.unknown)
+    }
+
+    /**
      * Sets the callbacks used to respond to song item clicks.
      *
      * @param callbacks The callback implementation to attach.

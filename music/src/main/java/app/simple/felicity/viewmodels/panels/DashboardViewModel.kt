@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Element
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -21,10 +23,10 @@ import javax.inject.Inject
 /**
  * ViewModel for the Dashboard home screen.
  *
- * Provides data for the recently played section (substituted with recently added songs
- * until a dedicated history database is available), the recently added songs section,
- * the favorites section, and the fixed list of seven panel navigation items displayed
- * in the browse grid.
+ * Provides data for the recommended grid section, the recently played section
+ * (substituted with recently added songs until a dedicated history database is
+ * available), the recently added songs section, the favorites section, and the
+ * fixed lists of panel navigation items displayed in the browse grid.
  *
  * @author Hamza417
  */
@@ -52,11 +54,19 @@ class DashboardViewModel @Inject constructor(
     /** Favorite songs flow. */
     val favorites: StateFlow<List<Audio>> = _favorites.asStateFlow()
 
+    private val _recommended = MutableStateFlow<List<Audio>?>(null)
+
     /**
-     * Fixed list of seven panel navigation elements shown in the browse grid.
+     * A single [ArtFlowData] block containing a random selection of songs used to
+     * populate the spanned art grid in the recommended section.
+     */
+    val recommended: StateFlow<List<Audio>?> = _recommended.asStateFlow()
+
+    /**
+     * The first seven panel navigation elements shown in the collapsed browse grid.
      * These represent the most commonly used sections of the app.
      */
-    val panelItems: List<Element> = listOf(
+    val firstPanelItems: List<Element> = listOf(
             Element(R.string.songs, R.drawable.ic_song),
             Element(R.string.albums, R.drawable.ic_album),
             Element(R.string.artists, R.drawable.ic_artist),
@@ -66,9 +76,28 @@ class DashboardViewModel @Inject constructor(
             Element(R.string.recently_added, R.drawable.ic_recently_added)
     )
 
+    /**
+     * The complete list of all panel navigation elements revealed when the user
+     * taps the expand button in the browse grid.
+     */
+    val allPanelItems: List<Element> = listOf(
+            Element(R.string.songs, R.drawable.ic_song),
+            Element(R.string.albums, R.drawable.ic_album),
+            Element(R.string.artists, R.drawable.ic_artist),
+            Element(R.string.genres, R.drawable.ic_piano),
+            Element(R.string.folders, R.drawable.ic_folder),
+            Element(R.string.folders_hierarchy, R.drawable.ic_tree),
+            Element(R.string.playing_queue, R.drawable.ic_queue),
+            Element(R.string.recently_added, R.drawable.ic_recently_added),
+            Element(R.string.year, R.drawable.ic_date_range),
+            Element(R.string.favorites, R.drawable.ic_favorite_filled),
+            Element(R.string.preferences, R.drawable.ic_settings)
+    )
+
     init {
         loadRecentSongs()
         loadFavorites()
+        loadRecommended()
     }
 
     private fun loadRecentSongs() {
@@ -102,8 +131,29 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    private fun loadRecommended() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val songs = audioRepository.getAllAudio()
+                    .catch { e -> Log.e(TAG, "Error loading recommended songs", e); emit(mutableListOf()) }
+                    .first()
+                    .shuffled()
+                    .take(RECOMMENDED_TAKE_COUNT)
+                if (songs.isNotEmpty()) {
+                    @Suppress("UNCHECKED_CAST")
+                    _recommended.value = songs
+                }
+                Log.d(TAG, "loadRecommended: ${songs.size} songs loaded")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading recommended section", e)
+            }
+        }
+    }
+
     companion object {
         private const val TAG = "DashboardViewModel"
+
+        /** Number of songs loaded for the recommended spanned art grid. */
+        private const val RECOMMENDED_TAKE_COUNT = 18
     }
 }
-
