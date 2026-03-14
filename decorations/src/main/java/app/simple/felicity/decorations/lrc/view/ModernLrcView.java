@@ -14,6 +14,7 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.Shader;
 import android.text.Layout;
 import android.text.StaticLayout;
+import android.text.TextDirectionHeuristics;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -763,15 +764,23 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Calculate X position for StaticLayout based on alignment.
+     * Calculate X position for StaticLayout based on alignment, with full RTL support.
      *
-     * <p>All layouts use {@code ALIGN_NORMAL} so text always starts at x=0 within the layout.
-     * We translate the canvas to the correct X so that:</p>
+     * <p>Multi-line layouts have their alignment baked in by StaticLayout and are always
+     * placed at {@code paddingLeft}.</p>
+     *
+     * <p>For single-line layouts the canvas is translated so that:</p>
      * <ul>
-     *   <li>LEFT   – text left-edge is at {@code paddingLeft}</li>
-     *   <li>CENTER – text is centred: {@code paddingLeft + (availableWidth/2) - (textWidth/2)}</li>
-     *   <li>RIGHT  – text right-edge is at {@code paddingLeft + availableWidth}:
-     *                {@code paddingLeft + availableWidth - textWidth}</li>
+     *   <li><b>LTR text</b> – {@code ALIGN_NORMAL} draws text starting at x=0 in the layout.
+     *       Canvas is shifted right by {@code fraction * slack}:<br>
+     *       LEFT → {@code paddingLeft}, CENTER → {@code paddingLeft + slack/2},
+     *       RIGHT → {@code paddingLeft + slack}</li>
+     *   <li><b>RTL text</b> – {@code ALIGN_NORMAL} draws text starting at x={@code slack} in
+     *       the layout (natural right-side origin). The same fraction is instead subtracted so
+     *       that the net rendered position is correct:<br>
+     *       LEFT → natural right edge ({@code paddingLeft}),
+     *       CENTER → centered ({@code paddingLeft - slack/2}),
+     *       RIGHT → left edge ({@code paddingLeft - slack})</li>
      * </ul>
      *
      * <p>{@link #alignmentFraction} (0=LEFT, 0.5=CENTER, 1=RIGHT) is animated on alignment
@@ -789,24 +798,31 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             return paddingLeft;
         }
         
-        // Single-line layout: measure the actual text width and compute the X shift so that
-        //   LEFT   → text left-edge at paddingLeft
-        //   CENTER → text centred in availableWidth
-        //   RIGHT  → text right-edge at paddingLeft + availableWidth
         String text = layout.getText().toString();
         float textWidth = Math.min(paint.measureText(text), availableWidth);
-        
-        float xCenter = paddingLeft + (availableWidth - textWidth) / 2f;
-        float xRight = paddingLeft + availableWidth - textWidth;
-        
+        // Amount of free horizontal space beside the text within the available width.
+        float slack = availableWidth - textWidth;
         float fraction = alignmentFraction;
-        if (fraction <= 0.5f) {
-            float t = fraction * 2f;
-            return paddingLeft + t * (xCenter - paddingLeft);
-        } else {
-            float t = (fraction - 0.5f) * 2f;
-            return xCenter + t * (xRight - xCenter);
+        
+        // Detect the paragraph direction of this individual line.
+        // FIRSTSTRONG_LTR returns true for RTL when the first strongly directional character
+        // (e.g. an Arabic letter) is right-to-left.
+        boolean isRtl = TextDirectionHeuristics.FIRSTSTRONG_LTR.isRtl(text, 0, text.length());
+        
+        if (isRtl) {
+            // For RTL text, ALIGN_NORMAL places the text at x = slack within the layout
+            // (its natural right-side origin). The canvas translation is inverted so that:
+            //   fraction=0.0 (LEFT)   → canvas at paddingLeft         → text renders at paddingLeft + slack (right edge)
+            //   fraction=0.5 (CENTER) → canvas at paddingLeft - slack/2 → text renders at paddingLeft + slack/2 (centered)
+            //   fraction=1.0 (RIGHT)  → canvas at paddingLeft - slack    → text renders at paddingLeft (left edge)
+            return paddingLeft - fraction * slack;
         }
+        
+        // For LTR text, ALIGN_NORMAL places text at x=0. Canvas is shifted right by fraction * slack:
+        //   fraction=0.0 (LEFT)   → paddingLeft
+        //   fraction=0.5 (CENTER) → paddingLeft + slack/2
+        //   fraction=1.0 (RIGHT)  → paddingLeft + slack
+        return paddingLeft + fraction * slack;
     }
     
     /**
