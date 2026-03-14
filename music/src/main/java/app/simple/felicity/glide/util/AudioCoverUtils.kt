@@ -75,7 +75,7 @@ object AudioCoverUtils {
                 roundedCorners = AlbumArtPreferences.isRoundedCornersEnabled())
     }
 
-    fun ImageView.loadPeristyleArtCover(item: Any) {
+    fun ImageView.loadPlainArtCover(item: Any) {
         Glide.with(this)
             .asBitmap()
             .dontTransform()

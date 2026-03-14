@@ -15,17 +15,19 @@
             android:layout_height="150dp"
             android:orientation="horizontal">
 
-            <View
+            <ImageView
                 android:id="@+id/primary_color"
                 android:layout_width="0dp"
                 android:layout_weight="0.75"
-                android:layout_height="match_parent" />
+                android:layout_height="match_parent"
+                android:importantForAccessibility="no" />
 
-            <View
+            <ImageView
                 android:id="@+id/secondary_color"
                 android:layout_width="0dp"
                 android:layout_weight="0.25"
-                android:layout_height="match_parent" />
+                android:layout_height="match_parent"
+                android:importantForAccessibility="no" />
 
         </LinearLayout>
 

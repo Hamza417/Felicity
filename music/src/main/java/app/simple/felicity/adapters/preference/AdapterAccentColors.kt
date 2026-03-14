@@ -8,8 +8,14 @@ import app.simple.felicity.databinding.AdapterAccentColorsBinding
 import app.simple.felicity.databinding.AdapterPreferenceHeaderBinding
 import app.simple.felicity.decorations.overscroll.RecyclerViewUtils
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.glide.util.AudioCoverUtils.loadPlainArtCover
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.repository.managers.MediaManager
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ViewUtils
+import app.simple.felicity.shared.utils.ViewUtils.gone
+import app.simple.felicity.shared.utils.ViewUtils.visible
+import app.simple.felicity.theme.accents.AlbumArt
 import app.simple.felicity.theme.managers.ThemeManager
 
 class AdapterAccentColors : RecyclerView.Adapter<VerticalListViewHolder>() {
@@ -39,8 +45,16 @@ class AdapterAccentColors : RecyclerView.Adapter<VerticalListViewHolder>() {
             }
             is Holder -> {
                 val accent = colors[position - 1]
-                holder.binding.primaryColor.setBackgroundColor(accent.primaryAccentColor)
-                holder.binding.secondaryColor.setBackgroundColor(accent.secondaryAccentColor)
+
+                if (accent.identifier == AlbumArt.IDENTIFIER) {
+                    holder.binding.secondaryColor.gone()
+                    holder.binding.primaryColor.loadPlainArtCover(MediaManager.getCurrentSong() ?: Audio())
+                } else {
+                    holder.binding.primaryColor.setBackgroundColor(accent.primaryAccentColor)
+                    holder.binding.secondaryColor.setBackgroundColor(accent.secondaryAccentColor)
+                    holder.binding.primaryColor.visible(false)
+                }
+
                 holder.binding.name.text = accent.identifier
                 holder.binding.palette.text = accent.hexes
                 ViewUtils.addShadow(holder.binding.container, accent.primaryAccentColor)
