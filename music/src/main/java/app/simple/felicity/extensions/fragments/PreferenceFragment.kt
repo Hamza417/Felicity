@@ -164,6 +164,42 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val knobStyle = Preference(
+                title = R.string.knob_style,
+                summary = R.string.knob_style_summary,
+                icon = R.drawable.ic_circle,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (AppearancePreferences.getKnobStyle()) {
+                        AppearancePreferences.KNOB_STYLE_DEFAULT -> getString(R.string.flat)
+                        AppearancePreferences.KNOB_STYLE_NEU -> getString(R.string.neumorphic)
+                        else -> getString(R.string.flat)
+                    }
+                },
+                onPreferenceAction = { view, callback ->
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(R.string.flat, R.string.neumorphic),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.flat -> {
+                                        AppearancePreferences.setKnobStyle(AppearancePreferences.KNOB_STYLE_DEFAULT)
+                                        (view as TextView).text = getString(R.string.flat)
+                                    }
+                                    R.string.neumorphic -> {
+                                        AppearancePreferences.setKnobStyle(AppearancePreferences.KNOB_STYLE_NEU)
+                                        (view as TextView).text = getString(R.string.neumorphic)
+                                    }
+                                }
+                            },
+                            onDismiss = {
+                                callback
+                            }
+                    ).show()
+                }
+        )
+
         val effects = Preference(type = PreferenceType.SUB_HEADER, title = R.string.effects)
 
         val shadowEffectToggle = Preference(
@@ -247,6 +283,7 @@ open class PreferenceFragment : MediaFragment() {
         preferences.add(cornerRadius)
         preferences.add(spacing)
         preferences.add(thumbShape)
+        preferences.add(knobStyle)
         preferences.add(effects)
         preferences.add(shadowEffectToggle)
         preferences.add(albumArt)

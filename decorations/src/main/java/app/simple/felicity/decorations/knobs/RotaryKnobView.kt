@@ -24,6 +24,7 @@ import app.simple.felicity.decorations.knobs.RotaryKnobView.Companion.HAPTIC_TIC
 import app.simple.felicity.decorations.knobs.RotaryKnobView.Companion.START
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.decorations.utils.VibrateUtils.vibrateEffect
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
@@ -60,7 +61,6 @@ class RotaryKnobView @JvmOverloads constructor(
 
     /** The drawable used to paint the rotating knob circle. Must be a [RotaryKnobDrawable]. */
     private var knobDrawable: RotaryKnobDrawable = SimpleRotaryKnobDrawable()
-
 
     /** Current angular position of the knob in degrees, clamped to [START]..[END]. */
     private var knobRotation = 0f
@@ -386,6 +386,7 @@ class RotaryKnobView @JvmOverloads constructor(
         if (isInEditMode.not()) {
             setThemeColors(ThemeManager.theme)
             setAccentColor(ThemeManager.accent)
+            applyKnobPreferences()
         }
     }
 
@@ -934,6 +935,19 @@ class RotaryKnobView @JvmOverloads constructor(
         recalcGeometry()
     }
 
+    private fun applyKnobPreferences() {
+        if (isInEditMode.not()) {
+            when (AppearancePreferences.getKnobStyle()) {
+                AppearancePreferences.KNOB_STYLE_DEFAULT -> {
+                    setKnobDrawable(SimpleRotaryKnobDrawable())
+                }
+                AppearancePreferences.KNOB_STYLE_NEU -> {
+                    setKnobDrawable(NeumorphicRotaryKnobDrawable())
+                }
+            }
+        }
+    }
+
     /**
      * Sets the view's rendering layer type based on what the current [knobDrawable] requires.
      * If the drawable uses [android.graphics.Paint.setShadowLayer] for glow effects it returns
@@ -954,8 +968,6 @@ class RotaryKnobView @JvmOverloads constructor(
     /** Maps a value in 0..100 to a knob angle in [START]..[END]. */
     private fun valueToAngle(volume: Float): Float =
         START + (volume / 100f) * (END - START)
-
-
 
     /** Light tick fired every [HAPTIC_TICK_INTERVAL_DEG] degrees of rotation. */
     private fun vibrateRotationTick() {

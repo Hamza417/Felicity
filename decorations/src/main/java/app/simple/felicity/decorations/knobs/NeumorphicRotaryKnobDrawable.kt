@@ -38,7 +38,7 @@ import app.simple.felicity.theme.themes.Theme
  *    subtle inner [RadialGradient] glow and a [Paint.setShadowLayer] outer bloom,
  *    both animating between idle and accent.
  *
- * Both [Paint.setShadowLayer] usages require [LAYER_TYPE_SOFTWARE] on the host view;
+ * Both [Paint.setShadowLayer] usages require [android.view.View.LAYER_TYPE_SOFTWARE] on the host view;
  * [requiresSoftwareLayer] returns `true` to signal this to [RotaryKnobView].
  *
  * Theme colors are managed internally: the drawable registers with [ThemeManager] during
