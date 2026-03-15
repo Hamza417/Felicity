@@ -85,6 +85,13 @@ class AdapterAccentColors : RecyclerView.Adapter<VerticalListViewHolder>() {
         }
     }
 
+    fun reloadAlbumArt() {
+        val albumArtAccentIndex = colors.indexOfFirst { it.identifier == AlbumArt.IDENTIFIER }
+        if (albumArtAccentIndex != -1) {
+            notifyItemChanged(albumArtAccentIndex + 1) // +1 for header
+        }
+    }
+
     inner class Holder(val binding: AdapterAccentColorsBinding) : VerticalListViewHolder(binding.root)
 
     inner class Header(val binding: AdapterPreferenceHeaderBinding) : VerticalListViewHolder(binding.root)

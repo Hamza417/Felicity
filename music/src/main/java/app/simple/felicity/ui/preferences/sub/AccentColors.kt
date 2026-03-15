@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import app.simple.felicity.adapters.preference.AdapterAccentColors
 import app.simple.felicity.databinding.FragmentGenericRecyclerViewBinding
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.repository.models.Audio
 
 class AccentColors : MediaFragment() {
 
@@ -29,6 +30,11 @@ class AccentColors : MediaFragment() {
 
     override fun getTransitionType(): TransitionType {
         return TransitionType.SLIDE
+    }
+
+    override fun onAudio(audio: Audio) {
+        super.onAudio(audio)
+        (binding.recyclerView.adapter as? AdapterAccentColors)?.reloadAlbumArt()
     }
 
     companion object {

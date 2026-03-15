@@ -269,12 +269,16 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         ThemeUtils.setAppTheme(resources)
         ThemeUtils.updateNavAndStatusColors(resources, window)
 
-        ThemeManager.accent = when (val accentName = AppearancePreferences.getAccentColorName()) {
-            null -> Felicity().also {
-                AppearancePreferences.setAccentColorName(it.identifier)
-            }
-            else -> {
-                ThemeManager.getAccentByName(accentName)
+        if (AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER) {
+            generateAlbumArtPalette()
+        } else {
+            ThemeManager.accent = when (val accentName = AppearancePreferences.getAccentColorName()) {
+                null -> Felicity().also {
+                    AppearancePreferences.setAccentColorName(it.identifier)
+                }
+                else -> {
+                    ThemeManager.getAccentByName(accentName)
+                }
             }
         }
     }
