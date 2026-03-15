@@ -32,8 +32,10 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import app.simple.felicity.engine.R
+import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.engine.notifications.PlaybackErrorNotifier
 import app.simple.felicity.engine.processors.AudioProcessorManager
+import app.simple.felicity.engine.processors.VisualizerAudioProcessor
 import app.simple.felicity.manager.SharedPreferences.initRegisterSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AudioPreferences
@@ -104,6 +106,15 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         initRegisterSharedPreferenceChangeListener(applicationContext)
         playbackErrorNotifier = PlaybackErrorNotifier(applicationContext)
 
+        // Route spectrum data from the audio thread to the UI-facing VisualizerManager.
+        // VisualizerManager.emit() dispatches to the main thread internally, so this
+        // listener is safe to call from the ExoPlayer audio thread.
+        audioProcessorManager.visualizerProcessor.setListener(object : VisualizerAudioProcessor.VisualizerListener {
+            override fun onSpectrumDataCaptured(bands: FloatArray) {
+                VisualizerManager.emit(bands)
+            }
+        })
+
         // Initialize the RenderersFactory once.
         renderersFactory = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableOffload: Boolean): AudioSink {
@@ -136,6 +147,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 processors.add(audioProcessorManager.wideningProcessor)        // Then spatial processing
                 processors.add(audioProcessorManager.balanceProcessor)         // Then channel routing
                 processors.add(audioProcessorManager.nightModeProcessor)       // Dynamic compression last
+                processors.add(audioProcessorManager.visualizerProcessor)      // Spectrum capture on final signal
 
                 val audioSink = DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(hiresEnabled)

@@ -20,37 +20,31 @@
                 android:paddingHorizontal="@dimen/padding_10"
                 android:orientation="horizontal">
 
+                <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+                    android:id="@+id/back"
+                    android:layout_gravity="center_vertical"
+                    android:layout_width="@dimen/button_size"
+                    android:src="@drawable/ic_back_arrow"
+                    android:layout_height="@dimen/button_size" />
+
                 <app.simple.felicity.decorations.typeface.TypeFaceTextView
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
                     android:textSize="@dimen/text_size_48"
+                    android:layout_marginStart="@dimen/padding_10"
                     android:text="@string/equalizer"
                     app:appFontStyle="black"
                     app:textColorStyle="primary" />
-
-                <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-                    android:id="@+id/search"
-                    android:layout_gravity="center_vertical"
-                    android:layout_width="@dimen/button_size"
-                    android:src="@drawable/ic_search"
-                    android:layout_height="@dimen/button_size" />
-
-                <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-                    android:id="@+id/menu"
-                    android:layout_gravity="center_vertical"
-                    android:layout_width="@dimen/button_size"
-                    android:src="@drawable/ic_settings"
-                    android:layout_height="@dimen/button_size" />
 
             </LinearLayout>
 
             <app.simple.felicity.decorations.theme.ThemeDivider
                 android:layout_width="match_parent"
+                android:layout_marginVertical="@dimen/padding_10"
                 android:layout_height="1px" />
 
             <LinearLayout
-                android:layout_marginTop="@dimen/padding_10"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="@dimen/padding_20"
@@ -189,6 +183,20 @@
                 android:layout_marginTop="@dimen/padding_10"
                 app:appFontStyle="regular"
                 app:textColorStyle="heading" />
+
+            <app.simple.felicity.decorations.theme.ThemeDivider
+                android:layout_width="match_parent"
+                android:layout_marginHorizontal="@dimen/padding_20"
+                android:layout_marginTop="@dimen/padding_20"
+                android:layout_height="1px" />
+
+            <app.simple.felicity.decorations.views.FelicityVisualizer
+                android:id="@+id/visualizer"
+                android:layout_width="match_parent"
+                android:layout_height="400dp"
+                android:layout_marginHorizontal="@dimen/padding_10"
+                android:layout_marginTop="@dimen/padding_10"
+                android:layout_marginBottom="@dimen/padding_20" />
 
         </LinearLayout>
 

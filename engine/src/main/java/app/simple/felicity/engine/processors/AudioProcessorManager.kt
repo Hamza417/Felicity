@@ -72,6 +72,16 @@ class AudioProcessorManager {
     val nightModeProcessor: NightModeAudioProcessor = NightModeAudioProcessor()
 
     /**
+     * Passthrough processor that performs a Hanning-windowed FFT on the final processed audio
+     * and delivers 40 log-spaced frequency band magnitudes to any attached
+     * [VisualizerAudioProcessor.VisualizerListener].
+     *
+     * Must be placed last in the chain so visualization reflects the fully processed signal.
+     * The listener is wired in [app.simple.felicity.engine.services.FelicityPlayerService].
+     */
+    val visualizerProcessor: VisualizerAudioProcessor = VisualizerAudioProcessor()
+
+    /**
      * Applies a new stereo balance pan to [balanceProcessor].
      * See [BalanceAudioProcessor.applyBalance] for the constant-power panning details.
      *

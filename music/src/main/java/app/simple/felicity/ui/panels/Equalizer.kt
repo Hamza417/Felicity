@@ -5,11 +5,17 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentEqualizerBinding
 import app.simple.felicity.decorations.knobs.RotaryKnobListener
+import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
+import app.simple.felicity.theme.managers.ThemeManager
+import kotlinx.coroutines.launch
 
 /**
  * Fragment that presents all equalizer controls: balance, stereo widening, tape saturation,
@@ -29,13 +35,23 @@ class Equalizer : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        requireHiddenMiniPlayer()
 
-        binding.search.setOnClickListener {
-            openFragment(Search.newInstance(), Search.TAG)
+        // Collect real-time spectrum data and push it to the visualizer view.
+        // repeatOnLifecycle(STARTED) automatically stops collection when the fragment
+        // is paused/stopped (off-screen) and resumes when it becomes visible again.
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                VisualizerManager.spectrumFlow.collect { bands ->
+                    binding.visualizer.setBands(bands)
+                }
+            }
         }
 
-        binding.menu.setOnClickListener {
-            openFragment(Preferences.newInstance(), Preferences.TAG)
+        binding.visualizer.setCapColor(ThemeManager.accent.primaryAccentColor)
+
+        binding.back.setOnClickListener {
+            requireActivity().onBackPressedDispatcher.onBackPressed()
         }
 
         // Karaoke mode: center-channel (vocal) removal via L−R subtraction.
