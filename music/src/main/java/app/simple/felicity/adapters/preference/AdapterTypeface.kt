@@ -76,7 +76,7 @@ class AdapterTypeface : RecyclerView.Adapter<VerticalListViewHolder>() {
     }
 
     override fun getItemCount(): Int {
-        return typefaces.size
+        return typefaces.size.plus(1) // +1 for header
     }
 
     override fun getItemViewType(position: Int): Int {

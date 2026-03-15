@@ -9,183 +9,50 @@ import app.simple.felicity.preferences.AppearancePreferences
 
 object TypeFace {
 
-    private val notoSansMap by lazy {
-        mapOf(
-                TypefaceStyle.EXTRA_LIGHT.style to R.font.notosans_extralight,
-                TypefaceStyle.LIGHT.style to R.font.notosans_light,
-                TypefaceStyle.REGULAR.style to R.font.notosans_regular,
-                TypefaceStyle.MEDIUM.style to R.font.notosans_medium,
-                TypefaceStyle.BOLD.style to R.font.notosans_bold,
-                TypefaceStyle.BLACK.style to R.font.notosans_black
-        )
-    }
-
-    private val notoSansCondensedMap by lazy {
-        mapOf(
-                TypefaceStyle.EXTRA_LIGHT.style to R.font.notosans_condensed_extralight,
-                TypefaceStyle.LIGHT.style to R.font.notosans_condensed_light,
-                TypefaceStyle.REGULAR.style to R.font.notosans_condensed_regular,
-                TypefaceStyle.MEDIUM.style to R.font.notosans_condensed_medium,
-                TypefaceStyle.BOLD.style to R.font.notosans_condensed_bold,
-                TypefaceStyle.BLACK.style to R.font.notosans_condensed_black
-        )
-    }
-
-    private val workSansMap by lazy {
-        mapOf(
-                TypefaceStyle.EXTRA_LIGHT.style to R.font.work_sans_extralight,
-                TypefaceStyle.LIGHT.style to R.font.work_sans_light,
-                TypefaceStyle.REGULAR.style to R.font.work_sans_regular,
-                TypefaceStyle.MEDIUM.style to R.font.work_sans_medium,
-                TypefaceStyle.BOLD.style to R.font.work_sans_bold,
-                TypefaceStyle.BLACK.style to R.font.work_sans_black
-        )
-    }
-
-    private val interMap by lazy {
-        mapOf(
-                TypefaceStyle.EXTRA_LIGHT.style to R.font.inter_extralight,
-                TypefaceStyle.LIGHT.style to R.font.inter_light,
-                TypefaceStyle.REGULAR.style to R.font.inter_regular,
-                TypefaceStyle.MEDIUM.style to R.font.inter_medium,
-                TypefaceStyle.BOLD.style to R.font.inter_bold,
-                TypefaceStyle.BLACK.style to R.font.inter_black
-        )
-    }
-
-    private val barlowMap by lazy {
-        mapOf(
-                TypefaceStyle.EXTRA_LIGHT.style to R.font.barlow_extralight,
-                TypefaceStyle.LIGHT.style to R.font.barlow_light,
-                TypefaceStyle.REGULAR.style to R.font.barlow_regular,
-                TypefaceStyle.MEDIUM.style to R.font.barlow_medium,
-                TypefaceStyle.BOLD.style to R.font.barlow_bold,
-                TypefaceStyle.BLACK.style to R.font.barlow_black
-        )
-    }
-
-    private val nunitoMap by lazy {
-        mapOf(
-                TypefaceStyle.EXTRA_LIGHT.style to R.font.nunito_extralight,
-                TypefaceStyle.LIGHT.style to R.font.nunito_light,
-                TypefaceStyle.REGULAR.style to R.font.nunito_regular,
-                TypefaceStyle.MEDIUM.style to R.font.nunito_medium,
-                TypefaceStyle.BOLD.style to R.font.nunito_bold,
-                TypefaceStyle.BLACK.style to R.font.nunito_black
-        )
-    }
-
-    private val spectralMap by lazy {
-        mapOf(
-                TypefaceStyle.EXTRA_LIGHT.style to R.font.spectral_extralight,
-                TypefaceStyle.LIGHT.style to R.font.spectral_light,
-                TypefaceStyle.REGULAR.style to R.font.spectral_regular,
-                TypefaceStyle.MEDIUM.style to R.font.spectral_medium,
-                TypefaceStyle.BOLD.style to R.font.spectral_bold,
-                TypefaceStyle.BLACK.style to R.font.spectral_extrabold
-        )
-    }
-
-    private val jostMap by lazy {
-        mapOf(
-                TypefaceStyle.EXTRA_LIGHT.style to R.font.jost_extralight,
-                TypefaceStyle.LIGHT.style to R.font.jost_light,
-                TypefaceStyle.REGULAR.style to R.font.jost_regular,
-                TypefaceStyle.MEDIUM.style to R.font.jost_medium,
-                TypefaceStyle.BOLD.style to R.font.jost_bold,
-                TypefaceStyle.BLACK.style to R.font.jost_black
-        )
-    }
-
-    private val exo2Map by lazy {
-        mapOf(
-                TypefaceStyle.EXTRA_LIGHT.style to R.font.exo2_extralight,
-                TypefaceStyle.LIGHT.style to R.font.exo2_light,
-                TypefaceStyle.REGULAR.style to R.font.exo2_regular,
-                TypefaceStyle.MEDIUM.style to R.font.exo2_medium,
-                TypefaceStyle.BOLD.style to R.font.exo2_bold,
-                TypefaceStyle.BLACK.style to R.font.exo2_black
-        )
-    }
-
-    private val sourGummyMap by lazy {
-        mapOf(
-                TypefaceStyle.EXTRA_LIGHT.style to R.font.sourgummy_extralight,
-                TypefaceStyle.LIGHT.style to R.font.sourgummy_light,
-                TypefaceStyle.REGULAR.style to R.font.sourgummy_regular,
-                TypefaceStyle.MEDIUM.style to R.font.sourgummy_medium,
-                TypefaceStyle.BOLD.style to R.font.sourgummy_bold,
-                TypefaceStyle.BLACK.style to R.font.sourgummy_black
-        )
-    }
-
-    fun getTypeFace(appFont: String, style: Int, context: Context): Typeface? {
-        var typeface: Typeface? = null
-        when (appFont) {
-            TypeFaceConstants.NOTOSANS -> {
-                notoSansMap[style]?.let {
-                    typeface = ResourcesCompat.getFont(context, it)
-                }
-            }
-            TypeFaceConstants.NOTOSANS_CONDENSED -> {
-                notoSansCondensedMap[style]?.let {
-                    typeface = ResourcesCompat.getFont(context, it)
-                }
-            }
-            TypeFaceConstants.WORK_SANS -> {
-                workSansMap[style]?.let {
-                    typeface = ResourcesCompat.getFont(context, it)
-                }
-            }
-            TypeFaceConstants.INTER -> {
-                interMap[style]?.let {
-                    typeface = ResourcesCompat.getFont(context, it)
-                }
-            }
-            TypeFaceConstants.BARLOW -> {
-                barlowMap[style]?.let {
-                    typeface = ResourcesCompat.getFont(context, it)
-                }
-            }
-            TypeFaceConstants.NUNITO -> {
-                nunitoMap[style]?.let {
-                    typeface = ResourcesCompat.getFont(context, it)
-                }
-            }
-            TypeFaceConstants.SPECTRAL -> {
-                spectralMap[style]?.let {
-                    typeface = ResourcesCompat.getFont(context, it)
-                }
-            }
-            TypeFaceConstants.JOST -> {
-                jostMap[style]?.let {
-                    typeface = ResourcesCompat.getFont(context, it)
-                }
-            }
-            TypeFaceConstants.EXO2 -> {
-                exo2Map[style]?.let {
-                    typeface = ResourcesCompat.getFont(context, it)
-                }
-            }
-            TypeFaceConstants.SOURGUMMY -> {
-                sourGummyMap[style]?.let {
-                    typeface = ResourcesCompat.getFont(context, it)
-                }
-            }
-            else -> {
-                typeface = when (style) {
-                    TypefaceStyle.REGULAR.style, TypefaceStyle.LIGHT.style, TypefaceStyle.EXTRA_LIGHT.style -> {
-                        Typeface.DEFAULT
-                    }
-                    TypefaceStyle.MEDIUM.style, TypefaceStyle.BOLD.style, TypefaceStyle.BLACK.style -> {
-                        Typeface.DEFAULT_BOLD
-                    }
-                    else -> null
-                }
-            }
+    /**
+     * Maps the appFont string to the base variable font resource.
+     * Make sure your single variable font files are named like 'jost.ttf' in res/font/
+     */
+    private fun getBaseFontRes(appFont: String): Int? {
+        return when (appFont) {
+            TypeFaceConstants.NOTOSANS -> R.font.noto_sans
+            TypeFaceConstants.WORK_SANS -> R.font.work_sans
+            TypeFaceConstants.INTER -> R.font.inter
+            TypeFaceConstants.NUNITO -> R.font.nunito
+            TypeFaceConstants.JOST -> R.font.jost
+            TypeFaceConstants.EXO2 -> R.font.exo2
+            TypeFaceConstants.SOURGUMMY -> R.font.sour_gummy
+            else -> null
         }
+    }
 
-        return typeface
+    /**
+     * Converts your TypefaceStyle to standard OpenType numeric weights
+     * which drive the variable font 'wght' axis.
+     */
+    private fun getFontWeight(style: Int): Int {
+        return when (style) {
+            TypefaceStyle.EXTRA_LIGHT.style -> 200
+            TypefaceStyle.LIGHT.style -> 300
+            TypefaceStyle.REGULAR.style -> 400
+            TypefaceStyle.MEDIUM.style -> 500
+            TypefaceStyle.BOLD.style -> 700
+            TypefaceStyle.BLACK.style -> 900
+            else -> 400 // Default to Regular
+        }
+    }
+
+    fun getTypeFace(appFont: String, style: Int, context: Context): Typeface {
+        val fontRes = getBaseFontRes(appFont)
+        val weight = getFontWeight(style)
+
+        if (fontRes != null) {
+            val baseTypeface = ResourcesCompat.getFont(context, fontRes)
+            return Typeface.create(baseTypeface, weight, false)
+        } else {
+            // Fallback to system fonts if appFont is not recognized
+            return Typeface.create(null, weight, false)
+        }
     }
 
     fun getBlackTypeFace(context: Context) = getTypeFaceForStyle(TypefaceStyle.BLACK, context)
@@ -195,7 +62,7 @@ object TypeFace {
     fun getLightTypeFace(context: Context) = getTypeFaceForStyle(TypefaceStyle.LIGHT, context)
     fun getExtraLightTypeFace(context: Context) = getTypeFaceForStyle(TypefaceStyle.EXTRA_LIGHT, context)
 
-    private fun getTypeFaceForStyle(style: TypefaceStyle, context: Context): Typeface? {
+    private fun getTypeFaceForStyle(style: TypefaceStyle, context: Context): Typeface {
         return getTypeFace(
                 appFont = AppearancePreferences.getAppFont(),
                 style = style.style,
@@ -221,13 +88,6 @@ object TypeFace {
                     license = "OFL (Open Font License) © Noto Project Authors"
             ),
             TypeFaceModel(
-                    typefaceName = "NotoSans Condensed",
-                    name = TypeFaceConstants.NOTOSANS_CONDENSED,
-                    type = TYPE_SANS_SERIF,
-                    description = "A condensed version of NotoSans, ideal for compact layouts.",
-                    license = "OFL (Open Font License) © Noto Project Authors"
-            ),
-            TypeFaceModel(
                     typefaceName = "Work Sans",
                     name = TypeFaceConstants.WORK_SANS,
                     type = TYPE_SANS_SERIF,
@@ -244,15 +104,6 @@ object TypeFace {
                     license = "OFL (Open Font License) © Rasmus Andersson"
             ),
             TypeFaceModel(
-                    typefaceName = "Barlow",
-                    name = TypeFaceConstants.BARLOW,
-                    type = TYPE_SANS_SERIF,
-                    description = "Barlow is a slightly rounded, low-contrast, grotesk type family. " +
-                            "Drawing from the visual style of the California public, Barlow shares qualities " +
-                            "with the state's car plates, highway signs, busses, and trains.",
-                    license = "OFL (Open Font License) © Jeremy Tribby"
-            ),
-            TypeFaceModel(
                     typefaceName = "Nunito",
                     name = TypeFaceConstants.NUNITO,
                     type = TYPE_SANS_SERIF,
@@ -260,15 +111,6 @@ object TypeFace {
                             "rounded terminals. The Nunito project started as a single typeface with " +
                             "two weights (regular and bold).",
                     license = "OFL (Open Font License) © Vernon Adams"
-            ),
-            TypeFaceModel(
-                    typefaceName = "Spectral",
-                    name = TypeFaceConstants.SPECTRAL,
-                    type = TYPE_SERIF,
-                    description = "Spectral is a versatile, contemporary serif typeface for text " +
-                            "and display use. It is a high-contrast serif with a distinctive character, " +
-                            "informed by the Scotch Modern genre.",
-                    license = "OFL (Open Font License) © Production Type"
             ),
             TypeFaceModel(
                     typefaceName = "Jost",
@@ -300,19 +142,8 @@ object TypeFace {
     )
 
     class TypeFaceModel(
-            /**
-             * Proper marketed name of the typeface
-             */
             val typefaceName: String,
-
-            /**
-             * Name of the typeface that is used by the
-             * preference manager of the app to identify
-             * which typeface is used similar to [typefaceName]
-             * except it is all lowercase
-             */
             val name: String,
-
             val type: String,
             val description: String? = null,
             val license: String? = null
