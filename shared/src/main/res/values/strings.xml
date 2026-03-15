@@ -267,4 +267,5 @@
     <string name="knob_style_summary">Change the style of the knob in the app.</string>
     <string name="flat">Flat</string>
     <string name="neumorphic">Neumorphic</string>
+    <string name="equalizer">Equalizer</string>
 </resources>

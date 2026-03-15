@@ -20,6 +20,7 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.TextViewUtils.setTypeWriting
+import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.panels.Lyrics
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Search
@@ -156,6 +157,10 @@ class DefaultPlayer : MediaFragment() {
 
         binding.favorite.setOnClickListener {
             toggleFavorite()
+        }
+
+        binding.equalizer.setOnClickListener {
+            openFragment(Equalizer.newInstance(), Equalizer.TAG)
         }
     }
 

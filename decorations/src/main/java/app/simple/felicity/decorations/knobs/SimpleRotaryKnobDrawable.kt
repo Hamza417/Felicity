@@ -121,7 +121,12 @@ class SimpleRotaryKnobDrawable(
      * [Paint.setShadowLayer] requires software rendering on the host view.
      * Returns `false` when the shadow effect preference is off, allowing hardware acceleration.
      */
-    override fun requiresSoftwareLayer(): Boolean = AppearancePreferences.isShadowEffectOn()
+    override fun requiresSoftwareLayer(): Boolean = try {
+        AppearancePreferences.isShadowEffectOn()
+    } catch (e: Exception) {
+        // In case the preference is unavailable for some reason, default to software layer to be safe.
+        true
+    }
 
     override fun onPressedStateChanged(pressed: Boolean, animationDuration: Int) {
         val targetProgress = if (pressed) 1f else 0f
