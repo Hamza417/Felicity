@@ -136,18 +136,27 @@ class VisualizerAudioProcessor : BaseAudioProcessor() {
         inputBuffer.mark()
 
         val encoding = inputAudioFormat.encoding
-        val frameSize = if (encoding == C.ENCODING_PCM_16BIT) 2 else 4
+        val channelCount = inputAudioFormat.channelCount
+        // Bytes consumed by one PCM sample value (one channel, one frame position).
+        val sampleSize = if (encoding == C.ENCODING_PCM_16BIT) 2 else 4
+        // Bytes consumed by a full interleaved audio frame (all channels combined).
+        // Reading a complete frame at once and averaging to mono ensures the FFT sees
+        // the correct Nyquist frequency. Without this, interleaved stereo data is
+        // treated as a mono stream at double the apparent sample rate, which aliases
+        // high-frequency content downward and causes treble bands to stay flat.
+        val frameSize = sampleSize * channelCount
 
         while (inputBuffer.remaining() >= frameSize) {
-            val sample = if (encoding == C.ENCODING_PCM_16BIT) {
-                inputBuffer.short.toFloat() / 32768f
-            } else {
-                inputBuffer.float
+            // Down-mix all channels to mono by averaging them.
+            var sum = 0f
+            repeat(channelCount) {
+                sum += if (encoding == C.ENCODING_PCM_16BIT) {
+                    inputBuffer.short.toFloat() / 32768f
+                } else {
+                    inputBuffer.float
+                }
             }
-
-            // Accumulate mono samples (left channel only for speed; stereo sources will
-            // still capture the full frequency content of the mix).
-            sampleBuffer[bufferIndex] = sample
+            sampleBuffer[bufferIndex] = sum / channelCount
             bufferIndex++
 
             if (bufferIndex >= fftSize) {

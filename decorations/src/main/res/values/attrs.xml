@@ -222,4 +222,12 @@
         <attr name="showIndicator" format="boolean" />
     </declare-styleable>
 
+    <!-- FelicityVisualizer: real-time audio spectrum bar visualizer -->
+    <declare-styleable name="FelicityVisualizer">
+        <!-- Override the maximum bar render height in pixels. 0 = use full view height. -->
+        <attr name="vizMaxRenderHeight" format="dimension" />
+        <!-- Whether the ash/snow particle emitter is enabled. Default: false. -->
+        <attr name="vizParticlesEnabled" format="boolean" />
+    </declare-styleable>
+
 </resources>

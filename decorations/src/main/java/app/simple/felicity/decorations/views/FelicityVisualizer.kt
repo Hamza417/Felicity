@@ -6,13 +6,18 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.View
+import androidx.core.content.withStyledAttributes
+import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.BAND_COUNT
 import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.CORNER_RADIUS_FACTOR
+import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.MAX_PARTICLES
+import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.PARTICLE_FADE_RATE
 import app.simple.felicity.manager.SharedPreferences.registerListener
 import app.simple.felicity.manager.SharedPreferences.unregisterListener
 import app.simple.felicity.preferences.AppearancePreferences
@@ -22,6 +27,7 @@ import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.themes.Theme
 import kotlin.math.abs
 import kotlin.math.sqrt
+import kotlin.random.Random
 
 /**
  * A custom audio spectrum visualizer that renders [BAND_COUNT] vertical bars animated
@@ -77,6 +83,32 @@ class FelicityVisualizer @JvmOverloads constructor(
      * move in sync with what the user actually hears.
      */
     private class TimedBands(val deadline: Long, val bands: FloatArray)
+
+    /**
+     * A single floating particle belonging to the ash/snow emitter.
+     *
+     * All fields are mutable so the particle can be updated in-place each frame
+     * without additional heap allocation.
+     */
+    private class Particle {
+        var x: Float = 0f
+        var y: Float = 0f
+
+        /** Horizontal drift velocity in pixels per frame. */
+        var vx: Float = 0f
+
+        /** Vertical velocity in pixels per frame — negative value means upward. */
+        var vy: Float = 0f
+
+        /** Current opacity in the [0..1] range. Multiplied by [PARTICLE_FADE_RATE] each frame. */
+        var alpha: Float = 1f
+
+        /** Radius of the particle circle in pixels. */
+        var radius: Float = 2f
+
+        /** Per-particle Brownian turbulence strength coefficient. */
+        var turbulence: Float = 0.2f
+    }
 
     private val delayQueue = ArrayDeque<TimedBands>()
 
@@ -134,6 +166,63 @@ class FelicityVisualizer @JvmOverloads constructor(
         }
     }
 
+    // ── Particle system ───────────────────────────────────────────────────────
+
+    /**
+     * Controls whether the ash-particle emitter is active.
+     *
+     * All live particles are cleared immediately when set to `false`.
+     * Defaults to `false` — enable during testing or when desired.
+     */
+    var particlesEnabled: Boolean = false
+        set(value) {
+            field = value
+            if (!value) particles.clear()
+        }
+
+    /** Live list of active particles, updated and rendered inside each [onDraw] call. */
+    private val particles = ArrayList<Particle>(MAX_PARTICLES)
+
+    /** Per-band countdown preventing rapid-fire particle floods from a single band. */
+    private val particleCooldowns = IntArray(BAND_COUNT)
+
+    /** Paint shared by all particles. [Paint.alpha] is overwritten per particle in [onDraw]. */
+    private val particlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.WHITE
+    }
+
+    // ── Bar path (top-only rounded corners) ──────────────────────────────────
+
+    /** Reusable [Path] for rendering bars with rounded top corners and a flat base. */
+    private val barPath = Path()
+
+    /**
+     * Eight-element radii array for [Path.addRoundRect].
+     *
+     * Indices 0-3 carry the top-left and top-right radii; indices 4-7 are always 0
+     * so the base corners of every bar remain flat regardless of the corner preference.
+     */
+    private val barCornerRadii = FloatArray(8)
+
+    // ── Render height override ────────────────────────────────────────────────
+
+    /**
+     * Maximum bar-render height in pixels.
+     *
+     * When greater than zero this value replaces the view's own [height] in all bar
+     * scaling calculations, letting the visualizer live inside a `match_parent`
+     * container while the animated region stays within a controlled boundary.
+     *
+     * Set to 0 (the default) to use the full view height.
+     * Can also be configured via the `vizMaxRenderHeight` XML attribute.
+     */
+    var maxRenderHeightPx: Int = 0
+        set(value) {
+            field = value.coerceAtLeast(0)
+            invalidate()
+        }
+
     init {
         // The visualizer is a transparent overlay — it must never draw an opaque background
         // and must not intercept touch events so the underlying pager remains scrollable.
@@ -142,6 +231,12 @@ class FelicityVisualizer @JvmOverloads constructor(
         isFocusable = false
         // Hardware layer enables proper alpha compositing when rendered over album art.
         setLayerType(LAYER_TYPE_HARDWARE, null)
+        if (!isInEditMode && attrs != null) {
+            context.withStyledAttributes(attrs, R.styleable.FelicityVisualizer, defStyleAttr, 0) {
+                maxRenderHeightPx = getDimensionPixelSize(R.styleable.FelicityVisualizer_vizMaxRenderHeight, 0)
+                particlesEnabled = getBoolean(R.styleable.FelicityVisualizer_vizParticlesEnabled, false)
+            }
+        }
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -287,8 +382,18 @@ class FelicityVisualizer @JvmOverloads constructor(
         val barWidth = slotWidth - gapWidth
         // Corner radius is a live fraction of bar width, capped at half-width (full pill).
         val cornerRadius = (cornerRadiusFraction * barWidth).coerceIn(0f, barWidth / 2f)
-        val maxBarHeight = height.toFloat()
+        // Respect the optional render-height override so bars are bounded independently
+        // of the view's actual height in match_parent scenarios.
+        val maxBarHeight = if (maxRenderHeightPx > 0) maxRenderHeightPx.toFloat() else height.toFloat()
         val capPillHeight = (barWidth * 0.3f).coerceAtLeast(3f)
+
+        // Populate the top-only corner radii array once per frame.
+        // Indices 0-3 carry the top-left and top-right radius.
+        // Indices 4-7 are always 0 so the base of every bar stays flat.
+        barCornerRadii[0] = cornerRadius; barCornerRadii[1] = cornerRadius  // top-left
+        barCornerRadii[2] = cornerRadius; barCornerRadii[3] = cornerRadius  // top-right
+        barCornerRadii[4] = 0f; barCornerRadii[5] = 0f            // bottom-right (flat)
+        barCornerRadii[6] = 0f; barCornerRadii[7] = 0f            // bottom-left  (flat)
 
         var stillMoving = delayQueue.isNotEmpty()
 
@@ -305,8 +410,17 @@ class FelicityVisualizer @JvmOverloads constructor(
             val barHeightPx = (next * maxBarHeight).coerceIn(MIN_BAR_PX, maxBarHeight)
             val left = i * slotWidth + gapWidth / 2f
             val right = left + barWidth
+
+            // Draw the bar via a Path so only the top corners receive the corner radius.
             drawRect.set(left, maxBarHeight - barHeightPx, right, maxBarHeight)
-            canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, barPaint)
+            barPath.reset()
+            barPath.addRoundRect(drawRect, barCornerRadii, Path.Direction.CW)
+            canvas.drawPath(barPath, barPaint)
+
+            // Advance the per-band particle cooldown every frame.
+            if (particlesEnabled && particleCooldowns[i] > 0) {
+                particleCooldowns[i]--
+            }
 
             // Peak cap — pushed up by the bar, then falls under gravity.
             if (next >= peakBands[i]) {
@@ -314,6 +428,11 @@ class FelicityVisualizer @JvmOverloads constructor(
                 peakBands[i] = next
                 peakVelocities[i] = 0f
                 peakHoldCounters[i] = PEAK_HOLD_FRAMES
+                // Emit a particle when the bar drives the peak to a new high.
+                if (particlesEnabled && particleCooldowns[i] <= 0 && next > PARTICLE_MIN_HEIGHT) {
+                    emitParticle(left + barWidth / 2f, maxBarHeight - next * maxBarHeight)
+                    particleCooldowns[i] = PARTICLE_COOLDOWN_FRAMES
+                }
             } else {
                 if (peakHoldCounters[i] > 0) {
                     // Holding position — cap stays put while the bar falls away beneath it.
@@ -324,6 +443,14 @@ class FelicityVisualizer @JvmOverloads constructor(
                     peakBands[i] = (peakBands[i] - peakVelocities[i]).coerceAtLeast(0f)
                 }
                 if (peakBands[i] > IDLE_THRESHOLD) stillMoving = true
+                // Emit a particle when the bar crosses the two-thirds-of-peak threshold.
+                val twoThirdsPeak = peakBands[i] * (2f / 3f)
+                if (particlesEnabled && particleCooldowns[i] <= 0 &&
+                        next >= twoThirdsPeak && next > PARTICLE_MIN_HEIGHT
+                ) {
+                    emitParticle(left + barWidth / 2f, maxBarHeight - next * maxBarHeight)
+                    particleCooldowns[i] = PARTICLE_COOLDOWN_FRAMES
+                }
             }
 
             if (peakBands[i] > 0.02f) {
@@ -338,11 +465,62 @@ class FelicityVisualizer @JvmOverloads constructor(
             }
         }
 
+        // Update physics and render all live ash particles.
+        if (particlesEnabled && particles.isNotEmpty()) {
+            val iter = particles.iterator()
+            while (iter.hasNext()) {
+                val p = iter.next()
+                // Brownian horizontal jitter — each particle owns a unique turbulence
+                // coefficient so they spread naturally, mimicking diffused air motion.
+                p.vx += (Random.nextFloat() - 0.5f) * p.turbulence
+                // Horizontal air-resistance drag keeps the lateral drift bounded.
+                p.vx *= PARTICLE_DRAG
+                // Very slight vertical deceleration keeps the ascent nearly constant,
+                // like warm ash buoyed by rising heat.
+                p.vy *= PARTICLE_VERTICAL_DECAY
+                p.x += p.vx
+                p.y += p.vy
+                p.alpha *= PARTICLE_FADE_RATE
+                if (p.alpha < 0.01f || p.y < -p.radius) {
+                    iter.remove()
+                    continue
+                }
+                particlePaint.alpha = (p.alpha * 255f).toInt()
+                canvas.drawCircle(p.x, p.y, p.radius, particlePaint)
+                stillMoving = true
+            }
+        }
+
         if (stillMoving) {
             postInvalidateOnAnimation()
         } else {
             animating = false
         }
+    }
+
+    /**
+     * Spawns a new [Particle] at the given canvas coordinates.
+     *
+     * The particle receives randomized velocity, size, initial alpha, and turbulence
+     * coefficient to produce the varied diffused-ash appearance. If [MAX_PARTICLES]
+     * is already reached the oldest particle is evicted before the new one is inserted.
+     *
+     * @param x Horizontal center of the emission point in canvas pixels.
+     * @param y Vertical coordinate of the emission point in canvas pixels.
+     */
+    private fun emitParticle(x: Float, y: Float) {
+        if (particles.size >= MAX_PARTICLES) {
+            particles.removeAt(0)
+        }
+        val p = Particle()
+        p.x = x + (Random.nextFloat() - 0.5f) * 6f
+        p.y = y
+        p.vx = (Random.nextFloat() - 0.5f) * 0.8f
+        p.vy = -(Random.nextFloat() * PARTICLE_SPEED_RANGE + PARTICLE_SPEED_MIN)
+        p.alpha = Random.nextFloat() * 0.4f + 0.6f
+        p.radius = Random.nextFloat() * 2.0f + 1.5f
+        p.turbulence = Random.nextFloat() * 0.25f + 0.1f
+        particles.add(p)
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -362,6 +540,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         ThemeManager.removeListener(this)
         unregisterListener(prefsListener)
         delayQueue.clear()
+        particles.clear()
     }
 
     // ── ThemeChangedListener ──────────────────────────────────────────────────
@@ -456,5 +635,33 @@ class FelicityVisualizer @JvmOverloads constructor(
          * Values above 1.0 produce pill-shaped bars at maximum app corner radius.
          */
         private const val CORNER_RADIUS_FACTOR = 1.5f
+
+        /** Minimum bar height (target) for emitting a particle. */
+        private const val PARTICLE_MIN_HEIGHT = 0.15f
+
+        /** Particle emission cooldown in frames to prevent flooding. */
+        private const val PARTICLE_COOLDOWN_FRAMES = 12
+
+        /** Maximum number of simultaneous live particles to cap memory usage. */
+        private const val MAX_PARTICLES = 120
+
+        /** Range of possible initial upward speeds in pixels per frame. */
+        private const val PARTICLE_SPEED_MIN = 0.15f
+        private const val PARTICLE_SPEED_RANGE = 0.35f
+
+        /**
+         * Alpha multiplier applied each frame.
+         * At 60 fps a particle reaches near-zero opacity after ~130 frames (~2.2 s).
+         */
+        private const val PARTICLE_FADE_RATE = 0.975f
+
+        /** Per-frame horizontal velocity multiplier — simulates air resistance. */
+        private const val PARTICLE_DRAG = 0.93f
+
+        /**
+         * Per-frame vertical speed multiplier.
+         * Very close to 1.0 keeps the ascent almost constant, like warm ash buoyed by heat.
+         */
+        private const val PARTICLE_VERTICAL_DECAY = 0.9985f
     }
 }

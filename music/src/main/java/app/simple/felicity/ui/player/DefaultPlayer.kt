@@ -179,6 +179,7 @@ class DefaultPlayer : MediaFragment() {
         }
 
         binding.visualizer.setCapColor(ThemeManager.accent.primaryAccentColor)
+        binding.visualizer.particlesEnabled = true
     }
 
     private fun updateState() {
