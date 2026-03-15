@@ -15,6 +15,7 @@ The project will be developed under the codename Felicity, the final name maybe 
 future.
 
 ## Stats
+
 [![](https://img.shields.io/github/downloads/Hamza417/Felicity/total?color=blue&label=Total%20Downloads%20(GitHub)&logo=github&logoColor=white)](https://tooomm.github.io/github-release-stats/?username=Hamza417&repository=Felicity)
 [![](https://img.shields.io/endpoint?url=https://ghloc.vercel.app/api/Hamza417/Felicity/badge?style=flat&logo=kotlin&logoColor=white&label=Total%20Lines&color=indianred)](https://ghloc.vercel.app/Hamza417/Felicity?branch=master)
 [![Release](https://img.shields.io/github/v/release/Hamza417/Felicity?color=52be80&label=Current%20Release)](https://github.com/Hamza417/Felicity/releases)
@@ -47,7 +48,7 @@ the next few days.
 
 ## Screenshots
 
-Last Updated: 28 Feb 2026
+Last Updated: 15 March 2026
 
 |                          |                          |                          |
 |--------------------------|--------------------------|--------------------------|
@@ -56,7 +57,7 @@ Last Updated: 28 Feb 2026
 | ![](/screenshots/07.png) | ![](/screenshots/08.png) | ![](/screenshots/11.png) |
 | ![](/screenshots/12.png) | ![](/screenshots/13.png) | ![](/screenshots/14.png) |
 | ![](/screenshots/15.png) | ![](/screenshots/16.png) | ![](/screenshots/17.png) |
-| ![](/screenshots/18.png) |                          |                          |
+| ![](/screenshots/18.png) | ![](/screenshots/19.png) |                          |
 
 |                          |
 |--------------------------|
