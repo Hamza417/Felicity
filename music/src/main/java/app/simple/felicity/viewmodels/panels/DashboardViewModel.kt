@@ -161,7 +161,7 @@ class DashboardViewModel @Inject constructor(
         private const val RECOMMENDED_MIN_COUNT = 5
 
         /** Maximum number of songs fetched for the recommended spanned art grid per cycle. */
-        private const val RECOMMENDED_MAX_COUNT = 9
+        private const val RECOMMENDED_MAX_COUNT = 6
 
         /**
          * Interval in milliseconds between each recommended grid refresh cycle.

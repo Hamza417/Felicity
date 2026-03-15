@@ -2,34 +2,27 @@ package app.simple.felicity.decorations.typeface
 
 import android.content.Context
 import android.graphics.Typeface
-import androidx.core.content.res.ResourcesCompat
-import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.constants.TypeFaceConstants
 import app.simple.felicity.preferences.AppearancePreferences
 
 object TypeFace {
 
-    /**
-     * Maps the appFont string to the base variable font resource.
-     * Make sure your single variable font files are named like 'jost.ttf' in res/font/
-     */
-    private fun getBaseFontRes(appFont: String): Int? {
+    // stores the heavy fonts so they only build ONCE.
+    private val typefaceCache = HashMap<String, Typeface>()
+
+    private fun getFontAssetPath(appFont: String): String? {
         return when (appFont) {
-            TypeFaceConstants.NOTOSANS -> R.font.noto_sans
-            TypeFaceConstants.WORK_SANS -> R.font.work_sans
-            TypeFaceConstants.INTER -> R.font.inter
-            TypeFaceConstants.NUNITO -> R.font.nunito
-            TypeFaceConstants.JOST -> R.font.jost
-            TypeFaceConstants.EXO2 -> R.font.exo2
-            TypeFaceConstants.SOURGUMMY -> R.font.sour_gummy
+            TypeFaceConstants.NOTOSANS -> "fonts/noto_sans.ttf"
+            TypeFaceConstants.WORK_SANS -> "fonts/work_sans.ttf"
+            TypeFaceConstants.INTER -> "fonts/inter.ttf"
+            TypeFaceConstants.NUNITO -> "fonts/nunito.ttf"
+            TypeFaceConstants.JOST -> "fonts/jost.ttf"
+            TypeFaceConstants.EXO2 -> "fonts/exo2.ttf"
+            TypeFaceConstants.SOURGUMMY -> "fonts/sour_gummy.ttf"
             else -> null
         }
     }
 
-    /**
-     * Converts your TypefaceStyle to standard OpenType numeric weights
-     * which drive the variable font 'wght' axis.
-     */
     private fun getFontWeight(style: Int): Int {
         return when (style) {
             TypefaceStyle.EXTRA_LIGHT.style -> 200
@@ -38,21 +31,39 @@ object TypeFace {
             TypefaceStyle.MEDIUM.style -> 500
             TypefaceStyle.BOLD.style -> 700
             TypefaceStyle.BLACK.style -> 900
-            else -> 400 // Default to Regular
+            else -> 400
         }
     }
 
     fun getTypeFace(appFont: String, style: Int, context: Context): Typeface {
-        val fontRes = getBaseFontRes(appFont)
         val weight = getFontWeight(style)
 
-        if (fontRes != null) {
-            val baseTypeface = ResourcesCompat.getFont(context, fontRes)
-            return Typeface.create(baseTypeface, weight, false)
+        // Create a unique cache key (e.g., "Jost-700")
+        val cacheKey = "$appFont-$weight"
+
+        // CHECK CACHE FIRST: If we already built it, return instantly (0ms)
+        typefaceCache[cacheKey]?.let { return it }
+
+        val assetPath = getFontAssetPath(appFont)
+
+        // Build the font (Takes ~30-50ms, but only happens ONCE per weight)
+        val typeface = if (assetPath != null) {
+            try {
+                Typeface.Builder(context.assets, assetPath)
+                    .setFontVariationSettings("'wght' $weight")
+                    .build() ?: Typeface.create(null, weight, false)
+            } catch (e: Exception) {
+                Typeface.create(null, weight, false)
+            }
         } else {
-            // Fallback to system fonts if appFont is not recognized
-            return Typeface.create(null, weight, false)
+            // Fallback for Auto (System Default) or older Android versions
+            Typeface.create(null, weight, false)
         }
+
+        // SAVE TO CACHE: We will never do disk I/O for this specific weight again
+        typefaceCache[cacheKey] = typeface
+
+        return typeface
     }
 
     fun getBlackTypeFace(context: Context) = getTypeFaceForStyle(TypefaceStyle.BLACK, context)
