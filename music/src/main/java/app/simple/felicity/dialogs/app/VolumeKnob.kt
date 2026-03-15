@@ -168,6 +168,11 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         binding.volumeKnob.setKnobPosition((current / max) * 100f)
     }
 
+    override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
+        super.onDestroy()
+    }
+
     companion object {
 
         fun newInstance(): VolumeKnob {

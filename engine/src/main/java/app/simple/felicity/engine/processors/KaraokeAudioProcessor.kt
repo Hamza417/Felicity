@@ -1,30 +1,61 @@
 package app.simple.felicity.engine.processors
 
 import androidx.annotation.OptIn
-import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import java.nio.ByteBuffer
 
+/**
+ * An [AudioProcessor] that performs center-channel (vocal) removal using mid/side
+ * matrix decomposition.
+ *
+ * Algorithm:
+ *  - Mid  (center): M = (L + R) × 0.5
+ *  - Side (stereo): L_side = L − M = (L − R) × 0.5
+ *                   R_side = R − M = (R − L) × 0.5
+ *  - Output:        L_out = L − M,  R_out = R − M
+ *
+ * Why not "L_out = L − R"?
+ *  L − R can reach amplitude 2.0 for opposite-polarity stereo content.
+ *  PcmUtils then hard-clamps that to ±1, turning the audio into buzzing
+ *  square-wave distortion ("alien / fractal noise"). Subtracting the center
+ *  M = (L+R)/2 from each channel instead keeps both outputs in [−1, 1]
+ *  regardless of the input because:
+ *    |L − M| = |(L − R) × 0.5| ≤ (|L| + |R|) × 0.5 ≤ 1.0 for PCM-normalized input.
+ *
+ * Fully center-panned vocals cancel completely. Slightly off-center content
+ * is attenuated in proportion to its correlation with the opposite channel.
+ * Fully wide (anti-phase) content is preserved at its original level.
+ *
+ * Requires a stereo source. Mono sources return [AudioProcessor.AudioFormat.NOT_SET]
+ * from [onConfigure] and are passed through unchanged (processor inactive).
+ * Supports all four PCM encodings via [PcmUtils].
+ *
+ * @author Hamza417
+ */
 @OptIn(UnstableApi::class)
 class KaraokeAudioProcessor : BaseAudioProcessor() {
 
     @Volatile
     private var isEnabled: Boolean = false
 
+    /**
+     * Enables or disables center-channel removal.
+     * Takes effect immediately on the next [queueInput] call without a flush.
+     *
+     * @param enabled True to activate vocal removal, false to bypass.
+     */
     fun setKaraokeModeEnabled(enabled: Boolean) {
         this.isEnabled = enabled
     }
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
-        // We absolutely need stereo for this to work. You can't subtract channels on a Mono track!
+        // L−R subtraction is meaningless on a mono track.
         if (inputAudioFormat.channelCount != 2) {
             return AudioProcessor.AudioFormat.NOT_SET
         }
-
-        return if (inputAudioFormat.encoding == C.ENCODING_PCM_16BIT ||
-                inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT) {
+        return if (PcmUtils.isEncodingSupported(inputAudioFormat.encoding)) {
             inputAudioFormat
         } else {
             AudioProcessor.AudioFormat.NOT_SET
@@ -37,7 +68,6 @@ class KaraokeAudioProcessor : BaseAudioProcessor() {
 
         val buffer = replaceOutputBuffer(remaining)
 
-        // The Toggle: If disabled, just pass the audio straight through
         if (!isEnabled) {
             buffer.put(inputBuffer)
             buffer.flip()
@@ -45,40 +75,25 @@ class KaraokeAudioProcessor : BaseAudioProcessor() {
         }
 
         val encoding = inputAudioFormat.encoding
-
-        // PcmUtils.bytesPerSample(encoding) * 2 channels
-        val frameSize = if (encoding == C.ENCODING_PCM_16BIT) 4 else 8
+        val frameSize = PcmUtils.bytesPerSample(encoding) * 2  // L + R
 
         while (inputBuffer.remaining() >= frameSize) {
-            if (encoding == C.ENCODING_PCM_16BIT) {
-                val leftIn = inputBuffer.short.toFloat() / 32768f
-                val rightIn = inputBuffer.short.toFloat() / 32768f
+            val leftIn = PcmUtils.readFloat(inputBuffer, encoding)
+            val rightIn = PcmUtils.readFloat(inputBuffer, encoding)
 
-                // THE MAGIC MATH: Subtract Right from Left to erase the center.
-                // We divide by 2f to prevent the remaining wide instruments from clipping.
-                val karaokeSignal = (leftIn - rightIn) / 2f
+            // Center (mid) component — this is what vocals occupy.
+            val center = (leftIn + rightIn) * 0.5f
 
-                buffer.putShort(floatToShort(karaokeSignal))
-                buffer.putShort(floatToShort(karaokeSignal))
+            // Subtract the center from each channel.
+            // Output magnitude is always ≤ 1.0 for PCM-normalized input:
+            //   |leftIn − center| = |(leftIn − rightIn)| × 0.5 ≤ (1 + 1) × 0.5 = 1.0
+            val leftOut = leftIn - center    // = (L − R) × 0.5
+            val rightOut = rightIn - center  // = (R − L) × 0.5
 
-            } else if (encoding == C.ENCODING_PCM_FLOAT) {
-                val leftIn = inputBuffer.float
-                val rightIn = inputBuffer.float
-
-                val karaokeSignal = (leftIn - rightIn) / 2f
-
-                buffer.putFloat(karaokeSignal)
-                buffer.putFloat(karaokeSignal)
-            }
+            PcmUtils.writeFloat(buffer, leftOut, encoding)
+            PcmUtils.writeFloat(buffer, rightOut, encoding)
         }
 
         buffer.flip()
-    }
-
-    private fun floatToShort(value: Float): Short {
-        return (value * 32767f)
-            .coerceIn(Short.MIN_VALUE.toFloat(), Short.MAX_VALUE.toFloat())
-            .toInt()
-            .toShort()
     }
 }
