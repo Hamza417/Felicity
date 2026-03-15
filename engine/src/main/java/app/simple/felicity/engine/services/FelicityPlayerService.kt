@@ -37,6 +37,7 @@ import app.simple.felicity.engine.processors.AudioProcessorManager
 import app.simple.felicity.manager.SharedPreferences.initRegisterSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AudioPreferences
+import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
@@ -112,9 +113,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 // You'd add this boolean to your AudioPreferences
                 val forceStereoDownmix = AudioPreferences.isStereoDownmixForced()
 
-                audioProcessorManager.applyBalance(PlayerPreferences.getBalance())
-                audioProcessorManager.applyStereoWidth(PlayerPreferences.getStereoWidth())
-                audioProcessorManager.applyTapeSaturationDrive(PlayerPreferences.getTapeSaturationDrive())
+                audioProcessorManager.applyBalance(EqualizerPreferences.getBalance())
+                audioProcessorManager.applyStereoWidth(EqualizerPreferences.getStereoWidth())
+                audioProcessorManager.applyTapeSaturationDrive(EqualizerPreferences.getTapeSaturationDrive())
+                audioProcessorManager.applyKaraokeMode(EqualizerPreferences.isKaraokeModeEnabled())
+                audioProcessorManager.applyNightMode(EqualizerPreferences.isNightModeEnabled())
 
                 // Build the processor array dynamically
                 val processors = mutableListOf<AudioProcessor>()
@@ -128,9 +131,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     processors.add(audioProcessorManager.downmixProcessor)
                 }
 
+                processors.add(audioProcessorManager.karaokeProcessor)         // Center removal before coloring
                 processors.add(audioProcessorManager.tapeSaturationProcessor)  // Harmonic coloring first
                 processors.add(audioProcessorManager.wideningProcessor)        // Then spatial processing
                 processors.add(audioProcessorManager.balanceProcessor)         // Then channel routing
+                processors.add(audioProcessorManager.nightModeProcessor)       // Dynamic compression last
 
                 val audioSink = DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(hiresEnabled)
@@ -500,7 +505,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     }
 
     /**
-     * Delegates balance panning to [audioProcessorManager] and persists the value.
+     * Delegates balance panning to [audioProcessorManager].
      *
      * @param pan Stereo pan value in the range [-1.0, 1.0].
      */
@@ -526,9 +531,27 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         audioProcessorManager.applyTapeSaturationDrive(drive)
     }
 
-    /** Apply a new pan value immediately to the processor and persist it. */
+    /**
+     * Delegates karaoke mode toggle to [audioProcessorManager].
+     *
+     * @param enabled True to activate center-channel removal, false to bypass.
+     */
+    private fun applyKaraokeModeToProcessor(enabled: Boolean) {
+        audioProcessorManager.applyKaraokeMode(enabled)
+    }
+
+    /**
+     * Delegates night mode toggle to [audioProcessorManager].
+     *
+     * @param enabled True to activate the dynamic compressor, false to bypass.
+     */
+    private fun applyNightModeToProcessor(enabled: Boolean) {
+        audioProcessorManager.applyNightMode(enabled)
+    }
+
+    /** Applies a new pan value immediately to the processor and persists it. */
     fun setBalance(pan: Float) {
-        PlayerPreferences.setBalance(pan)
+        EqualizerPreferences.setBalance(pan)
         audioProcessorManager.applyBalance(pan)
     }
 
@@ -701,20 +724,30 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 Log.d(TAG, "Repeat mode preference changed to: $repeatMode")
                 applyRepeatMode(repeatMode)
             }
-            PlayerPreferences.BALANCE -> {
-                val pan = PlayerPreferences.getBalance()
+            EqualizerPreferences.BALANCE -> {
+                val pan = EqualizerPreferences.getBalance()
                 Log.d(TAG, "Balance preference changed to: $pan")
                 applyBalanceToProcessor(pan)
             }
-            PlayerPreferences.STEREO_WIDTH -> {
-                val width = PlayerPreferences.getStereoWidth()
+            EqualizerPreferences.STEREO_WIDTH -> {
+                val width = EqualizerPreferences.getStereoWidth()
                 Log.d(TAG, "Stereo width preference changed to: $width")
                 applyStereoWidthToProcessor(width)
             }
-            PlayerPreferences.TAPE_SATURATION_DRIVE -> {
-                val drive = PlayerPreferences.getTapeSaturationDrive()
+            EqualizerPreferences.TAPE_SATURATION_DRIVE -> {
+                val drive = EqualizerPreferences.getTapeSaturationDrive()
                 Log.d(TAG, "Tape saturation drive preference changed to: $drive")
                 applyTapeSaturationDriveToProcessor(drive)
+            }
+            EqualizerPreferences.KARAOKE_MODE_ENABLED -> {
+                val enabled = EqualizerPreferences.isKaraokeModeEnabled()
+                Log.d(TAG, "Karaoke mode preference changed to: $enabled")
+                applyKaraokeModeToProcessor(enabled)
+            }
+            EqualizerPreferences.NIGHT_MODE_ENABLED -> {
+                val enabled = EqualizerPreferences.isNightModeEnabled()
+                Log.d(TAG, "Night mode preference changed to: $enabled")
+                applyNightModeToProcessor(enabled)
             }
         }
     }

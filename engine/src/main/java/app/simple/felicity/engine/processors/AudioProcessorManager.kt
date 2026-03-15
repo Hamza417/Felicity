@@ -8,11 +8,13 @@ import androidx.media3.common.util.UnstableApi
  *
  * Processor chain order (applied in sequence by DefaultAudioSink):
  *  1. [DownmixAudioProcessor]        Optional multichannel → stereo reduction.
- *  2. [TapeSaturationProcessor]      Tape-style harmonic coloring.
- *  3. [StereoWideningAudioProcessor] M/S stereo image width.
- *  4. [BalanceAudioProcessor]        Constant-power channel routing.
+ *  2. [KaraokeAudioProcessor]        Optional center-channel (vocal) removal via L−R subtraction.
+ *  3. [TapeSaturationProcessor]      Tape-style harmonic coloring.
+ *  4. [StereoWideningAudioProcessor] M/S stereo image width.
+ *  5. [BalanceAudioProcessor]        Constant-power channel routing.
+ *  6. [NightModeAudioProcessor]      Dynamic compressor/limiter for late-night listening.
  *
- * All four processors are custom AudioProcessor implementations that support
+ * All processors are custom AudioProcessor implementations that support
  * PCM_16BIT, PCM_24BIT, PCM_32BIT, and PCM_FLOAT (Hi-Res pipeline output).
  * None rely on ChannelMixingAudioProcessor, which only supports 16-bit PCM and
  * crashes the entire chain via UnhandledAudioFormatException in Hi-Res mode.
@@ -38,6 +40,13 @@ class AudioProcessorManager {
     val downmixProcessor: DownmixAudioProcessor = DownmixAudioProcessor()
 
     /**
+     * Center-channel (vocal) removal via mid/side L−R subtraction. Starts in bypass state.
+     * Requires a stereo PCM source; mono sources are passed through unchanged.
+     * Updated via [applyKaraokeMode].
+     */
+    val karaokeProcessor: KaraokeAudioProcessor = KaraokeAudioProcessor()
+
+    /**
      * Tape-style soft saturation. Starts in bypass state (drive = 0.0).
      * Updated via [applyTapeSaturationDrive].
      */
@@ -54,6 +63,13 @@ class AudioProcessorManager {
      * Updated via [applyBalance].
      */
     val balanceProcessor: BalanceAudioProcessor = BalanceAudioProcessor()
+
+    /**
+     * Dynamic compressor/limiter for comfortable late-night listening. Starts in bypass state.
+     * Squashes loud peaks and applies makeup gain so quiet passages are more audible.
+     * Updated via [applyNightMode].
+     */
+    val nightModeProcessor: NightModeAudioProcessor = NightModeAudioProcessor()
 
     /**
      * Applies a new stereo balance pan to [balanceProcessor].
@@ -83,5 +99,27 @@ class AudioProcessorManager {
      */
     fun applyTapeSaturationDrive(drive: Float) {
         tapeSaturationProcessor.applyDrive(drive)
+    }
+
+    /**
+     * Enables or disables the [karaokeProcessor].
+     * When enabled the processor subtracts the right channel from the left to cancel
+     * center-panned vocals; the result is duplicated to both channels.
+     *
+     * @param enabled True to activate center-channel removal, false to bypass.
+     */
+    fun applyKaraokeMode(enabled: Boolean) {
+        karaokeProcessor.setKaraokeModeEnabled(enabled)
+    }
+
+    /**
+     * Enables or disables the [nightModeProcessor].
+     * When enabled a soft compressor with makeup gain reduces loud transients and
+     * raises quiet passages for comfortable low-volume listening.
+     *
+     * @param enabled True to activate the dynamic compressor, false to bypass.
+     */
+    fun applyNightMode(enabled: Boolean) {
+        nightModeProcessor.setNightModeEnabled(enabled)
     }
 }

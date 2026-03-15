@@ -268,4 +268,6 @@
     <string name="flat">Flat</string>
     <string name="neumorphic">Neumorphic</string>
     <string name="equalizer">Equalizer</string>
+    <string name="karaoke_mode">Karaoke Mode</string>
+    <string name="night_mode">Night Mode</string>
 </resources>

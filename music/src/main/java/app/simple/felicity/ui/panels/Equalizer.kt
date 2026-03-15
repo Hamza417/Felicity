@@ -9,13 +9,20 @@ import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentEqualizerBinding
 import app.simple.felicity.decorations.knobs.RotaryKnobListener
 import app.simple.felicity.extensions.fragments.MediaFragment
-import app.simple.felicity.preferences.PlayerPreferences
+import app.simple.felicity.preferences.EqualizerPreferences
 
+/**
+ * Fragment that presents all equalizer controls: balance, stereo widening, tape saturation,
+ * karaoke mode, and night mode. Each control persists its state via [EqualizerPreferences]
+ * which is observed by the player service for immediate processor updates.
+ *
+ * @author Hamza417
+ */
 class Equalizer : MediaFragment() {
 
     private lateinit var binding: FragmentEqualizerBinding
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentEqualizerBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -31,19 +38,37 @@ class Equalizer : MediaFragment() {
             openFragment(Preferences.newInstance(), Preferences.TAG)
         }
 
-        // Balance knob (constant-power panning)
+        // Karaoke mode: center-channel (vocal) removal via L−R subtraction.
+        // Restoring saved state without triggering the listener to avoid a redundant preference write.
+        binding.karaokeModeSwitch.setOnCheckedChangeListener(null)
+        binding.karaokeModeSwitch.isChecked = EqualizerPreferences.isKaraokeModeEnabled()
+        binding.karaokeModeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            EqualizerPreferences.setKaraokeModeEnabled(isChecked)
+            Log.d(TAG, "Karaoke mode updated: enabled=$isChecked")
+        }
+
+        // Night mode: dynamic compressor/limiter for late-night listening.
+        // Restoring saved state without triggering the listener to avoid a redundant preference write.
+        binding.nightModeSwitch.setOnCheckedChangeListener(null)
+        binding.nightModeSwitch.isChecked = EqualizerPreferences.isNightModeEnabled()
+        binding.nightModeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            EqualizerPreferences.setNightModeEnabled(isChecked)
+            Log.d(TAG, "Night mode updated: enabled=$isChecked")
+        }
+
+        // Balance knob (constant-power panning).
         // Knob value 0-100 maps to pan -1 (full left) … 0 (center, default) … +1 (full right).
         // Center (50) = no change. Center-snap enabled so the knob snaps back to 50 when
         // released close to it, and a divider line shows which side it's leaning toward.
         binding.balanceKnob.centerSnapEnabled = true
         binding.balanceKnob.setTickTexts("L", "R")
-        binding.balanceKnob.setKnobPosition(panToKnobValue(PlayerPreferences.getBalance()), animate = false)
+        binding.balanceKnob.setKnobPosition(panToKnobValue(EqualizerPreferences.getBalance()), animate = false)
         binding.balanceKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
                 val pan = knobValueToPan(value)
-                PlayerPreferences.setBalance(pan)
+                EqualizerPreferences.setBalance(pan)
                 Log.d(TAG, "Balance updated: pan=$pan")
             }
 
@@ -63,14 +88,14 @@ class Equalizer : MediaFragment() {
         // Center-snap ensures the knob easily returns to the neutral position.
         binding.stereoWideningKnob.centerSnapEnabled = true
         binding.stereoWideningKnob.setTickTexts("M", "W")
-        binding.stereoWideningKnob.setKnobPosition(widthToKnobValue(PlayerPreferences.getStereoWidth()), animate = false)
+        binding.stereoWideningKnob.setKnobPosition(widthToKnobValue(EqualizerPreferences.getStereoWidth()), animate = false)
         binding.stereoWideningKnob.divisionCount = 10 * 10
         binding.stereoWideningKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
                 val width = knobValueToWidth(value)
-                PlayerPreferences.setStereoWidth(width)
+                EqualizerPreferences.setStereoWidth(width)
                 Log.d(TAG, "Stereo width updated: width=$width")
             }
 
@@ -89,14 +114,14 @@ class Equalizer : MediaFragment() {
         // Knob value 0-100 maps to drive 0.0 (clean/off) … 4.0 (maximum saturation).
         // No center-snap — this is a one-directional effect; more = more saturation.
         binding.tapeSaturationKnob.setTickTexts("0", "4")
-        binding.tapeSaturationKnob.setKnobPosition(driveToKnobValue(PlayerPreferences.getTapeSaturationDrive()), animate = false)
+        binding.tapeSaturationKnob.setKnobPosition(driveToKnobValue(EqualizerPreferences.getTapeSaturationDrive()), animate = false)
         binding.tapeSaturationKnob.divisionCount = 4 * 10
         binding.tapeSaturationKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
                 val drive = knobValueToDrive(value)
-                PlayerPreferences.setTapeSaturationDrive(drive)
+                EqualizerPreferences.setTapeSaturationDrive(drive)
                 Log.d(TAG, "Tape saturation drive updated: drive=$drive")
             }
 

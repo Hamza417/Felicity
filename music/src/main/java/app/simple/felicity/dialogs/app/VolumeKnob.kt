@@ -100,8 +100,10 @@ class VolumeKnob : ScopedBottomSheetFragment() {
             }
 
             override fun onUserInteractionEnd() {
-                requireContext().contentResolver
-                    .registerContentObserver(Settings.System.CONTENT_URI, true, volumeObserver)
+                postDelayed(delayMillis = 1000) {
+                    requireContext().contentResolver.registerContentObserver(
+                            Settings.System.CONTENT_URI, true, volumeObserver)
+                }
             }
         })
 
