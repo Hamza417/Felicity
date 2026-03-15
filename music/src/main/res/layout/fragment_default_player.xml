@@ -20,9 +20,7 @@
         <app.simple.felicity.decorations.views.FelicityVisualizer
             android:id="@+id/visualizer"
             android:layout_width="match_parent"
-            android:layout_gravity="bottom"
             android:layout_height="match_parent"
-            app:vizMaxRenderHeight="300dp"
             app:vizParticlesEnabled="true" />
 
     </FrameLayout>
