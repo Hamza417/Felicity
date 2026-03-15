@@ -7,11 +7,24 @@
     android:clipToPadding="false"
     android:orientation="vertical">
 
-    <app.simple.felicity.decorations.pager.FelicityPager
-        android:id="@+id/pager"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_weight="1"
-        android:layout_height="0dp" />
+        android:layout_height="@dimen/padding_10"
+        android:layout_weight="1">
+
+        <app.simple.felicity.decorations.pager.FelicityPager
+            android:id="@+id/pager"
+            android:layout_width="match_parent"
+            android:layout_weight="1"
+            android:layout_height="0dp" />
+
+        <app.simple.felicity.decorations.views.FelicityVisualizer
+            android:id="@+id/visualizer"
+            android:layout_width="match_parent"
+            android:layout_gravity="bottom"
+            android:layout_height="300dp" />
+
+    </FrameLayout>
 
     <app.simple.felicity.decorations.theme.ThemeDivider
         android:layout_width="match_parent"

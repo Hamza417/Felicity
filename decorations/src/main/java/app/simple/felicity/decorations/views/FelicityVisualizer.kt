@@ -365,7 +365,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         private const val GRAVITY = 0.0018f
 
         /** Terminal velocity cap for the falling peak pill to prevent it from teleporting. */
-        private const val MAX_PEAK_VELOCITY = 0.04f
+        private const val MAX_PEAK_VELOCITY = 0.16f
 
         /** Frames the peak cap holds its highest position before gravity starts. */
         private const val PEAK_HOLD_FRAMES = 20

@@ -6,12 +6,15 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.pager.ImagePageAdapter
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
+import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.preferences.AlbumArtPreferences
@@ -20,6 +23,7 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.TextViewUtils.setTypeWriting
+import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.panels.Lyrics
 import app.simple.felicity.ui.panels.PlayingQueue
@@ -162,6 +166,19 @@ class DefaultPlayer : MediaFragment() {
         binding.equalizer.setOnClickListener {
             openFragment(Equalizer.newInstance(), Equalizer.TAG)
         }
+
+        // Collect real-time spectrum data and push it to the visualizer view.
+        // repeatOnLifecycle(STARTED) automatically stops collection when the fragment
+        // is paused/stopped (off-screen) and resumes when it becomes visible again.
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                VisualizerManager.spectrumFlow.collect { bands ->
+                    binding.visualizer.setBands(bands)
+                }
+            }
+        }
+
+        binding.visualizer.setCapColor(ThemeManager.accent.primaryAccentColor)
     }
 
     private fun updateState() {
