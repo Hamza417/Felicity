@@ -1,6 +1,7 @@
 package app.simple.felicity.decorations.views
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
@@ -11,6 +12,10 @@ import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.View
 import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.BAND_COUNT
+import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.CORNER_RADIUS_FACTOR
+import app.simple.felicity.manager.SharedPreferences.registerListener
+import app.simple.felicity.manager.SharedPreferences.unregisterListener
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
@@ -110,6 +115,34 @@ class FelicityVisualizer @JvmOverloads constructor(
      * Prevents duplicate scheduling when [setBands] is called faster than the display refreshes.
      */
     private var animating = false
+
+    /**
+     * Corner radius expressed as a fraction of one bar's width [0..0.5].
+     * Derived from [AppearancePreferences.getCornerRadius] scaled by [CORNER_RADIUS_FACTOR]
+     * and updated live via [prefsListener].
+     */
+    private var cornerRadiusFraction = computeCornerFraction()
+
+    /**
+     * Listens for live changes to [AppearancePreferences.APP_CORNER_RADIUS] so the bar
+     * corners update immediately when the user moves the corner-radius slider in Settings.
+     */
+    private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == AppearancePreferences.APP_CORNER_RADIUS) {
+            cornerRadiusFraction = computeCornerFraction()
+            invalidate()
+        }
+    }
+
+    init {
+        // The visualizer is a transparent overlay — it must never draw an opaque background
+        // and must not intercept touch events so the underlying pager remains scrollable.
+        setBackgroundColor(Color.TRANSPARENT)
+        isClickable = false
+        isFocusable = false
+        // Hardware layer enables proper alpha compositing when rendered over album art.
+        setLayerType(LAYER_TYPE_HARDWARE, null)
+    }
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -252,7 +285,8 @@ class FelicityVisualizer @JvmOverloads constructor(
         val slotWidth = width.toFloat() / BAND_COUNT
         val gapWidth = slotWidth * BAR_GAP_FRACTION
         val barWidth = slotWidth - gapWidth
-        val cornerRadius = barWidth * 0.35f
+        // Corner radius is a live fraction of bar width, capped at half-width (full pill).
+        val cornerRadius = (cornerRadiusFraction * barWidth).coerceIn(0f, barWidth / 2f)
         val maxBarHeight = height.toFloat()
         val capPillHeight = (barWidth * 0.3f).coerceAtLeast(3f)
 
@@ -268,7 +302,6 @@ class FelicityVisualizer @JvmOverloads constructor(
 
             if (abs(next - current) > IDLE_THRESHOLD) stillMoving = true
 
-            // Bar — strictly clamped so it can never escape the view bounds.
             val barHeightPx = (next * maxBarHeight).coerceIn(MIN_BAR_PX, maxBarHeight)
             val left = i * slotWidth + gapWidth / 2f
             val right = left + barWidth
@@ -316,12 +349,18 @@ class FelicityVisualizer @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        if (!isInEditMode) ThemeManager.addListener(this)
+        if (!isInEditMode) {
+            ThemeManager.addListener(this)
+            registerListener(prefsListener)
+            // Sync in case the preference changed while detached.
+            cornerRadiusFraction = computeCornerFraction()
+        }
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         ThemeManager.removeListener(this)
+        unregisterListener(prefsListener)
         delayQueue.clear()
     }
 
@@ -343,11 +382,23 @@ class FelicityVisualizer @JvmOverloads constructor(
         // The bars use accent colors, not theme background colors — no action needed.
     }
 
-    // ── Companion ─────────────────────────────────────────────────────────────
+    // ── Internal helpers ──────────────────────────────────────────────────────
+
+    /**
+     * Computes the corner radius as a fraction of bar width from the current app preference.
+     *
+     * [AppearancePreferences.getCornerRadius] returns a value in [1..80]; dividing by
+     * [AppearancePreferences.MAX_CORNER_RADIUS] normalises it to (0..1], which is then
+     * multiplied by [CORNER_RADIUS_FACTOR] so the corners look proportional to the narrow bars.
+     */
+    private fun computeCornerFraction(): Float {
+        if (isInEditMode) return 0.35f
+        return (AppearancePreferences.getCornerRadius() / AppearancePreferences.MAX_CORNER_RADIUS) * CORNER_RADIUS_FACTOR
+    }
 
     companion object {
         /** Number of frequency bands rendered — must match the engine's VisualizerAudioProcessor band count. */
-        const val BAND_COUNT = 30
+        const val BAND_COUNT = 40
 
         /** Fraction of each band slot occupied by the gap between adjacent bars. */
         private const val BAR_GAP_FRACTION = 0.22f
@@ -356,7 +407,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         private const val RISE_SPEED = 0.25f
 
         /** Lerp factor per frame when a bar is falling toward a quieter target. */
-        private const val FALL_SPEED = 0.04f
+        private const val FALL_SPEED = 0.08f
 
         /**
          * Gravity added to a cap's downward velocity each frame while it is falling.
@@ -365,7 +416,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         private const val GRAVITY = 0.0018f
 
         /** Terminal velocity cap for the falling peak pill to prevent it from teleporting. */
-        private const val MAX_PEAK_VELOCITY = 0.16f
+        private const val MAX_PEAK_VELOCITY = 0.04f
 
         /** Frames the peak cap holds its highest position before gravity starts. */
         private const val PEAK_HOLD_FRAMES = 20
@@ -387,9 +438,10 @@ class FelicityVisualizer @JvmOverloads constructor(
 
         /**
          * Normalized magnitude below which a band is treated as silence (noise floor gate).
-         * This prevents FFT spectral leakage from making a silent bass zone appear active.
+         * Kept intentionally low so quiet treble content remains visible; only true
+         * FFT-leakage noise (sub-1.5 % of peak) is suppressed.
          */
-        private const val NOISE_FLOOR = 0.05f
+        private const val NOISE_FLOOR = 0.015f
 
         /**
          * Default latency compensation in milliseconds.
@@ -398,5 +450,11 @@ class FelicityVisualizer @JvmOverloads constructor(
          * Tune via [latencyMs] if your device's output latency differs.
          */
         const val DEFAULT_LATENCY_MS = 150L
+
+        /**
+         * Scale factor applied to the normalised app corner radius when mapping it to bar width.
+         * Values above 1.0 produce pill-shaped bars at maximum app corner radius.
+         */
+        private const val CORNER_RADIUS_FACTOR = 1.5f
     }
 }

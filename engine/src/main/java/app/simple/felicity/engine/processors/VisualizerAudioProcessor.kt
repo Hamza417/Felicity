@@ -18,7 +18,7 @@ import kotlin.math.sqrt
  * 40 logarithmically-spaced frequency band magnitudes (bass → treble) to a [VisualizerListener].
  *
  * The processor is transparent — it passes the audio through unchanged while extracting
- * spectrum data as a side-effect. A 1024-sample Hanning-windowed FFT is computed once per
+ * spectrum data as a side effect. A 1024-sample Hanning-windowed FFT is computed once per
  * capture window. The resulting magnitudes are mapped to [BAND_COUNT] log-spaced bands and
  * normalized to [0..1] before dispatch.
  *
