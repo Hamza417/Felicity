@@ -130,19 +130,23 @@ class Dashboard : MediaFragment() {
      * @param data The fresh list of [Audio] items emitted by [DashboardViewModel.recommended].
      */
     private fun setupRecommendedGrid(data: List<Audio>) {
-        val randomSpanPositions = intArrayOf(1, 2, 3, 4, 5, 7).let { arr ->
-            val i = arr.indices.random()
-            var j = arr.indices.random()
-            while (j == i) j = arr.indices.random()
-            intArrayOf(arr[i], arr[j])
-        }
+        // Define the 4 exact patterns from your image
+        val validPatterns = listOf(
+                intArrayOf(0, 4), // Pattern 1: Diagonal (Top-Left, Bottom-Right)
+                intArrayOf(1, 4), // Pattern 2: Stacked Right
+                intArrayOf(1, 3), // Pattern 3: Diagonal (Top-Right, Bottom-Left)
+                intArrayOf(0, 3)  // Pattern 4: Stacked Left
+        )
 
-        val layoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, RECOMMENDED_GRID_SPANS)
+        // Randomly select one pattern
+        val randomSpanPositions = validPatterns.random()
+
+        val layoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, 3) // Make sure this is 3!
         layoutManager.spanSizeLookup = SpannedGridLayoutManager.SpanSizeLookup { position ->
             if (position in randomSpanPositions) {
-                SpanSize(2, 2)
+                SpanSize(2, 2) // The "Pink" blocks in your image
             } else {
-                SpanSize(1, 1)
+                SpanSize(1, 1) // The "Green" blocks in your image
             }
         }
 

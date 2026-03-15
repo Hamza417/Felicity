@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.random.Random
 
 /**
  * ViewModel for the Dashboard home screen.
@@ -95,6 +96,20 @@ class DashboardViewModel @Inject constructor(
             Element(R.string.favorites, R.drawable.ic_favorite_filled),
             Element(R.string.preferences, R.drawable.ic_settings)
     )
+
+    val randomSpanPositions = run {
+        val corners = intArrayOf(0, 1, 4, 5)
+        val diagonals = listOf(intArrayOf(0, 5), intArrayOf(1, 4))
+
+        // 50/50 chance between "One Corner" or "Two Diagonals"
+        if (Random.nextBoolean()) {
+            // Mode: One big span on any corner
+            intArrayOf(corners.random())
+        } else {
+            // Mode: Two big spans on a diagonal
+            diagonals.random()
+        }
+    }
 
     init {
         loadRecentSongs()
