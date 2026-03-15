@@ -1,5 +1,6 @@
 package app.simple.felicity.ui.player
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.util.Log
@@ -167,6 +168,26 @@ class DefaultPlayer : MediaFragment() {
             openFragment(Equalizer.newInstance(), Equalizer.TAG)
         }
 
+        binding.visualizerButton.setOnClickListener {
+            val newEnabled = !PlayerPreferences.isVisualizerEnabled()
+            PlayerPreferences.setVisualizerEnabled(newEnabled)
+            updateEqualizerButtonAlpha(newEnabled)
+        }
+
+        // Long-pressing the position counter cycles the visualizer rendering mode
+        // between the bar-spectrum and fluid water-wave styles.
+        binding.count.setOnLongClickListener {
+            val newMode = if (PlayerPreferences.getVisualizerMode() == PlayerPreferences.VISUALIZER_MODE_BARS) {
+                PlayerPreferences.VISUALIZER_MODE_WAVE
+            } else {
+                PlayerPreferences.VISUALIZER_MODE_BARS
+            }
+            PlayerPreferences.setVisualizerMode(newMode)
+            true
+        }
+
+        updateEqualizerButtonAlpha(PlayerPreferences.isVisualizerEnabled())
+
         // Collect real-time spectrum data and push it to the visualizer view.
         // repeatOnLifecycle(STARTED) automatically stops collection when the fragment
         // is paused/stopped (off-screen) and resumes when it becomes visible again.
@@ -270,6 +291,25 @@ class DefaultPlayer : MediaFragment() {
      */
     private fun updateFavoriteIcon(audio: Audio) {
         binding.favorite.setFavorite(audio.isFavorite, animate = true)
+    }
+
+    /**
+     * Dims the equalizer/visualizer button when the visualizer is disabled so the user
+     * can tell at a glance whether the overlay is currently active.
+     *
+     * @param enabled `true` when the visualizer is shown; `false` when hidden.
+     */
+    private fun updateEqualizerButtonAlpha(enabled: Boolean) {
+        binding.visualizerButton.alpha = if (enabled) 1f else 0.4f
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            PlayerPreferences.VISUALIZER_ENABLED -> {
+                updateEqualizerButtonAlpha(PlayerPreferences.isVisualizerEnabled())
+            }
+        }
     }
 
     companion object {

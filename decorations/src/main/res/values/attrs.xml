@@ -222,12 +222,21 @@
         <attr name="showIndicator" format="boolean" />
     </declare-styleable>
 
-    <!-- FelicityVisualizer: real-time audio spectrum bar visualizer -->
+    <!-- FelicityVisualizer: real-time audio spectrum bar and wave visualizer -->
     <declare-styleable name="FelicityVisualizer">
-        <!-- Override the maximum bar render height in pixels. 0 = use full view height. -->
-        <attr name="vizMaxRenderHeight" format="dimension" />
+        <!--
+            Maximum bar/wave render height as a fraction of the view height [0.0..1.0].
+            Bars always grow from the physical bottom of the view upward; this value caps
+            how tall they can become. 1.0 = full view height (default). 0.5 = bottom half only.
+        -->
+        <attr name="vizMaxRenderHeight" format="float" />
         <!-- Whether the ash/snow particle emitter is enabled. Default: false. -->
         <attr name="vizParticlesEnabled" format="boolean" />
+        <!-- Selects the initial rendering mode. Default: bars. -->
+        <attr name="vizMode" format="enum">
+            <enum name="bars" value="0" />
+            <enum name="wave" value="1" />
+        </attr>
     </declare-styleable>
 
 </resources>

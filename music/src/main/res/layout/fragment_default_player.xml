@@ -21,6 +21,8 @@
             android:id="@+id/visualizer"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:alpha="0.55"
+            app:vizMaxRenderHeight="0.45"
             app:vizParticlesEnabled="true" />
 
     </FrameLayout>
@@ -70,6 +72,15 @@
             android:layout_marginEnd="@dimen/padding_1"
             android:padding="@dimen/padding_8"
             android:src="@drawable/ic_favorite_border"
+            app:buttonTintType="regular" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/visualizer_button"
+            android:layout_width="@dimen/button_size"
+            android:layout_height="@dimen/button_size"
+            android:layout_marginEnd="@dimen/padding_1"
+            android:src="@drawable/ic_graphic_eq"
+            android:layout_gravity="center_vertical"
             app:buttonTintType="regular" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
@@ -192,7 +203,7 @@
         android:id="@+id/linearLayout2"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="@dimen/dialog_padding"
+        android:layout_marginHorizontal="@dimen/padding_10"
         android:layout_marginTop="@dimen/dialog_padding"
         android:layout_marginBottom="@dimen/dialog_padding"
         android:orientation="horizontal"
@@ -221,6 +232,7 @@
             android:layout_height="@dimen/button_size"
             android:src="@drawable/ic_skip_previous"
             android:layout_gravity="center_vertical"
+            android:scaleType="fitCenter"
             app:buttonTintType="regular" />
 
         <app.simple.felicity.decorations.views.FlipPlayPauseView
@@ -236,6 +248,7 @@
             android:layout_height="@dimen/button_size"
             android:layout_gravity="center_vertical"
             android:src="@drawable/ic_skip_next"
+            android:scaleType="fitCenter"
             app:buttonTintType="regular" />
 
         <Space

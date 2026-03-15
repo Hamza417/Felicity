@@ -18,9 +18,11 @@ import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.BAND_C
 import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.CORNER_RADIUS_FACTOR
 import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.MAX_PARTICLES
 import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.PARTICLE_FADE_RATE
+import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.WAVE_SECONDARY_SCALE
 import app.simple.felicity.manager.SharedPreferences.registerListener
 import app.simple.felicity.manager.SharedPreferences.unregisterListener
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
@@ -30,15 +32,26 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
- * A custom audio spectrum visualizer that renders [BAND_COUNT] vertical bars animated
- * in real time from bass (left) to treble (right).
+ * A custom audio spectrum visualizer that supports two rendering modes:
+ * vertical frequency bars ([VisualizerMode.BARS]) and a fluid water-wave fill
+ * ([VisualizerMode.WAVE]).
  *
- * Incoming RMS bands are normalised with a fast-attack/slow-release AGC, passed through
- * a square-root perceptual curve, and delivered to their target bars after a configurable
+ * In bars mode, [BAND_COUNT] vertical bars are animated in real time from bass
+ * (left) to treble (right) with peak-hold caps and an optional ash-particle emitter.
+ * In wave mode, the same spectrum data drives a smooth filled-wave curve anchored
+ * at the view's physical bottom using midpoint quadratic Bézier interpolation.
+ *
+ * [maxRenderHeightFraction] (0.0–1.0) controls how much of the view height is
+ * available for bar or wave growth. Bars always grow upward from the physical
+ * view bottom, so this is a pure height cap rather than a start-point offset.
+ *
+ * Incoming RMS bands are normalised with a fast-attack/slow-release AGC, passed
+ * through a square-root perceptual curve, and delivered after a configurable
  * latency-compensation delay so the display stays in sync with audible output.
  *
- * Peak-hold caps accelerate downward under simulated gravity once the hold period expires.
- * Colors default to the current theme accent and update automatically on accent changes.
+ * Colors default to the current theme accent and update automatically on accent
+ * changes. The active rendering mode and enabled state are read from
+ * [PlayerPreferences] and react to live preference changes while the view is attached.
  *
  * @author Hamza417
  */
@@ -47,6 +60,27 @@ class FelicityVisualizer @JvmOverloads constructor(
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr), ThemeChangedListener {
+
+    // ── Rendering mode ────────────────────────────────────────────────────────
+
+    /** Selects whether bars or a fluid wave is rendered. */
+    enum class VisualizerMode {
+        /** Vertical frequency bar spectrum with peak-hold caps and optional particles. */
+        BARS,
+
+        /** Filled smooth-wave shape derived from the frequency spectrum, resembling water waves. */
+        WAVE
+    }
+
+    /**
+     * Active rendering mode. Defaults to [VisualizerMode.BARS].
+     * Changing this while attached triggers an immediate redraw.
+     */
+    var mode: VisualizerMode = VisualizerMode.BARS
+        set(value) {
+            field = value
+            invalidate()
+        }
 
     // ── Band state ────────────────────────────────────────────────────────────
 
@@ -77,7 +111,7 @@ class FelicityVisualizer @JvmOverloads constructor(
     // ── Latency delay queue ───────────────────────────────────────────────────
 
     /**
-     * Holds normalized band snapshots with a `SystemClock.elapsedRealtime` deadline.
+     * Holds normalized band snapshots with a [SystemClock.elapsedRealtime] deadline.
      * A snapshot is only applied to [targetBands] once the deadline has passed,
      * compensating for the hardware audio output buffer latency so the bars
      * move in sync with what the user actually hears.
@@ -120,8 +154,18 @@ class FelicityVisualizer @JvmOverloads constructor(
 
     // ── Drawing ───────────────────────────────────────────────────────────────
 
-    /** Paint for the frequency bars; shader is rebuilt whenever width or colors change. */
+    /** Paint for the frequency bars and the primary wave fill; shader is rebuilt when width or colors change. */
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+
+    /**
+     * Paint for the secondary (depth) wave layer in [VisualizerMode.WAVE].
+     * Shares the same horizontal gradient shader as [barPaint] but renders at
+     * roughly 47% opacity to simulate visual depth behind the primary wave.
+     */
+    private val secondaryWavePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        alpha = 120
+    }
 
     /** Paint for the peak-hold cap pill above each bar. */
     private val capPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -156,13 +200,27 @@ class FelicityVisualizer @JvmOverloads constructor(
     private var cornerRadiusFraction = computeCornerFraction()
 
     /**
-     * Listens for live changes to [AppearancePreferences.APP_CORNER_RADIUS] so the bar
-     * corners update immediately when the user moves the corner-radius slider in Settings.
+     * Listens for live SharedPreferences changes.
+     * Handles the app corner-radius slider, the visualizer mode switch, and the
+     * visualizer enabled toggle so the view self-manages its own rendering state
+     * without requiring external coordination from the host fragment.
      */
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == AppearancePreferences.APP_CORNER_RADIUS) {
-            cornerRadiusFraction = computeCornerFraction()
-            invalidate()
+        when (key) {
+            AppearancePreferences.APP_CORNER_RADIUS -> {
+                cornerRadiusFraction = computeCornerFraction()
+                invalidate()
+            }
+            PlayerPreferences.VISUALIZER_MODE -> {
+                mode = if (PlayerPreferences.getVisualizerMode() == PlayerPreferences.VISUALIZER_MODE_WAVE) {
+                    VisualizerMode.WAVE
+                } else {
+                    VisualizerMode.BARS
+                }
+            }
+            PlayerPreferences.VISUALIZER_ENABLED -> {
+                visibility = if (PlayerPreferences.isVisualizerEnabled()) VISIBLE else GONE
+            }
         }
     }
 
@@ -200,26 +258,32 @@ class FelicityVisualizer @JvmOverloads constructor(
     /**
      * Eight-element radii array for [Path.addRoundRect].
      *
-     * Indices 0-3 carry the top-left and top-right radii; indices 4-7 are always 0
+     * Indices 0–3 carry the top-left and top-right radii; indices 4–7 are always 0
      * so the base corners of every bar remain flat regardless of the corner preference.
      */
     private val barCornerRadii = FloatArray(8)
 
-    // ── Render height override ────────────────────────────────────────────────
+    /** Reusable [Path] for rendering both the primary and secondary wave shapes. */
+    private val wavePathBuffer = Path()
+
+    // ── Render height fraction ────────────────────────────────────────────────
 
     /**
-     * Maximum bar-render height in pixels.
+     * Maximum bar or wave render height expressed as a fraction of the view's
+     * measured height, in the range [0.0..1.0].
      *
-     * When greater than zero this value replaces the view's own [height] in all bar
-     * scaling calculations, letting the visualizer live inside a `match_parent`
-     * container while the animated region stays within a controlled boundary.
+     * A value of `1.0` (the default) allows bars and waves to grow up to the full
+     * view height. A value of `0.5` limits them to the lower 50% of the view.
      *
-     * Set to 0 (the default) to use the full view height.
+     * Bars always grow upward from the physical bottom of the view; this property
+     * caps only how tall they can become, so it is a pure height-limit rather than
+     * a start-point offset. The wave fill is similarly anchored at the view's bottom.
+     *
      * Can also be configured via the `vizMaxRenderHeight` XML attribute.
      */
-    var maxRenderHeightPx: Int = 0
+    var maxRenderHeightFraction: Float = 1f
         set(value) {
-            field = value.coerceAtLeast(0)
+            field = value.coerceIn(0f, 1f)
             invalidate()
         }
 
@@ -233,8 +297,10 @@ class FelicityVisualizer @JvmOverloads constructor(
         setLayerType(LAYER_TYPE_HARDWARE, null)
         if (!isInEditMode && attrs != null) {
             context.withStyledAttributes(attrs, R.styleable.FelicityVisualizer, defStyleAttr, 0) {
-                maxRenderHeightPx = getDimensionPixelSize(R.styleable.FelicityVisualizer_vizMaxRenderHeight, 0)
+                maxRenderHeightFraction = getFloat(R.styleable.FelicityVisualizer_vizMaxRenderHeight, 1f)
                 particlesEnabled = getBoolean(R.styleable.FelicityVisualizer_vizParticlesEnabled, false)
+                val modeOrdinal = getInt(R.styleable.FelicityVisualizer_vizMode, 0)
+                mode = if (modeOrdinal == 1) VisualizerMode.WAVE else VisualizerMode.BARS
             }
         }
     }
@@ -289,7 +355,7 @@ class FelicityVisualizer @JvmOverloads constructor(
      */
     fun setColors(colors: IntArray) {
         barColors = if (colors.size >= 2) colors else buildAccentColors()
-        gradient = null  // force rebuild on next draw
+        gradient = null
         invalidate()
     }
 
@@ -360,12 +426,14 @@ class FelicityVisualizer @JvmOverloads constructor(
         val colors = barColors
         val positions = FloatArray(colors.size) { i -> i.toFloat() / (colors.size - 1) }
 
-        gradient = LinearGradient(
+        val newGradient = LinearGradient(
                 0f, 0f, w.toFloat(), 0f,
                 colors, positions,
                 Shader.TileMode.CLAMP
         )
-        barPaint.shader = gradient
+        gradient = newGradient
+        barPaint.shader = newGradient
+        secondaryWavePaint.shader = newGradient
     }
 
     // ── Drawing ───────────────────────────────────────────────────────────────
@@ -377,89 +445,117 @@ class FelicityVisualizer @JvmOverloads constructor(
 
         drainQueueIntoTargets()
 
+        // Maximum pixel height bars or waves may reach. They always grow upward from
+        // viewBottom, so this is purely a height cap, not a y-coordinate offset.
+        val maxBarHeight = height * maxRenderHeightFraction.coerceIn(0f, 1f)
+        val viewBottom = height.toFloat()
+
         val slotWidth = width.toFloat() / BAND_COUNT
         val gapWidth = slotWidth * BAR_GAP_FRACTION
         val barWidth = slotWidth - gapWidth
-        // Corner radius is a live fraction of bar width, capped at half-width (full pill).
         val cornerRadius = (cornerRadiusFraction * barWidth).coerceIn(0f, barWidth / 2f)
-        // Respect the optional render-height override so bars are bounded independently
-        // of the view's actual height in match_parent scenarios.
-        val maxBarHeight = if (maxRenderHeightPx > 0) maxRenderHeightPx.toFloat() else height.toFloat()
         val capPillHeight = (barWidth * 0.3f).coerceAtLeast(3f)
 
-        // Populate the top-only corner radii array once per frame.
-        // Indices 0-3 carry the top-left and top-right radius.
-        // Indices 4-7 are always 0 so the base of every bar stays flat.
-        barCornerRadii[0] = cornerRadius; barCornerRadii[1] = cornerRadius  // top-left
-        barCornerRadii[2] = cornerRadius; barCornerRadii[3] = cornerRadius  // top-right
-        barCornerRadii[4] = 0f; barCornerRadii[5] = 0f            // bottom-right (flat)
-        barCornerRadii[6] = 0f; barCornerRadii[7] = 0f            // bottom-left  (flat)
-
+        // Smooth every band toward its current target regardless of rendering mode.
         var stillMoving = delayQueue.isNotEmpty()
-
         for (i in 0 until BAND_COUNT) {
             val target = targetBands[i]
             val current = currentBands[i]
-
             val speed = if (target > current) RISE_SPEED else FALL_SPEED
             val next = (current + (target - current) * speed).coerceIn(0f, 1f)
             currentBands[i] = next
-
             if (abs(next - current) > IDLE_THRESHOLD) stillMoving = true
+        }
 
+        stillMoving = when (mode) {
+            VisualizerMode.BARS -> drawBars(
+                    canvas, slotWidth, gapWidth, barWidth,
+                    cornerRadius, capPillHeight, maxBarHeight, viewBottom, stillMoving
+            )
+            VisualizerMode.WAVE -> drawWave(canvas, maxBarHeight, viewBottom, stillMoving)
+        }
+
+        if (stillMoving) {
+            postInvalidateOnAnimation()
+        } else {
+            animating = false
+        }
+    }
+
+    /**
+     * Renders the bar-spectrum visualization including peak-hold caps and the optional
+     * ash-particle emitter. Bars are anchored at [viewBottom] and grow upward by at
+     * most [maxBarHeight] pixels. Returns whether any element is still animating.
+     */
+    private fun drawBars(
+            canvas: Canvas,
+            slotWidth: Float,
+            gapWidth: Float,
+            barWidth: Float,
+            cornerRadius: Float,
+            capPillHeight: Float,
+            maxBarHeight: Float,
+            viewBottom: Float,
+            initialMoving: Boolean
+    ): Boolean {
+        // Populate the top-only corner radii array once per frame.
+        barCornerRadii[0] = cornerRadius; barCornerRadii[1] = cornerRadius
+        barCornerRadii[2] = cornerRadius; barCornerRadii[3] = cornerRadius
+        barCornerRadii[4] = 0f; barCornerRadii[5] = 0f
+        barCornerRadii[6] = 0f; barCornerRadii[7] = 0f
+
+        var stillMoving = initialMoving
+
+        for (i in 0 until BAND_COUNT) {
+            val next = currentBands[i]
+
+            // Bar grows from viewBottom upward; maxBarHeight caps how tall it can be.
             val barHeightPx = (next * maxBarHeight).coerceIn(MIN_BAR_PX, maxBarHeight)
             val left = i * slotWidth + gapWidth / 2f
             val right = left + barWidth
 
-            // Draw the bar via a Path so only the top corners receive the corner radius.
-            drawRect.set(left, maxBarHeight - barHeightPx, right, maxBarHeight)
+            drawRect.set(left, viewBottom - barHeightPx, right, viewBottom)
             barPath.reset()
             barPath.addRoundRect(drawRect, barCornerRadii, Path.Direction.CW)
             canvas.drawPath(barPath, barPaint)
 
-            // Advance the per-band particle cooldown every frame.
             if (particlesEnabled && particleCooldowns[i] > 0) {
                 particleCooldowns[i]--
             }
 
             // Peak cap — pushed up by the bar, then falls under gravity.
             if (next >= peakBands[i]) {
-                // Bar is pushing the cap up — reset velocity and restart hold timer.
                 peakBands[i] = next
                 peakVelocities[i] = 0f
                 peakHoldCounters[i] = PEAK_HOLD_FRAMES
-                // Emit a particle when the bar drives the peak to a new high.
                 if (particlesEnabled && particleCooldowns[i] <= 0 && next > PARTICLE_MIN_HEIGHT) {
-                    emitParticle(left + barWidth / 2f, maxBarHeight - next * maxBarHeight)
+                    emitParticle(left + barWidth / 2f, viewBottom - next * maxBarHeight)
                     particleCooldowns[i] = PARTICLE_COOLDOWN_FRAMES
                 }
             } else {
                 if (peakHoldCounters[i] > 0) {
-                    // Holding position — cap stays put while the bar falls away beneath it.
                     peakHoldCounters[i]--
                 } else {
-                    // Gravity phase — velocity increases each frame, cap accelerates downward.
                     peakVelocities[i] = (peakVelocities[i] + GRAVITY).coerceAtMost(MAX_PEAK_VELOCITY)
                     peakBands[i] = (peakBands[i] - peakVelocities[i]).coerceAtLeast(0f)
                 }
                 if (peakBands[i] > IDLE_THRESHOLD) stillMoving = true
-                // Emit a particle when the bar crosses the two-thirds-of-peak threshold.
                 val twoThirdsPeak = peakBands[i] * (2f / 3f)
                 if (particlesEnabled && particleCooldowns[i] <= 0 &&
                         next >= twoThirdsPeak && next > PARTICLE_MIN_HEIGHT
                 ) {
-                    emitParticle(left + barWidth / 2f, maxBarHeight - next * maxBarHeight)
+                    emitParticle(left + barWidth / 2f, viewBottom - next * maxBarHeight)
                     particleCooldowns[i] = PARTICLE_COOLDOWN_FRAMES
                 }
             }
 
             if (peakBands[i] > 0.02f) {
-                val peakY = maxBarHeight - peakBands[i] * maxBarHeight
+                val peakY = viewBottom - peakBands[i] * maxBarHeight
                 drawRect.set(
                         left,
                         (peakY - capPillHeight / 2f).coerceAtLeast(0f),
                         right,
-                        (peakY + capPillHeight / 2f).coerceAtMost(maxBarHeight)
+                        (peakY + capPillHeight / 2f).coerceAtMost(viewBottom)
                 )
                 canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, capPaint)
             }
@@ -470,13 +566,8 @@ class FelicityVisualizer @JvmOverloads constructor(
             val iter = particles.iterator()
             while (iter.hasNext()) {
                 val p = iter.next()
-                // Brownian horizontal jitter — each particle owns a unique turbulence
-                // coefficient so they spread naturally, mimicking diffused air motion.
                 p.vx += (Random.nextFloat() - 0.5f) * p.turbulence
-                // Horizontal air-resistance drag keeps the lateral drift bounded.
                 p.vx *= PARTICLE_DRAG
-                // Very slight vertical deceleration keeps the ascent nearly constant,
-                // like warm ash buoyed by rising heat.
                 p.vy *= PARTICLE_VERTICAL_DECAY
                 p.x += p.vx
                 p.y += p.vy
@@ -491,11 +582,98 @@ class FelicityVisualizer @JvmOverloads constructor(
             }
         }
 
-        if (stillMoving) {
-            postInvalidateOnAnimation()
-        } else {
-            animating = false
+        return stillMoving
+    }
+
+    /**
+     * Renders the fluid water-wave visualization using two stacked filled paths:
+     * a primary wave at full opacity and a secondary wave at [WAVE_SECONDARY_SCALE]
+     * amplitude with reduced opacity, creating a layered water-depth effect.
+     *
+     * The wave outline is built with midpoint quadratic Bézier interpolation so
+     * the curve passes smoothly through every band's amplitude without requiring
+     * a cubic spline solve. Both layers share the same horizontal accent gradient
+     * as the bars mode for visual consistency. The wave fill is always anchored
+     * at [viewBottom] and limited to [maxBarHeight] pixels upward.
+     *
+     * Returns whether any band is still animating.
+     */
+    private fun drawWave(
+            canvas: Canvas,
+            maxBarHeight: Float,
+            viewBottom: Float,
+            initialMoving: Boolean
+    ): Boolean {
+        val slotWidth = width.toFloat() / BAND_COUNT
+
+        // Pre-compute x centers and y amplitude positions for the primary wave.
+        val bx = FloatArray(BAND_COUNT) { i -> (i + 0.5f) * slotWidth }
+        val by = FloatArray(BAND_COUNT) { i -> viewBottom - currentBands[i] * maxBarHeight }
+
+        // Secondary wave sits at a smaller amplitude to create a foreground depth layer.
+        val bySecondary = FloatArray(BAND_COUNT) { i ->
+            viewBottom - currentBands[i] * maxBarHeight * WAVE_SECONDARY_SCALE
         }
+
+        // Draw primary wave fill.
+        buildWavePath(wavePathBuffer, bx, by, viewBottom)
+        canvas.drawPath(wavePathBuffer, barPaint)
+
+        // Draw secondary (depth) wave fill — shares gradient shader, lower alpha.
+        buildWavePath(wavePathBuffer, bx, bySecondary, viewBottom)
+        canvas.drawPath(wavePathBuffer, secondaryWavePaint)
+
+        // Determine if any band is still animating.
+        var stillMoving = initialMoving
+        for (i in 0 until BAND_COUNT) {
+            if (currentBands[i] > IDLE_THRESHOLD) {
+                stillMoving = true
+                break
+            }
+        }
+
+        return stillMoving
+    }
+
+    /**
+     * Populates [path] with a filled wave shape whose top edge passes smoothly
+     * through the provided [by] y-coordinates at the corresponding [bx] x-centers.
+     *
+     * The left and right edge gaps (between the view boundary and the outermost
+     * band centers) are filled with a vertical line at the respective edge band's
+     * amplitude so the wave always covers the full view width flush to both sides.
+     *
+     * Each interior segment is drawn with a midpoint quadratic Bézier that uses the
+     * current band as a control point and the midpoint between consecutive band
+     * centers as the anchor — this gives C1-continuous smooth curves through all data
+     * points without any matrix solve.
+     *
+     * @param path       Reusable [Path] that is reset before use.
+     * @param bx         X-center coordinate for each band (length = [BAND_COUNT]).
+     * @param by         Y-coordinate (top of wave) for each band (length = [BAND_COUNT]).
+     * @param viewBottom Y-coordinate of the view's physical bottom edge.
+     */
+    private fun buildWavePath(path: Path, bx: FloatArray, by: FloatArray, viewBottom: Float) {
+        path.reset()
+
+        // Start at the bottom-left corner and rise to the first band's amplitude.
+        path.moveTo(0f, viewBottom)
+        path.lineTo(0f, by[0])
+
+        // Smooth curve: each quadTo uses the current band center as a control point
+        // and the midpoint between this and the next band center as the end point.
+        // This guarantees C1 continuity (matching tangents) at every junction.
+        for (i in 0 until BAND_COUNT - 1) {
+            val midX = (bx[i] + bx[i + 1]) / 2f
+            val midY = (by[i] + by[i + 1]) / 2f
+            path.quadTo(bx[i], by[i], midX, midY)
+        }
+
+        // Connect the last band center to the right edge, then close the fill area.
+        path.lineTo(bx[BAND_COUNT - 1], by[BAND_COUNT - 1])
+        path.lineTo(width.toFloat(), by[BAND_COUNT - 1])
+        path.lineTo(width.toFloat(), viewBottom)
+        path.close()
     }
 
     /**
@@ -530,8 +708,14 @@ class FelicityVisualizer @JvmOverloads constructor(
         if (!isInEditMode) {
             ThemeManager.addListener(this)
             registerListener(prefsListener)
-            // Sync in case the preference changed while detached.
             cornerRadiusFraction = computeCornerFraction()
+            // Restore persisted mode and enabled state immediately.
+            mode = if (PlayerPreferences.getVisualizerMode() == PlayerPreferences.VISUALIZER_MODE_WAVE) {
+                VisualizerMode.WAVE
+            } else {
+                VisualizerMode.BARS
+            }
+            visibility = if (PlayerPreferences.isVisualizerEnabled()) VISIBLE else GONE
         }
     }
 
@@ -561,13 +745,13 @@ class FelicityVisualizer @JvmOverloads constructor(
         // The bars use accent colors, not theme background colors — no action needed.
     }
 
-    // ── Internal helpers ──────────────────────────────────────────────────────
+    // ── Private helpers ───────────────────────────────────────────────────────
 
     /**
      * Computes the corner radius as a fraction of bar width from the current app preference.
      *
      * [AppearancePreferences.getCornerRadius] returns a value in [1..80]; dividing by
-     * [AppearancePreferences.MAX_CORNER_RADIUS] normalises it to (0..1], which is then
+     * [AppearancePreferences.MAX_CORNER_RADIUS] normalizes it to (0..1], which is then
      * multiplied by [CORNER_RADIUS_FACTOR] so the corners look proportional to the narrow bars.
      */
     private fun computeCornerFraction(): Float {
@@ -618,7 +802,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         /**
          * Normalized magnitude below which a band is treated as silence (noise floor gate).
          * Kept intentionally low so quiet treble content remains visible; only true
-         * FFT-leakage noise (sub-1.5 % of peak) is suppressed.
+         * FFT-leakage noise (sub-1.5% of peak) is suppressed.
          */
         private const val NOISE_FLOOR = 0.015f
 
@@ -631,7 +815,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         const val DEFAULT_LATENCY_MS = 150L
 
         /**
-         * Scale factor applied to the normalised app corner radius when mapping it to bar width.
+         * Scale factor applied to the normalized app corner radius when mapping it to bar width.
          * Values above 1.0 produce pill-shaped bars at maximum app corner radius.
          */
         private const val CORNER_RADIUS_FACTOR = 1.5f
@@ -643,7 +827,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         private const val PARTICLE_COOLDOWN_FRAMES = 12
 
         /** Maximum number of simultaneous live particles to cap memory usage. */
-        private const val MAX_PARTICLES = 120
+        const val MAX_PARTICLES = 120
 
         /** Range of possible initial upward speeds in pixels per frame. */
         private const val PARTICLE_SPEED_MIN = 0.15f
@@ -653,7 +837,7 @@ class FelicityVisualizer @JvmOverloads constructor(
          * Alpha multiplier applied each frame.
          * At 60 fps a particle reaches near-zero opacity after ~130 frames (~2.2 s).
          */
-        private const val PARTICLE_FADE_RATE = 0.975f
+        const val PARTICLE_FADE_RATE = 0.975f
 
         /** Per-frame horizontal velocity multiplier — simulates air resistance. */
         private const val PARTICLE_DRAG = 0.93f
@@ -663,5 +847,12 @@ class FelicityVisualizer @JvmOverloads constructor(
          * Very close to 1.0 keeps the ascent almost constant, like warm ash buoyed by heat.
          */
         private const val PARTICLE_VERTICAL_DECAY = 0.9985f
+
+        /**
+         * Amplitude scale factor for the secondary (depth) wave layer in [VisualizerMode.WAVE].
+         * At 0.6 the background wave reaches 60% of the primary wave's height, providing
+         * a visually distinct depth layer that reinforces the water-wave appearance.
+         */
+        private const val WAVE_SECONDARY_SCALE = 0.6f
     }
 }
