@@ -126,7 +126,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                     binding.miniPlayer.setCurrentItem(
                             position = position,
                             // Smooth scroll if the new position is within 5 items of the current position
-                            smoothScroll = currentPagerItem - position < 5)
+                            smoothScroll = false)
                 }
             }
         }

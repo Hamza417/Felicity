@@ -62,6 +62,7 @@ class AdapterTypeface : RecyclerView.Adapter<VerticalListViewHolder>() {
             holder.binding.medium.typeface = TypeFace.getTypeFace(typeface.name, TypefaceStyle.MEDIUM.style, holder.context)
             holder.binding.bold.typeface = TypeFace.getTypeFace(typeface.name, TypefaceStyle.BOLD.style, holder.context)
             holder.binding.black.typeface = TypeFace.getTypeFace(typeface.name, TypefaceStyle.BLACK.style, holder.context)
+            holder.binding.backdrop.typeface = TypeFace.getTypeFace(typeface.name, TypefaceStyle.BLACK.style, holder.context)
 
             holder.binding.container.setOnClickListener {
                 AppearancePreferences.setAppFont(typeface.name)

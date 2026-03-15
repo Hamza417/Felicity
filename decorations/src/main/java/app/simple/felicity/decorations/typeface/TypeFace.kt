@@ -19,6 +19,10 @@ object TypeFace {
             TypeFaceConstants.JOST -> "fonts/jost.ttf"
             TypeFaceConstants.EXO2 -> "fonts/exo2.ttf"
             TypeFaceConstants.SOURGUMMY -> "fonts/sour_gummy.ttf"
+            TypeFaceConstants.GLUTEN -> "fonts/gluten.ttf"
+            TypeFaceConstants.MONTSERRAT -> "fonts/montserrat.ttf"
+            TypeFaceConstants.FRAUNCES -> "fonts/fraunces.ttf"
+            TypeFaceConstants.ANYBODY -> "fonts/anybody.ttf"
             else -> null
         }
     }
@@ -149,6 +153,40 @@ object TypeFace {
                             "The letters are designed to look like they are made of bubbles, with rounded edges and a " +
                             "slightly irregular shape that adds to the playful nature of the font.",
                     license = "OFL (Open Font License) © Stefie Justprince"
+            ),
+            TypeFaceModel(
+                    typefaceName = "Gluten",
+                    name = TypeFaceConstants.GLUTEN,
+                    type = TYPE_SANS_SERIF,
+                    description = "Gluten is a delicious font! It's also slightly loud, very round, and 100% fun. " +
+                            "Gluten is filling, we'll put it that way. Hope you're hungry.",
+                    license = "SIL (Open Font License) © Tyler Finck, ETC "
+            ),
+            TypeFaceModel(
+                    typefaceName = "Montserrat",
+                    name = TypeFaceConstants.MONTSERRAT,
+                    type = TYPE_SANS_SERIF,
+                    description = "Montserrat is a geometric sans-serif typeface designed by Julieta Ulanovsky, " +
+                            "inspired by the old posters and signs in the traditional neighborhood of Buenos Aires " +
+                            "called Montserrat.",
+                    license = "OFL (Open Font License) © Julieta Ulanovsky"
+            ),
+            TypeFaceModel(
+                    typefaceName = "Fraunces",
+                    name = TypeFaceConstants.FRAUNCES,
+                    type = TYPE_SERIF,
+                    description = "Fraunces is a display, \"Old Style\" soft-serif typeface inspired by the mannerisms of " +
+                            "early 20th century typefaces such as Windsor, Souvenir, and the Cooper Series. Fraunces was " +
+                            "designed by Phaedra Charles and Flavia Zimbardi, partners at Undercase Type.",
+                    license = "SIL (Open Font License) © Undercase Type (Phaedra Charles and Flavia Zimbardi)"
+            ),
+            TypeFaceModel(
+                    typefaceName = "Anybody",
+                    name = TypeFaceConstants.ANYBODY,
+                    type = TYPE_SANS,
+                    description = "Anybody is a big family that combines an affinity for Eurostile plus a heavy" +
+                            " dose of 90s inspiration.",
+                    license = "SIL (Open Font License) © Tyler Finck"
             )
     )
 

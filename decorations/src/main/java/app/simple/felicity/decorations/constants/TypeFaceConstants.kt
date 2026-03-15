@@ -19,4 +19,8 @@ object TypeFaceConstants {
     const val JOST = "jost"
     const val EXO2 = "exo2"
     const val SOURGUMMY = "sourgummy"
+    const val GLUTEN = "gluten"
+    const val MONTSERRAT = "montserrat"
+    const val FRAUNCES = "fraunces"
+    const val ANYBODY = "anybody"
 }
