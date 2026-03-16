@@ -49,7 +49,7 @@ object PlaybackStateManager {
             val audioDatabase = AudioDatabase.getInstance(context)
             savePlaybackState(
                     db = audioDatabase,
-                    queueIds = songs.map { it.id },
+                    queueHash = songs.map { it.hash },
                     index = position,
                     position = seek,
                     shuffle = false,
@@ -65,16 +65,16 @@ object PlaybackStateManager {
 
     suspend fun savePlaybackState(
             db: AudioDatabase,
-            queueIds: List<Long>,
+            queueHash: List<Long>,
             index: Int,
             position: Long,
             shuffle: Boolean,
             repeat: Int
     ) {
-        if (queueIds.isEmpty()) return
+        if (queueHash.isEmpty()) return
 
         val state = PlaybackState(
-                queue = Gson().toJson(queueIds),
+                queue = Gson().toJson(queueHash),
                 index = index,
                 position = position,
                 shuffle = shuffle,

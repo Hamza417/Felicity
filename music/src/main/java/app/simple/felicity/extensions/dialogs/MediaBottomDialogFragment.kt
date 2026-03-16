@@ -83,7 +83,7 @@ abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
             val audioDatabase = AudioDatabase.getInstance(requireContext())
             PlaybackStateManager.savePlaybackState(
                     db = audioDatabase,
-                    queueIds = songs.map { it.id },
+                    queueHash = songs.map { it.hash },
                     index = MediaManager.getCurrentPosition(),
                     position = MediaManager.getSeekPosition(),
                     shuffle = false,

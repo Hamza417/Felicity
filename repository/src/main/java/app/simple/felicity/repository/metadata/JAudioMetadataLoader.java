@@ -99,7 +99,7 @@ public class JAudioMetadataLoader {
         audio.setYear(getYear());
         audio.setSamplingRate(getSamplingRate());
         audio.setBitPerSample(getBitPerSample());
-        audio.setId(generateId());
+        audio.setHash(generateId());
         audio.setSize(file.length());
         audio.setDateModified(file.lastModified());
         audio.setDateAdded(System.currentTimeMillis());

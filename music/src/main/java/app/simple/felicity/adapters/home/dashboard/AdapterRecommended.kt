@@ -42,7 +42,7 @@ class AdapterRecommended(private val list: List<Audio>) :
     }
 
     override fun getItemId(position: Int): Long {
-        return list[position].id
+        return list[position].id.toLong()
     }
 
     inner class Holder(val binding: AdapterGridImageBinding) : RecyclerView.ViewHolder(binding.root)

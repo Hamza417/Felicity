@@ -169,7 +169,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             val audioDatabase = AudioDatabase.getInstance(requireContext())
             PlaybackStateManager.savePlaybackState(
                     db = audioDatabase,
-                    queueIds = songs.map { it.id },
+                    queueHash = songs.map { it.hash },
                     index = idx,
                     position = seek,
                     shuffle = false,

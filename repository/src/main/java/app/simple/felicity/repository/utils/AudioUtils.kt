@@ -27,7 +27,7 @@ object AudioUtils {
                 lastPlayed = System.currentTimeMillis(),
                 playCount = songStat.playCount + 1
         ) ?: SongStat(
-                songId = this.id,
+                songId = this.hash,
                 stableId = generateStableId(this).toString(),
                 lastPlayed = System.currentTimeMillis(),
                 playCount = 1,

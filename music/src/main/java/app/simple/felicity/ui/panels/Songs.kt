@@ -2,6 +2,7 @@ package app.simple.felicity.ui.panels
 
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -69,6 +70,7 @@ class Songs : PanelFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 songsViewModel.songs.collect { audios ->
+                    Log.d(TAG, "Received songs update: ${audios.size} songs")
                     // Skip empty initial state, but allow empty updates after adapter exists
                     if (audios.isNotEmpty()) {
                         updateSongsList(audios)

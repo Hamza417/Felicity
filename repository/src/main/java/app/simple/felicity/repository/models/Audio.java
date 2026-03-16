@@ -11,6 +11,16 @@ import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
+/**
+ * Represents a single audio track stored in the local library database.
+ *
+ * <p>The {@code id} field is a simple auto-incremented long integer assigned by Room on insertion.
+ * The {@code hash} field holds the XXHash64 content fingerprint of the file and is used for
+ * file-identity comparisons and deduplication logic.</p>
+ *
+ * @author Hamza417
+ * @noinspection EqualsReplaceableByObjectsCall
+ */
 @Entity (tableName = "audio")
 public class Audio implements Parcelable {
     
@@ -34,8 +44,10 @@ public class Audio implements Parcelable {
     @ColumnInfo (name = "name")
     private String name;
     @ColumnInfo (name = "id")
-    @PrimaryKey
+    @PrimaryKey (autoGenerate = true)
     private long id;
+    @ColumnInfo (name = "hash")
+    private long hash;
     @ColumnInfo (name = "title")
     @Nullable
     private String title;
@@ -114,6 +126,7 @@ public class Audio implements Parcelable {
     protected Audio(Parcel in) {
         name = in.readString();
         id = in.readLong();
+        hash = in.readLong();
         title = in.readString();
         artist = in.readString();
         album = in.readString();
@@ -143,6 +156,7 @@ public class Audio implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(name);
         dest.writeLong(id);
+        dest.writeLong(hash);
         dest.writeString(title);
         dest.writeString(artist);
         dest.writeString(album);
@@ -239,9 +253,17 @@ public class Audio implements Parcelable {
     public long getId() {
         return id;
     }
-    
+
     public void setId(long id) {
         this.id = id;
+    }
+    
+    public long getHash() {
+        return hash;
+    }
+    
+    public void setHash(long hash) {
+        this.hash = hash;
     }
     
     public long getDateAdded() {
@@ -444,6 +466,7 @@ public class Audio implements Parcelable {
         return "Audio{" +
                 "name='" + name + '\'' +
                 ", id=" + id +
+                ", hash=" + hash +
                 ", title='" + title + '\'' +
                 ", artist='" + artist + '\'' +
                 ", album='" + album + '\'' +
@@ -476,9 +499,6 @@ public class Audio implements Parcelable {
                 '}';
     }
     
-    /**
-     * @noinspection EqualsReplaceableByObjectsCall
-     */
     @Override
     public boolean equals(@Nullable Object obj) {
         if (this == obj) {
@@ -491,6 +511,9 @@ public class Audio implements Parcelable {
         Audio audio = (Audio) obj;
         
         if (id != audio.id) {
+            return false;
+        }
+        if (hash != audio.hash) {
             return false;
         }
         if (track != audio.track) {
@@ -588,6 +611,7 @@ public class Audio implements Parcelable {
     public int hashCode() {
         int result = name != null ? name.hashCode() : 0;
         result = 31 * result + Long.hashCode(id);
+        result = 31 * result + Long.hashCode(hash);
         result = 31 * result + (title != null ? title.hashCode() : 0);
         result = 31 * result + (artist != null ? artist.hashCode() : 0);
         result = 31 * result + (album != null ? album.hashCode() : 0);
@@ -625,6 +649,7 @@ public class Audio implements Parcelable {
         Audio audio = new Audio();
         audio.setName(getName());
         audio.setId(getId());
+        audio.setHash(getHash());
         audio.setTitle(getTitle());
         audio.setArtist(getArtist());
         audio.setAlbum(getAlbum());
