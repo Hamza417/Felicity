@@ -15,6 +15,7 @@ import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.themes.Theme;
 
+@Deprecated
 public class Button extends MaterialButton implements ThemeChangedListener {
     
     /**
