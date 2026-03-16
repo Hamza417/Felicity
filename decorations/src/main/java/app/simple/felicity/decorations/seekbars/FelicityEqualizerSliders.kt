@@ -12,10 +12,12 @@ import android.graphics.RectF
 import android.os.VibrationEffect
 import android.util.AttributeSet
 import android.view.MotionEvent
+import android.view.VelocityTracker
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.ColorInt
+import androidx.dynamicanimation.animation.FlingAnimation
 import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
@@ -143,10 +145,23 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
     private val scrollSpring = SpringAnimation(this, scrollOffsetProperty).apply {
         spring = SpringForce().apply {
-            stiffness = SpringForce.STIFFNESS_MEDIUM
+            stiffness = SpringForce.STIFFNESS_VERY_LOW
             dampingRatio = SpringForce.DAMPING_RATIO_NO_BOUNCY
         }
     }
+
+    /**
+     * Fling animation that carries the scroll position forward with momentum after the
+     * finger lifts. Snap-to-bounds is triggered from the end listener so any overshot
+     * position is corrected by the spring.
+     */
+    private val scrollFling = FlingAnimation(this, scrollOffsetProperty).apply {
+        friction = 1.1f
+        addEndListener { _, _, _, _ -> snapScrollToBounds() }
+    }
+
+    /** Tracks raw touch velocity during scroll gestures to seed [scrollFling] on finger lift. */
+    private var velocityTracker: VelocityTracker? = null
 
     // -------------------------------------------------------------------------
     // Touch state
@@ -165,8 +180,6 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
     private var touchStartX = 0f
     private var touchStartY = 0f
-    private var touchLastX = 0f
-    private var touchLastY = 0f
     private var scrollOffsetAtDown = 0f
 
     /** Y coordinate (in view space) of the thumb centre at touch-down time for the active band. */
@@ -235,7 +248,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     private val gripLineHalfLengthFraction = 0.52f
 
     /** Vertical spacing between the three grip lines as a fraction of thumb half-height. */
-    private val gripLineSpacingFraction = 0.38f
+    private val gripLineSpacingFraction = 0.18f
 
     /** Vertical padding above the topmost thumb position and below the bottommost. */
     private val sliderVerticalPaddingPx = thumbHalfHeightPx + 4f * d
@@ -259,18 +272,25 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
     @ColorInt
     private var trackColor = Color.DKGRAY
+
     @ColorInt
     private var accentColor = Color.WHITE
+
     @ColorInt
     private var thumbRingColor = Color.WHITE
+
     @ColorInt
     private var thumbInnerColor = Color.WHITE
+
     @ColorInt
     private var primaryTextColor = Color.WHITE
+
     @ColorInt
     private var secondaryTextColor = Color.GRAY
+
     @ColorInt
     private var centerLineColor = Color.GRAY
+
     @ColorInt
     private var bezierColor = Color.WHITE
 
@@ -312,6 +332,24 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
      * mimicking the tactile ridges found on professional hardware faders.
      */
     private val gripLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
+    /**
+     * Paint for the accent-colored progress segment on each vertical track,
+     * drawn between the 0 dB reference position and the current thumb position.
+     */
+    private val trackProgressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
+    /**
+     * Blurred, wider version of [trackProgressPaint] used to produce a faint glow on
+     * the progress segment of the track when the shadow effect is enabled.
+     */
+    private val trackGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
     }
@@ -390,6 +428,13 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         gripLinePaint.alpha = 130
         gripLinePaint.strokeWidth = gripLineStrokePx
 
+        // Track progress segment: accent color, same width as track
+        trackProgressPaint.color = accentColor
+        trackProgressPaint.strokeWidth = trackStrokePx
+
+        // Track glow: same color, wider — alpha and blur set in updateShadowEffect
+        trackGlowPaint.color = accentColor
+
         pressRingPaint.color = accentColor
         pressRingPaint.strokeWidth = 1.5f * d
 
@@ -424,9 +469,16 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
             bezierGlowPaint.maskFilter = BlurMaskFilter(blurRadius, BlurMaskFilter.Blur.NORMAL)
             bezierGlowPaint.strokeWidth = bezierStrokePx * 2.8f
             bezierGlowPaint.alpha = 55
+
+            val trackBlurRadius = trackStrokePx * 3f
+            trackGlowPaint.maskFilter = BlurMaskFilter(trackBlurRadius, BlurMaskFilter.Blur.NORMAL)
+            trackGlowPaint.strokeWidth = trackStrokePx * 3.5f
+            trackGlowPaint.alpha = 65
+
             setLayerType(LAYER_TYPE_SOFTWARE, null)
         } else {
             bezierGlowPaint.maskFilter = null
+            trackGlowPaint.maskFilter = null
             setLayerType(LAYER_TYPE_HARDWARE, null)
         }
         invalidate()
@@ -568,8 +620,8 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         val visibleRight = width.toFloat() + columnWidth
 
         drawCenterLine(canvas)
-        drawTracksAndThumbs(canvas, visibleLeft, visibleRight)
         drawBezierCurve(canvas)
+        drawTracksAndThumbs(canvas, visibleLeft, visibleRight)
         drawLabels(canvas, visibleLeft, visibleRight)
     }
 
@@ -585,15 +637,27 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
      * Draws all vertical track lines and their fader-style pill thumbs with grip lines.
      */
     private fun drawTracksAndThumbs(canvas: Canvas, visibleLeft: Float, visibleRight: Float) {
+        val zeroY = gainToThumbY(0f)
+
         for (i in 0 until BAND_COUNT) {
             val cx = bandCenterX(i)
             if (cx < visibleLeft || cx > visibleRight) continue
 
-            // Vertical track line
+            val thumbY = gainToThumbY(displayGains[i])
+
+            // Full background track line
             canvas.drawLine(cx, trackTop, cx, trackBottom, trackPaint)
 
-            // Thumb
-            val thumbY = gainToThumbY(displayGains[i])
+            // Accent-colored progress segment between the 0 dB line and the thumb
+            val progressTop = minOf(zeroY, thumbY)
+            val progressBottom = maxOf(zeroY, thumbY)
+            if (progressBottom > progressTop) {
+                if (shadowEffectEnabled) {
+                    canvas.drawLine(cx, progressTop, cx, progressBottom, trackGlowPaint)
+                }
+                canvas.drawLine(cx, progressTop, cx, progressBottom, trackProgressPaint)
+            }
+
             val scale = pressScales[i]
             val halfW = thumbHalfWidthPx * scale
             val halfH = thumbHalfHeightPx * scale
@@ -733,29 +797,35 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     private fun handleDown(event: MotionEvent) {
         touchStartX = event.x
         touchStartY = event.y
-        touchLastX = event.x
-        touchLastY = event.y
         scrollOffsetAtDown = scrollOffset
         isScrollGesture = false
         isBandGesture = false
 
+        // Cancel any running momentum animations so touch feels immediately responsive
         if (scrollSpring.isRunning) scrollSpring.cancel()
+        if (scrollFling.isRunning) scrollFling.cancel()
+
+        // Begin velocity tracking for potential fling on release
+        velocityTracker?.recycle()
+        velocityTracker = VelocityTracker.obtain()
+        velocityTracker?.addMovement(event)
 
         val band = bandIndexAtX(event.x)
         if (band >= 0) {
             thumbYAtDown = gainToThumbY(displayGains[band])
+            // Give immediate visual and haptic feedback on touch-down, before any gesture is committed
+            startPressAnimation(band, true)
+            context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
         }
         activeBandIndex = band
 
-        // Acknowledge touch on a band with a subtle tick
-        if (band >= 0) {
-            context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
-        }
 
         parent?.requestDisallowInterceptTouchEvent(true)
     }
 
     private fun handleMove(event: MotionEvent) {
+        velocityTracker?.addMovement(event)
+
         val dx = event.x - touchStartX
         val dy = event.y - touchStartY
 
@@ -765,8 +835,11 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
             if (adx > touchSlop || ady > touchSlop) {
                 isBandGesture = activeBandIndex >= 0 && ady > adx * 0.8f
                 isScrollGesture = !isBandGesture && adx > ady * 0.8f
-                if (isBandGesture && activeBandIndex >= 0) {
-                    startPressAnimation(activeBandIndex, true)
+
+                // If the gesture resolves to horizontal scroll, immediately release the
+                // press animation that was started speculatively in handleDown
+                if (isScrollGesture && activeBandIndex >= 0) {
+                    startPressAnimation(activeBandIndex, false)
                 }
             }
         }
@@ -806,18 +879,36 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
                 invalidate()
             }
         }
-
-        touchLastX = event.x
-        touchLastY = event.y
     }
 
     private fun handleUp(@Suppress("UNUSED_PARAMETER") event: MotionEvent) {
-        if (isBandGesture && activeBandIndex >= 0) {
+        // Always release the press state for any band that was touched, regardless of whether
+        // the gesture was ultimately classified as a band-drag or a horizontal scroll
+        if (activeBandIndex >= 0) {
             startPressAnimation(activeBandIndex, false)
         }
+
         if (isScrollGesture && !centeredMode) {
-            snapScrollToBounds()
+            // Compute current scroll velocity and seed a fling animation
+            velocityTracker?.computeCurrentVelocity(1000)
+            val xVelocity = velocityTracker?.xVelocity ?: 0f
+            // Negate: finger moving left → xVelocity < 0 → scroll offset increases → positive fling
+            val flingVelocity = -xVelocity
+
+            if (abs(flingVelocity) > 50f) {
+                if (scrollFling.isRunning) scrollFling.cancel()
+                scrollFling.setMinValue(-maxOverscrollPx)
+                scrollFling.setMaxValue(maxScroll + maxOverscrollPx)
+                scrollFling.setStartVelocity(flingVelocity)
+                scrollFling.setStartValue(scrollOffset)
+                scrollFling.start()
+            } else {
+                snapScrollToBounds()
+            }
         }
+
+        velocityTracker?.recycle()
+        velocityTracker = null
 
         activeBandIndex = -1
         isScrollGesture = false
@@ -941,6 +1032,9 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
             ThemeManager.removeListener(this)
         }
         scrollSpring.cancel()
+        scrollFling.cancel()
+        velocityTracker?.recycle()
+        velocityTracker = null
         gainAnimators.forEach { it?.cancel() }
         pressScaleAnimators.forEach { it?.cancel() }
     }
