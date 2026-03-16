@@ -60,6 +60,21 @@ object EqualizerPreferences {
      * Use this to compensate for overall loudness without affecting the EQ curve shape.
      */
     const val PREAMP_DB = "eq_preamp_db"
+
+    /**
+     * Bass low-shelf gain stored as a float in [-12 .. +12] dB.
+     * Applied via a second-order RBJ low-shelf biquad at 250 Hz (S = 1).
+     * 0.0 dB = flat bypass (default).
+     */
+    const val BASS_DB = "eq_bass_db"
+
+    /**
+     * Treble high-shelf gain stored as a float in [-12 .. +12] dB.
+     * Applied via a second-order RBJ high-shelf biquad at 4000 Hz (S = 1).
+     * 0.0 dB = flat bypass (default).
+     */
+    const val TREBLE_DB = "eq_treble_db"
+
     fun setBalance(pan: Float) {
         SharedPreferences.getSharedPreferences().edit { putFloat(BALANCE, pan.coerceIn(-1f, 1f)) }
     }
@@ -188,5 +203,45 @@ object EqualizerPreferences {
                 putFloat(EQ_BAND_KEY_PREFIX + i, if (i < gains.size) gains[i].coerceIn(-15f, 15f) else 0f)
             }
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Bass and treble tone controls
+    // -------------------------------------------------------------------------
+
+    /**
+     * Persists the bass low-shelf gain in dB, clamped to [-12 .. +12].
+     * Applied by the BassAudioProcessor as a second-order low-shelf biquad at 250 Hz.
+     *
+     * @param db Gain in dB. 0.0 = flat bypass (default).
+     */
+    fun setBassDb(db: Float) {
+        SharedPreferences.getSharedPreferences().edit { putFloat(BASS_DB, db.coerceIn(-12f, 12f)) }
+    }
+
+    /**
+     * Returns the persisted bass low-shelf gain in dB.
+     * Defaults to 0.0 dB (flat bypass) when no value has been saved yet.
+     */
+    fun getBassDb(): Float {
+        return SharedPreferences.getSharedPreferences().getFloat(BASS_DB, 0f)
+    }
+
+    /**
+     * Persists the treble high-shelf gain in dB, clamped to [-12 .. +12].
+     * Applied by the TrebleAudioProcessor as a second-order high-shelf biquad at 4000 Hz.
+     *
+     * @param db Gain in dB. 0.0 = flat bypass (default).
+     */
+    fun setTrebleDb(db: Float) {
+        SharedPreferences.getSharedPreferences().edit { putFloat(TREBLE_DB, db.coerceIn(-12f, 12f)) }
+    }
+
+    /**
+     * Returns the persisted treble high-shelf gain in dB.
+     * Defaults to 0.0 dB (flat bypass) when no value has been saved yet.
+     */
+    fun getTrebleDb(): Float {
+        return SharedPreferences.getSharedPreferences().getFloat(TREBLE_DB, 0f)
     }
 }

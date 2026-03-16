@@ -83,6 +83,18 @@ class AudioProcessorManager {
     val nightModeProcessor: NightModeAudioProcessor = NightModeAudioProcessor()
 
     /**
+     * Low-shelf biquad filter for broad bass tone control (shelf at 250 Hz, S = 1).
+     * Starts in flat bypass state (0 dB). Updated via [applyBass].
+     */
+    val bassProcessor: BassAudioProcessor = BassAudioProcessor()
+
+    /**
+     * High-shelf biquad filter for broad treble tone control (shelf at 4000 Hz, S = 1).
+     * Starts in flat bypass state (0 dB). Updated via [applyTreble].
+     */
+    val trebleProcessor: TrebleAudioProcessor = TrebleAudioProcessor()
+
+    /**
      * Passthrough processor that performs a Hanning-windowed FFT on the final processed audio
      * and delivers 40 log-spaced frequency band magnitudes to any attached
      * [VisualizerAudioProcessor.VisualizerListener].
@@ -142,6 +154,24 @@ class AudioProcessorManager {
      */
     fun applyNightMode(enabled: Boolean) {
         nightModeProcessor.setNightModeEnabled(enabled)
+    }
+
+    /**
+     * Applies a new bass low-shelf gain to [bassProcessor].
+     *
+     * @param db Gain in dB in [-12.0, +12.0]. 0.0 = flat bypass.
+     */
+    fun applyBass(db: Float) {
+        bassProcessor.applyGain(db)
+    }
+
+    /**
+     * Applies a new treble high-shelf gain to [trebleProcessor].
+     *
+     * @param db Gain in dB in [-12.0, +12.0]. 0.0 = flat bypass.
+     */
+    fun applyTreble(db: Float) {
+        trebleProcessor.applyGain(db)
     }
 
     /**

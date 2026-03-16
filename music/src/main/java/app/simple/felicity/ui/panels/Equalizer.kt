@@ -130,6 +130,56 @@ class Equalizer : MediaFragment() {
     // -------------------------------------------------------------------------
 
     private fun setupKnobs() {
+        // Bass knob (low-shelf at 250 Hz).
+        // Knob value 0-100 maps to gain -12 dB (full cut) … 0 dB (center) … +12 dB (full boost).
+        binding.bassKnob.centerSnapEnabled = true
+        binding.bassKnob.setTickTexts("-12", "+12")
+        binding.bassKnob.divisionCount = 24 * 2
+        binding.bassKnob.setKnobPosition(bassDbToKnobValue(EqualizerPreferences.getBassDb()), animate = false)
+        binding.bassKnob.setListener(object : RotaryKnobListener {
+            override fun onIncrement(value: Float) {}
+
+            override fun onRotate(value: Float) {
+                val db = knobValueToBassDb(value)
+                EqualizerPreferences.setBassDb(db)
+                Log.d(TAG, "Bass gain updated: ${db}dB")
+            }
+
+            override fun onLabel(value: Float): String {
+                val db = knobValueToBassDb(value)
+                return when {
+                    db > 0.05f -> "+${"%.1f".format(db)} dB"
+                    db < -0.05f -> "${"%.1f".format(db)} dB"
+                    else -> "0 dB"
+                }
+            }
+        })
+
+        // Treble knob (high-shelf at 4000 Hz).
+        // Knob value 0-100 maps to gain -12 dB (full cut) … 0 dB (center) … +12 dB (full boost).
+        binding.trebleKnob.centerSnapEnabled = true
+        binding.trebleKnob.setTickTexts("-12", "+12")
+        binding.trebleKnob.divisionCount = 24 * 2
+        binding.trebleKnob.setKnobPosition(trebleDbToKnobValue(EqualizerPreferences.getTrebleDb()), animate = false)
+        binding.trebleKnob.setListener(object : RotaryKnobListener {
+            override fun onIncrement(value: Float) {}
+
+            override fun onRotate(value: Float) {
+                val db = knobValueToTrebleDb(value)
+                EqualizerPreferences.setTrebleDb(db)
+                Log.d(TAG, "Treble gain updated: ${db}dB")
+            }
+
+            override fun onLabel(value: Float): String {
+                val db = knobValueToTrebleDb(value)
+                return when {
+                    db > 0.05f -> "+${"%.1f".format(db)} dB"
+                    db < -0.05f -> "${"%.1f".format(db)} dB"
+                    else -> "0 dB"
+                }
+            }
+        })
+
         // Balance knob (constant-power panning).
         // Knob value 0-100 maps to pan -1 (full left) … 0 (center) … +1 (full right).
         binding.balanceKnob.centerSnapEnabled = true
@@ -228,5 +278,17 @@ class Equalizer : MediaFragment() {
 
         /** Maps tape saturation drive [0..4] → knob position [0..100]. */
         fun driveToKnobValue(drive: Float): Float = (drive / 4f * 100f).coerceIn(0f, 100f)
+
+        /** Maps knob position [0..100] → bass/treble gain [-12..+12] dB. */
+        fun knobValueToBassDb(knobValue: Float): Float = ((knobValue - 50f) / 50f * 12f).coerceIn(-12f, 12f)
+
+        /** Maps bass gain [-12..+12] dB → knob position [0..100]. */
+        fun bassDbToKnobValue(db: Float): Float = ((db / 12f * 50f) + 50f).coerceIn(0f, 100f)
+
+        /** Maps knob position [0..100] → treble gain [-12..+12] dB. */
+        fun knobValueToTrebleDb(knobValue: Float): Float = ((knobValue - 50f) / 50f * 12f).coerceIn(-12f, 12f)
+
+        /** Maps treble gain [-12..+12] dB → knob position [0..100]. */
+        fun trebleDbToKnobValue(db: Float): Float = ((db / 12f * 50f) + 50f).coerceIn(0f, 100f)
     }
 }

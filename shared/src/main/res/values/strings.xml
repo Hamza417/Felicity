@@ -272,4 +272,6 @@
     <string name="night_mode">Night Mode</string>
     <string name="apply_equalizer">Apply Equalizer</string>
     <string name="reset">Reset</string>
+    <string name="bass">Bass</string>
+    <string name="treble">Treble</string>
 </resources>

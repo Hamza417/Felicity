@@ -136,6 +136,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 audioProcessorManager.applyKaraokeMode(EqualizerPreferences.isKaraokeModeEnabled())
                 audioProcessorManager.applyNightMode(EqualizerPreferences.isNightModeEnabled())
                 audioProcessorManager.applyEqualizerState()
+                audioProcessorManager.applyBass(EqualizerPreferences.getBassDb())
+                audioProcessorManager.applyTreble(EqualizerPreferences.getTrebleDb())
 
                 // Build the processor array dynamically
                 val processors = mutableListOf<AudioProcessor>()
@@ -150,6 +152,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 }
 
                 processors.add(audioProcessorManager.equalizerProcessor)       // 10-band graphic EQ on the clean mix
+                processors.add(audioProcessorManager.bassProcessor)             // Low-shelf bass tone control
+                processors.add(audioProcessorManager.trebleProcessor)           // High-shelf treble tone control
                 processors.add(audioProcessorManager.karaokeProcessor)         // Center removal before coloring
                 processors.add(audioProcessorManager.tapeSaturationProcessor)  // Harmonic coloring first
                 processors.add(audioProcessorManager.wideningProcessor)        // Then spatial processing
@@ -781,6 +785,16 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             EqualizerPreferences.PREAMP_DB -> {
                 Log.d(TAG, "EQ preamp preference changed")
                 EqualizerManager.applyPreampFromPreference()
+            }
+            EqualizerPreferences.BASS_DB -> {
+                val db = EqualizerPreferences.getBassDb()
+                Log.d(TAG, "Bass gain preference changed to: ${db}dB")
+                audioProcessorManager.applyBass(db)
+            }
+            EqualizerPreferences.TREBLE_DB -> {
+                val db = EqualizerPreferences.getTrebleDb()
+                Log.d(TAG, "Treble gain preference changed to: ${db}dB")
+                audioProcessorManager.applyTreble(db)
             }
             else -> {
                 // Handle each individual EQ band preference change
