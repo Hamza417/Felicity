@@ -7,7 +7,6 @@ import androidx.recyclerview.widget.AsyncDifferConfig
 import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
-import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterStyleGridBinding
@@ -25,7 +24,6 @@ import com.bumptech.glide.Glide
 class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHolder>() {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
-    private var attachedRecyclerView: RecyclerView? = null
 
     // Backing field — always reflects the ID of the song the adapter last highlighted.
     // Write directly (no notifications) to sync without triggering extra redraws.
@@ -115,16 +113,6 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
 
 
     override fun getItemId(position: Int): Long = songs[position].id
-
-    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
-        super.onAttachedToRecyclerView(recyclerView)
-        attachedRecyclerView = recyclerView
-    }
-
-    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
-        super.onDetachedFromRecyclerView(recyclerView)
-        attachedRecyclerView = null
-    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {

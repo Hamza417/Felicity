@@ -63,6 +63,7 @@ class SimpleRotaryKnobDrawable(
 
     private val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
+        setShadowLayer(20f, 0f, 0f, 0x44000000) // Subtle consistent shadow for the knob body.
     }
 
     /**

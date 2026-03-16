@@ -45,7 +45,7 @@ import kotlin.random.Random
  * available for bar or wave growth. Bars always grow upward from the physical
  * view bottom, so this is a pure height cap rather than a start-point offset.
  *
- * Incoming RMS bands are normalised with a fast-attack/slow-release AGC, passed
+ * Incoming RMS bands are normalized with a fast-attack/slow-release AGC, passed
  * through a square-root perceptual curve, and delivered after a configurable
  * latency-compensation delay so the display stays in sync with audible output.
  *
@@ -747,7 +747,7 @@ class FelicityVisualizer @JvmOverloads constructor(
      * Computes the corner radius as a fraction of bar width from the current app preference.
      *
      * [AppearancePreferences.getCornerRadius] returns a value in [1..80]; dividing by
-     * [AppearancePreferences.MAX_CORNER_RADIUS] normalizes it to (0..1], which is then
+     * [AppearancePreferences.MAX_CORNER_RADIUS] normalizes it to (0..1), which is then
      * multiplied by [CORNER_RADIUS_FACTOR] so the corners look proportional to the narrow bars.
      */
     private fun computeCornerFraction(): Float {
@@ -766,7 +766,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         private const val RISE_SPEED = 0.25f
 
         /** Lerp factor per frame when a bar is falling toward a quieter target. */
-        private const val FALL_SPEED = 0.08f
+        private const val FALL_SPEED = 0.04f
 
         /**
          * Gravity added to a cap's downward velocity each frame while it is falling.
@@ -778,7 +778,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         private const val MAX_PEAK_VELOCITY = 0.04f
 
         /** Frames the peak cap holds its highest position before gravity starts. */
-        private const val PEAK_HOLD_FRAMES = 20
+        private const val PEAK_HOLD_FRAMES = 60
 
         /** Change threshold below which a bar is considered idle and animation may stop. */
         private const val IDLE_THRESHOLD = 0.0008f
@@ -820,14 +820,14 @@ class FelicityVisualizer @JvmOverloads constructor(
         private const val PARTICLE_MIN_HEIGHT = 0.15f
 
         /** Particle emission cooldown in frames to prevent flooding. */
-        private const val PARTICLE_COOLDOWN_FRAMES = 12
+        private const val PARTICLE_COOLDOWN_FRAMES = 72
 
         /** Maximum number of simultaneous live particles to cap memory usage. */
         const val MAX_PARTICLES = 120
 
         /** Range of possible initial upward speeds in pixels per frame. */
         private const val PARTICLE_SPEED_MIN = 0.15f
-        private const val PARTICLE_SPEED_RANGE = 0.35f
+        private const val PARTICLE_SPEED_RANGE = 0.85f
 
         /**
          * Alpha multiplier applied each frame.
@@ -842,7 +842,7 @@ class FelicityVisualizer @JvmOverloads constructor(
          * Per-frame vertical speed multiplier.
          * Very close to 1.0 keeps the ascent almost constant, like warm ash buoyed by heat.
          */
-        private const val PARTICLE_VERTICAL_DECAY = 0.6985f
+        private const val PARTICLE_VERTICAL_DECAY = 0.9985f
 
         /**
          * Amplitude scale factor for the secondary (depth) wave layer in [VisualizerMode.WAVE].
