@@ -90,7 +90,7 @@ class FelicityButtonGroup @JvmOverloads constructor(
      */
     var iconSize: Float = dp(18f)
         set(value) {
-            field = value
+            field = dp(value)
             invalidate()
         }
 

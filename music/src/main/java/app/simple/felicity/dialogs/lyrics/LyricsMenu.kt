@@ -5,8 +5,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
+import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogLyricsMenuBinding
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
+import app.simple.felicity.decorations.toggles.ButtonGroupItem
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
 import app.simple.felicity.preferences.LyricsPreferences
 import java.util.Locale
@@ -27,25 +29,26 @@ class LyricsMenu : MediaBottomDialogFragment() {
 
         binding.textSizeSeekbar.setProgress(LyricsPreferences.getLrcTextSize())
 
+        binding.lyricsAlignmentGroup.iconSize = 14F
+        binding.lyricsAlignmentGroup.setButtons(
+                listOf(
+                        ButtonGroupItem(textResId = null, iconResId = R.drawable.ic_align_left_12dp),
+                        ButtonGroupItem(textResId = null, iconResId = R.drawable.ic_align_center_12dp),
+                        ButtonGroupItem(textResId = null, iconResId = R.drawable.ic_align_right_12dp)
+                )
+        )
+
         when (LyricsPreferences.getLrcAlignment()) {
-            LyricsPreferences.LEFT -> binding.left.isChecked = true
-            LyricsPreferences.CENTER -> binding.center.isChecked = true
-            LyricsPreferences.RIGHT -> binding.right.isChecked = true
+            LyricsPreferences.LEFT -> binding.lyricsAlignmentGroup.setSelectedIndex(0)
+            LyricsPreferences.CENTER -> binding.lyricsAlignmentGroup.setSelectedIndex(1)
+            LyricsPreferences.RIGHT -> binding.lyricsAlignmentGroup.setSelectedIndex(2)
         }
 
-        binding.alignmentGroup.addOnButtonCheckedListener { _, i, bool ->
-            if (bool) {
-                when (i) {
-                    binding.left.id -> {
-                        LyricsPreferences.setLrcAlignment(LyricsPreferences.LEFT)
-                    }
-                    binding.center.id -> {
-                        LyricsPreferences.setLrcAlignment(LyricsPreferences.CENTER)
-                    }
-                    binding.right.id -> {
-                        LyricsPreferences.setLrcAlignment(LyricsPreferences.RIGHT)
-                    }
-                }
+        binding.lyricsAlignmentGroup.setOnButtonSelectedListener {
+            when (it) {
+                0 -> LyricsPreferences.setLrcAlignment(LyricsPreferences.LEFT)
+                1 -> LyricsPreferences.setLrcAlignment(LyricsPreferences.CENTER)
+                2 -> LyricsPreferences.setLrcAlignment(LyricsPreferences.RIGHT)
             }
         }
 
