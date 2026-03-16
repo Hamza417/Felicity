@@ -507,7 +507,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         if (isInEditMode.not()) {
             progressColor = ThemeManager.accent.primaryAccentColor
             trackColor = ThemeManager.theme.viewGroupTheme.highlightColor
-            thumbRingColor = Color.WHITE
+            thumbRingColor = ThemeManager.theme.viewGroupTheme.backgroundColor
             thumbInnerColor = progressColor
             smudgeColor = progressColor
             thumbShadowColor = progressColor
@@ -564,7 +564,7 @@ class FelicitySeekbar @JvmOverloads constructor(
      */
     private fun applyShadowEffect(enabled: Boolean, animate: Boolean) {
         val targetSmudge = if (enabled && smudgeEnabled) smudgeRadius else 0f
-        val targetThumbShadow = if (enabled) thumbShadowRadius else 0f
+        val targetThumbShadow = thumbShadowRadius // thumb shadow is always kept active
 
         shadowEffectAnimator?.cancel()
 
