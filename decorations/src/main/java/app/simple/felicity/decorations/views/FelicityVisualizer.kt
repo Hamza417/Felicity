@@ -730,15 +730,10 @@ class FelicityVisualizer @JvmOverloads constructor(
     // ── ThemeChangedListener ──────────────────────────────────────────────────
 
     override fun onAccentChanged(accent: Accent) {
-        // Only update if the caller has not already set a custom palette via setColors().
-        if (barColors.size == 2 &&
-                (barColors[0] == ThemeManager.accent.primaryAccentColor ||
-                        barColors[1] == ThemeManager.accent.secondaryAccentColor)
-        ) {
-            barColors = buildAccentColors()
-            gradient = null
-            invalidate()
-        }
+        super.onAccentChanged(accent)
+        barColors = buildAccentColors()
+        rebuildGradient(width)
+        invalidate()
     }
 
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
