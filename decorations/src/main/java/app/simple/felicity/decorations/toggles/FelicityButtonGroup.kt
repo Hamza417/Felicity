@@ -34,7 +34,7 @@ import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * A custom segmented button group that renders a list of [ButtonGroupItem] objects as a
+ * A custom segmented button group that renders a list of [Button] objects as a
  * horizontally-divided rectangle. The selected segment is highlighted by a sliding indicator
  * that animates with a subtle squiggly motion when the selection changes.
  *
@@ -112,7 +112,7 @@ class FelicityButtonGroup @JvmOverloads constructor(
 
     @ColorInt
     private var iconColor: Int = if (isInEditMode) 0xFF212121.toInt()
-    else ThemeManager.theme.iconTheme?.regularIconColor
+    else ThemeManager.theme.iconTheme?.secondaryIconColor
         ?: ThemeManager.theme.textViewTheme.primaryTextColor
 
     /** Color applied to icons and text that sit on top of the active highlight. */
@@ -146,7 +146,7 @@ class FelicityButtonGroup @JvmOverloads constructor(
     // State
     // -------------------------------------------------------------------------
 
-    private var buttons: List<ButtonGroupItem> = emptyList()
+    private var buttons: List<Button> = emptyList()
     private var drawables: MutableList<Drawable?> = mutableListOf()
     private var selectedIndex: Int = 0
 
@@ -192,15 +192,13 @@ class FelicityButtonGroup @JvmOverloads constructor(
 
     /**
      * Replaces the current list of button items and re-renders the group.
-     * The first button (index 0) becomes selected immediately without animation.
      */
-    fun setButtons(buttons: List<ButtonGroupItem>) {
+    fun setButtons(buttons: List<Button>) {
         this.buttons = buttons
         loadDrawables()
         selectedIndex = 0
         requestLayout()
         post {
-            snapHighlightToIndex(0)
             invalidate()
         }
     }
@@ -222,7 +220,12 @@ class FelicityButtonGroup @JvmOverloads constructor(
      * @param notifyListener Whether to invoke the registered [onButtonSelectedListener].
      */
     fun setSelectedIndex(index: Int, animate: Boolean = true, notifyListener: Boolean = true) {
-        if (index < 0 || index >= buttons.size) return
+        if (index < 0 || index >= buttons.size) {
+            throw IndexOutOfBoundsException(
+                    "Index $index is out of bounds for button count ${buttons.size}" +
+                            ", maybe buttons were not set?")
+        }
+
         val oldIndex = selectedIndex
         selectedIndex = index
         if (animate) {
@@ -651,5 +654,12 @@ class FelicityButtonGroup @JvmOverloads constructor(
         val g = lerp(Color.green(a).toFloat(), Color.green(b).toFloat(), t).toInt()
         val bl = lerp(Color.blue(a).toFloat(), Color.blue(b).toFloat(), t).toInt()
         return Color.rgb(r, g, bl)
+    }
+
+    companion object {
+        data class Button(
+                val textResId: Int? = null,
+                val iconResId: Int? = null,
+        )
     }
 }

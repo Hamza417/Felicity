@@ -8,7 +8,7 @@ import androidx.fragment.app.FragmentManager
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogLyricsMenuBinding
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
-import app.simple.felicity.decorations.toggles.ButtonGroupItem
+import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
 import app.simple.felicity.preferences.LyricsPreferences
 import java.util.Locale
@@ -27,31 +27,9 @@ class LyricsMenu : MediaBottomDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        updateLyricsAlignmentState()
+
         binding.textSizeSeekbar.setProgress(LyricsPreferences.getLrcTextSize())
-
-        binding.lyricsAlignmentGroup.iconSize = 14F
-        binding.lyricsAlignmentGroup.setButtons(
-                listOf(
-                        ButtonGroupItem(textResId = null, iconResId = R.drawable.ic_align_left_12dp),
-                        ButtonGroupItem(textResId = null, iconResId = R.drawable.ic_align_center_12dp),
-                        ButtonGroupItem(textResId = null, iconResId = R.drawable.ic_align_right_12dp)
-                )
-        )
-
-        when (LyricsPreferences.getLrcAlignment()) {
-            LyricsPreferences.LEFT -> binding.lyricsAlignmentGroup.setSelectedIndex(0)
-            LyricsPreferences.CENTER -> binding.lyricsAlignmentGroup.setSelectedIndex(1)
-            LyricsPreferences.RIGHT -> binding.lyricsAlignmentGroup.setSelectedIndex(2)
-        }
-
-        binding.lyricsAlignmentGroup.setOnButtonSelectedListener {
-            when (it) {
-                0 -> LyricsPreferences.setLrcAlignment(LyricsPreferences.LEFT)
-                1 -> LyricsPreferences.setLrcAlignment(LyricsPreferences.CENTER)
-                2 -> LyricsPreferences.setLrcAlignment(LyricsPreferences.RIGHT)
-            }
-        }
-
         binding.textSizeSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
             override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
                 if (fromUser) {
@@ -75,6 +53,31 @@ class LyricsMenu : MediaBottomDialogFragment() {
         binding.delete.setOnClickListener {
             menuListener?.onLyricsDelete()
             dismiss()
+        }
+    }
+
+    fun updateLyricsAlignmentState() {
+        binding.lyricsAlignmentGroup.iconSize = 14F
+        binding.lyricsAlignmentGroup.setButtons(
+                listOf(
+                        Button(textResId = null, iconResId = R.drawable.ic_align_left_12dp),
+                        Button(textResId = null, iconResId = R.drawable.ic_align_center_12dp),
+                        Button(textResId = null, iconResId = R.drawable.ic_align_right_12dp)
+                )
+        )
+
+        when (LyricsPreferences.getLrcAlignment()) {
+            LyricsPreferences.LEFT -> binding.lyricsAlignmentGroup.setSelectedIndex(0)
+            LyricsPreferences.CENTER -> binding.lyricsAlignmentGroup.setSelectedIndex(1)
+            LyricsPreferences.RIGHT -> binding.lyricsAlignmentGroup.setSelectedIndex(2)
+        }
+
+        binding.lyricsAlignmentGroup.setOnButtonSelectedListener {
+            when (it) {
+                0 -> LyricsPreferences.setLrcAlignment(LyricsPreferences.LEFT)
+                1 -> LyricsPreferences.setLrcAlignment(LyricsPreferences.CENTER)
+                2 -> LyricsPreferences.setLrcAlignment(LyricsPreferences.RIGHT)
+            }
         }
     }
 

@@ -12,12 +12,11 @@ import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentEqualizerBinding
 import app.simple.felicity.decorations.knobs.RotaryKnobListener
 import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders
-import app.simple.felicity.decorations.toggles.ButtonGroupItem
+import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
 import kotlinx.coroutines.launch
-import app.simple.felicity.decoration.R as DecorationR
 
 /**
  * Fragment that presents all equalizer controls: the 10-band graphic EQ sliders, balance,
@@ -62,16 +61,20 @@ class Equalizer : MediaFragment() {
 
         setupEqualizerSliders()
         setupKnobs()
+        setupViewFlipper(savedInstanceState)
+    }
 
+    fun setupViewFlipper(savedInstanceState: Bundle?) {
         val initialScreen = savedInstanceState?.getInt(SCREEN_STATE_KEY) ?: 0
         binding.viewFlipper.displayedChild = initialScreen
 
         binding.panelGroup.setButtons(
                 listOf(
-                        ButtonGroupItem(textResId = null, iconResId = DecorationR.drawable.ic_equalizer_16dp),
-                        ButtonGroupItem(textResId = null, iconResId = DecorationR.drawable.ic_knob_16dp),
+                        Button(textResId = null, iconResId = R.drawable.ic_equalizer_16dp),
+                        Button(textResId = null, iconResId = R.drawable.ic_knob_16dp),
                 )
         )
+
         binding.panelGroup.setSelectedIndex(initialScreen, animate = false, notifyListener = false)
         binding.panelGroup.setOnButtonSelectedListener { index ->
             binding.viewFlipper.displayedChild = index

@@ -6,11 +6,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
+import app.simple.felicity.R
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.DialogHomeMenuBinding
+import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.HomePreferences
-import com.google.android.material.button.MaterialButtonToggleGroup
 
 class HomeMenu : ScopedBottomSheetFragment() {
 
@@ -24,29 +25,7 @@ class HomeMenu : ScopedBottomSheetFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Set initial toggle state
-        val currentType = HomePreferences.getHomeLayoutType()
-        binding.gridType.check(
-                if (currentType == CommonPreferencesConstants.GRID_TYPE_GRID) {
-                    binding.grid.id
-                } else {
-                    binding.list.id
-                }
-        )
-
-        binding.gridType.addOnButtonCheckedListener(object : MaterialButtonToggleGroup.OnButtonCheckedListener {
-            override fun onButtonChecked(group: MaterialButtonToggleGroup?, checkedId: Int, isChecked: Boolean) {
-                if (!isChecked) return
-                when (checkedId) {
-                    binding.list.id -> {
-                        HomePreferences.setHomeLayoutType(CommonPreferencesConstants.GRID_TYPE_LIST)
-                    }
-                    binding.grid.id -> {
-                        HomePreferences.setHomeLayoutType(CommonPreferencesConstants.GRID_TYPE_GRID)
-                    }
-                }
-            }
-        })
+        updateGridTypeState()
 
         binding.reset.setOnClickListener {
             HomePreferences.resetHomeOrder()
@@ -54,6 +33,27 @@ class HomeMenu : ScopedBottomSheetFragment() {
 
         binding.openAppSettings.setOnClickListener {
             openAppSettings()
+        }
+    }
+
+    private fun updateGridTypeState() {
+        binding.gridTypeGroup.setButtons(
+                listOf(
+                        Button(textResId = null, iconResId = R.drawable.ic_grid_16dp),
+                        Button(textResId = null, iconResId = R.drawable.ic_list_16dp)
+                )
+        )
+
+        when (HomePreferences.getHomeLayoutType()) {
+            CommonPreferencesConstants.GRID_TYPE_GRID -> binding.gridTypeGroup.setSelectedIndex(0)
+            CommonPreferencesConstants.GRID_TYPE_LIST -> binding.gridTypeGroup.setSelectedIndex(1)
+        }
+
+        binding.gridTypeGroup.setOnButtonSelectedListener {
+            when (it) {
+                0 -> HomePreferences.setHomeLayoutType(CommonPreferencesConstants.GRID_TYPE_GRID)
+                1 -> HomePreferences.setHomeLayoutType(CommonPreferencesConstants.GRID_TYPE_LIST)
+            }
         }
     }
 
