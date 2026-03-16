@@ -93,10 +93,10 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         )
 
         /** Exponential decay factor for overscroll resistance (in px). A larger value = less resistance. */
-        private const val OVERSCROLL_DECAY_FACTOR = 200f
+        private const val OVERSCROLL_DECAY_FACTOR = 400f
 
         /** Maximum visual overscroll displacement in dp. */
-        private const val MAX_OVERSCROLL_DP = 64f
+        private const val MAX_OVERSCROLL_DP = 128f
 
         private const val TAG = "FelicityEqualizerSliders"
     }
@@ -145,7 +145,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
     private val scrollSpring = SpringAnimation(this, scrollOffsetProperty).apply {
         spring = SpringForce().apply {
-            stiffness = SpringForce.STIFFNESS_VERY_LOW
+            stiffness = SpringForce.STIFFNESS_LOW
             dampingRatio = SpringForce.DAMPING_RATIO_NO_BOUNCY
         }
     }
@@ -254,7 +254,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     private val sliderVerticalPaddingPx = thumbHalfHeightPx + 4f * d
 
     /** Gap between track bottom and the text area. */
-    private val textGapPx = 32f * d
+    private val textGapPx = 24F * d
 
     /** Press ring outset for the touch halo. */
     private val pressRingOutsetPx = 5f * d

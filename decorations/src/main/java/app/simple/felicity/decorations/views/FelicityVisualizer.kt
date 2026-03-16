@@ -733,6 +733,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         super.onAccentChanged(accent)
         barColors = buildAccentColors()
         rebuildGradient(width)
+        capPaint.color = accent.primaryAccentColor
         invalidate()
     }
 

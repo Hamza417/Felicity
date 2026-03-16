@@ -15,15 +15,18 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
+import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.graphics.scale
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import app.simple.felicity.core.constants.ThemeConstants
 import app.simple.felicity.core.singletons.AppOrientation
+import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.engine.services.FelicityPlayerService
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
@@ -107,6 +110,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         }
     }
 
+    @OptIn(UnstableApi::class)
     private fun initMediaController() {
         val sessionToken =
             SessionToken(this,
@@ -119,6 +123,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
             Log.d(TAG, "MediaController created successfully")
             mediaController = controllerFuture?.get()
             MediaManager.setMediaController(mediaController!!)
+            EqualizerManager.initialize(mediaController!!.audioSessionId)
             restoreLastSongStateFromDatabase()
             generateAlbumArtPalette()
         }

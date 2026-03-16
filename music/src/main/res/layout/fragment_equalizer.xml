@@ -45,6 +45,7 @@
                 android:layout_height="1px" />
 
             <app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders
+                android:id="@+id/equalizer_sliders"
                 android:layout_width="match_parent"
                 android:layout_height="500dp" />
 

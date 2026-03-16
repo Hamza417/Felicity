@@ -32,6 +32,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import app.simple.felicity.engine.R
+import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.engine.notifications.PlaybackErrorNotifier
 import app.simple.felicity.engine.processors.AudioProcessorManager
@@ -568,6 +569,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     }
 
     private val playerListener = object : Player.Listener {
+        override fun onAudioSessionIdChanged(audioSessionId: Int) {
+            super.onAudioSessionIdChanged(audioSessionId)
+            EqualizerManager.initialize(audioSessionId)
+        }
+
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             val format = player.audioFormat
             if (format != null && format.pcmEncoding != C.ENCODING_INVALID) {
@@ -761,6 +767,21 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 Log.d(TAG, "Night mode preference changed to: $enabled")
                 applyNightModeToProcessor(enabled)
             }
+            EqualizerPreferences.EQ_ENABLED -> {
+                val enabled = EqualizerPreferences.isEqEnabled()
+                Log.d(TAG, "Equalizer enabled preference changed to: $enabled")
+                EqualizerManager.setEnabled(enabled)
+            }
+            else -> {
+                // Handle each individual EQ band preference change
+                if (key != null && key.startsWith(EqualizerPreferences.EQ_BAND_KEY_PREFIX)) {
+                    val bandIndex = key.removePrefix(EqualizerPreferences.EQ_BAND_KEY_PREFIX).toIntOrNull()
+                    if (bandIndex != null) {
+                        Log.d(TAG, "EQ band $bandIndex preference changed")
+                        EqualizerManager.applyBandFromPreference(bandIndex)
+                    }
+                }
+            }
         }
     }
 
@@ -775,6 +796,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     override fun onDestroy() {
         savePlaybackStateToDatabase()
         unregisterSharedPreferenceChangeListener()
+
+        // Release the hardware Equalizer before releasing the player so the
+        // audio effect is cleanly detached from the output mix.
+        EqualizerManager.release()
 
         mediaSession?.run {
             player.release()

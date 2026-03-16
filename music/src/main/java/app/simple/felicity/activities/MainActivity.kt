@@ -222,7 +222,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
     private fun startAudioDatabaseService() {
         if (audioDatabaseService.isNull()) {
-            val intent = android.content.Intent(this, AudioDatabaseService::class.java)
+            val intent = Intent(this, AudioDatabaseService::class.java)
             bindService(intent, serviceConnection!!, BIND_AUTO_CREATE)
         }
     }
