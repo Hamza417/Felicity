@@ -23,7 +23,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:paddingHorizontal="@dimen/padding_20">
+                android:paddingHorizontal="@dimen/padding_15">
 
                 <app.simple.felicity.decorations.typeface.TypeFaceTextView
                     android:layout_width="0dp"
@@ -32,9 +32,10 @@
                     android:ellipsize="marquee"
                     android:marqueeRepeatLimit="marquee_forever"
                     android:maxLines="1"
+                    android:layout_gravity="center_vertical"
                     android:singleLine="true"
                     android:text="@string/app_name"
-                    android:textSize="@dimen/text_size_48"
+                    android:textSize="@dimen/text_size_36"
                     app:appFontStyle="black"
                     app:textColorStyle="primary" />
 

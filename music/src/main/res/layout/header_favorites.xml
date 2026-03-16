@@ -11,17 +11,18 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingHorizontal="@dimen/padding_20"
+        android:paddingHorizontal="@dimen/padding_15"
         android:orientation="horizontal">
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:textSize="@dimen/text_size_48"
+            android:textSize="@dimen/text_size_36"
             android:maxLines="1"
             android:singleLine="true"
             android:ellipsize="marquee"
+            android:layout_gravity="center_vertical"
             android:marqueeRepeatLimit="marquee_forever"
             android:text="@string/favorites"
             app:appFontStyle="black"
