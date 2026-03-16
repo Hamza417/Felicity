@@ -782,9 +782,15 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> handleDown(event)
-            MotionEvent.ACTION_MOVE -> handleMove(event)
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> handleUp(event)
+            MotionEvent.ACTION_DOWN -> {
+                handleDown(event)
+            }
+            MotionEvent.ACTION_MOVE -> {
+                handleMove(event)
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                handleUp(event)
+            }
         }
         performClick()
         return true
@@ -839,31 +845,33 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
         when {
             isBandGesture && activeBandIndex != NO_ACTIVE_BAND -> {
-                val newGain = thumbYToGain(thumbYAtDown + (event.y - touchStartY)).coerceIn(MIN_DB, MAX_DB)
-                if (activeBandIndex == PREAMP_BAND_INDEX) {
-                    val prev = preampGain
-                    if (newGain != prev) {
-                        if (prev.toInt() != newGain.toInt()) context.vibrateEffect(VibrationEffect.EFFECT_CLICK, TAG)
-                        val hitLimit = (newGain == MIN_DB && prev > MIN_DB) || (newGain == MAX_DB && prev < MAX_DB)
-                        if (hitLimit) context.vibrateEffect(VibrationEffect.EFFECT_HEAVY_CLICK, TAG)
-                        preampGain = newGain
-                        preampGainAnimator?.cancel()
-                        preampDisplayGain = newGain
-                        bandChangedListener?.onBandChanged(PREAMP_BAND_INDEX, newGain, true)
-                        invalidate()
-                    }
-                } else {
-                    val band = activeBandIndex
-                    val prev = gains[band]
-                    if (newGain != prev) {
-                        if (prev.toInt() != newGain.toInt()) context.vibrateEffect(VibrationEffect.EFFECT_CLICK, TAG)
-                        val hitLimit = (newGain == MIN_DB && prev > MIN_DB) || (newGain == MAX_DB && prev < MAX_DB)
-                        if (hitLimit) context.vibrateEffect(VibrationEffect.EFFECT_HEAVY_CLICK, TAG)
-                        gains[band] = newGain
-                        gainAnimators[band]?.cancel()
-                        displayGains[band] = newGain
-                        bandChangedListener?.onBandChanged(band, newGain, true)
-                        invalidate()
+                if (isEnabled) {
+                    val newGain = thumbYToGain(thumbYAtDown + (event.y - touchStartY)).coerceIn(MIN_DB, MAX_DB)
+                    if (activeBandIndex == PREAMP_BAND_INDEX) {
+                        val prev = preampGain
+                        if (newGain != prev) {
+                            if (prev.toInt() != newGain.toInt()) context.vibrateEffect(VibrationEffect.EFFECT_CLICK, TAG)
+                            val hitLimit = (newGain == MIN_DB && prev > MIN_DB) || (newGain == MAX_DB && prev < MAX_DB)
+                            if (hitLimit) context.vibrateEffect(VibrationEffect.EFFECT_HEAVY_CLICK, TAG)
+                            preampGain = newGain
+                            preampGainAnimator?.cancel()
+                            preampDisplayGain = newGain
+                            bandChangedListener?.onBandChanged(PREAMP_BAND_INDEX, newGain, true)
+                            invalidate()
+                        }
+                    } else {
+                        val band = activeBandIndex
+                        val prev = gains[band]
+                        if (newGain != prev) {
+                            if (prev.toInt() != newGain.toInt()) context.vibrateEffect(VibrationEffect.EFFECT_CLICK, TAG)
+                            val hitLimit = (newGain == MIN_DB && prev > MIN_DB) || (newGain == MAX_DB && prev < MAX_DB)
+                            if (hitLimit) context.vibrateEffect(VibrationEffect.EFFECT_HEAVY_CLICK, TAG)
+                            gains[band] = newGain
+                            gainAnimators[band]?.cancel()
+                            displayGains[band] = newGain
+                            bandChangedListener?.onBandChanged(band, newGain, true)
+                            invalidate()
+                        }
                     }
                 }
             }

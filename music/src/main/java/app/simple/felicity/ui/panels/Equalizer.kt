@@ -44,9 +44,11 @@ class Equalizer : MediaFragment() {
         requireHiddenMiniPlayer()
 
         binding.equalizerSwitch.isChecked = EqualizerPreferences.isEqEnabled()
+        updateEqualizerEnabledState(EqualizerPreferences.isEqEnabled(), false)
 
         binding.equalizerSwitch.setOnCheckedChangeListener { _, isChecked ->
             EqualizerPreferences.setEqEnabled(isChecked)
+            updateEqualizerEnabledState(isChecked)
         }
 
         binding.reset.setOnClickListener {
@@ -105,6 +107,21 @@ class Equalizer : MediaFragment() {
                     binding.equalizerSliders.setPreampGain(db, animate = true)
                 }
             }
+        }
+    }
+
+    private fun updateEqualizerEnabledState(isEnabled: Boolean, animate: Boolean = true) {
+        if (animate) {
+            binding.equalizerSliders
+                .animate()
+                .alpha(if (isEnabled) 1f else 0.5f)
+                .setDuration(300)
+                .start()
+
+            binding.equalizerSliders.isEnabled = isEnabled
+        } else {
+            binding.equalizerSliders.alpha = if (isEnabled) 1f else 0.5f
+            binding.equalizerSliders.isEnabled = isEnabled
         }
     }
 
