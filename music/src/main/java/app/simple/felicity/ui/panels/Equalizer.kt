@@ -58,10 +58,6 @@ class Equalizer : MediaFragment() {
             }
         }
 
-        binding.back.setOnClickListener {
-            requireActivity().onBackPressedDispatcher.onBackPressed()
-        }
-
         setupEqualizerSliders()
         setupKnobs()
     }

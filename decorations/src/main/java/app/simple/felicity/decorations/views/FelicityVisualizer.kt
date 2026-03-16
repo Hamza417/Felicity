@@ -842,7 +842,7 @@ class FelicityVisualizer @JvmOverloads constructor(
          * Per-frame vertical speed multiplier.
          * Very close to 1.0 keeps the ascent almost constant, like warm ash buoyed by heat.
          */
-        private const val PARTICLE_VERTICAL_DECAY = 0.9985f
+        private const val PARTICLE_VERTICAL_DECAY = 0.6985f
 
         /**
          * Amplitude scale factor for the secondary (depth) wave layer in [VisualizerMode.WAVE].
