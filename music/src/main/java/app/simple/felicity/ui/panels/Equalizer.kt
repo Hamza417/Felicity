@@ -43,15 +43,15 @@ class Equalizer : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
         requireHiddenMiniPlayer()
 
-        binding.equalizerSwitch.isChecked = EqualizerPreferences.isEqEnabled()
+        binding.equalizerScreen.equalizerSwitch.isChecked = EqualizerPreferences.isEqEnabled()
         updateEqualizerEnabledState(EqualizerPreferences.isEqEnabled(), false)
 
-        binding.equalizerSwitch.setOnCheckedChangeListener { _, isChecked ->
+        binding.equalizerScreen.equalizerSwitch.setOnCheckedChangeListener { _, isChecked ->
             EqualizerPreferences.setEqEnabled(isChecked)
             updateEqualizerEnabledState(isChecked)
         }
 
-        binding.reset.setOnClickListener {
+        binding.equalizerScreen.reset.setOnClickListener {
             withSureDialog {
                 EqualizerManager.resetAllBands()
                 EqualizerPreferences.setPreampDb(0f)
@@ -60,6 +60,21 @@ class Equalizer : MediaFragment() {
 
         setupEqualizerSliders()
         setupKnobs()
+
+        binding.viewFlipper.displayedChild = savedInstanceState?.getInt(SCREEN_STATE_KEY) ?: 0
+        when (binding.viewFlipper.displayedChild) {
+            0 -> binding.equalizer.isChecked = true
+            1 -> binding.speaker.isChecked = true
+        }
+
+        binding.panelGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) {
+                when (checkedId) {
+                    R.id.equalizer -> binding.viewFlipper.displayedChild = 0
+                    R.id.speaker -> binding.viewFlipper.displayedChild = 1
+                }
+            }
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -69,12 +84,12 @@ class Equalizer : MediaFragment() {
     private fun setupEqualizerSliders() {
         // Restore persisted band gains immediately — no animation so UI is ready before
         // the user sees it.
-        binding.equalizerSliders.setAllGains(EqualizerPreferences.getAllBandGains(), animate = false)
-        binding.equalizerSliders.setPreampGain(EqualizerPreferences.getPreampDb(), animate = false)
+        binding.equalizerScreen.equalizerSliders.setAllGains(EqualizerPreferences.getAllBandGains(), animate = false)
+        binding.equalizerScreen.equalizerSliders.setPreampGain(EqualizerPreferences.getPreampDb(), animate = false)
 
         // Forward every user drag to EqualizerManager which persists the value and
         // applies it to the hardware Equalizer in real-time.
-        binding.equalizerSliders.setOnBandChangedListener { bandIndex, gain, fromUser ->
+        binding.equalizerScreen.equalizerSliders.setOnBandChangedListener { bandIndex, gain, fromUser ->
             if (fromUser) {
                 Log.d(TAG, "Band $bandIndex changed to ${gain}dB by user")
                 if (bandIndex == FelicityEqualizerSliders.PREAMP_BAND_INDEX) {
@@ -90,7 +105,7 @@ class Equalizer : MediaFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.bandGainsFlow.collect { gains ->
-                    binding.equalizerSliders.setAllGains(gains, animate = true)
+                    binding.equalizerScreen.equalizerSliders.setAllGains(gains, animate = true)
                 }
             }
         }
@@ -100,7 +115,7 @@ class Equalizer : MediaFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.preampFlow.collect { db ->
-                    binding.equalizerSliders.setPreampGain(db, animate = true)
+                    binding.equalizerScreen.equalizerSliders.setPreampGain(db, animate = true)
                 }
             }
         }
@@ -108,16 +123,16 @@ class Equalizer : MediaFragment() {
 
     private fun updateEqualizerEnabledState(isEnabled: Boolean, animate: Boolean = true) {
         if (animate) {
-            binding.equalizerSliders
+            binding.equalizerScreen.equalizerSliders
                 .animate()
                 .alpha(if (isEnabled) 1f else 0.5f)
                 .setDuration(300)
                 .start()
 
-            binding.equalizerSliders.isEnabled = isEnabled
+            binding.equalizerScreen.equalizerSliders.isEnabled = isEnabled
         } else {
-            binding.equalizerSliders.alpha = if (isEnabled) 1f else 0.5f
-            binding.equalizerSliders.isEnabled = isEnabled
+            binding.equalizerScreen.equalizerSliders.alpha = if (isEnabled) 1f else 0.5f
+            binding.equalizerScreen.equalizerSliders.isEnabled = isEnabled
         }
     }
 
@@ -128,11 +143,11 @@ class Equalizer : MediaFragment() {
     private fun setupKnobs() {
         // Bass knob (low-shelf at 250 Hz).
         // Knob value 0-100 maps to gain -12 dB (full cut) … 0 dB (center) … +12 dB (full boost).
-        binding.bassKnob.centerSnapEnabled = true
-        binding.bassKnob.setTickTexts("-12", "+12")
-        binding.bassKnob.divisionCount = 24 * 2
-        binding.bassKnob.setKnobPosition(bassDbToKnobValue(EqualizerPreferences.getBassDb()), animate = false)
-        binding.bassKnob.setListener(object : RotaryKnobListener {
+        binding.equalizerScreen.bassKnob.centerSnapEnabled = true
+        binding.equalizerScreen.bassKnob.setTickTexts("-12", "+12")
+        binding.equalizerScreen.bassKnob.divisionCount = 24 * 2
+        binding.equalizerScreen.bassKnob.setKnobPosition(bassDbToKnobValue(EqualizerPreferences.getBassDb()), animate = false)
+        binding.equalizerScreen.bassKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -153,11 +168,11 @@ class Equalizer : MediaFragment() {
 
         // Treble knob (high-shelf at 4000 Hz).
         // Knob value 0-100 maps to gain -12 dB (full cut) … 0 dB (center) … +12 dB (full boost).
-        binding.trebleKnob.centerSnapEnabled = true
-        binding.trebleKnob.setTickTexts("-12", "+12")
-        binding.trebleKnob.divisionCount = 24 * 2
-        binding.trebleKnob.setKnobPosition(trebleDbToKnobValue(EqualizerPreferences.getTrebleDb()), animate = false)
-        binding.trebleKnob.setListener(object : RotaryKnobListener {
+        binding.equalizerScreen.trebleKnob.centerSnapEnabled = true
+        binding.equalizerScreen.trebleKnob.setTickTexts("-12", "+12")
+        binding.equalizerScreen.trebleKnob.divisionCount = 24 * 2
+        binding.equalizerScreen.trebleKnob.setKnobPosition(trebleDbToKnobValue(EqualizerPreferences.getTrebleDb()), animate = false)
+        binding.equalizerScreen.trebleKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -178,10 +193,10 @@ class Equalizer : MediaFragment() {
 
         // Balance knob (constant-power panning).
         // Knob value 0-100 maps to pan -1 (full left) … 0 (center) … +1 (full right).
-        binding.balanceKnob.centerSnapEnabled = true
-        binding.balanceKnob.setTickTexts("L", "R")
-        binding.balanceKnob.setKnobPosition(panToKnobValue(EqualizerPreferences.getBalance()), animate = false)
-        binding.balanceKnob.setListener(object : RotaryKnobListener {
+        binding.speakerScreen.balanceKnob.centerSnapEnabled = true
+        binding.speakerScreen.balanceKnob.setTickTexts("L", "R")
+        binding.speakerScreen.balanceKnob.setKnobPosition(panToKnobValue(EqualizerPreferences.getBalance()), animate = false)
+        binding.speakerScreen.balanceKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -202,11 +217,11 @@ class Equalizer : MediaFragment() {
 
         // Stereo widening knob (mid/side matrix).
         // Knob value 0-100 maps to width 0.0 (mono) … 1.0 (normal) … 2.0 (max wide).
-        binding.stereoWideningKnob.centerSnapEnabled = true
-        binding.stereoWideningKnob.setTickTexts("M", "W")
-        binding.stereoWideningKnob.setKnobPosition(widthToKnobValue(EqualizerPreferences.getStereoWidth()), animate = false)
-        binding.stereoWideningKnob.divisionCount = 10 * 10
-        binding.stereoWideningKnob.setListener(object : RotaryKnobListener {
+        binding.speakerScreen.stereoWideningKnob.centerSnapEnabled = true
+        binding.speakerScreen.stereoWideningKnob.setTickTexts("M", "W")
+        binding.speakerScreen.stereoWideningKnob.setKnobPosition(widthToKnobValue(EqualizerPreferences.getStereoWidth()), animate = false)
+        binding.speakerScreen.stereoWideningKnob.divisionCount = 10 * 10
+        binding.speakerScreen.stereoWideningKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -228,10 +243,10 @@ class Equalizer : MediaFragment() {
 
         // Tape saturation knob (algebraic soft-clip drive).
         // Knob value 0-100 maps to drive 0.0 (clean/off) … 4.0 (maximum saturation).
-        binding.tapeSaturationKnob.setTickTexts("0", "4")
-        binding.tapeSaturationKnob.setKnobPosition(driveToKnobValue(EqualizerPreferences.getTapeSaturationDrive()), animate = false)
-        binding.tapeSaturationKnob.divisionCount = 4 * 10
-        binding.tapeSaturationKnob.setListener(object : RotaryKnobListener {
+        binding.speakerScreen.tapeSaturationKnob.setTickTexts("0", "4")
+        binding.speakerScreen.tapeSaturationKnob.setKnobPosition(driveToKnobValue(EqualizerPreferences.getTapeSaturationDrive()), animate = false)
+        binding.speakerScreen.tapeSaturationKnob.divisionCount = 4 * 10
+        binding.speakerScreen.tapeSaturationKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -245,6 +260,11 @@ class Equalizer : MediaFragment() {
                 return if (drive < 0.05f) "Off" else "%.1f".format(drive)
             }
         })
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(SCREEN_STATE_KEY, binding.viewFlipper.displayedChild)
     }
 
     companion object {
@@ -286,5 +306,7 @@ class Equalizer : MediaFragment() {
 
         /** Maps treble gain [-12..+12] dB → knob position [0..100]. */
         fun trebleDbToKnobValue(db: Float): Float = ((db / 12f * 50f) + 50f).coerceIn(0f, 100f)
+
+        private const val SCREEN_STATE_KEY = "screen_state"
     }
 }
