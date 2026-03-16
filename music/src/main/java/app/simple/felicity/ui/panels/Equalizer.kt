@@ -70,8 +70,8 @@ class Equalizer : MediaFragment() {
 
         binding.panelGroup.setButtons(
                 listOf(
-                        Button(textResId = null, iconResId = R.drawable.ic_equalizer_16dp),
-                        Button(textResId = null, iconResId = R.drawable.ic_knob_16dp),
+                        Button(iconResId = R.drawable.ic_equalizer_16dp),
+                        Button(iconResId = R.drawable.ic_knob_16dp),
                 )
         )
 

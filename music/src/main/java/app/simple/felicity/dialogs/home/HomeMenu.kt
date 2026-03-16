@@ -39,8 +39,8 @@ class HomeMenu : ScopedBottomSheetFragment() {
     private fun updateGridTypeState() {
         binding.gridTypeGroup.setButtons(
                 listOf(
-                        Button(textResId = null, iconResId = R.drawable.ic_grid_16dp),
-                        Button(textResId = null, iconResId = R.drawable.ic_list_16dp)
+                        Button(iconResId = R.drawable.ic_grid_16dp),
+                        Button(iconResId = R.drawable.ic_list_16dp)
                 )
         )
 

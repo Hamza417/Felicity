@@ -735,6 +735,13 @@ class MiniPlayer @JvmOverloads constructor(
     private var progressBarAlphaAnimator: ValueAnimator? = null
 
     /**
+     * Animator used to tween [progressAccentColor] smoothly when the accent changes
+     * via [onAccentChanged]. Using [ValueAnimator.ofArgb] keeps all accent-tinted
+     * drawing (progress bar, ripple) in lock-step during the color transition.
+     */
+    private var accentColorAnimator: ValueAnimator? = null
+
+    /**
      * Animator used to tween [progress] for large jumps (first value, seek scrub, song change).
      * Canceled immediately for tiny real-time increments to avoid visible lag.
      */
@@ -1928,8 +1935,25 @@ class MiniPlayer @JvmOverloads constructor(
         super.onAccentChanged(accent)
         updateStroke()
         refreshRippleTheme()
-        refreshProgressColors()
-        invalidate()
+
+        val newAccent = accent.primaryAccentColor
+        val oldAccent = progressAccentColor
+
+        if (oldAccent == newAccent) {
+            invalidate()
+            return
+        }
+
+        accentColorAnimator?.cancel()
+        accentColorAnimator = ValueAnimator.ofArgb(oldAccent, newAccent).apply {
+            duration = 300L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener {
+                progressAccentColor = it.animatedValue as Int
+                invalidate()
+            }
+            start()
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -2012,6 +2036,7 @@ class MiniPlayer @JvmOverloads constructor(
         ppAnimator?.cancel()
         ppSlideAnimator?.cancel()
         bgColorAnimator?.cancel()
+        accentColorAnimator?.cancel()
         elevationAnimator?.cancel()
         edgeFadeAnimator?.cancel()
         progressBarAlphaAnimator?.cancel()
@@ -2111,6 +2136,12 @@ class MiniPlayer @JvmOverloads constructor(
             }
             UserInterfacePreferences.MARGIN_AROUND_MINIPLAYER -> {
                 applyMarginMode()
+            }
+            AppearancePreferences.APP_CORNER_RADIUS, AppearancePreferences.APP_FONT -> {
+                applyConfig()
+                rebuildCardClipPath()
+                invalidateOutline()
+                invalidate()
             }
         }
     }

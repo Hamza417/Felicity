@@ -28,10 +28,8 @@ import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.themes.Theme
-import kotlin.math.PI
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sin
 
 /**
  * A custom segmented button group that renders a list of [Button] objects as a
@@ -156,12 +154,6 @@ class FelicityButtonGroup @JvmOverloads constructor(
     /** Current animated right boundary of the highlight rectangle. */
     private var animHighlightRight: Float = 0f
 
-    /**
-     * Squiggle animation intensity, ranging 0 (no deformation) to 1 (max deformation).
-     * This is driven by [sin](PI * animationFraction) so it peaks at the midpoint of
-     * each slide and is zero at the start and end.
-     */
-    private var squiggleFraction: Float = 0.5f
 
     private var slideAnimator: ValueAnimator? = null
     private var onButtonSelectedListener: ((Int) -> Unit)? = null
@@ -295,7 +287,6 @@ class FelicityButtonGroup @JvmOverloads constructor(
                 outerRect.top + highlightMargin,
                 animHighlightRight,
                 outerRect.bottom - highlightMargin,
-                squiggleFraction,
         )
         canvas.drawPath(highlightPath, highlightPaint)
 
@@ -451,12 +442,9 @@ class FelicityButtonGroup @JvmOverloads constructor(
             duration = 380L
             interpolator = DecelerateInterpolator(3F)
             addUpdateListener { anim ->
-                val raw = anim.animatedFraction           // linear 0..1
-                val t = anim.animatedValue as Float       // interpolated 0..1+
+                val t = anim.animatedValue as Float
                 animHighlightLeft = lerp(fromLeft, toLeft, t)
                 animHighlightRight = lerp(fromRight, toRight, t)
-                // Squiggle peaks at the midpoint of the animation and fades to zero.
-                squiggleFraction = sin(PI.toFloat() * raw).coerceIn(0f, 1f)
                 invalidate()
             }
         }
@@ -470,7 +458,6 @@ class FelicityButtonGroup @JvmOverloads constructor(
         val cellWidth = outerRect.width() / count
         animHighlightLeft = outerRect.left + index * cellWidth + highlightMargin
         animHighlightRight = outerRect.left + (index + 1) * cellWidth - highlightMargin
-        squiggleFraction = 0f
     }
 
     // -------------------------------------------------------------------------
@@ -478,68 +465,17 @@ class FelicityButtonGroup @JvmOverloads constructor(
     // -------------------------------------------------------------------------
 
     /**
-     * Builds the highlight shape into [highlightPath]. When [squiggle] is 0 a standard
-     * rounded rectangle is used. When [squiggle] > 0 the left and right vertical edges
-     * are deformed by a small sinusoidal wave, giving the squiggly slide effect.
-     *
-     * The wave amplitude is [squiggle] × 2 dp, so the deformation is very faint.
+     * Builds the highlight shape into [highlightPath] as a plain rounded rectangle.
      */
     private fun buildHighlightPath(
             left: Float,
             top: Float,
             right: Float,
             bottom: Float,
-            squiggle: Float,
     ) {
         highlightPath.reset()
         val r = (containerCornerRadius - highlightMargin).coerceAtLeast(dp(2f))
-        val amp = dp(2f) * squiggle
-
-        // Fast path: use a plain rounded rect when there is no squiggle.
-        if (amp < 0.1f) {
-            highlightPath.addRoundRect(RectF(left, top, right, bottom), r, r, Path.Direction.CW)
-            return
-        }
-
-        val innerH = bottom - top - 2f * r
-        val steps = 20
-        val freq = 2f * PI.toFloat()
-
-        // Top edge (left corner end → right corner start)
-        highlightPath.moveTo(left + r, top)
-        highlightPath.lineTo(right - r, top)
-
-        // Top-right arc (sweeps from 270° to 360°)
-        highlightPath.arcTo(RectF(right - 2f * r, top, right, top + 2f * r), -90f, 90f)
-
-        // Right edge going downward with sinusoidal deformation
-        for (i in 1..steps) {
-            val t = i.toFloat() / steps
-            val y = top + r + t * innerH
-            val x = right + amp * sin(freq * t)
-            highlightPath.lineTo(x, y)
-        }
-
-        // Bottom-right arc (sweeps from 0° to 90°)
-        highlightPath.arcTo(RectF(right - 2f * r, bottom - 2f * r, right, bottom), 0f, 90f)
-
-        // Bottom edge (right corner end → left corner start)
-        highlightPath.lineTo(left + r, bottom)
-
-        // Bottom-left arc (sweeps from 90° to 180°)
-        highlightPath.arcTo(RectF(left, bottom - 2f * r, left + 2f * r, bottom), 90f, 90f)
-
-        // Left edge going upward with sinusoidal deformation (opposite phase for elastic look)
-        for (i in 1..steps) {
-            val t = i.toFloat() / steps
-            val y = bottom - r - t * innerH
-            val x = left - amp * sin(freq * t)
-            highlightPath.lineTo(x, y)
-        }
-
-        // Top-left arc (sweeps from 180° to 270°)
-        highlightPath.arcTo(RectF(left, top, left + 2f * r, top + 2f * r), 180f, 90f)
-        highlightPath.close()
+        highlightPath.addRoundRect(RectF(left, top, right, bottom), r, r, Path.Direction.CW)
     }
 
     // -------------------------------------------------------------------------

@@ -60,9 +60,9 @@ class LyricsMenu : MediaBottomDialogFragment() {
         binding.lyricsAlignmentGroup.iconSize = 14F
         binding.lyricsAlignmentGroup.setButtons(
                 listOf(
-                        Button(textResId = null, iconResId = R.drawable.ic_align_left_12dp),
-                        Button(textResId = null, iconResId = R.drawable.ic_align_center_12dp),
-                        Button(textResId = null, iconResId = R.drawable.ic_align_right_12dp)
+                        Button(iconResId = R.drawable.ic_align_left_12dp),
+                        Button(iconResId = R.drawable.ic_align_center_12dp),
+                        Button(iconResId = R.drawable.ic_align_right_12dp)
                 )
         )
 
