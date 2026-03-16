@@ -5,9 +5,11 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.graphics.Shader
 import android.os.VibrationEffect
 import android.util.AttributeSet
 import android.view.MotionEvent
@@ -286,6 +288,15 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
     }
 
+    /**
+     * Filled gradient paint used to draw the translucent fade below the bezier curve.
+     * The [LinearGradient] shader is rebuilt dynamically in [drawBezierFill] each frame
+     * because the gradient bounds change as the user drags the band thumbs.
+     */
+    private val bezierFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+
     private val thumbInnerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val thumbRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val gripLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -316,6 +327,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     }
 
     private val bezierPath = Path()
+    private val bezierFillPath = Path()
     private val thumbRect = RectF()
     private val pressRingRect = RectF()
 
@@ -452,6 +464,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     }
 
     private fun recalculateLayout(w: Int, h: Int) {
+        val availableWidth = w - paddingStart - paddingEnd
         columnWidth = bandSpacingDp * d
         contentWidth = columnWidth * TOTAL_COLUMNS
 
@@ -465,9 +478,11 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         trackBottom = textRegionTop - textGapPx
         trackLength = trackBottom - trackTop
 
-        centeredMode = contentWidth <= w
-        centeringOffset = if (centeredMode) (w - contentWidth) / 2f else 0f
-        maxScroll = if (centeredMode) 0f else (contentWidth - w).coerceAtLeast(0f)
+        centeredMode = contentWidth <= availableWidth
+        // centeringOffset includes paddingStart so all column positions automatically
+        // respect horizontal padding without any additional adjustments in the draw methods.
+        centeringOffset = paddingStart.toFloat() + if (centeredMode) (availableWidth - contentWidth) / 2f else 0f
+        maxScroll = if (centeredMode) 0f else (contentWidth - availableWidth).coerceAtLeast(0f)
         scrollOffset = scrollOffset.coerceIn(0f, maxScroll)
     }
 
@@ -595,6 +610,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
         drawPreampBackground(canvas)
         drawCenterLine(canvas)
+        drawBezierFill(canvas)
         drawBezierCurve(canvas)
         drawPreampSeparator(canvas)
         drawTracksAndThumbs(canvas, visibleLeft, visibleRight)
@@ -733,6 +749,59 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         canvas.drawPath(bezierPath, bezierPaint)
     }
 
+    /**
+     * Draws a translucent gradient fill below the Catmull-Rom spline to add visual depth.
+     *
+     * The filled path traces the same spline as [drawBezierCurve] and then closes
+     * downward to [trackBottom]. A vertical [LinearGradient] fades from the accent
+     * color (low opacity) at the topmost visible point of the curve to fully transparent
+     * at [trackBottom], so the fill never reaches the label row at the bottom of the view.
+     *
+     * Must be called BEFORE [drawBezierCurve] in [onDraw] so the stroke renders on top.
+     */
+    private fun drawBezierFill(canvas: Canvas) {
+        bezierFillPath.reset()
+
+        val pts = Array(BAND_COUNT) { i -> Pair(bandCenterX(i), gainToThumbY(displayGains[i])) }
+
+        // Trace the same Catmull-Rom spline as drawBezierCurve.
+        bezierFillPath.moveTo(pts[0].first, pts[0].second)
+        for (i in 0 until BAND_COUNT - 1) {
+            val p0 = if (i > 0) pts[i - 1] else pts[i]
+            val p1 = pts[i]
+            val p2 = pts[i + 1]
+            val p3 = if (i < BAND_COUNT - 2) pts[i + 2] else pts[i + 1]
+            val cp1x = p1.first + (p2.first - p0.first) / 6f
+            val cp1y = p1.second + (p2.second - p0.second) / 6f
+            val cp2x = p2.first - (p3.first - p1.first) / 6f
+            val cp2y = p2.second - (p3.second - p1.second) / 6f
+            bezierFillPath.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.first, p2.second)
+        }
+
+        // Close the path straight down to trackBottom, across, and back up to the start,
+        // so the filled area sits entirely below the spline line.
+        bezierFillPath.lineTo(pts.last().first, trackBottom)
+        bezierFillPath.lineTo(pts.first().first, trackBottom)
+        bezierFillPath.close()
+
+        // Gradient runs from the topmost (smallest Y) visible curve point to trackBottom.
+        // This makes the fill feel anchored to wherever the curve sits at any given moment.
+        val topY = pts.minOf { it.second }
+        val r = Color.red(bezierColor)
+        val g = Color.green(bezierColor)
+        val b = Color.blue(bezierColor)
+
+        bezierFillPaint.shader = LinearGradient(
+                0f, topY,
+                0f, trackBottom,
+                Color.argb(52, r, g, b),
+                Color.TRANSPARENT,
+                Shader.TileMode.CLAMP
+        )
+
+        canvas.drawPath(bezierFillPath, bezierFillPaint)
+    }
+
     /** Draws frequency and dB-value labels for the 10 EQ bands. */
     private fun drawLabels(canvas: Canvas, visibleLeft: Float, visibleRight: Float) {
         val freqY = textRegionTop + freqTextPaint.fontSpacing * 0.85f
@@ -779,6 +848,11 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                // Only claim the event when the finger lands inside the slider content area.
+                // In landscape mode (or any configuration where the content is narrower than
+                // the view), touches in the horizontal blank/padding regions are passed back
+                // to the parent so they don't block scroll containers or other gestures.
+                if (!isTouchWithinContentBounds(event.x)) return false
                 handleDown(event)
             }
             MotionEvent.ACTION_MOVE -> {
@@ -790,6 +864,20 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         }
         performClick()
         return true
+    }
+
+    /**
+     * Returns true when [x] falls within the scrollable content area in view coordinates.
+     *
+     * The content spans from [centeringOffset] − [scrollOffset] (left edge of the first
+     * column) to that value plus [contentWidth] (right edge of the last column). Touches
+     * outside this range — e.g. in horizontal padding or centered-mode blank flanks —
+     * should not be consumed by this view.
+     */
+    private fun isTouchWithinContentBounds(x: Float): Boolean {
+        val contentLeft = centeringOffset - scrollOffset
+        val contentRight = contentLeft + contentWidth
+        return x >= contentLeft && x <= contentRight
     }
 
     override fun performClick(): Boolean {
