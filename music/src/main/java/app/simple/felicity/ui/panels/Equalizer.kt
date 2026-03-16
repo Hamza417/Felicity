@@ -5,17 +5,11 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentEqualizerBinding
 import app.simple.felicity.decorations.knobs.RotaryKnobListener
-import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
-import app.simple.felicity.theme.managers.ThemeManager
-import kotlinx.coroutines.launch
 
 /**
  * Fragment that presents all equalizer controls: balance, stereo widening, tape saturation,
@@ -37,39 +31,8 @@ class Equalizer : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
         requireHiddenMiniPlayer()
 
-        // Collect real-time spectrum data and push it to the visualizer view.
-        // repeatOnLifecycle(STARTED) automatically stops collection when the fragment
-        // is paused/stopped (off-screen) and resumes when it becomes visible again.
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                VisualizerManager.spectrumFlow.collect { bands ->
-                    binding.visualizer.setBands(bands)
-                }
-            }
-        }
-
-        binding.visualizer.setCapColor(ThemeManager.accent.primaryAccentColor)
-
         binding.back.setOnClickListener {
             requireActivity().onBackPressedDispatcher.onBackPressed()
-        }
-
-        // Karaoke mode: center-channel (vocal) removal via L−R subtraction.
-        // Restoring saved state without triggering the listener to avoid a redundant preference write.
-        binding.karaokeModeSwitch.setOnCheckedChangeListener(null)
-        binding.karaokeModeSwitch.isChecked = EqualizerPreferences.isKaraokeModeEnabled()
-        binding.karaokeModeSwitch.setOnCheckedChangeListener { _, isChecked ->
-            EqualizerPreferences.setKaraokeModeEnabled(isChecked)
-            Log.d(TAG, "Karaoke mode updated: enabled=$isChecked")
-        }
-
-        // Night mode: dynamic compressor/limiter for late-night listening.
-        // Restoring saved state without triggering the listener to avoid a redundant preference write.
-        binding.nightModeSwitch.setOnCheckedChangeListener(null)
-        binding.nightModeSwitch.isChecked = EqualizerPreferences.isNightModeEnabled()
-        binding.nightModeSwitch.setOnCheckedChangeListener { _, isChecked ->
-            EqualizerPreferences.setNightModeEnabled(isChecked)
-            Log.d(TAG, "Night mode updated: enabled=$isChecked")
         }
 
         // Balance knob (constant-power panning).
