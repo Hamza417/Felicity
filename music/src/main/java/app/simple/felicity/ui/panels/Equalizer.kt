@@ -43,6 +43,19 @@ class Equalizer : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
         requireHiddenMiniPlayer()
 
+        binding.equalizerSwitch.isChecked = EqualizerPreferences.isEqEnabled()
+
+        binding.equalizerSwitch.setOnCheckedChangeListener { _, isChecked ->
+            EqualizerPreferences.setEqEnabled(isChecked)
+        }
+
+        binding.reset.setOnClickListener {
+            withSureDialog {
+                EqualizerManager.resetAllBands()
+                EqualizerPreferences.setPreampDb(0f)
+            }
+        }
+
         binding.back.setOnClickListener {
             requireActivity().onBackPressedDispatcher.onBackPressed()
         }

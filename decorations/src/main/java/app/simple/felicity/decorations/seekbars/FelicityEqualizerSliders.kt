@@ -290,28 +290,12 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
     }
 
-    /**
-     * Pseudo-glow paint for the Bézier curve. Drawn as a wider, semi-transparent stroke
-     * before the main curve. No [android.graphics.BlurMaskFilter] is used so the view
-     * stays on the hardware-accelerated layer and avoids per-frame software rasterization.
-     */
-    private val bezierGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
-    }
-
     private val thumbInnerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val thumbRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val gripLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
     }
     private val trackProgressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
-    }
-
-    /**
-     * Pseudo-glow for the track progress segment. Wider + alpha, no blur.
-     */
-    private val trackGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
     }
 
@@ -378,7 +362,6 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         bezierPaint.color = bezierColor
         bezierPaint.strokeWidth = bezierStrokePx
 
-        bezierGlowPaint.color = bezierColor
 
         thumbInnerPaint.color = thumbInnerColor
         thumbRingPaint.color = thumbRingColor
@@ -391,7 +374,6 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         trackProgressPaint.color = accentColor
         trackProgressPaint.strokeWidth = trackStrokePx
 
-        trackGlowPaint.color = accentColor
 
         pressRingPaint.color = accentColor
         pressRingPaint.strokeWidth = 1.5f * d
@@ -413,33 +395,53 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         separatorPaint.color = centerLineColor
         separatorPaint.strokeWidth = 1f * d
         separatorPaint.alpha = 90
+
+        // Re-apply shadow layers so the glow color tracks accent/theme changes.
+        applyShadowLayers()
     }
 
     private fun setupTextPaints() {
         if (!isInEditMode) {
-            val tf = TypeFace.getMediumTypeFace(context)
+            val tf = TypeFace.getBoldTypeFace(context)
             freqTextPaint.typeface = tf
             valueTextPaint.typeface = tf
         }
     }
 
     /**
-     * Configures the pseudo-glow paints.
+     * Applies or removes GPU shadow layers on [bezierPaint] and [trackProgressPaint].
      *
-     * The glow is rendered as a wider, semi-transparent stroke drawn before the main
-     * crisp stroke. This avoids [android.graphics.BlurMaskFilter] which forces software
-     * rasterization and causes frame stutter on complex views.
+     * [Paint.setShadowLayer] is composited on the GPU by the HWUI RenderThread pipeline
+     * (API 28+) without requiring [LAYER_TYPE_SOFTWARE], so the view stays hardware
+     * accelerated and renders at full frame rate. The shadow radius and color are
+     * derived from the current accent color so the glow always matches the UI theme.
+     *
+     * Called from [updateShadowEffect] when the preference changes and from
+     * [applyPaintColors] whenever the accent or theme colors are updated.
+     */
+    private fun applyShadowLayers() {
+        if (shadowEffectEnabled) {
+            val r = Color.red(bezierColor)
+            val g = Color.green(bezierColor)
+            val b = Color.blue(bezierColor)
+            val glowColor = Color.argb(200, r, g, b)
+            val progressGlowColor = Color.argb(160, r, g, b)
+
+            bezierPaint.setShadowLayer(10f * d, 0f, 0f, glowColor)
+            trackProgressPaint.setShadowLayer(8f * d, 0f, 0f, progressGlowColor)
+        } else {
+            bezierPaint.clearShadowLayer()
+            trackProgressPaint.clearShadowLayer()
+        }
+    }
+
+    /**
+     * Reads the shadow-effect preference, updates the shadow layers on the relevant
+     * paints, and ensures the view stays on the hardware-accelerated layer at all times.
      */
     private fun updateShadowEffect() {
         shadowEffectEnabled = AppearancePreferences.isShadowEffectOn()
-        if (shadowEffectEnabled) {
-            bezierGlowPaint.strokeWidth = bezierStrokePx * 5f
-            bezierGlowPaint.alpha = 40
-
-            trackGlowPaint.strokeWidth = trackStrokePx * 4.5f
-            trackGlowPaint.alpha = 55
-        }
-        // Always stay on the hardware layer regardless of shadow state.
+        applyShadowLayers()
         setLayerType(LAYER_TYPE_HARDWARE, null)
         invalidate()
     }
@@ -670,9 +672,6 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         val progressTop = minOf(zeroY, thumbY)
         val progressBottom = maxOf(zeroY, thumbY)
         if (progressBottom > progressTop) {
-            if (shadowEffectEnabled) {
-                canvas.drawLine(cx, progressTop, cx, progressBottom, trackGlowPaint)
-            }
             canvas.drawLine(cx, progressTop, cx, progressBottom, trackProgressPaint)
         }
 
@@ -715,8 +714,8 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
     /**
      * Draws the Catmull-Rom spline connecting the 10 EQ-band thumbs (not the preamp).
-     * The glow pass is a wider semi-transparent stroke without any blur mask, keeping
-     * rendering on the hardware-accelerated layer at all times.
+     * The glow effect is applied via [Paint.setShadowLayer] directly on [bezierPaint],
+     * keeping rendering on the hardware-accelerated layer at all times.
      */
     private fun drawBezierCurve(canvas: Canvas) {
         bezierPath.reset()
@@ -735,9 +734,6 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
             bezierPath.cubicTo(cp1x, cp1y, cp2x, cp2y, p2.first, p2.second)
         }
 
-        if (shadowEffectEnabled) {
-            canvas.drawPath(bezierPath, bezierGlowPaint)
-        }
         canvas.drawPath(bezierPath, bezierPaint)
     }
 

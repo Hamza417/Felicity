@@ -270,4 +270,6 @@
     <string name="equalizer">Equalizer</string>
     <string name="karaoke_mode">Karaoke Mode</string>
     <string name="night_mode">Night Mode</string>
+    <string name="apply_equalizer">Apply Equalizer</string>
+    <string name="reset">Reset</string>
 </resources>

@@ -543,7 +543,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             .show()
     }
 
-    protected fun showDeleteConfirmation(onResult: (Boolean) -> Unit) {
+    protected fun withSureDialog(onResult: (Boolean) -> Unit) {
         SimpleDialog.Builder(
                 container = requireContainerView(),
                 inflateBinding = DialogSureBinding::inflate)

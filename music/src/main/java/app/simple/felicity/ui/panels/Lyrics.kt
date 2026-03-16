@@ -84,7 +84,7 @@ class Lyrics : MediaFragment() {
                 }
 
                 override fun onLyricsDelete() {
-                    showDeleteConfirmation {
+                    withSureDialog {
                         if (it) {
                             lyricsViewModel.deleteLrc {
                                 binding.lrc.reset()
