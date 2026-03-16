@@ -3,7 +3,6 @@ package app.simple.felicity.decorations.seekbars
 import android.animation.ValueAnimator
 import android.content.Context
 import android.content.SharedPreferences
-import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -123,6 +122,21 @@ class FelicitySeekbar @JvmOverloads constructor(
     private var smudgeOffsetY = 0f
     private var thumbShadowRadius = 0f
     private var thumbShadowColor = progressColor
+
+    /**
+     * Animated smudge (bleed) radius driven by the shadow-effect preference transition.
+     * This value is what actually gets fed to the paint's shadow layer each frame.
+     */
+    private var currentSmudgeRadius = 0f
+
+    /**
+     * Animated thumb elevation shadow radius driven by the shadow-effect preference transition.
+     * This value is what actually gets fed to the paint's shadow layer each frame.
+     */
+    private var currentThumbShadowRadius = 0f
+
+    /** Drives the animated cross-fade between shadow-on and shadow-off states. */
+    private var shadowEffectAnimator: ValueAnimator? = null
 
     // Optional overrides for corner radii (rx=ry) of thumb fill only (ring follows thumb)
     private var thumbCornerRadiusPxOverride: Float? = null
@@ -437,6 +451,11 @@ class FelicitySeekbar @JvmOverloads constructor(
         // If width is smaller than diameter, coerce to diameter to avoid inverted corners
         thumbWidthPx = max(thumbWidthPx, thumbRadiusPx * 2f)
 
+        // Seed animated radii from configured XML values before the first paint setup.
+        // applyThemeProps() → applyShadowEffect() will re-evaluate against the live preference.
+        currentSmudgeRadius = smudgeRadius
+        currentThumbShadowRadius = thumbShadowRadius
+
         applyPaintColors()
         setupSmudgeAndShadow()
         applyThemeProps()
@@ -499,7 +518,7 @@ class FelicitySeekbar @JvmOverloads constructor(
             labelBackgroundColor = ThemeManager.theme.viewGroupTheme.highlightColor
             setThumbCornerRadius(AppearancePreferences.getCornerRadius())
             applyPaintColors()
-            setupSmudgeAndShadow()
+            applyShadowEffect(AppearancePreferences.isShadowEffectOn(), animate = false)
             setupLabelPaint()
         }
     }
@@ -514,20 +533,75 @@ class FelicitySeekbar @JvmOverloads constructor(
     }
 
     private fun setupSmudgeAndShadow() {
-        if (smudgeEnabled || thumbShadowRadius > 0f) {
+        val smudgeActive = smudgeEnabled && currentSmudgeRadius > 0f
+        val thumbShadowActive = currentThumbShadowRadius > 0f
+        if (smudgeActive || thumbShadowActive) {
             setLayerType(LAYER_TYPE_SOFTWARE, null)
-        }
-        if (smudgeEnabled) {
-            smudgePaint.color = smudgeColor
-            smudgePaint.maskFilter = BlurMaskFilter(smudgeRadius, BlurMaskFilter.Blur.NORMAL)
         } else {
-            smudgePaint.maskFilter = null
+            setLayerType(LAYER_TYPE_NONE, null)
         }
-        if (thumbShadowRadius > 0f) {
-            thumbShadowPaint.setShadowLayer(thumbShadowRadius, 0f, 0f, thumbShadowColor)
+        if (smudgeActive) {
+            smudgePaint.color = smudgeColor
+            smudgePaint.setShadowLayer(currentSmudgeRadius, 0f, smudgeOffsetY, smudgeColor)
+        } else {
+            smudgePaint.clearShadowLayer()
+        }
+        if (thumbShadowActive) {
+            thumbShadowPaint.setShadowLayer(currentThumbShadowRadius, 0f, 0f, thumbShadowColor)
             thumbShadowPaint.color = Color.TRANSPARENT
         } else {
             thumbShadowPaint.clearShadowLayer()
+        }
+    }
+
+    /**
+     * Applies the shadow-effect preference by animating [currentSmudgeRadius] and
+     * [currentThumbShadowRadius] toward their target values (full radius when enabled,
+     * zero when disabled). When [animate] is false the change is instant.
+     *
+     * @param enabled whether the shadow/bleed effect should be active.
+     * @param animate  whether to cross-fade the radii with a [ValueAnimator].
+     */
+    private fun applyShadowEffect(enabled: Boolean, animate: Boolean) {
+        val targetSmudge = if (enabled && smudgeEnabled) smudgeRadius else 0f
+        val targetThumbShadow = if (enabled) thumbShadowRadius else 0f
+
+        shadowEffectAnimator?.cancel()
+
+        if (!animate) {
+            currentSmudgeRadius = targetSmudge
+            currentThumbShadowRadius = targetThumbShadow
+            setupSmudgeAndShadow()
+            invalidate()
+            return
+        }
+
+        val startSmudge = currentSmudgeRadius
+        val startThumbShadow = currentThumbShadowRadius
+        if (startSmudge == targetSmudge && startThumbShadow == targetThumbShadow) return
+
+        // Keep the software layer active for the full duration of the animation.
+        setLayerType(LAYER_TYPE_SOFTWARE, null)
+
+        shadowEffectAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 400L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                val t = anim.animatedValue as Float
+                currentSmudgeRadius = startSmudge + (targetSmudge - startSmudge) * t
+                currentThumbShadowRadius = startThumbShadow + (targetThumbShadow - startThumbShadow) * t
+                setupSmudgeAndShadow()
+                invalidate()
+            }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    currentSmudgeRadius = targetSmudge
+                    currentThumbShadowRadius = targetThumbShadow
+                    setupSmudgeAndShadow()
+                    invalidate()
+                }
+            })
+            start()
         }
     }
 
@@ -1209,7 +1283,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         val clampedFraction = valueToFraction(progressInternal).coerceIn(0f, 1f)
         val progressRight = left + (right - left) * clampedFraction
 
-        if (smudgeEnabled && progressRight > left) {
+        if (smudgeEnabled && currentSmudgeRadius > 0f && progressRight > left) {
             smudgeRect.set(left, trackRect.top, progressRight, trackRect.bottom)
             canvas.drawRoundRect(smudgeRect, trackRadius, trackRadius, smudgePaint)
         }
@@ -1268,7 +1342,7 @@ class FelicitySeekbar @JvmOverloads constructor(
 
         when (thumbShape) {
             ThumbShape.OVAL -> {
-                if (thumbShadowRadius > 0f) canvas.drawOval(thumbOuterRect, thumbShadowPaint)
+                if (currentThumbShadowRadius > 0f) canvas.drawOval(thumbOuterRect, thumbShadowPaint)
                 if (thumbInnerColor != Color.TRANSPARENT) {
                     thumbInnerRect.set(thumbOuterRect)
                     thumbInnerRect.inset(thumbRingWidthPx / 2f, thumbRingWidthPx / 2f)
@@ -1289,7 +1363,7 @@ class FelicitySeekbar @JvmOverloads constructor(
             }
             ThumbShape.PILL -> {
                 val baseThumbCornerR = 100f
-                if (thumbShadowRadius > 0f) canvas.drawRoundRect(thumbOuterRect, baseThumbCornerR, baseThumbCornerR, thumbShadowPaint)
+                if (currentThumbShadowRadius > 0f) canvas.drawRoundRect(thumbOuterRect, baseThumbCornerR, baseThumbCornerR, thumbShadowPaint)
                 if (thumbInnerColor != Color.TRANSPARENT) {
                     thumbInnerRect.set(thumbOuterRect)
                     val inset = thumbRingWidthPx / 2f
@@ -1313,7 +1387,7 @@ class FelicitySeekbar @JvmOverloads constructor(
                 }
             }
             ThumbShape.CIRCLE -> {
-                if (thumbShadowRadius > 0f) canvas.drawCircle(thumbCx, cy, scaledR, thumbShadowPaint)
+                if (currentThumbShadowRadius > 0f) canvas.drawCircle(thumbCx, cy, scaledR, thumbShadowPaint)
                 if (thumbInnerColor != Color.TRANSPARENT) {
                     canvas.drawCircle(thumbCx, cy, max(0f, scaledR - thumbRingWidthPx / 2f), thumbInnerPaint)
                 }
@@ -1675,6 +1749,9 @@ class FelicitySeekbar @JvmOverloads constructor(
                 setupLabelPaint()
                 invalidate()
             }
+            AppearancePreferences.SHADOW_EFFECT -> {
+                applyShadowEffect(AppearancePreferences.isShadowEffectOn(), animate = true)
+            }
         }
     }
 
@@ -1697,6 +1774,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         stepDragRawX = 0f
         progressAnimator?.cancel()
         pressRingAnimator?.cancel()
+        shadowEffectAnimator?.cancel()
         leftLabelWidthAnimator?.cancel()
         rightLabelWidthAnimator?.cancel()
         leftLabelAlphaAnimator?.cancel()
