@@ -44,10 +44,6 @@ import kotlin.math.exp
  * pill thumb featuring three horizontal grip lines. A smooth Catmull-Rom spline
  * (EQ bands only) connects the 10 band-gain thumbs to represent the frequency curve.
  *
- * Glow rendering uses a wider, semi-transparent stroke overlay instead of
- * [android.graphics.BlurMaskFilter] so the view stays on the hardware-accelerated layer
- * and never triggers the per-frame software rasterization that caused stutter.
- *
  * The text-gap calculation is restructured so [textGapPx] exclusively controls the gap
  * between the track and the label row without accumulating extra space at the bottom of
  * the view when the value is changed.
@@ -217,7 +213,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
     private val d = resources.displayMetrics.density
 
-    var bandSpacingDp: Float = 60f
+    var bandSpacingDp: Float = 50f
         set(value) {
             field = value.coerceAtLeast(36f)
             if (width > 0 && height > 0) {
@@ -228,13 +224,13 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
     private val thumbHalfWidthPx = 12f * d
     private val thumbHalfHeightPx = 24f * d
-    private val trackStrokePx = 2f * d
+    private val trackStrokePx = 5f * d
     private val bezierStrokePx = 2.5f * d
-    private val thumbRingStrokePx = 2f * d
+    private val thumbRingStrokePx = 3f * d
     private val thumbCornerRadiusPx = thumbHalfHeightPx
-    private val gripLineStrokePx = 1f * d
-    private val gripLineHalfLengthFraction = 0.52f
-    private val gripLineSpacingFraction = 0.18f
+    private val gripLineStrokePx = 1.5f * d
+    private val gripLineHalfLengthFraction = 0.42f
+    private val gripLineSpacingFraction = 0.22f
     private val sliderVerticalPaddingPx = thumbHalfHeightPx + 4f * d
     private val pressRingOutsetPx = 5f * d
 
