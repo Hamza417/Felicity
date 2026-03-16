@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.os.Bundle
 import android.os.Handler
 import android.util.Log
 import androidx.annotation.OptIn
@@ -116,6 +117,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             }
         })
 
+        // Wire the equalizer processor into the manager so gain and enable changes
+        // made via EqualizerManager are forwarded to the live audio pipeline.
+        EqualizerManager.attachProcessor(audioProcessorManager.equalizerProcessor)
+
         // Initialize the RenderersFactory once.
         renderersFactory = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableOffload: Boolean): AudioSink {
@@ -130,6 +135,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 audioProcessorManager.applyTapeSaturationDrive(EqualizerPreferences.getTapeSaturationDrive())
                 audioProcessorManager.applyKaraokeMode(EqualizerPreferences.isKaraokeModeEnabled())
                 audioProcessorManager.applyNightMode(EqualizerPreferences.isNightModeEnabled())
+                audioProcessorManager.applyEqualizerState()
 
                 // Build the processor array dynamically
                 val processors = mutableListOf<AudioProcessor>()
@@ -143,6 +149,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     processors.add(audioProcessorManager.downmixProcessor)
                 }
 
+                processors.add(audioProcessorManager.equalizerProcessor)       // 10-band graphic EQ on the clean mix
                 processors.add(audioProcessorManager.karaokeProcessor)         // Center removal before coloring
                 processors.add(audioProcessorManager.tapeSaturationProcessor)  // Harmonic coloring first
                 processors.add(audioProcessorManager.wideningProcessor)        // Then spatial processing
@@ -386,7 +393,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 CommandButton.ICON_REPEAT_OFF)
             .setDisplayName(displayName)
             .setIconResId(iconRes)
-            .setSessionCommand(SessionCommand(COMMAND_TOGGLE_REPEAT, android.os.Bundle.EMPTY))
+            .setSessionCommand(SessionCommand(COMMAND_TOGGLE_REPEAT, Bundle.EMPTY))
             .build()
     }
 
@@ -571,7 +578,6 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     private val playerListener = object : Player.Listener {
         override fun onAudioSessionIdChanged(audioSessionId: Int) {
             super.onAudioSessionIdChanged(audioSessionId)
-            EqualizerManager.initialize(audioSessionId)
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -797,9 +803,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         savePlaybackStateToDatabase()
         unregisterSharedPreferenceChangeListener()
 
-        // Release the hardware Equalizer before releasing the player so the
-        // audio effect is cleanly detached from the output mix.
-        EqualizerManager.release()
+        // Detach the equalizer processor reference before releasing the player so the
+        // manager does not hold a stale reference after teardown.
+        EqualizerManager.detachProcessor()
 
         mediaSession?.run {
             player.release()
@@ -836,7 +842,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
     private inner class LibraryCallback : MediaLibrarySession.Callback {
 
-        private val toggleRepeatCommand = SessionCommand(COMMAND_TOGGLE_REPEAT, android.os.Bundle.EMPTY)
+        private val toggleRepeatCommand = SessionCommand(COMMAND_TOGGLE_REPEAT, Bundle.EMPTY)
 
         /**
          * Advertise the custom repeat command so the system notification controller can use it.
@@ -861,7 +867,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 session: MediaSession,
                 controller: MediaSession.ControllerInfo,
                 customCommand: SessionCommand,
-                args: android.os.Bundle
+                args: Bundle
         ): ListenableFuture<SessionResult> {
             if (customCommand.customAction == COMMAND_TOGGLE_REPEAT) {
                 val current = PlayerPreferences.getRepeatMode()

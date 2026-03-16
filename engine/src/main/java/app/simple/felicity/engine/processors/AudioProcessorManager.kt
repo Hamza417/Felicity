@@ -2,6 +2,7 @@ package app.simple.felicity.engine.processors
 
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
+import app.simple.felicity.preferences.EqualizerPreferences
 
 /**
  * Manages all audio processing pipelines for the Felicity playback engine.
@@ -23,6 +24,16 @@ import androidx.media3.common.util.UnstableApi
  */
 @OptIn(UnstableApi::class)
 class AudioProcessorManager {
+
+    /**
+     * 10-band graphic equalizer built from biquad peaking-EQ IIR filters.
+     * Band center frequencies follow the ISO 10-band standard (31 Hz → 16 kHz).
+     * This processor is always present in the pipeline; when all band gains are 0 dB or the
+     * EQ is disabled it takes the fast bypass path with zero processing cost.
+     * Registered with [app.simple.felicity.engine.managers.EqualizerManager] in the player
+     * service so that UI-driven gain changes propagate to the audio thread in real time.
+     */
+    val equalizerProcessor: EqualizerAudioProcessor = EqualizerAudioProcessor()
 
     /**
      * Removes leading and trailing silence from the audio stream. Always active in the chain.
@@ -131,5 +142,19 @@ class AudioProcessorManager {
      */
     fun applyNightMode(enabled: Boolean) {
         nightModeProcessor.setNightModeEnabled(enabled)
+    }
+
+    /**
+     * Applies the persisted 10-band EQ state (all band gains and the enabled flag) to
+     * [equalizerProcessor].
+     *
+     * Called once from
+     * [app.simple.felicity.engine.services.FelicityPlayerService] whenever the audio
+     * pipeline is (re)built so the saved EQ settings are always honoured from the first
+     * decoded frame.
+     */
+    fun applyEqualizerState() {
+        equalizerProcessor.setAllBandGains(EqualizerPreferences.getAllBandGains())
+        equalizerProcessor.isEnabled = EqualizerPreferences.isEqEnabled()
     }
 }
