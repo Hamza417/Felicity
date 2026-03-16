@@ -11,6 +11,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentEqualizerBinding
 import app.simple.felicity.decorations.knobs.RotaryKnobListener
+import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
@@ -58,22 +59,37 @@ class Equalizer : MediaFragment() {
         // Restore persisted band gains immediately — no animation so UI is ready before
         // the user sees it.
         binding.equalizerSliders.setAllGains(EqualizerPreferences.getAllBandGains(), animate = false)
+        binding.equalizerSliders.setPreampGain(EqualizerPreferences.getPreampDb(), animate = false)
 
         // Forward every user drag to EqualizerManager which persists the value and
         // applies it to the hardware Equalizer in real-time.
         binding.equalizerSliders.setOnBandChangedListener { bandIndex, gain, fromUser ->
             if (fromUser) {
                 Log.d(TAG, "Band $bandIndex changed to ${gain}dB by user")
-                EqualizerManager.setBandGain(bandIndex, gain)
+                if (bandIndex == FelicityEqualizerSliders.PREAMP_BAND_INDEX) {
+                    EqualizerManager.setPreamp(gain)
+                } else {
+                    EqualizerManager.setBandGain(bandIndex, gain)
+                }
             }
         }
 
-        // Observe the manager's StateFlow so any externally driven change (preset load,
+        // Observe band-gains flow so any externally driven change (preset load,
         // reset-all, etc.) is immediately reflected in the slider positions.
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.bandGainsFlow.collect { gains ->
                     binding.equalizerSliders.setAllGains(gains, animate = true)
+                }
+            }
+        }
+
+        // Observe preamp flow independently so a future preset loader or reset
+        // that changes only the preamp is reflected without a full gains update.
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                EqualizerManager.preampFlow.collect { db ->
+                    binding.equalizerSliders.setPreampGain(db, animate = true)
                 }
             }
         }

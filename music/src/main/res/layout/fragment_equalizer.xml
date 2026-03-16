@@ -41,7 +41,7 @@
 
             <app.simple.felicity.decorations.theme.ThemeDivider
                 android:layout_width="match_parent"
-                android:layout_marginVertical="@dimen/padding_10"
+                android:layout_marginTop="@dimen/padding_10"
                 android:layout_height="1px" />
 
             <app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders

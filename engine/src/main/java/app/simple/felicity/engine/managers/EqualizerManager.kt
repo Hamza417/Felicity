@@ -2,6 +2,7 @@ package app.simple.felicity.engine.managers
 
 import app.simple.felicity.engine.managers.EqualizerManager.attachProcessor
 import app.simple.felicity.engine.managers.EqualizerManager.bandGainsFlow
+import app.simple.felicity.engine.managers.EqualizerManager.preampFlow
 import app.simple.felicity.engine.managers.EqualizerManager.resetAllBands
 import app.simple.felicity.engine.processors.EqualizerAudioProcessor
 import app.simple.felicity.preferences.EqualizerPreferences
@@ -60,6 +61,19 @@ object EqualizerManager {
      */
     val bandGainsFlow: StateFlow<FloatArray> = _bandGainsFlow.asStateFlow()
 
+    /**
+     * Backing mutable flow for the pre-amplifier gain in dB.
+     * Initialized from [EqualizerPreferences] so the UI sees the persisted value immediately.
+     */
+    private val _preampFlow = MutableStateFlow(EqualizerPreferences.getPreampDb())
+
+    /**
+     * Read-only [StateFlow] of the current pre-amplifier gain in dB ([-15..+15]).
+     * The equalizer UI should collect this to keep the preamp slider in sync with any
+     * externally driven change.
+     */
+    val preampFlow: StateFlow<Float> = _preampFlow.asStateFlow()
+
     // -------------------------------------------------------------------------
     // Lifecycle
     // -------------------------------------------------------------------------
@@ -78,7 +92,10 @@ object EqualizerManager {
         val savedGains = EqualizerPreferences.getAllBandGains()
         equalizerProcessor.setAllBandGains(savedGains)
         equalizerProcessor.isEnabled = EqualizerPreferences.isEqEnabled()
+        val savedPreamp = EqualizerPreferences.getPreampDb()
+        equalizerProcessor.setPreamp(savedPreamp)
         _bandGainsFlow.value = savedGains
+        _preampFlow.value = savedPreamp
     }
 
     /**
@@ -177,4 +194,40 @@ object EqualizerManager {
      * Returns whether the equalizer is currently marked as enabled in [EqualizerPreferences].
      */
     fun isEnabled(): Boolean = EqualizerPreferences.isEqEnabled()
+
+    // -------------------------------------------------------------------------
+    // Preamp
+    // -------------------------------------------------------------------------
+
+    /**
+     * Sets the pre-amplifier gain, optionally persists it, applies it to the processor,
+     * and updates [preampFlow].
+     *
+     * @param db      Gain in dB, clamped to [-15..+15]. 0 dB = unity.
+     * @param persist Pass false to skip the SharedPreferences write when the caller
+     *                has already saved the value.
+     */
+    fun setPreamp(db: Float, persist: Boolean = true) {
+        val clamped = db.coerceIn(-15f, 15f)
+        if (persist) {
+            EqualizerPreferences.setPreampDb(clamped)
+        }
+        processor?.setPreamp(clamped)
+        _preampFlow.value = clamped
+    }
+
+    /**
+     * Reads the persisted preamp gain from [EqualizerPreferences] and applies it to the
+     * processor. Called by the player service's preference listener when the UI saves a
+     * new preamp value.
+     */
+    fun applyPreampFromPreference() {
+        val db = EqualizerPreferences.getPreampDb()
+        setPreamp(db, persist = false)
+    }
+
+    /**
+     * Returns the current pre-amplifier gain in dB from [preampFlow].
+     */
+    fun getPreamp(): Float = _preampFlow.value
 }

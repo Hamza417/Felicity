@@ -62,6 +62,26 @@ class EqualizerAudioProcessor : AudioProcessor {
     @Volatile
     var isEnabled: Boolean = true
 
+    /**
+     * Pre-amplifier linear gain applied to every sample before the biquad EQ chain.
+     * Computed by [setPreamp] as 10^(dB / 20). Default 1.0 = unity (0 dB).
+     */
+    @Volatile
+    private var preampLinearGain: Float = 1f
+
+    /**
+     * Sets the pre-amplifier gain in dB and immediately recomputes [preampLinearGain].
+     *
+     * @param db Gain in dB, clamped to [-15..+15]. 0 dB = unity (no change).
+     */
+    fun setPreamp(db: Float) {
+        val clamped = db.coerceIn(-15f, 15f)
+        preampLinearGain = 10f.pow(clamped / 20f)
+    }
+
+    /** Returns the current pre-amplifier gain as a linear scale factor (not dB). */
+    fun getPreampLinearGain(): Float = preampLinearGain
+
     /** Current sample rate; coefficient arrays are recomputed whenever this changes. */
     private var sampleRate: Int = DEFAULT_SAMPLE_RATE
 
@@ -165,6 +185,7 @@ class EqualizerAudioProcessor : AudioProcessor {
         val flat = FloatArray(BAND_COUNT)
         bandGains = flat
         coefficients = Array(BAND_COUNT) { identityCoefficients() }
+        preampLinearGain = 1f
         clearFilterState()
         allBandsFlat = true
     }
@@ -219,7 +240,7 @@ class EqualizerAudioProcessor : AudioProcessor {
             return
         }
 
-        if (!isEnabled || allBandsFlat) {
+        if (!isEnabled || (allBandsFlat && abs(preampLinearGain - 1f) < 0.001f)) {
             outputBuffer = inputBuffer
             return
         }
@@ -240,10 +261,13 @@ class EqualizerAudioProcessor : AudioProcessor {
         // Snapshot volatile references once before the hot loop to avoid
         // repeated memory-barrier crossings per sample.
         val coeff = coefficients
+        val preamp = preampLinearGain
 
         while (inputBuffer.remaining() >= frameSize) {
             for (c in 0 until ch) {
-                var sample = PcmUtils.readFloat(inputBuffer, encoding)
+                // Preamp is applied before the biquad chain so the EQ curve shape is
+                // independent of the input level.
+                var sample = PcmUtils.readFloat(inputBuffer, encoding) * preamp
                 val chState = state[c]
                 for (b in 0 until BAND_COUNT) {
                     sample = applyBiquad(sample, coeff[b], chState[b])

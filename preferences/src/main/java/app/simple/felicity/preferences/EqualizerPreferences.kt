@@ -53,6 +53,13 @@ object EqualizerPreferences {
      * Gains are stored as floats in dB in the range [-15 .. +15].
      */
     const val EQ_BAND_KEY_PREFIX = "eq_band_"
+
+    /**
+     * Global pre-amplifier gain applied to the signal before the 10-band EQ.
+     * Stored as a float in dB in the range [-15 .. +15]. Default is 0.0 (unity gain).
+     * Use this to compensate for overall loudness without affecting the EQ curve shape.
+     */
+    const val PREAMP_DB = "eq_preamp_db"
     fun setBalance(pan: Float) {
         SharedPreferences.getSharedPreferences().edit { putFloat(BALANCE, pan.coerceIn(-1f, 1f)) }
     }
@@ -149,6 +156,24 @@ object EqualizerPreferences {
      */
     fun getAllBandGains(): FloatArray {
         return FloatArray(10) { i -> getBandGain(i) }
+    }
+
+    /**
+     * Persists the pre-amplifier gain in dB, clamped to [-15 .. +15].
+     * Applied to the signal before all EQ band filters.
+     *
+     * @param db Gain in dB, clamped to [-15 .. +15]. 0 dB = unity (no change).
+     */
+    fun setPreampDb(db: Float) {
+        SharedPreferences.getSharedPreferences().edit { putFloat(PREAMP_DB, db.coerceIn(-15f, 15f)) }
+    }
+
+    /**
+     * Returns the persisted pre-amplifier gain in dB.
+     * Defaults to 0.0 dB (unity gain) when no value has been saved yet.
+     */
+    fun getPreampDb(): Float {
+        return SharedPreferences.getSharedPreferences().getFloat(PREAMP_DB, 0f)
     }
 
     /**

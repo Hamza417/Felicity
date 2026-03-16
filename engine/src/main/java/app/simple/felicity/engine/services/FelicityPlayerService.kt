@@ -778,6 +778,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 Log.d(TAG, "Equalizer enabled preference changed to: $enabled")
                 EqualizerManager.setEnabled(enabled)
             }
+            EqualizerPreferences.PREAMP_DB -> {
+                Log.d(TAG, "EQ preamp preference changed")
+                EqualizerManager.applyPreampFromPreference()
+            }
             else -> {
                 // Handle each individual EQ band preference change
                 if (key != null && key.startsWith(EqualizerPreferences.EQ_BAND_KEY_PREFIX)) {
