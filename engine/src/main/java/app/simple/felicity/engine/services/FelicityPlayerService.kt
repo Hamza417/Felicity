@@ -33,10 +33,10 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import app.simple.felicity.engine.R
+import app.simple.felicity.engine.managers.AudioProcessorManager
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.engine.notifications.PlaybackErrorNotifier
-import app.simple.felicity.engine.processors.AudioProcessorManager
 import app.simple.felicity.engine.processors.VisualizerAudioProcessor
 import app.simple.felicity.manager.SharedPreferences.initRegisterSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener

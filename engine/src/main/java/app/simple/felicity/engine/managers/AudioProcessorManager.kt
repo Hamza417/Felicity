@@ -1,19 +1,30 @@
-package app.simple.felicity.engine.processors
+package app.simple.felicity.engine.managers
 
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
+import app.simple.felicity.engine.processors.BalanceAudioProcessor
+import app.simple.felicity.engine.processors.BassAudioProcessor
+import app.simple.felicity.engine.processors.DownmixAudioProcessor
+import app.simple.felicity.engine.processors.EqualizerAudioProcessor
+import app.simple.felicity.engine.processors.KaraokeAudioProcessor
+import app.simple.felicity.engine.processors.NightModeAudioProcessor
+import app.simple.felicity.engine.processors.SilenceTrimmingProcessor
+import app.simple.felicity.engine.processors.StereoWideningAudioProcessor
+import app.simple.felicity.engine.processors.TapeSaturationProcessor
+import app.simple.felicity.engine.processors.TrebleAudioProcessor
+import app.simple.felicity.engine.processors.VisualizerAudioProcessor
 import app.simple.felicity.preferences.EqualizerPreferences
 
 /**
  * Manages all audio processing pipelines for the Felicity playback engine.
  *
  * Processor chain order (applied in sequence by DefaultAudioSink):
- *  1. [DownmixAudioProcessor]        Optional multichannel → stereo reduction.
- *  2. [KaraokeAudioProcessor]        Optional center-channel (vocal) removal via L−R subtraction.
- *  3. [TapeSaturationProcessor]      Tape-style harmonic coloring.
- *  4. [StereoWideningAudioProcessor] M/S stereo image width.
- *  5. [BalanceAudioProcessor]        Constant-power channel routing.
- *  6. [NightModeAudioProcessor]      Dynamic compressor/limiter for late-night listening.
+ *  1. [app.simple.felicity.engine.processors.DownmixAudioProcessor]        Optional multichannel → stereo reduction.
+ *  2. [app.simple.felicity.engine.processors.KaraokeAudioProcessor]        Optional center-channel (vocal) removal via L−R subtraction.
+ *  3. [app.simple.felicity.engine.processors.TapeSaturationProcessor]      Tape-style harmonic coloring.
+ *  4. [app.simple.felicity.engine.processors.StereoWideningAudioProcessor] M/S stereo image width.
+ *  5. [app.simple.felicity.engine.processors.BalanceAudioProcessor]        Constant-power channel routing.
+ *  6. [app.simple.felicity.engine.processors.NightModeAudioProcessor]      Dynamic compressor/limiter for late-night listening.
  *
  * All processors are custom AudioProcessor implementations that support
  * PCM_16BIT, PCM_24BIT, PCM_32BIT, and PCM_FLOAT (Hi-Res pipeline output).
@@ -30,14 +41,14 @@ class AudioProcessorManager {
      * Band center frequencies follow the ISO 10-band standard (31 Hz → 16 kHz).
      * This processor is always present in the pipeline; when all band gains are 0 dB or the
      * EQ is disabled it takes the fast bypass path with zero processing cost.
-     * Registered with [app.simple.felicity.engine.managers.EqualizerManager] in the player
+     * Registered with [EqualizerManager] in the player
      * service so that UI-driven gain changes propagate to the audio thread in real time.
      */
     val equalizerProcessor: EqualizerAudioProcessor = EqualizerAudioProcessor()
 
     /**
      * Removes leading and trailing silence from the audio stream. Always active in the chain.
-     * The threshold can be adjusted via [SilenceTrimmingProcessor.setThreshold] if needed.
+     * The threshold can be adjusted via [app.simple.felicity.engine.processors.SilenceTrimmingProcessor.setThreshold] if needed.
      * Default threshold is 0.001f (roughly -60dB), which should trim most silent sections without
      * affecting quiet music.
      */
@@ -97,7 +108,7 @@ class AudioProcessorManager {
     /**
      * Passthrough processor that performs a Hanning-windowed FFT on the final processed audio
      * and delivers 40 log-spaced frequency band magnitudes to any attached
-     * [VisualizerAudioProcessor.VisualizerListener].
+     * [app.simple.felicity.engine.processors.VisualizerAudioProcessor.VisualizerListener].
      *
      * Must be placed last in the chain so visualization reflects the fully processed signal.
      * The listener is wired in [app.simple.felicity.engine.services.FelicityPlayerService].

@@ -83,7 +83,7 @@ object EqualizerManager {
      * and immediately applies all persisted band gains and the enabled state to it.
      *
      * Call this once in [app.simple.felicity.engine.services.FelicityPlayerService.onCreate]
-     * after [app.simple.felicity.engine.processors.AudioProcessorManager] is constructed.
+     * after [AudioProcessorManager] is constructed.
      *
      * @param equalizerProcessor The processor instance owned by [AudioProcessorManager].
      */

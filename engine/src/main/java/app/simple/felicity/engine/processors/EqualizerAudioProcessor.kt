@@ -4,6 +4,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import app.simple.felicity.engine.processors.EqualizerAudioProcessor.Companion.FLAT_THRESHOLD_DB
+import app.simple.felicity.engine.services.PcmUtils
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI
@@ -34,7 +35,7 @@ import kotlin.math.sin
  * a gentle 1-octave bandwidth typical of hardware graphic equalizers.
  * Gain range per band: [-15 dB, +15 dB]. All bands at 0 dB = identity (flat passthrough).
  *
- * The processor supports all four PCM encodings via [PcmUtils]: 16-bit, 24-bit, 32-bit,
+ * The processor supports all four PCM encodings via [app.simple.felicity.engine.services.PcmUtils]: 16-bit, 24-bit, 32-bit,
  * and 32-bit float. Filter state is maintained independently per channel so stereo phase
  * coherence is preserved across the entire 10-stage chain.
  *

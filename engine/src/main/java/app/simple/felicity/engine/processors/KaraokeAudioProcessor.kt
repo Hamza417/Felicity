@@ -4,6 +4,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
+import app.simple.felicity.engine.services.PcmUtils
 import java.nio.ByteBuffer
 
 /**
@@ -30,7 +31,7 @@ import java.nio.ByteBuffer
  *
  * Requires a stereo source. Mono sources return [AudioProcessor.AudioFormat.NOT_SET]
  * from [onConfigure] and are passed through unchanged (processor inactive).
- * Supports all four PCM encodings via [PcmUtils].
+ * Supports all four PCM encodings via [app.simple.felicity.engine.services.PcmUtils].
  *
  * @author Hamza417
  */

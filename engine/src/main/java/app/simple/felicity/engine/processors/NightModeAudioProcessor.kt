@@ -4,6 +4,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
+import app.simple.felicity.engine.services.PcmUtils
 import java.nio.ByteBuffer
 import kotlin.math.abs
 
@@ -33,7 +34,7 @@ import kotlin.math.abs
  *  At full-scale input (envelope = 1.0): compressed amplitude = 0.1 + 0.9/8 = 0.2125
  *  makeupGain = 3.0 → peak output = 0.2125 × 3.0 = 0.638 (≈ −4 dBFS, safe headroom).
  *
- * Supports all four PCM encodings via [PcmUtils].
+ * Supports all four PCM encodings via [app.simple.felicity.engine.services.PcmUtils].
  *
  * @author Hamza417
  */

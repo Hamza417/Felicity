@@ -4,12 +4,13 @@ import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
+import app.simple.felicity.engine.services.PcmUtils
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
  * A custom [AudioProcessor] that downmixes any multi-channel PCM stream (1 to 24 channels)
- * to stereo (2 channels), supporting all four common PCM encodings via [PcmUtils].
+ * to stereo (2 channels), supporting all four common PCM encodings via [app.simple.felicity.engine.services.PcmUtils].
  *
  * This replaces [androidx.media3.common.audio.ChannelMixingAudioProcessor] for downmixing,
  * which only supports [androidx.media3.common.C.ENCODING_PCM_16BIT] and fails in Hi-Res mode.

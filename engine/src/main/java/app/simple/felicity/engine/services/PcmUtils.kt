@@ -1,4 +1,4 @@
-package app.simple.felicity.engine.processors
+package app.simple.felicity.engine.services
 
 import androidx.annotation.OptIn
 import androidx.media3.common.C
@@ -10,10 +10,10 @@ import java.nio.ByteBuffer
  * covering all four common PCM encodings used by the Media3 audio pipeline.
  *
  * Supported encodings and their byte widths:
- *  - [C.ENCODING_PCM_16BIT]  2 bytes  16-bit signed integer, little-endian.
- *  - [C.ENCODING_PCM_24BIT]  3 bytes  24-bit signed integer, little-endian.
- *  - [C.ENCODING_PCM_32BIT]  4 bytes  32-bit signed integer, little-endian.
- *  - [C.ENCODING_PCM_FLOAT]  4 bytes  IEEE 754 single-precision float.
+ *  - [androidx.media3.common.C.ENCODING_PCM_16BIT]  2 bytes  16-bit signed integer, little-endian.
+ *  - [androidx.media3.common.C.ENCODING_PCM_24BIT]  3 bytes  24-bit signed integer, little-endian.
+ *  - [androidx.media3.common.C.ENCODING_PCM_32BIT]  4 bytes  32-bit signed integer, little-endian.
+ *  - [androidx.media3.common.C.ENCODING_PCM_FLOAT]  4 bytes  IEEE 754 single-precision float.
  *
  * Integer encodings are normalized to the [-1.0, 1.0] range on read and scaled back on write.
  * Float samples are passed through as-is (may legitimately exceed [-1, 1] with headroom).
@@ -113,4 +113,3 @@ internal object PcmUtils {
         buffer.put((value shr 16 and 0xFF).toByte())
     }
 }
-

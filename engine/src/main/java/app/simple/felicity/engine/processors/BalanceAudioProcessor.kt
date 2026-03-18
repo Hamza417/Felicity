@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
+import app.simple.felicity.engine.services.PcmUtils
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.cos
@@ -17,7 +18,7 @@ import kotlin.math.sin
  * which only supports PCM_16BIT and throws UnhandledAudioFormatException for float and
  * high-resolution formats, crashing the entire processor chain in Hi-Res mode.
  *
- * Supports all four PCM encodings via [PcmUtils]: PCM_16BIT, PCM_24BIT, PCM_32BIT,
+ * Supports all four PCM encodings via [app.simple.felicity.engine.services.PcmUtils]: PCM_16BIT, PCM_24BIT, PCM_32BIT,
  * and PCM_FLOAT (Hi-Res pipeline output).
  *
  * @author Hamza417
