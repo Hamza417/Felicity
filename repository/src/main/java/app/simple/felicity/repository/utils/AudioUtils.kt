@@ -1,37 +1,28 @@
 package app.simple.felicity.repository.utils
 
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.models.SongStat
 import net.jpountz.xxhash.XXHashFactory
 
+/**
+ * Utility functions for audio-related operations.
+ */
 object AudioUtils {
-    fun generateStableId(song: Audio): Long {
-        // Concatenate fields that best identify the song
-        val key = "${song.title}_${song.artist}_${song.album}_${song.duration}"
 
-        // Get an xxHash64 instance (fast + low collision)
+    /**
+     * Generates a stable 64-bit identifier from a subset of [Audio] metadata fields.
+     *
+     * <p>The key is composed of title, artist, album, and duration so that files
+     * which differ only in their on-disk location are still treated as the same song.
+     * Uses XXHash64 with a fixed seed for speed and low collision probability.</p>
+     *
+     * @param song The [Audio] object whose metadata is used to generate the hash.
+     * @return A 64-bit hash value that is stable across rescans for the same physical track.
+     */
+    fun generateStableId(song: Audio): Long {
+        val key = "${song.title}_${song.artist}_${song.album}_${song.duration}"
         val factory = XXHashFactory.fastestInstance()
         val hasher = factory.hash64()
-
-        // Convert string to bytes
         val bytes = key.toByteArray(Charsets.UTF_8)
-
-        // Compute 64-bit hash with a fixed seed
-        val hash: Long = hasher.hash(bytes, 0, bytes.size, 0x9747b28c)
-
-        return hash
-    }
-
-    fun Audio.createSongStat(songStat: SongStat?): SongStat {
-        return songStat?.copy(
-                lastPlayed = System.currentTimeMillis(),
-                playCount = songStat.playCount + 1
-        ) ?: SongStat(
-                songId = this.hash,
-                stableId = generateStableId(this).toString(),
-                lastPlayed = System.currentTimeMillis(),
-                playCount = 1,
-                skipCount = 0
-        )
+        return hasher.hash(bytes, 0, bytes.size, 0x9747b28c)
     }
 }

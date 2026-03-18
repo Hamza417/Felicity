@@ -30,15 +30,12 @@ import app.simple.felicity.dialogs.lyrics.Lyrics.Companion.showLyrics
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
-import app.simple.felicity.repository.database.instances.SongStatDatabase
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.shuffle.Shuffle.shuffle
-import app.simple.felicity.repository.utils.AudioUtils
-import app.simple.felicity.repository.utils.AudioUtils.createSongStat
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.pages.AlbumPage
@@ -184,20 +181,6 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         }
     }
 
-    private fun createStatForSong(song: Audio) {
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val songStatDatabase = SongStatDatabase.getInstance(requireContext())
-            val songStatDao = songStatDatabase.songStatDao()
-            val existingStat = songStatDao.getSongStatByStableId(AudioUtils.generateStableId(song).toString())
-
-            if (existingStat == null) {
-                songStatDao.insertSongStat(song.createSongStat(existingStat))
-                Log.d(TAG, "Created new song stat for: ${song.title}")
-            } else {
-                songStatDao.updateSongStat(existingStat.copy(playCount = existingStat.playCount + 1))
-            }
-        }
-    }
 
     protected fun requireHiddenMiniPlayer() {
         viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {

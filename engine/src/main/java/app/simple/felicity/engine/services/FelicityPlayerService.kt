@@ -47,6 +47,7 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.repositories.AudioRepository
+import app.simple.felicity.repository.repositories.SongStatRepository
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -71,9 +72,31 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     @Inject
     lateinit var audioRepository: AudioRepository
 
+    @Inject
+    lateinit var songStatRepository: SongStatRepository
+
     private var mediaSession: MediaLibrarySession? = null
     private lateinit var player: ExoPlayer
     private var renderersFactory: DefaultRenderersFactory? = null
+
+    /**
+     * The mediaId of the media item that was playing before the most recent item transition.
+     * Used in conjunction with [previousItemEndPositionMs] and [previousItemDurationMs] to
+     * decide whether the previous song was skipped.
+     */
+    private var previousItemMediaId: String? = null
+
+    /**
+     * The playback position (ms) captured just before the most recent item transition.
+     * Populated in {@link Player.Listener#onPositionDiscontinuity}.
+     */
+    private var previousItemEndPositionMs: Long = 0L
+
+    /**
+     * The total duration (ms) of the previous media item captured just before the transition.
+     * Populated in {@link Player.Listener#onPositionDiscontinuity}.
+     */
+    private var previousItemDurationMs: Long = 0L
 
     /**
      * Manages the balance and downmix [androidx.media3.common.audio.ChannelMixingAudioProcessor]
@@ -713,8 +736,48 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 ffmpegFallbackItem = null
                 restoreDecoderMode(preFallbackDecoder)
             }
+
+            // Record skip for the previous song when the user seeked away early.
+            val prevMediaId = previousItemMediaId
+            if (prevMediaId != null
+                    && reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
+                    && previousItemDurationMs > 0
+                    && previousItemEndPositionMs < previousItemDurationMs * SKIP_THRESHOLD) {
+                serviceScope.launch(Dispatchers.IO) {
+                    val audioId = prevMediaId.toLongOrNull() ?: return@launch
+                    val audio = audioRepository.getAudioById(audioId) ?: return@launch
+                    songStatRepository.recordSkip(audio.hash)
+                    Log.d(TAG, "Skip recorded for: ${audio.title} (pos=${previousItemEndPositionMs}ms / dur=${previousItemDurationMs}ms)")
+                }
+            }
+
+            // Record play event for the newly active song.
+            mediaItem?.let { item ->
+                previousItemMediaId = item.mediaId
+                val audioId = item.mediaId.toLongOrNull() ?: return@let
+                serviceScope.launch(Dispatchers.IO) {
+                    val audio = audioRepository.getAudioById(audioId) ?: return@launch
+                    songStatRepository.recordPlay(audio.hash)
+                    Log.d(TAG, "Play recorded for: ${audio.title}")
+                }
+            } ?: run { previousItemMediaId = null }
+
             MediaManager.notifyCurrentPosition(player.currentMediaItemIndex)
             savePlaybackStateToDatabase() // Save when track changes
+        }
+
+        override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int
+        ) {
+            super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+            // Capture position and duration of the outgoing item before ExoPlayer transitions.
+            // This fires BEFORE onMediaItemTransition, so player.duration still reflects the old item.
+            if (oldPosition.mediaItemIndex != newPosition.mediaItemIndex) {
+                previousItemEndPositionMs = oldPosition.positionMs
+                previousItemDurationMs = player.duration.coerceAtLeast(0L)
+            }
         }
     }
 
@@ -1070,6 +1133,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     companion object {
         private const val TAG = "FelicityPlayerService"
         private const val GAP_DURATION_MS = 800L // Duration of silence gap when gapless playback is disabled
+
+        /**
+         * Fraction of a song's duration that must have elapsed before a transition is NOT
+         * counted as a skip. Songs navigated away from before this threshold increment
+         * the skip counter in the song statistics database.
+         */
+        private const val SKIP_THRESHOLD = 0.30
 
         /** Custom session command sent when the user taps the repeat button in the notification. */
         const val COMMAND_TOGGLE_REPEAT = "app.simple.felicity.TOGGLE_REPEAT"

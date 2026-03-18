@@ -11,6 +11,7 @@
     <string name="albums">Albums</string>
     <string name="recently_added">Recently Added</string>
     <string name="recently_played">Recently Played</string>
+    <string name="most_played">Most Played</string>
     <string name="browse">Browse</string>
     <string name="more">More</string>
     <string name="less">Less</string>

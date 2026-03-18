@@ -864,6 +864,15 @@ class AudioRepository @Inject constructor(
     }
 
     /**
+     * Returns the [Audio] row with the given auto-increment [id], or {@code null} if not found.
+     *
+     * @param id The Room-assigned primary key of the audio row.
+     */
+    suspend fun getAudioById(id: Long): Audio? = withContext(Dispatchers.IO) {
+        audioDatabase.audioDao()?.getAudioById(id)
+    }
+
+    /**
      * Get audio files by album ID
      * @param albumId The album ID
      * @return List of audio files in the specified album

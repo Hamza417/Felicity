@@ -116,6 +116,9 @@ interface AudioDao {
     @Query("SELECT id FROM audio WHERE path = :path AND is_available = 1")
     fun getAudioIdByPath(path: String): Long
 
+    @Query("SELECT * FROM audio WHERE id = :id LIMIT 1")
+    suspend fun getAudioById(id: Long): Audio?
+
     @Query("SELECT * FROM audio WHERE path = :path LIMIT 1")
     fun getAudioByPath(path: String): Audio?
 

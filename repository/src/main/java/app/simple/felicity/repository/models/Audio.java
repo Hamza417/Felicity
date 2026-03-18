@@ -9,6 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
+import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
 /**
@@ -16,12 +17,16 @@ import androidx.room.PrimaryKey;
  *
  * <p>The {@code id} field is a simple auto-incremented long integer assigned by Room on insertion.
  * The {@code hash} field holds the XXHash64 content fingerprint of the file and is used for
- * file-identity comparisons and deduplication logic.</p>
+ * file-identity comparisons and deduplication logic. The {@code hash} column has a unique index
+ * so that it can serve as a foreign-key parent for the {@code song_stats} table.</p>
  *
  * @author Hamza417
  * @noinspection EqualsReplaceableByObjectsCall
  */
-@Entity (tableName = "audio")
+@Entity (
+        tableName = "audio",
+        indices = {@Index (value = {"hash"}, unique = true)}
+)
 public class Audio implements Parcelable {
     
     public static final int AUDIO_QUALITY_LQ = 0;
@@ -30,6 +35,7 @@ public class Audio implements Parcelable {
     public static final int AUDIO_QUALITY_LOSSLESS = 3;
     public static final int AUDIO_QUALITY_HI_RES = 4;
     
+    public static final String NOT_AVAILABLE = "N/A";
     public static final Creator <Audio> CREATOR = new Creator <>() {
         @Override
         public Audio createFromParcel(Parcel in) {
@@ -210,7 +216,11 @@ public class Audio implements Parcelable {
     
     @Nullable
     public String getArtist() {
-        return artist;
+        if (artist == null || artist.isEmpty()) {
+            return NOT_AVAILABLE;
+        } else {
+            return artist;
+        }
     }
     
     public void setArtist(@Nullable String artist) {
@@ -219,7 +229,11 @@ public class Audio implements Parcelable {
     
     @Nullable
     public String getAlbum() {
-        return album;
+        if (album == null || album.isEmpty()) {
+            return NOT_AVAILABLE;
+        } else {
+            return album;
+        }
     }
     
     public void setAlbum(@Nullable String album) {
@@ -253,7 +267,7 @@ public class Audio implements Parcelable {
     public long getId() {
         return id;
     }
-
+    
     public void setId(long id) {
         this.id = id;
     }

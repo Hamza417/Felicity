@@ -7,6 +7,7 @@ import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
+import app.simple.felicity.repository.repositories.SongStatRepository
 import app.simple.felicity.repository.shuffle.Shuffle.millerShuffle
 import app.simple.felicity.viewmodels.panels.DashboardViewModel.Companion.RANDOMIZER_DELAY
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Element
@@ -25,25 +26,22 @@ import kotlin.random.Random
 /**
  * ViewModel for the Dashboard home screen.
  *
- * Provides data for the recommended grid section, the recently played section
- * (substituted with recently added songs until a dedicated history database is
- * available), the recently added songs section, the favorites section, and the
- * fixed lists of panel navigation items displayed in the browse grid.
+ * Provides data for the recommended grid section, the recently played section,
+ * the recently added songs section, the favorites section, and the fixed lists
+ * of panel navigation items displayed in the browse grid.
  *
  * @author Hamza417
  */
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
         application: Application,
-        private val audioRepository: AudioRepository
+        private val audioRepository: AudioRepository,
+        private val songStatRepository: SongStatRepository
 ) : WrappedViewModel(application) {
 
     private val _recentlyPlayed = MutableStateFlow<List<Audio>>(emptyList())
 
-    /**
-     * Recently played songs flow. Uses recently added songs as a substitute
-     * since a dedicated history database has not been implemented yet.
-     */
+    /** Recently played songs flow ordered by last-played timestamp descending. */
     val recentlyPlayed: StateFlow<List<Audio>> = _recentlyPlayed.asStateFlow()
 
     private val _recentlyAdded = MutableStateFlow<List<Audio>>(emptyList())
@@ -76,7 +74,9 @@ class DashboardViewModel @Inject constructor(
             Element(R.string.genres, R.drawable.ic_piano),
             Element(R.string.favorites, R.drawable.ic_favorite_filled),
             Element(R.string.playing_queue, R.drawable.ic_queue),
-            Element(R.string.recently_added, R.drawable.ic_recently_added)
+            Element(R.string.recently_added, R.drawable.ic_recently_added),
+            Element(R.string.recently_played, R.drawable.ic_history),
+            Element(R.string.most_played, R.drawable.ic_equalizer)
     )
 
     /**
@@ -94,6 +94,8 @@ class DashboardViewModel @Inject constructor(
             Element(R.string.recently_added, R.drawable.ic_recently_added),
             Element(R.string.year, R.drawable.ic_date_range),
             Element(R.string.favorites, R.drawable.ic_favorite_filled),
+            Element(R.string.most_played, R.drawable.ic_equalizer),
+            Element(R.string.recently_played, R.drawable.ic_history),
             Element(R.string.preferences, R.drawable.ic_settings)
     )
 
@@ -112,23 +114,38 @@ class DashboardViewModel @Inject constructor(
     }
 
     init {
-        loadRecentSongs()
+        loadRecentlyPlayed()
+        loadRecentlyAdded()
         loadFavorites()
         loadRecommended()
     }
 
-    private fun loadRecentSongs() {
+    private fun loadRecentlyPlayed() {
         viewModelScope.launch {
-            audioRepository.getRecentAudio()
+            songStatRepository.getRecentlyPlayed()
                 .catch { exception ->
-                    Log.e(TAG, "Error loading recent songs", exception)
-                    emit(mutableListOf())
+                    Log.e(TAG, "Error loading recently played songs", exception)
+                    emit(emptyList())
                 }
                 .flowOn(Dispatchers.IO)
                 .collect { list ->
                     _recentlyPlayed.value = list
+                    Log.d(TAG, "loadRecentlyPlayed: ${list.size} songs loaded")
+                }
+        }
+    }
+
+    private fun loadRecentlyAdded() {
+        viewModelScope.launch {
+            audioRepository.getRecentAudio()
+                .catch { exception ->
+                    Log.e(TAG, "Error loading recently added songs", exception)
+                    emit(mutableListOf())
+                }
+                .flowOn(Dispatchers.IO)
+                .collect { list ->
                     _recentlyAdded.value = list
-                    Log.d(TAG, "loadRecentSongs: ${list.size} songs loaded")
+                    Log.d(TAG, "loadRecentlyAdded: ${list.size} songs loaded")
                 }
         }
     }

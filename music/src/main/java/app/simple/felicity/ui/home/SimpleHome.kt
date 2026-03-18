@@ -23,9 +23,11 @@ import app.simple.felicity.ui.panels.Favorites
 import app.simple.felicity.ui.panels.Folders
 import app.simple.felicity.ui.panels.FoldersHierarchy
 import app.simple.felicity.ui.panels.Genres
+import app.simple.felicity.ui.panels.MostPlayed
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Preferences
 import app.simple.felicity.ui.panels.RecentlyAdded
+import app.simple.felicity.ui.panels.RecentlyPlayed
 import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.ui.panels.Year
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel
@@ -118,6 +120,12 @@ class SimpleHome : PanelFragment() {
                     }
                     R.string.recently_added -> {
                         openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
+                    }
+                    R.string.recently_played -> {
+                        openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
+                    }
+                    R.string.most_played -> {
+                        openFragment(MostPlayed.newInstance(), MostPlayed.TAG)
                     }
                     R.string.year -> {
                         openFragment(Year.newInstance(), Year.TAG)

@@ -8,21 +8,39 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import app.simple.felicity.repository.database.dao.AudioDao
 import app.simple.felicity.repository.database.dao.PlaybackStateDao
+import app.simple.felicity.repository.database.dao.SongStatDao
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.AudioStat
 import app.simple.felicity.repository.models.PlaybackState
 
+/**
+ * Room database holding the core audio library, playback state, and song statistics.
+ *
+ * <p>Version history:</p>
+ * <ul>
+ *   <li>3 → 4: Added {@code is_favorite} and {@code always_skip} columns to {@code audio}.</li>
+ *   <li>4 → 5: Renamed the old {@code id} column to {@code hash} and introduced a proper
+ *       auto-increment {@code id} primary key.</li>
+ *   <li>5 → 6: Added a unique index on {@code audio.hash} and created the {@code song_stats}
+ *       table linked to {@code audio.hash} via a non-cascade foreign key.</li>
+ * </ul>
+ *
+ * @author Hamza417
+ */
 @Database(
         entities = [
             Audio::class,
-            PlaybackState::class
+            PlaybackState::class,
+            AudioStat::class
         ],
-        version = 5,
+        version = 6,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {
 
     abstract fun audioDao(): AudioDao?
     abstract fun playbackStateDao(): PlaybackStateDao
+    abstract fun songStatDao(): SongStatDao
 
     companion object {
         private const val DB_NAME = "audio.db"
@@ -107,6 +125,31 @@ abstract class AudioDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migrates the database from version 5 to 6.
+         *
+         * <p>Adds a unique index on {@code audio.hash} to satisfy the foreign-key constraint
+         * required by the new {@code song_stats} table. Then creates the {@code song_stats}
+         * table with {@code audioHash} referencing {@code audio.hash} (no cascade delete so
+         * play history is preserved even after a library rescan removes tracks).</p>
+         */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_audio_hash` ON `audio` (`hash`)")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `song_stats` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `audioHash` INTEGER NOT NULL,
+                        `lastPlayed` INTEGER NOT NULL DEFAULT 0,
+                        `playCount` INTEGER NOT NULL DEFAULT 0,
+                        `skipCount` INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY(`audioHash`) REFERENCES `audio`(`hash`) ON UPDATE CASCADE ON DELETE NO ACTION
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_stats_audioHash` ON `song_stats` (`audioHash`)")
+            }
+        }
+
         fun getInstance(context: Context): AudioDatabase {
             return instance ?: synchronized(this) {
                 instance ?: buildDatabase(context.applicationContext).also {
@@ -120,7 +163,7 @@ abstract class AudioDatabase : RoomDatabase() {
         private fun buildDatabase(context: Context): AudioDatabase {
             return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
                 .fallbackToDestructiveMigration()
-                .addMigrations(MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .build()
         }
     }
