@@ -5,7 +5,6 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.os.Build
@@ -25,15 +24,13 @@ import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SnapHelper
-import app.simple.felicity.decoration.R
-import app.simple.felicity.shared.utils.ColorUtils.blendColors
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
+import app.simple.felicity.theme.themes.Theme
 import java.lang.ref.WeakReference
 import kotlin.math.abs
 import kotlin.math.floor
-import kotlin.math.min
 
 // High-performance fast scroller with adapter index mapping, throttling, and prefetch optimization
 class SlideFastScroller @JvmOverloads constructor(
@@ -46,24 +43,73 @@ class SlideFastScroller @JvmOverloads constructor(
 
     // Handle (pill) configuration
     private val handleRadius = dp(28f)
-    private val minRadius = dp(22f)
-    private val maxRadius = dp(40f)
     private val touchExtra = dp(12f)
 
-    private val handleColorActive = ThemeManager.accent.primaryAccentColor
-    private val handleColorInactive = ThemeManager.theme.viewGroupTheme.backgroundColor
-    private val ridgeColor = ThemeManager.theme.textViewTheme.secondaryTextColor
+    /** Half-width of the fader-style pill thumb, matching the equalizer slider design. */
+    private val thumbHalfWidthPx = dp(12f)
 
-    private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = handleColorInactive }
+    /** Half-height of the fader-style pill thumb, matching the equalizer slider design. */
+    private val thumbHalfHeightPx = dp(24f)
+
+    /** Corner radius that produces a fully rounded pill shape (equals [thumbHalfHeightPx]). */
+    private val thumbCornerRadiusPx = thumbHalfHeightPx
+
+    /** Stroke width of the ring drawn around the pill thumb. */
+    private val thumbRingStrokePx = dp(3f)
+
+    /** Right-side margin so the pill never presses against the screen edge. */
+    private val thumbMarginRightPx = dp(8f)
+
+    /** Fraction of [thumbHalfWidthPx] used as the half-length of each horizontal grip line. */
+    private val gripLineHalfLengthFraction = 0.42f
+
+    /** Fraction of [thumbHalfHeightPx] used as the spacing between each horizontal grip line. */
+    private val gripLineSpacingFraction = 0.22f
+
+    /** Shadow/glow radius when the thumb is in its resting (idle) state. */
+    private val glowRadiusIdle = dp(4f)
+
+    /** Shadow/glow radius when the thumb is being actively dragged. */
+    private val glowRadiusActive = dp(10f)
+
+    /**
+     * Animated interaction state for the thumb.
+     * 0.0 = fully idle, 1.0 = fully dragging.
+     * Drives the shadow glow radius and alpha interpolation each frame.
+     */
+    private var thumbState = 0f
+    private var thumbStateAnimator: ValueAnimator? = null
+
+    /**
+     * Fill paint for the pill body. Color is always the current accent; the shadow layer
+     * is rebuilt each frame in [onDraw] so the glow radius tracks [thumbState] smoothly.
+     */
+    private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = ThemeManager.accent.primaryAccentColor
+        style = Paint.Style.FILL
+    }
+
+    /**
+     * Stroke ring drawn around the pill. Uses the theme's background color to create
+     * a subtle recessed-border effect against the accent fill.
+     */
+    private val thumbRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = ThemeManager.theme.viewGroupTheme.backgroundColor
+        strokeWidth = dp(3f)
+    }
+
+    /** Horizontal grip lines drawn on the pill thumb, matching the equalizer slider design. */
     private val ridgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ridgeColor
-        strokeWidth = dp(2f)
+        style = Paint.Style.STROKE
+        color = Color.WHITE
+        alpha = 130
+        strokeWidth = dp(1.5f)
         strokeCap = Paint.Cap.ROUND
     }
 
-    // Path + rect for internal half-pill rendering
-    private val handlePath = Path()
-    private val circleRect = RectF()
+    // Reusable rect for the pill thumb to avoid per-frame allocations.
+    private val thumbPillRect = RectF()
 
     // Custom drawable support
     private var handleDrawable: Drawable? = null
@@ -87,8 +133,8 @@ class SlideFastScroller @JvmOverloads constructor(
     private var visible = true
     private var autoHideDelay = 1500L
     private var visibilityAnimator: ValueAnimator? = null
-    private var fadeToIdleMode = false // If true, fade to idleAlpha instead of hiding completely
-    private var idleAlpha = 0.2f // Alpha when idle (only used if fadeToIdleMode is true)
+    private var fadeToIdleMode = true  // Fade to 40 % alpha rather than hiding completely.
+    private var idleAlpha = 0.4f        // Dim level when the user is not interacting.
     private var isIdle = false // Track if currently in idle/dimmed state to prevent flooding show() calls
     private val autoHideRunnable = Runnable { if (!dragging) fadeToIdle(true) }
 
@@ -180,6 +226,9 @@ class SlideFastScroller @JvmOverloads constructor(
         isClickable = false
         isFocusable = false
         setWillNotDraw(false)
+        // Hardware layer lets Paint.setShadowLayer composite the glow on the HWUI pipeline
+        // (API 28+) without falling back to software rendering.
+        setLayerType(LAYER_TYPE_HARDWARE, null)
         alpha = 0f
         translationX = handleRadius
         visible = false
@@ -538,15 +587,11 @@ class SlideFastScroller @JvmOverloads constructor(
         isIdle = false
         visibilityAnimator?.cancel()
 
-        val accentColor = ThemeManager.accent.primaryAccentColor
-        val idleColor = Color.LTGRAY
-
         if (!animated) {
             alpha = 1f
             translationX = 0f
             if (wasIdle && fadeToIdleMode) {
-                handleDrawable?.setTint(accentColor)
-                handlePaint.color = accentColor
+                handleDrawable?.setTint(ThemeManager.accent.primaryAccentColor)
                 invalidate()
             }
         } else {
@@ -559,13 +604,6 @@ class SlideFastScroller @JvmOverloads constructor(
                     val f = va.animatedFraction
                     alpha = startAlpha + (1f - startAlpha) * f
                     translationX = startTx + (0f - startTx) * f
-                    // Animate color back from gray to accent if coming from idle
-                    if (wasIdle && fadeToIdleMode) {
-                        val blendedColor = blendColors(idleColor, accentColor, f)
-                        handleDrawable?.setTint(blendedColor)
-                        handlePaint.color = blendedColor
-                        invalidate()
-                    }
                 }
                 start()
             }
@@ -598,30 +636,26 @@ class SlideFastScroller @JvmOverloads constructor(
     }
 
     /**
-     * Fade to idle state - either hides completely or fades to idleAlpha based on fadeToIdleMode.
-     * @param animated Whether to animate the transition
+     * Fades the scroller to its idle alpha (40 %) when the user is not interacting.
+     * If [fadeToIdleMode] is disabled the scroller hides completely instead.
+     *
+     * @param animated Whether to animate the transition.
      */
     private fun fadeToIdle(animated: Boolean) {
         if (!fadeToIdleMode) {
-            // Use traditional hide behavior
             hide(animated)
             return
         }
 
-        // Already idle, no need to animate again
+        // Guard: do not re-animate when already in the idle state.
         if (isIdle) return
-
         isIdle = true
-        // Fade to idle alpha while keeping position visible
-        visibilityAnimator?.cancel()
 
-        val idleColor = Color.LTGRAY
-        val startColor = ThemeManager.accent.primaryAccentColor
+        visibilityAnimator?.cancel()
 
         if (!animated) {
             alpha = idleAlpha
-            handleDrawable?.setTint(idleColor)
-            handlePaint.color = idleColor
+            handleDrawable?.setTint(ThemeManager.accent.primaryAccentColor)
             invalidate()
         } else {
             val startAlpha = alpha
@@ -630,13 +664,7 @@ class SlideFastScroller @JvmOverloads constructor(
                 interpolator = DecelerateInterpolator()
                 addUpdateListener { va ->
                     val f = va.animatedFraction
-                    // Interpolate from current alpha to idleAlpha
                     alpha = startAlpha + (idleAlpha - startAlpha) * f
-                    // Interpolate color from accent to light gray
-                    val blendedColor = blendColors(startColor, idleColor, f)
-                    handleDrawable?.setTint(blendedColor)
-                    handlePaint.color = blendedColor
-                    invalidate()
                 }
                 start()
             }
@@ -804,28 +832,51 @@ class SlideFastScroller @JvmOverloads constructor(
             return
         }
 
-        val radius = computeRadius(adapterCount)
-        val centerY = radius + (h - radius * 2f) * percent
-        val clampedCY = centerY.coerceIn(radius, h - radius)
-        circleRect.set(w - radius * 2f, clampedCY - radius, w, clampedCY + radius)
-        handlePath.reset()
-        handlePath.moveTo(w, clampedCY - radius)
-        handlePath.lineTo(w, clampedCY + radius)
-        handlePath.addArc(circleRect, 90f, 180f)
-        handlePath.close()
-        handlePaint.color = if (dragging) handleColorActive else handleColorInactive
-        canvas.drawPath(handlePath, handlePaint)
+        val accentColor = ThemeManager.accent.primaryAccentColor
+        val r = Color.red(accentColor)
+        val g = Color.green(accentColor)
+        val b = Color.blue(accentColor)
 
-        val ridgeCount = 3
-        val ridgeSpacing = radius * 0.5f / (ridgeCount - 1)
-        val ridgeMaxLength = radius * 1.05f
-        val startX = w - radius * 1.6f
-        val endBase = w - radius * 0.3f
-        for (i in 0 until ridgeCount) {
-            val ry = clampedCY - ridgeSpacing * (ridgeCount - 1) / 2f + i * ridgeSpacing
-            val shrinkFactor = 1f - 0.15f * (abs(i - (ridgeCount - 1) / 2f))
-            val endX = startX + ridgeMaxLength * shrinkFactor
-            canvas.drawLine(startX, ry, min(endX, endBase), ry, ridgePaint)
+        // Interpolate glow radius and alpha based on the animated thumb state (0 = idle, 1 = dragging).
+        val glowRadius = glowRadiusIdle + (glowRadiusActive - glowRadiusIdle) * thumbState
+        val glowAlpha = (80 + (120f * thumbState).toInt()).coerceIn(0, 200)
+        val glowColor = Color.argb(glowAlpha, r, g, b)
+
+        val halfH = thumbHalfHeightPx
+        val halfW = thumbHalfWidthPx
+        val cornerRadius = thumbCornerRadiusPx
+
+        val centerY = halfH + (h - halfH * 2f) * percent
+        val clampedCY = centerY.coerceIn(halfH, h - halfH)
+
+        // Keep a comfortable margin from the right edge of the screen.
+        val cx = w - halfW - thumbMarginRightPx
+
+        // Apply the animated glow; accent color is always used for the fill.
+        handlePaint.color = accentColor
+        handlePaint.setShadowLayer(glowRadius, 0f, 0f, glowColor)
+
+        // Draw the filled pill body.
+        thumbPillRect.set(cx - halfW, clampedCY - halfH, cx + halfW, clampedCY + halfH)
+        canvas.drawRoundRect(thumbPillRect, cornerRadius, cornerRadius, handlePaint)
+
+        // Draw the background-colored ring around the pill.
+        val ringInset = thumbRingStrokePx / 2f
+        thumbPillRect.inset(ringInset, ringInset)
+        canvas.drawRoundRect(
+                thumbPillRect,
+                cornerRadius - ringInset,
+                cornerRadius - ringInset,
+                thumbRingPaint
+        )
+        thumbPillRect.inset(-ringInset, -ringInset)
+
+        // Draw the three horizontal grip lines centered on the pill.
+        val gripHalfLen = halfW * gripLineHalfLengthFraction
+        val gripSpacing = halfH * gripLineSpacingFraction
+        for (i in -1..1) {
+            val lineY = clampedCY + i * gripSpacing
+            canvas.drawLine(cx - gripHalfLen, lineY, cx + gripHalfLen, lineY, ridgePaint)
         }
     }
 
@@ -848,6 +899,27 @@ class SlideFastScroller @JvmOverloads constructor(
         handler.postDelayed(delayedFullBindRunnable, 80L)
     }
 
+    /**
+     * Smoothly transitions the thumb between its idle (0.0) and dragging (1.0) states.
+     * The animation drives [thumbState], which controls the shadow glow radius rendered
+     * each frame in [onDraw]. Pressing uses a snappier duration; releasing eases out gently.
+     *
+     * @param to Target state: 0.0 for idle, 1.0 for dragging.
+     */
+    private fun animateThumbState(to: Float) {
+        thumbStateAnimator?.cancel()
+        if (thumbState == to) return
+        thumbStateAnimator = ValueAnimator.ofFloat(thumbState, to).apply {
+            duration = if (to >= 0.5f) 150L else 320L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener {
+                thumbState = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val rv = recyclerRef?.get()
         val adapterCount = rv?.adapter?.itemCount ?: 0
@@ -862,8 +934,7 @@ class SlideFastScroller @JvmOverloads constructor(
                 if (hitTest(event.x, event.y, adapterCount)) {
                     parent?.requestDisallowInterceptTouchEvent(true)
                     dragging = true
-
-                    // Detach any SnapHelper to prevent auto-snapping while dragging
+                    animateThumbState(1f)
                     if (detachedSnapHelper == null) {
                         val snap = rv?.onFlingListener
                         if (snap is SnapHelper) {
@@ -914,7 +985,7 @@ class SlideFastScroller @JvmOverloads constructor(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (dragging) {
                     dragging = false
-                    parent?.requestDisallowInterceptTouchEvent(false)
+                    animateThumbState(0f)
 
                     // Cancel ALL pending scroll operations immediately
                     cancelAllPendingScrolls()
@@ -960,10 +1031,12 @@ class SlideFastScroller @JvmOverloads constructor(
             val rect = RectF(w - intrinsicW - touchExtra, top - touchExtra, w + touchExtra, top + intrinsicH + touchExtra)
             return rect.contains(x, y)
         }
-        val radius = computeRadius(adapterCount)
-        val centerY = radius + (height - radius * 2f) * percent
-        val cy = centerY.coerceIn(radius, height - radius)
-        val rect = RectF(w - radius * 2f - touchExtra, cy - radius - touchExtra, w + touchExtra, cy + radius + touchExtra)
+        val halfH = thumbHalfHeightPx
+        val halfW = thumbHalfWidthPx
+        val centerY = halfH + (height - halfH * 2f) * percent
+        val cy = centerY.coerceIn(halfH, height.toFloat() - halfH)
+        val cx = w - halfW - thumbMarginRightPx
+        val rect = RectF(cx - halfW - touchExtra, cy - halfH - touchExtra, cx + halfW + touchExtra, cy + halfH + touchExtra)
         return rect.contains(x, y)
     }
 
@@ -982,10 +1055,10 @@ class SlideFastScroller @JvmOverloads constructor(
             val clamped = clampedTop.coerceIn(0f, h - intrinsicH)
             (clamped / available).coerceIn(0f, 1f)
         } else {
-            val radius = computeRadius(adapterCount)
-            val available = (h - radius * 2f).coerceAtLeast(1f)
-            val clampedY = y.coerceIn(radius, h - radius)
-            (clampedY - radius) / available
+            val halfH = thumbHalfHeightPx
+            val available = (h - halfH * 2f).coerceAtLeast(1f)
+            val clampedY = y.coerceIn(halfH, h - halfH)
+            (clampedY - halfH) / available
         }
 
         // Use much smaller threshold during dragging for smoother updates
@@ -1019,12 +1092,6 @@ class SlideFastScroller @JvmOverloads constructor(
         return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, metrics)
     }
 
-    private fun computeRadius(adapterCount: Int): Float = when {
-        adapterCount <= 0 -> handleRadius
-        adapterCount <= 20 -> maxRadius
-        adapterCount >= 400 -> minRadius
-        else -> minRadius + (maxRadius - minRadius) * (1f - (adapterCount - 20f) / 380f)
-    }
 
     /** Provide a custom drawable resource for the handle (used for both active & inactive). */
     @Suppress("unused")
@@ -1062,10 +1129,19 @@ class SlideFastScroller @JvmOverloads constructor(
         invalidate()
     }
 
+    override fun onThemeChanged(theme: Theme, animate: Boolean) {
+        super.onThemeChanged(theme, animate)
+        // Keep the ring color in sync with the current theme background.
+        thumbRingPaint.color = theme.viewGroupTheme.backgroundColor
+        invalidate()
+    }
+
     override fun onAccentChanged(accent: Accent) {
         super.onAccentChanged(accent)
         handleDrawable?.setTint(accent.secondaryAccentColor)
         handleDrawableActive?.setTint(accent.primaryAccentColor)
+        // Repaint so the new accent color and glow are applied immediately.
+        invalidate()
     }
 
     override fun onAttachedToWindow() {
@@ -1077,6 +1153,8 @@ class SlideFastScroller @JvmOverloads constructor(
         super.onDetachedFromWindow()
         visibilityAnimator?.cancel()
         visibilityAnimator = null
+        thumbStateAnimator?.cancel()
+        thumbStateAnimator = null
         removeCallbacks(autoHideRunnable)
         removeCallbacks(batchedScrollRunnable)
         removeCallbacks(batchedPercentRunnable)
@@ -1124,9 +1202,6 @@ class SlideFastScroller @JvmOverloads constructor(
         fun attach(recyclerView: RecyclerView): SlideFastScroller {
             val scroller = SlideFastScroller(recyclerView.context)
             scroller.attachTo(recyclerView)
-            scroller.setHandleDrawable(R.drawable.ic_scroll_thumb)
-            scroller.handleDrawable?.setTint(ThemeManager.accent.primaryAccentColor)
-            scroller.handleDrawableActive?.setTint(ThemeManager.accent.secondaryAccentColor)
             return scroller
         }
     }
