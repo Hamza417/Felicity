@@ -271,6 +271,9 @@ class Equalizer : MediaFragment() {
         outState.putInt(SCREEN_STATE_KEY, binding.viewFlipper.displayedChild)
     }
 
+    override val wantsMiniPlayerVisible: Boolean
+        get() = false
+
     companion object {
         fun newInstance(): Equalizer {
             val args = Bundle()

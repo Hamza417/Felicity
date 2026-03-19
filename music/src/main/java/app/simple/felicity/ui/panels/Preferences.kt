@@ -69,6 +69,9 @@ class Preferences : MediaFragment() {
         }
     }
 
+    override val wantsMiniPlayerVisible: Boolean
+        get() = false
+
     companion object {
         fun newInstance(): Preferences {
             val args = Bundle()

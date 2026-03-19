@@ -37,6 +37,9 @@ class AccentColors : MediaFragment() {
         (binding.recyclerView.adapter as? AdapterAccentColors)?.reloadAlbumArt()
     }
 
+    override val wantsMiniPlayerVisible: Boolean
+        get() = false
+
     companion object {
         fun newInstance(): AccentColors {
             return AccentColors()

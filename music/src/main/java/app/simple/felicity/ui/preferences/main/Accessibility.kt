@@ -46,6 +46,9 @@ class Accessibility : PreferenceFragment() {
         }
     }
 
+    override val wantsMiniPlayerVisible: Boolean
+        get() = false
+
     companion object {
         fun newInstance(): Accessibility {
             val args = Bundle()

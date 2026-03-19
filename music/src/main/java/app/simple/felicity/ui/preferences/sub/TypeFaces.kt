@@ -32,6 +32,9 @@ class TypeFaces : MediaFragment() {
         return TransitionType.SLIDE
     }
 
+    override val wantsMiniPlayerVisible: Boolean
+        get() = false
+
     companion object {
         fun newInstance(): TypeFaces {
             val args = Bundle()

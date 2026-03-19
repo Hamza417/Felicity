@@ -14,7 +14,7 @@ import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
  *
  * @author Hamza417
  */
-class Songs(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
+class Song(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
 
     /**
      * Binds [audio] data to the view. Calls [setAudioID] so the container registers

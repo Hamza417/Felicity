@@ -138,6 +138,9 @@ class Setup : MediaFragment() {
         permissionViewModel.setManageFilesPermissionState(isManageExternalStoragePermissionGranted())
     }
 
+    override val wantsMiniPlayerVisible: Boolean
+        get() = false
+
     companion object {
         fun newInstance(): Setup {
             val args = Bundle()

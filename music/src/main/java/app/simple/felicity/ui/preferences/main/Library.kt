@@ -50,6 +50,9 @@ class Library : PreferenceFragment() {
         }
     }
 
+    override val wantsMiniPlayerVisible: Boolean
+        get() = false
+
     companion object {
         fun newInstance(): Library {
             val args = Bundle()

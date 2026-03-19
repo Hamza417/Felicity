@@ -182,6 +182,9 @@ class Lyrics : MediaFragment() {
         updatePlayButtonState(MediaManager.isPlaying())
     }
 
+    override val wantsMiniPlayerVisible: Boolean
+        get() = false
+
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {

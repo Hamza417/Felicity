@@ -49,6 +49,7 @@ class RecentlyAdded : PanelFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.recyclerView.requireAttachedMiniPlayer()
+        binding.recyclerView.attachSlideFastScroller()
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
 

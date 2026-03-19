@@ -192,6 +192,9 @@ class ArtFlow : MediaFragment() {
         }
     }
 
+    override val wantsMiniPlayerVisible: Boolean
+        get() = false
+
     companion object {
         fun newInstance(): ArtFlow {
             val args = Bundle()

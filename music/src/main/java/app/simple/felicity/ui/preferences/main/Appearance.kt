@@ -33,6 +33,9 @@ class Appearance : PreferenceFragment() {
         binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
     }
 
+    override val wantsMiniPlayerVisible: Boolean
+        get() = false
+
     companion object {
         fun newInstance(): Appearance {
             val args = Bundle()

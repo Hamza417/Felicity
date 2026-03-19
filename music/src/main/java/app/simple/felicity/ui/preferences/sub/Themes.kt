@@ -40,6 +40,9 @@ class Themes : MediaFragment() {
         return TransitionType.SLIDE
     }
 
+    override val wantsMiniPlayerVisible: Boolean
+        get() = false
+
     companion object {
         fun newInstance(): Themes {
             val args = Bundle()

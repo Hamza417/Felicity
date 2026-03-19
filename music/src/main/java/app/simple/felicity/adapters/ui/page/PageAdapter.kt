@@ -256,7 +256,7 @@ class PageAdapter(
                 Genres(AdapterGenreAlbumsBinding.inflate(inflater, parent, false))
             }
             PageConstants.VIEW_TYPE_SONG -> {
-                Songs(AdapterStyleListBinding.inflate(inflater, parent, false))
+                Song(AdapterStyleListBinding.inflate(inflater, parent, false))
             }
             else -> throw IllegalArgumentException("Unknown view type: $viewType")
         }
@@ -286,7 +286,7 @@ class PageAdapter(
                 val genresItem = item as PageItem.GenresSection
                 holder.bind(genresItem, listener)
             }
-            is Songs -> {
+            is Song -> {
                 val songItem = item as PageItem.SongItem
                 holder.bind(songItem.audio)
                 holder.binding.container.setOnClickListener {
@@ -307,7 +307,7 @@ class PageAdapter(
     override fun onViewRecycled(holder: VerticalListViewHolder) {
         super.onViewRecycled(holder)
         when (holder) {
-            is Songs -> {
+            is Song -> {
                 Glide.with(holder.binding.cover).clear(holder.binding.cover)
             }
             is Albums -> {
