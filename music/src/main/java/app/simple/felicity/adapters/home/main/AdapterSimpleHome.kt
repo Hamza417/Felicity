@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
@@ -15,10 +14,15 @@ import app.simple.felicity.databinding.AdapterHomeSimpleGridBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Element
 
+/**
+ * Flat, non-draggable adapter for the Simple Home screen.
+ * Item ordering is managed exclusively through [app.simple.felicity.dialogs.home.HomeOrganize].
+ *
+ * @author Hamza417
+ */
 class AdapterSimpleHome(private val data: MutableList<Element>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var adapterSimpleHomeCallbacks: AdapterSimpleHomeCallbacks? = null
-    private var itemTouchHelper: ItemTouchHelper? = null
     private var layoutType: Int = CommonPreferencesConstants.GRID_TYPE_LIST
 
     fun setLayoutType(type: Int) {
@@ -26,56 +30,18 @@ class AdapterSimpleHome(private val data: MutableList<Element>) : RecyclerView.A
         notifyItemRangeChanged(0, itemCount)
     }
 
-    fun attachItemTouchHelper(recyclerView: RecyclerView) {
-        // Detach from any previously attached RecyclerView first
-        itemTouchHelper?.attachToRecyclerView(null)
-
-        val callback = object : ItemTouchHelper.SimpleCallback(
-                ItemTouchHelper.UP or ItemTouchHelper.DOWN or
-                        ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT,
-                0
-        ) {
-            private var dragFrom = RecyclerView.NO_POSITION
-            private var dragTo = RecyclerView.NO_POSITION
-
-            override fun onMove(
-                    recyclerView: RecyclerView,
-                    viewHolder: RecyclerView.ViewHolder,
-                    target: RecyclerView.ViewHolder
-            ): Boolean {
-                val from = viewHolder.bindingAdapterPosition
-                val to = target.bindingAdapterPosition
-                if (from == RecyclerView.NO_POSITION || to == RecyclerView.NO_POSITION) return false
-                if (dragFrom == RecyclerView.NO_POSITION) dragFrom = from
-                dragTo = to
-                // Move item in the backing list and notify adapter directly
-                val item = data.removeAt(from)
-                data.add(to, item)
-                notifyItemMoved(from, to)
-                return true
-            }
-
-            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-                // No swipe action
-            }
-
-            override fun isLongPressDragEnabled(): Boolean = true
-
-            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
-                super.clearView(recyclerView, viewHolder)
-                // Persist the final order only once when drag completes (not on every onMove)
-                if (dragFrom != RecyclerView.NO_POSITION && dragTo != RecyclerView.NO_POSITION
-                        && dragFrom != dragTo) {
-                    adapterSimpleHomeCallbacks?.onItemMoved(dragFrom, dragTo)
-                }
-                dragFrom = RecyclerView.NO_POSITION
-                dragTo = RecyclerView.NO_POSITION
-                adapterSimpleHomeCallbacks?.onDragEnd()
-            }
-        }
-        itemTouchHelper = ItemTouchHelper(callback)
-        itemTouchHelper?.attachToRecyclerView(recyclerView)
+    /**
+     * Replaces the adapter's backing list with [newData] and refreshes every item.
+     * Called by [app.simple.felicity.ui.home.SimpleHome] whenever the ViewModel
+     * emits a new ordered list (e.g., after the organize dialog confirms a change).
+     */
+    @SuppressLint("NotifyDataSetChanged")
+    fun updateData(newData: List<Element>) {
+        data.clear()
+        data.addAll(newData)
+        notifyDataSetChanged()
     }
+
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
@@ -156,8 +122,6 @@ class AdapterSimpleHome(private val data: MutableList<Element>) : RecyclerView.A
         interface AdapterSimpleHomeCallbacks : GeneralAdapterCallbacks {
             fun onItemClicked(element: Element, position: Int, view: View)
             fun onCarouselClicked(element: Element, position: Int, view: View)
-            fun onItemMoved(fromPosition: Int, toPosition: Int)
-            fun onDragEnd() {}
         }
     }
 }

@@ -23,6 +23,14 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
         return homeData
     }
 
+    /**
+     * Forces a reload of the home data from preferences.
+     * Use this after resetting the item order so the list reflects the default arrangement.
+     */
+    fun reloadHomeData() {
+        setHomeData()
+    }
+
     private fun setHomeData() {
         viewModelScope.launch(Dispatchers.IO) {
             val defaultElements = listOf(
@@ -58,10 +66,14 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
         }
     }
 
-    fun onItemMoved(fromPosition: Int, toPosition: Int) {
-        // The adapter already mutated the shared MutableList — just persist the new order.
-        val current = homeData.value ?: return
-        saveOrder(current)
+    /**
+     * Replaces the current home item order with [elements] and persists it.
+     * Called by the organize dialog after the user confirms a new arrangement.
+     */
+    fun updateOrder(elements: List<Element>) {
+        val mutable = elements.toMutableList()
+        homeData.postValue(mutable)
+        saveOrder(mutable)
     }
 
     private fun saveOrder(elements: List<Element>) {

@@ -10,6 +10,7 @@ import app.simple.felicity.R
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.DialogHomeMenuBinding
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
+import app.simple.felicity.dialogs.home.HomeOrganize.Companion.showHomeOrganize
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.HomePreferences
 
@@ -27,8 +28,9 @@ class HomeMenu : ScopedBottomSheetFragment() {
 
         updateGridTypeState()
 
-        binding.reset.setOnClickListener {
-            HomePreferences.resetHomeOrder()
+        binding.organize.setOnClickListener {
+            dismiss()
+            parentFragmentManager.showHomeOrganize()
         }
 
         binding.openAppSettings.setOnClickListener {

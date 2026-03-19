@@ -74,12 +74,12 @@ class SimpleHome : PanelFragment() {
                 adapterSimpleHome = AdapterSimpleHome(list)
                 adapterSimpleHome!!.setLayoutType(HomePreferences.getHomeLayoutType())
                 setupAdapterCallbacks()
-            }
-            // Always (re-)attach the touch helper and adapter to the current RecyclerView.
-            // The view may have been recreated (back-navigation) so we must re-bind every time.
-            adapterSimpleHome!!.attachItemTouchHelper(binding.recyclerView)
-            if (binding.recyclerView.adapter !== adapterSimpleHome) {
                 binding.recyclerView.adapter = adapterSimpleHome
+            } else {
+                // A new ordered list arrived (e.g. from the organize dialog or a reset).
+                // Push the change straight into the existing adapter so the main list
+                // reflects the new order immediately without recreating the adapter.
+                adapterSimpleHome!!.updateData(list)
             }
         }
     }
@@ -152,18 +152,6 @@ class SimpleHome : PanelFragment() {
                         // Handle other cases or show a message
                     }
                 }
-            }
-
-            override fun onItemMoved(fromPosition: Int, toPosition: Int) {
-                homeViewModel?.onItemMoved(fromPosition, toPosition)
-            }
-
-            override fun onDragEnd() {
-                // After drag completes, reset any accumulated header-scroll offset that
-                // may have built up due to auto-scroll while dragging near the top of
-                // the list, then resume normal hide-on-scroll behavior.
-                binding.appHeader.resetScrollingState()
-                binding.appHeader.resumeAutoBehavior(reset = false)
             }
         })
     }
