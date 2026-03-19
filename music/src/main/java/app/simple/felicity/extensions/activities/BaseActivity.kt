@@ -152,14 +152,20 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
                 if (!lastSongs.isNullOrEmpty() && playbackState != null) {
                     withContext(Dispatchers.Main) {
-                        // Set songs with the saved position and seek position in one call
-                        // This avoids the need for a separate seekTo call
+                        // Prefer locating the active song by its stable hash so that index
+                        // stays correct even when cascade deletions shifted queue positions.
+                        val restoredIndex = if (playbackState.currentHash != 0L) {
+                            lastSongs.indexOfFirst { it.hash == playbackState.currentHash }
+                                .takeIf { it >= 0 }
+                                ?: playbackState.index.coerceIn(0, lastSongs.size - 1)
+                        } else {
+                            playbackState.index.coerceIn(0, lastSongs.size - 1)
+                        }
                         MediaManager.setSongs(
                                 audios = lastSongs,
-                                position = playbackState.index.coerceIn(0, lastSongs.size - 1),
+                                position = restoredIndex,
                                 startPositionMs = playbackState.position.coerceAtLeast(0L),
                         )
-                        // Don't call play() automatically - let user initiate playback
                         Log.d(TAG, "Playback state restored successfully")
                         onStateReady()
                     }

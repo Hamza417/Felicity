@@ -432,27 +432,31 @@ object MediaManager {
         return getCurrentSong()?.id
     }
 
-    fun updatePosition(position: Int) {
+    fun updatePosition(position: Int, forcePlay: Boolean = false) {
         if (position != currentSongPosition) {
             if (position in songs.indices) {
                 currentSongPosition = position
-                // Let ExoPlayer handle the transition naturally for gapless playback
-                // Only seek if the controller is not already on this track
                 if (mediaController?.currentMediaItemIndex != position) {
-                    // Register before seekTo so the arriving onMediaItemTransition callback
-                    // is identified as a confirmation rather than a natural advance.
                     pendingSeekPositions.add(position)
                     mediaController?.seekTo(position, 0L)
-                    // Only start playing if we were already playing, otherwise just prepare
-                    if (mediaController?.isPlaying == true) {
-                        startSeekPositionUpdates()
-                    }
+                }
+                if (forcePlay) {
+                    // Explicit user tap: always start playback regardless of prior pause state.
+                    mediaController?.play()
+                    startSeekPositionUpdates()
+                } else if (mediaController?.isPlaying == true) {
+                    // Passive navigation (pager swipe, mini player): keep running if already playing.
+                    startSeekPositionUpdates()
                 }
             } else {
                 Log.w(TAG, "Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")
             }
         } else {
-            Log.i(TAG, "updatePosition called with current position: $position. No action taken.")
+            // Same position: resume only when the user explicitly tapped and player is paused.
+            if (forcePlay && mediaController?.isPlaying == false) {
+                mediaController?.play()
+                startSeekPositionUpdates()
+            }
         }
     }
 
@@ -671,7 +675,7 @@ object MediaManager {
                 // If currentSongPosition != position the user already moved on — discard.
             } else {
                 // Natural ExoPlayer advance (end of track, auto-next, gapless, etc.).
-                // Honour the always-skip flag only here, in the auto-queue path.
+                // Honor the always-skip flag only here, in the auto-queue path.
                 val song = songs[position]
                 if (song.isAlwaysSkip) {
                     val nextPos = findNextNonSkippedPosition(position)

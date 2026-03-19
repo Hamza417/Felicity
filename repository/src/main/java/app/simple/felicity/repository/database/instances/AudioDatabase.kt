@@ -7,10 +7,12 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import app.simple.felicity.repository.database.dao.AudioDao
+import app.simple.felicity.repository.database.dao.PlaybackQueueDao
 import app.simple.felicity.repository.database.dao.PlaybackStateDao
 import app.simple.felicity.repository.database.dao.SongStatDao
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioStat
+import app.simple.felicity.repository.models.PlaybackQueueEntry
 import app.simple.felicity.repository.models.PlaybackState
 
 /**
@@ -23,6 +25,10 @@ import app.simple.felicity.repository.models.PlaybackState
  *       auto-increment {@code id} primary key.</li>
  *   <li>5 → 6: Added a unique index on {@code audio.hash} and created the {@code song_stats}
  *       table linked to {@code audio.hash} via a non-cascade foreign key.</li>
+ *   <li>6 → 7: Replaced the JSON {@code queue} blob in {@code playback_state} with a
+ *       dedicated {@code playback_queue} table whose {@code audioHash} carries an
+ *       {@code ON DELETE CASCADE} foreign key — stale queue entries are automatically
+ *       removed whenever the corresponding audio row is deleted.</li>
  * </ul>
  *
  * @author Hamza417
@@ -31,15 +37,17 @@ import app.simple.felicity.repository.models.PlaybackState
         entities = [
             Audio::class,
             PlaybackState::class,
+            PlaybackQueueEntry::class,
             AudioStat::class
         ],
-        version = 6,
+        version = 7,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {
 
     abstract fun audioDao(): AudioDao?
     abstract fun playbackStateDao(): PlaybackStateDao
+    abstract fun playbackQueueDao(): PlaybackQueueDao
     abstract fun songStatDao(): SongStatDao
 
     companion object {
@@ -61,10 +69,6 @@ abstract class AudioDatabase : RoomDatabase() {
          * <p>In version 5 the old {@code id} column (which stored the XXHash64 file fingerprint)
          * is renamed to {@code hash}, and a new auto-increment {@code id} column is introduced
          * as the proper INTEGER PRIMARY KEY so that Room can auto-assign stable row identifiers.</p>
-         *
-         * <p>SQLite does not support altering primary-key constraints in-place, so the migration
-         * recreates the table, copies all rows (mapping old id → hash), drops the old table, and
-         * renames the temporary table back to {@code audio}.</p>
          */
         private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -150,6 +154,60 @@ abstract class AudioDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migrates the database from version 6 to 7.
+         *
+         * <p>Replaces the JSON queue blob in {@code playback_state} with a proper relational
+         * table. The old {@code queue} TEXT column is dropped (recreate-and-copy technique since
+         * SQLite does not support DROP COLUMN on older Android versions), the {@code index} and
+         * {@code position} columns are renamed to {@code current_index} and {@code position_ms},
+         * and a new {@code current_hash} column is added. A companion {@code playback_queue}
+         * table is created with an {@code ON DELETE CASCADE} foreign key so that deleting an
+         * audio track automatically removes it from any saved queue.</p>
+         *
+         * <p>The JSON queue data cannot be migrated in pure SQL, so {@code playback_queue} starts
+         * empty. On the next cold boot the app falls back to loading the full library as the
+         * default queue, which is identical to first-launch behaviour.</p>
+         */
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Recreate playback_state without the old queue JSON column.
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `playback_state_new` (
+                        `id` INTEGER PRIMARY KEY NOT NULL DEFAULT 1,
+                        `current_index` INTEGER NOT NULL DEFAULT 0,
+                        `position_ms` INTEGER NOT NULL DEFAULT 0,
+                        `shuffle` INTEGER NOT NULL DEFAULT 0,
+                        `repeatMode` INTEGER NOT NULL DEFAULT 0,
+                        `updatedAt` INTEGER NOT NULL DEFAULT 0,
+                        `current_hash` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+                // Copy scalar fields; discard the JSON queue column.
+                db.execSQL("""
+                    INSERT OR IGNORE INTO `playback_state_new`
+                        (`id`, `current_index`, `position_ms`, `shuffle`, `repeatMode`, `updatedAt`)
+                    SELECT `id`, `index`, `position`, `shuffle`, `repeatMode`, `updatedAt`
+                    FROM `playback_state`
+                """.trimIndent())
+                db.execSQL("DROP TABLE `playback_state`")
+                db.execSQL("ALTER TABLE `playback_state_new` RENAME TO `playback_state`")
+
+                // Create the per-slot queue table with cascade-delete FK.
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `playback_queue` (
+                        `queuePos` INTEGER PRIMARY KEY NOT NULL,
+                        `audioHash` INTEGER NOT NULL,
+                        FOREIGN KEY(`audioHash`) REFERENCES `audio`(`hash`)
+                            ON UPDATE CASCADE ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_playback_queue_audioHash` ON `playback_queue` (`audioHash`)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): AudioDatabase {
             return instance ?: synchronized(this) {
                 instance ?: buildDatabase(context.applicationContext).also {
@@ -163,8 +221,9 @@ abstract class AudioDatabase : RoomDatabase() {
         private fun buildDatabase(context: Context): AudioDatabase {
             return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
                 .fallbackToDestructiveMigration()
-                .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                 .build()
         }
     }
 }
+

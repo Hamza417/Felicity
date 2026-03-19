@@ -2,28 +2,35 @@ package app.simple.felicity.repository.managers
 
 import android.content.Context
 import android.util.Log
-import androidx.sqlite.db.SimpleSQLiteQuery
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.PlaybackQueueEntry
 import app.simple.felicity.repository.models.PlaybackState
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.lang.reflect.Type
 
+/**
+ * Manages persistence and restoration of playback state.
+ *
+ * <p>The current queue is stored as individual {@link PlaybackQueueEntry} rows so that
+ * SQLite's cascade-delete mechanism automatically prunes any song removed from the
+ * library. Scalar state (index, seek position, repeat mode) is kept in a single-row
+ * {@link PlaybackState} record. The active song's hash is also stored so that
+ * {@link #getAudiosFromQueueIDs} can resolve the correct queue index even when
+ * cascade deletions have shifted positions.</p>
+ *
+ * @author Hamza417
+ */
 object PlaybackStateManager {
 
     private const val TAG = "PlaybackStateManager"
-    val type: Type = object : TypeToken<List<Long>>() {}.type
 
     /**
-     * Saves the current playback state from MediaManager to the database.
-     * This is a convenience function that handles all the common logic for saving playback state.
+     * Saves the current playback state from [MediaManager] to the database.
      *
-     * @param context The application context
-     * @param logTag Optional tag for logging (defaults to TAG)
-     * @return true if state was saved successfully, false otherwise
+     * @param context  The application context.
+     * @param logTag   Optional tag for logging (defaults to TAG).
+     * @return {@code true} if state was saved successfully, {@code false} otherwise.
      */
     suspend fun saveCurrentPlaybackState(context: Context, logTag: String = TAG): Boolean {
         val songs = MediaManager.getSongs()
@@ -63,6 +70,19 @@ object PlaybackStateManager {
         }
     }
 
+    /**
+     * Persists the given queue and scalar playback state to the database.
+     *
+     * <p>The previous queue rows are deleted and replaced atomically so there are never
+     * stale slots from a prior session.</p>
+     *
+     * @param db        The open [AudioDatabase] instance.
+     * @param queueHash Ordered list of audio hashes representing the queue.
+     * @param index     Index of the currently active song within [queueHash].
+     * @param position  Seek position in milliseconds.
+     * @param shuffle   Whether shuffle mode was active.
+     * @param repeat    Repeat mode constant.
+     */
     suspend fun savePlaybackState(
             db: AudioDatabase,
             queueHash: List<Long>,
@@ -73,41 +93,47 @@ object PlaybackStateManager {
     ) {
         if (queueHash.isEmpty()) return
 
+        val currentHash = queueHash.getOrElse(index) { 0L }
+
         val state = PlaybackState(
-                queue = Gson().toJson(queueHash),
                 index = index,
                 position = position,
                 shuffle = shuffle,
                 repeatMode = repeat,
-                updatedAt = System.currentTimeMillis()
+                updatedAt = System.currentTimeMillis(),
+                currentHash = currentHash
         )
 
+        val entries = queueHash.mapIndexed { pos, hash ->
+            PlaybackQueueEntry(queuePos = pos, audioHash = hash)
+        }
+
+        db.playbackQueueDao().clear()
+        db.playbackQueueDao().insertAll(entries)
         db.playbackStateDao().save(state)
     }
 
+    /**
+     * Returns the last saved [PlaybackState], or {@code null} if none exists.
+     *
+     * @param db The open [AudioDatabase] instance.
+     */
     suspend fun fetchPlaybackState(db: AudioDatabase): PlaybackState? {
         return db.playbackStateDao().get()
     }
 
-    suspend fun fetchQueueIds(db: AudioDatabase): List<Long>? {
-        val state = db.playbackStateDao().get() ?: return null
-        return Gson().fromJson<List<Long>>(state.queue, type)
-    }
-
+    /**
+     * Returns the restored queue as an ordered list of [Audio] objects.
+     *
+     * <p>Songs that were cascade-deleted since the last save are absent from the
+     * result automatically — no stale entries are ever returned.</p>
+     *
+     * @param db The open [AudioDatabase] instance.
+     * @return The queue, or {@code null} if no queue was saved.
+     */
     suspend fun getAudiosFromQueueIDs(db: AudioDatabase): MutableList<Audio>? {
-        val queueHashes = fetchQueueIds(db) ?: return null
-        if (queueHashes.isEmpty()) return null
-
-        // Build ORDER BY CASE statement to preserve queue order using the stable hash column,
-        // which is what is persisted in the queue JSON (not the auto-increment id).
-        val orderByCase = queueHashes.mapIndexed { index, hash ->
-            "WHEN hash = $hash THEN $index"
-        }.joinToString(" ")
-
-        val query = SimpleSQLiteQuery(
-                "SELECT * FROM audio WHERE hash IN (${queueHashes.joinToString(",")}) ORDER BY CASE $orderByCase END"
-        )
-
-        return db.audioDao()?.getAudioByIDs(query)
+        val audios = db.playbackQueueDao().getQueuedAudios()
+        return if (audios.isEmpty()) null else audios.toMutableList()
     }
 }
+

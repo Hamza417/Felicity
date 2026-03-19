@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 class DefaultPlayer : MediaFragment() {
 
     private lateinit var binding: FragmentDefaultPlayerBinding
+    private var imagePageAdapter: ImagePageAdapter? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentDefaultPlayerBinding.inflate(inflater, container, false)
@@ -48,7 +49,7 @@ class DefaultPlayer : MediaFragment() {
         updateState()
 
         binding.pager.setAdapter(
-                adapter = ImagePageAdapter(
+                ImagePageAdapter(
                         count = MediaManager.getSongs().size,
                         provider = { pos, iv ->
                             val audio = MediaManager.getSongs()[pos]
@@ -64,7 +65,7 @@ class DefaultPlayer : MediaFragment() {
                         canceller = { iv ->
                             Glide.with(iv).clear(iv)
                         }
-                ),
+                ).also { imagePageAdapter = it },
         )
 
         // Jump to the currently playing song immediately after the adapter is set.
@@ -236,6 +237,26 @@ class DefaultPlayer : MediaFragment() {
                 binding.repeat.setImageResource(R.drawable.ic_repeat)
                 binding.repeat.alpha = 0.4f
             }
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        imagePageAdapter = null
+    }
+
+    override fun onSongListChanged(songs: List<Audio>) {
+        super.onSongListChanged(songs)
+        val adapter = imagePageAdapter ?: return
+        val currentPos = MediaManager.getCurrentPosition()
+        adapter.updateCount(songs.size)
+        binding.pager.notifyDataSetChanged()
+        // Keep the pager on the correct page after the list shrinks or reorders.
+        binding.pager.setCurrentItem(currentPos, smoothScroll = false)
+        binding.count.text = buildString {
+            append(currentPos + 1)
+            append("/")
+            append(songs.size)
         }
     }
 

@@ -1,0 +1,382 @@
+{
+    "formatVersion": 1,
+    "database": {
+        "version": 7,
+        "identityHash": "06041c4968ee359b071619b7ad37d914",
+        "entities": [
+            {
+                "tableName": "audio",
+                "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`name` TEXT, `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `hash` INTEGER NOT NULL, `title` TEXT, `artist` TEXT, `path` TEXT, `track` INTEGER NOT NULL, `album` TEXT, `size` INTEGER NOT NULL, `author` TEXT, `album_artist` TEXT, `year` TEXT, `bitrate` INTEGER NOT NULL, `duration` INTEGER NOT NULL, `composer` TEXT, `date` TEXT, `disc_number` TEXT, `genre` TEXT, `date_added` INTEGER NOT NULL, `date_modified` INTEGER NOT NULL, `date_taken` INTEGER NOT NULL, `album_id` INTEGER NOT NULL, `track_number` TEXT, `compilation` TEXT, `mimeType` TEXT, `num_tracks` TEXT, `sampling_rate` INTEGER NOT NULL, `bit_per_sample` INTEGER NOT NULL, `writer` TEXT, `is_available` INTEGER NOT NULL DEFAULT 1, `is_favorite` INTEGER NOT NULL DEFAULT 0, `always_skip` INTEGER NOT NULL DEFAULT 0)",
+                "fields": [
+                    {
+                        "fieldPath": "name",
+                        "columnName": "name",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "id",
+                        "columnName": "id",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "hash",
+                        "columnName": "hash",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "title",
+                        "columnName": "title",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "artist",
+                        "columnName": "artist",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "path",
+                        "columnName": "path",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "track",
+                        "columnName": "track",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "album",
+                        "columnName": "album",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "size",
+                        "columnName": "size",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "author",
+                        "columnName": "author",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "albumArtist",
+                        "columnName": "album_artist",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "year",
+                        "columnName": "year",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "bitrate",
+                        "columnName": "bitrate",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "duration",
+                        "columnName": "duration",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "composer",
+                        "columnName": "composer",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "date",
+                        "columnName": "date",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "discNumber",
+                        "columnName": "disc_number",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "genre",
+                        "columnName": "genre",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "dateAdded",
+                        "columnName": "date_added",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "dateModified",
+                        "columnName": "date_modified",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "dateTaken",
+                        "columnName": "date_taken",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "albumId",
+                        "columnName": "album_id",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "trackNumber",
+                        "columnName": "track_number",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "compilation",
+                        "columnName": "compilation",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "mimeType",
+                        "columnName": "mimeType",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "numTracks",
+                        "columnName": "num_tracks",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "samplingRate",
+                        "columnName": "sampling_rate",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "bitPerSample",
+                        "columnName": "bit_per_sample",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "writer",
+                        "columnName": "writer",
+                        "affinity": "TEXT"
+                    },
+                    {
+                        "fieldPath": "isAvailable",
+                        "columnName": "is_available",
+                        "affinity": "INTEGER",
+                        "notNull": true,
+                        "defaultValue": "1"
+                    },
+                    {
+                        "fieldPath": "isFavorite",
+                        "columnName": "is_favorite",
+                        "affinity": "INTEGER",
+                        "notNull": true,
+                        "defaultValue": "0"
+                    },
+                    {
+                        "fieldPath": "alwaysSkip",
+                        "columnName": "always_skip",
+                        "affinity": "INTEGER",
+                        "notNull": true,
+                        "defaultValue": "0"
+                    }
+                ],
+                "primaryKey": {
+                    "autoGenerate": true,
+                    "columnNames": [
+                        "id"
+                    ]
+                },
+                "indices": [
+                    {
+                        "name": "index_audio_hash",
+                        "unique": true,
+                        "columnNames": [
+                            "hash"
+                        ],
+                        "orders": [],
+                        "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_audio_hash` ON `${TABLE_NAME}` (`hash`)"
+                    }
+                ]
+            },
+            {
+                "tableName": "playback_state",
+                "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `current_index` INTEGER NOT NULL, `position_ms` INTEGER NOT NULL, `shuffle` INTEGER NOT NULL, `repeatMode` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `current_hash` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+                "fields": [
+                    {
+                        "fieldPath": "id",
+                        "columnName": "id",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "index",
+                        "columnName": "current_index",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "position",
+                        "columnName": "position_ms",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "shuffle",
+                        "columnName": "shuffle",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "repeatMode",
+                        "columnName": "repeatMode",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "updatedAt",
+                        "columnName": "updatedAt",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "currentHash",
+                        "columnName": "current_hash",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    }
+                ],
+                "primaryKey": {
+                    "autoGenerate": false,
+                    "columnNames": [
+                        "id"
+                    ]
+                }
+            },
+            {
+                "tableName": "playback_queue",
+                "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`queuePos` INTEGER NOT NULL, `audioHash` INTEGER NOT NULL, PRIMARY KEY(`queuePos`), FOREIGN KEY(`audioHash`) REFERENCES `audio`(`hash`) ON UPDATE CASCADE ON DELETE CASCADE )",
+                "fields": [
+                    {
+                        "fieldPath": "queuePos",
+                        "columnName": "queuePos",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "audioHash",
+                        "columnName": "audioHash",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    }
+                ],
+                "primaryKey": {
+                    "autoGenerate": false,
+                    "columnNames": [
+                        "queuePos"
+                    ]
+                },
+                "indices": [
+                    {
+                        "name": "index_playback_queue_audioHash",
+                        "unique": false,
+                        "columnNames": [
+                            "audioHash"
+                        ],
+                        "orders": [],
+                        "createSql": "CREATE INDEX IF NOT EXISTS `index_playback_queue_audioHash` ON `${TABLE_NAME}` (`audioHash`)"
+                    }
+                ],
+                "foreignKeys": [
+                    {
+                        "table": "audio",
+                        "onDelete": "CASCADE",
+                        "onUpdate": "CASCADE",
+                        "columns": [
+                            "audioHash"
+                        ],
+                        "referencedColumns": [
+                            "hash"
+                        ]
+                    }
+                ]
+            },
+            {
+                "tableName": "song_stats",
+                "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `audioHash` INTEGER NOT NULL, `lastPlayed` INTEGER NOT NULL, `playCount` INTEGER NOT NULL, `skipCount` INTEGER NOT NULL, FOREIGN KEY(`audioHash`) REFERENCES `audio`(`hash`) ON UPDATE CASCADE ON DELETE NO ACTION )",
+                "fields": [
+                    {
+                        "fieldPath": "id",
+                        "columnName": "id",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "audioHash",
+                        "columnName": "audioHash",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "lastPlayed",
+                        "columnName": "lastPlayed",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "playCount",
+                        "columnName": "playCount",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    },
+                    {
+                        "fieldPath": "skipCount",
+                        "columnName": "skipCount",
+                        "affinity": "INTEGER",
+                        "notNull": true
+                    }
+                ],
+                "primaryKey": {
+                    "autoGenerate": true,
+                    "columnNames": [
+                        "id"
+                    ]
+                },
+                "indices": [
+                    {
+                        "name": "index_song_stats_audioHash",
+                        "unique": false,
+                        "columnNames": [
+                            "audioHash"
+                        ],
+                        "orders": [],
+                        "createSql": "CREATE INDEX IF NOT EXISTS `index_song_stats_audioHash` ON `${TABLE_NAME}` (`audioHash`)"
+                    }
+                ],
+                "foreignKeys": [
+                    {
+                        "table": "audio",
+                        "onDelete": "NO ACTION",
+                        "onUpdate": "CASCADE",
+                        "columns": [
+                            "audioHash"
+                        ],
+                        "referencedColumns": [
+                            "hash"
+                        ]
+                    }
+                ]
+            }
+        ],
+        "setupQueries": [
+            "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+            "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '06041c4968ee359b071619b7ad37d914')"
+        ]
+    }
+}

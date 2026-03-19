@@ -87,7 +87,8 @@ class PlayingQueue : PanelFragment() {
 
             adapterPlayingQueue?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
-                    MediaManager.updatePosition(position)
+                    // Explicit tap on a queue item always starts playback.
+                    MediaManager.updatePosition(position, forcePlay = true)
                 }
 
                 override fun onSongLongClicked(audios: MutableList<Audio>, position: Int, view: View) {

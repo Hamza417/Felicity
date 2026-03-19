@@ -97,6 +97,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         viewLifecycleOwner.lifecycleScope.launch {
             MediaManager.songListFlow.collect { songs ->
                 Log.d(TAG, "Song list updated: ${songs.size} songs")
+                onSongListChanged(songs)
             }
         }
 
@@ -123,8 +124,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 updateQueueSilently(songs, position)
             }
             isSameQueue && !isSameSong -> {
-                // Case 4: Same queue but different song — seek to that position and open player
-                MediaManager.updatePosition(position)
+                // Case 4: Same queue but different song — user tapped explicitly, always play.
+                MediaManager.updatePosition(position, forcePlay = true)
             }
             else -> {
                 // Case 3: Different queue and different song — default behavior
@@ -292,6 +293,16 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     open fun onSeekChanged(seek: Long) {
+        /* no-op */
+    }
+
+    /**
+     * Called whenever the MediaManager queue list changes (songs added, removed, reordered).
+     * Subclasses that display the queue or its size should override this to refresh their UI.
+     *
+     * @param songs the updated, authoritative list of queued [Audio] tracks.
+     */
+    open fun onSongListChanged(songs: List<Audio>) {
         /* no-op */
     }
 
