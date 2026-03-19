@@ -16,6 +16,16 @@
         android:padding="@dimen/padding_15"
         android:orientation="vertical">
 
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/artflow"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="@dimen/padding_15"
+            android:text="@string/open_artflow"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:textColorStyle="primary" />
+
         <app.simple.felicity.decorations.theme.ThemeDivider
             android:layout_width="match_parent"
             android:layout_marginVertical="@dimen/padding_10"

@@ -168,6 +168,14 @@ class ArtFlowRenderer(
     private var uTex = 0
     private var uReflection = 0
     private var uReflectStrength = 0
+    private var uCornerRadius = 0
+
+    /**
+     * UV-space corner radius applied to every drawn cover (0 = square, ~0.5 = circle).
+     * Set via [setCornerRadius].
+     */
+    @Volatile
+    private var cornerRadius = 0f
 
     // Geometry
     private lateinit var quadVB: FloatBuffer
@@ -414,6 +422,21 @@ class ArtFlowRenderer(
     }
 
     /**
+     * Sets the UV-space corner radius used to round album-art covers.
+     *
+     * @param radius A value in UV coordinates (0 = square, up to ~0.45 for near-circular).
+     *               Convert from [app.simple.felicity.preferences.AppearancePreferences.getCornerRadius]
+     *               using the formula `pref / MAX_CORNER_RADIUS * 0.45f`.
+     */
+    fun setCornerRadius(radius: Float) {
+        val r = radius.coerceIn(0f, 0.5f)
+        if (r != cornerRadius) {
+            cornerRadius = r
+            glView.requestRender()
+        }
+    }
+
+    /**
      * Triggers a click scale animation on the center cover.
      * The cover will briefly shrink and then return to normal size.
      */
@@ -470,6 +493,7 @@ class ArtFlowRenderer(
         GLES20.glUniform1f(uAlpha, brightness)
         GLES20.glUniform1f(uReflection, 0f)
         GLES20.glUniform1f(uReflectStrength, reflectionStrength)
+        GLES20.glUniform1f(uCornerRadius, cornerRadius)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex)
         GLES20.glUniform1i(uTex, 0)
@@ -552,19 +576,23 @@ class ArtFlowRenderer(
             uniform float uAlpha; 
             uniform float uReflection; // 0 = main, 1 = reflection
             uniform float uReflectStrength; 
+            uniform float uCornerRadius; // UV-space corner radius (0 = square)
             void main(){
                 vec4 c = texture2D(uTex, vUV);
+                vec2 d = abs(vUV - 0.5) - (0.5 - uCornerRadius);
+                float sdfDist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - uCornerRadius;
+                float cornerMask = 1.0 - smoothstep(-0.01, 0.01, sdfDist);
                 vec2 uv = vUV - 0.5; 
                 float vignette = 1.0 - dot(uv, uv)*0.65; 
                 c.rgb *= clamp(vignette, 0.5, 1.0);
                 if (uReflection > 0.5) {
                     float fade = vUV.y; 
-                    float oa = fade * uReflectStrength * uAlpha; // overall alpha for reflection
+                    float oa = fade * uReflectStrength * uAlpha;
                     c.rgb *= oa;
-                    c.a = oa;
+                    c.a = oa * cornerMask;
                 } else {
                     c.rgb *= uAlpha;
-                    c.a = uAlpha; // make main cover transparent based on global alpha
+                    c.a = uAlpha * cornerMask;
                 }
                 gl_FragColor = c;
             }
@@ -579,6 +607,7 @@ class ArtFlowRenderer(
         uTex = GLES20.glGetUniformLocation(program, "uTex")
         uReflection = GLES20.glGetUniformLocation(program, "uReflection")
         uReflectStrength = GLES20.glGetUniformLocation(program, "uReflectStrength")
+        uCornerRadius = GLES20.glGetUniformLocation(program, "uCornerRadius")
     }
 
     private fun compileShader(type: Int, src: String): Int {

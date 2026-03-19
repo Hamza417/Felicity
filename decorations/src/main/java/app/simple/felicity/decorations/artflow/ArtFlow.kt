@@ -13,6 +13,7 @@ import android.widget.OverScroller
 import app.simple.felicity.decorations.artflow.ArtFlowRenderer.ScrollListener
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.CarouselPreferences
 import app.simple.felicity.shared.utils.ConditionUtils.invert
 
@@ -59,6 +60,7 @@ class ArtFlow @JvmOverloads constructor(
         if (isInEditMode.invert()) {
             renderer.setReflectionGap(CarouselPreferences.getReflectionGap())
             renderer.setSideScale(CarouselPreferences.getScale())
+            renderer.setCornerRadius(computeCornerRadiusUV())
         } else {
             renderer.setReflectionGap(0f)
             renderer.setSideScale(1f)
@@ -260,11 +262,25 @@ class ArtFlow @JvmOverloads constructor(
             CarouselPreferences.SCALE -> {
                 renderer.setSideScale(CarouselPreferences.getScale())
             }
+
+            AppearancePreferences.APP_CORNER_RADIUS -> {
+                queueEvent { renderer.setCornerRadius(computeCornerRadiusUV()) }
+            }
         }
     }
 
     override fun setAlpha(alpha: Float) {
         Log.i("CoverFlow", "Setting global alpha to $alpha")
         renderer.setGlobalAlpha(alpha)
+    }
+
+    /**
+     * Converts the raw [AppearancePreferences.getCornerRadius] value (range 1–80) into a
+     * UV-space corner radius suitable for the OpenGL shader (range ~0–0.45).
+     *
+     * A value of 0 renders perfectly square corners; ~0.45 produces a near-circular cover.
+     */
+    private fun computeCornerRadiusUV(): Float {
+        return AppearancePreferences.getCornerRadius() / AppearancePreferences.MAX_CORNER_RADIUS * 0.45f
     }
 }

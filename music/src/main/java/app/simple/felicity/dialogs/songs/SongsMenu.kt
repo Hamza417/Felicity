@@ -8,6 +8,8 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import app.simple.felicity.databinding.DialogSongsMenuBinding
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
+import app.simple.felicity.extensions.fragments.ScopedFragment
+import app.simple.felicity.ui.panels.ArtFlow
 
 class SongsMenu : ScopedBottomSheetFragment() {
 
@@ -20,6 +22,12 @@ class SongsMenu : ScopedBottomSheetFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        binding.artflow.setOnClickListener {
+            (parentFragment as? ScopedFragment)?.openFragment(ArtFlow.newInstance(), ArtFlow.TAG).also {
+                dismiss()
+            }
+        }
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {

@@ -278,4 +278,5 @@
     <string name="treble">Treble</string>
     <string name="keep_mini_player_visible">Keep MiniPlayer Visible</string>
     <string name="keep_mini_player_visible_summary">Stops hiding Mini Player on scrolling and keeps it always visible.</string>
+    <string name="open_artflow">Open in ArtFlow</string>
 </resources>
