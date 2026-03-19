@@ -3,10 +3,13 @@ package app.simple.felicity.engine.managers
 import app.simple.felicity.engine.managers.VisualizerManager.BAND_COUNT
 import app.simple.felicity.engine.managers.VisualizerManager.emit
 import app.simple.felicity.engine.managers.VisualizerManager.spectrumFlow
-import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 
 /**
  * Singleton bridge that relays real-time audio spectrum data from the audio thread
@@ -17,11 +20,6 @@ import kotlinx.coroutines.flow.asSharedFlow
  * UI components collect on the main thread via [spectrumFlow] using
  * `lifecycleScope.launch { spectrumFlow.collect { ... } }`.
  *
- * [emit] calls `MutableSharedFlow.tryEmit` directly — no coroutine is launched and
- * no thread switch occurs — so band data reaches collectors with zero additional
- * scheduling latency. `BufferOverflow.DROP_OLDEST` ensures `tryEmit` never fails
- * even if a collector is momentarily slow.
- *
  * The flow replays the last value (replay = 1) so that a new collector immediately
  * receives the most recently computed spectrum rather than waiting for the next FFT window.
  *
@@ -29,20 +27,17 @@ import kotlinx.coroutines.flow.asSharedFlow
  */
 object VisualizerManager {
 
+    /** App-scoped coroutine scope used internally for non-blocking emissions. */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     /** Number of frequency bands emitted per window — matches [app.simple.felicity.engine.processors.VisualizerAudioProcessor.bandCount]. */
     const val BAND_COUNT = 40
 
     /**
-     * Backing mutable flow. `replay = 1` ensures a cold subscriber always gets
-     * the latest snapshot immediately. `extraBufferCapacity = 64` with
-     * `BufferOverflow.DROP_OLDEST` guarantees that `tryEmit` from the audio thread
-     * always succeeds without suspending, even when the main thread is briefly busy.
+     * Backing mutable flow. Replay = 1 ensures a cold subscriber always gets
+     * the latest spectrum snapshot right away.
      */
-    private val _spectrumFlow = MutableSharedFlow<FloatArray>(
-            replay = 1,
-            extraBufferCapacity = 64,
-            onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
+    private val _spectrumFlow = MutableSharedFlow<FloatArray>(replay = 1)
 
     /**
      * Public read-only spectrum flow.
@@ -52,17 +47,17 @@ object VisualizerManager {
     val spectrumFlow: SharedFlow<FloatArray> = _spectrumFlow.asSharedFlow()
 
     /**
-     * Emits a new set of frequency band magnitudes directly and immediately.
+     * Emits a new set of frequency band magnitudes.
      *
-     * Uses `MutableSharedFlow.tryEmit`, which is non-suspending and thread-safe,
-     * so no coroutine is launched and no thread-pool scheduling delay is introduced.
-     * This means band data is forwarded to subscribers on the exact moment it is
-     * produced by the audio processor, with no additional latency.
+     * Safe to call from any thread. [MutableSharedFlow] is thread-safe; collectors
+     * receive values on whichever dispatcher their own coroutine scope uses.
      *
-     * @param bands [BAND_COUNT]-element array of magnitudes, bass to treble.
+     * @param bands [BAND_COUNT]-element array of magnitudes in [0..1], bass to treble.
      */
     fun emit(bands: FloatArray) {
-        _spectrumFlow.tryEmit(bands)
+        scope.launch {
+            _spectrumFlow.emit(bands)
+        }
     }
 }
 

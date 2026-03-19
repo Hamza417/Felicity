@@ -9,6 +9,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
+import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.View
 import androidx.core.content.withStyledAttributes
@@ -44,10 +45,9 @@ import kotlin.random.Random
  * available for bar or wave growth. Bars always grow upward from the physical
  * view bottom, so this is a pure height cap rather than a start-point offset.
  *
- * Incoming RMS bands are normalized with a fast-attack/slow-release AGC and passed
- * through a square-root perceptual curve. Band data is applied to the render targets
- * immediately in real time with no buffering or latency compensation, matching the
- * behavior of every other audio processor in the pipeline.
+ * Incoming RMS bands are normalized with a fast-attack/slow-release AGC, passed
+ * through a square-root perceptual curve, and delivered after a configurable
+ * latency-compensation delay so the display stays in sync with audible output.
  *
  * Colors default to the current theme accent and update automatically on accent
  * changes. The active rendering mode and enabled state are read from
@@ -108,6 +108,15 @@ class FelicityVisualizer @JvmOverloads constructor(
      */
     private var smoothedMax = MIN_SMOOTHED_MAX
 
+    // ── Latency delay queue ───────────────────────────────────────────────────
+
+    /**
+     * Holds normalized band snapshots with a [SystemClock.elapsedRealtime] deadline.
+     * A snapshot is only applied to [targetBands] once the deadline has passed,
+     * compensating for the hardware audio output buffer latency so the bars
+     * move in sync with what the user actually hears.
+     */
+    private class TimedBands(val deadline: Long, val bands: FloatArray)
 
     /**
      * A single floating particle belonging to the ash/snow emitter.
@@ -135,6 +144,13 @@ class FelicityVisualizer @JvmOverloads constructor(
         var turbulence: Float = 0.2f
     }
 
+    private val delayQueue = ArrayDeque<TimedBands>()
+
+    /**
+     * Milliseconds added to each band snapshot's timestamp before it is applied.
+     * Increase this if bars still jump ahead of the beat on your device.
+     */
+    var latencyMs: Long = DEFAULT_LATENCY_MS
 
     // ── Drawing ───────────────────────────────────────────────────────────────
 
@@ -294,9 +310,9 @@ class FelicityVisualizer @JvmOverloads constructor(
     /**
      * Delivers a new spectrum snapshot to the visualizer.
      *
-     * The bands are normalized with AGC + square-root compression and written
-     * directly into [targetBands] so the display updates immediately in real time
-     * with no buffering or latency compensation.
+     * The bands are normalized with AGC + square-root compression and stored in the
+     * delay queue. They will be applied to [targetBands] once [latencyMs] has elapsed,
+     * keeping the display in sync with audible playback.
      *
      * @param bands Raw RMS magnitudes — any positive float scale is accepted.
      *              Length should equal [BAND_COUNT]; extra elements are silently ignored.
@@ -316,13 +332,15 @@ class FelicityVisualizer @JvmOverloads constructor(
         }
 
         val invMax = 1f / smoothedMax
+        val normalized = FloatArray(BAND_COUNT)
         for (i in 0 until len) {
             val linear = (bands[i] * invMax).coerceIn(0f, 1f)
             // Noise floor gate: bands that are just sensor/FFT leakage noise are zeroed
             // out so a silent bass region doesn't feather into adjacent zones.
-            targetBands[i] = if (linear < NOISE_FLOOR) 0f else sqrt(linear)
+            normalized[i] = if (linear < NOISE_FLOOR) 0f else sqrt(linear)
         }
 
+        delayQueue.addLast(TimedBands(SystemClock.elapsedRealtime() + latencyMs, normalized))
         scheduleRedraw()
     }
 
@@ -366,6 +384,22 @@ class FelicityVisualizer @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Drains all delay-queue entries whose deadline has passed, keeping only the most
+     * recent one as the new [targetBands]. Returns true if targets were updated.
+     */
+    private fun drainQueueIntoTargets(): Boolean {
+        val now = SystemClock.elapsedRealtime()
+        var latest: FloatArray? = null
+        while (delayQueue.isNotEmpty() && delayQueue.first().deadline <= now) {
+            latest = delayQueue.removeFirst().bands
+        }
+        if (latest != null) {
+            System.arraycopy(latest, 0, targetBands, 0, BAND_COUNT)
+            return true
+        }
+        return false
+    }
 
     private fun buildAccentColors(): IntArray {
         return if (isInEditMode) {
@@ -409,6 +443,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         if (width == 0 || height == 0) return
         if (cachedWidth != width) rebuildGradient(width)
 
+        drainQueueIntoTargets()
 
         // Maximum pixel height bars or waves may reach. They always grow upward from
         // viewBottom, so this is purely a height cap, not a y-coordinate offset.
@@ -422,7 +457,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         val capPillHeight = (barWidth * 0.3f).coerceAtLeast(3f)
 
         // Smooth every band toward its current target regardless of rendering mode.
-        var stillMoving = false
+        var stillMoving = delayQueue.isNotEmpty()
         for (i in 0 until BAND_COUNT) {
             val target = targetBands[i]
             val current = currentBands[i]
@@ -688,6 +723,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         super.onDetachedFromWindow()
         ThemeManager.removeListener(this)
         unregisterListener(prefsListener)
+        delayQueue.clear()
         particles.clear()
     }
 
@@ -766,6 +802,13 @@ class FelicityVisualizer @JvmOverloads constructor(
          */
         private const val NOISE_FLOOR = 0.015f
 
+        /**
+         * Default latency compensation in milliseconds.
+         * Audio data passes through the ExoPlayer write buffer and hardware DAC buffers
+         * before reaching the speakers, so the visualizer needs this delay to stay in sync.
+         * Tune via [latencyMs] if your device's output latency differs.
+         */
+        const val DEFAULT_LATENCY_MS = 150L
 
         /**
          * Scale factor applied to the normalized app corner radius when mapping it to bar width.
