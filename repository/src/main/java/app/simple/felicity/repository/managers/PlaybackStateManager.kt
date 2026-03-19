@@ -95,16 +95,17 @@ object PlaybackStateManager {
     }
 
     suspend fun getAudiosFromQueueIDs(db: AudioDatabase): MutableList<Audio>? {
-        val queueIds = fetchQueueIds(db) ?: return null
-        if (queueIds.isEmpty()) return null
+        val queueHashes = fetchQueueIds(db) ?: return null
+        if (queueHashes.isEmpty()) return null
 
-        // Build ORDER BY CASE statement to preserve the order of IDs
-        val orderByCase = queueIds.mapIndexed { index, id ->
-            "WHEN id = $id THEN $index"
+        // Build ORDER BY CASE statement to preserve queue order using the stable hash column,
+        // which is what is persisted in the queue JSON (not the auto-increment id).
+        val orderByCase = queueHashes.mapIndexed { index, hash ->
+            "WHEN hash = $hash THEN $index"
         }.joinToString(" ")
 
         val query = SimpleSQLiteQuery(
-                "SELECT * FROM audio WHERE id IN (${queueIds.joinToString(",")}) ORDER BY CASE $orderByCase END"
+                "SELECT * FROM audio WHERE hash IN (${queueHashes.joinToString(",")}) ORDER BY CASE $orderByCase END"
         )
 
         return db.audioDao()?.getAudioByIDs(query)
