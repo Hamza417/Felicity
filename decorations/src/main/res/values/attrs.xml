@@ -222,6 +222,16 @@
         <attr name="showIndicator" format="boolean" />
     </declare-styleable>
 
+    <!-- WaveformSeekView: scrollable equalizer-bar waveform with seek overlay -->
+    <declare-styleable name="WaveformSeekView">
+        <!--
+            Maximum bar render height as a fraction of the view height [0.0..1.0].
+            Bars always grow from the bottom of the view upward; this caps how tall they can be.
+            Default: 0.88.
+        -->
+        <attr name="wsvMaxBarHeight" format="float" />
+    </declare-styleable>
+
     <!-- FelicityVisualizer: real-time audio spectrum bar and wave visualizer -->
     <declare-styleable name="FelicityVisualizer">
         <!--
