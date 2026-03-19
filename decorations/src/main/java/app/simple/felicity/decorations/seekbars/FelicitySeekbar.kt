@@ -34,6 +34,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
+@Suppress("unused")
 class FelicitySeekbar @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
@@ -201,7 +202,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     @ColorInt
     private var stepIndicatorColor: Int = Color.WHITE   // overwritten in applyThemeProps
 
-    /** Height (px) of step indicator ticks above/below the track centre */
+    /** Height (px) of step indicator ticks above/below the track center */
     private var stepIndicatorHeightPx: Float = 0f      // set in init
 
     /** Width (px) of each step indicator tick */
@@ -230,7 +231,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     /**
      * Extra gap in px added on top of the mandatory minimum clearance.
      * Minimum clearance = thumb half-width + press-ring outset (computed at draw time).
-     * This value is customisable via [setLabelGap] or the XML attr felicityLabelGap.
+     * This value is customizable via [setLabelGap] or the XML attr felicityLabelGap.
      */
     private var labelGapPx: Float = 0f // set in init; 0 means "just the mandatory clearance"
 
@@ -529,7 +530,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         labelPaint.color = labelTextColor
         labelBgPaint.color = labelBackgroundColor
         if (isInEditMode.not()) {
-            TypeFace.getMediumTypeFace(context)?.let { labelPaint.typeface = it }
+            TypeFace.getMediumTypeFace(context).let { labelPaint.typeface = it }
         }
     }
 
@@ -621,7 +622,7 @@ class FelicitySeekbar @JvmOverloads constructor(
      *  - Snaps to integer multiples of [stepSize] (from [minProgress]).
      *  - Draws a small tick mark at each step position on the track.
      *  - Emits integer values via [OnStepSeekChangeListener].
-     *  - Applies elastic/sticky snap behaviour: the thumb sticks to the current step
+     *  - Applies elastic/sticky snap behavior: the thumb sticks to the current step
      *    until the finger drags far enough to release it to the adjacent step.
      */
     fun setStepMode(enabled: Boolean) {
@@ -859,8 +860,8 @@ class FelicitySeekbar @JvmOverloads constructor(
      * Compute the visually elastic thumb position during a step-mode drag.
      *
      * The thumb snaps firmly to [currentStep].  When the finger is within the sticky
-     * zone (less than [stepStickyFactor] × half-step-width away from the step centre)
-     * the thumb stays at the step centre.  Beyond that it follows the finger with a
+     * zone (less than [stepStickyFactor] × half-step-width away from the step center)
+     * the thumb stays at the step center.  Beyond that it follows the finger with a
      * rubber-band pull-back force, so it *looks* like it's being stretched before
      * releasing to the next step.
      *
@@ -1159,7 +1160,7 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     /**
      * Show or hide the solid background pill drawn behind each label.
-     * The pill uses [labelBackgroundColor] which defaults to the theme highlight colour.
+     * The pill uses [labelBackgroundColor] which defaults to the theme highlight color.
      */
     fun setLabelBackgroundEnabled(enabled: Boolean) {
         if (labelBackgroundEnabled == enabled) return
@@ -1169,7 +1170,7 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     fun isLabelBackgroundEnabled(): Boolean = labelBackgroundEnabled
 
-    /** Override the label background fill colour. */
+    /** Override the label background fill color. */
     fun setLabelBackgroundColor(@ColorInt color: Int) {
         labelBackgroundColor = color
         labelBgPaint.color = color
@@ -1263,7 +1264,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         //   left edge of view
         //   + paddingLeft + hOut                           ← view safe area
         //   + leftLabelAnimatedWidth                       ← text zone
-        //   + mandatoryLabelClearance()                    ← gap from text to thumb centre
+        //   + mandatoryLabelClearance()                    ← gap from text to thumb center
         //   = left (track start / thumb centre at pos 0)
         //
         // Note: mandatoryLabelClearance = baseSafeInset + pressRing + labelGapPx
@@ -1332,6 +1333,8 @@ class FelicitySeekbar @JvmOverloads constructor(
                 } else {
                     (stepIndicatorColor and 0x00FFFFFF) or (0x99 shl 24)
                 }
+
+                // TODO: fix the draw allocation here
                 val tickRect = RectF(tickX - halfTickW, tickTop, tickX + halfTickW, tickBottom)
                 canvas.drawRoundRect(tickRect, halfTickW, halfTickW, stepIndicatorPaint)
             }
@@ -1413,7 +1416,7 @@ class FelicitySeekbar @JvmOverloads constructor(
 
         // ---- Draw side labels ----
         // Label text zone: [paddingLeft + hOut .. paddingLeft + hOut + labelAnimatedWidth]
-        // Label centre X = paddingLeft + hOut + labelAnimatedWidth / 2
+        // Label center X = paddingLeft + hOut + labelAnimatedWidth / 2
         // Thumb left edge at pos 0 = left (= paddingLeft + hOut + totalLabelReserve)
         // Gap between text right edge and thumb left edge = mandatoryLabelClearance() = baseSafeInset + ring + labelGapPx
         val textY = centerY - ((labelPaint.ascent() + labelPaint.descent()) / 2f)
@@ -1671,7 +1674,7 @@ class FelicitySeekbar @JvmOverloads constructor(
             // Current step centre x
             val stepCentreX = left + currentStep * stepWidthPx
 
-            // Distance from step centre at which we release to adjacent step
+            // Distance from step center at which we release to adjacent step
             // = sticky zone + a small extra threshold
             val releaseThreshold = stepWidthPx * (stepStickyFactor + 0.1f)
 
