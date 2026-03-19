@@ -1,19 +1,13 @@
 package app.simple.felicity.extensions.views
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
-import android.animation.ValueAnimator
 import android.content.Context
-import android.content.res.ColorStateList
 import android.util.AttributeSet
-import android.view.animation.DecelerateInterpolator
-import app.simple.felicity.decorations.corners.LayoutBackground
+import android.view.View
+import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout
 import app.simple.felicity.repository.listeners.MediaStateListener
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.shared.utils.ColorUtils
-import app.simple.felicity.theme.managers.ThemeManager
 
 /**
  * A [DynamicRippleConstraintLayout] that automatically registers itself with
@@ -30,7 +24,6 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
 ) : DynamicRippleConstraintLayout(context, attrs), MediaStateListener {
 
     private var audioID: Long = -1L
-    private var selectionAnimator: ValueAnimator? = null
 
     /**
      * Binds the given [audioID] to this view. The initial selection state is applied
@@ -42,8 +35,6 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         if (audioID == -1L) {
             return
         }
-        selectionAnimator?.cancel()
-        selectionAnimator = null
         this.audioID = audioID
         isSelected = audioID == MediaManager.getCurrentSongId()
     }
@@ -57,56 +48,9 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
     override fun onAudioChange(audio: Audio?) {
         val shouldBeSelected = audio?.id == audioID
         if (isSelected == shouldBeSelected) return
-        animateSelectionChange(shouldBeSelected)
-    }
-
-    /**
-     * Animates the background tint between the unselected (transparent) and selected
-     * (accent color with reduced alpha) states over a short duration.
-     *
-     * @param shouldSelect true when transitioning to the selected state, false otherwise.
-     */
-    private fun animateSelectionChange(shouldSelect: Boolean) {
-        selectionAnimator?.cancel()
-        selectionAnimator = null
-
-        val accentColor = ThemeManager.accent.primaryAccentColor
-        val selectedColor = ColorUtils.changeAlpha(accentColor, 25)
-        val transparentColor = ColorUtils.changeAlpha(accentColor, 0)
-
-        if (shouldSelect) {
-            LayoutBackground.setBackground(context, this, null, radius)
-            setBackgroundTintList(ColorStateList.valueOf(transparentColor))
-
-            selectionAnimator = ValueAnimator.ofArgb(transparentColor, selectedColor).apply {
-                duration = ANIMATION_DURATION
-                interpolator = DecelerateInterpolator()
-                addUpdateListener {
-                    setBackgroundTintList(ColorStateList.valueOf(it.animatedValue as Int))
-                }
-                addListener(object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: Animator) {
-                        isSelected = true
-                    }
-                })
-                start()
-            }
-        } else {
-            val fromColor = backgroundTintList?.defaultColor ?: selectedColor
-
-            selectionAnimator = ValueAnimator.ofArgb(fromColor, transparentColor).apply {
-                duration = ANIMATION_DURATION
-                interpolator = DecelerateInterpolator()
-                addUpdateListener {
-                    setBackgroundTintList(ColorStateList.valueOf(it.animatedValue as Int))
-                }
-                addListener(object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: Animator) {
-                        isSelected = false
-                    }
-                })
-                start()
-            }
+        setSelected(shouldBeSelected, true)
+        if (shouldBeSelected) {
+            // requestRecyclerViewToScrollToSelf()
         }
     }
 
@@ -116,13 +60,37 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
-        selectionAnimator?.cancel()
-        selectionAnimator = null
         super.onDetachedFromWindow()
         MediaManager.unregisterListener(this)
     }
 
+    private fun requestRecyclerViewToScrollToSelf() {
+        var currentView: View = this
+        var currentParent = parent
+
+        while (currentParent != null) {
+            if (currentParent is RecyclerView) {
+                // We found the RV! 'currentView' is now the ViewHolder's root view.
+                val position = currentParent.getChildAdapterPosition(currentView)
+
+                if (position != RecyclerView.NO_POSITION) {
+                    // Or if you want an instant snap instead of a smooth scroll:
+                    currentParent.scrollToPosition(position)
+                }
+                break
+            }
+
+            // Move up the tree, keeping track of the immediate child
+            if (currentParent is View) {
+                currentView = currentParent
+                currentParent = currentParent.parent
+            } else {
+                break // We hit the ViewRootImpl or a non-View parent
+            }
+        }
+    }
+
     companion object {
-        private const val ANIMATION_DURATION = 300L
+        private const val ANIMATION_DURATION = 500L
     }
 }

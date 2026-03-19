@@ -1,11 +1,14 @@
 package app.simple.felicity.decorations.ripple;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
+import android.view.animation.DecelerateInterpolator;
 
 import java.util.Objects;
 
@@ -25,6 +28,9 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
     private float radius = 0;
     private boolean isSelected = false;
     
+    public static final long RIPPLE_DURATION = 500;
+    private ValueAnimator backgroundAnimator;
+    
     public DynamicRippleConstraintLayout(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         init();
@@ -38,7 +44,7 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
     private void init() {
         if (!isInEditMode()) {
             radius = AppearancePreferences.INSTANCE.getCornerRadius();
-            setDefaultBackground(isSelected);
+            setDefaultBackground(isSelected, false);
         }
     }
     
@@ -49,14 +55,49 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
      *
      * @param selected true for selected item
      */
-    public void setDefaultBackground(boolean selected) {
-        if (selected) {
-            setBackgroundTintList(null);
-            setBackgroundTintList(ColorStateList.valueOf(ColorUtils.INSTANCE.changeAlpha(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(), 25)));
-            LayoutBackground.setBackground(getContext(), this, null, radius);
+    public void setDefaultBackground(boolean selected, boolean animate) {
+        int accentColor = ColorUtils.INSTANCE.changeAlpha(ThemeManager.INSTANCE.getAccent().getSecondaryAccentColor(), 100);
+        int transparentColor = Color.TRANSPARENT;
+        int currentColor = getBackgroundTintList() != null ? getBackgroundTintList().getDefaultColor()
+                : selected ? accentColor : transparentColor;
+        
+        if (animate) {
+            if (selected) {
+                if (backgroundAnimator != null && backgroundAnimator.isRunning()) {
+                    backgroundAnimator.cancel();
+                }
+                backgroundAnimator = ValueAnimator.ofArgb(currentColor, accentColor);
+                backgroundAnimator.setDuration(RIPPLE_DURATION);
+                backgroundAnimator.setInterpolator(new DecelerateInterpolator());
+                backgroundAnimator.addUpdateListener(animation -> {
+                    int animatedValue = (int) animation.getAnimatedValue();
+                    setBackgroundTintList(ColorStateList.valueOf(animatedValue));
+                    LayoutBackground.setBackground(getContext(), this, null, radius);
+                });
+                backgroundAnimator.start();
+            } else {
+                if (backgroundAnimator != null && backgroundAnimator.isRunning()) {
+                    backgroundAnimator.cancel();
+                }
+                backgroundAnimator = ValueAnimator.ofArgb(currentColor, transparentColor);
+                backgroundAnimator.setInterpolator(new DecelerateInterpolator());
+                backgroundAnimator.setDuration(RIPPLE_DURATION);
+                backgroundAnimator.addUpdateListener(animation -> {
+                    int animatedValue = (int) animation.getAnimatedValue();
+                    setBackgroundTintList(ColorStateList.valueOf(animatedValue));
+                    LayoutBackground.setBackground(getContext(), this, null, radius);
+                });
+                backgroundAnimator.start();
+            }
         } else {
-            setBackground(null);
-            setBackground(RippleUtils.getRippleDrawable());
+            if (selected) {
+                setBackgroundTintList(ColorStateList.valueOf(transparentColor));
+                setBackgroundTintList(ColorStateList.valueOf(accentColor));
+                LayoutBackground.setBackground(getContext(), this, null, radius);
+            } else {
+                setBackground(null);
+                setBackground(RippleUtils.getRippleDrawable());
+            }
         }
     }
     
@@ -107,6 +148,10 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        if (backgroundAnimator != null && backgroundAnimator.isRunning()) {
+            backgroundAnimator.cancel();
+        }
+        
         ThemeManager.INSTANCE.removeListener(this);
         app.simple.felicity.manager.SharedPreferences.INSTANCE.getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
         clearAnimation();
@@ -133,7 +178,7 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
     
     public void setRadius(float radius) {
         this.radius = radius;
-        setDefaultBackground(isSelected());
+        setDefaultBackground(isSelected(), false);
     }
     
     public boolean isSelected() {
@@ -142,6 +187,11 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
     
     public void setSelected(boolean selected) {
         isSelected = selected;
-        setDefaultBackground(selected);
+        setDefaultBackground(selected, false);
+    }
+    
+    public void setSelected(boolean selected, boolean animate) {
+        isSelected = selected;
+        setDefaultBackground(selected, animate);
     }
 }

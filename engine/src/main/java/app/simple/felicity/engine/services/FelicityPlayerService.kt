@@ -715,6 +715,14 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                         skipOrRestartTrack()
                     }
                 }
+                PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND -> {
+                    Log.e(TAG, "File not found: ${error.message} (code: ${error.errorCode})")
+                    playbackErrorNotifier.notifyPlaybackError(
+                            player.currentMediaItem?.mediaMetadata?.title?.toString(),
+                            error
+                    )
+                    skipOrRestartTrack()
+                }
                 else -> {
                     Log.e(TAG, "Playback error: ${error.message} (code: ${error.errorCode})")
                     Log.e(TAG, "Player error: ${error.errorCodeName}", error)
