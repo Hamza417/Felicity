@@ -1,5 +1,6 @@
 package app.simple.felicity.decorations.seekbars
 
+import android.animation.Animator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.content.SharedPreferences
@@ -594,7 +595,7 @@ class FelicitySeekbar @JvmOverloads constructor(
                 invalidate()
             }
             addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: android.animation.Animator) {
+                override fun onAnimationEnd(animation: Animator) {
                     currentSmudgeRadius = targetSmudge
                     currentThumbShadowRadius = targetThumbShadow
                     setupSmudgeAndShadow()
@@ -728,18 +729,20 @@ class FelicitySeekbar @JvmOverloads constructor(
                 // Only write if we're still the authoritative animation (not canceled by another call)
                 if (isResetAnimationInFlight) {
                     progressInternal = (anim.animatedValue as Float).coerceIn(minProgress, maxProgress)
+                    // Refresh the cached label text so the left label tracks the sweep back to zero.
+                    refreshCachedLabels()
                     invalidate()
                 }
             }
             addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: android.animation.Animator) {
+                override fun onAnimationEnd(animation: Animator) {
                     if (isResetAnimationInFlight) {
                         isResetAnimationInFlight = false
                         applyPendingMaxAndProgress()
                     }
                 }
 
-                override fun onAnimationCancel(animation: android.animation.Animator) {
+                override fun onAnimationCancel(animation: Animator) {
                     // onAnimationEnd is called after onAnimationCancel by ValueAnimator,
                     // but isResetAnimationInFlight will already be false if we canceled externally.
                     // Reset the flag so a new call can proceed.
@@ -941,7 +944,13 @@ class FelicitySeekbar @JvmOverloads constructor(
             progressAnimator?.cancel()
             progressAnimFromUser = fromUser
             val start = progressInternal
-            if (start == target) return
+            if (start == target) {
+                // Progress hasn't moved, but the label cache may be stale (e.g. after a
+                // song change while paused where both old and new seek position are 0).
+                refreshCachedLabels()
+                invalidate()
+                return
+            }
             progressAnimator = ValueAnimator.ofFloat(start, target).apply {
                 duration = if (fromUser) 420L else 460L
                 interpolator = DecelerateInterpolator()
