@@ -276,4 +276,6 @@
     <string name="reset">Reset</string>
     <string name="bass">Bass</string>
     <string name="treble">Treble</string>
+    <string name="keep_mini_player_visible">Keep MiniPlayer Visible</string>
+    <string name="keep_mini_player_visible_summary">Stops hiding Mini Player on scrolling and keeps it always visible.</string>
 </resources>

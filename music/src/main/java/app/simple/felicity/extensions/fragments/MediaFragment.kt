@@ -398,7 +398,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                         val newFav = !audio.isFavorite
                         AudioDatabase.getInstance(requireContext()).audioDao()?.setFavorite(audio.id, newFav)
-                        audio.setFavorite(newFav)
+                        audio.isFavorite = newFav
                         if (MediaManager.getCurrentSong()?.id == audio.id) {
                             withContext(Dispatchers.Main) { MediaManager.notifyCurrentSongUpdated() }
                         }

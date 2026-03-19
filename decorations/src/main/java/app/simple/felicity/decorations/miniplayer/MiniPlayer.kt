@@ -55,6 +55,7 @@ import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceCha
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
@@ -1730,6 +1731,13 @@ class MiniPlayer @JvmOverloads constructor(
     private var suppressAutoFromRecyclerUntilIdle = false
     private var isManuallyControlled = false
     private var hadImmersiveDrag = false
+
+    /**
+     * Mirrors [BehaviourPreferences.isMiniplayerAlwaysVisible]. When `true` all
+     * scroll-driven hide gestures are suppressed so the player remains pinned to its
+     * shown position. Explicit [hide] calls from panels are unaffected.
+     */
+    private var isAlwaysVisible = BehaviourPreferences.isMiniplayerAlwaysVisible()
     private val resetManualHandler = Handler(Looper.getMainLooper())
     private val resetManualRunnable = Runnable { isManuallyControlled = false }
 
@@ -1817,7 +1825,7 @@ class MiniPlayer @JvmOverloads constructor(
     }
 
     private fun updateForScrollDelta(dy: Int) {
-        if (height == 0 || suppressAutoFromRecyclerUntilIdle || isManuallyControlled) return
+        if (height == 0 || suppressAutoFromRecyclerUntilIdle || isManuallyControlled || isAlwaysVisible) return
         animate().cancel()
         val target = (translationY + dy).coerceIn(0f, hideDistance)
         if (target != translationY) translationY = target
@@ -1917,6 +1925,13 @@ class MiniPlayer @JvmOverloads constructor(
                             }
                             return
                         }
+                        // Always snap to shown when the preference is on.
+                        if (isAlwaysVisible) {
+                            if (!isFullyShown()) {
+                                animate().translationY(0f).setDuration(250).setInterpolator(showInterpolator).start()
+                            }
+                            return
+                        }
                         if (isFullyShown() || isFullyHidden()) return
                         if (translationY <= hideDistance / 2f)
                             animate().translationY(0f).setDuration(250).setInterpolator(showInterpolator).start()
@@ -1924,10 +1939,9 @@ class MiniPlayer @JvmOverloads constructor(
                             animate().translationY(hideDistance).setDuration(250).setInterpolator(hideInterpolator).start()
                     }
                     RecyclerView.SCROLL_STATE_DRAGGING -> {
-                        // Only hide on drag-start when there is more list content below.
-                        // At the end of the list the player was just shown — hiding it
-                        // immediately on the next drag would create an instant flicker.
-                        if (isFullyShown() && rv.canScrollVertically(1)) {
+                        // Only hide on drag-start when there is more list content below and
+                        // the always-visible preference is not active.
+                        if (!isAlwaysVisible && isFullyShown() && rv.canScrollVertically(1)) {
                             animate().translationY(hideDistance).setDuration(250).setInterpolator(hideInterpolator).start()
                         }
                     }
@@ -2045,7 +2059,7 @@ class MiniPlayer @JvmOverloads constructor(
         val snapRunnable = Runnable {
             if (!isManuallyControlled) {
                 animate().cancel()
-                if (!scrollView.canScrollVertically(1)) {
+                if (!scrollView.canScrollVertically(1) || isAlwaysVisible) {
                     if (!isFullyShown()) {
                         animate().translationY(0f)
                             .setDuration(250)
@@ -2351,6 +2365,18 @@ class MiniPlayer @JvmOverloads constructor(
                 rebuildCardClipPath()
                 invalidateOutline()
                 invalidate()
+            }
+            BehaviourPreferences.MINIPLAYER_ALWAYS_VISIBLE -> {
+                isAlwaysVisible = BehaviourPreferences.isMiniplayerAlwaysVisible()
+                //                // When the toggle is switched on, snap the player into view immediately
+                //                // so the user sees the effect right away.
+                //                if (isAlwaysVisible && !isManuallyControlled && !isFullyShown()) {
+                //                    animate().cancel()
+                //                    animate().translationY(0f)
+                //                        .setDuration(250)
+                //                        .setInterpolator(showInterpolator)
+                //                        .start()
+                //                }
             }
         }
     }

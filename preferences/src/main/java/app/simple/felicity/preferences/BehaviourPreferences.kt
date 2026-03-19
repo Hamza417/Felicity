@@ -1,5 +1,6 @@
 package app.simple.felicity.preferences
 
+import android.os.Build
 import androidx.core.content.edit
 import androidx.dynamicanimation.animation.SpringForce
 import app.simple.felicity.manager.SharedPreferences
@@ -12,6 +13,7 @@ object BehaviourPreferences {
     private const val MARQUEE = "is_marquee_on"
     private const val FAST_SCROLL_BEHAVIOR = "fast_scroll_behavior"
     private const val HAPTIC_FEEDBACK = "haptic_feedback"
+    const val MINIPLAYER_ALWAYS_VISIBLE = "miniplayer_always_visible"
 
     const val HIDE_FAST_SCROLLBAR = 0
     const val FADE_FAST_SCROLLBAR = 1
@@ -23,7 +25,11 @@ object BehaviourPreferences {
     }
 
     fun isPredictiveBackEnabled(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(PREDICTIVE_BACK, false)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            SharedPreferences.getSharedPreferences().getBoolean(PREDICTIVE_BACK, true)
+        } else {
+            false
+        }
     }
 
     // ---------------------------------------------------------------------------------------------------------- //
@@ -84,5 +90,18 @@ object BehaviourPreferences {
     fun isHapticFeedbackEnabled(): Boolean {
         return SharedPreferences.getSharedPreferences()
             .getBoolean(HAPTIC_FEEDBACK, true)
+    }
+
+    // ---------------------------------------------------------------------------------------------------------- //
+
+    fun setMiniplayerAlwaysVisible(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit {
+            putBoolean(MINIPLAYER_ALWAYS_VISIBLE, enabled)
+        }
+    }
+
+    fun isMiniplayerAlwaysVisible(): Boolean {
+        return SharedPreferences.getSharedPreferences()
+            .getBoolean(MINIPLAYER_ALWAYS_VISIBLE, false)
     }
 }

@@ -452,6 +452,23 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val miniplayerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.miniplayer)
+
+        val miniPlayerVisibilityToggle = Preference(
+                title = R.string.keep_mini_player_visible,
+                summary = R.string.keep_mini_player_visible_summary,
+                icon = -1,
+                type = PreferenceType.SWITCH,
+                valueProvider = {
+                    BehaviourPreferences.isMiniplayerAlwaysVisible()
+                },
+                onPreferenceAction = { view, callback ->
+                    val isChecked = (view as FelicitySwitch).isChecked
+                    BehaviourPreferences.setMiniplayerAlwaysVisible(isChecked)
+                    true
+                }
+        )
+
         preferences.add(listHeader)
         preferences.add(fastScrollBehavior)
         preferences.add(applicationHeader)
@@ -459,6 +476,8 @@ open class PreferenceFragment : MediaFragment() {
             preferences.add(predictiveBackToggle)
         }
         preferences.add(hapticToggle)
+        preferences.add(miniplayerHeader)
+        preferences.add(miniPlayerVisibilityToggle)
 
         return preferences
     }
