@@ -10,6 +10,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import app.simple.felicity.repository.constants.MediaConstants
+import app.simple.felicity.repository.listeners.MediaStateListener
 import app.simple.felicity.repository.managers.MediaManager._songPositionFlow
 import app.simple.felicity.repository.managers.MediaManager.currentSongPosition
 import app.simple.felicity.repository.managers.MediaManager.mediaController
@@ -35,6 +36,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.max
 
+// TODO - move to engine module
 object MediaManager {
 
     private const val TAG = "MediaManager"
@@ -68,6 +70,8 @@ object MediaManager {
      */
     private val pendingSeekPositions = mutableSetOf<Int>()
 
+    private val listeners = mutableSetOf<MediaStateListener>()
+
     // Current queue index. Setter also emits to observers when valid and changed.
     private var currentSongPosition: Int = 0
         set(value) {
@@ -77,6 +81,14 @@ object MediaManager {
                     if (!suppressPositionEmit) {
                         scope.launch {
                             _songPositionFlow.emit(value)
+
+                            /**
+                             * Notify listeners on the main thread after the position flow emits, so that any
+                             * MediaFragment observing the flow will have updated its current song before we call onAudioChange.
+                             */
+                            withContext(Dispatchers.Main) {
+                                listeners.forEach { it.onAudioChange(getCurrentSong()) }
+                            }
                         }
                     }
                 }
@@ -733,5 +745,13 @@ object MediaManager {
             }
             start()
         }
+    }
+
+    fun registerListener(listener: MediaStateListener) {
+        listeners.add(listener)
+    }
+
+    fun unregisterListener(listener: MediaStateListener) {
+        listeners.remove(listener)
     }
 }

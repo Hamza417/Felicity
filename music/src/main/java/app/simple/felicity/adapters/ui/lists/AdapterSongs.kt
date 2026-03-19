@@ -15,7 +15,6 @@ import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.SongsPreferences
-import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
@@ -24,38 +23,6 @@ import com.bumptech.glide.Glide
 class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHolder>() {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
-
-    // Backing field — always reflects the ID of the song the adapter last highlighted.
-    // Write directly (no notifications) to sync without triggering extra redraws.
-    // Use setCurrentSong() / currentlyPlayingSong setter for change-with-notify.
-    private var trackedSongId: Long? = null
-
-    /**
-     * Notify the adapter that the playing song changed.
-     * Clears the old highlight and sets the new one using surgical item updates.
-     */
-    var currentlyPlayingSong: Audio?
-        get() = songs.firstOrNull { it.id == trackedSongId }
-        set(value) {
-            val newId = value?.id
-            val oldId = trackedSongId
-            trackedSongId = newId
-            // Un-highlight the old item
-            if (oldId != null && oldId != newId) {
-                val oldIndex = songs.indexOfFirst { it.id == oldId }
-                if (oldIndex != -1) notifyItemChanged(oldIndex, PAYLOAD_PLAYBACK_STATE)
-            }
-            // Highlight the new item
-            val newIndex = if (newId != null) songs.indexOfFirst { it.id == newId } else -1
-            if (newIndex != -1) notifyItemChanged(newIndex, PAYLOAD_PLAYBACK_STATE)
-        }
-
-    /** Re-evaluates selection state for every item.
-     *  Syncs the tracked ID first so the next song change knows the correct old item. */
-    fun notifyCurrentSong() {
-        trackedSongId = MediaManager.getCurrentSongId()
-        notifyItemRangeChanged(0, itemCount, PAYLOAD_PLAYBACK_STATE)
-    }
 
     private val listUpdateCallback = object : ListUpdateCallback {
         @SuppressLint("NotifyDataSetChanged")
@@ -107,10 +74,8 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
         setHasStableIds(true)
         // Seed the tracked ID so the first song-change correctly un-highlights the
         // item that was highlighted by the initial full bind (which reads MediaManager directly).
-        trackedSongId = MediaManager.getCurrentSongId()
         differ.submitList(initial.toList())
     }
-
 
     override fun getItemId(position: Int): Long = songs[position].id
 
@@ -140,17 +105,6 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
         }
     }
 
-    override fun onBindPayload(holder: VerticalListViewHolder, position: Int, payloads: MutableList<Any>): Boolean {
-        if (payloads.contains(PAYLOAD_PLAYBACK_STATE)) {
-            val song = songs[position]
-            when (holder) {
-                is ListHolder -> holder.bindSelectionState(song)
-                is GridHolder -> holder.bindSelectionState(song)
-            }
-            return true
-        }
-        return false
-    }
 
     override fun getItemCount(): Int = songs.size
     override fun getItemViewType(position: Int): Int = SongsPreferences.getGridType()
@@ -169,16 +123,12 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
     }
 
     fun updateSongs(newSongs: List<Audio>) {
-        differ.submitList(newSongs.toList()) {
-            // After the diff is applied, re-evaluate selection so newly visible items
-            // reflecting the current song are highlighted correctly.
-            notifyCurrentSong()
-        }
+        differ.submitList(newSongs.toList())
     }
 
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
         fun bindSelectionState(song: Audio) {
-            binding.container.isSelected = MediaManager.getCurrentSongId() == song.id
+            binding.container.setAudioID(song.id)
         }
 
         fun bind(audio: Audio, isLightBind: Boolean) {
@@ -201,7 +151,7 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
 
     inner class GridHolder(val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
         fun bindSelectionState(song: Audio) {
-            binding.container.isSelected = MediaManager.getCurrentSongId() == song.id
+            binding.container.setAudioID(song.id)
         }
 
         fun bind(song: Audio, isLightBind: Boolean) {
@@ -223,6 +173,5 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
     }
 
     companion object {
-        private const val PAYLOAD_PLAYBACK_STATE = "payload_playing_state"
     }
 }

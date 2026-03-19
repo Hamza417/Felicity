@@ -215,11 +215,6 @@ class Favorites : PanelFragment() {
         headerBinding.sortOrder.setFavoritesOrder()
     }
 
-    override fun onAudio(audio: Audio) {
-        super.onAudio(audio)
-        adapterSongs?.currentlyPlayingSong = audio
-    }
-
     private fun provideScrollPositionDataBasedOnSortStyle(songs: List<Audio>): List<SectionedFastScroller.Position> {
         return when (FavoritesPreferences.getSongSort()) {
             CommonPreferencesConstants.BY_TITLE -> {

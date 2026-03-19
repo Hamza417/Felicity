@@ -43,31 +43,9 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
     private var isDragInProgress = false
     private var pendingList: List<Audio>? = null
 
-    // ID of the song currently highlighted as "playing".
-    private var trackedSongId: Long? = null
-
-    var currentlyPlayingSong: Audio?
-        get() = songs.firstOrNull { it.id == trackedSongId }
-        set(value) {
-            val newId = value?.id
-            val oldId = trackedSongId
-            trackedSongId = newId
-            if (oldId != null && oldId != newId) {
-                val oldIndex = songs.indexOfFirst { it.id == oldId }
-                if (oldIndex != -1) notifyItemChanged(oldIndex, PAYLOAD_PLAYBACK_STATE)
-            }
-            val newIndex = if (newId != null) songs.indexOfFirst { it.id == newId } else -1
-            if (newIndex != -1) notifyItemChanged(newIndex, PAYLOAD_PLAYBACK_STATE)
-        }
-
-    fun notifyCurrentSong() {
-        trackedSongId = MediaManager.getCurrentSongId()
-        notifyItemRangeChanged(0, itemCount, PAYLOAD_PLAYBACK_STATE)
-    }
 
     init {
         setHasStableIds(true)
-        trackedSongId = MediaManager.getCurrentSongId()
         songs.addAll(initial)
     }
 
@@ -97,13 +75,6 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
         holder.bind(songs[position], isLightBind = false)
     }
 
-    override fun onBindViewHolder(holder: QueueHolder, position: Int, payloads: MutableList<Any>) {
-        if (payloads.contains(PAYLOAD_PLAYBACK_STATE)) {
-            holder.bindSelectionState(songs[position])
-        } else {
-            super.onBindViewHolder(holder, position, payloads)
-        }
-    }
 
     override fun getItemCount(): Int = songs.size
 
@@ -154,7 +125,6 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
         songs.clear()
         songs.addAll(newSongs)
         result.dispatchUpdatesTo(this)
-        notifyCurrentSong()
     }
 
     internal fun onDragStarted() {
@@ -168,16 +138,14 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
         pendingList = null
         if (pending != null) {
             applyListWithDiff(pending)
-        } else {
-            notifyCurrentSong()
         }
     }
 
     @SuppressLint("ClickableViewAccessibility")
     inner class QueueHolder(val binding: AdapterPlayingQueueBinding) : VerticalListViewHolder(binding.root) {
 
-        fun bindSelectionState(song: Audio) {
-            binding.container.isSelected = MediaManager.getCurrentSongId() == song.id
+        fun bindSelectionState(audio: Audio) {
+            binding.container.setAudioID(audio.id)
         }
 
         fun bind(audio: Audio, isLightBind: Boolean) {
@@ -361,6 +329,5 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
     }
 
     companion object {
-        const val PAYLOAD_PLAYBACK_STATE = "payload_playing_state"
     }
 }

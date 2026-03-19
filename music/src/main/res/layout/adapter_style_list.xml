@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.extensions.views.MediaAwareRippleConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/container"
@@ -64,4 +64,4 @@
         app:layout_constraintTop_toBottomOf="@+id/secondary_detail"
         app:textColorStyle="secondary" />
 
-</app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout>
+</app.simple.felicity.extensions.views.MediaAwareRippleConstraintLayout>

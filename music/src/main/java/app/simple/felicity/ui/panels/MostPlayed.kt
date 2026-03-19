@@ -165,11 +165,6 @@ class MostPlayed : PanelFragment() {
         headerBinding.gridType.setGridTypeValue(MostPlayedPreferences.getGridType())
     }
 
-    override fun onAudio(audio: Audio) {
-        super.onAudio(audio)
-        adapterSongs?.currentlyPlayingSong = audio
-    }
-
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {

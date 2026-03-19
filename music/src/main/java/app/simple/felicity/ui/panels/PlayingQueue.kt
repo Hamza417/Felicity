@@ -113,11 +113,6 @@ class PlayingQueue : PanelFragment() {
         headerBinding.hours.text = songs.sumOf { it.duration }
             .toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
 
-        // Highlight current song
-        val currentSong = MediaManager.getCurrentSong()
-        if (currentSong != null) {
-            adapterPlayingQueue?.currentlyPlayingSong = currentSong
-        }
 
         // Check if current song is already visible; if not, scroll to it.
         // Only do this once on initial load — subsequent queue updates (drag reorder,
@@ -141,10 +136,6 @@ class PlayingQueue : PanelFragment() {
         }
     }
 
-    override fun onAudio(audio: Audio) {
-        super.onAudio(audio)
-        adapterPlayingQueue?.currentlyPlayingSong = audio
-    }
 
     companion object {
         const val TAG = "PlayingQueue"

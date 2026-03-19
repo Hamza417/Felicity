@@ -149,7 +149,7 @@ class Equalizer : MediaFragment() {
         // Knob value 0-100 maps to gain -12 dB (full cut) … 0 dB (center) … +12 dB (full boost).
         binding.equalizerScreen.bassKnob.centerSnapEnabled = true
         binding.equalizerScreen.bassKnob.setTickTexts("-12", "+12")
-        binding.equalizerScreen.bassKnob.divisionCount = 24 * 2
+        binding.equalizerScreen.bassKnob.divisionCount = 48 * 2
         binding.equalizerScreen.bassKnob.setKnobPosition(bassDbToKnobValue(EqualizerPreferences.getBassDb()), animate = false)
         binding.equalizerScreen.bassKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
@@ -174,7 +174,7 @@ class Equalizer : MediaFragment() {
         // Knob value 0-100 maps to gain -12 dB (full cut) … 0 dB (center) … +12 dB (full boost).
         binding.equalizerScreen.trebleKnob.centerSnapEnabled = true
         binding.equalizerScreen.trebleKnob.setTickTexts("-12", "+12")
-        binding.equalizerScreen.trebleKnob.divisionCount = 24 * 2
+        binding.equalizerScreen.trebleKnob.divisionCount = 48 * 2
         binding.equalizerScreen.trebleKnob.setKnobPosition(trebleDbToKnobValue(EqualizerPreferences.getTrebleDb()), animate = false)
         binding.equalizerScreen.trebleKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}

@@ -224,11 +224,6 @@ class Songs : PanelFragment() {
         headerBinding.sortOrder.setSongOrder()
     }
 
-    override fun onAudio(audio: Audio) {
-        super.onAudio(audio)
-        adapterSongs?.currentlyPlayingSong = audio
-    }
-
     private fun provideScrollPositionDataBasedOnSortStyle(songs: List<Audio>): List<SectionedFastScroller.Position> {
         return when (SongsPreferences.getSongSort()) {
             CommonPreferencesConstants.BY_TITLE -> {

@@ -172,10 +172,6 @@ class Search : PanelFragment() {
         return firstAlphabetToIndex.map { (char, index) -> SectionedFastScroller.Position(char, index) }
     }
 
-    override fun onAudio(audio: Audio) {
-        super.onAudio(audio)
-        adapterSearch?.currentlyPlayingSong = audio
-    }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)

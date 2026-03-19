@@ -53,7 +53,6 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
         if (selected) {
             setBackgroundTintList(null);
             setBackgroundTintList(ColorStateList.valueOf(ColorUtils.INSTANCE.changeAlpha(ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor(), 25)));
-            
             LayoutBackground.setBackground(getContext(), this, null, radius);
         } else {
             setBackground(null);

@@ -301,20 +301,6 @@ class PageAdapter(
         }
     }
 
-    override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int, payloads: MutableList<Any>) {
-        if (payloads.contains(PAYLOAD_PLAYBACK_STATE) && holder is Songs) {
-            holder.bindSelectionState((items[position] as? PageItem.SongItem)?.audio ?: return)
-        } else {
-            super.onBindViewHolder(holder, position, payloads)
-        }
-    }
-
-    /** Re-evaluates selection state for every song row — call from onAudio() in page fragments. */
-    fun notifyCurrentSong() {
-        items.forEachIndexed { index, item ->
-            if (item is PageItem.SongItem) notifyItemChanged(index, PAYLOAD_PLAYBACK_STATE)
-        }
-    }
 
     override fun getItemCount(): Int = items.size
 
@@ -568,6 +554,5 @@ class PageAdapter(
 
     companion object {
         private const val TAG = "PageAdapter"
-        const val PAYLOAD_PLAYBACK_STATE = "payload_playing_state"
     }
 }
