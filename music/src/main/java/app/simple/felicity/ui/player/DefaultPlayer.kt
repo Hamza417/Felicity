@@ -12,6 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
+import app.simple.felicity.decorations.helpers.SwipeDownToCloseListener
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.pager.ImagePageAdapter
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
@@ -45,6 +46,7 @@ class DefaultPlayer : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        requireView().setOnTouchListener(SwipeDownToCloseListener(this, requireView()))
         requireHiddenMiniPlayer()
         updateState()
 
