@@ -25,7 +25,6 @@ import app.simple.felicity.ui.panels.ArtFlow
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Folders
 import app.simple.felicity.ui.panels.Genres
-import app.simple.felicity.ui.panels.GlobeFragment
 import app.simple.felicity.ui.panels.Search
 import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.ui.player.DefaultPlayer
@@ -64,7 +63,6 @@ class ArtFlowHome : MediaFragment() {
                 FelicitySideBar.SidebarItem(R.drawable.ic_folder),
                 FelicitySideBar.SidebarItem(R.drawable.ic_volume),
                 FelicitySideBar.SidebarItem(R.drawable.ic_play),
-                FelicitySideBar.SidebarItem(R.drawable.ic_globe),
                 FelicitySideBar.SidebarItem(R.drawable.ic_search),
                 FelicitySideBar.SidebarItem(R.drawable.ic_settings)
         ))
@@ -89,9 +87,6 @@ class ArtFlowHome : MediaFragment() {
                 }
                 R.drawable.ic_play -> {
                     openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
-                }
-                R.drawable.ic_globe -> {
-                    openFragment(GlobeFragment.newInstance(), GlobeFragment.TAG)
                 }
                 R.drawable.ic_search -> {
                     openFragment(Search.newInstance(), Search.TAG)
