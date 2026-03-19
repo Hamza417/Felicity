@@ -43,6 +43,10 @@ class Accessibility : PreferenceFragment() {
                 Log.d(TAG, "onSharedPreferenceChanged: stroke around miniplayer changed")
                 peekMiniPlayer()
             }
+            AccessibilityPreferences.DARKER_MINIPLAYER_SHADOW -> {
+                Log.d(TAG, "onSharedPreferenceChanged: darker miniplayer shadow changed")
+                peekMiniPlayer()
+            }
         }
     }
 

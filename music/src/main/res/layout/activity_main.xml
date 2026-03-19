@@ -14,6 +14,7 @@
     android:id="@+id/app_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clipChildren="false"
     tools:context=".activities.MainActivity"
     tools:parentTag="android.widget.FrameLayout">
 
@@ -28,6 +29,7 @@
         android:id="@+id/mini_player"
         android:layout_width="match_parent"
         android:layout_height="72dp"
+        android:clipToOutline="false"
         android:layout_gravity="bottom" />
 
 </app.simple.felicity.decorations.theme.ThemeCoordinatorLayout>

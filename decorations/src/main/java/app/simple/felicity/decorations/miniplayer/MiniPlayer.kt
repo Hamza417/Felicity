@@ -44,6 +44,9 @@ import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decorations.itemdecorations.FooterSpacingItemDecoration
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.ARTIST_TEXT_SIZE_SP
+import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.DEFAULT_ELEVATION_DP
+import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.PAINT_SHADOW_DY_DP
+import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.PAINT_SHADOW_RADIUS_DP
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.TITLE_TEXT_SIZE_SP
 import app.simple.felicity.decorations.ripple.FelicityRippleDrawable
 import app.simple.felicity.decorations.typeface.TypeFace
@@ -212,6 +215,12 @@ class MiniPlayer @JvmOverloads constructor(
          * [RecyclerView.SCROLL_STATE_IDLE] snap that the RecyclerView path uses.
          */
         private const val SCROLL_SNAP_DELAY_MS = 150L
+
+        /** Blur radius in dp used by the paint-shadow card background. */
+        private const val PAINT_SHADOW_RADIUS_DP = 10f
+
+        /** Downward Y offset in dp for the paint-shadow card background. */
+        private const val PAINT_SHADOW_DY_DP = 0f
     }
 
     // -------------------------------------------------------------------------
@@ -458,6 +467,7 @@ class MiniPlayer @JvmOverloads constructor(
                     // Seek mode ends — restore progress bar, do NOT trigger a page change
                     isInSeekMode = false
                     animateProgressAlpha(1f)
+                    animateSeekThumb(show = false)
                 } else if (isBeingDragged) {
                     scrollEngine.finishDrag(vx, dragStartScrollPx)
                 } else if (event.actionMasked == MotionEvent.ACTION_UP) {
@@ -503,6 +513,7 @@ class MiniPlayer @JvmOverloads constructor(
                 seekStartProgress = progress
                 scrollEngine.cancelAnimation()
                 animateEdgeFade(show = false)
+                animateSeekThumb(show = true)
                 context.vibrateEffect(VibrationEffect.EFFECT_CLICK, TAG)
             } else {
                 callbacks?.onItemLongClick(scrollEngine.currentPage.coerceAtLeast(0))
@@ -735,6 +746,27 @@ class MiniPlayer @JvmOverloads constructor(
     private var progressBarAlphaAnimator: ValueAnimator? = null
 
     /**
+     * Current alpha of the seek thumb line indicator, in [0, 1].
+     * Animated to 1 when seek mode is entered and back to 0 when it is exited.
+     */
+    private var seekThumbAlpha: Float = 0f
+
+    /** Animator driving [seekThumbAlpha] for the fade-in and fade-out transitions. */
+    private var seekThumbAlphaAnimator: ValueAnimator? = null
+
+    /**
+     * Thin solid line drawn at the current progress position during seek mode.
+     * [Paint.Cap.BUTT] ensures no rounded terminations on either end.
+     * A [Paint.setShadowLayer] is applied per-frame to produce the bleeding glow.
+     * Requires `LAYER_TYPE_SOFTWARE` (active when [usePaintShadow] is `true`) or
+     * API 28+ hardware acceleration for the shadow to render on non-text draws.
+     */
+    private val seekThumbLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.BUTT
+    }
+
+    /**
      * Animator used to tween [progressAccentColor] smoothly when the accent changes
      * via [onAccentChanged]. Using [ValueAnimator.ofArgb] keeps all accent-tinted
      * drawing (progress bar, ripple) in lock-step during the color transition.
@@ -891,6 +923,60 @@ class MiniPlayer @JvmOverloads constructor(
             canvas.drawRect(progressLeft, 0f, fillRight, h, progressFillPaint)
         }
     }
+
+    /**
+     * Smoothly fades the seek thumb indicator in or out.
+     *
+     * @param show `true` to fade in (seek mode entered), `false` to fade out (seek mode exited)
+     */
+    private fun animateSeekThumb(show: Boolean) {
+        val target = if (show) 1f else 0f
+        if (seekThumbAlpha == target && seekThumbAlphaAnimator?.isRunning != true) return
+        seekThumbAlphaAnimator?.cancel()
+        seekThumbAlphaAnimator = ValueAnimator.ofFloat(seekThumbAlpha, target).apply {
+            duration = if (show) 180L else 350L
+            interpolator = if (show) DecelerateInterpolator() else AccelerateInterpolator()
+            addUpdateListener {
+                seekThumbAlpha = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    /**
+     * Draws the vertical seek thumb indicator at the current [progress] position.
+     *
+     * A single [Paint.setShadowLayer] call on [seekThumbLinePaint] produces the
+     * bleeding glow effect — no separate glow paint is needed.  The shadow radius
+     * is intentionally large relative to the stroke width so the halo spreads
+     * visibly around the thin line.
+     *
+     * [Paint.Cap.BUTT] is already set on [seekThumbLinePaint] so both ends of the
+     * line are sharp with no rounded caps.  All alpha values are multiplied by
+     * [seekThumbAlpha] so the whole indicator fades uniformly on entry and exit.
+     *
+     * @param canvas the canvas to draw onto (already clipped to the card shape)
+     */
+    private fun drawSeekThumb(canvas: Canvas) {
+        if (seekThumbAlpha <= 0f) return
+        val h = height.toFloat()
+        val thumbX = artSize + (width.toFloat() - artSize) * progress
+
+        val r = Color.red(progressAccentColor)
+        val g = Color.green(progressAccentColor)
+        val b = Color.blue(progressAccentColor)
+
+        val lineAlpha = (220 * seekThumbAlpha).toInt().coerceIn(0, 255)
+        val shadowAlpha = (200 * seekThumbAlpha).toInt().coerceIn(0, 255)
+
+        // setShadowLayer provides the bleeding glow — works for drawLine on API 28+ hardware
+        // canvas and on any API when the view uses LAYER_TYPE_SOFTWARE (i.e. usePaintShadow mode).
+        seekThumbLinePaint.setShadowLayer(dp(10f), 0f, 0f, Color.argb(shadowAlpha, r, g, b))
+        seekThumbLinePaint.color = Color.argb(lineAlpha, r, g, b)
+        canvas.drawLine(thumbX, 0f, thumbX, h, seekThumbLinePaint)
+    }
+
     // -------------------------------------------------------------------------
 
     /** Whether the edge-fade effect is enabled. Toggle with [setEdgeFadeEnabled]. */
@@ -999,6 +1085,93 @@ class MiniPlayer @JvmOverloads constructor(
     }
 
     // -------------------------------------------------------------------------
+    // Paint-shadow mode — alternative to system elevation
+    // -------------------------------------------------------------------------
+
+    /**
+     * When `true` the card background is shadowed via [Paint.setShadowLayer] on [bgPaint]
+     * instead of Android's system elevation.  The view's layer type is switched to
+     * `LAYER_TYPE_SOFTWARE` so that [Paint.setShadowLayer] works for all drawing operations
+     * (including `Canvas.drawRoundRect` and `Canvas.drawLine`).
+     *
+     * Driven by [AccessibilityPreferences.isDarkerMiniplayerShadow]; toggle with [setUsePaintShadow].
+     *
+     * @author Hamza417
+     */
+    private var usePaintShadow: Boolean = false
+
+    /** Shadow blur radius in pixels — computed from [PAINT_SHADOW_RADIUS_DP] in [applyConfig]. */
+    private var paintShadowRadiusPx: Float = 0f
+
+    /** Downward Y offset of the card paint shadow in pixels — from [PAINT_SHADOW_DY_DP]. */
+    private var paintShadowDyPx: Float = 0f
+
+    /**
+     * Current shadow color composed as ~40% alpha of the primary accent color.
+     * Animated in lockstep with [progressAccentColor] via [refreshPaintShadowColor]
+     * so album-art-driven accent changes transition smoothly.
+     */
+    private var paintShadowColor: Int = Color.TRANSPARENT
+
+    /**
+     * Recomputes [paintShadowColor] from the current [progressAccentColor] at ~40% alpha
+     * and re-applies it to [bgPaint]'s shadow layer when paint-shadow mode is active.
+     *
+     * Called from [refreshProgressColors] (initial setup and theme change) and from the
+     * [accentColorAnimator] update listener so the shadow color animates frame-by-frame
+     * in lockstep with the progress bar color during album-art accent transitions.
+     *
+     * @author Hamza417
+     */
+    private fun refreshPaintShadowColor() {
+        val r = Color.red(progressAccentColor)
+        val g = Color.green(progressAccentColor)
+        val b = Color.blue(progressAccentColor)
+        // ~40% opacity of accent — visible but not overwhelming
+        paintShadowColor = Color.argb(102, r, g, b)
+        if (usePaintShadow && !isTransparent) {
+            bgPaint.setShadowLayer(paintShadowRadiusPx, 0f, paintShadowDyPx, paintShadowColor)
+        }
+    }
+
+    /**
+     * Switches between Android system elevation shadows and a [Paint.setShadowLayer]
+     * shadow drawn directly onto the canvas.
+     *
+     * When [enabled] is `true`:
+     *  - View elevation is zeroed out so the OS ambient/spot shadow disappears.
+     *  - The layer type is switched to `LAYER_TYPE_SOFTWARE` so that
+     *    [Paint.setShadowLayer] works for all canvas drawing, including
+     *    `Canvas.drawRoundRect` and `Canvas.drawLine` (the seek thumb glow).
+     *  - `bgPaint.setShadowLayer` is configured with [paintShadowRadiusPx] and
+     *    [paintShadowDyPx] so the card background draws its own controlled shadow.
+     *
+     * When [enabled] is `false`:
+     *  - `bgPaint.clearShadowLayer` removes the paint shadow.
+     *  - The layer type is restored to `LAYER_TYPE_HARDWARE` for GPU-accelerated drawing.
+     *  - Elevation is restored to [DEFAULT_ELEVATION_DP] (unless transparent mode is on).
+     *
+     * @param enabled `true` to use paint shadow, `false` to use system elevation
+     * @author Hamza417
+     */
+    fun setUsePaintShadow(enabled: Boolean) {
+        if (usePaintShadow == enabled) return
+        usePaintShadow = enabled
+        if (enabled) {
+            elevation = 0f
+            setLayerType(LAYER_TYPE_SOFTWARE, null)
+            if (!isTransparent) {
+                bgPaint.setShadowLayer(paintShadowRadiusPx, 0f, paintShadowDyPx, paintShadowColor)
+            }
+        } else {
+            bgPaint.clearShadowLayer()
+            setLayerType(LAYER_TYPE_HARDWARE, null)
+            if (!isTransparent) elevation = dp(DEFAULT_ELEVATION_DP)
+        }
+        invalidate()
+    }
+
+    // -------------------------------------------------------------------------
     // applyConfig — single source of truth for all layout and paint state
     // -------------------------------------------------------------------------
 
@@ -1017,12 +1190,18 @@ class MiniPlayer @JvmOverloads constructor(
             artistColor = ThemeManager.theme.textViewTheme.secondaryTextColor
             iconColor = ThemeManager.theme.iconTheme.regularIconColor
         }
+
         bgPaint.color = cardColor
         titlePaint.color = titleColor
         artistPaint.color = artistColor
         playPauseDrawer.color = iconColor
         refreshRippleTheme()
         refreshProgressColors()
+        seekThumbLinePaint.strokeWidth = dp(2f)
+        paintShadowRadiusPx = dp(PAINT_SHADOW_RADIUS_DP)
+        paintShadowDyPx = dp(PAINT_SHADOW_DY_DP)
+        // Recompute accent-based shadow color and re-apply to bgPaint when active.
+        refreshPaintShadowColor()
 
         titlePaint.textSize = sp(titleTextSizeSp)
         artistPaint.textSize = sp(artistTextSizeSp)
@@ -1280,7 +1459,13 @@ class MiniPlayer @JvmOverloads constructor(
         if (isTransparent) return
         isTransparent = true
         opaqueCardColor = cardColor
-        animateElevation(0f, ANIM_DURATION_MS, animated)
+        if (!usePaintShadow) {
+            animateElevation(0f, ANIM_DURATION_MS, animated)
+        } else {
+            // In paint-shadow mode the shadow must be cleared while the card is transparent
+            // so it does not bleed visibly around an invisible background.
+            bgPaint.clearShadowLayer()
+        }
         animateBgColor(cardColor, Color.TRANSPARENT, animated)
         animateTextIcon(Color.WHITE, Color.WHITE, Color.WHITE, animated)
     }
@@ -1292,7 +1477,13 @@ class MiniPlayer @JvmOverloads constructor(
         val targetBg = if (opaqueCardColor != Color.TRANSPARENT) opaqueCardColor
         else ThemeManager.theme.viewGroupTheme.backgroundColor
         animateBgColor(Color.TRANSPARENT, targetBg, animated, onEnd = {
-            animateElevation(DEFAULT_ELEVATION_DP, ELEV_ANIM_MS, animated)
+            if (!usePaintShadow) {
+                animateElevation(DEFAULT_ELEVATION_DP, ELEV_ANIM_MS, animated)
+            } else {
+                // Restore the paint shadow now that the card is visible again.
+                bgPaint.setShadowLayer(paintShadowRadiusPx, 0f, paintShadowDyPx, paintShadowColor)
+                invalidate()
+            }
         })
         animateTextIcon(
                 ThemeManager.theme.textViewTheme.primaryTextColor,
@@ -1398,10 +1589,17 @@ class MiniPlayer @JvmOverloads constructor(
             }
         }
 
-        // 4. Play/pause button (slides off during drag)
+        // 4. Seek thumb indicator — drawn above page content, clipped to the card shape
+        if (seekThumbAlpha > 0f) {
+            canvas.withClip(cardClipPath) {
+                drawSeekThumb(this)
+            }
+        }
+
+        // 5. Play/pause button (slides off during drag)
         playPauseDrawer.draw(canvas)
 
-        // 5. Full-card ripple — always rendered; it auto-releases and fades on its own
+        // 6. Full-card ripple — always rendered; it auto-releases and fades on its own
         //    so it never visually fights scroll or seek content.
         canvas.withClip(cardClipPath) {
             fullRipple.draw(this)
@@ -1950,6 +2148,9 @@ class MiniPlayer @JvmOverloads constructor(
             interpolator = DecelerateInterpolator()
             addUpdateListener {
                 progressAccentColor = it.animatedValue as Int
+                // Animate the paint-shadow color in lockstep so accent changes from album
+                // art mode transition the card shadow smoothly alongside the progress bar.
+                refreshPaintShadowColor()
                 invalidate()
             }
             start()
@@ -1975,6 +2176,10 @@ class MiniPlayer @JvmOverloads constructor(
             }
         }
         clipToOutline = false // art clipping is handled manually; shadow must not be clipped
+
+        // Apply the persisted shadow mode — must come AFTER the elevation line above so
+        // setUsePaintShadow(true) can correctly zero it out.
+        setUsePaintShadow(AccessibilityPreferences.isDarkerMiniplayerShadow())
 
         updateStroke()
 
@@ -2041,6 +2246,7 @@ class MiniPlayer @JvmOverloads constructor(
         edgeFadeAnimator?.cancel()
         progressBarAlphaAnimator?.cancel()
         progressValueAnimator?.cancel()
+        seekThumbAlphaAnimator?.cancel()
         resetManualHandler.removeCallbacks(resetManualRunnable)
         isManuallyControlled = false
         hadImmersiveDrag = false
@@ -2133,6 +2339,9 @@ class MiniPlayer @JvmOverloads constructor(
         when (key) {
             AccessibilityPreferences.STROKE_AROUND_MINIPLAYER -> {
                 updateStroke()
+            }
+            AccessibilityPreferences.DARKER_MINIPLAYER_SHADOW -> {
+                setUsePaintShadow(AccessibilityPreferences.isDarkerMiniplayerShadow())
             }
             UserInterfacePreferences.MARGIN_AROUND_MINIPLAYER -> {
                 applyMarginMode()

@@ -18,6 +18,9 @@ object AccessibilityPreferences {
 
     const val STROKE_AROUND_MINIPLAYER = "stroke_around_miniplayer"
 
+    /** Key for the "Use Darker Shadows" miniplayer paint-shadow toggle. */
+    const val DARKER_MINIPLAYER_SHADOW = "darker_miniplayer_shadow"
+
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setHighlightMode(boolean: Boolean) {
@@ -96,5 +99,15 @@ object AccessibilityPreferences {
 
     fun isStrokeAroundMiniplayerOn(): Boolean {
         return getSharedPreferences().getBoolean(STROKE_AROUND_MINIPLAYER, false)
+    }
+
+    // ---------------------------------------------------------------------------------------------------------- //
+
+    fun setDarkerMiniplayerShadow(boolean: Boolean) {
+        getSharedPreferences().edit { putBoolean(DARKER_MINIPLAYER_SHADOW, boolean) }
+    }
+
+    fun isDarkerMiniplayerShadow(): Boolean {
+        return getSharedPreferences().getBoolean(DARKER_MINIPLAYER_SHADOW, false)
     }
 }

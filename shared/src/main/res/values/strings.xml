@@ -237,6 +237,7 @@
     <string name="accessibility">Accessibility</string>
     <string name="accessibility_desc">Configure accessibility features in the app to improve usability of the app.</string>
     <string name="stroke_around_miniplayer">Stroke Around Miniplayer</string>
+    <string name="darker_miniplayer_shadow">Use Darker Shadows</string>
 
     <!-- Shuffle -->
     <string name="shuffle_algorithm">Shuffle Algorithm</string>

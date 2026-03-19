@@ -755,8 +755,23 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val darkerMiniplayerShadow = Preference(
+                title = R.string.darker_miniplayer_shadow,
+                summary = R.string.darker_miniplayer_shadow_summary,
+                icon = R.drawable.ic_opacity,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, _ ->
+                    AccessibilityPreferences.setDarkerMiniplayerShadow((view as FelicitySwitch).isChecked)
+                    true
+                },
+                valueProvider = Supplier {
+                    AccessibilityPreferences.isDarkerMiniplayerShadow()
+                }
+        )
+
         preferences.add(userInterfaceHeader)
         preferences.add(strokeAroundMiniplayer)
+        preferences.add(darkerMiniplayerShadow)
 
         return preferences
     }

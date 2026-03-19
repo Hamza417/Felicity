@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="stroke_around_miniplayer_summary">Add a dark line aroung the miniplayer boundary to help with visibility.</string>
+    <string name="stroke_around_miniplayer_summary">Add a dark line around the miniplayer boundary to help with visibility.</string>
+    <string name="darker_miniplayer_shadow_summary">Replace the system elevation shadow with a softer, accent-colored glow drawn directly onto the canvas.</string>
 </resources>
