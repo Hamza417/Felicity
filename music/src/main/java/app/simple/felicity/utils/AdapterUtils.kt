@@ -15,7 +15,7 @@ object AdapterUtils {
                 setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, R.drawable.ic_hq_12dp, 0)
             }
             Audio.AUDIO_QUALITY_LOSSLESS -> {
-                setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0)
+                setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, R.drawable.ic_lossless_12dp, 0)
             }
             Audio.AUDIO_QUALITY_HI_RES -> {
                 setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, R.drawable.ic_hires_12dp, 0)
