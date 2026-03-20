@@ -91,7 +91,7 @@ class AdapterSimpleHome(private val data: MutableList<Any>) : RecyclerView.Adapt
     companion object {
         private const val VIEW_TYPE_SIMPLE = 1
         private const val VIEW_TYPE_GRID = 2
-        private const val VIEW_TYPE_GROUP = 3
+        const val VIEW_TYPE_GROUP = 3
 
         interface AdapterSimpleHomeCallbacks : GeneralAdapterCallbacks {
             fun onItemClicked(panel: Panel, position: Int, view: View)

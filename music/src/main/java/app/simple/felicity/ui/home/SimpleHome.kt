@@ -147,6 +147,16 @@ class SimpleHome : PanelFragment() {
         }
 
         gridLayoutManager?.spanCount = spanCount
+
+        gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int): Int {
+                return if (adapterSimpleHome?.getItemViewType(position) == AdapterSimpleHome.VIEW_TYPE_GROUP) {
+                    spanCount
+                } else {
+                    1
+                }
+            }
+        }
     }
 
     companion object {
