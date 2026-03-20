@@ -29,6 +29,12 @@ import app.simple.felicity.repository.models.PlaybackState
  *       dedicated {@code playback_queue} table whose {@code audioHash} carries an
  *       {@code ON DELETE CASCADE} foreign key — stale queue entries are automatically
  *       removed whenever the corresponding audio row is deleted.</li>
+ *   <li>7 → 8: Removed the database-level foreign key from {@code song_stats}. The hard FK
+ *       ({@code ON DELETE NO ACTION}) was blocking deletion of {@code audio} rows that had
+ *       statistics, which contradicts the design intent that stats survive track removal.
+ *       The {@code audioHash} column now acts as a logical (unconstrained) reference to
+ *       {@code audio.hash}; stats are re-associated automatically when a removed file is
+ *       re-added because the XXHash64 fingerprint is deterministic.</li>
  * </ul>
  *
  * @author Hamza417
@@ -40,7 +46,7 @@ import app.simple.felicity.repository.models.PlaybackState
             PlaybackQueueEntry::class,
             AudioStat::class
         ],
-        version = 7,
+        version = 8,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {
@@ -208,6 +214,41 @@ abstract class AudioDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migrates the database from version 7 to 8.
+         *
+         * <p>Recreates the {@code song_stats} table without a database-level foreign key on
+         * {@code audioHash}. The previous schema used {@code ON DELETE NO ACTION}, which
+         * SQLite interprets as a hard constraint: it raises {@code SQLITE_CONSTRAINT_FOREIGNKEY}
+         * whenever an {@code audio} row is deleted while child {@code song_stats} rows still
+         * reference it. This blocked the library reconcile pass from cleaning up tracks that no
+         * longer exist on disk. All existing statistics are preserved by copying every row into
+         * the new table before dropping the old one.</p>
+         */
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Create the replacement table without any FK declaration.
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `song_stats_new` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `audioHash` INTEGER NOT NULL,
+                        `lastPlayed` INTEGER NOT NULL DEFAULT 0,
+                        `playCount` INTEGER NOT NULL DEFAULT 0,
+                        `skipCount` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+                // Preserve all existing statistics.
+                db.execSQL("""
+                    INSERT INTO `song_stats_new` (`id`, `audioHash`, `lastPlayed`, `playCount`, `skipCount`)
+                    SELECT `id`, `audioHash`, `lastPlayed`, `playCount`, `skipCount` FROM `song_stats`
+                """.trimIndent())
+                db.execSQL("DROP TABLE `song_stats`")
+                db.execSQL("ALTER TABLE `song_stats_new` RENAME TO `song_stats`")
+                // Restore the lookup index on audioHash.
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_song_stats_audioHash` ON `song_stats` (`audioHash`)")
+            }
+        }
+
         fun getInstance(context: Context): AudioDatabase {
             return instance ?: synchronized(this) {
                 instance ?: buildDatabase(context.applicationContext).also {
@@ -220,8 +261,7 @@ abstract class AudioDatabase : RoomDatabase() {
 
         private fun buildDatabase(context: Context): AudioDatabase {
             return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                .fallbackToDestructiveMigration()
-                .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                 .build()
         }
     }
