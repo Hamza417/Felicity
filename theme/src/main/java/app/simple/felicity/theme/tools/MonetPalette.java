@@ -52,6 +52,7 @@ public class MonetPalette {
     /**
      * Estimate the dominant color using quantized histogram sampling.
      * Quantize RGB to 5 bits per channel and tally across a sampled grid.
+     * Weights highly saturated pixels more heavily to find vibrant accents.
      */
     @ColorInt
     private static int extractSeed(@NonNull Bitmap bitmap) {
@@ -78,14 +79,37 @@ public class MonetPalette {
                 int r = Color.red(c);
                 int g = Color.green(c);
                 int b = Color.blue(c);
+                
+                // --- Fast Vibrancy Weighting ---
+                // Calculate max and min RGB values to approximate lightness and saturation
+                int cMax = Math.max(r, Math.max(g, b));
+                int cMin = Math.min(r, Math.min(g, b));
+                int delta = cMax - cMin;
+                
+                // Filter out severely dark colors or washed-out near-whites
+                if (cMax < 30 || (cMax > 240 && delta < 20)) {
+                    continue;
+                }
+                
+                // Exponential weighting based on color purity (delta).
+                // A higher delta means the color is further from grey.
+                // We shift right by 6 as a fast division to keep numbers manageable.
+                int weight = (delta * delta) >> 6;
+                if (weight < 1) {
+                    weight = 1; // Base weight for any valid pixel
+                }
+                
                 // Quantize to 5 bits per channel
                 int rq = r >> 3;
                 int gq = g >> 3;
                 int bq = b >> 3;
                 int key = (rq << 10) | (gq << 5) | bq;
+                
                 Integer old = histogram.get(key);
-                int count = (old == null ? 0 : old) + 1;
+                // Add the calculated vibrancy weight instead of just a flat +1
+                int count = (old == null ? 0 : old) + weight;
                 histogram.put(key, count);
+                
                 if (count > bestCount) {
                     bestCount = count;
                     bestKey = key;
