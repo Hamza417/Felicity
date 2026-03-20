@@ -224,7 +224,7 @@ class FelicityPager @JvmOverloads constructor(
 
     /** Minimum velocity (px/s, scaled for the display) required to trigger a fling. */
     private val minFlingVelocity =
-        ViewConfiguration.get(context).scaledMinimumFlingVelocity * 1.65f
+        ViewConfiguration.get(context).scaledMinimumFlingVelocity * 1.35f
 
     /**
      * Number of pages to keep loaded on each side of the currently visible page.
@@ -463,16 +463,33 @@ class FelicityPager @JvmOverloads constructor(
 
     private val gestureDetector = GestureDetector(context, this)
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+
+    /** Whether the user is currently performing a drag gesture. */
     private var isBeingDragged = false
+
+    /** X coordinate of the last processed [MotionEvent], updated every [MotionEvent.ACTION_MOVE]. */
     private var lastMotionX = 0f
+
+    /**
+     * X coordinate recorded at [MotionEvent.ACTION_DOWN]. Used to measure cumulative
+     * displacement so that slow drags (whose per-event delta never exceeds the touch slop)
+     * still register once the total travel crosses the threshold.
+     */
+    private var initialMotionX = 0f
+
+    /** Value of [scrollPx] at the moment the current drag gesture started. */
     private var dragStartScrollPx = 0f
     private var velocityTracker: VelocityTracker? = null
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {
-            MotionEvent.ACTION_DOWN -> lastMotionX = ev.x
+            MotionEvent.ACTION_DOWN -> {
+                initialMotionX = ev.x
+                lastMotionX = ev.x
+            }
             MotionEvent.ACTION_MOVE ->
-                if (abs(ev.x - lastMotionX) > touchSlop * 0.6f) return true
+                // Use cumulative displacement from DOWN so slow drags are also intercepted.
+                if (abs(ev.x - initialMotionX) > touchSlop * 0.6f) return true
         }
         return false
     }
@@ -482,6 +499,7 @@ class FelicityPager @JvmOverloads constructor(
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 cancelAnimation()
+                initialMotionX = event.x
                 lastMotionX = event.x
                 dragStartScrollPx = scrollPx
                 velocityTracker?.recycle()
@@ -491,7 +509,9 @@ class FelicityPager @JvmOverloads constructor(
             MotionEvent.ACTION_MOVE -> {
                 velocityTracker?.addMovement(event)
                 val dx = event.x - lastMotionX
-                if (!isBeingDragged && abs(dx) > touchSlop * 0.6f) {
+                // Check cumulative displacement from the initial touch point, not the
+                // per-event delta, so that a slow continuous drag starts as expected.
+                if (!isBeingDragged && abs(event.x - initialMotionX) > touchSlop * 0.6f) {
                     isBeingDragged = true
                     dispatchStateChanged(SCROLL_STATE_DRAGGING)
                     parent?.requestDisallowInterceptTouchEvent(true)
