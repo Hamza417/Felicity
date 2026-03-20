@@ -699,41 +699,33 @@ class SlideFastScroller @JvmOverloads constructor(
             return
         }
 
-        // Use pixel-based calculation for smoother tracking
-        val scrollRange = rv.computeVerticalScrollRange() - rv.computeVerticalScrollExtent()
-        if (scrollRange > 0) {
-            val currentOffset = rv.computeVerticalScrollOffset()
-            val newPercent = (currentOffset.toFloat() / scrollRange.toFloat()).coerceIn(0f, 1f)
+        val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
+        val firstVisible = layoutManager.findFirstVisibleItemPosition()
 
-            if (abs(newPercent - percent) > 0.001f) {
-                percent = newPercent
-                // Update current position based on layout manager
-                val layoutManager = rv.layoutManager as? LinearLayoutManager
-                currentAdapterPosition = layoutManager?.findFirstVisibleItemPosition() ?: 0
-                invalidate()
+        if (firstVisible == RecyclerView.NO_POSITION || firstVisible < 0) return
+
+        val firstView = layoutManager.findViewByPosition(firstVisible)
+
+        val newPercent = if (firstView != null) {
+            val viewTop = firstView.top
+            val itemHeight = firstView.height
+
+            // Fallback for edge cases where view exists but layout pass hasn't assigned height
+            if (itemHeight <= 0) {
+                firstVisible.toFloat() / (count - 1).toFloat()
+            } else {
+                val offsetPercent = (-viewTop.toFloat() / itemHeight.toFloat()).coerceIn(0f, 1f)
+                ((firstVisible + offsetPercent) / (count - 1).toFloat()).coerceIn(0f, 1f)
             }
         } else {
-            // Fall back to position-based calculation for edge cases
-            val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
-            val firstVisible = layoutManager.findFirstVisibleItemPosition()
-            if (firstVisible < 0) return
-
-            val firstView = layoutManager.findViewByPosition(firstVisible)
-            val newPercent = if (firstView != null) {
-                val viewTop = firstView.top
-                val itemHeight = firstView.height.coerceAtLeast(1)
-                val offsetPercent = (-viewTop.toFloat() / itemHeight.toFloat()).coerceIn(0f, 1f)
-                ((firstVisible + offsetPercent) / (count - 1)).coerceIn(0f, 1f)
-            } else {
-                firstVisible.toFloat() / (count - 1).toFloat()
-            }
-
-            if (abs(newPercent - percent) > 0.001f) {
-                percent = newPercent
-                currentAdapterPosition = firstVisible
-                invalidate()
-            }
+            // Fallback for edge cases where layout manager cannot find the view
+            firstVisible.toFloat() / (count - 1).toFloat()
         }
+
+        // Visual state and invalidation must happen continuously for smooth tracking.
+        percent = newPercent
+        currentAdapterPosition = firstVisible
+        invalidate()
     }
 
     private fun applyStepForPercent(p: Float, force: Boolean = false) {
@@ -1091,7 +1083,6 @@ class SlideFastScroller @JvmOverloads constructor(
         val metrics: DisplayMetrics = resources.displayMetrics
         return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, metrics)
     }
-
 
     /** Provide a custom drawable resource for the handle (used for both active & inactive). */
     @Suppress("unused")
