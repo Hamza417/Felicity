@@ -47,21 +47,6 @@
             android:layout_height="1px" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleTextView
-            android:id="@+id/organize"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="@dimen/padding_15"
-            android:text="@string/organize"
-            android:textSize="@dimen/text_size_14"
-            app:appFontStyle="bold"
-            app:textColorStyle="primary" />
-
-        <app.simple.felicity.decorations.theme.ThemeDivider
-            android:layout_width="match_parent"
-            android:layout_marginVertical="@dimen/padding_10"
-            android:layout_height="1px" />
-
-        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
             android:id="@+id/open_app_settings"
             android:layout_width="match_parent"
             android:layout_height="match_parent"

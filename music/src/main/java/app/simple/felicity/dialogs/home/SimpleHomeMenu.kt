@@ -10,11 +10,10 @@ import app.simple.felicity.R
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.DialogHomeMenuBinding
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
-import app.simple.felicity.dialogs.home.HomeOrganize.Companion.showHomeOrganize
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.HomePreferences
 
-class HomeMenu : ScopedBottomSheetFragment() {
+class SimpleHomeMenu : ScopedBottomSheetFragment() {
 
     private lateinit var binding: DialogHomeMenuBinding
 
@@ -27,11 +26,6 @@ class HomeMenu : ScopedBottomSheetFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         updateGridTypeState()
-
-        binding.organize.setOnClickListener {
-            dismiss()
-            parentFragmentManager.showHomeOrganize()
-        }
 
         binding.openAppSettings.setOnClickListener {
             openAppSettings()
@@ -69,16 +63,16 @@ class HomeMenu : ScopedBottomSheetFragment() {
     }
 
     companion object {
-        fun newInstance(): HomeMenu {
+        fun newInstance(): SimpleHomeMenu {
             val args = Bundle()
-            val fragment = HomeMenu()
+            val fragment = SimpleHomeMenu()
             fragment.arguments = args
             return fragment
         }
 
         private const val TAG = "HomeMenu"
 
-        fun FragmentManager.showHomeMenu(): HomeMenu {
+        fun FragmentManager.showHomeMenu(): SimpleHomeMenu {
             val dialog = newInstance()
             dialog.show(this, TAG)
             return dialog

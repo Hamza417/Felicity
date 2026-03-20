@@ -15,9 +15,6 @@ object HomePreferences {
     // Home layout type (list / grid)
     const val HOME_LAYOUT_TYPE = "home_layout_type"
 
-    // Persisted order of home items (comma-separated titleResId values)
-    const val HOME_ITEMS_ORDER = "home_items_order"
-
     // ---------------------------------------------------------------------------------------- //
 
     fun getHomeInterface(): Int {
@@ -41,24 +38,5 @@ object HomePreferences {
         SharedPreferences.getSharedPreferences().edit {
             putInt(HOME_LAYOUT_TYPE, type)
         }
-    }
-
-    fun getHomeItemsOrder(): String {
-        return SharedPreferences.getSharedPreferences()
-            .getString(HOME_ITEMS_ORDER, "") ?: ""
-    }
-
-    fun setHomeItemsOrder(order: String) {
-        SharedPreferences.getSharedPreferences().edit {
-            putString(HOME_ITEMS_ORDER, order)
-        }
-    }
-
-    fun resetHomeOrder() {
-        SharedPreferences.getSharedPreferences().edit {
-            putString(HOME_ITEMS_ORDER, "")
-        }
-
-        setHomeLayoutType(CommonPreferencesConstants.GRID_TYPE_LIST)
     }
 }

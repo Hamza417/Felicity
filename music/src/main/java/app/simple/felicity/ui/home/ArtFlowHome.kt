@@ -15,7 +15,6 @@ import app.simple.felicity.databinding.FragmentHomeArtflowBinding
 import app.simple.felicity.decorations.flowsidemenu.FelicitySideBar
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolder
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
-import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.theme.managers.ThemeManager
@@ -92,7 +91,7 @@ class ArtFlowHome : MediaFragment() {
                     openFragment(Search.newInstance(), Search.TAG)
                 }
                 R.drawable.ic_settings -> {
-                    childFragmentManager.showHomeMenu()
+
                 }
                 else -> {
                     Log.w(TAG, "Unknown sidebar item clicked with id: $id")

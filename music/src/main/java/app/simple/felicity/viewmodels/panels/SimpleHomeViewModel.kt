@@ -7,7 +7,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
-import app.simple.felicity.preferences.HomePreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -50,36 +49,7 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
                     Element(R.string.preferences, R.drawable.ic_settings)
             )
 
-            val savedOrder = HomePreferences.getHomeItemsOrder()
-            val ordered = if (savedOrder.isBlank()) {
-                defaultElements.toMutableList()
-            } else {
-                val idList = savedOrder.split(",").mapNotNull { it.trim().toIntOrNull() }
-                val elementMap = defaultElements.associateBy { it.titleResId }
-                val reordered = idList.mapNotNull { elementMap[it] }.toMutableList()
-                // Add any new elements not yet in saved order
-                defaultElements.filter { it.titleResId !in idList }.forEach { reordered.add(it) }
-                reordered
-            }
-
-            homeData.postValue(ordered)
-        }
-    }
-
-    /**
-     * Replaces the current home item order with [elements] and persists it.
-     * Called by the organize dialog after the user confirms a new arrangement.
-     */
-    fun updateOrder(elements: List<Element>) {
-        val mutable = elements.toMutableList()
-        homeData.postValue(mutable)
-        saveOrder(mutable)
-    }
-
-    private fun saveOrder(elements: List<Element>) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val order = elements.joinToString(",") { it.titleResId.toString() }
-            HomePreferences.setHomeItemsOrder(order)
+            homeData.postValue(defaultElements.toMutableList())
         }
     }
 

@@ -13,11 +13,10 @@ import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.databinding.HeaderHomeBinding
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.dialogs.home.HomeMenu.Companion.showHomeMenu
+import app.simple.felicity.dialogs.home.SimpleHomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.ui.panels.Albums
-import app.simple.felicity.ui.panels.ArtFlow
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Favorites
 import app.simple.felicity.ui.panels.Folders
@@ -70,17 +69,10 @@ class SimpleHome : PanelFragment() {
         }
 
         homeViewModel!!.getHomeData().observe(viewLifecycleOwner) { list ->
-            if (adapterSimpleHome == null) {
-                adapterSimpleHome = AdapterSimpleHome(list)
-                adapterSimpleHome!!.setLayoutType(HomePreferences.getHomeLayoutType())
-                setupAdapterCallbacks()
-                binding.recyclerView.adapter = adapterSimpleHome
-            } else {
-                // A new ordered list arrived (e.g. from the organize dialog or a reset).
-                // Push the change straight into the existing adapter so the main list
-                // reflects the new order immediately without recreating the adapter.
-                adapterSimpleHome!!.updateData(list)
-            }
+            adapterSimpleHome = AdapterSimpleHome(list)
+            adapterSimpleHome!!.setLayoutType(HomePreferences.getHomeLayoutType())
+            setupAdapterCallbacks()
+            binding.recyclerView.adapter = adapterSimpleHome
         }
     }
 
@@ -97,7 +89,7 @@ class SimpleHome : PanelFragment() {
     }
 
     private fun setupAdapterCallbacks() {
-        adapterSimpleHome!!.setAdapterSimpleHomeCallbacks(object : AdapterSimpleHome.Companion.AdapterSimpleHomeCallbacks {
+        adapterSimpleHome?.setAdapterSimpleHomeCallbacks(object : AdapterSimpleHome.Companion.AdapterSimpleHomeCallbacks {
             override fun onItemClicked(element: Element, position: Int, view: View) {
                 when (element.titleResId) {
                     R.string.songs -> {
@@ -139,15 +131,6 @@ class SimpleHome : PanelFragment() {
                     R.string.favorites -> {
                         openFragment(Favorites.newInstance(), Favorites.TAG)
                     }
-                    else -> {
-                        // Handle other cases or show a message
-                    }
-                }
-            }
-
-            override fun onCarouselClicked(element: Element, position: Int, view: View) {
-                when (element.titleResId) {
-                    R.string.songs -> openFragment(ArtFlow.newInstance(), ArtFlow.TAG)
                     else -> {
                         // Handle other cases or show a message
                     }
