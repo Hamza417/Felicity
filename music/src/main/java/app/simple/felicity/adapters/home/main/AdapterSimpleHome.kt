@@ -37,8 +37,8 @@ class AdapterSimpleHome(private val data: MutableList<Element>) : RecyclerView.A
     override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
         when (holder) {
             is GridHolder -> {
-                holder.binding.icon.setImageResource(data[position].iconResId)
                 holder.binding.title.text = holder.context.getString(data[position].titleResId)
+                holder.binding.icon.setImageResource(data[position].iconResId)
 
                 holder.binding.container.setOnClickListener {
                     adapterSimpleHomeCallbacks?.onItemClicked(data[holder.bindingAdapterPosition], holder.bindingAdapterPosition, holder.binding.container)

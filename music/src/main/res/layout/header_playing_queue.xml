@@ -33,7 +33,7 @@
         android:paddingTop="@dimen/padding_5"
         android:orientation="horizontal">
 
-        <app.simple.felicity.decorations.views.HighlightTextView
+        <app.simple.felicity.decorations.highlight.HighlightTextView
             android:id="@+id/count"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -46,7 +46,7 @@
             app:drawableTintStyle="accent"
             app:textColorStyle="tertiary" />
 
-        <app.simple.felicity.decorations.views.HighlightTextView
+        <app.simple.felicity.decorations.highlight.HighlightTextView
             android:id="@+id/hours"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

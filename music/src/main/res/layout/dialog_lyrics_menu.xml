@@ -33,7 +33,7 @@
                 app:appFontStyle="bold"
                 app:textColorStyle="primary" />
 
-            <app.simple.felicity.decorations.views.HighlightTextView
+            <app.simple.felicity.decorations.highlight.HighlightTextView
                 android:id="@+id/minus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -46,7 +46,7 @@
                 app:buttonTintType="regular"
                 app:textColorStyle="secondary" />
 
-            <app.simple.felicity.decorations.views.HighlightTextView
+            <app.simple.felicity.decorations.highlight.HighlightTextView
                 android:id="@+id/plus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

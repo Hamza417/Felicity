@@ -1,4 +1,4 @@
-package app.simple.felicity.decorations.views;
+package app.simple.felicity.decorations.highlight;
 
 import android.annotation.SuppressLint;
 import android.content.Context;

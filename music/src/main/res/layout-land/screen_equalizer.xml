@@ -40,7 +40,7 @@
                 app:appFontStyle="bold"
                 app:textColorStyle="primary" />
 
-            <app.simple.felicity.decorations.views.HighlightTextView
+            <app.simple.felicity.decorations.highlight.HighlightTextView
                 android:id="@+id/reset"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

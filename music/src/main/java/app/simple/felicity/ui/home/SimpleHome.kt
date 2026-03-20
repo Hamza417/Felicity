@@ -55,9 +55,8 @@ class SimpleHome : PanelFragment() {
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
 
-        val spanCount = resources.getInteger(R.integer.home_grid_span_count)
-        gridLayoutManager = GridLayoutManager(requireContext(), spanCount)
-        setupSpanSizeLookup(spanCount)
+        gridLayoutManager = GridLayoutManager(requireContext(), 1)
+        updateGridLayoutSpanCount()
         binding.recyclerView.layoutManager = gridLayoutManager
 
         headerBinding.search.setOnClickListener {
@@ -73,18 +72,6 @@ class SimpleHome : PanelFragment() {
             adapterSimpleHome!!.setLayoutType(HomePreferences.getHomeLayoutType())
             setupAdapterCallbacks()
             binding.recyclerView.adapter = adapterSimpleHome
-        }
-    }
-
-    private fun setupSpanSizeLookup(spanCount: Int) {
-        gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-            override fun getSpanSize(position: Int): Int {
-                return if (HomePreferences.getHomeLayoutType() == CommonPreferencesConstants.GRID_TYPE_LIST) {
-                    spanCount // Full width in list mode
-                } else {
-                    1 // Each item takes one span in grid mode
-                }
-            }
         }
     }
 
@@ -145,12 +132,21 @@ class SimpleHome : PanelFragment() {
             HomePreferences.HOME_LAYOUT_TYPE -> {
                 val layoutType = HomePreferences.getHomeLayoutType()
                 adapterSimpleHome?.setLayoutType(layoutType)
-                val spanCount = resources.getInteger(R.integer.home_grid_span_count)
-                setupSpanSizeLookup(spanCount)
+                updateGridLayoutSpanCount()
                 binding.recyclerView.scheduleLayoutAnimation()
                 adapterSimpleHome?.notifyItemRangeChanged(0, adapterSimpleHome?.itemCount ?: 0)
             }
         }
+    }
+
+    private fun updateGridLayoutSpanCount() {
+        val spanCount = if (HomePreferences.getHomeLayoutType() == CommonPreferencesConstants.GRID_TYPE_GRID) {
+            resources.getInteger(R.integer.home_grid_span_count)
+        } else {
+            1
+        }
+
+        gridLayoutManager?.spanCount = spanCount
     }
 
     companion object {
