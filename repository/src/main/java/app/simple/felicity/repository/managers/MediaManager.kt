@@ -70,6 +70,26 @@ object MediaManager {
      */
     private val pendingSeekPositions = mutableSetOf<Int>()
 
+    /**
+     * Set to `true` for the entire window between [setSongs] being called and the new
+     * media items actually being handed to the [MediaController].
+     *
+     * During that window the heavy song-to-[MediaItem] mapping runs on a background thread
+     * while ExoPlayer still holds the old queue. Any [notifyCurrentPosition] callback that
+     * arrives during this window reflects the old queue's state and must be discarded;
+     * otherwise ExoPlayer's stale [Player.Listener.onMediaItemTransition] for the old
+     * current index (e.g. position 10) would overwrite the freshly set [currentSongPosition]
+     * and briefly flash the wrong song in the UI before the correct emit arrives.
+     *
+     * Reset to `false` immediately after [MediaController.setMediaItems] returns so that
+     * the first real [notifyCurrentPosition] for the new queue is processed normally.
+     *
+     * All access is on the main thread.
+     *
+     * @author Hamza417
+     */
+    private var isQueueBeingReplaced: Boolean = false
+
     private val listeners = mutableSetOf<MediaStateListener>()
 
     // Current queue index. Setter also emits to observers when valid and changed.
@@ -129,14 +149,20 @@ object MediaManager {
      * Note: Emission order between list and position is not strictly guaranteed due to coroutines,
      * but replay=1 on both flows ensures UI will observe the latest of each.
      */
-    fun setSongs(audios: List<Audio>, position: Int = 0, startPositionMs: Long = 0L) {
-        Log.d(TAG, "setSongs called: count=${audios.size}, position=$position, startPositionMs=$startPositionMs")
+    fun setSongs(audios: List<Audio>, position: Int = 0, startPositionMs: Long = 0L, autoPlay: Boolean = false) {
+        Log.d(TAG, "setSongs called: count=${audios.size}, position=$position, startPositionMs=$startPositionMs, autoPlay=$autoPlay")
+
+        // Block notifyCurrentPosition for the old queue until the new items are set.
+        isQueueBeingReplaced = true
 
         // Discard any seeks queued for the previous queue.
         pendingSeekPositions.clear()
 
         this.songs = audios
         val clampedPosition = if (audios.isEmpty()) 0 else position.coerceIn(0, audios.size - 1)
+        // Capture position BEFORE the setter runs so we know whether the setter's own
+        // field-change guard (field != value) will suppress its internal emit.
+        val positionBeforeUpdate = currentSongPosition
         // Directly update field to bypass the "no change" guard in the setter, then always emit
         // so observers are notified even when the index stays the same but the song list changed
         // (e.g. after shuffling, position 0 is a completely different song).
@@ -144,9 +170,14 @@ object MediaManager {
 
         // Line 83 inside setSongs
         if (audios.isNotEmpty()) {
-            // Always emit position so UI reflects the new queue's first song, and reset seek to 0
+            // Only emit explicitly when the setter's field-change guard prevented it — i.e.
+            // when position is unchanged but the queue itself is new (e.g. after a shuffle).
+            // When the position DID change, the setter already emitted; a second emit here
+            // would cause every subscriber to receive the same position value twice.
             scope.launch {
-                _songPositionFlow.emit(clampedPosition)
+                if (positionBeforeUpdate == clampedPosition) {
+                    _songPositionFlow.emit(clampedPosition)
+                }
                 _songSeekPositionFlow.emit(startPositionMs)
             }
 
@@ -177,12 +208,26 @@ object MediaManager {
                 if (mediaController != null) {
                     mediaController?.setMediaItems(mediaItems, currentSongPosition, startPositionMs)
                     mediaController?.prepare()
-                    // mediaController?.play() // Auto-play when setting new list?
+                    if (autoPlay) {
+                        mediaController?.play()
+                    }
+                    // Do NOT reset isQueueBeingReplaced here. setMediaItems is asynchronous —
+                    // it posts the command to the main-thread handler and returns immediately,
+                    // meaning any pending onMediaItemTransition callbacks from the OLD queue
+                    // that are already in the handler queue would be processed while the flag
+                    // is false. The flag is instead cleared inside notifyCurrentPosition once
+                    // ExoPlayer confirms a position that belongs to the new queue (i.e. it is
+                    // present in pendingSeekPositions).
+                } else {
+                    // No controller to confirm — lift the guard immediately so future
+                    // notifyCurrentPosition calls are not permanently suppressed.
+                    isQueueBeingReplaced = false
                 }
                 startSeekPositionUpdates()
             }
         } else {
             // Clear controller playlist if applicable and keep UI state consistent
+            isQueueBeingReplaced = false
             mediaController?.clearMediaItems()
             mediaController?.stop()
             stopSeekPositionUpdates()
@@ -486,7 +531,7 @@ object MediaManager {
 
     /**
      * Called by the service when the ExoPlayer signals STATE_ENDED (end of queue).
-     * Applies the current repeat mode behaviour:
+     * Applies the current repeat mode behavior:
      *  - REPEAT_ONE / REPEAT_QUEUE: ExoPlayer handles natively, this is a no-op.
      *  - REPEAT_OFF: pause and seek back to the first song.
      */
@@ -665,14 +710,23 @@ object MediaManager {
      * to deliberate user interaction.
      */
     fun notifyCurrentPosition(position: Int) {
+        if (isQueueBeingReplaced) {
+            if (pendingSeekPositions.contains(position)) {
+                // ExoPlayer just confirmed the first item of the new queue.
+                // It is now safe to lift the guard and process this position normally.
+                isQueueBeingReplaced = false
+            } else {
+                Log.d(TAG, "notifyCurrentPosition: discarding stale ExoPlayer callback (position=$position) — queue replacement in progress")
+                return
+            }
+        }
         if (position in songs.indices) {
             if (pendingSeekPositions.remove(position)) {
                 // User-initiated seek confirmed by ExoPlayer.
-                // Never apply always-skip — the user explicitly chose this song.
-                if (currentSongPosition == position) {
-                    scope.launch { _songPositionFlow.emit(position) }
-                }
-                // If currentSongPosition != position the user already moved on — discard.
+                // The position was already emitted by the setter when the seek was initiated
+                // (in setSongs or updatePosition), so no second emit is needed here.
+                // If currentSongPosition has since moved on the user already chose a different
+                // song and this stale confirmation is simply discarded by doing nothing.
             } else {
                 // Natural ExoPlayer advance (end of track, auto-next, gapless, etc.).
                 // Honor the always-skip flag only here, in the auto-queue path.
@@ -698,7 +752,7 @@ object MediaManager {
     /**
      * Returns the index of the next song in the queue that does NOT have [Audio.isAlwaysSkip] set,
      * starting from the position after [from]. Returns null when every song in the queue is
-     * marked as always-skip (caller should fall back to normal behaviour).
+     * marked as always-skip (caller should fall back to normal behavior).
      */
     private fun findNextNonSkippedPosition(from: Int): Int? {
         if (songs.isEmpty()) return null

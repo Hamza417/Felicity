@@ -152,14 +152,33 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
                 if (!lastSongs.isNullOrEmpty() && playbackState != null) {
                     withContext(Dispatchers.Main) {
-                        // Prefer locating the active song by its stable hash so that index
-                        // stays correct even when cascade deletions shifted queue positions.
-                        val restoredIndex = if (playbackState.currentHash != 0L) {
-                            lastSongs.indexOfFirst { it.hash == playbackState.currentHash }
-                                .takeIf { it >= 0 }
-                                ?: playbackState.index.coerceIn(0, lastSongs.size - 1)
-                        } else {
-                            playbackState.index.coerceIn(0, lastSongs.size - 1)
+                        /*
+                         * Prefer a hash-based lookup so the index stays correct even when
+                         * cascade deletions shifted queue positions.
+                         *
+                         * Three cases:
+                         *  1. currentHash == 0  →  hash was never saved (old schema). Use the
+                         *     raw saved index directly; it is the only information available.
+                         *  2. currentHash != 0, match found  →  reliable; use the found index.
+                         *  3. currentHash != 0, no match  →  the stored hash is stale, most
+                         *     likely from a DB schema migration where the hash algorithm or
+                         *     field semantics changed (e.g. auto-increment id previously stored
+                         *     in the hash column). The raw index is equally untrustworthy in
+                         *     this case, so reset to 0 rather than pointing at a random song.
+                         */
+                        val restoredIndex = when {
+                            playbackState.currentHash == 0L -> {
+                                playbackState.index.coerceIn(0, lastSongs.size - 1)
+                            }
+                            else -> {
+                                val byHash = lastSongs.indexOfFirst { it.hash == playbackState.currentHash }
+                                if (byHash >= 0) {
+                                    byHash
+                                } else {
+                                    Log.w(TAG, "Hash lookup failed for currentHash=${playbackState.currentHash} — stale state after DB migration, resetting to position 0")
+                                    0
+                                }
+                            }
                         }
                         MediaManager.setSongs(
                                 audios = lastSongs,

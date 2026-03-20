@@ -129,8 +129,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             }
             else -> {
                 // Case 3: Different queue and different song — default behavior
-                MediaManager.setSongs(songs, position)
-                MediaManager.play()
+                MediaManager.setSongs(songs, position, autoPlay = true)
                 createSongHistoryDatabase(songs)
             }
         }
@@ -145,8 +144,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         val algorithm = ShufflePreferences.getShuffleAlgorithm()
         val shuffled = songs.shuffle(algorithm).toMutableList()
         // Always replace queue and start from position 0, regardless of what is currently playing.
-        MediaManager.setSongs(shuffled, 0)
-        MediaManager.play()
+        MediaManager.setSongs(shuffled, 0, autoPlay = true)
         createSongHistoryDatabase(shuffled)
     }
 
