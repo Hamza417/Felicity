@@ -41,7 +41,7 @@ import app.simple.felicity.ui.panels.Search
 import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.ui.panels.Year
 import app.simple.felicity.viewmodels.panels.DashboardViewModel
-import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Element
+import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -104,13 +104,13 @@ class Dashboard : MediaFragment() {
 
     private fun setupPanelsGrid() {
         val adapter = AdapterDashboardPanels(
-                firstPanels = dashboardViewModel.firstPanelItems,
-                allPanels = dashboardViewModel.allPanelItems)
+                firstPanels = dashboardViewModel.firstPanelPanels,
+                allPanels = dashboardViewModel.allPanelPanels)
         binding.panelsRecyclerView.layoutManager = GridLayoutManager(requireContext(), PANEL_SPAN_COUNT)
         binding.panelsRecyclerView.adapter = adapter
         adapter.setCallbacks(object : AdapterDashboardPanelsCallbacks {
-            override fun onPanelClicked(element: Element) {
-                navigateToPanel(element)
+            override fun onPanelClicked(panel: Panel) {
+                navigateToPanel(panel)
             }
         })
     }
@@ -277,8 +277,8 @@ class Dashboard : MediaFragment() {
         }
     }
 
-    private fun navigateToPanel(element: Element) {
-        when (element.titleResId) {
+    private fun navigateToPanel(panel: Panel) {
+        when (panel.titleResId) {
             R.string.songs -> openFragment(Songs.newInstance(), Songs.TAG)
             R.string.albums -> openFragment(Albums.newInstance(), Albums.TAG)
             R.string.artists -> openFragment(Artists.newInstance(), Artists.TAG)

@@ -8,7 +8,7 @@ import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterDashboardExpandBinding
 import app.simple.felicity.databinding.AdapterDashboardPanelBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Element
+import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 
 /**
  * Adapter for the panel navigation grid shown in the dashboard browse section.
@@ -22,8 +22,8 @@ import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Eleme
  * @author Hamza417
  */
 class AdapterDashboardPanels(
-        private val firstPanels: List<Element>,
-        private val allPanels: List<Element>
+        private val firstPanels: List<Panel>,
+        private val allPanels: List<Panel>
 ) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var callbacks: AdapterDashboardPanelsCallbacks? = null
@@ -31,7 +31,7 @@ class AdapterDashboardPanels(
     /** Whether the full panel list is currently shown. */
     private var isExpanded = false
 
-    private val activePanels: List<Element>
+    private val activePanels: List<Panel>
         get() = if (isExpanded) allPanels else firstPanels
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
@@ -101,7 +101,7 @@ class AdapterDashboardPanels(
          */
         interface AdapterDashboardPanelsCallbacks {
             /** Called when the user taps a panel navigation item. */
-            fun onPanelClicked(element: Element)
+            fun onPanelClicked(panel: Panel)
         }
     }
 }

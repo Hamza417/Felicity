@@ -30,7 +30,7 @@ import app.simple.felicity.ui.panels.RecentlyPlayed
 import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.ui.panels.Year
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel
-import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Element
+import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 
 class SimpleHome : PanelFragment() {
 
@@ -77,8 +77,8 @@ class SimpleHome : PanelFragment() {
 
     private fun setupAdapterCallbacks() {
         adapterSimpleHome?.setAdapterSimpleHomeCallbacks(object : AdapterSimpleHome.Companion.AdapterSimpleHomeCallbacks {
-            override fun onItemClicked(element: Element, position: Int, view: View) {
-                when (element.titleResId) {
+            override fun onItemClicked(panel: Panel, position: Int, view: View) {
+                when (panel.titleResId) {
                     R.string.songs -> {
                         openFragment(Songs.newInstance(), Songs.TAG)
                     }

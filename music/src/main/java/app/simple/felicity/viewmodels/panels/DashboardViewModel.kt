@@ -10,7 +10,7 @@ import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.SongStatRepository
 import app.simple.felicity.repository.shuffle.Shuffle.millerShuffle
 import app.simple.felicity.viewmodels.panels.DashboardViewModel.Companion.RANDOMIZER_DELAY
-import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Element
+import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -67,36 +67,36 @@ class DashboardViewModel @Inject constructor(
      * The first seven panel navigation elements shown in the collapsed browse grid.
      * These represent the most commonly used sections of the app.
      */
-    val firstPanelItems: List<Element> = listOf(
-            Element(R.string.songs, R.drawable.ic_song),
-            Element(R.string.albums, R.drawable.ic_album),
-            Element(R.string.artists, R.drawable.ic_artist),
-            Element(R.string.genres, R.drawable.ic_piano),
-            Element(R.string.favorites, R.drawable.ic_favorite_filled),
-            Element(R.string.playing_queue, R.drawable.ic_queue),
-            Element(R.string.recently_added, R.drawable.ic_recently_added),
-            Element(R.string.recently_played, R.drawable.ic_history),
-            Element(R.string.most_played, R.drawable.ic_equalizer)
+    val firstPanelPanels: List<Panel> = listOf(
+            Panel(R.string.songs, R.drawable.ic_song),
+            Panel(R.string.albums, R.drawable.ic_album),
+            Panel(R.string.artists, R.drawable.ic_artist),
+            Panel(R.string.genres, R.drawable.ic_piano),
+            Panel(R.string.favorites, R.drawable.ic_favorite_filled),
+            Panel(R.string.playing_queue, R.drawable.ic_queue),
+            Panel(R.string.recently_added, R.drawable.ic_recently_added),
+            Panel(R.string.recently_played, R.drawable.ic_history),
+            Panel(R.string.most_played, R.drawable.ic_equalizer)
     )
 
     /**
      * The complete list of all panel navigation elements revealed when the user
      * taps the expand button in the browse grid.
      */
-    val allPanelItems: List<Element> = listOf(
-            Element(R.string.songs, R.drawable.ic_song),
-            Element(R.string.albums, R.drawable.ic_album),
-            Element(R.string.artists, R.drawable.ic_artist),
-            Element(R.string.genres, R.drawable.ic_piano),
-            Element(R.string.folders, R.drawable.ic_folder),
-            Element(R.string.folders_hierarchy, R.drawable.ic_tree),
-            Element(R.string.playing_queue, R.drawable.ic_queue),
-            Element(R.string.recently_added, R.drawable.ic_recently_added),
-            Element(R.string.year, R.drawable.ic_date_range),
-            Element(R.string.favorites, R.drawable.ic_favorite_filled),
-            Element(R.string.most_played, R.drawable.ic_equalizer),
-            Element(R.string.recently_played, R.drawable.ic_history),
-            Element(R.string.preferences, R.drawable.ic_settings)
+    val allPanelPanels: List<Panel> = listOf(
+            Panel(R.string.songs, R.drawable.ic_song),
+            Panel(R.string.albums, R.drawable.ic_album),
+            Panel(R.string.artists, R.drawable.ic_artist),
+            Panel(R.string.genres, R.drawable.ic_piano),
+            Panel(R.string.folders, R.drawable.ic_folder),
+            Panel(R.string.folders_hierarchy, R.drawable.ic_tree),
+            Panel(R.string.playing_queue, R.drawable.ic_queue),
+            Panel(R.string.recently_added, R.drawable.ic_recently_added),
+            Panel(R.string.year, R.drawable.ic_date_range),
+            Panel(R.string.favorites, R.drawable.ic_favorite_filled),
+            Panel(R.string.most_played, R.drawable.ic_equalizer),
+            Panel(R.string.recently_played, R.drawable.ic_history),
+            Panel(R.string.preferences, R.drawable.ic_settings)
     )
 
     val randomSpanPositions = run {

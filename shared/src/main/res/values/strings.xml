@@ -280,4 +280,7 @@
     <string name="keep_mini_player_visible_summary">Stops hiding Mini Player on scrolling and keeps it always visible.</string>
     <string name="open_artflow">Open in ArtFlow</string>
     <string name="organize">Organize</string>
+    <string name="activity">Activity</string>
+    <string name="general">General</string>
+    <string name="files">Files</string>
 </resources>
