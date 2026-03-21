@@ -6,22 +6,32 @@ import android.util.LruCache
 import androidx.core.graphics.scale
 import app.simple.felicity.repository.covers.AudioCover
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.ui.panels.ArtFlowCoverCache.Companion.LOAD_DEBOUNCE_MS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import kotlin.math.abs
 
 /**
  * A background cache for ArtFlow album covers that pre-loads and caches bitmaps
  * to avoid I/O operations on the OpenGL thread.
+ *
+ * Each pending load is represented by an individual coroutine that begins with a
+ * [LOAD_DEBOUNCE_MS] delay.  If the user scrolls away before the delay expires the
+ * coroutine is canceled and no disk I/O is ever started.  If the window moves
+ * incrementally, jobs for indices that are still inside the new window are kept
+ * running — only indices that have left the window have their jobs canceled, and
+ * only indices that are new to the window start fresh jobs.
+ *
+ * @author Hamza417
  */
 @Suppress("unused")
 class ArtFlowCoverCache(
@@ -29,38 +39,43 @@ class ArtFlowCoverCache(
 ) {
     private val TAG = "ArtFlowCoverCache"
 
-    // Calculate cache size in bytes
     private val maxMemoryCacheSize = maxMemoryCacheSizeMB * 1024 * 1024
 
-    // Memory cache using LruCache
     private val memoryCache = object : LruCache<Int, Bitmap>(maxMemoryCacheSize) {
-        override fun sizeOf(key: Int, bitmap: Bitmap): Int {
-            return bitmap.byteCount
-        }
+        override fun sizeOf(key: Int, bitmap: Bitmap): Int = bitmap.byteCount
 
         override fun entryRemoved(evicted: Boolean, key: Int, oldValue: Bitmap, newValue: Bitmap?) {
             if (evicted && oldValue != newValue) {
-                // Now safe to recycle! The OpenGL thread makes copies of bitmaps before upload,
-                // so we can aggressively recycle cache entries to reduce memory pressure
                 Log.d(TAG, "Evicted and recycling bitmap for index $key from cache")
                 oldValue.recycle()
             }
         }
     }
 
-    // Track which indices are currently being loaded
-    private val loadingIndices = mutableSetOf<Int>()
-    private val loadingMutex = Mutex()
+    /**
+     * One [kotlinx.coroutines.Job] per index that is currently queued or loading.
+     * Each job starts with a [LOAD_DEBOUNCE_MS] delay so that cancelling it before
+     * the delay expires costs zero disk I/O.
+     */
+    private val pendingLoads = ConcurrentHashMap<Int, kotlinx.coroutines.Job>()
 
-    // Dedicated thread pool for I/O operations (separate from OpenGL thread)
+    /** Latest center index set by the most recent [preloadAround] call. */
+    @Volatile
+    private var currentCenterIndex = 0
+
+    /** Latest radius set by the most recent [preloadAround] call. */
+    @Volatile
+    private var currentRadius = 8
+
     private val ioExecutor = Executors.newFixedThreadPool(3).asCoroutineDispatcher()
     private val cacheScope = CoroutineScope(SupervisorJob() + ioExecutor)
 
     private var audioList: List<Audio> = emptyList()
-    private var prefetchJob: Job? = null
 
     /**
-     * Update the audio list and clear cache
+     * Updates the audio list and clears all cached and pending data.
+     *
+     * @param list The new list of audio items to use for cover lookups.
      */
     fun setAudioList(list: List<Audio>) {
         audioList = list
@@ -68,8 +83,8 @@ class ArtFlowCoverCache(
     }
 
     /**
-     * Get a bitmap from cache or load it synchronously if not available.
-     * This should only be used as a fallback on the OpenGL thread.
+     * Returns the cached bitmap for [index] without triggering any I/O.
+     * Returns `null` if the bitmap is not yet in the memory cache.
      */
     fun getOrNull(index: Int): Bitmap? {
         if (index !in audioList.indices) return null
@@ -77,192 +92,192 @@ class ArtFlowCoverCache(
     }
 
     /**
-     * Load a bitmap synchronously (blocking call).
-     * Use this sparingly, prefer preload() for better performance.
+     * Synchronous blocking load used as a last-resort fallback on the OpenGL thread.
+     * Prefer [preloadAround] so that all I/O stays off the render thread.
+     *
+     * @param index The position in the audio list.
+     * @param maxDimension Maximum width or height of the returned bitmap in pixels.
      */
     fun loadSync(index: Int, maxDimension: Int): Bitmap? {
         if (index !in audioList.indices) return null
-
-        // Check cache first
         memoryCache.get(index)?.let { return it }
-
-        // Load from disk
         val bitmap = loadBitmapFromDisk(index, maxDimension)
-        if (bitmap != null) {
-            memoryCache.put(index, bitmap)
-        }
+        if (bitmap != null) memoryCache.put(index, bitmap)
         return bitmap
     }
 
     /**
-     * Preload bitmaps around a center position in the background
+     * Updates the active preload window to `centerIndex ± radius`.
+     *
+     * The window is managed incrementally:
+     * - Indices that have **left** the window have their pending jobs cancelled immediately
+     *   (and if cancellation arrives during the debounce delay, no I/O is started at all).
+     * - Indices **still inside** the window keep their existing jobs without any restart.
+     * - Indices **newly entering** the window get a fresh job that waits [LOAD_DEBOUNCE_MS]
+     *   before touching the disk.  Jobs are queued center-outward so that the most
+     *   visible covers load first.
+     *
+     * A zone check is performed once more after the delay expires so that a cover whose
+     * load survived the delay but whose index has since drifted outside the window
+     * (due to a fast continuous scroll) is still discarded without disk access.
+     *
+     * @param centerIndex The index currently at the center of the carousel.
+     * @param radius How many indices on each side of the center to keep loaded.
+     * @param maxDimension Maximum bitmap dimension in pixels passed to the decoder.
      */
-    fun preloadAround(centerIndex: Int, radius: Int = 8, maxDimension: Int = 512) {
-        prefetchJob?.cancel()
-        prefetchJob = cacheScope.launch {
-            val startIndex = (centerIndex - radius).coerceAtLeast(0)
-            val endIndex = (centerIndex + radius).coerceAtMost(audioList.size - 1)
+    fun preloadAround(centerIndex: Int, radius: Int = 8, maxDimension: Int = 512, debounceMs: Long = LOAD_DEBOUNCE_MS) {
+        currentCenterIndex = centerIndex
+        currentRadius = radius
 
-            // Prioritize center outward
-            val indicesToLoad = mutableListOf<Int>()
-            for (i in 0..radius) {
-                if (centerIndex + i <= endIndex) indicesToLoad.add(centerIndex + i)
-                if (centerIndex - i >= startIndex && i > 0) indicesToLoad.add(centerIndex - i)
+        val validStart = (centerIndex - radius).coerceAtLeast(0)
+        val validEnd = (centerIndex + radius).coerceAtMost(audioList.size - 1)
+
+        // Cancel and remove jobs for indices that have left the window.
+        pendingLoads.entries.removeIf { (index, job) ->
+            (index < validStart || index > validEnd).also { outOfRange ->
+                if (outOfRange) job.cancel()
             }
+        }
 
-            for (index in indicesToLoad) {
-                if (!isActive) break
-
-                // Skip if already cached
+        // Start jobs for newly in-window indices, prioritizing the center outward.
+        for (offset in 0..radius) {
+            for (index in buildOffsetPair(centerIndex, offset)) {
+                if (index !in validStart..validEnd) continue
+                if (pendingLoads.containsKey(index)) continue
                 if (memoryCache.get(index) != null) continue
 
-                // Skip if already loading
-                val shouldLoad = loadingMutex.withLock {
-                    if (index in loadingIndices) {
-                        false
-                    } else {
-                        loadingIndices.add(index)
-                        true
-                    }
-                }
+                pendingLoads[index] = cacheScope.launch {
+                    // Debounce: wait before touching the disk.
+                    // Fast scrolling cancels this coroutine during the delay,
+                    // so absolutely no I/O is wasted on positions already scrolled past.
+                    if (debounceMs > 0L) delay(debounceMs)
 
-                if (shouldLoad) {
+                    // After the delay: confirm the index is still within the active zone.
+                    if (!isActive || abs(index - currentCenterIndex) > currentRadius) {
+                        pendingLoads.remove(index)
+                        return@launch
+                    }
+
+                    // Already cached by a synchronous fallback while we were waiting.
+                    if (memoryCache.get(index) != null) {
+                        Log.d(TAG, "Index $index was loaded by fallback during debounce; skipping disk load")
+                        pendingLoads.remove(index)
+                        return@launch
+                    }
+
                     try {
                         val bitmap = withContext(Dispatchers.IO) {
                             loadBitmapFromDisk(index, maxDimension)
                         }
 
-                        if (bitmap != null && isActive) {
-                            memoryCache.put(index, bitmap)
-                            Log.d(TAG, "Preloaded bitmap for index $index")
+                        when {
+                            bitmap == null -> { /* nothing to cache */
+                            }
+                            !isActive || abs(index - currentCenterIndex) > currentRadius -> {
+                                // Became irrelevant while the I/O was running; recycle to avoid a leak.
+                                bitmap.recycle()
+                            }
+                            else -> {
+                                memoryCache.put(index, bitmap)
+                                Log.d(TAG, "Preloaded bitmap for index $index")
+                            }
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error preloading index $index", e)
                     } finally {
-                        loadingMutex.withLock {
-                            loadingIndices.remove(index)
-                        }
+                        pendingLoads.remove(index)
                     }
                 }
             }
-
-            // Clean up old entries outside the visible range - more aggressive
-            cleanupCache(centerIndex, radius + 2)  // Reduced from radius + 5
         }
+
+        cleanupCache(centerIndex, radius + 2)
     }
 
     /**
-     * Load a single bitmap in the background
+     * Cancels all pending load jobs and evicts every bitmap from the memory cache.
      */
-    fun preloadSingle(index: Int, maxDimension: Int = 512) {  // Reduced from 1024
-        if (index !in audioList.indices) return
-        if (memoryCache.get(index) != null) return
-
-        cacheScope.launch {
-            val shouldLoad = loadingMutex.withLock {
-                if (index in loadingIndices) {
-                    false
-                } else {
-                    loadingIndices.add(index)
-                    true
-                }
-            }
-
-            if (shouldLoad) {
-                try {
-                    val bitmap = withContext(Dispatchers.IO) {
-                        loadBitmapFromDisk(index, maxDimension)
-                    }
-
-                    if (bitmap != null && isActive) {
-                        memoryCache.put(index, bitmap)
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error preloading index $index", e)
-                } finally {
-                    loadingMutex.withLock {
-                        loadingIndices.remove(index)
-                    }
-                }
-            }
-        }
+    fun clearCache() {
+        pendingLoads.values.forEach { it.cancel() }
+        pendingLoads.clear()
+        memoryCache.evictAll()
     }
 
     /**
-     * Load bitmap from disk (I/O operation)
+     * Releases all resources held by this cache.
+     * Must be called when the owning view is destroyed.
+     */
+    fun release() {
+        clearCache()
+        cacheScope.cancel()
+        ioExecutor.close()
+    }
+
+    /**
+     * Returns `[centerIndex]` when [offset] is 0, otherwise
+     * `[centerIndex + offset, centerIndex - offset]` so that both sides
+     * of the center are queued together at each distance step.
+     */
+    private fun buildOffsetPair(centerIndex: Int, offset: Int): List<Int> {
+        return if (offset == 0) listOf(centerIndex)
+        else listOf(centerIndex + offset, centerIndex - offset)
+    }
+
+    /**
+     * Loads and optionally down-scales a bitmap from disk.
+     * This is a blocking call and must only be invoked from an IO dispatcher.
+     *
+     * @param index Position in the audio list.
+     * @param maxDimension Maximum width or height; 0 disables scaling.
+     * @return The decoded (and possibly scaled) bitmap, or `null` on failure.
      */
     private fun loadBitmapFromDisk(index: Int, maxDimension: Int): Bitmap? {
         if (index !in audioList.indices) return null
-
-        try {
+        return try {
             val audio = audioList[index]
-            val bitmap = AudioCover.load(audio)
+            val bitmap = AudioCover.load(audio) ?: return null
 
-            // Resize if needed to save memory
-            if (bitmap != null && maxDimension > 0) {
-                val width = bitmap.width
-                val height = bitmap.height
-                val maxDim = kotlin.math.max(width, height)
-
+            if (maxDimension > 0) {
+                val w = bitmap.width
+                val h = bitmap.height
+                val maxDim = kotlin.math.max(w, h)
                 if (maxDim > maxDimension) {
-                    val scale = maxDimension.toFloat() / maxDim
-                    val newWidth = (width * scale).toInt()
-                    val newHeight = (height * scale).toInt()
-
-                    val scaledBitmap = bitmap.scale(newWidth, newHeight, true)
-
-                    // Now we can safely recycle the original since we have the scaled version
-                    // and the GL thread will make its own copy anyway
-                    if (bitmap != scaledBitmap) {
-                        bitmap.recycle()
-                    }
-
-                    return scaledBitmap
+                    val scaleFactor = maxDimension.toFloat() / maxDim
+                    val scaled = bitmap.scale((w * scaleFactor).toInt(), (h * scaleFactor).toInt(), true)
+                    if (bitmap != scaled) bitmap.recycle()
+                    return scaled
                 }
             }
 
-            return bitmap
+            bitmap
         } catch (e: Exception) {
             Log.e(TAG, "Error loading bitmap for index $index", e)
-            return null
+            null
         }
     }
 
     /**
-     * Remove cache entries outside the visible range
+     * Removes and recycles cache entries whose index distance from [centerIndex]
+     * exceeds [keepRadius].
+     *
+     * @param centerIndex Reference center position.
+     * @param keepRadius Maximum allowed distance from center before eviction.
      */
     private fun cleanupCache(centerIndex: Int, keepRadius: Int) {
         val snapshot = memoryCache.snapshot()
         for ((index, bitmap) in snapshot) {
-            if (kotlin.math.abs(index - centerIndex) > keepRadius) {
+            if (abs(index - centerIndex) > keepRadius) {
                 memoryCache.remove(index)
-                // Manually recycle old bitmaps that are far from view
                 bitmap.recycle()
             }
         }
     }
 
-    /**
-     * Clear all cached bitmaps
-     */
-    fun clearCache() {
-        prefetchJob?.cancel()
-        memoryCache.evictAll()
-        cacheScope.launch {
-            loadingMutex.withLock {
-                loadingIndices.clear()
-            }
-        }
-    }
-
-    /**
-     * Release all resources
-     */
-    fun release() {
-        prefetchJob?.cancel()
-        clearCache()
-        cacheScope.cancel()
-        ioExecutor.close()
+    companion object {
+        /**
+         * Milliseconds each pending load waits before starting disk I/O.
+         * Cancellations that arrive during this window cost zero I/O.
+         */
+        private const val LOAD_DEBOUNCE_MS = 1000L
     }
 }
-

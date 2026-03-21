@@ -153,7 +153,7 @@ class ArtFlow : MediaFragment() {
         }
 
         // Start preloading covers around the current position - reduced for memory efficiency
-        coverCache.preloadAround(songsViewModel.getCarouselPosition(), radius = 8, maxDimension = 512)
+        coverCache.preloadAround(songsViewModel.getCarouselPosition(), radius = 8, maxDimension = 512, debounceMs = 0L)
     }
 
     override fun onAudio(audio: Audio) {
@@ -183,17 +183,16 @@ class ArtFlow : MediaFragment() {
         }
 
         override fun loadArtwork(index: Int, maxDimension: Int): Bitmap? {
-            // Try to get from cache first (non-blocking)
-            coverCache.getOrNull(index)?.let { return it }
-
-            // If not in cache, load synchronously as fallback
-            // Use the reduced maxDimension for memory efficiency
-            return coverCache.loadSync(index, maxDimension.coerceAtMost(512))
+            // Return only what is already in the memory cache.
+            // loadSync is intentionally NOT used here: calling synchronous disk I/O from
+            // inside the renderer's decode thread for every item that passes through the
+            // viewport during a fast scroll causes the observable freeze (every passed-by
+            // index would be loaded regardless of whether it is still visible).
+            // The debounced preloadAround jobs populate the cache in the background;
+            // the renderer will pick up each bitmap on the next frame after it arrives.
+            return coverCache.getOrNull(index)
         }
     }
-
-    override val wantsMiniPlayerVisible: Boolean
-        get() = false
 
     companion object {
         fun newInstance(): ArtFlow {
