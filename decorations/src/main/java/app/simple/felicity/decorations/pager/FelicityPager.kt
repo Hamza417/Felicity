@@ -118,6 +118,37 @@ class FelicityPager @JvmOverloads constructor(
         fun onPageScrollStateChanged(state: Int) {}
     }
 
+    /**
+     * Listener for vertical drag gestures that originate on this [FelicityPager].
+     *
+     * When the user's dominant swipe direction is vertical (i.e., the Y displacement
+     * exceeds the X displacement and crosses the touch-slop threshold) the pager
+     * delegates the gesture to this listener instead of consuming it for horizontal
+     * page-flipping. Typical use-case: swipe-down-to-close on a full-screen player.
+     */
+    interface OnVerticalDragListener {
+        /**
+         * Called once when the vertical drag gesture is first recognized.
+         */
+        fun onVerticalDragBegin() {}
+
+        /**
+         * Called continuously while the user is dragging vertically.
+         *
+         * @param totalDeltaY Total vertical displacement in pixels since [onVerticalDragBegin].
+         *                    Positive values indicate a downward swipe.
+         */
+        fun onVerticalDrag(totalDeltaY: Float, event: MotionEvent) {}
+
+        /**
+         * Called when the drag gesture ends (finger lifted or gesture cancelled).
+         *
+         * @param totalDeltaY Total vertical displacement in pixels since [onVerticalDragBegin].
+         * @param velocityY   Vertical fling velocity in pixels per second at the moment of release.
+         */
+        fun onVerticalDragEnd(totalDeltaY: Float, velocityY: Float, event: MotionEvent) {}
+    }
+
     companion object {
         /** The pager is not being scrolled and no animation is running. */
         const val SCROLL_STATE_IDLE = 0
@@ -481,15 +512,45 @@ class FelicityPager @JvmOverloads constructor(
     private var dragStartScrollPx = 0f
     private var velocityTracker: VelocityTracker? = null
 
+    /**
+     * Y coordinate recorded at [MotionEvent.ACTION_DOWN]. Used together with [initialMotionX]
+     * to determine the dominant swipe direction before committing to a horizontal or vertical drag.
+     */
+    private var initialMotionY = 0f
+
+    /** Whether the current touch sequence has been identified as a primarily vertical drag. */
+    private var isVerticalDrag = false
+
+    /**
+     * The currently registered [OnVerticalDragListener], or `null` if none is set.
+     * Assign via [setOnVerticalDragListener].
+     */
+    private var verticalDragListener: OnVerticalDragListener? = null
+
+    /**
+     * Registers [listener] to receive vertical drag callbacks whenever the user swipes
+     * primarily downward (or upward) on this pager. Pass `null` to remove any existing listener.
+     *
+     * @param listener The [OnVerticalDragListener] to register, or `null` to unregister.
+     */
+    fun setOnVerticalDragListener(listener: OnVerticalDragListener?) {
+        verticalDragListener = listener
+    }
+
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 initialMotionX = ev.x
+                initialMotionY = ev.y
                 lastMotionX = ev.x
             }
-            MotionEvent.ACTION_MOVE ->
-                // Use cumulative displacement from DOWN so slow drags are also intercepted.
-                if (abs(ev.x - initialMotionX) > touchSlop * 0.6f) return true
+            MotionEvent.ACTION_MOVE -> {
+                val dx = abs(ev.x - initialMotionX)
+                val dy = abs(ev.y - initialMotionY)
+                // Only intercept when the gesture is clearly horizontal, so that a
+                // primarily-vertical swipe is never stolen from a parent swipe-to-close handler.
+                if (dx > touchSlop * 0.6f && dx > dy) return true
+            }
         }
         return false
     }
@@ -500,30 +561,59 @@ class FelicityPager @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 cancelAnimation()
                 initialMotionX = event.x
+                initialMotionY = event.y
                 lastMotionX = event.x
                 dragStartScrollPx = scrollPx
+                isVerticalDrag = false
                 velocityTracker?.recycle()
                 velocityTracker = VelocityTracker.obtain().apply { addMovement(event) }
-                parent?.requestDisallowInterceptTouchEvent(true)
+                // Do not call requestDisallowInterceptTouchEvent(true) here — wait until
+                // the gesture direction is confirmed as horizontal. This allows a parent
+                // swipe-to-close view to intercept a vertical drag before this pager locks it.
             }
             MotionEvent.ACTION_MOVE -> {
                 velocityTracker?.addMovement(event)
                 val dx = event.x - lastMotionX
-                // Check cumulative displacement from the initial touch point, not the
-                // per-event delta, so that a slow continuous drag starts as expected.
-                if (!isBeingDragged && abs(event.x - initialMotionX) > touchSlop * 0.6f) {
-                    isBeingDragged = true
-                    dispatchStateChanged(SCROLL_STATE_DRAGGING)
-                    parent?.requestDisallowInterceptTouchEvent(true)
+                val totalDx = abs(event.x - initialMotionX)
+                val totalDy = event.y - initialMotionY // signed: positive = downward
+
+                if (!isBeingDragged && !isVerticalDrag) {
+                    when {
+                        // Primarily vertical — delegate to the vertical drag listener.
+                        abs(totalDy) > touchSlop * 0.6f && abs(totalDy) > totalDx -> {
+                            isVerticalDrag = true
+                            // Allow ancestors to intercept this gesture sequence.
+                            parent?.requestDisallowInterceptTouchEvent(false)
+                            verticalDragListener?.onVerticalDragBegin()
+                            verticalDragListener?.onVerticalDrag(totalDy, event)
+                        }
+                        // Primarily horizontal — commit to paging and lock the event.
+                        totalDx > touchSlop * 0.6f -> {
+                            isBeingDragged = true
+                            dispatchStateChanged(SCROLL_STATE_DRAGGING)
+                            parent?.requestDisallowInterceptTouchEvent(true)
+                            performDrag(-dx)
+                        }
+                    }
+                } else if (isVerticalDrag) {
+                    // Keep notifying while the finger is still moving vertically.
+                    verticalDragListener?.onVerticalDrag(totalDy, event)
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                } else if (isBeingDragged) {
+                    performDrag(-dx)
                 }
-                if (isBeingDragged) performDrag(-dx)
                 lastMotionX = event.x
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 velocityTracker?.addMovement(event)
                 velocityTracker?.computeCurrentVelocity(1000)
                 val vx = velocityTracker?.xVelocity ?: 0f
-                if (isBeingDragged) {
+                val vy = velocityTracker?.yVelocity ?: 0f
+                val totalDy = event.y - initialMotionY
+
+                if (isVerticalDrag) {
+                    verticalDragListener?.onVerticalDragEnd(totalDy, vy, event)
+                } else if (isBeingDragged) {
                     finishDrag(vx)
                 } else if (event.actionMasked == MotionEvent.ACTION_UP) {
                     performClick()
@@ -531,6 +621,7 @@ class FelicityPager @JvmOverloads constructor(
                 velocityTracker?.recycle()
                 velocityTracker = null
                 isBeingDragged = false
+                isVerticalDrag = false
             }
         }
         return true

@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.text.format.DateUtils
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.Lifecycle
@@ -37,6 +38,7 @@ class DefaultPlayer : MediaFragment() {
 
     private lateinit var binding: FragmentDefaultPlayerBinding
     private var imagePageAdapter: ImagePageAdapter? = null
+    private var swipeDownListener: SwipeDownToCloseListener? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentDefaultPlayerBinding.inflate(inflater, container, false)
@@ -45,10 +47,31 @@ class DefaultPlayer : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        swipeDownListener = SwipeDownToCloseListener(this, requireView())
 
-        requireView().setOnTouchListener(SwipeDownToCloseListener(this, requireView()))
+        requireView().setOnTouchListener(swipeDownListener)
         requireHiddenMiniPlayer()
         updateState()
+
+        // Mirror swipe-down-to-close behavior on the album art pager so that a downward
+        // swipe on the cover image dismisses the player, exactly like swiping on any other
+        // area of the screen.
+        //
+        // The pager consumes ACTION_DOWN, so SwipeDownToCloseListener never sees it and its
+        // isDragging flag stays false, causing every forwarded ACTION_MOVE to be silently
+        // dropped. passExternalDrag() bootstraps initialY + isDragging on the first call
+        // using the reconstructed drag-start position, and endExternalDrag() runs the
+        // dismiss-or-snap-back logic that ACTION_UP would normally trigger.
+        binding.pager.setOnVerticalDragListener(object : FelicityPager.OnVerticalDragListener {
+            override fun onVerticalDrag(totalDeltaY: Float, event: MotionEvent) {
+                // event.rawY - totalDeltaY reconstructs the raw Y at gesture start.
+                swipeDownListener?.passExternalDrag(event, event.rawY - totalDeltaY)
+            }
+
+            override fun onVerticalDragEnd(totalDeltaY: Float, velocityY: Float, event: MotionEvent) {
+                swipeDownListener?.endExternalDrag(event.rawY - totalDeltaY)
+            }
+        })
 
         binding.pager.setAdapter(
                 ImagePageAdapter(
