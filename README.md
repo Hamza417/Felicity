@@ -50,19 +50,19 @@ the next few days.
 
 Last Updated: 16 March 2026
 
-|                          |                          |                          |
-|--------------------------|--------------------------|--------------------------|
-| ![](/screenshots/01.png) | ![](/screenshots/02.png) | ![](/screenshots/03.png) |
-| ![](/screenshots/04.png) | ![](/screenshots/05.png) | ![](/screenshots/06.png) |
-| ![](/screenshots/07.png) | ![](/screenshots/08.png) | ![](/screenshots/11.png) |
-| ![](/screenshots/12.png) | ![](/screenshots/13.png) | ![](/screenshots/14.png) |
-| ![](/screenshots/15.png) | ![](/screenshots/16.png) | ![](/screenshots/17.png) |
-| ![](/screenshots/18.png) | ![](/screenshots/19.png) | ![](/screenshots/20.png) |
+|                                                                      |                                                                      |                                                                      |
+|----------------------------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------|
+| ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/01.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/02.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/03.png) |
+| ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/04.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/05.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/06.png) |
+| ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/07.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/08.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/11.png) |
+| ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/12.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/13.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/14.png) |
+| ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/15.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/16.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/17.png) |
+| ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/18.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/19.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/20.png) |
 
-|                          |
-|--------------------------|
-| ![](/screenshots/09.png) |
-| ![](/screenshots/10.png) |
+|                                                                      |
+|----------------------------------------------------------------------|
+| ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/09.png) |
+| ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/10.png) |
 
 ## License
 
