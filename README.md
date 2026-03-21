@@ -24,27 +24,74 @@ future.
 ![](https://img.shields.io/badge/Minimum%20SDK-29%20(Android%2010)-839192?logo=android&logoColor=white)
 ![](https://img.shields.io/badge/Target%20SDK-36%20(Android%2016)-566573?logo=android&logoColor=white)
 
-## Update
+## Features
 
-16 July 2025: I have finalized the repository module and now beginning to work on engine and
-hopefully finish working on it before the end of this week
+### Custom Audio Engine
 
-10 Aug 2025: Currently working on the UI components that would be used in the app.
+- **Dual Decoder** utilizing both hardware and software decoding through FFmpeg.
+- **Custom DSP:** All audio processors are native and custom-built for optimal performance and
+  extensive control over the audio output.
+    - Supports bass, treble and more.
+    - Native downmixing support to pass multichannel audio to stereo output.
+- **Advanced Effects:** Integrated spatial effects including stereo widening and tape saturation for
+  an analog feel.
+- **10-band Equalizer:** A powerful equalizer with 10 adjustable frequency bands upto +/-15 dB with
+  dedicated PreAmp support.
+- **Gapless Playback:** Seamless transition between tracks without any gaps or interruptions.
+- **High-Resolution Audio Support:** Support for high-resolution audio formats such as FLAC, ALAC,
+  and DSD for audiophile-grade sound quality.
+- **Multi-Channel Audio Support:** Support for multichannel audio formats like 5.1 and 7.1 surround
+  sound for an immersive listening experience.
 
-20 Aug 2025: The UI components are almost done, I have also almost finished main design of the app.
+### User Interface
 
-31 Aug 2025: Testing and fixes have reduced the crashes down to less than 1% and the coupling
-between UI components is incredibly good and smooth.
-I have also tested 192KHz audio and it works by default in supported devices. I noticed it showed
-`ENCODING_PCM_16BIT`, I am not sure why yet.
+- **Fully custom-built and highly optimized** interface inspired by Inure App Manager.
+- **Dynamic Theming:** The app's theme dynamically adapts to the album art of the currently playing
+  track, creating a visually cohesive and immersive experience.
+- **Custom Animations:** Smooth and visually appealing animations throughout the app, enhancing the
+  user experience and making interactions more engaging.
+- **Themes:** Multiple themes including light, dark, AMOLED black, Material You and others.
+- **Core:** Predictive back, edge to edge and adapted to all modern Android UI features.
+- **Embedded Lyrics:** Reliable, on-the-fly LRC extraction and support for online downloading from
+  LrcLib.
+- **Dual Fast Scroll:** Simultaneous support for both slide to scroll and jump to letter fast
+  scroll.
+- **Visualizer:** Realtime audio visualizer.
 
-17 Jan 2026: Felicity's development was halted again due to some issues and a pre-alpha is scheduled
-to be released in the next 4 weeks. I am trying to get on schedule as early as possible.
+### Library Management
 
-29 Jan 2026: The app can now automatically go upto 32bit audio on supported devices. I have only
-pushed upto
-24bit as its max my device can output. I am finalizing the service and pre-alpha should be out in
-the next few days.
+- **Realtime Library Updates:** The app automatically detects and updates the music library in
+  real-time as new tracks are added or removed from the device adapted from Peristyle app.
+- **All Storage Support:** Full support for both internal and external storages including SD cards
+  and USB drives.
+- **Auto Scanning:** The app automatically scans for new music files and updates the library without
+  requiring manual refreshes.
+
+### Smart Core
+
+- **True Randomized Shuffle:** Choose between Miller and Fisher-Yates shuffle algorithms.
+
+This feature is list is not exhaustive and only main features are listed.
+
+## Roadmap
+
+- [x] Initial development and setup
+- [x] Custom audio engine implementation
+- [x] Basic playback controls and UI
+- [x] Library management and scanning
+- [x] Advanced audio effects and equalizer
+- [x] Dynamic theming and custom animations
+- [x] Embedded lyrics support
+- [x] Realtime audio visualizer
+- [ ] Milkdrop visualizer support
+- [ ] Crossfade support
+- [ ] Multiple Player interface styles.
+- [ ] Playlist support
+- [ ] Cue sheet support
+- [ ] Local server for centralized music access across multiple devices.
+- [ ] Selection support for library management and playlist creation.
+
+... and more features will be updated here as development progresses.
 
 ## Screenshots
 
