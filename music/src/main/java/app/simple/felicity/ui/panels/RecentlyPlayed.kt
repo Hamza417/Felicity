@@ -12,7 +12,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
-import app.simple.felicity.adapters.ui.lists.AdapterSongs
+import app.simple.felicity.adapters.ui.lists.AdapterSongsWithStat
+import app.simple.felicity.adapters.ui.lists.AdapterSongsWithStat.Companion.formatRelativeTime
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentRecentlyPlayedBinding
@@ -22,6 +23,7 @@ import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.RecentlyPlayedPreferences
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.AudioWithStat
 import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.panels.RecentlyPlayedViewModel
@@ -30,8 +32,9 @@ import kotlinx.coroutines.launch
 
 /**
  * Panel fragment displaying songs the user has played most recently, ordered by last-played
- * timestamp descending. The list is backed by the {@code song_stats} table and refreshes
- * reactively as new songs are played.
+ * timestamp descending. Each item shows the exact date and time the song was last played.
+ * The list is backed by the {@code song_stats} table and refreshes reactively as new songs
+ * are played.
  *
  * @author Hamza417
  */
@@ -41,7 +44,7 @@ class RecentlyPlayed : PanelFragment() {
     private lateinit var binding: FragmentRecentlyPlayedBinding
     private lateinit var headerBinding: HeaderRecentlyPlayedBinding
 
-    private var adapterSongs: AdapterSongs? = null
+    private var adapterSongs: AdapterSongsWithStat? = null
     private var gridLayoutManager: GridLayoutManager? = null
 
     private val recentlyPlayedViewModel: RecentlyPlayedViewModel by viewModels({ requireActivity() })
@@ -91,7 +94,7 @@ class RecentlyPlayed : PanelFragment() {
 
         headerBinding.shuffle.setOnClickListener {
             val songs = recentlyPlayedViewModel.songs.value
-            if (songs.isNotEmpty()) shuffleMediaItems(songs)
+            if (songs.isNotEmpty()) shuffleMediaItems(songs.map { it.audio })
         }
 
         headerBinding.search.setOnClickListener {
@@ -138,9 +141,15 @@ class RecentlyPlayed : PanelFragment() {
         }
     }
 
-    private fun updateSongsList(songs: List<Audio>) {
+    private fun updateSongsList(songs: List<AudioWithStat>) {
         if (adapterSongs == null) {
-            adapterSongs = AdapterSongs(songs)
+            adapterSongs = AdapterSongsWithStat(
+                    initial = songs,
+                    gridTypeProvider = { RecentlyPlayedPreferences.getGridType() },
+                    statTextProvider = { item ->
+                        formatRelativeTime(item.lastPlayed)
+                    }
+            )
             adapterSongs?.setHasStableIds(true)
             adapterSongs?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
@@ -160,12 +169,11 @@ class RecentlyPlayed : PanelFragment() {
         }
 
         headerBinding.count.text = getString(R.string.x_songs, songs.size)
-        headerBinding.hours.text = songs.sumOf { it.duration }
+        headerBinding.hours.text = songs.sumOf { it.audio.duration }
             .toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
         headerBinding.gridSize.setGridSizeValue(RecentlyPlayedPreferences.getGridSize())
         headerBinding.gridType.setGridTypeValue(RecentlyPlayedPreferences.getGridType())
     }
-
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
@@ -196,4 +204,3 @@ class RecentlyPlayed : PanelFragment() {
         const val TAG = "RecentlyPlayed"
     }
 }
-

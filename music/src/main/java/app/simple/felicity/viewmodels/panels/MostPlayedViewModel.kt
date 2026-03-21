@@ -6,7 +6,7 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.LibraryPreferences
-import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.AudioWithStat
 import app.simple.felicity.repository.repositories.SongStatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +22,8 @@ import javax.inject.Inject
  * ViewModel for the Most Played panel.
  *
  * <p>Observes the {@code song_stats} table via [SongStatRepository] and emits the most
- * frequently played available songs ordered by play count descending.</p>
+ * frequently played available songs ordered by play count descending. Each item is an
+ * [AudioWithStat] so the UI can display the total number of times each song was played.</p>
  *
  * @author Hamza417
  */
@@ -32,8 +33,8 @@ class MostPlayedViewModel @Inject constructor(
         private val songStatRepository: SongStatRepository
 ) : WrappedViewModel(application) {
 
-    private val _songs = MutableStateFlow<List<Audio>>(emptyList())
-    val songs: StateFlow<List<Audio>> = _songs.asStateFlow()
+    private val _songs = MutableStateFlow<List<AudioWithStat>>(emptyList())
+    val songs: StateFlow<List<AudioWithStat>> = _songs.asStateFlow()
 
     init {
         loadData()
@@ -41,15 +42,15 @@ class MostPlayedViewModel @Inject constructor(
 
     private fun loadData() {
         viewModelScope.launch {
-            songStatRepository.getMostPlayed()
+            songStatRepository.getMostPlayedWithStat()
                 .catch { e ->
                     Log.e(TAG, "Error loading most played songs", e)
                     emit(emptyList())
                 }
                 .flowOn(Dispatchers.IO)
-                .collect { audioList ->
-                    _songs.value = audioList
-                    Log.d(TAG, "loadData: ${audioList.size} most played songs loaded")
+                .collect { list ->
+                    _songs.value = list
+                    Log.d(TAG, "loadData: ${list.size} most played songs loaded")
                 }
         }
     }
@@ -66,4 +67,3 @@ class MostPlayedViewModel @Inject constructor(
         private const val TAG = "MostPlayedViewModel"
     }
 }
-

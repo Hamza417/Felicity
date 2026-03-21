@@ -12,7 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
-import app.simple.felicity.adapters.ui.lists.AdapterSongs
+import app.simple.felicity.adapters.ui.lists.AdapterSongsWithStat
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentMostPlayedBinding
@@ -22,6 +22,7 @@ import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.MostPlayedPreferences
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.AudioWithStat
 import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.panels.MostPlayedViewModel
@@ -30,8 +31,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Panel fragment displaying the user's most frequently played songs, ordered by play count
- * descending. The list is backed by the {@code song_stats} table and refreshes reactively
- * as play counts change.
+ * descending. Each item shows the total number of times the song has been played. The list
+ * is backed by the {@code song_stats} table and refreshes reactively as play counts change.
  *
  * @author Hamza417
  */
@@ -41,7 +42,7 @@ class MostPlayed : PanelFragment() {
     private lateinit var binding: FragmentMostPlayedBinding
     private lateinit var headerBinding: HeaderMostPlayedBinding
 
-    private var adapterSongs: AdapterSongs? = null
+    private var adapterSongs: AdapterSongsWithStat? = null
     private var gridLayoutManager: GridLayoutManager? = null
 
     private val mostPlayedViewModel: MostPlayedViewModel by viewModels({ requireActivity() })
@@ -91,7 +92,7 @@ class MostPlayed : PanelFragment() {
 
         headerBinding.shuffle.setOnClickListener {
             val songs = mostPlayedViewModel.songs.value
-            if (songs.isNotEmpty()) shuffleMediaItems(songs)
+            if (songs.isNotEmpty()) shuffleMediaItems(songs.map { it.audio })
         }
 
         headerBinding.search.setOnClickListener {
@@ -138,9 +139,15 @@ class MostPlayed : PanelFragment() {
         }
     }
 
-    private fun updateSongsList(songs: List<Audio>) {
+    private fun updateSongsList(songs: List<AudioWithStat>) {
         if (adapterSongs == null) {
-            adapterSongs = AdapterSongs(songs)
+            adapterSongs = AdapterSongsWithStat(
+                    initial = songs,
+                    gridTypeProvider = { MostPlayedPreferences.getGridType() },
+                    statTextProvider = { item ->
+                        "${item.playCount} times"
+                    }
+            )
             adapterSongs?.setHasStableIds(true)
             adapterSongs?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
@@ -160,7 +167,7 @@ class MostPlayed : PanelFragment() {
         }
 
         headerBinding.count.text = getString(R.string.x_songs, songs.size)
-        headerBinding.hours.text = songs.sumOf { it.duration }
+        headerBinding.hours.text = songs.sumOf { it.audio.duration }
             .toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
         headerBinding.gridSize.setGridSizeValue(MostPlayedPreferences.getGridSize())
         headerBinding.gridType.setGridTypeValue(MostPlayedPreferences.getGridType())
@@ -195,4 +202,3 @@ class MostPlayed : PanelFragment() {
         const val TAG = "MostPlayed"
     }
 }
-

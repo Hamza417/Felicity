@@ -4,6 +4,7 @@ import android.content.Context
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioStat
+import app.simple.felicity.repository.models.AudioWithStat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -88,6 +89,16 @@ class SongStatRepository @Inject constructor(
     }
 
     /**
+     * Returns a reactive [Flow] of available songs with stat data ordered by last-played
+     * timestamp, most recently played first.
+     *
+     * @return Flow emitting up to 50 [AudioWithStat] objects re-emitted whenever stats change.
+     */
+    fun getRecentlyPlayedWithStat(): Flow<List<AudioWithStat>> {
+        return database.songStatDao().getRecentlyPlayedWithStat()
+    }
+
+    /**
      * Returns a reactive [Flow] of available songs ordered by total play count, highest first.
      * Only songs present in the audio table are included.
      *
@@ -95,6 +106,16 @@ class SongStatRepository @Inject constructor(
      */
     fun getMostPlayed(): Flow<List<Audio>> {
         return database.songStatDao().getMostPlayedAudio()
+    }
+
+    /**
+     * Returns a reactive [Flow] of available songs with stat data ordered by total play count,
+     * highest first.
+     *
+     * @return Flow emitting up to 50 [AudioWithStat] objects re-emitted whenever stats change.
+     */
+    fun getMostPlayedWithStat(): Flow<List<AudioWithStat>> {
+        return database.songStatDao().getMostPlayedWithStat()
     }
 }
 

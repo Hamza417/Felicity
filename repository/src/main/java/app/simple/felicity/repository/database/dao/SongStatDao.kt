@@ -8,6 +8,7 @@ import androidx.room.Query
 import androidx.room.Update
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioStat
+import app.simple.felicity.repository.models.AudioWithStat
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -46,6 +47,34 @@ interface SongStatDao {
         LIMIT 50
     """)
     fun getMostPlayedAudio(): Flow<List<Audio>>
+
+    /**
+     * Returns up to 50 available songs with their stat data ordered by last-played
+     * timestamp descending. The result includes {@code lastPlayed} and {@code playCount}
+     * from the {@code song_stats} table alongside all audio columns.
+     */
+    @Query("""
+        SELECT a.*, ss.lastPlayed, ss.playCount FROM audio a
+        INNER JOIN song_stats ss ON a.hash = ss.audioHash
+        WHERE a.is_available = 1 AND ss.lastPlayed > 0
+        ORDER BY ss.lastPlayed DESC
+        LIMIT 50
+    """)
+    fun getRecentlyPlayedWithStat(): Flow<List<AudioWithStat>>
+
+    /**
+     * Returns up to 50 available songs with their stat data ordered by play count
+     * descending. The result includes {@code lastPlayed} and {@code playCount}
+     * from the {@code song_stats} table alongside all audio columns.
+     */
+    @Query("""
+        SELECT a.*, ss.lastPlayed, ss.playCount FROM audio a
+        INNER JOIN song_stats ss ON a.hash = ss.audioHash
+        WHERE a.is_available = 1 AND ss.playCount > 0
+        ORDER BY ss.playCount DESC
+        LIMIT 50
+    """)
+    fun getMostPlayedWithStat(): Flow<List<AudioWithStat>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStat(audioStat: AudioStat)
