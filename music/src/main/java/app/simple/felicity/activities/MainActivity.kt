@@ -62,8 +62,14 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         setContentView(binding.root)
 
         binding.miniPlayer.callbacks = object : MiniPlayer.Callbacks {
-            override fun onPageSelected(position: Int) {
-                MediaManager.updatePosition(position)
+            override fun onPageSelected(position: Int, fromUser: Boolean) {
+                // Only forward to MediaManager when the swipe originated from the
+                // user.  Programmatic setCurrentItem calls (fromUser = false) must
+                // be ignored; otherwise the position feedback loop causes the wrong
+                // song to be played.
+                if (fromUser) {
+                    MediaManager.updatePosition(position)
+                }
             }
 
             override fun onLoadArt(position: Int, payload: Any?, setBitmap: (android.graphics.Bitmap?) -> Unit) {

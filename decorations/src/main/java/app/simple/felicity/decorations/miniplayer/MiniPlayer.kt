@@ -101,8 +101,17 @@ class MiniPlayer @JvmOverloads constructor(
 
     /** Event callbacks for art loading, playback control, and navigation. */
     interface Callbacks {
-        /** The visible page settled at [position] (either from user swipe or [setCurrentItem]). */
-        fun onPageSelected(position: Int) {}
+        /**
+         * The visible page settled at [position].
+         *
+         * @param position The new page index.
+         * @param fromUser `true` when the change was caused by a real user swipe or
+         *                 gesture; `false` when it was triggered programmatically
+         *                 (e.g. [setCurrentItem]).  Callers that drive external
+         *                 playback state (e.g. MediaManager) should ignore
+         *                 events where [fromUser] is `false` to avoid feedback loops.
+         */
+        fun onPageSelected(position: Int, fromUser: Boolean) {}
 
         /**
          * Request artwork for [position]. Call [setBitmap] with the result (maybe null).
@@ -311,7 +320,7 @@ class MiniPlayer @JvmOverloads constructor(
     }
 
     private fun dispatchPageSelected(position: Int, fromUser: Boolean) {
-        callbacks?.onPageSelected(position)
+        callbacks?.onPageSelected(position, fromUser)
         pageChangeListeners.forEach { l ->
             l.onPageSelected(position, fromUser)
             l.onPageSelected(position)
