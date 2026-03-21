@@ -180,7 +180,6 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         }
     }
 
-
     protected fun requireHiddenMiniPlayer() {
         viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onCreate(owner: LifecycleOwner) {
@@ -488,8 +487,10 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 container = requireContainerView(),
                 inflateBinding = DialogDeleteSongBinding::inflate)
             .onViewCreated { binding ->
-                // Duck audio to create a sorta-kinda thinking zone
-                MediaManager.duck()
+                // Duck audio if same song is playing
+                if (MediaManager.getCurrentSong()?.id == audio.id) {
+                    MediaManager.duck()
+                }
 
                 val title = audio.title
                 val fullText = getString(R.string.delete_audio_summary, title)
@@ -562,37 +563,40 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     private fun deleteSong(audio: Audio, lyrics: Boolean) {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // Delete the physical file
+                // Step 1: Skip to the next song (or remove from queue) BEFORE touching the
+                // file, so playback continues smoothly without ever trying to read a deleted path.
+                withContext(Dispatchers.Main) {
+                    val queueIndex = MediaManager.getSongs().indexOfFirst { it.id == audio.id }
+                    when {
+                        queueIndex != -1 -> {
+                            // removeQueueItemSilently advances playback if this song is current.
+                            MediaManager.removeQueueItemSilently(queueIndex)
+                        }
+                        MediaManager.getCurrentSong()?.id == audio.id -> {
+                            // Song is playing but is not in the tracked queue list — just skip.
+                            MediaManager.next()
+                        }
+                    }
+                }
+
+                // Step 2: Delete the physical file.
                 val file = File(audio.path)
                 val deleted = if (file.exists()) {
                     file.delete()
                 } else {
                     Log.w(TAG, "File does not exist: ${audio.path}")
-                    true // Consider it deleted if it doesn't exist
+                    true // Consider it deleted if it doesn't exist.
                 }
 
                 if (deleted) {
-                    // Remove from database
+                    // Step 3: Remove from the database.
                     val audioDatabase = AudioDatabase.getInstance(requireContext())
                     audioDatabase.audioDao()?.delete(audio)
-
-                    // Switch to Main thread: MediaController calls must happen on Main.
-                    withContext(Dispatchers.Main) {
-                        // Remove the song from the queue (this handles skip-to-next if it's playing)
-                        val queueIndex = MediaManager.getSongs().indexOfFirst { it.id == audio.id }
-                        if (queueIndex != -1) {
-                            // removeQueueItemSilently handles skip/playback continuation
-                            MediaManager.removeQueueItemSilently(queueIndex)
-                        } else if (MediaManager.getCurrentSong()?.id == audio.id) {
-                            // Song was playing but not in queue list — just skip
-                            MediaManager.next()
-                        }
-                    }
 
                     Log.d(TAG, "Song deleted successfully: ${audio.title}")
 
                     if (lyrics) {
-                        // Also delete associated lyrics file if it exists
+                        // Also delete associated lyrics file if it exists.
                         val lyricsFile = File(audio.path.substringBeforeLast('.'), "${audio.title}.txt")
                         val lrcFile = File(audio.path.substringBeforeLast('.'), "${audio.title}.lrc")
 
