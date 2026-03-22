@@ -24,7 +24,7 @@ import kotlin.math.sin
  * @author Hamza417
  */
 @OptIn(UnstableApi::class)
-class BalanceAudioProcessor : AudioProcessor {
+class BalanceProcessor : AudioProcessor {
 
     private var inputFormat: AudioProcessor.AudioFormat = AudioProcessor.AudioFormat.NOT_SET
     private var active = false

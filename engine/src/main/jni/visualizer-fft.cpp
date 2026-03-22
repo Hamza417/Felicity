@@ -3,7 +3,7 @@
 //
 
 /**
- * JNI bridge that exposes a PFFFT-backed real-valued FFT to [VisualizerAudioProcessor].
+ * JNI bridge that exposes a PFFFT-backed real-valued FFT to [VisualizerProcessor].
  *
  * Each native context allocates SIMD-aligned buffers and a pre-computed Hann window so
  * that the Kotlin side only needs to pass raw mono PCM samples. Band-edge mapping is
@@ -58,7 +58,7 @@ extern "C" {
  * @return        Opaque pointer to [FFTContext] cast to jlong, or 0 on allocation failure.
  */
 JNIEXPORT jlong JNICALL
-Java_app_simple_felicity_engine_processors_VisualizerAudioProcessor_nativeCreate(
+Java_app_simple_felicity_engine_processors_VisualizerProcessor_nativeCreate(
         JNIEnv * /*env*/, jobject /*thiz*/, jint fftSize) {
 
     auto *ctx = new FFTContext();
@@ -106,7 +106,7 @@ Java_app_simple_felicity_engine_processors_VisualizerAudioProcessor_nativeCreate
  * @param bandCount  Number of frequency bands.
  */
 JNIEXPORT void JNICALL
-Java_app_simple_felicity_engine_processors_VisualizerAudioProcessor_nativeSetBandEdges(
+Java_app_simple_felicity_engine_processors_VisualizerProcessor_nativeSetBandEdges(
         JNIEnv *env, jobject /*thiz*/, jlong handle, jintArray bandEdges, jint bandCount) {
 
     auto *ctx = reinterpret_cast<FFTContext *>(handle);
@@ -146,7 +146,7 @@ Java_app_simple_felicity_engine_processors_VisualizerAudioProcessor_nativeSetBan
  * @param isOptimized JNI_TRUE for visualizer-optimized peak+boost mode; JNI_FALSE for RMS.
  */
 JNIEXPORT void JNICALL
-Java_app_simple_felicity_engine_processors_VisualizerAudioProcessor_nativeProcessInto(
+Java_app_simple_felicity_engine_processors_VisualizerProcessor_nativeProcessInto(
         JNIEnv *env, jobject /*thiz*/, jlong handle,
         jfloatArray rawSamples, jfloatArray bandBuffer, jboolean isOptimized) {
 
@@ -269,7 +269,7 @@ Java_app_simple_felicity_engine_processors_VisualizerAudioProcessor_nativeComput
  * @param handle Opaque pointer returned by [nativeCreate].
  */
 JNIEXPORT void JNICALL
-Java_app_simple_felicity_engine_processors_VisualizerAudioProcessor_nativeDestroy(
+Java_app_simple_felicity_engine_processors_VisualizerProcessor_nativeDestroy(
         JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
 
     auto *ctx = reinterpret_cast<FFTContext *>(handle);

@@ -3,8 +3,8 @@ package app.simple.felicity.engine.processors
 import androidx.annotation.OptIn
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
-import app.simple.felicity.engine.processors.TrebleAudioProcessor.Companion.FLAT_THRESHOLD_DB
-import app.simple.felicity.engine.processors.TrebleAudioProcessor.Companion.SHELF_FREQUENCY_HZ
+import app.simple.felicity.engine.processors.TrebleProcessor.Companion.FLAT_THRESHOLD_DB
+import app.simple.felicity.engine.processors.TrebleProcessor.Companion.SHELF_FREQUENCY_HZ
 import app.simple.felicity.engine.utils.PcmUtils
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -44,7 +44,7 @@ import kotlin.math.sqrt
  * @author Hamza417
  */
 @OptIn(UnstableApi::class)
-class TrebleAudioProcessor : AudioProcessor {
+class TrebleProcessor : AudioProcessor {
 
     private var inputFormat: AudioProcessor.AudioFormat = AudioProcessor.AudioFormat.NOT_SET
     private var active = false

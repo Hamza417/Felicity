@@ -4,7 +4,7 @@ import app.simple.felicity.engine.managers.VisualizerManager.BAND_COUNT
 import app.simple.felicity.engine.managers.VisualizerManager.emit
 import app.simple.felicity.engine.managers.VisualizerManager.processor
 import app.simple.felicity.engine.managers.VisualizerManager.spectrumFlow
-import app.simple.felicity.engine.processors.VisualizerAudioProcessor
+import app.simple.felicity.engine.processors.VisualizerProcessor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -14,12 +14,12 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 /**
- * Singleton bridge that both exposes the live [VisualizerAudioProcessor] reference for
+ * Singleton bridge that both exposes the live [VisualizerProcessor] reference for
  * direct twin-buffer wiring and relays real-time spectrum data via a [SharedFlow] for
  * any remaining legacy consumers.
  *
  * The primary path is the direct twin-buffer connection established by calling
- * [processor].[VisualizerAudioProcessor.setDirectOutput] from the player fragment.
+ * [processor].[VisualizerProcessor.setDirectOutput] from the player fragment.
  * The [SharedFlow] path ([spectrumFlow] / [emit]) is retained for backward-compatibility
  * and may be used by secondary consumers that cannot participate in the direct path.
  *
@@ -34,15 +34,15 @@ object VisualizerManager {
     const val BAND_COUNT = 40
 
     /**
-     * Live reference to the [VisualizerAudioProcessor] managed by the player service.
+     * Live reference to the [VisualizerProcessor] managed by the player service.
      *
      * Set by [app.simple.felicity.engine.services.FelicityPlayerService] in [onCreate]
      * and cleared on service destruction. UI components — typically the player fragment —
-     * use this reference to call [VisualizerAudioProcessor.setDirectOutput] so the audio
+     * use this reference to call [VisualizerProcessor.setDirectOutput] so the audio
      * thread can write directly into the view's twin buffers without any intermediate hop.
      */
     @Volatile
-    var processor: VisualizerAudioProcessor? = null
+    var processor: VisualizerProcessor? = null
 
     /**
      * Backing mutable flow. Replay = 1 ensures a cold subscriber always gets

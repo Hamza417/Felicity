@@ -6,8 +6,8 @@ import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
-import app.simple.felicity.engine.processors.VisualizerAudioProcessor.Companion.BAND_COUNT
-import app.simple.felicity.engine.processors.VisualizerAudioProcessor.Companion.FFT_SIZE
+import app.simple.felicity.engine.processors.VisualizerProcessor.Companion.BAND_COUNT
+import app.simple.felicity.engine.processors.VisualizerProcessor.Companion.FFT_SIZE
 import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
@@ -32,7 +32,7 @@ import kotlin.math.pow
  * @author Hamza417
  */
 @OptIn(UnstableApi::class)
-class VisualizerAudioProcessor : BaseAudioProcessor() {
+class VisualizerProcessor : BaseAudioProcessor() {
 
     // Listener interface (legacy path)
 

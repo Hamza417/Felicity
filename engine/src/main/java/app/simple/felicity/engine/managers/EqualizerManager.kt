@@ -4,7 +4,7 @@ import app.simple.felicity.engine.managers.EqualizerManager.attachProcessor
 import app.simple.felicity.engine.managers.EqualizerManager.bandGainsFlow
 import app.simple.felicity.engine.managers.EqualizerManager.preampFlow
 import app.simple.felicity.engine.managers.EqualizerManager.resetAllBands
-import app.simple.felicity.engine.processors.EqualizerAudioProcessor
+import app.simple.felicity.engine.processors.EqualizerProcessor
 import app.simple.felicity.preferences.EqualizerPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,9 +13,9 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * Singleton manager for the Felicity 10-band graphic equalizer.
  *
- * Bridges the UI/preference layer and the real-time [EqualizerAudioProcessor] that lives
+ * Bridges the UI/preference layer and the real-time [EqualizerProcessor] that lives
  * inside the ExoPlayer audio-processor chain. All EQ math now happens inline on ExoPlayer's
- * audio thread inside [EqualizerAudioProcessor.queueInput], so no Android hardware
+ * audio thread inside [EqualizerProcessor.queueInput], so no Android hardware
  * [android.media.audiofx.Equalizer] effect or audio-session ID is required.
  *
  * Responsibilities:
@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
  *    [attachProcessor] once from the player service.
  *  - Exposes [bandGainsFlow] as a [StateFlow] so the UI can observe live updates
  *    regardless of whether a change came from the UI, a preset loader, or [resetAllBands].
- *  - Delegates every gain/enable mutation to the live [EqualizerAudioProcessor] reference
+ *  - Delegates every gain/enable mutation to the live [EqualizerProcessor] reference
  *    supplied by the player service via [attachProcessor].
  *
  * Usage:
@@ -42,10 +42,10 @@ import kotlinx.coroutines.flow.asStateFlow
 object EqualizerManager {
 
     /**
-     * The live [EqualizerAudioProcessor] registered by the player service.
+     * The live [EqualizerProcessor] registered by the player service.
      * All public methods are safe no-ops on the processor side when this is null.
      */
-    private var processor: EqualizerAudioProcessor? = null
+    private var processor: EqualizerProcessor? = null
 
     /**
      * Backing mutable flow holding the latest 10-element band-gain array in dB.
@@ -79,7 +79,7 @@ object EqualizerManager {
     // -------------------------------------------------------------------------
 
     /**
-     * Registers the [EqualizerAudioProcessor] that lives inside the ExoPlayer pipeline
+     * Registers the [EqualizerProcessor] that lives inside the ExoPlayer pipeline
      * and immediately applies all persisted band gains and the enabled state to it.
      *
      * Call this once in [app.simple.felicity.engine.services.FelicityPlayerService.onCreate]
@@ -87,7 +87,7 @@ object EqualizerManager {
      *
      * @param equalizerProcessor The processor instance owned by [AudioProcessorManager].
      */
-    fun attachProcessor(equalizerProcessor: EqualizerAudioProcessor) {
+    fun attachProcessor(equalizerProcessor: EqualizerProcessor) {
         processor = equalizerProcessor
         val savedGains = EqualizerPreferences.getAllBandGains()
         equalizerProcessor.setAllBandGains(savedGains)
@@ -113,7 +113,7 @@ object EqualizerManager {
 
     /**
      * Sets the gain for a single EQ band, optionally persists it to [EqualizerPreferences],
-     * applies it to the live [EqualizerAudioProcessor], and updates [bandGainsFlow].
+     * applies it to the live [EqualizerProcessor], and updates [bandGainsFlow].
      *
      * @param band    Zero-based band index in [0..9] (31 Hz → 16 kHz).
      * @param gainDb  Gain in dB, clamped to [-15..+15].

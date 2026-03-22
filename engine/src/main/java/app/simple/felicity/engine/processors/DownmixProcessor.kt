@@ -29,7 +29,7 @@ import java.nio.ByteOrder
  * @author Hamza417
  */
 @OptIn(UnstableApi::class)
-class DownmixAudioProcessor : AudioProcessor {
+class DownmixProcessor : AudioProcessor {
 
     private var inputFormat: AudioProcessor.AudioFormat = AudioProcessor.AudioFormat.NOT_SET
     private var outputFormat: AudioProcessor.AudioFormat = AudioProcessor.AudioFormat.NOT_SET

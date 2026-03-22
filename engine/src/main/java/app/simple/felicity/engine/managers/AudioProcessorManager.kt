@@ -2,29 +2,29 @@ package app.simple.felicity.engine.managers
 
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
-import app.simple.felicity.engine.processors.BalanceAudioProcessor
-import app.simple.felicity.engine.processors.BassAudioProcessor
-import app.simple.felicity.engine.processors.DownmixAudioProcessor
-import app.simple.felicity.engine.processors.EqualizerAudioProcessor
-import app.simple.felicity.engine.processors.KaraokeAudioProcessor
-import app.simple.felicity.engine.processors.NightModeAudioProcessor
+import app.simple.felicity.engine.processors.BalanceProcessor
+import app.simple.felicity.engine.processors.BassProcessor
+import app.simple.felicity.engine.processors.DownmixProcessor
+import app.simple.felicity.engine.processors.EqualizerProcessor
+import app.simple.felicity.engine.processors.KaraokeProcessor
+import app.simple.felicity.engine.processors.NightModeProcessor
 import app.simple.felicity.engine.processors.SilenceTrimmingProcessor
-import app.simple.felicity.engine.processors.StereoWideningAudioProcessor
+import app.simple.felicity.engine.processors.StereoWideningProcessor
 import app.simple.felicity.engine.processors.TapeSaturationProcessor
-import app.simple.felicity.engine.processors.TrebleAudioProcessor
-import app.simple.felicity.engine.processors.VisualizerAudioProcessor
+import app.simple.felicity.engine.processors.TrebleProcessor
+import app.simple.felicity.engine.processors.VisualizerProcessor
 import app.simple.felicity.preferences.EqualizerPreferences
 
 /**
  * Manages all audio processing pipelines for the Felicity playback engine.
  *
  * Processor chain order (applied in sequence by DefaultAudioSink):
- *  1. [app.simple.felicity.engine.processors.DownmixAudioProcessor]        Optional multichannel → stereo reduction.
- *  2. [app.simple.felicity.engine.processors.KaraokeAudioProcessor]        Optional center-channel (vocal) removal via L−R subtraction.
+ *  1. [app.simple.felicity.engine.processors.DownmixProcessor]        Optional multichannel → stereo reduction.
+ *  2. [app.simple.felicity.engine.processors.KaraokeProcessor]        Optional center-channel (vocal) removal via L−R subtraction.
  *  3. [app.simple.felicity.engine.processors.TapeSaturationProcessor]      Tape-style harmonic coloring.
- *  4. [app.simple.felicity.engine.processors.StereoWideningAudioProcessor] M/S stereo image width.
- *  5. [app.simple.felicity.engine.processors.BalanceAudioProcessor]        Constant-power channel routing.
- *  6. [app.simple.felicity.engine.processors.NightModeAudioProcessor]      Dynamic compressor/limiter for late-night listening.
+ *  4. [app.simple.felicity.engine.processors.StereoWideningProcessor] M/S stereo image width.
+ *  5. [app.simple.felicity.engine.processors.BalanceProcessor]        Constant-power channel routing.
+ *  6. [app.simple.felicity.engine.processors.NightModeProcessor]      Dynamic compressor/limiter for late-night listening.
  *
  * All processors are custom AudioProcessor implementations that support
  * PCM_16BIT, PCM_24BIT, PCM_32BIT, and PCM_FLOAT (Hi-Res pipeline output).
@@ -44,7 +44,7 @@ class AudioProcessorManager {
      * Registered with [EqualizerManager] in the player
      * service so that UI-driven gain changes propagate to the audio thread in real time.
      */
-    val equalizerProcessor: EqualizerAudioProcessor = EqualizerAudioProcessor()
+    val equalizerProcessor: EqualizerProcessor = EqualizerProcessor()
 
     /**
      * Removes leading and trailing silence from the audio stream. Always active in the chain.
@@ -59,14 +59,14 @@ class AudioProcessorManager {
      * Inactive for stereo input (pass-through). Added to the chain only when
      * forced stereo downmix is enabled in AudioPreferences.
      */
-    val downmixProcessor: DownmixAudioProcessor = DownmixAudioProcessor()
+    val downmixProcessor: DownmixProcessor = DownmixProcessor()
 
     /**
      * Center-channel (vocal) removal via mid/side L−R subtraction. Starts in bypass state.
      * Requires a stereo PCM source; mono sources are passed through unchanged.
      * Updated via [applyKaraokeMode].
      */
-    val karaokeProcessor: KaraokeAudioProcessor = KaraokeAudioProcessor()
+    val karaokeProcessor: KaraokeProcessor = KaraokeProcessor()
 
     /**
      * Tape-style soft saturation. Starts in bypass state (drive = 0.0).
@@ -78,46 +78,46 @@ class AudioProcessorManager {
      * M/S stereo widening/narrowing. Starts in neutral state (width = 1.0, passthrough).
      * Updated via [applyStereoWidth].
      */
-    val wideningProcessor: StereoWideningAudioProcessor = StereoWideningAudioProcessor()
+    val wideningProcessor: StereoWideningProcessor = StereoWideningProcessor()
 
     /**
      * Constant-power stereo balance/panning. Starts at center (pan = 0.0, equal gain).
      * Updated via [applyBalance].
      */
-    val balanceProcessor: BalanceAudioProcessor = BalanceAudioProcessor()
+    val balanceProcessor: BalanceProcessor = BalanceProcessor()
 
     /**
      * Dynamic compressor/limiter for comfortable late-night listening. Starts in bypass state.
      * Squashes loud peaks and applies makeup gain so quiet passages are more audible.
      * Updated via [applyNightMode].
      */
-    val nightModeProcessor: NightModeAudioProcessor = NightModeAudioProcessor()
+    val nightModeProcessor: NightModeProcessor = NightModeProcessor()
 
     /**
      * Low-shelf biquad filter for broad bass tone control (shelf at 250 Hz, S = 1).
      * Starts in flat bypass state (0 dB). Updated via [applyBass].
      */
-    val bassProcessor: BassAudioProcessor = BassAudioProcessor()
+    val bassProcessor: BassProcessor = BassProcessor()
 
     /**
      * High-shelf biquad filter for broad treble tone control (shelf at 4000 Hz, S = 1).
      * Starts in flat bypass state (0 dB). Updated via [applyTreble].
      */
-    val trebleProcessor: TrebleAudioProcessor = TrebleAudioProcessor()
+    val trebleProcessor: TrebleProcessor = TrebleProcessor()
 
     /**
      * Passthrough processor that performs a Hanning-windowed FFT on the final processed audio
      * and delivers 40 log-spaced frequency band magnitudes to any attached
-     * [app.simple.felicity.engine.processors.VisualizerAudioProcessor.VisualizerListener].
+     * [app.simple.felicity.engine.processors.VisualizerProcessor.VisualizerListener].
      *
      * Must be placed last in the chain so visualization reflects the fully processed signal.
      * The listener is wired in [app.simple.felicity.engine.services.FelicityPlayerService].
      */
-    val visualizerProcessor: VisualizerAudioProcessor = VisualizerAudioProcessor()
+    val visualizerProcessor: VisualizerProcessor = VisualizerProcessor()
 
     /**
      * Applies a new stereo balance pan to [balanceProcessor].
-     * See [BalanceAudioProcessor.applyBalance] for the constant-power panning details.
+     * See [BalanceProcessor.applyBalance] for the constant-power panning details.
      *
      * @param pan Pan value in [-1.0, 1.0]. 0.0 = center (no change).
      */
@@ -127,7 +127,7 @@ class AudioProcessorManager {
 
     /**
      * Applies a new stereo width to [wideningProcessor].
-     * See [StereoWideningAudioProcessor.applyStereoWidth] for the M/S math.
+     * See [StereoWideningProcessor.applyStereoWidth] for the M/S math.
      *
      * @param width Width in [0.0, 2.0]. 0.0 = mono, 1.0 = natural stereo, 2.0 = max wide.
      */

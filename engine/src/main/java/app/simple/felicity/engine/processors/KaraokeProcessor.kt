@@ -36,7 +36,7 @@ import java.nio.ByteBuffer
  * @author Hamza417
  */
 @OptIn(UnstableApi::class)
-class KaraokeAudioProcessor : BaseAudioProcessor() {
+class KaraokeProcessor : BaseAudioProcessor() {
 
     @Volatile
     private var isEnabled: Boolean = false

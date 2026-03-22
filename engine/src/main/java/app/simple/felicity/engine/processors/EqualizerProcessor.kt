@@ -3,7 +3,7 @@ package app.simple.felicity.engine.processors
 import androidx.annotation.OptIn
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
-import app.simple.felicity.engine.processors.EqualizerAudioProcessor.Companion.FLAT_THRESHOLD_DB
+import app.simple.felicity.engine.processors.EqualizerProcessor.Companion.FLAT_THRESHOLD_DB
 import app.simple.felicity.engine.utils.PcmUtils
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -49,7 +49,7 @@ import kotlin.math.sin
  * @author Hamza417
  */
 @OptIn(UnstableApi::class)
-class EqualizerAudioProcessor : AudioProcessor {
+class EqualizerProcessor : AudioProcessor {
 
     private var inputFormat: AudioProcessor.AudioFormat = AudioProcessor.AudioFormat.NOT_SET
     private var active = false

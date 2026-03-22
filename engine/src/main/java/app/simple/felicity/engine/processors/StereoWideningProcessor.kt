@@ -26,7 +26,7 @@ import java.nio.ByteOrder
  * @author Hamza417
  */
 @OptIn(UnstableApi::class)
-class StereoWideningAudioProcessor : AudioProcessor {
+class StereoWideningProcessor : AudioProcessor {
 
     private var inputFormat: AudioProcessor.AudioFormat = AudioProcessor.AudioFormat.NOT_SET
     private var active = false

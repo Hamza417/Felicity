@@ -39,7 +39,7 @@ import kotlin.math.abs
  * @author Hamza417
  */
 @OptIn(UnstableApi::class)
-class NightModeAudioProcessor : BaseAudioProcessor() {
+class NightModeProcessor : BaseAudioProcessor() {
 
     @Volatile
     private var isEnabled: Boolean = false
