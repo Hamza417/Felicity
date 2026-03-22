@@ -5,7 +5,7 @@ import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import app.simple.felicity.engine.processors.BassAudioProcessor.Companion.FLAT_THRESHOLD_DB
 import app.simple.felicity.engine.processors.BassAudioProcessor.Companion.SHELF_FREQUENCY_HZ
-import app.simple.felicity.engine.services.PcmUtils
+import app.simple.felicity.engine.utils.PcmUtils
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI
@@ -23,7 +23,7 @@ import kotlin.math.sqrt
  * cut that acts similarly to the bass knob on a traditional stereo amplifier. Gain can be set
  * anywhere in [-12 dB, +12 dB]; at 0 dB the processor takes a zero-cost bypass path.
  *
- * Supported encodings: PCM_16BIT, PCM_24BIT, PCM_32BIT, and PCM_FLOAT via [app.simple.felicity.engine.services.PcmUtils].
+ * Supported encodings: PCM_16BIT, PCM_24BIT, PCM_32BIT, and PCM_FLOAT via [PcmUtils].
  * Filter state is maintained independently per channel to preserve stereo phase coherence.
  * Biquad coefficients are updated atomically on every [applyGain] call.
  *
