@@ -194,6 +194,16 @@ class FelicitySwitch @JvmOverloads constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         disableAncestorClipping()
+        if (!isInEditMode) {
+            ThemeManager.addListener(this)
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        if (!isInEditMode) {
+            ThemeManager.removeListener(this)
+        }
     }
 
     private fun disableAncestorClipping() {
@@ -523,11 +533,15 @@ class FelicitySwitch @JvmOverloads constructor(
     }
 
     fun setTrackOnColor(@ColorInt color: Int) {
-        trackOnColor = color; invalidate()
+        trackOnColor = color
+        if (checked) currentTrackColor = color
+        invalidate()
     }
 
     fun setTrackOffColor(@ColorInt color: Int) {
-        trackOffColor = color; invalidate()
+        trackOffColor = color
+        if (!checked) currentTrackColor = color
+        invalidate()
     }
 
     fun setThumbRingColor(@ColorInt color: Int) {
