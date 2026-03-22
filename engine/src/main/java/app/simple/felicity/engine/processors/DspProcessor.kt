@@ -317,7 +317,7 @@ class DspProcessor(
 
         /**
          * Gain values (in dB) whose absolute value is below this threshold are treated as
-         * flat (0 dB) inside the native engine. Mirrors [EqualizerProcessor.FLAT_THRESHOLD_DB].
+         * flat (0 dB) inside the native engine.
          */
         private const val FLAT_THRESHOLD_DB = 0.001f
     }

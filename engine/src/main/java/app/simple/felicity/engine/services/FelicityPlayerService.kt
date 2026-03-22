@@ -134,9 +134,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // setDirectOutput() and wire the lock-free twin-buffer path without a service bind.
         VisualizerManager.processor = audioProcessorManager.visualizerProcessor
 
-        // Wire the equalizer processor into the manager so gain and enable changes
-        // made via EqualizerManager are forwarded to the live audio pipeline.
-        EqualizerManager.attachProcessor(audioProcessorManager.equalizerProcessor)
+        // Wire the native DSP processor into EqualizerManager so gain, preamp, and enable
+        // changes driven by the UI are forwarded to the live audio pipeline immediately.
+        EqualizerManager.attachProcessor(audioProcessorManager.nativeDspProcessor)
 
         // Initialize the RenderersFactory once.
         renderersFactory = object : DefaultRenderersFactory(this) {
@@ -152,15 +152,14 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 audioProcessorManager.applyTapeSaturationDrive(EqualizerPreferences.getTapeSaturationDrive())
                 audioProcessorManager.applyKaraokeMode(EqualizerPreferences.isKaraokeModeEnabled())
                 audioProcessorManager.applyNightMode(EqualizerPreferences.isNightModeEnabled())
+                // applyEqualizerState covers 10-band EQ, bass, treble, preamp, and enabled flag.
                 audioProcessorManager.applyEqualizerState()
-                audioProcessorManager.applyBass(EqualizerPreferences.getBassDb())
-                audioProcessorManager.applyTreble(EqualizerPreferences.getTrebleDb())
 
                 // Build the processor array dynamically
                 val processors = mutableListOf<AudioProcessor>()
 
                 if (AudioPreferences.isSkipSilenceEnabled()) {
-                    // Trim the digital silence FIRST while the file is perfectly pure
+                    // Trim digital silence first while the stream is uncolored.
                     processors.add(audioProcessorManager.silenceTrimmingProcessor)
                 }
 
@@ -168,15 +167,21 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     processors.add(audioProcessorManager.downmixProcessor)
                 }
 
-                processors.add(audioProcessorManager.equalizerProcessor)       // 10-band graphic EQ on the clean mix
-                processors.add(audioProcessorManager.bassProcessor)             // Low-shelf bass tone control
-                processors.add(audioProcessorManager.trebleProcessor)           // High-shelf treble tone control
-                processors.add(audioProcessorManager.karaokeProcessor)         // Center removal before coloring
-                processors.add(audioProcessorManager.tapeSaturationProcessor)  // Harmonic coloring first
-                processors.add(audioProcessorManager.wideningProcessor)        // Then spatial processing
-                processors.add(audioProcessorManager.balanceProcessor)         // Then channel routing
-                processors.add(audioProcessorManager.nightModeProcessor)       // Dynamic compression last
-                processors.add(audioProcessorManager.visualizerProcessor)      // Spectrum capture on final signal
+                // Vocal removal runs before the EQ/effects chain so center-channel
+                // subtraction is not colored by subsequent tonal processing.
+                processors.add(audioProcessorManager.karaokeProcessor)
+
+                // Unified native DSP: EQ → bass/treble shelves → M/S widening → balance → saturation.
+                // Also feeds the processed mono downmix to the shared FFTContext.
+                processors.add(audioProcessorManager.nativeDspProcessor)
+
+                // Dynamic range compression runs after all tonal/spatial effects so it
+                // can respond to the final loudness of the mix.
+                processors.add(audioProcessorManager.nightModeProcessor)
+
+                // Visualizer always goes last so the spectrum display reflects every
+                // active effect in the chain.
+                processors.add(audioProcessorManager.visualizerProcessor)
 
                 val audioSink = DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(hiresEnabled)

@@ -4,7 +4,7 @@ import app.simple.felicity.engine.managers.EqualizerManager.attachProcessor
 import app.simple.felicity.engine.managers.EqualizerManager.bandGainsFlow
 import app.simple.felicity.engine.managers.EqualizerManager.preampFlow
 import app.simple.felicity.engine.managers.EqualizerManager.resetAllBands
-import app.simple.felicity.engine.processors.EqualizerProcessor
+import app.simple.felicity.engine.processors.NativeDspAudioProcessor
 import app.simple.felicity.preferences.EqualizerPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,23 +13,23 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * Singleton manager for the Felicity 10-band graphic equalizer.
  *
- * Bridges the UI/preference layer and the real-time [EqualizerProcessor] that lives
- * inside the ExoPlayer audio-processor chain. All EQ math now happens inline on ExoPlayer's
- * audio thread inside [EqualizerProcessor.queueInput], so no Android hardware
+ * Bridges the UI/preference layer and the real-time [NativeDspAudioProcessor] that lives
+ * inside the ExoPlayer audio-processor chain. All EQ math runs inline on ExoPlayer's audio
+ * thread inside the native DSP engine, so no Android hardware
  * [android.media.audiofx.Equalizer] effect or audio-session ID is required.
  *
  * Responsibilities:
- *  - Restores all 10-band gains from [EqualizerPreferences] at cold-boot by calling
- *    [attachProcessor] once from the player service.
+ *  - Restores all 10-band gains and preamp from [EqualizerPreferences] at cold-boot by
+ *    calling [attachProcessor] once from the player service.
  *  - Exposes [bandGainsFlow] as a [StateFlow] so the UI can observe live updates
  *    regardless of whether a change came from the UI, a preset loader, or [resetAllBands].
- *  - Delegates every gain/enable mutation to the live [EqualizerProcessor] reference
- *    supplied by the player service via [attachProcessor].
+ *  - Delegates every gain/enable/preamp mutation to the live [NativeDspAudioProcessor]
+ *    reference supplied by the player service via [attachProcessor].
  *
  * Usage:
  * ```kotlin
  * // In FelicityPlayerService.onCreate, after AudioProcessorManager is ready:
- * EqualizerManager.attachProcessor(audioProcessorManager.equalizerProcessor)
+ * EqualizerManager.attachProcessor(audioProcessorManager.nativeDspProcessor)
  *
  * // In the equalizer UI fragment:
  * lifecycleScope.launch {
@@ -42,10 +42,10 @@ import kotlinx.coroutines.flow.asStateFlow
 object EqualizerManager {
 
     /**
-     * The live [EqualizerProcessor] registered by the player service.
-     * All public methods are safe no-ops on the processor side when this is null.
+     * The live [NativeDspAudioProcessor] registered by the player service.
+     * All public methods are safe no-ops when this is null.
      */
-    private var processor: EqualizerProcessor? = null
+    private var processor: NativeDspAudioProcessor? = null
 
     /**
      * Backing mutable flow holding the latest 10-element band-gain array in dB.
@@ -79,21 +79,22 @@ object EqualizerManager {
     // -------------------------------------------------------------------------
 
     /**
-     * Registers the [EqualizerProcessor] that lives inside the ExoPlayer pipeline
-     * and immediately applies all persisted band gains and the enabled state to it.
+     * Registers the [NativeDspAudioProcessor] that lives inside the ExoPlayer pipeline
+     * and immediately applies all persisted band gains, preamp, and the enabled state to it.
      *
      * Call this once in [app.simple.felicity.engine.services.FelicityPlayerService.onCreate]
      * after [AudioProcessorManager] is constructed.
      *
-     * @param equalizerProcessor The processor instance owned by [AudioProcessorManager].
+     * @param nativeDspProcessor The processor instance owned by [AudioProcessorManager].
      */
-    fun attachProcessor(equalizerProcessor: EqualizerProcessor) {
-        processor = equalizerProcessor
+    fun attachProcessor(nativeDspProcessor: NativeDspAudioProcessor) {
+        processor = nativeDspProcessor
         val savedGains = EqualizerPreferences.getAllBandGains()
-        equalizerProcessor.setAllBandGains(savedGains)
-        equalizerProcessor.isEnabled = EqualizerPreferences.isEqEnabled()
+        /** Only the 10 EQ bands are managed here; bass and treble are handled separately. */
+        nativeDspProcessor.setEqBands(savedGains)
+        nativeDspProcessor.eqEnabled = EqualizerPreferences.isEqEnabled()
         val savedPreamp = EqualizerPreferences.getPreampDb()
-        equalizerProcessor.setPreamp(savedPreamp)
+        nativeDspProcessor.setPreamp(savedPreamp)
         _bandGainsFlow.value = savedGains
         _preampFlow.value = savedPreamp
     }
@@ -113,7 +114,7 @@ object EqualizerManager {
 
     /**
      * Sets the gain for a single EQ band, optionally persists it to [EqualizerPreferences],
-     * applies it to the live [EqualizerProcessor], and updates [bandGainsFlow].
+     * applies it to the live [NativeDspAudioProcessor], and updates [bandGainsFlow].
      *
      * @param band    Zero-based band index in [0..9] (31 Hz → 16 kHz).
      * @param gainDb  Gain in dB, clamped to [-15..+15].
@@ -159,9 +160,7 @@ object EqualizerManager {
         return _bandGainsFlow.value[band]
     }
 
-    /**
-     * Returns a snapshot of all 10 band gains in dB from the current [bandGainsFlow] value.
-     */
+    /** Returns a snapshot of all 10 band gains in dB from the current [bandGainsFlow] value. */
     fun getAllGains(): FloatArray = _bandGainsFlow.value.copyOf()
 
     /**
@@ -171,7 +170,7 @@ object EqualizerManager {
     fun resetAllBands() {
         val flat = FloatArray(10)
         EqualizerPreferences.setAllBandGains(flat)
-        processor?.resetAllBands()
+        processor?.resetEqBands()
         _bandGainsFlow.value = flat
     }
 
@@ -187,7 +186,7 @@ object EqualizerManager {
      */
     fun setEnabled(enabled: Boolean) {
         EqualizerPreferences.setEqEnabled(enabled)
-        processor?.isEnabled = enabled
+        processor?.eqEnabled = enabled
     }
 
     /**
@@ -226,8 +225,6 @@ object EqualizerManager {
         setPreamp(db, persist = false)
     }
 
-    /**
-     * Returns the current pre-amplifier gain in dB from [preampFlow].
-     */
+    /** Returns the current pre-amplifier gain in dB from [preampFlow]. */
     fun getPreamp(): Float = _preampFlow.value
 }
