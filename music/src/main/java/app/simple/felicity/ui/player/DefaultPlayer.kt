@@ -8,9 +8,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
 import app.simple.felicity.decorations.helpers.SwipeDownToCloseListener
@@ -207,16 +205,16 @@ class DefaultPlayer : MediaFragment() {
 
         updateEqualizerButtonAlpha(PlayerPreferences.isVisualizerEnabled())
 
-        // Collect real-time spectrum data and push it to the visualizer view.
-        // repeatOnLifecycle(STARTED) automatically stops collection when the fragment
-        // is paused/stopped (off-screen) and resumes when it becomes visible again.
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                VisualizerManager.spectrumFlow.collect { bands ->
-                    binding.visualizer.setBands(bands)
-                }
-            }
-        }
+        // Wire the visualizer view's twin buffers directly to the audio processor so the
+        // audio thread can write FFT magnitudes without any intermediate coroutine hop.
+        // setDirectOutput is a no-op when the processor is not yet available (service not
+        // started), but in practice the service starts before this fragment is shown.
+        VisualizerManager.processor?.setDirectOutput(
+                binding.visualizer.bufferA,
+                binding.visualizer.bufferB,
+                binding.visualizer.isBufferAFront,
+                binding.visualizer
+        )
     }
 
     private fun updateState() {
@@ -256,6 +254,9 @@ class DefaultPlayer : MediaFragment() {
     }
 
     override fun onDestroyView() {
+        // Release the direct twin-buffer connection so the audio thread no longer holds
+        // a WeakReference to the now-destroyed visualizer view.
+        VisualizerManager.processor?.clearDirectOutput()
         super.onDestroyView()
         imagePageAdapter = null
     }

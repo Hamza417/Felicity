@@ -9,15 +9,12 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
-import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.View
 import androidx.core.content.withStyledAttributes
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.BAND_COUNT
 import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.CORNER_RADIUS_FACTOR
-import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.MAX_PARTICLES
-import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.PARTICLE_FADE_RATE
 import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.WAVE_SECONDARY_SCALE
 import app.simple.felicity.manager.SharedPreferences.registerListener
 import app.simple.felicity.manager.SharedPreferences.unregisterListener
@@ -28,6 +25,7 @@ import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.themes.Theme
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -37,22 +35,27 @@ import kotlin.random.Random
  * vertical frequency bars ([VisualizerMode.BARS]) and a fluid water-wave fill
  * ([VisualizerMode.WAVE]).
  *
- * In bars mode, [BAND_COUNT] vertical bars are animated in real time from bass
- * (left) to treble (right) with peak-hold caps and an optional ash-particle emitter.
- * In wave mode, the same spectrum data drives a smooth filled-wave curve anchored
- * at the view's physical bottom using midpoint quadratic Bézier interpolation.
+ * Audio data arrives via the lock-free twin-buffer system: [bufferA] and [bufferB] are
+ * pre-allocated globally on this class, and [isBufferAFront] is an [AtomicBoolean] that
+ * tracks which buffer the UI is currently reading. The audio thread writes FFT-derived
+ * band magnitudes into the back buffer via JNI, atomically promotes it to front, and
+ * calls [postInvalidate] — no coroutines, no SharedFlow, and no intermediate queues.
  *
- * [maxRenderHeightFraction] (0.0–1.0) controls how much of the view height is
- * available for bar or wave growth. Bars always grow upward from the physical
- * view bottom, so this is a pure height cap rather than a start-point offset.
+ * In [onDraw], the front buffer is read once and the AGC (fast-attack / slow-release) is
+ * applied inline to derive per-band targets. Those targets are then smoothed into
+ * [currentBands] with configurable rise/fall speeds before being rendered.
  *
- * Incoming RMS bands are normalized with a fast-attack/slow-release AGC, passed
- * through a square-root perceptual curve, and delivered after a configurable
- * latency-compensation delay so the display stays in sync with audible output.
+ * In bars mode, [BAND_COUNT] vertical bars are animated in real time from bass (left) to
+ * treble (right) with peak-hold caps and an optional ash-particle emitter. In wave mode,
+ * the same spectrum data drives a smooth filled-wave curve anchored at the view's
+ * physical bottom using midpoint quadratic Bézier interpolation.
  *
- * Colors default to the current theme accent and update automatically on accent
- * changes. The active rendering mode and enabled state are read from
- * [PlayerPreferences] and react to live preference changes while the view is attached.
+ * [maxRenderHeightFraction] (0.0–1.0) controls how much of the view height is available
+ * for bar or wave growth.
+ *
+ * Colors default to the current theme accent and update automatically on accent changes.
+ * The active rendering mode and enabled state are read from [PlayerPreferences] and react
+ * to live preference changes while the view is attached.
  *
  * @author Hamza417
  */
@@ -83,13 +86,37 @@ class FelicityVisualizer @JvmOverloads constructor(
             invalidate()
         }
 
+    // ── Twin-buffer state (written by audio thread, read by UI thread) ────────
+
+    /**
+     * Buffer A of the lock-free twin-buffer pair.
+     *
+     * The audio thread writes directly into whichever of [bufferA] / [bufferB] is
+     * currently the back buffer (determined by [isBufferAFront]). The UI thread reads
+     * only from the front buffer inside [onDraw]. No synchronization primitives are
+     * needed because the [AtomicBoolean] swap guarantees that writer and reader never
+     * touch the same buffer simultaneously.
+     */
+    val bufferA = FloatArray(BAND_COUNT)
+
+    /**
+     * Buffer B of the lock-free twin-buffer pair.
+     * See [bufferA] for the full protocol description.
+     */
+    val bufferB = FloatArray(BAND_COUNT)
+
+    /**
+     * Tracks which buffer the UI is currently reading.
+     * When true, [bufferA] is the front (readable) buffer and [bufferB] is the back
+     * (writable) buffer — and vice versa when false. Toggled atomically by the audio
+     * thread after each successful write.
+     */
+    val isBufferAFront = AtomicBoolean(true)
+
     // ── Band state ────────────────────────────────────────────────────────────
 
     /** Current smoothed magnitude for each band (the value actually rendered). */
     private val currentBands = FloatArray(BAND_COUNT)
-
-    /** Target magnitude for each band, drained from the delay queue. */
-    private val targetBands = FloatArray(BAND_COUNT)
 
     /** Highest magnitude reached; the peak cap tracks this value. */
     private val peakBands = FloatArray(BAND_COUNT)
@@ -104,54 +131,9 @@ class FelicityVisualizer @JvmOverloads constructor(
 
     /**
      * Smoothed peak across all bands used as the AGC reference.
-     * Fast attack, slow release — the full view height is always used meaningfully
-     * without any band ever exceeding it.
+     * Fast attack, slow release — updated once per [onDraw] call from the front buffer.
      */
     private var smoothedMax = MIN_SMOOTHED_MAX
-
-    // ── Latency delay queue ───────────────────────────────────────────────────
-
-    /**
-     * Holds normalized band snapshots with a [SystemClock.elapsedRealtime] deadline.
-     * A snapshot is only applied to [targetBands] once the deadline has passed,
-     * compensating for the hardware audio output buffer latency so the bars
-     * move in sync with what the user actually hears.
-     */
-    private class TimedBands(val deadline: Long, val bands: FloatArray)
-
-    /**
-     * A single floating particle belonging to the ash/snow emitter.
-     *
-     * All fields are mutable so the particle can be updated in-place each frame
-     * without additional heap allocation.
-     */
-    private class Particle {
-        var x: Float = 0f
-        var y: Float = 0f
-
-        /** Horizontal drift velocity in pixels per frame. */
-        var vx: Float = 0f
-
-        /** Vertical velocity in pixels per frame — negative value means upward. */
-        var vy: Float = 0f
-
-        /** Current opacity in the [0..1] range. Multiplied by [PARTICLE_FADE_RATE] each frame. */
-        var alpha: Float = 1f
-
-        /** Radius of the particle circle in pixels. */
-        var radius: Float = 2f
-
-        /** Per-particle Brownian turbulence strength coefficient. */
-        var turbulence: Float = 0.2f
-    }
-
-    private val delayQueue = ArrayDeque<TimedBands>()
-
-    /**
-     * Milliseconds added to each band snapshot's timestamp before it is applied.
-     * Increase this if bars still jump ahead of the beat on your device.
-     */
-    var latencyMs: Long = DEFAULT_LATENCY_MS
 
     // ── Drawing ───────────────────────────────────────────────────────────────
 
@@ -188,12 +170,6 @@ class FelicityVisualizer @JvmOverloads constructor(
     private var barColors: IntArray = buildAccentColors()
 
     /**
-     * Whether an animation frame is already queued via [postInvalidateOnAnimation].
-     * Prevents duplicate scheduling when [setBands] is called faster than the display refreshes.
-     */
-    private var animating = false
-
-    /**
      * Corner radius expressed as a fraction of one bar's width [0..0.5].
      * Derived from [AppearancePreferences.getCornerRadius] scaled by [CORNER_RADIUS_FACTOR]
      * and updated live via [prefsListener].
@@ -203,8 +179,7 @@ class FelicityVisualizer @JvmOverloads constructor(
     /**
      * Listens for live SharedPreferences changes.
      * Handles the app corner-radius slider, the visualizer mode switch, and the
-     * visualizer enabled toggle so the view self-manages its own rendering state
-     * without requiring external coordination from the host fragment.
+     * visualizer enabled toggle so the view self-manages its own rendering state.
      */
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
@@ -218,9 +193,6 @@ class FelicityVisualizer @JvmOverloads constructor(
             PlayerPreferences.VISUALIZER_ENABLED -> {
                 visibility = if (PlayerPreferences.isVisualizerEnabled()) VISIBLE else GONE
             }
-            VisualizerPreferences.VISUALIZER_LATENCY -> {
-                latencyMs = VisualizerPreferences.getVisualizerLatency()
-            }
             VisualizerPreferences.PARTICLES_ENABLED -> {
                 particlesEnabled = VisualizerPreferences.areParticlesEnabled()
             }
@@ -231,9 +203,7 @@ class FelicityVisualizer @JvmOverloads constructor(
 
     /**
      * Controls whether the ash-particle emitter is active.
-     *
      * All live particles are cleared immediately when set to `false`.
-     * Defaults to `false` — enable during testing or when desired.
      */
     var particlesEnabled: Boolean = false
         set(value) {
@@ -253,6 +223,21 @@ class FelicityVisualizer @JvmOverloads constructor(
         color = Color.WHITE
     }
 
+    /**
+     * A single floating particle belonging to the ash/snow emitter.
+     * All fields are mutable so the particle can be updated in-place each frame
+     * without additional heap allocation.
+     */
+    private class Particle {
+        var x: Float = 0f
+        var y: Float = 0f
+        var vx: Float = 0f
+        var vy: Float = 0f
+        var alpha: Float = 1f
+        var radius: Float = 2f
+        var turbulence: Float = 0.2f
+    }
+
     // ── Bar path (top-only rounded corners) ──────────────────────────────────
 
     /** Reusable [Path] for rendering bars with rounded top corners and a flat base. */
@@ -260,9 +245,7 @@ class FelicityVisualizer @JvmOverloads constructor(
 
     /**
      * Eight-element radii array for [Path.addRoundRect].
-     *
-     * Indices 0–3 carry the top-left and top-right radii; indices 4–7 are always 0
-     * so the base corners of every bar remain flat regardless of the corner preference.
+     * Indices 0–3 carry the top radii; indices 4–7 are always 0 so bar bases stay flat.
      */
     private val barCornerRadii = FloatArray(8)
 
@@ -275,13 +258,6 @@ class FelicityVisualizer @JvmOverloads constructor(
      * Maximum bar or wave render height expressed as a fraction of the view's
      * measured height, in the range [0.0..1.0].
      *
-     * A value of `1.0` (the default) allows bars and waves to grow up to the full
-     * view height. A value of `0.5` limits them to the lower 50% of the view.
-     *
-     * Bars always grow upward from the physical bottom of the view; this property
-     * caps only how tall they can become, so it is a pure height-limit rather than
-     * a start-point offset. The wave fill is similarly anchored at the view's bottom.
-     *
      * Can also be configured via the `vizMaxRenderHeight` XML attribute.
      */
     var maxRenderHeightFraction: Float = 1f
@@ -291,12 +267,9 @@ class FelicityVisualizer @JvmOverloads constructor(
         }
 
     init {
-        // The visualizer is a transparent overlay — it must never draw an opaque background
-        // and must not intercept touch events so the underlying pager remains scrollable.
         setBackgroundColor(Color.TRANSPARENT)
         isClickable = false
         isFocusable = false
-        // Hardware layer enables proper alpha compositing when rendered over album art.
         setLayerType(LAYER_TYPE_HARDWARE, null)
         if (!isInEditMode && attrs != null) {
             context.withStyledAttributes(attrs, R.styleable.FelicityVisualizer, defStyleAttr, 0) {
@@ -311,50 +284,33 @@ class FelicityVisualizer @JvmOverloads constructor(
     // ── Public API ────────────────────────────────────────────────────────────
 
     /**
-     * Delivers a new spectrum snapshot to the visualizer.
+     * Delivers a new spectrum snapshot via the legacy (non-direct) path.
      *
-     * The bands are normalized with AGC + square-root compression and stored in the
-     * delay queue. They will be applied to [targetBands] once [latencyMs] has elapsed,
-     * keeping the display in sync with audible playback.
+     * Writes [bands] directly into the current back buffer, atomically promotes it
+     * to front, and calls [postInvalidate]. The AGC and normalization are applied
+     * lazily in [onDraw] on the next frame, keeping this call allocation-free.
      *
-     * @param bands Raw RMS magnitudes — any positive float scale is accepted.
+     * Prefer the direct twin-buffer path ([bufferA], [bufferB], [isBufferAFront])
+     * for zero-overhead audio-thread writes. This method is retained for any caller
+     * that cannot participate in the JNI direct path.
+     *
+     * @param bands Raw FFT-derived band magnitudes in any positive float scale.
      *              Length should equal [BAND_COUNT]; extra elements are silently ignored.
      */
     fun setBands(bands: FloatArray) {
         val len = minOf(bands.size, BAND_COUNT)
-
-        // Fast-attack / slow-release AGC.
-        var frameMax = MIN_SMOOTHED_MAX
-        for (i in 0 until len) {
-            if (bands[i] > frameMax) frameMax = bands[i]
-        }
-        smoothedMax = if (frameMax > smoothedMax) {
-            smoothedMax + (frameMax - smoothedMax) * AGC_ATTACK
-        } else {
-            (smoothedMax + (frameMax - smoothedMax) * AGC_RELEASE).coerceAtLeast(MIN_SMOOTHED_MAX)
-        }
-
-        val invMax = 1f / smoothedMax
-        val normalized = FloatArray(BAND_COUNT)
-        for (i in 0 until len) {
-            val linear = (bands[i] * invMax).coerceIn(0f, 1f)
-            // Noise floor gate: bands that are just sensor/FFT leakage noise are zeroed
-            // out so a silent bass region doesn't feather into adjacent zones.
-            normalized[i] = if (linear < NOISE_FLOOR) 0f else sqrt(linear)
-        }
-
-        delayQueue.addLast(TimedBands(SystemClock.elapsedRealtime() + latencyMs, normalized))
-        scheduleRedraw()
+        val back = if (isBufferAFront.get()) bufferB else bufferA
+        System.arraycopy(bands, 0, back, 0, len)
+        if (len < BAND_COUNT) back.fill(0f, len, BAND_COUNT)
+        isBufferAFront.set(!isBufferAFront.get())
+        postInvalidate()
     }
 
     /**
      * Replaces the bar gradient color stops.
      *
-     * The array must contain at least two ARGB colors; they are spread evenly across
-     * the full width of the view (bass on the left, treble on the right).
-     * Pass an empty array to revert to the current theme accent colors.
-     *
-     * @param colors ARGB color integers for the gradient stops.
+     * @param colors ARGB color integers for the gradient stops (at least two).
+     *               Pass an empty array to revert to the current theme accent colors.
      */
     fun setColors(colors: IntArray) {
         barColors = if (colors.size >= 2) colors else buildAccentColors()
@@ -372,37 +328,15 @@ class FelicityVisualizer @JvmOverloads constructor(
         invalidate()
     }
 
-    /** Animates all bars and peaks down to zero. */
+    /** Animates all bars and peaks down to zero by zeroing the back buffer and swapping. */
     fun clear() {
-        targetBands.fill(0f)
-        scheduleRedraw()
+        val back = if (isBufferAFront.get()) bufferB else bufferA
+        back.fill(0f)
+        isBufferAFront.set(!isBufferAFront.get())
+        postInvalidate()
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────────
-
-    private fun scheduleRedraw() {
-        if (!animating) {
-            animating = true
-            postInvalidateOnAnimation()
-        }
-    }
-
-    /**
-     * Drains all delay-queue entries whose deadline has passed, keeping only the most
-     * recent one as the new [targetBands]. Returns true if targets were updated.
-     */
-    private fun drainQueueIntoTargets(): Boolean {
-        val now = SystemClock.elapsedRealtime()
-        var latest: FloatArray? = null
-        while (delayQueue.isNotEmpty() && delayQueue.first().deadline <= now) {
-            latest = delayQueue.removeFirst().bands
-        }
-        if (latest != null) {
-            System.arraycopy(latest, 0, targetBands, 0, BAND_COUNT)
-            return true
-        }
-        return false
-    }
 
     private fun buildAccentColors(): IntArray {
         return if (isInEditMode) {
@@ -446,10 +380,6 @@ class FelicityVisualizer @JvmOverloads constructor(
         if (width == 0 || height == 0) return
         if (cachedWidth != width) rebuildGradient(width)
 
-        drainQueueIntoTargets()
-
-        // Maximum pixel height bars or waves may reach. They always grow upward from
-        // viewBottom, so this is purely a height cap, not a y-coordinate offset.
         val maxBarHeight = height * maxRenderHeightFraction.coerceIn(0f, 1f)
         val viewBottom = height.toFloat()
 
@@ -459,10 +389,28 @@ class FelicityVisualizer @JvmOverloads constructor(
         val cornerRadius = (cornerRadiusFraction * barWidth).coerceIn(0f, barWidth / 2f)
         val capPillHeight = (barWidth * 0.3f).coerceAtLeast(3f)
 
-        // Smooth every band toward its current target regardless of rendering mode.
-        var stillMoving = delayQueue.isNotEmpty()
+        // Read the current front buffer once to keep the snapshot consistent across the
+        // whole frame even if the audio thread swaps buffers mid-draw.
+        val frontBuffer = if (isBufferAFront.get()) bufferA else bufferB
+
+        // Fast-attack / slow-release AGC derived from the front buffer.
+        var frameMax = MIN_SMOOTHED_MAX
         for (i in 0 until BAND_COUNT) {
-            val target = targetBands[i]
+            if (frontBuffer[i] > frameMax) frameMax = frontBuffer[i]
+        }
+        smoothedMax = if (frameMax > smoothedMax) {
+            smoothedMax + (frameMax - smoothedMax) * AGC_ATTACK
+        } else {
+            (smoothedMax + (frameMax - smoothedMax) * AGC_RELEASE).coerceAtLeast(MIN_SMOOTHED_MAX)
+        }
+        val invMax = 1f / smoothedMax
+
+        // Smooth every band toward the AGC-normalized front-buffer target.
+        var stillMoving = false
+        for (i in 0 until BAND_COUNT) {
+            val linear = (frontBuffer[i] * invMax).coerceIn(0f, 1f)
+            // Noise floor gate: suppress FFT leakage below 1.5% of the normalized peak.
+            val target = if (linear < NOISE_FLOOR) 0f else sqrt(linear)
             val current = currentBands[i]
             val speed = if (target > current) RISE_SPEED else FALL_SPEED
             val next = (current + (target - current) * speed).coerceIn(0f, 1f)
@@ -480,8 +428,6 @@ class FelicityVisualizer @JvmOverloads constructor(
 
         if (stillMoving) {
             postInvalidateOnAnimation()
-        } else {
-            animating = false
         }
     }
 
@@ -593,12 +539,6 @@ class FelicityVisualizer @JvmOverloads constructor(
      * a primary wave at full opacity and a secondary wave at [WAVE_SECONDARY_SCALE]
      * amplitude with reduced opacity, creating a layered water-depth effect.
      *
-     * The wave outline is built with midpoint quadratic Bézier interpolation so
-     * the curve passes smoothly through every band's amplitude without requiring
-     * a cubic spline solve. Both layers share the same horizontal accent gradient
-     * as the bars mode for visual consistency. The wave fill is always anchored
-     * at [viewBottom] and limited to [maxBarHeight] pixels upward.
-     *
      * Returns whether any band is still animating.
      */
     private fun drawWave(
@@ -639,17 +579,8 @@ class FelicityVisualizer @JvmOverloads constructor(
     }
 
     /**
-     * Populates [path] with a filled wave shape whose top edge passes smoothly
-     * through the provided [by] y-coordinates at the corresponding [bx] x-centers.
-     *
-     * The left and right edge gaps (between the view boundary and the outermost
-     * band centers) are filled with a vertical line at the respective edge band's
-     * amplitude so the wave always covers the full view width flush to both sides.
-     *
-     * Each interior segment is drawn with a midpoint quadratic Bézier that uses the
-     * current band as a control point and the midpoint between consecutive band
-     * centers as the anchor — this gives C1-continuous smooth curves through all data
-     * points without any matrix solve.
+     * Populates [path] with a filled wave shape whose top edge passes smoothly through
+     * the provided [by] y-coordinates using midpoint quadratic Bézier interpolation.
      *
      * @param path       Reusable [Path] that is reset before use.
      * @param bx         X-center coordinate for each band (length = [BAND_COUNT]).
@@ -682,10 +613,6 @@ class FelicityVisualizer @JvmOverloads constructor(
     /**
      * Spawns a new [Particle] at the given canvas coordinates.
      *
-     * The particle receives randomized velocity, size, initial alpha, and turbulence
-     * coefficient to produce the varied diffused-ash appearance. If [MAX_PARTICLES]
-     * is already reached the oldest particle is evicted before the new one is inserted.
-     *
      * @param x Horizontal center of the emission point in canvas pixels.
      * @param y Vertical coordinate of the emission point in canvas pixels.
      */
@@ -712,10 +639,8 @@ class FelicityVisualizer @JvmOverloads constructor(
             ThemeManager.addListener(this)
             registerListener(prefsListener)
             cornerRadiusFraction = computeCornerFraction()
-            // Restore persisted mode and enabled state immediately.
             applyModePreferences()
             visibility = if (PlayerPreferences.isVisualizerEnabled()) VISIBLE else GONE
-            latencyMs = VisualizerPreferences.getVisualizerLatency()
             particlesEnabled = VisualizerPreferences.areParticlesEnabled()
             capPaint.color = ThemeManager.accent.primaryAccentColor
         }
@@ -725,7 +650,6 @@ class FelicityVisualizer @JvmOverloads constructor(
         super.onDetachedFromWindow()
         ThemeManager.removeListener(this)
         unregisterListener(prefsListener)
-        delayQueue.clear()
         particles.clear()
     }
 
@@ -748,17 +672,13 @@ class FelicityVisualizer @JvmOverloads constructor(
     }
 
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
-        // The bars use accent colors, not theme background colors — no action needed.
+        // Bars use accent colors, not theme background colors — no action needed.
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
     /**
      * Computes the corner radius as a fraction of bar width from the current app preference.
-     *
-     * [AppearancePreferences.getCornerRadius] returns a value in [1..80]; dividing by
-     * [AppearancePreferences.MAX_CORNER_RADIUS] normalizes it to (0..1), which is then
-     * multiplied by [CORNER_RADIUS_FACTOR] so the corners look proportional to the narrow bars.
      */
     private fun computeCornerFraction(): Float {
         if (isInEditMode) return 0.35f
@@ -780,11 +700,11 @@ class FelicityVisualizer @JvmOverloads constructor(
 
         /**
          * Gravity added to a cap's downward velocity each frame while it is falling.
-         * Normalized units (0..1 per frame²), so the cap accelerates like a physical object.
+         * Normalized units (0..1 per frame²).
          */
         private const val GRAVITY = 0.0018f
 
-        /** Terminal velocity cap for the falling peak pill to prevent it from teleporting. */
+        /** Terminal velocity cap for the falling peak pill. */
         private const val MAX_PEAK_VELOCITY = 0.04f
 
         /** Frames the peak cap holds its highest position before gravity starts. */
@@ -811,14 +731,6 @@ class FelicityVisualizer @JvmOverloads constructor(
          * FFT-leakage noise (sub-1.5% of peak) is suppressed.
          */
         private const val NOISE_FLOOR = 0.015f
-
-        /**
-         * Default latency compensation in milliseconds.
-         * Audio data passes through the ExoPlayer write buffer and hardware DAC buffers
-         * before reaching the speakers, so the visualizer needs this delay to stay in sync.
-         * Tune via [latencyMs] if your device's output latency differs.
-         */
-        const val DEFAULT_LATENCY_MS = 150L
 
         /**
          * Scale factor applied to the normalized app corner radius when mapping it to bar width.
@@ -856,9 +768,7 @@ class FelicityVisualizer @JvmOverloads constructor(
 
         /**
          * Amplitude scale factor for the secondary (depth) wave layer in [VisualizerMode.WAVE].
-         * At 0.6 the background wave reaches 60% of the primary wave's height, providing
-         * a visually distinct depth layer that reinforces the water-wave appearance.
          */
-        private const val WAVE_SECONDARY_SCALE = 0.6f
+        const val WAVE_SECONDARY_SCALE = 0.6f
     }
 }

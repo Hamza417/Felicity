@@ -37,7 +37,6 @@ import app.simple.felicity.engine.managers.AudioProcessorManager
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.engine.notifications.PlaybackErrorNotifier
-import app.simple.felicity.engine.processors.VisualizerAudioProcessor
 import app.simple.felicity.manager.SharedPreferences.initRegisterSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AudioPreferences
@@ -131,14 +130,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         initRegisterSharedPreferenceChangeListener(applicationContext)
         playbackErrorNotifier = PlaybackErrorNotifier(applicationContext)
 
-        // Route spectrum data from the audio thread to the UI-facing VisualizerManager.
-        // VisualizerManager.emit() dispatches to the main thread internally, so this
-        // listener is safe to call from the ExoPlayer audio thread.
-        audioProcessorManager.visualizerProcessor.setListener(object : VisualizerAudioProcessor.VisualizerListener {
-            override fun onSpectrumDataCaptured(bands: FloatArray) {
-                VisualizerManager.emit(bands)
-            }
-        })
+        // Expose the processor via VisualizerManager so the player fragment can call
+        // setDirectOutput() and wire the lock-free twin-buffer path without a service bind.
+        VisualizerManager.processor = audioProcessorManager.visualizerProcessor
 
         // Wire the equalizer processor into the manager so gain and enable changes
         // made via EqualizerManager are forwarded to the live audio pipeline.
@@ -895,6 +889,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // Detach the equalizer processor reference before releasing the player so the
         // manager does not hold a stale reference after teardown.
         EqualizerManager.detachProcessor()
+
+        // Clear the visualizer processor reference so no stale direct-output connection
+        // remains after the service has been destroyed.
+        VisualizerManager.processor = null
 
         mediaSession?.run {
             player.release()

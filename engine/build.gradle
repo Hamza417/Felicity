@@ -12,6 +12,22 @@ android {
     buildFeatures {
         buildConfig true
     }
+
+    defaultConfig {
+        externalNativeBuild {
+            cmake {
+                cppFlags ""
+            }
+        }
+    }
+
+    ndkVersion "29.0.14206865"
+
+    externalNativeBuild {
+        cmake {
+            path = "src/main/jni/CMakeLists.txt"
+        }
+    }
 }
 
 dependencies {
@@ -20,10 +36,10 @@ dependencies {
     implementation project(':preferences')
     implementation project(':repository')
 
-    implementation "androidx.media3:media3-exoplayer:1.9.2"
-    implementation "androidx.media3:media3-ui:1.9.2"
-    implementation "androidx.media3:media3-common:1.9.2"
-    implementation "androidx.media3:media3-session:1.9.2"
+    implementation "androidx.media3:media3-exoplayer:1.9.3"
+    implementation "androidx.media3:media3-ui:1.9.3"
+    implementation "androidx.media3:media3-common:1.9.3"
+    implementation "androidx.media3:media3-session:1.9.3"
 
     implementation 'org.jellyfin.media3:media3-ffmpeg-decoder:1.9.0+1'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.10.2'
