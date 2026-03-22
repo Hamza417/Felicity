@@ -23,6 +23,7 @@ import app.simple.felicity.manager.SharedPreferences.registerListener
 import app.simple.felicity.manager.SharedPreferences.unregisterListener
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.PlayerPreferences
+import app.simple.felicity.preferences.VisualizerPreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
@@ -211,15 +212,17 @@ class FelicityVisualizer @JvmOverloads constructor(
                 cornerRadiusFraction = computeCornerFraction()
                 invalidate()
             }
-            PlayerPreferences.VISUALIZER_MODE -> {
-                mode = if (PlayerPreferences.getVisualizerMode() == PlayerPreferences.VISUALIZER_MODE_WAVE) {
-                    VisualizerMode.WAVE
-                } else {
-                    VisualizerMode.BARS
-                }
+            VisualizerPreferences.VISUALIZER_TYPE -> {
+                applyModePreferences()
             }
             PlayerPreferences.VISUALIZER_ENABLED -> {
                 visibility = if (PlayerPreferences.isVisualizerEnabled()) VISIBLE else GONE
+            }
+            VisualizerPreferences.VISUALIZER_LATENCY -> {
+                latencyMs = VisualizerPreferences.getVisualizerLatency()
+            }
+            VisualizerPreferences.PARTICLES_ENABLED -> {
+                particlesEnabled = VisualizerPreferences.areParticlesEnabled()
             }
         }
     }
@@ -710,12 +713,11 @@ class FelicityVisualizer @JvmOverloads constructor(
             registerListener(prefsListener)
             cornerRadiusFraction = computeCornerFraction()
             // Restore persisted mode and enabled state immediately.
-            mode = if (PlayerPreferences.getVisualizerMode() == PlayerPreferences.VISUALIZER_MODE_WAVE) {
-                VisualizerMode.WAVE
-            } else {
-                VisualizerMode.BARS
-            }
+            applyModePreferences()
             visibility = if (PlayerPreferences.isVisualizerEnabled()) VISIBLE else GONE
+            latencyMs = VisualizerPreferences.getVisualizerLatency()
+            particlesEnabled = VisualizerPreferences.areParticlesEnabled()
+            capPaint.color = ThemeManager.accent.primaryAccentColor
         }
     }
 
@@ -725,6 +727,14 @@ class FelicityVisualizer @JvmOverloads constructor(
         unregisterListener(prefsListener)
         delayQueue.clear()
         particles.clear()
+    }
+
+    private fun applyModePreferences() {
+        mode = if (VisualizerPreferences.getVisualizerType() == VisualizerPreferences.TYPE_WAVE) {
+            VisualizerMode.WAVE
+        } else {
+            VisualizerMode.BARS
+        }
     }
 
     // ── ThemeChangedListener ──────────────────────────────────────────────────

@@ -283,4 +283,7 @@
     <string name="activity">Activity</string>
     <string name="general">General</string>
     <string name="files">Files</string>
+    <string name="style">Style</string>
+    <string name="latency">Latency</string>
+    <string name="particles">Particles</string>
 </resources>

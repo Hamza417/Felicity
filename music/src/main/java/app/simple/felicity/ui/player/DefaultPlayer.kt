@@ -17,6 +17,7 @@ import app.simple.felicity.decorations.helpers.SwipeDownToCloseListener
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.pager.ImagePageAdapter
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
+import app.simple.felicity.dialogs.player.VisualizerConfig.Companion.showVisualizerConfig
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
@@ -26,7 +27,6 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.TextViewUtils.setTypeWriting
-import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.panels.Lyrics
 import app.simple.felicity.ui.panels.PlayingQueue
@@ -200,15 +200,8 @@ class DefaultPlayer : MediaFragment() {
             updateEqualizerButtonAlpha(newEnabled)
         }
 
-        // Long-pressing the position counter cycles the visualizer rendering mode
-        // between the bar-spectrum and fluid water-wave styles.
-        binding.count.setOnLongClickListener {
-            val newMode = if (PlayerPreferences.getVisualizerMode() == PlayerPreferences.VISUALIZER_MODE_BARS) {
-                PlayerPreferences.VISUALIZER_MODE_WAVE
-            } else {
-                PlayerPreferences.VISUALIZER_MODE_BARS
-            }
-            PlayerPreferences.setVisualizerMode(newMode)
+        binding.visualizerButton.setOnLongClickListener {
+            childFragmentManager.showVisualizerConfig()
             true
         }
 
@@ -224,9 +217,6 @@ class DefaultPlayer : MediaFragment() {
                 }
             }
         }
-
-        binding.visualizer.setCapColor(ThemeManager.accent.primaryAccentColor)
-        binding.visualizer.particlesEnabled = true
     }
 
     private fun updateState() {
