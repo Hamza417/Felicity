@@ -33,11 +33,9 @@
         android:layout_width="match_parent"
         android:layout_height="1px" />
 
-    <ViewFlipper
+    <app.simple.felicity.decorations.views.FelicityViewFlipper
         android:id="@+id/view_flipper"
         android:layout_width="match_parent"
-        android:inAnimation="@anim/scale_in"
-        android:outAnimation="@anim/scale_out"
         android:layout_height="match_parent">
 
         <include
@@ -48,7 +46,11 @@
             android:id="@+id/speaker_screen"
             layout="@layout/screen_speakers" />
 
-    </ViewFlipper>
+        <include
+            android:id="@+id/reverb_screen"
+            layout="@layout/screen_reverb" />
+
+    </app.simple.felicity.decorations.views.FelicityViewFlipper>
 
 
 </app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>

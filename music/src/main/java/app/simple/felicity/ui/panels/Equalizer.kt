@@ -47,6 +47,7 @@ class Equalizer : MediaFragment() {
         binding.equalizerScreen.equalizerSwitch.isChecked = EqualizerPreferences.isEqEnabled()
         updateEqualizerEnabledState(EqualizerPreferences.isEqEnabled(), false)
 
+
         binding.equalizerScreen.equalizerSwitch.setOnCheckedChangeListener { _, isChecked ->
             EqualizerPreferences.setEqEnabled(isChecked)
             updateEqualizerEnabledState(isChecked)
@@ -70,14 +71,22 @@ class Equalizer : MediaFragment() {
 
         binding.panelGroup.setButtons(
                 listOf(
-                        Button(iconResId = R.drawable.ic_equalizer_16dp),
+                        Button(iconResId = R.drawable.ic_tune_16dp),
                         Button(iconResId = R.drawable.ic_knob_16dp),
+                        Button(iconResId = R.drawable.ic_speaker_16dp)
                 )
         )
 
         binding.panelGroup.setSelectedIndex(initialScreen, animate = false, notifyListener = false)
+
+        // Sync the button group when the user taps a panel button.
         binding.panelGroup.setOnButtonSelectedListener { index ->
             binding.viewFlipper.displayedChild = index
+        }
+
+        // Sync the button group when the user swipes between screens.
+        binding.viewFlipper.setOnScreenChangedListener { index ->
+            binding.panelGroup.setSelectedIndex(index, animate = true, notifyListener = false)
         }
     }
 
