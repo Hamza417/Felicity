@@ -16,7 +16,8 @@ FetchContent_MakeAvailable(pffft)
 
 # JNI bridge code
 add_library(felicity_audio_engine SHARED
-            visualizer-fft.cpp)
+            visualizer-fft.cpp
+            dsp-engine.cpp)
 
 # Explicitly add pffft's source root so that #include "pffft.h" resolves
 # correctly regardless of how the PFFFT::PFFFT target exposes its headers.

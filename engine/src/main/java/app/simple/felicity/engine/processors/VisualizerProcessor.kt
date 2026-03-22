@@ -283,6 +283,17 @@ class VisualizerProcessor : BaseAudioProcessor() {
         }
     }
 
+    // Native handle accessor
+
+    /**
+     * Returns the opaque native pointer to the underlying [FFTContext].
+     *
+     * Intended for use by [DspProcessor] only — the DSP engine binds to this context
+     * at creation time so that the visualizer spectrum always reflects the post-FX signal.
+     * Any caller other than [DspProcessor] must treat the returned value as opaque.
+     */
+    internal fun getNativeHandle(): Long = nativeHandle
+
     // JNI declarations
 
     /**
