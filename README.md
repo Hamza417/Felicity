@@ -93,6 +93,17 @@ This feature is list is not exhaustive and only main features are listed.
 
 ... and more features will be updated here as development progresses.
 
+#### Development Roadmap
+
+The development release sequence will be like
+
+- Preview release (preview is made available to the early users and have the app available to try in the public domain, there are 10 previews planned).
+- Alpha release (alpha testing will be done after almost every feature I have planned has been added)
+- Beta release (app is stable enough to be moved to pre-release stage, this stage should be where app is released on various app stores.)
+- Release (app should be released for everyone)
+
+F-Droid release is currently not sure, the Glide library is breaking the reproducible build and I have submitted a PR to fix that but it is not been adressed yet at the time of writing this. See bumptech/glide#5657
+
 ## Screenshots
 
 Last Updated: 16 March 2026
