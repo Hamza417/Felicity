@@ -9,38 +9,54 @@ import java.io.File
 /**
  * Core cover art loading functionality shared across all media types.
  * Provides common methods for loading external and embedded artwork.
+ *
+ * @author Hamza417
  */
 internal object CoverLoader {
     private const val TAG = "CoverLoader"
     private const val ALBUM_ART_PATH = "/album_art.png"
 
     /**
-     * Common album art filenames to check in audio directories.
+     * Pre-compiled regex for sanitizing names into filesystem-safe filenames.
+     * Compiled once at class initialization to avoid repeated compilation overhead.
+     */
+    private val SANITIZE_REGEX = Regex("[^a-zA-Z0-9.-]")
+
+    /**
+     * Hardcoded list of the most common album art filenames used by music rippers,
+     * media players, and tagging tools.  Ordered by real-world prevalence so the
+     * most likely match is found with the fewest [File.exists] calls.
      */
     private val COMMON_ARTWORK_NAMES = listOf(
-            "folder.jpg", "folder.png",
-            "cover.jpg", "cover.png",
-            "album.jpg", "album.png",
-            "front.jpg", "front.png",
-            "albumart.jpg", "albumart.png",
-            "AlbumArt.jpg", "AlbumArt.png",
-            "Folder.jpg", "Folder.png",
-            "Cover.jpg", "Cover.png"
+            "folder.jpg",    // Most common — Windows Media Player, MusicBrainz Picard
+            "cover.jpg",     // beets, MusicBrainz Picard alternate
+            "front.jpg",     // EAC, dBpoweramp
+            "album.jpg",     // iTunes-style rips
+            "albumart.jpg",  // Winamp, foobar2000
+            "folder.png",
+            "cover.png",
+            "front.png",
+            "album.png",
+            "albumart.png",
+            "Folder.jpg",    // Windows Explorer thumbnail convention
+            "AlbumArt.jpg"   // Windows Media Player legacy
     )
 
     /**
-     * Checks for common album art filenames in the specified directory.
+     * Checks each hardcoded artwork filename directly via [File.exists] — no directory
+     * scan or traversal.  Skipping [File.canRead] avoids an extra [android.system.Os.access]
+     * syscall per candidate; a failed [BitmapFactory.decodeFile] is caught gracefully instead.
      *
      * @param directory Directory to search for artwork files
-     * @param customNames Optional custom filenames to check (e.g., album/artist name variants)
-     * @return Bitmap or null if not found
+     * @param customNames Optional additional filenames to check (e.g., album/artist name variants)
+     * @return Bitmap of the first matching artwork file, or null if none is found
      */
     fun loadExternalArtwork(directory: File, customNames: List<String> = emptyList()): Bitmap? {
         val allNames = COMMON_ARTWORK_NAMES + customNames
 
         for (filename in allNames) {
             val artFile = File(directory, filename)
-            if (artFile.exists() && artFile.canRead()) {
+            if (artFile.exists()) {
                 try {
                     val bitmap = BitmapFactory.decodeFile(artFile.absolutePath)
                     if (bitmap != null) {
@@ -48,29 +64,12 @@ internal object CoverLoader {
                         return bitmap
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed to load external art from: ${artFile.name}", e)
+                    Log.w(TAG, "Failed to decode external art: ${artFile.name}", e)
                 }
             }
         }
 
-        // Look for first image file in the directory as a fallback
-        val imageFiles = directory.listFiles { file ->
-            file.isFile && file.canRead() && (file.name.endsWith(".jpg", true
-            ) || file.name.endsWith(".png", true))
-        } ?: return null
-
-        return imageFiles.asSequence()
-            .mapNotNull { file ->
-                try {
-                    BitmapFactory.decodeFile(file.absolutePath)?.also {
-                        Log.d(TAG, "Found fallback external art: ${file.name}")
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to load fallback external art from: ${file.name}", e)
-                    null
-                }
-            }
-            .firstOrNull()
+        return null
     }
 
     /**
@@ -95,7 +94,6 @@ internal object CoverLoader {
             if (embeddedPicture != null && embeddedPicture.isNotEmpty()) {
                 val bitmap = BitmapFactory.decodeByteArray(embeddedPicture, 0, embeddedPicture.size)
                 if (bitmap != null) {
-                    Log.d(TAG, "Extracted embedded art from: ${file.name}")
                     return bitmap
                 }
             }
@@ -168,8 +166,7 @@ internal object CoverLoader {
     fun generateCustomArtworkNames(name: String?): List<String> {
         if (name.isNullOrEmpty()) return emptyList()
 
-        // Sanitize name for filesystem
-        val sanitizedName = name.replace(Regex("[^a-zA-Z0-9.-]"), "_")
+        val sanitizedName = name.replace(SANITIZE_REGEX, "_")
 
         return listOf(
                 "$sanitizedName.jpg", "$sanitizedName.png",
@@ -182,7 +179,7 @@ internal object CoverLoader {
         val stream = CoverLoader::class.java.getResourceAsStream(ALBUM_ART_PATH) ?: return null
         return try {
             BitmapFactory.decodeStream(stream)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }

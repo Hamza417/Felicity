@@ -21,6 +21,7 @@ object AudioCover {
      * @return Bitmap of audio cover or null if not found
      */
     fun load(audio: Audio): Bitmap? {
+        val startTime = System.currentTimeMillis()
         val audioPath = audio.path ?: return null
 
         // Source 1: Check for external album art files (fastest)
@@ -31,17 +32,21 @@ object AudioCover {
             val externalArtwork = CoverLoader.loadExternalArtwork(directory, customNames)
 
             if (externalArtwork != null) {
-                Log.d(TAG, "Loaded audio art from external file for: ${audio.title}")
+                Log.d(TAG, "External art load time: ${System.currentTimeMillis() - startTime} ms")
                 return externalArtwork
             }
         }
 
+        Log.d(TAG, "No external art found for after ${System.currentTimeMillis() - startTime} ms, trying embedded metadata...")
+
         // Source 2: Extract from audio file metadata (embedded artwork)
         val embeddedArtwork = CoverLoader.loadEmbeddedArtwork(audioPath)
         if (embeddedArtwork != null) {
-            Log.d(TAG, "Loaded audio art from embedded metadata for: ${audio.title}")
+            Log.d(TAG, "Embedded art load time: ${System.currentTimeMillis() - startTime} ms")
             return embeddedArtwork
         }
+
+        Log.d(TAG, "No embedded art found for after ${System.currentTimeMillis() - startTime} ms, returning default cover...")
 
         // If no artwork found, return null or a default placeholder
         return CoverLoader.loadEmptyAudioCover()
