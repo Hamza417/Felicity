@@ -11,6 +11,7 @@ import app.simple.felicity.databinding.AdapterPreferencePopupBinding
 import app.simple.felicity.databinding.AdapterPreferenceSliderBinding
 import app.simple.felicity.databinding.AdapterPreferenceSubHeaderBinding
 import app.simple.felicity.databinding.AdapterPreferenceSwitchBinding
+import app.simple.felicity.databinding.AdapterPreferenceWarningBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.enums.PreferenceType
@@ -40,6 +41,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             }
             VIEW_TYPE_SWITCH -> {
                 Switch(AdapterPreferenceSwitchBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            }
+            VIEW_TYPE_WARNING -> {
+                Warning(AdapterPreferenceWarningBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
             else -> {
                 throw IllegalArgumentException()
@@ -157,6 +161,10 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                     }
                 }
             }
+            is Warning -> {
+                val preference = preferences[position]
+                holder.binding.warning.setText(preference.title)
+            }
         }
     }
 
@@ -178,6 +186,7 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             PreferenceType.SLIDER -> VIEW_TYPE_SLIDER
             PreferenceType.DIALOG -> VIEW_TYPE_DIALOG
             PreferenceType.PANEL -> VIEW_TYPE_PANEL
+            PreferenceType.WARN -> VIEW_TYPE_WARNING
             else -> throw IllegalArgumentException("Unknown view type at position $position")
         }
     }
@@ -189,6 +198,8 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
     inner class Slider(val binding: AdapterPreferenceSliderBinding) : VerticalListViewHolder(binding.root)
 
     inner class Panel(val binding: AdapterPreferencePanelBinding) : VerticalListViewHolder(binding.root)
+
+    inner class Warning(val binding: AdapterPreferenceWarningBinding) : VerticalListViewHolder(binding.root)
 
     inner class Switch(val binding: AdapterPreferenceSwitchBinding) : VerticalListViewHolder(binding.root) {
         init {
@@ -212,5 +223,6 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
         const val VIEW_TYPE_PANEL = 5
         const val VIEW_TYPE_SUB_HEADER = 6
         const val VIEW_TYPE_DIALOG = 7
+        const val VIEW_TYPE_WARNING = 8
     }
 }

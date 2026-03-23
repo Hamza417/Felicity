@@ -286,4 +286,5 @@
     <string name="style">Style</string>
     <string name="latency">Latency</string>
     <string name="particles">Particles</string>
+    <string name="hires_warning">Hi-Res (32-bit) output enables direct hardware passthrough for the purest audio signal. Because the audio bypasses the internal engine, the equalizer, bass, and visualizer will be disabled in this mode.</string>
 </resources>

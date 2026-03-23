@@ -8,5 +8,6 @@ enum class PreferenceType {
     SWITCH,
     CHECKBOX,
     SLIDER,
-    PANEL
+    PANEL,
+    WARN,
 }

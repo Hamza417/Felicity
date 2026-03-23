@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="@dimen/padding_10"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <Space
+        android:id="@+id/icon"
+        android:layout_width="@dimen/icon_size_30"
+        android:layout_height="@dimen/icon_size_30"
+        android:layout_centerVertical="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/warning"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="15dp"
+        android:textSize="@dimen/text_size_12"
+        app:appFontStyle="regular"
+        app:layout_constraintBottom_toBottomOf="@+id/icon"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/icon"
+        app:layout_constraintTop_toTopOf="@+id/icon"
+        app:textColorStyle="tertiary" />
+
+</app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout>

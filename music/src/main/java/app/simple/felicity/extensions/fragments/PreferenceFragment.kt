@@ -553,6 +553,11 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val hiresWarning = Preference(
+                title = R.string.hires_warning,
+                type = PreferenceType.WARN
+        )
+
         val stereoDownmixing = Preference(
                 title = R.string.force_stereo_downmixing,
                 summary = R.string.force_stereo_downmixing_summary,
@@ -600,6 +605,7 @@ open class PreferenceFragment : MediaFragment() {
         preferences.add(fallbackToSWToggle)
         preferences.add(playbackHeader)
         preferences.add(hiresToggle)
+        preferences.add(hiresWarning)
         preferences.add(stereoDownmixing)
         preferences.add(gaplessToggle)
         preferences.add(skipSilenceToggle)
