@@ -422,12 +422,12 @@ static void applyBalance(float *__restrict buf, int numFrames,
  *   y = (drive * x) / (1 + |drive * x|) * compensation
  *
  * where compensation = (1 + drive) / drive normalizes output level across drive settings.
- * This is an algebraic sigmoid — it is equivalent in shape to [tanh] but avoids the
+ * This is an algebraic sigmoid —> it is equivalent in shape to [tanh] but avoids the
  * expensive [tanh] implementation, making it safe for use on the audio hot path.
  *
  * NEON reciprocal estimation (vrecpeq_f32 + one Newton-Raphson refinement step) is used
  * instead of a division instruction, maintaining ARMv7 compatibility while providing
- * approximately 23 bits of precision — more than sufficient for 24-bit audio.
+ * approximately 23 bits of precision —> more than sufficient for 24-bit audio.
  *
  * [float32x4_t] processes 4 samples per NEON iteration.
  *

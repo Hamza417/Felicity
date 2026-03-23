@@ -23,6 +23,7 @@ class AudioScanner() {
                 "ota", // Over The Air
                 "imy", // iMelody
                 "ogg", // Ogg Vorbis Audio
+                "opus", // Opus Audio Codec
                 "wav", // Waveform Audio File Format
                 "alac", // Apple Lossless Audio Codec
                 "aiff", // Audio Interchange File Format
