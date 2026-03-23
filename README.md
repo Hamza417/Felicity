@@ -1,10 +1,10 @@
 # Felicity
 
-*_Felicity_ is the third and final app of the three project I planned for my own learning, the first
+*_Felicity_ is the third and final app of the three projects I had planned for my own learning, the first
 two are [Positional](https://github.com/Hamza417/Positional)
 and [Inure App Manager](https://github.com/Hamza417/Inure).*
 
-The development of the app has started and if you've used the first two apps you might wanna join
+The development of the app has started and if you've used the first two apps you might want to join
 the [Telegram Channel](https://t.me/felicity_music_player) and become the part of the whole initial
 development process.
 
@@ -29,13 +29,12 @@ future.
 ### Custom Audio Engine
 
 - **Dual Decoder** utilizing both hardware and software decoding through FFmpeg.
-- **Custom DSP:** All audio processors are native and custom-built for optimal performance and
-  extensive control over the audio output.
+- **Custom DSP:** The entire audio processing chain (EQ, Bass, Reverb) is written in C++ via JNI. It utilizes ARM NEON SIMD auto-vectorization to process audio arrays with absolute minimum CPU overhead.
     - Supports bass, treble and more.
     - Native downmixing support to pass multichannel audio to stereo output.
 - **Advanced Effects:** Integrated spatial effects including stereo widening and tape saturation for
   an analog feel.
-- **10-band Equalizer:** A powerful equalizer with 10 adjustable frequency bands upto +/-15 dB with
+- **10-band Equalizer:** A powerful equalizer with 10 adjustable frequency bands up to +/-15 dB with
   dedicated PreAmp support.
 - **Gapless Playback:** Seamless transition between tracks without any gaps or interruptions.
 - **High-Resolution Audio Support:** Support for high-resolution audio formats such as FLAC, ALAC,
@@ -56,7 +55,7 @@ future.
   LrcLib.
 - **Dual Fast Scroll:** Simultaneous support for both slide to scroll and jump to letter fast
   scroll.
-- **Visualizer:** Realtime audio visualizer.
+- **Realtime Audio Visualizer:** A lock-free, zero-allocation visualizer rendering on the Canvas at native fps, powered by a native PFFFT implementation.
 
 ### Library Management
 
@@ -71,7 +70,7 @@ future.
 
 - **True Randomized Shuffle:** Choose between Miller and Fisher-Yates shuffle algorithms.
 
-This feature is list is not exhaustive and only main features are listed.
+This feature list is not exhaustive and only main features are listed.
 
 ## Roadmap
 
@@ -102,7 +101,7 @@ The development release sequence will be like
 - Beta release (app is stable enough to be moved to pre-release stage, this stage should be where app is released on various app stores.)
 - Release (app should be released for everyone)
 
-F-Droid release is currently not sure, the Glide library is breaking the reproducible build and I have submitted a PR to fix that but it is not been adressed yet at the time of writing this. See bumptech/glide#5657
+F-Droid release is currently not sure, the Glide library is breaking the reproducible build and I have submitted a PR to fix that but it has not been addressed yet at the time of writing this. See bumptech/glide#5657
 
 ## Screenshots
 
