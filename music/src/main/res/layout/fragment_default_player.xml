@@ -31,12 +31,23 @@
         android:layout_width="match_parent"
         android:layout_height="1px" />
 
+    <app.simple.felicity.decorations.highlight.HighlightTextView
+        android:id="@+id/pcm_info"
+        android:layout_width="wrap_content"
+        android:textSize="@dimen/text_size_12"
+        android:layout_gravity="center_horizontal"
+        android:paddingHorizontal="@dimen/padding_10"
+        android:paddingVertical="@dimen/padding_1"
+        android:layout_marginVertical="@dimen/padding_10"
+        android:layout_height="wrap_content"
+        app:appFontStyle="bold"
+        app:textColorStyle="primary" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_marginHorizontal="@dimen/padding_15"
-        android:layout_marginTop="@dimen/padding_10"
         android:orientation="horizontal">
 
         <app.simple.felicity.decorations.highlight.HighlightTextView

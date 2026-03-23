@@ -17,6 +17,7 @@ import app.simple.felicity.decorations.pager.ImagePageAdapter
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.dialogs.player.VisualizerConfig.Companion.showVisualizerConfig
 import app.simple.felicity.engine.managers.VisualizerManager
+import app.simple.felicity.engine.utils.PcmInfoFormatter
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.preferences.AlbumArtPreferences
@@ -222,6 +223,7 @@ class DefaultPlayer : MediaFragment() {
         binding.title.text = audio.title
         binding.artist.text = audio.artist
         binding.album.text = audio.album
+        binding.pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
         binding.seekbar.setMax(audio.duration.toFloat())
         binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
         updatePlayButtonState(MediaManager.isPlaying())
@@ -297,6 +299,7 @@ class DefaultPlayer : MediaFragment() {
         binding.title.setTypeWriting(audio.title ?: getString(R.string.unknown))
         binding.artist.setTypeWriting(audio.artist ?: getString(R.string.unknown))
         binding.album.setTypeWriting(audio.album ?: getString(R.string.unknown))
+        binding.pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
         binding.seekbar.setMaxWithReset(audio.duration.toFloat())
         binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
         updateFavoriteIcon(audio)
