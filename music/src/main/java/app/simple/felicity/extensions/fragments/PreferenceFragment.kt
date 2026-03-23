@@ -469,6 +469,47 @@ open class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val playerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.player)
+
+        val textChangeEffect = Preference(
+                title = R.string.text_change_effect,
+                summary = R.string.text_change_effect_summary,
+                icon = -1,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (BehaviourPreferences.getTextChangeEffect()) {
+                        BehaviourPreferences.TEXT_EFFECT_NONE -> getString(R.string.no_effect)
+                        BehaviourPreferences.TEXT_EFFECT_FADE -> getString(R.string.fade)
+                        BehaviourPreferences.TEXT_EFFECT_SLIDE -> getString(R.string.slide)
+                        BehaviourPreferences.TEXT_EFFECT_TYPEWRITING -> getString(R.string.typewriting)
+                        else -> getString(R.string.typewriting)
+                    }
+                },
+                onPreferenceAction = { view, callback ->
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(
+                                    R.string.no_effect,
+                                    R.string.fade,
+                                    R.string.slide,
+                                    R.string.typewriting
+                            ),
+                            onMenuItemClick = {
+                                val effect = when (it) {
+                                    R.string.no_effect -> BehaviourPreferences.TEXT_EFFECT_NONE
+                                    R.string.fade -> BehaviourPreferences.TEXT_EFFECT_FADE
+                                    R.string.slide -> BehaviourPreferences.TEXT_EFFECT_SLIDE
+                                    else -> BehaviourPreferences.TEXT_EFFECT_TYPEWRITING
+                                }
+                                BehaviourPreferences.setTextChangeEffect(effect)
+                                (view as TextView).text = getString(it)
+                            },
+                            onDismiss = {}
+                    ).show()
+                }
+        )
+
         preferences.add(listHeader)
         preferences.add(fastScrollBehavior)
         preferences.add(applicationHeader)
@@ -478,6 +519,8 @@ open class PreferenceFragment : MediaFragment() {
         preferences.add(hapticToggle)
         preferences.add(miniplayerHeader)
         preferences.add(miniPlayerVisibilityToggle)
+        preferences.add(playerHeader)
+        preferences.add(textChangeEffect)
 
         return preferences
     }

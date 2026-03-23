@@ -15,8 +15,10 @@ import app.simple.felicity.repository.managers.MediaManager._songPositionFlow
 import app.simple.felicity.repository.managers.MediaManager.currentSongPosition
 import app.simple.felicity.repository.managers.MediaManager.mediaController
 import app.simple.felicity.repository.managers.MediaManager.moveQueueItemSilently
+import app.simple.felicity.repository.managers.MediaManager.next
 import app.simple.felicity.repository.managers.MediaManager.notifyCurrentPosition
 import app.simple.felicity.repository.managers.MediaManager.pendingSeekPositions
+import app.simple.felicity.repository.managers.MediaManager.previous
 import app.simple.felicity.repository.managers.MediaManager.removeQueueItemSilently
 import app.simple.felicity.repository.managers.MediaManager.setSongs
 import app.simple.felicity.repository.managers.MediaManager.updatePosition
@@ -131,6 +133,14 @@ object MediaManager {
     val songSeekPositionFlow: SharedFlow<Long> = _songSeekPositionFlow.asSharedFlow()
     val playbackStateFlow: SharedFlow<Int> = _playbackStateFlow.asSharedFlow()
     val repeatModeFlow: SharedFlow<Int> = _repeatModeFlow.asSharedFlow()
+
+    /**
+     * Indicates the direction of the most recent song transition.
+     * `true` means forward (next song); `false` means backward (previous song).
+     * Updated by [next], [previous], and [updatePosition].
+     */
+    var lastNavigationDirection: Boolean = true
+        private set
 
     fun setMediaController(controller: MediaController) {
         mediaController = controller
@@ -435,6 +445,7 @@ object MediaManager {
     }
 
     fun next() {
+        lastNavigationDirection = true
         val nextPos = findNextNonSkippedPosition(currentSongPosition)
         if (nextPos != null) {
             mediaController?.seekTo(nextPos, 0L)
@@ -444,6 +455,7 @@ object MediaManager {
     }
 
     fun previous() {
+        lastNavigationDirection = false
         if (mediaController?.hasPreviousMediaItem() == true) {
             mediaController?.seekToPreviousMediaItem()
             // Let ExoPlayer handle the transition naturally for gapless playback
@@ -480,6 +492,7 @@ object MediaManager {
     fun updatePosition(position: Int, forcePlay: Boolean = false) {
         if (position != currentSongPosition) {
             if (position in songs.indices) {
+                lastNavigationDirection = position > currentSongPosition
                 currentSongPosition = position
                 if (mediaController?.currentMediaItemIndex != position) {
                     pendingSeekPositions.add(position)

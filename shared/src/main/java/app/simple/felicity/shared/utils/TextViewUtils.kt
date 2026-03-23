@@ -20,6 +20,10 @@ import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.shared.R
+import app.simple.felicity.shared.utils.TextViewUtils.setFade
+import app.simple.felicity.shared.utils.TextViewUtils.setSlide
+import app.simple.felicity.shared.utils.TextViewUtils.setTextWithEffect
+import app.simple.felicity.shared.utils.TextViewUtils.setTypeWriting
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -223,4 +227,116 @@ object TextViewUtils {
             }
         }
     }
+
+    /**
+     * Animates a text change with a cross-fade: fades the current text out, swaps the
+     * content, then fades it back in. Has no visible effect when the new text equals the
+     * current text.
+     *
+     * @param text The new text to display.
+     * @param fadeDuration Half-duration of each fade phase in milliseconds.
+     */
+    fun TextView.setFade(text: String, fadeDuration: Long = 150L) {
+        activeAnimationJobs[this]?.cancel()
+
+        val scope = this.findViewTreeLifecycleOwner()?.lifecycleScope ?: return
+
+        if (this.text.toString() == text) return
+
+        activeAnimationJobs[this] = scope.launch {
+            // Fade out
+            animate()
+                .alpha(0f)
+                .setDuration(fadeDuration)
+                .withEndAction {
+                    this@setFade.text = text
+                    // Fade in
+                    animate()
+                        .alpha(1f)
+                        .setDuration(fadeDuration)
+                        .start()
+                }
+                .start()
+        }
+    }
+
+    /**
+     * Animates a text change with a directional slide.
+     *
+     * When [isForward] is `true` (next song), the label slides out to the left and the new
+     * text enters from the right, matching the direction of a forward swipe.
+     * When [isForward] is `false` (previous song), the directions are reversed.
+     *
+     * @param text       The new text to display.
+     * @param isForward  `true` to animate forward (next), `false` to animate backward (previous).
+     * @param slideDuration Duration of each slide phase in milliseconds.
+     */
+    fun TextView.setSlide(text: String, isForward: Boolean, slideDuration: Long = 200L) {
+        activeAnimationJobs[this]?.cancel()
+
+        val scope = this.findViewTreeLifecycleOwner()?.lifecycleScope ?: return
+
+        if (this.text.toString() == text) return
+
+        // Slide out: forward → exit left (negative X), backward → exit right (positive X)
+        val slideOutX = if (isForward) -width.toFloat().coerceAtLeast(200f) else width.toFloat().coerceAtLeast(200f)
+        val slideInX = -slideOutX
+
+        activeAnimationJobs[this] = scope.launch {
+            // Slide out current text
+            animate()
+                .translationX(slideOutX)
+                .alpha(0f)
+                .setDuration(slideDuration)
+                .withEndAction {
+                    this@setSlide.text = text
+                    translationX = slideInX
+                    // Slide in new text from the opposite edge
+                    animate()
+                        .translationX(0f)
+                        .alpha(1f)
+                        .setDuration(slideDuration)
+                        .start()
+                }
+                .start()
+        }
+    }
+
+    /**
+     * Central dispatcher that applies a text change animation based on [effect].
+     *
+     * Use this function in the player UI so that the chosen animation style is applied
+     * consistently across all text labels without scattering effect constants through the UI layer.
+     *
+     * Effect constants are defined in `BehaviourPreferences`:
+     *  - `TEXT_EFFECT_NONE`        (0) — instant text swap, no animation.
+     *  - `TEXT_EFFECT_FADE`        (1) — cross-fade via [setFade].
+     *  - `TEXT_EFFECT_SLIDE`       (2) — directional slide via [setSlide].
+     *  - `TEXT_EFFECT_TYPEWRITING` (3) — character-by-character reveal via [setTypeWriting].
+     *
+     * @param text       The new text to display.
+     * @param effect     The animation style constant (see above).
+     * @param isForward  Navigation direction used only when [effect] is `TEXT_EFFECT_SLIDE`.
+     *                   `true` = forward (next song), `false` = backward (previous song).
+     */
+    fun TextView.setTextWithEffect(text: String, effect: Int, isForward: Boolean = true) {
+        when (effect) {
+            TEXT_EFFECT_FADE -> setFade(text)
+            TEXT_EFFECT_SLIDE -> setSlide(text, isForward)
+            TEXT_EFFECT_TYPEWRITING -> setTypeWriting(text)
+            else -> this.text = text // TEXT_EFFECT_NONE or any unknown value
+        }
+    }
+
+    /** @see setTextWithEffect */
+    const val TEXT_EFFECT_NONE = 0
+
+    /** @see setTextWithEffect */
+    const val TEXT_EFFECT_FADE = 1
+
+    /** @see setTextWithEffect */
+    const val TEXT_EFFECT_SLIDE = 2
+
+    /** @see setTextWithEffect */
+    const val TEXT_EFFECT_TYPEWRITING = 3
 }
