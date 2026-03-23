@@ -281,6 +281,6 @@ class ArtFlow @JvmOverloads constructor(
      * A value of 0 renders perfectly square corners; ~0.45 produces a near-circular cover.
      */
     private fun computeCornerRadiusUV(): Float {
-        return AppearancePreferences.getCornerRadius() / AppearancePreferences.MAX_CORNER_RADIUS * 0.45f
+        return AppearancePreferences.getCornerRadius() / AppearancePreferences.MAX_CORNER_RADIUS * 0.2f
     }
 }
