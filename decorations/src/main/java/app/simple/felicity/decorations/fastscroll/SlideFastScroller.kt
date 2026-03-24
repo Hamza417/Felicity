@@ -17,6 +17,7 @@ import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.DrawableRes
@@ -24,6 +25,8 @@ import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SnapHelper
+import app.simple.felicity.decorations.itemdecorations.FooterSpacingItemDecoration
+import app.simple.felicity.decorations.itemdecorations.HeaderSpacingItemDecoration
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
@@ -115,6 +118,38 @@ class SlideFastScroller @JvmOverloads constructor(
     private var handleDrawable: Drawable? = null
     private var handleDrawableActive: Drawable? = null
     private var useIntrinsicSize = true
+
+    /**
+     * Vertical inset applied to the top of the scrollable track, in pixels.
+     * Use this to prevent the thumb from overlapping the status bar, a floating header,
+     * or any [app.simple.felicity.decorations.itemdecorations.HeaderSpacingItemDecoration]
+     * whose height you want to mirror here.
+     *
+     * When a [HeaderSpacingItemDecoration] is detected on the attached [RecyclerView] the value
+     * is kept in sync automatically via a [ViewTreeObserver.OnGlobalLayoutListener], so there is
+     * no need to call [setTrackTopPadding] manually in that case.
+     */
+    private var topPaddingPx = 0f
+
+    /**
+     * Vertical inset applied to the bottom of the scrollable track, in pixels.
+     * Use this to prevent the thumb from overlapping a mini-player, a floating footer,
+     * or any [app.simple.felicity.decorations.itemdecorations.FooterSpacingItemDecoration]
+     * whose height you want to mirror here.
+     *
+     * When a [FooterSpacingItemDecoration] is detected on the attached [RecyclerView] the value
+     * is kept in sync automatically via a [ViewTreeObserver.OnGlobalLayoutListener], so there is
+     * no need to call [setTrackBottomPadding] manually in that case.
+     */
+    private var bottomPaddingPx = 0f
+
+    /**
+     * Listener registered on the attached [RecyclerView]'s [ViewTreeObserver] so that decoration
+     * heights (header, footer) are re-read after every layout pass in the activity window.
+     * This covers all deferred [View.post] chains that settle asynchronously — e.g. the status-bar
+     * inset applied by [app.simple.felicity.decorations.views.AppHeader].
+     */
+    private var globalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
 
     // State
     private var percent = 0f // 0..1
@@ -247,10 +282,28 @@ class SlideFastScroller @JvmOverloads constructor(
         if (parent is ViewGroup && parent.indexOfChild(this) == -1) {
             parent.addView(
                     this,
-                    ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                    ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             )
         }
+
+        // Register a global-layout listener so track padding is re-synced from
+        // HeaderSpacingItemDecoration / FooterSpacingItemDecoration after every layout
+        // pass in the activity window.  This captures all deferred post { } chains
+        // (e.g. the status-bar inset applied by AppHeader) without requiring the caller
+        // to know when those chains have settled.
+        globalLayoutListener?.let { old ->
+            try {
+                recyclerView.viewTreeObserver.removeOnGlobalLayoutListener(old)
+            } catch (_: Exception) {
+            }
+        }
+        val listener = ViewTreeObserver.OnGlobalLayoutListener { syncPaddingFromDecorations() }
+        globalLayoutListener = listener
+        recyclerView.viewTreeObserver.addOnGlobalLayoutListener(listener)
+
         post {
+            syncPaddingFromDecorations()
             updatePercentFromRecycler()
             show(true)
             scheduleAutoHide()
@@ -268,6 +321,40 @@ class SlideFastScroller @JvmOverloads constructor(
         if (layoutManager is LinearLayoutManager) {
             originalPrefetchCount = layoutManager.initialPrefetchItemCount
             layoutManager.initialPrefetchItemCount = 10 // Prefetch more items
+        }
+    }
+
+    /**
+     * Scans the attached [RecyclerView]'s item-decoration list for a
+     * [HeaderSpacingItemDecoration] and a [FooterSpacingItemDecoration] and writes their current
+     * heights into [topPaddingPx] and [bottomPaddingPx] respectively.
+     *
+     * Called on every [ViewTreeObserver.OnGlobalLayoutListener] callback so the track bounds stay
+     * accurate even when decoration heights change asynchronously (e.g. after the status-bar inset
+     * is applied by [app.simple.felicity.decorations.views.AppHeader] via a deferred
+     * [android.view.View.post] chain).  [invalidate] is only called when a value actually changes,
+     * so there is no unnecessary redraw overhead.
+     */
+    private fun syncPaddingFromDecorations() {
+        val rv = recyclerRef?.get() ?: return
+
+        // should be thumb_height / 4 so that we keep a padding between header/footer
+        val extraPadding = thumbHalfHeightPx / 4f
+
+        var newTop = topPaddingPx + extraPadding
+        var newBottom = bottomPaddingPx + extraPadding
+
+        for (i in 0 until rv.itemDecorationCount) {
+            when (val dec = rv.getItemDecorationAt(i)) {
+                is HeaderSpacingItemDecoration -> newTop = dec.headerHeight.toFloat()
+                is FooterSpacingItemDecoration -> newBottom = dec.footerHeight.toFloat()
+            }
+        }
+
+        if (newTop != topPaddingPx || newBottom != bottomPaddingPx) {
+            topPaddingPx = newTop + extraPadding
+            bottomPaddingPx = newBottom + extraPadding
+            invalidate()
         }
     }
 
@@ -361,7 +448,8 @@ class SlideFastScroller @JvmOverloads constructor(
             }
             is FastScrollOptimizedAdapter -> {
                 // Notify change with payload to trigger position-only updates
-                adapter.notifyItemRangeChanged(firstVisible, lastVisible - firstVisible + 1, "position_update")
+                adapter.notifyItemRangeChanged(
+                        firstVisible, lastVisible - firstVisible + 1, "position_update")
             }
         }
     }
@@ -575,6 +663,50 @@ class SlideFastScroller @JvmOverloads constructor(
     @Suppress("unused")
     fun setJumpToPositionMode(enabled: Boolean) {
         jumpToPositionMode = enabled
+    }
+
+    /**
+     * Manually overrides the top inset of the scrollable track in pixels so the thumb never
+     * travels above this boundary.
+     *
+     * In most cases you do **not** need to call this method.  When the attached [RecyclerView]
+     * carries a [app.simple.felicity.decorations.itemdecorations.HeaderSpacingItemDecoration] the
+     * scroller reads its height automatically after every layout pass and the value set here will
+     * be superseded on the next global-layout callback.  Only use this method when no
+     * [app.simple.felicity.decorations.itemdecorations.HeaderSpacingItemDecoration] is present
+     * and you want a fixed inset (e.g. a status-bar-only offset on a screen that has no header).
+     *
+     * @param px Top inset in pixels (must be >= 0).
+     */
+    @Suppress("unused")
+    fun setTrackTopPadding(px: Int) {
+        val clamped = px.coerceAtLeast(0).toFloat()
+        if (topPaddingPx != clamped) {
+            topPaddingPx = clamped
+            invalidate()
+        }
+    }
+
+    /**
+     * Manually overrides the bottom inset of the scrollable track in pixels so the thumb never
+     * travels below this boundary.
+     *
+     * In most cases you do **not** need to call this method.  When the attached [RecyclerView]
+     * carries a [app.simple.felicity.decorations.itemdecorations.FooterSpacingItemDecoration] the
+     * scroller reads its height automatically after every layout pass and the value set here will
+     * be superseded on the next global-layout callback.  Only use this method when no
+     * [app.simple.felicity.decorations.itemdecorations.FooterSpacingItemDecoration] is present
+     * and you want a fixed inset (e.g. a static bottom-nav bar that has no spacing decoration).
+     *
+     * @param px Bottom inset in pixels (must be >= 0).
+     */
+    @Suppress("unused")
+    fun setTrackBottomPadding(px: Int) {
+        val clamped = px.coerceAtLeast(0).toFloat()
+        if (bottomPaddingPx != clamped) {
+            bottomPaddingPx = clamped
+            invalidate()
+        }
     }
 
     /** Show the fast scroller, with optional animation. */
@@ -838,8 +970,10 @@ class SlideFastScroller @JvmOverloads constructor(
         val halfW = thumbHalfWidthPx
         val cornerRadius = thumbCornerRadiusPx
 
-        val centerY = halfH + (h - halfH * 2f) * percent
-        val clampedCY = centerY.coerceIn(halfH, h - halfH)
+        val trackTop = topPaddingPx + halfH
+        val trackBottom = h - bottomPaddingPx - halfH
+        val centerY = trackTop + (trackBottom - trackTop) * percent
+        val clampedCY = centerY.coerceIn(trackTop, trackBottom)
 
         // Keep a comfortable margin from the right edge of the screen.
         val cx = w - halfW - thumbMarginRightPx
@@ -878,8 +1012,10 @@ class SlideFastScroller @JvmOverloads constructor(
         val drawable = if (dragging) (active ?: inactive) else inactive
         val intrinsicW = if (useIntrinsicSize && drawable.intrinsicWidth > 0) drawable.intrinsicWidth else dp(56f).toInt()
         val intrinsicH = if (useIntrinsicSize && drawable.intrinsicHeight > 0) drawable.intrinsicHeight else dp(56f).toInt()
-        val available = (h - intrinsicH).coerceAtLeast(1f)
-        val top = (percent * available).coerceIn(0f, h - intrinsicH)
+        val trackTop = topPaddingPx
+        val trackBottom = h - bottomPaddingPx
+        val available = (trackBottom - trackTop - intrinsicH).coerceAtLeast(1f)
+        val top = (trackTop + percent * available).coerceIn(trackTop, trackBottom - intrinsicH)
         val left = w - intrinsicW // flush to right edge
         drawable.setBounds(left.toInt(), top.toInt(), w.toInt(), (top + intrinsicH).toInt())
         drawable.draw(canvas)
@@ -1018,15 +1154,19 @@ class SlideFastScroller @JvmOverloads constructor(
             val inactive = handleDrawable ?: return false
             val intrinsicW = if (useIntrinsicSize && inactive.intrinsicWidth > 0) inactive.intrinsicWidth else dp(56f).toInt()
             val intrinsicH = if (useIntrinsicSize && inactive.intrinsicHeight > 0) inactive.intrinsicHeight else dp(56f).toInt()
-            val available = (height - intrinsicH).coerceAtLeast(1)
-            val top = (percent * available).coerceIn(0f, (height - intrinsicH).toFloat())
+            val trackTop = topPaddingPx
+            val trackBottom = height.toFloat() - bottomPaddingPx
+            val available = (trackBottom - trackTop - intrinsicH).coerceAtLeast(1f)
+            val top = (trackTop + percent * available).coerceIn(trackTop, trackBottom - intrinsicH)
             val rect = RectF(w - intrinsicW - touchExtra, top - touchExtra, w + touchExtra, top + intrinsicH + touchExtra)
             return rect.contains(x, y)
         }
         val halfH = thumbHalfHeightPx
         val halfW = thumbHalfWidthPx
-        val centerY = halfH + (height - halfH * 2f) * percent
-        val cy = centerY.coerceIn(halfH, height.toFloat() - halfH)
+        val trackTop = topPaddingPx + halfH
+        val trackBottom = height.toFloat() - bottomPaddingPx - halfH
+        val centerY = trackTop + (trackBottom - trackTop) * percent
+        val cy = centerY.coerceIn(trackTop, trackBottom)
         val cx = w - halfW - thumbMarginRightPx
         val rect = RectF(cx - halfW - touchExtra, cy - halfH - touchExtra, cx + halfW + touchExtra, cy + halfH + touchExtra)
         return rect.contains(x, y)
@@ -1042,15 +1182,18 @@ class SlideFastScroller @JvmOverloads constructor(
             val intrinsicH = if (useIntrinsicSize && inactive.intrinsicHeight > 0) {
                 inactive.intrinsicHeight.toFloat()
             } else dp(56f)
-            val available = (h - intrinsicH).coerceAtLeast(1f)
-            val clampedTop = y - intrinsicH / 2f
-            val clamped = clampedTop.coerceIn(0f, h - intrinsicH)
-            (clamped / available).coerceIn(0f, 1f)
+            val trackTop = topPaddingPx
+            val trackBottom = h - bottomPaddingPx
+            val available = (trackBottom - trackTop - intrinsicH).coerceAtLeast(1f)
+            val clampedTop = (y - intrinsicH / 2f - trackTop).coerceIn(0f, available)
+            (clampedTop / available).coerceIn(0f, 1f)
         } else {
             val halfH = thumbHalfHeightPx
-            val available = (h - halfH * 2f).coerceAtLeast(1f)
-            val clampedY = y.coerceIn(halfH, h - halfH)
-            (clampedY - halfH) / available
+            val trackTop = topPaddingPx + halfH
+            val trackBottom = h - bottomPaddingPx - halfH
+            val available = (trackBottom - trackTop).coerceAtLeast(1f)
+            val clampedY = y.coerceIn(trackTop, trackBottom)
+            (clampedY - trackTop) / available
         }
 
         // Use much smaller threshold during dragging for smoother updates
@@ -1153,6 +1296,15 @@ class SlideFastScroller @JvmOverloads constructor(
         handler.removeCallbacks(delayedFullBindRunnable)
         cancelAllPendingScrolls() // Ensure all scroll operations are cancelled
         val rv = recyclerRef?.get()
+
+        // Unregister the decoration-sync listener to avoid leaking a reference to this view.
+        globalLayoutListener?.let { listener ->
+            try {
+                rv?.viewTreeObserver?.removeOnGlobalLayoutListener(listener)
+            } catch (_: Exception) { /* ViewTreeObserver may already be detached — safe to ignore */
+            }
+        }
+        globalLayoutListener = null
 
         // Do not reattach any previously detached SnapHelper to avoid future auto-snapping
         detachedSnapHelper = null
