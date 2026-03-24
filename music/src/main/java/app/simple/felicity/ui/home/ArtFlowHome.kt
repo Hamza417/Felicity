@@ -24,6 +24,7 @@ import app.simple.felicity.ui.panels.ArtFlow
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Folders
 import app.simple.felicity.ui.panels.Genres
+import app.simple.felicity.ui.panels.Preferences
 import app.simple.felicity.ui.panels.Search
 import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.ui.player.DefaultPlayer
@@ -91,7 +92,7 @@ class ArtFlowHome : MediaFragment() {
                     openFragment(Search.newInstance(), Search.TAG)
                 }
                 R.drawable.ic_settings -> {
-
+                    openFragment(Preferences.newInstance(), Preferences.TAG)
                 }
                 else -> {
                     Log.w(TAG, "Unknown sidebar item clicked with id: $id")

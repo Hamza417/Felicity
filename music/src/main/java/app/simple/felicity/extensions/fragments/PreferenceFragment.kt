@@ -28,7 +28,7 @@ import java.util.Locale
 import java.util.function.Supplier
 
 @Suppress("unused")
-open class PreferenceFragment : MediaFragment() {
+abstract class PreferenceFragment : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)

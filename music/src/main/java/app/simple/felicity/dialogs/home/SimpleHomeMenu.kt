@@ -56,9 +56,6 @@ class SimpleHomeMenu : ScopedBottomSheetFragment() {
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
-            HomePreferences.HOME_INTERFACE -> {
-                // handled elsewhere
-            }
         }
     }
 

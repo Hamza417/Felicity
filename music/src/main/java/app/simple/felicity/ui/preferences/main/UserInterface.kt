@@ -1,5 +1,7 @@
 package app.simple.felicity.ui.preferences.main
 
+import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -10,6 +12,7 @@ import app.simple.felicity.databinding.FragmentPreferenceAppearanceBinding
 import app.simple.felicity.databinding.HeaderPreferencesGenericBinding
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.PreferenceFragment
+import app.simple.felicity.preferences.UserInterfacePreferences
 
 class UserInterface : PreferenceFragment() {
 
@@ -35,6 +38,18 @@ class UserInterface : PreferenceFragment() {
 
     override val wantsMiniPlayerVisible: Boolean
         get() = false
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            UserInterfacePreferences.HOME_INTERFACE -> {
+                Intent(requireContext(), requireActivity()::class.java).apply {
+                    startActivity(this)
+                    requireActivity().finish()
+                }
+            }
+        }
+    }
 
     companion object {
         fun newInstance(): UserInterface {

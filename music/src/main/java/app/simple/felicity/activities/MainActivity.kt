@@ -27,7 +27,7 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtIntoBitmap
 import app.simple.felicity.interfaces.MiniPlayerPolicy
-import app.simple.felicity.preferences.HomePreferences
+import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.managers.PlaybackStateManager
@@ -202,23 +202,23 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     }
 
     fun showHome() {
-        when (HomePreferences.getHomeInterface()) {
-            HomePreferences.HOME_INTERFACE_DASHBOARD -> {
+        when (UserInterfacePreferences.getHomeInterface()) {
+            UserInterfacePreferences.HOME_INTERFACE_DASHBOARD -> {
                 supportFragmentManager.beginTransaction()
                     .replace(R.id.fragment_container, Dashboard.newInstance(), Dashboard.TAG)
                     .commit()
             }
-            HomePreferences.HOME_INTERFACE_SPANNED -> {
+            UserInterfacePreferences.HOME_INTERFACE_SPANNED -> {
                 supportFragmentManager.beginTransaction()
                     .replace(R.id.fragment_container, SpannedHome.newInstance(), SpannedHome.TAG)
                     .commit()
             }
-            HomePreferences.HOME_INTERFACE_ARTFLOW -> {
+            UserInterfacePreferences.HOME_INTERFACE_ARTFLOW -> {
                 supportFragmentManager.beginTransaction()
                     .replace(R.id.fragment_container, ArtFlowHome.newInstance(), ArtFlowHome.TAG)
                     .commit()
             }
-            HomePreferences.HOME_INTERFACE_SIMPLE -> {
+            UserInterfacePreferences.HOME_INTERFACE_SIMPLE -> {
                 supportFragmentManager.beginTransaction()
                     .replace(R.id.fragment_container, SimpleHome.newInstance(), SimpleHome.TAG)
                     .commit()
