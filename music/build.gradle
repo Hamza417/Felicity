@@ -102,10 +102,6 @@ dependencies {
     implementation 'androidx.documentfile:documentfile:1.1.0'
     implementation 'androidx.media:media:1.7.1'
     implementation 'androidx.security:security-crypto:1.1.0'
-    implementation 'androidx.media3:media3-exoplayer:1.9.2'
-    implementation 'androidx.media3:media3-ui:1.9.2'
-    implementation 'androidx.media3:media3-common:1.9.2'
-    implementation 'androidx.media3:media3-session:1.9.2'
     implementation 'androidx.viewpager2:viewpager2:1.1.0'
     implementation 'androidx.asynclayoutinflater:asynclayoutinflater:1.1.0'
 
