@@ -9,10 +9,11 @@
         android:layout_height="wrap_content"
         android:background="@drawable/fg_art_tint" />
 
-    <app.simple.felicity.decorations.views.FelicityImageSlider
-        android:id="@+id/imageSlider"
+    <app.simple.felicity.decorations.pager.FelicitySlider
+        android:id="@+id/felicitySlider"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        app:showIndicator="true" />
 
     <app.simple.felicity.decorations.ripple.DynamicRippleTextView
         android:id="@+id/title"
@@ -24,9 +25,10 @@
         android:textSize="@dimen/text_size_22"
         android:padding="@dimen/padding_10"
         android:drawablePadding="@dimen/padding_20"
-        app:appFontStyle="medium"
+        app:appFontStyle="bold"
         app:drawableEndCompat="@drawable/ic_for_arrow"
-        app:drawableTintStyle="accent"
+        app:drawableTint="@color/white"
+        app:drawableTintStyle="custom"
         app:textColorStyle="white" />
 
 </FrameLayout>

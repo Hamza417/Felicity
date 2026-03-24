@@ -11,6 +11,7 @@ import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.repositories.AudioRepository
+import app.simple.felicity.repository.repositories.SongStatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -20,10 +21,23 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * ViewModel for the ArtFlow home screen.
+ *
+ * <p>Loads curated song collections (Favorites, Recently Played, Most Played, and Recently Added)
+ * to populate the image-slider rows on the home screen. Each section is represented as an
+ * [ArtFlowData] wrapping a list of [app.simple.felicity.repository.models.Audio] objects so
+ * the existing [app.simple.felicity.adapters.home.sub.ArtFlowAdapter] can render them without
+ * modification.</p>
+ *
+ * @author Hamza417
+ */
 @HiltViewModel
 class HomeViewModel @Inject constructor(
         application: Application,
-        private val audioRepository: AudioRepository) : WrappedViewModel(application) {
+        private val audioRepository: AudioRepository,
+        private val songStatRepository: SongStatRepository
+) : WrappedViewModel(application) {
 
     private val data: MutableLiveData<List<ArtFlowData<Any>>> by lazy {
         MutableLiveData<List<ArtFlowData<Any>>>().also {
@@ -32,70 +46,70 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun getData(): LiveData<List<ArtFlowData<Any>>> {
-        return data
-    }
+    /**
+     * Returns the [LiveData] stream of curated home sections.
+     *
+     * @return Observable list of [ArtFlowData] sections for the home slider.
+     */
+    fun getData(): LiveData<List<ArtFlowData<Any>>> = data
 
     private fun loadData() {
         viewModelScope.launch(Dispatchers.IO) {
-            Log.d(TAG, "Loading data...")
+            Log.d(TAG, "Loading home data…")
 
             try {
-                val songsDeferred = async {
-                    audioRepository.getAllAudio()
-                        .catch { e -> Log.e(TAG, "Error loading songs", e); emit(mutableListOf()) }
+                val favoritesDeferred = async {
+                    audioRepository.getFavoriteAudio()
+                        .catch { e -> Log.e(TAG, "Error loading favorites", e); emit(emptyList()) }
                         .flowOn(Dispatchers.IO)
                         .first()
-                        .shuffled()
                         .take(TAKE_COUNT)
                 }
 
-                val albumsDeferred = async {
-                    audioRepository.getAllAlbumsWithAggregation()
-                        .catch { e -> Log.e(TAG, "Error loading albums", e); emit(emptyList()) }
+                val recentlyPlayedDeferred = async {
+                    songStatRepository.getRecentlyPlayed()
+                        .catch { e -> Log.e(TAG, "Error loading recently played", e); emit(emptyList()) }
                         .flowOn(Dispatchers.IO)
                         .first()
-                        .shuffled()
                         .take(TAKE_COUNT)
                 }
 
-                val artistsDeferred = async {
-                    audioRepository.getAllArtistsWithAggregation()
-                        .catch { e -> Log.e(TAG, "Error loading artists", e); emit(emptyList()) }
+                val mostPlayedDeferred = async {
+                    songStatRepository.getMostPlayed()
+                        .catch { e -> Log.e(TAG, "Error loading most played", e); emit(emptyList()) }
                         .flowOn(Dispatchers.IO)
                         .first()
-                        .shuffled()
                         .take(TAKE_COUNT)
                 }
 
-                val genresDeferred = async {
-                    audioRepository.getAllGenresWithAggregation()
-                        .catch { e -> Log.e(TAG, "Error loading genres", e); emit(emptyList()) }
+                val recentlyAddedDeferred = async {
+                    audioRepository.getRecentAudio()
+                        .catch { e -> Log.e(TAG, "Error loading recently added", e); emit(mutableListOf()) }
                         .flowOn(Dispatchers.IO)
                         .first()
-                        .shuffled()
                         .take(TAKE_COUNT)
                 }
 
-                val songs = songsDeferred.await()
-                val albums = albumsDeferred.await()
-                val artists = artistsDeferred.await()
-                val genres = genresDeferred.await()
+                val favorites = favoritesDeferred.await()
+                val recentlyPlayed = recentlyPlayedDeferred.await()
+                val mostPlayed = mostPlayedDeferred.await()
+                val recentlyAdded = recentlyAddedDeferred.await()
 
-                Log.d(TAG, "Songs: ${songs.size}, Albums: ${albums.size}, Artists: ${artists.size}, Genres: ${genres.size}")
+                Log.d(TAG, "Favorites: ${favorites.size}, RecentlyPlayed: ${recentlyPlayed.size}, " +
+                        "MostPlayed: ${mostPlayed.size}, RecentlyAdded: ${recentlyAdded.size}")
 
                 val artFlowData = mutableListOf<ArtFlowData<Any>>()
-                if (songs.isNotEmpty()) {
-                    artFlowData.add(ArtFlowData(R.string.songs, songs))
+                if (favorites.isNotEmpty()) {
+                    artFlowData.add(ArtFlowData(R.string.favorites, favorites))
                 }
-                if (albums.isNotEmpty()) {
-                    artFlowData.add(ArtFlowData(R.string.albums, albums))
+                if (recentlyPlayed.isNotEmpty()) {
+                    artFlowData.add(ArtFlowData(R.string.recently_played, recentlyPlayed))
                 }
-                if (artists.isNotEmpty()) {
-                    artFlowData.add(ArtFlowData(R.string.artists, artists))
+                if (mostPlayed.isNotEmpty()) {
+                    artFlowData.add(ArtFlowData(R.string.most_played, mostPlayed))
                 }
-                if (genres.isNotEmpty()) {
-                    artFlowData.add(ArtFlowData(R.string.genres, genres))
+                if (recentlyAdded.isNotEmpty()) {
+                    artFlowData.add(ArtFlowData(R.string.recently_added, recentlyAdded))
                 }
 
                 Log.d(TAG, "Data loaded successfully: ${artFlowData.size} sections")

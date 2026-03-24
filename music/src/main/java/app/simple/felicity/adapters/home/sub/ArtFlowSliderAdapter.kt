@@ -13,9 +13,11 @@ import com.bumptech.glide.Glide
  * from an [ArtFlowData] source, loading artwork via Glide (through [loadArtCover]).
  *
  * Replaces [ArtistArtFlowAdapter] (which was tied to the third-party
- * `com.smarteist:Android-Image-Slider` library) wherever a [FelicitySlider] is used.
+ * `com.smarteist:Android-Image-Slider` library) wherever a [app.simple.felicity.decorations.pager.FelicitySlider] is used.
  */
 class ArtFlowSliderAdapter(private var data: ArtFlowData<Any>) : FelicityPager.PageAdapter {
+
+    private var onItemClick: ((position: Int) -> Unit)? = null
 
     override fun getCount(): Int = data.items.size.coerceAtMost(12)
 
@@ -42,12 +44,23 @@ class ArtFlowSliderAdapter(private var data: ArtFlowData<Any>) : FelicityPager.P
                     crop = true
             )
         }
+
+        iv.setOnClickListener { onItemClick?.invoke(position) }
     }
 
     override fun onRecycleView(position: Int, view: View) {
         val iv = view as ImageView
         Glide.with(iv.context).clear(iv)
         iv.setImageDrawable(null)
+    }
+
+    /**
+     * Registers a listener that is invoked when the user taps a slide.
+     *
+     * @param listener Callback receiving the zero-based index of the tapped page.
+     */
+    fun setOnItemClickListener(listener: (position: Int) -> Unit) {
+        onItemClick = listener
     }
 
     /** Updates the underlying data. Call [app.simple.felicity.decorations.pager.FelicitySlider.notifyDataSetChanged] afterwards. */
