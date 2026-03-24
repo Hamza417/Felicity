@@ -15,18 +15,17 @@ import app.simple.felicity.decorations.helpers.SwipeDownToCloseListener
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.pager.ImagePageAdapter
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
+import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.dialogs.player.VisualizerConfig.Companion.showVisualizerConfig
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.engine.utils.PcmInfoFormatter
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.preferences.AlbumArtPreferences
-import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.shared.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.panels.Lyrics
 import app.simple.felicity.ui.panels.PlayingQueue
@@ -221,11 +220,9 @@ class DefaultPlayer : MediaFragment() {
 
     private fun updateState() {
         val audio = MediaManager.getCurrentSong() ?: return
-        val effect = BehaviourPreferences.getTextChangeEffect()
-        val forward = MediaManager.lastNavigationDirection
-        binding.title.setTextWithEffect(audio.title ?: getString(R.string.unknown), effect, forward)
-        binding.artist.setTextWithEffect(audio.artist ?: getString(R.string.unknown), effect, forward)
-        binding.album.setTextWithEffect(audio.album ?: getString(R.string.unknown), effect, forward)
+        binding.title.text = audio.title ?: getString(R.string.unknown)
+        binding.artist.text = audio.artist ?: getString(R.string.unknown)
+        binding.album.text = audio.album ?: getString(R.string.unknown)
         binding.pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
         binding.seekbar.setMax(audio.duration.toFloat())
         binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
@@ -299,11 +296,10 @@ class DefaultPlayer : MediaFragment() {
 
     override fun onAudio(audio: Audio) {
         super.onAudio(audio)
-        val effect = BehaviourPreferences.getTextChangeEffect()
         val forward = MediaManager.lastNavigationDirection
-        binding.title.setTextWithEffect(audio.title ?: getString(R.string.unknown), effect, forward)
-        binding.artist.setTextWithEffect(audio.artist ?: getString(R.string.unknown), effect, forward)
-        binding.album.setTextWithEffect(audio.album ?: getString(R.string.unknown), effect, forward)
+        binding.title.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
+        binding.artist.setTextWithEffect(audio.artist ?: getString(R.string.unknown), forward, 50L)
+        binding.album.setTextWithEffect(audio.album ?: getString(R.string.unknown), forward, 100L)
         binding.pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
         binding.seekbar.setMaxWithReset(audio.duration.toFloat())
         binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)

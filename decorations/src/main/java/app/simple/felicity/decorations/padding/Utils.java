@@ -34,7 +34,7 @@ public class Utils {
             
             Log.d("Padding", "Padding: " + insets);
             
-            // Return CONSUMED if you don't want want the window insets to keep being
+            // Return CONSUMED if you don't want the window insets to keep being
             // passed down to descendant views.
             return WindowInsetsCompat.CONSUMED;
         });

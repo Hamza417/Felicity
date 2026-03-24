@@ -14,6 +14,7 @@ import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentLyricsBinding
 import app.simple.felicity.decorations.lrc.view.ModernLrcView
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
+import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.dialogs.lyrics.LyricsMenu
 import app.simple.felicity.dialogs.lyrics.LyricsMenu.Companion.showLyricsMenu
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -21,7 +22,6 @@ import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.shared.utils.TextViewUtils.setTypeWriting
 import app.simple.felicity.ui.panels.Lyrics.Companion.TEXT_SIZE_DEBOUNCE_MS
 import app.simple.felicity.viewmodels.player.LyricsViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -223,8 +223,9 @@ class Lyrics : MediaFragment() {
             // Real song change — reset the view and kick off a fresh lyrics load.
             binding.lrc.reset()
             lyricsViewModel.loadLrcData()
-            binding.name.setTypeWriting(audio.title ?: getString(R.string.unknown))
-            binding.artist.setTypeWriting(audio.artist ?: getString(R.string.unknown))
+            val forward = MediaManager.lastNavigationDirection
+            binding.name.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
+            binding.artist.setTextWithEffect(audio.artist ?: getString(R.string.unknown), forward, 50L)
             binding.lrc.setDuration(audio.duration)
             binding.seekbar.setMaxWithReset(audio.duration.toFloat())
         }

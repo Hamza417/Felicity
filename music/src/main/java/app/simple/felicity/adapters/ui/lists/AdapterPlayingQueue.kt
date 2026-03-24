@@ -19,11 +19,11 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterPlayingQueueBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ColorUtils.changeAlpha
-import app.simple.felicity.shared.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import com.bumptech.glide.Glide

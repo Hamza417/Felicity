@@ -10,11 +10,11 @@ import app.simple.felicity.R
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
+import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.SpacingRecyclerView
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.shared.utils.BarHeight
-import app.simple.felicity.shared.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.ui.panels.Search

@@ -1,4 +1,4 @@
-package app.simple.felicity.shared.utils
+package app.simple.felicity.decorations.utils
 
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
@@ -12,6 +12,8 @@ import android.text.TextWatcher
 import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
 import android.view.View
+import android.view.animation.AccelerateInterpolator
+import android.view.animation.DecelerateInterpolator
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatEditText
 import androidx.appcompat.widget.AppCompatTextView
@@ -19,11 +21,12 @@ import androidx.core.graphics.toColorInt
 import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import app.simple.felicity.decorations.utils.TextViewUtils.setFade
+import app.simple.felicity.decorations.utils.TextViewUtils.setSlide
+import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
+import app.simple.felicity.decorations.utils.TextViewUtils.setTypeWriting
+import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.shared.R
-import app.simple.felicity.shared.utils.TextViewUtils.setFade
-import app.simple.felicity.shared.utils.TextViewUtils.setSlide
-import app.simple.felicity.shared.utils.TextViewUtils.setTextWithEffect
-import app.simple.felicity.shared.utils.TextViewUtils.setTypeWriting
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -271,7 +274,7 @@ object TextViewUtils {
      * @param isForward  `true` to animate forward (next), `false` to animate backward (previous).
      * @param slideDuration Duration of each slide phase in milliseconds.
      */
-    fun TextView.setSlide(text: String, isForward: Boolean, slideDuration: Long = 200L) {
+    fun TextView.setSlide(text: String, isForward: Boolean, slideDuration: Long = 250L, delay: Long = 0L) {
         activeAnimationJobs[this]?.cancel()
 
         val scope = this.findViewTreeLifecycleOwner()?.lifecycleScope ?: return
@@ -279,7 +282,7 @@ object TextViewUtils {
         if (this.text.toString() == text) return
 
         // Slide out: forward → exit left (negative X), backward → exit right (positive X)
-        val slideOutX = if (isForward) -width.toFloat().coerceAtLeast(200f) else width.toFloat().coerceAtLeast(200f)
+        val slideOutX = if (isForward) -50F else 50F
         val slideInX = -slideOutX
 
         activeAnimationJobs[this] = scope.launch {
@@ -287,6 +290,8 @@ object TextViewUtils {
             animate()
                 .translationX(slideOutX)
                 .alpha(0f)
+                .setInterpolator(AccelerateInterpolator())
+                .setStartDelay(delay.div(2))
                 .setDuration(slideDuration)
                 .withEndAction {
                     this@setSlide.text = text
@@ -295,10 +300,10 @@ object TextViewUtils {
                     animate()
                         .translationX(0f)
                         .alpha(1f)
+                        .setStartDelay(delay.div(2))
+                        .setInterpolator(DecelerateInterpolator())
                         .setDuration(slideDuration)
-                        .start()
                 }
-                .start()
         }
     }
 
@@ -319,10 +324,10 @@ object TextViewUtils {
      * @param isForward  Navigation direction used only when [effect] is `TEXT_EFFECT_SLIDE`.
      *                   `true` = forward (next song), `false` = backward (previous song).
      */
-    fun TextView.setTextWithEffect(text: String, effect: Int, isForward: Boolean = true) {
-        when (effect) {
+    fun TextView.setTextWithEffect(text: String, isForward: Boolean = true, delay: Long = 0L) {
+        when (BehaviourPreferences.getTextChangeEffect()) {
             TEXT_EFFECT_FADE -> setFade(text)
-            TEXT_EFFECT_SLIDE -> setSlide(text, isForward)
+            TEXT_EFFECT_SLIDE -> setSlide(text, isForward, delay = delay)
             TEXT_EFFECT_TYPEWRITING -> setTypeWriting(text)
             else -> this.text = text // TEXT_EFFECT_NONE or any unknown value
         }

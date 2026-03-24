@@ -13,10 +13,10 @@ import app.simple.felicity.databinding.AdapterStyleGridBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.AlbumPreferences
 import app.simple.felicity.repository.models.Album
-import app.simple.felicity.shared.utils.TextViewUtils.setTextOrUnknown
 import com.bumptech.glide.Glide
 
 class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHolder>() {

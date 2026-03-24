@@ -12,12 +12,12 @@ import app.simple.felicity.databinding.AdapterFolderHierarchyFolderGridBinding
 import app.simple.felicity.databinding.AdapterStyleGridBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.FolderHierarchyPreferences
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Folder
-import app.simple.felicity.shared.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import app.simple.felicity.viewmodels.panels.FolderHierarchyViewModel.FolderHierarchyContents
 import com.bumptech.glide.Glide
