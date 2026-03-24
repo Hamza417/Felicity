@@ -4,19 +4,22 @@ import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.recyclerview.widget.RecyclerView
-import app.simple.felicity.adapters.home.sub.ArtFlowSliderAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterHomeArtflowBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.decorations.pager.FelicityPager
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.models.ArtFlowData
+import com.bumptech.glide.Glide
 
 /**
  * Top-level [RecyclerView.Adapter] for the ArtFlow home screen.
  *
  * <p>Each row renders an [ArtFlowData] section as a [app.simple.felicity.decorations.pager.FelicitySlider]
- * backed by an [ArtFlowSliderAdapter]. The auto-slide is started immediately after the adapter
- * is attached and paused when the view is recycled.</p>
+ * backed by the private [SliderAdapter] inner class. The auto-slide is started immediately after
+ * the adapter is attached and paused when the view is recycled.</p>
  *
  * @author Hamza417
  */
@@ -33,18 +36,20 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
     override fun onBindViewHolder(holder: VerticalListViewHolder, @SuppressLint("RecyclerView") position: Int) {
         if (holder is Holder) {
             val item = data[position]
-            val sliderAdapter = ArtFlowSliderAdapter(item)
+            val sliderAdapter = SliderAdapter(item)
 
             holder.binding.title.text = holder.binding.title.context.getString(item.title)
             holder.binding.felicitySlider.setAdapter(sliderAdapter)
             holder.binding.felicitySlider.start()
 
-            sliderAdapter.setOnItemClickListener { itemPosition ->
+            sliderAdapter.setOnItemClickListener { itemPosition, imageView ->
                 item.position = itemPosition
-                adapterArtFlowHomeCallbacks?.onClicked(
-                        holder.binding.container,
-                        position,
-                        itemPosition)
+                adapterArtFlowHomeCallbacks?.onItemClicked(imageView, position, itemPosition)
+            }
+
+            sliderAdapter.setOnItemLongClickListener { itemPosition, imageView ->
+                item.position = itemPosition
+                adapterArtFlowHomeCallbacks?.onItemLongClicked(imageView, position, itemPosition)
             }
 
             if (item.position >= 0) {
@@ -73,7 +78,63 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
     inner class Holder(val binding: AdapterHomeArtflowBinding) : VerticalListViewHolder(binding.root)
 
     /**
-     * Registers a callback for slider-row and panel-title click events.
+     * Drives the [app.simple.felicity.decorations.pager.FelicitySlider] for a single
+     * [ArtFlowData] section row. Loads artwork via Glide and surfaces per-slide click and
+     * long-click events via optional lambdas.
+     *
+     * @param data The section whose items are displayed as slides.
+     */
+    private inner class SliderAdapter(private val data: ArtFlowData<Any>) : FelicityPager.PageAdapter {
+
+        private var onItemClick: ((position: Int, imageView: ImageView) -> Unit)? = null
+        private var onItemLongClick: ((position: Int, imageView: ImageView) -> Unit)? = null
+
+        override fun getCount(): Int = data.items.size.coerceAtMost(12)
+
+        override fun getItemId(position: Int): Long = position.toLong()
+
+        override fun onCreateView(position: Int, parent: ViewGroup): View {
+            return ImageView(parent.context).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            }
+        }
+
+        override fun onBindView(position: Int, view: View) {
+            val iv = view as ImageView
+            if (data.items.isNotEmpty()) {
+                iv.loadArtCover(
+                        item = data.items[position],
+                        roundedCorners = false,
+                        blur = false,
+                        skipCache = false,
+                        crop = true
+                )
+            }
+            iv.setOnClickListener { onItemClick?.invoke(position, iv) }
+            iv.setOnLongClickListener { onItemLongClick?.invoke(position, iv); true }
+        }
+
+        override fun onRecycleView(position: Int, view: View) {
+            val iv = view as ImageView
+            Glide.with(iv.context).clear(iv)
+            iv.setImageDrawable(null)
+        }
+
+        fun setOnItemClickListener(listener: (position: Int, imageView: ImageView) -> Unit) {
+            onItemClick = listener
+        }
+
+        fun setOnItemLongClickListener(listener: (position: Int, imageView: ImageView) -> Unit) {
+            onItemLongClick = listener
+        }
+    }
+
+    /**
+     * Registers a callback for slider-row and panel-title interaction events.
      *
      * @param adapterArtFlowHomeCallbacks The callback implementation to attach.
      */
@@ -83,10 +144,27 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
 
     companion object {
         interface AdapterArtFlowHomeCallbacks : GeneralAdapterCallbacks {
+            /**
+             * Fired when the user taps a slide image (normal click = play).
+             *
+             * @param imageView    The [ImageView] that was tapped.
+             * @param rowPosition  Zero-based index of the [ArtFlowData] section row.
+             * @param itemPosition Zero-based index of the tapped item within that section.
+             */
+            fun onItemClicked(imageView: ImageView, rowPosition: Int, itemPosition: Int)
+
+            /**
+             * Fired when the user long-presses a slide image (long press = open menu).
+             *
+             * @param imageView    The [ImageView] that was long-pressed; use as the
+             *                     shared-element source for {@code openSongsMenu}.
+             * @param rowPosition  Zero-based index of the [ArtFlowData] section row.
+             * @param itemPosition Zero-based index of the long-pressed item within that section.
+             */
+            fun onItemLongClicked(imageView: ImageView, rowPosition: Int, itemPosition: Int)
+
             fun onClicked(view: View, position: Int, itemPosition: Int)
             fun onClicked(view: View, position: Int)
         }
     }
 }
-
-

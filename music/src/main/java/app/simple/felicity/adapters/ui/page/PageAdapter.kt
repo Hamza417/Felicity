@@ -4,17 +4,19 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
-import app.simple.felicity.adapters.home.sub.ArtFlowSliderAdapter
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
 import app.simple.felicity.databinding.AdapterHeaderArtistPageBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.decorations.pager.FelicityPager
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.PageItem
 import app.simple.felicity.repository.models.Album
@@ -486,13 +488,13 @@ class PageAdapter(
                         artFlow.visibility = View.VISIBLE
                         when {
                             item.songs.isNotEmpty() -> {
-                                artFlow.setAdapter(ArtFlowSliderAdapter(ArtFlowData(R.string.songs, item.songs)))
+                                artFlow.setAdapter(SliderAdapter(ArtFlowData(R.string.songs, item.songs)))
                             }
                             pageData.albums.isNotEmpty() -> {
-                                artFlow.setAdapter(ArtFlowSliderAdapter(ArtFlowData(R.string.albums, pageData.albums)))
+                                artFlow.setAdapter(SliderAdapter(ArtFlowData(R.string.albums, pageData.albums)))
                             }
                             pageData.artists.isNotEmpty() -> {
-                                artFlow.setAdapter(ArtFlowSliderAdapter(ArtFlowData(R.string.artists, pageData.artists)))
+                                artFlow.setAdapter(SliderAdapter(ArtFlowData(R.string.artists, pageData.artists)))
                             }
                         }
                         artFlow.start()
@@ -532,7 +534,7 @@ class PageAdapter(
                 artists.text = pageData.artists.size.toString()
                 albums.text = pageData.albums.size.toString()
                 totalTime.text = item.totalDuration.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
-                artFlow.setAdapter(ArtFlowSliderAdapter(ArtFlowData(R.string.songs, item.songs)))
+                artFlow.setAdapter(SliderAdapter(ArtFlowData(R.string.songs, item.songs)))
                 artFlow.start()
 
                 play.setOnClickListener {
@@ -545,6 +547,49 @@ class PageAdapter(
                     listener?.onMenuClicked(it)
                 }
             }
+        }
+    }
+
+    /**
+     * A lightweight [FelicityPager.PageAdapter] that loads artwork slides from an [ArtFlowData]
+     * source. Used exclusively in the page-header art-flow widget; click handling is left to
+     * the owning [Header] / [GenreHeader] view holders.
+     *
+     * @param data The section whose items are rendered as slides.
+     */
+    private inner class SliderAdapter(private val data: ArtFlowData<Any>) : FelicityPager.PageAdapter {
+
+        override fun getCount(): Int = data.items.size.coerceAtMost(12)
+
+        override fun getItemId(position: Int): Long = position.toLong()
+
+        override fun onCreateView(position: Int, parent: ViewGroup): View {
+            return ImageView(parent.context).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            }
+        }
+
+        override fun onBindView(position: Int, view: View) {
+            val iv = view as ImageView
+            if (data.items.isNotEmpty()) {
+                iv.loadArtCover(
+                        item = data.items[position],
+                        roundedCorners = false,
+                        blur = false,
+                        skipCache = false,
+                        crop = true
+                )
+            }
+        }
+
+        override fun onRecycleView(position: Int, view: View) {
+            val iv = view as ImageView
+            Glide.with(iv.context).clear(iv)
+            iv.setImageDrawable(null)
         }
     }
 

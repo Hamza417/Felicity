@@ -303,7 +303,11 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         /* no-op */
     }
 
-    protected fun openSongsMenu(audios: List<Audio>, position: Int, imageView: ImageView) {
+    protected fun openSongsMenu(
+            audios: List<Audio>,
+            position: Int,
+            imageView: ImageView,
+            onDismiss: (() -> Unit)? = null) {
         SimpleSharedImageDialog.Builder(
                 container = requireContainerView(),
                 sourceImageView = imageView,
@@ -460,6 +464,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             }
             .onDismiss {
                 miniPlayerCallbacks?.onShowMiniPlayer()
+                onDismiss?.invoke()
             }
             .build()
             .show()

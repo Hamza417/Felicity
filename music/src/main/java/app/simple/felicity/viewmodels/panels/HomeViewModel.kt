@@ -26,9 +26,7 @@ import javax.inject.Inject
  *
  * <p>Loads curated song collections (Favorites, Recently Played, Most Played, and Recently Added)
  * to populate the image-slider rows on the home screen. Each section is represented as an
- * [ArtFlowData] wrapping a list of [app.simple.felicity.repository.models.Audio] objects so
- * the existing [app.simple.felicity.adapters.home.sub.ArtFlowAdapter] can render them without
- * modification.</p>
+ * [ArtFlowData] wrapping a list of [app.simple.felicity.repository.models.Audio] objects.
  *
  * @author Hamza417
  */

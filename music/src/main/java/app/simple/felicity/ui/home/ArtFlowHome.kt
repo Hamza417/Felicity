@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterArtFlowHome
@@ -57,9 +58,10 @@ class ArtFlowHome : MediaFragment() {
     @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
         postponeEnterTransition()
         requireLightBarIcons()
-        requireTransparentMiniPlayer()
+
         binding.recyclerView.setBackgroundColor(Color.BLACK)
         binding.recyclerView.requireAttachedMiniPlayer()
 
@@ -115,17 +117,19 @@ class ArtFlowHome : MediaFragment() {
                                     R.drawable.ic_equalizer
                             ),
                             onMenuItemClick = { itemResId ->
-                                when (itemResId) {
-                                    R.string.genres -> openFragment(Genres.newInstance(), Genres.TAG)
-                                    R.string.year -> openFragment(Year.newInstance(), Year.TAG)
-                                    R.string.folders -> openFragment(Folders.newInstance(), Folders.TAG)
-                                    R.string.folders_hierarchy -> openFragment(FoldersHierarchy.newInstance(), FoldersHierarchy.TAG)
-                                    R.string.playing_queue -> openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
-                                    R.string.favorites -> openFragment(Favorites.newInstance(), Favorites.TAG)
-                                    R.string.recently_added -> openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
-                                    R.string.recently_played -> openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
-                                    R.string.most_played -> openFragment(MostPlayed.newInstance(), MostPlayed.TAG)
-                                    else -> Log.w(TAG, "Unknown popup item clicked: $itemResId")
+                                postDelayed { // TODO - find better way
+                                    when (itemResId) {
+                                        R.string.genres -> openFragment(Genres.newInstance(), Genres.TAG)
+                                        R.string.year -> openFragment(Year.newInstance(), Year.TAG)
+                                        R.string.folders -> openFragment(Folders.newInstance(), Folders.TAG)
+                                        R.string.folders_hierarchy -> openFragment(FoldersHierarchy.newInstance(), FoldersHierarchy.TAG)
+                                        R.string.playing_queue -> openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
+                                        R.string.favorites -> openFragment(Favorites.newInstance(), Favorites.TAG)
+                                        R.string.recently_added -> openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
+                                        R.string.recently_played -> openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
+                                        R.string.most_played -> openFragment(MostPlayed.newInstance(), MostPlayed.TAG)
+                                        else -> Log.w(TAG, "Unknown popup item clicked: $itemResId")
+                                    }
                                 }
                             },
                             onDismiss = {}
@@ -154,17 +158,31 @@ class ArtFlowHome : MediaFragment() {
             binding.recyclerView.setHasFixedSize(true)
 
             adapter.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
-                override fun onClicked(view: View, position: Int, itemPosition: Int) {
-                    Log.d(TAG, "Item clicked at position: $position, itemPosition: $itemPosition")
-                    when (data[position].items[0]) {
-                        is Audio -> {
-                            val audio = data[position].items.filterIsInstance<Audio>()[itemPosition]
-                            Log.d(TAG, "Audio item clicked: ${audio.title}")
-                        }
-                        else -> {
-                            Log.w(TAG, "Unsupported item type clicked at position: $position")
+                override fun onItemClicked(imageView: ImageView, rowPosition: Int, itemPosition: Int) {
+                    val audios = data[rowPosition].items.filterIsInstance<Audio>()
+                    if (audios.isEmpty()) return
+                    setMediaItems(audios, itemPosition)
+                }
+
+                override fun onItemLongClicked(imageView: ImageView, rowPosition: Int, itemPosition: Int) {
+                    binding.sideBar.hide()
+                    val audios = data[rowPosition].items.filterIsInstance<Audio>()
+                    if (audios.isEmpty()) return
+
+                    val rowHolder = binding.recyclerView
+                        .findViewHolderForAdapterPosition(rowPosition) as? AdapterArtFlowHome.Holder
+                    rowHolder?.binding?.felicitySlider?.stop()
+
+                    openSongsMenu(audios, itemPosition, imageView) {
+                        rowHolder?.binding?.felicitySlider?.start()
+                        postDelayed(250L) {
+                            binding.sideBar.show()
                         }
                     }
+                }
+
+                override fun onClicked(view: View, position: Int, itemPosition: Int) {
+                    Log.d(TAG, "Section container clicked at position: $position, itemPosition: $itemPosition")
                 }
 
                 override fun onClicked(view: View, position: Int) {
@@ -174,21 +192,11 @@ class ArtFlowHome : MediaFragment() {
                 override fun onPanelItemClicked(title: Int, view: View) {
                     Log.d(TAG, "Panel item clicked with title: $title")
                     when (title) {
-                        R.string.favorites -> {
-                            openFragment(Favorites.newInstance(), Favorites.TAG)
-                        }
-                        R.string.recently_played -> {
-                            openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
-                        }
-                        R.string.most_played -> {
-                            openFragment(MostPlayed.newInstance(), MostPlayed.TAG)
-                        }
-                        R.string.recently_added -> {
-                            openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
-                        }
-                        else -> {
-                            Log.w(TAG, "Unknown panel item clicked with title: $title")
-                        }
+                        R.string.favorites -> openFragment(Favorites.newInstance(), Favorites.TAG)
+                        R.string.recently_played -> openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
+                        R.string.most_played -> openFragment(MostPlayed.newInstance(), MostPlayed.TAG)
+                        R.string.recently_added -> openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
+                        else -> Log.w(TAG, "Unknown panel item clicked with title: $title")
                     }
                 }
             })
