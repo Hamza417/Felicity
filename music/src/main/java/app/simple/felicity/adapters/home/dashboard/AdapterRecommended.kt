@@ -2,11 +2,21 @@ package app.simple.felicity.adapters.home.dashboard
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterGridImageBinding
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.repository.models.Audio
 
+/**
+ * Adapter for the recommended spanned art grid on the dashboard.
+ *
+ * Renders each [Audio] item as a full-bleed square image with an overlaid title.
+ * Supports tap to play and long-press to open the song context menu.
+ *
+ * @param list The list of recommended [Audio] items to display.
+ * @author Hamza417
+ */
 class AdapterRecommended(private val list: List<Audio>) :
         RecyclerView.Adapter<AdapterRecommended.Holder>() {
 
@@ -33,6 +43,13 @@ class AdapterRecommended(private val list: List<Audio>) :
                 }
             }
 
+            holder.binding.container.setOnLongClickListener {
+                if (list.isNotEmpty()) {
+                    callbacks.onItemLongClicked(list, position, holder.binding.art)
+                }
+                true
+            }
+
             holder.binding.title.text = item.title
         }
     }
@@ -42,7 +59,7 @@ class AdapterRecommended(private val list: List<Audio>) :
     }
 
     override fun getItemId(position: Int): Long {
-        return list[position].id.toLong()
+        return list[position].id
     }
 
     inner class Holder(val binding: AdapterGridImageBinding) : RecyclerView.ViewHolder(binding.root)
@@ -65,7 +82,22 @@ class AdapterRecommended(private val list: List<Audio>) :
     companion object {
 
         interface AdapterRecommendedCallbacks {
+            /**
+             * Called when the user taps a recommended item.
+             *
+             * @param items    The full recommended list.
+             * @param position The index of the tapped item.
+             */
             fun onItemClicked(items: List<Audio>, position: Int)
+
+            /**
+             * Called when the user long-presses a recommended item.
+             *
+             * @param items     The full recommended list.
+             * @param position  The index of the long-pressed item.
+             * @param imageView The album art [ImageView] used as a shared-element source for the menu.
+             */
+            fun onItemLongClicked(items: List<Audio>, position: Int, imageView: ImageView)
         }
     }
 }

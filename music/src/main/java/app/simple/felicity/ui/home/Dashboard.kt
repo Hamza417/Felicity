@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -50,15 +51,17 @@ import kotlinx.coroutines.launch
  *
  * Displays a scrollable dashboard composed of:
  * - A header with the app name, search, and settings buttons.
- * - A spanned art grid of recommended songs refreshed periodically by the ViewModel.
+ * - A spanned art grid of recommended songs loaded once per app session. The user can
+ *   request a new random selection at any time via the shuffle button next to the section title.
  * - A horizontal carousel of recently played songs.
- * - A four-column browse grid of seven panel navigation shortcuts with an inline
+ * - A four-column browse grid of panel navigation shortcuts with an inline
  *   expand/collapse button that reveals the full panel list without navigation.
  * - A horizontal carousel of recently added songs.
  * - A horizontal carousel of favorite songs.
  *
- * The recommended grid data is driven entirely by [DashboardViewModel], which fetches
- * a fresh random selection of 5-9 songs from the database on each cycle.
+ * All song items across every section support tap to play and long-press to open the
+ * song context menu. Carousel and recommended data is loaded once and remains stable for
+ * the duration of the app's lifecycle; only the recommended section can be manually refreshed.
  *
  * @author Hamza417
  */
@@ -91,6 +94,10 @@ class Dashboard : MediaFragment() {
 
         binding.openAppSettings.setOnClickListener {
             openPreferencesPanel()
+        }
+
+        binding.refreshRecommended.setOnClickListener {
+            dashboardViewModel.refreshRecommended()
         }
 
         updateStates(MediaManager.getCurrentSong() ?: return)
@@ -162,6 +169,10 @@ class Dashboard : MediaFragment() {
             override fun onItemClicked(items: List<Audio>, position: Int) {
                 setMediaItems(items, position)
             }
+
+            override fun onItemLongClicked(items: List<Audio>, position: Int, imageView: ImageView) {
+                openSongsMenu(items, position, imageView)
+            }
         })
 
         // IMPORTANT: Update the grid's height to fit its content
@@ -223,13 +234,12 @@ class Dashboard : MediaFragment() {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int) {
                     setMediaItems(songs, position)
                 }
+
+                override fun onSongLongClicked(songs: MutableList<Audio>, position: Int, imageView: ImageView) {
+                    openSongsMenu(songs, position, imageView)
+                }
             })
             binding.recentlyPlayedList.adapter = recentlyPlayedAdapter
-        } else {
-            recentlyPlayedAdapter!!.updateData(songs)
-            if (binding.recentlyPlayedList.adapter == null) {
-                binding.recentlyPlayedList.adapter = recentlyPlayedAdapter
-            }
         }
     }
 
@@ -245,13 +255,12 @@ class Dashboard : MediaFragment() {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int) {
                     setMediaItems(songs, position)
                 }
+
+                override fun onSongLongClicked(songs: MutableList<Audio>, position: Int, imageView: ImageView) {
+                    openSongsMenu(songs, position, imageView)
+                }
             })
             binding.recentlyAddedList.adapter = recentlyAddedAdapter
-        } else {
-            recentlyAddedAdapter!!.updateData(songs)
-            if (binding.recentlyAddedList.adapter == null) {
-                binding.recentlyAddedList.adapter = recentlyAddedAdapter
-            }
         }
     }
 
@@ -267,13 +276,12 @@ class Dashboard : MediaFragment() {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int) {
                     setMediaItems(songs, position)
                 }
+
+                override fun onSongLongClicked(songs: MutableList<Audio>, position: Int, imageView: ImageView) {
+                    openSongsMenu(songs, position, imageView)
+                }
             })
             binding.favoritesList.adapter = favoritesAdapter
-        } else {
-            favoritesAdapter!!.updateData(songs)
-            if (binding.favoritesList.adapter == null) {
-                binding.favoritesList.adapter = favoritesAdapter
-            }
         }
     }
 
@@ -326,8 +334,5 @@ class Dashboard : MediaFragment() {
         const val TAG = "Dashboard"
 
         private const val PANEL_SPAN_COUNT = 4
-
-        /** Number of span columns for the recommended art grid. */
-        private const val RECOMMENDED_GRID_SPANS = 3
     }
 }

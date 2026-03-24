@@ -117,16 +117,32 @@
                 android:orientation="vertical"
                 android:visibility="gone">
 
-                <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                    android:layout_height="wrap_content"
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:paddingBottom="@dimen/padding_8"
-                    android:paddingHorizontal="@dimen/padding_20"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
                     android:paddingTop="@dimen/padding_20"
-                    android:text="@string/recommended"
-                    android:textSize="@dimen/text_size_22"
-                    app:appFontStyle="bold"
-                    app:textColorStyle="primary" />
+                    android:paddingBottom="@dimen/padding_8"
+                    android:paddingHorizontal="@dimen/padding_20">
+
+                    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_gravity="center_vertical"
+                        android:text="@string/recommended"
+                        android:textSize="@dimen/text_size_22"
+                        app:appFontStyle="bold"
+                        app:textColorStyle="primary" />
+
+                    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+                        android:id="@+id/refresh_recommended"
+                        android:layout_width="@dimen/button_size"
+                        android:layout_height="@dimen/button_size"
+                        android:layout_gravity="center_vertical"
+                        android:src="@drawable/ic_refresh" />
+
+                </LinearLayout>
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/recommended_grid"

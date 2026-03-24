@@ -9,19 +9,17 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.SongStatRepository
 import app.simple.felicity.repository.shuffle.Shuffle.millerShuffle
-import app.simple.felicity.viewmodels.panels.DashboardViewModel.Companion.RANDOMIZER_DELAY
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.random.Random
 
 /**
  * ViewModel for the Dashboard home screen.
@@ -57,9 +55,8 @@ class DashboardViewModel @Inject constructor(
     private val _recommended = MutableStateFlow<List<Audio>?>(null)
 
     /**
-     * A fresh random selection of 5-9 songs fetched from the database on each
-     * [RANDOMIZER_DELAY] cycle, used to populate the spanned art grid in the
-     * recommended section.
+     * A random selection of songs fetched from the database on each explicit
+     * refresh, used to populate the spanned art grid in the recommended section.
      */
     val recommended: StateFlow<List<Audio>?> = _recommended.asStateFlow()
 
@@ -99,20 +96,6 @@ class DashboardViewModel @Inject constructor(
             Panel(R.string.preferences, R.drawable.ic_settings)
     )
 
-    val randomSpanPositions = run {
-        val corners = intArrayOf(0, 1, 4, 5)
-        val diagonals = listOf(intArrayOf(0, 5), intArrayOf(1, 4))
-
-        // 50/50 chance between "One Corner" or "Two Diagonals"
-        if (Random.nextBoolean()) {
-            // Mode: One big span on any corner
-            intArrayOf(corners.random())
-        } else {
-            // Mode: Two big spans on a diagonal
-            diagonals.random()
-        }
-    }
-
     init {
         loadRecentlyPlayed()
         loadRecentlyAdded()
@@ -128,7 +111,8 @@ class DashboardViewModel @Inject constructor(
                     emit(emptyList())
                 }
                 .flowOn(Dispatchers.IO)
-                .collect { list ->
+                .first()
+                .also { list ->
                     _recentlyPlayed.value = list
                     Log.d(TAG, "loadRecentlyPlayed: ${list.size} songs loaded")
                 }
@@ -143,7 +127,8 @@ class DashboardViewModel @Inject constructor(
                     emit(mutableListOf())
                 }
                 .flowOn(Dispatchers.IO)
-                .collect { list ->
+                .first()
+                .also { list ->
                     _recentlyAdded.value = list
                     Log.d(TAG, "loadRecentlyAdded: ${list.size} songs loaded")
                 }
@@ -158,7 +143,8 @@ class DashboardViewModel @Inject constructor(
                     emit(emptyList())
                 }
                 .flowOn(Dispatchers.IO)
-                .collect { list ->
+                .first()
+                .also { list ->
                     _favorites.value = list
                     Log.d(TAG, "loadFavorites: ${list.size} favorites loaded")
                 }
@@ -167,38 +153,34 @@ class DashboardViewModel @Inject constructor(
 
     private fun loadRecommended() {
         viewModelScope.launch(Dispatchers.IO) {
-            while (true) {
-                try {
-                    val count = (RECOMMENDED_MIN_COUNT..RECOMMENDED_MAX_COUNT).random()
-                    val songs = audioRepository.getAllAudioList()
-                        .millerShuffle()
-                        .take(RECOMMENDED_MAX_COUNT)
-                    if (songs.isNotEmpty()) {
-                        @Suppress("UNCHECKED_CAST")
-                        _recommended.value = songs
-                    }
-                    Log.d(TAG, "loadRecommended: posted ${songs.size} songs")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error loading recommended section", e)
+            try {
+                val songs = audioRepository.getAllAudioList()
+                    .millerShuffle()
+                    .take(RECOMMENDED_MAX_COUNT)
+                if (songs.isNotEmpty()) {
+                    _recommended.value = songs
                 }
-                delay(RANDOMIZER_DELAY)
+                Log.d(TAG, "loadRecommended: posted ${songs.size} songs")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading recommended section", e)
             }
         }
+    }
+
+    /**
+     * Triggers a fresh random selection of songs for the recommended grid.
+     *
+     * Should be called when the user explicitly requests new recommendations
+     * via the refresh button on the dashboard.
+     */
+    fun refreshRecommended() {
+        loadRecommended()
     }
 
     companion object {
         private const val TAG = "DashboardViewModel"
 
-        /** Minimum number of songs fetched for the recommended spanned art grid per cycle. */
-        private const val RECOMMENDED_MIN_COUNT = 5
-
-        /** Maximum number of songs fetched for the recommended spanned art grid per cycle. */
+        /** Maximum number of songs fetched for the recommended spanned art grid. */
         private const val RECOMMENDED_MAX_COUNT = 6
-
-        /**
-         * Interval in milliseconds between each recommended grid refresh cycle.
-         * The ViewModel drives the periodic fetch so the fragment only observes.
-         */
-        private const val RANDOMIZER_DELAY = 10_000L
     }
 }

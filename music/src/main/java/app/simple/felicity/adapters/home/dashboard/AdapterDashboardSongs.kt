@@ -3,6 +3,7 @@ package app.simple.felicity.adapters.home.dashboard
 import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterCarouselBinding
@@ -43,6 +44,13 @@ class AdapterDashboardSongs(
             ?: holder.itemView.context.getString(R.string.unknown)
         holder.binding.container.setOnClickListener {
             callbacks?.onSongClicked(songs.toMutableList(), holder.bindingAdapterPosition)
+        }
+        holder.binding.container.setOnLongClickListener {
+            callbacks?.onSongLongClicked(
+                    songs.toMutableList(),
+                    holder.bindingAdapterPosition,
+                    holder.binding.art as ImageView)
+            true
         }
     }
 
@@ -98,6 +106,15 @@ class AdapterDashboardSongs(
              * @param position The index of the tapped song within [songs].
              */
             fun onSongClicked(songs: MutableList<Audio>, position: Int)
+
+            /**
+             * Called when the user long-presses a song card.
+             *
+             * @param songs    The full list backing the carousel.
+             * @param position The index of the long-pressed song within [songs].
+             * @param imageView The album art [ImageView] used as a shared-element source for the menu.
+             */
+            fun onSongLongClicked(songs: MutableList<Audio>, position: Int, imageView: ImageView)
         }
     }
 }
