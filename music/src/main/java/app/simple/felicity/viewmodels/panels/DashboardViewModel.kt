@@ -154,13 +154,35 @@ class DashboardViewModel @Inject constructor(
     private fun loadRecommended() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val songs = audioRepository.getAllAudioList()
-                    .millerShuffle()
-                    .take(RECOMMENDED_MAX_COUNT)
+                val mostPlayed = songStatRepository.getMostPlayed()
+                    .first()
+                    .take(RECOMMENDED_MOST_PLAYED_COUNT)
+
+                val recentlyPlayedIds = mostPlayed.map { it.id }.toHashSet()
+                val recentlyPlayed = songStatRepository.getRecentlyPlayed()
+                    .first()
+                    .filterNot { it.id in recentlyPlayedIds }
+                    .take(RECOMMENDED_RECENTLY_PLAYED_COUNT)
+
+                val composed = (mostPlayed + recentlyPlayed).distinctBy { it.id }
+
+                val songs = if (composed.size >= RECOMMENDED_MAX_COUNT) {
+                    composed.shuffled().take(RECOMMENDED_MAX_COUNT)
+                } else {
+                    // Fill remaining slots from the full library using a random shuffle
+                    val existingIds = composed.map { it.id }.toHashSet()
+                    val filler = audioRepository.getAllAudioList()
+                        .filterNot { it.id in existingIds }
+                        .millerShuffle()
+                        .take(RECOMMENDED_MAX_COUNT - composed.size)
+                    (composed + filler).shuffled()
+                }
+
                 if (songs.isNotEmpty()) {
                     _recommended.value = songs
                 }
-                Log.d(TAG, "loadRecommended: posted ${songs.size} songs")
+                Log.d(TAG, "loadRecommended: posted ${songs.size} songs " +
+                        "(${mostPlayed.size} most-played, ${recentlyPlayed.size} recently-played)")
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading recommended section", e)
             }
@@ -180,7 +202,13 @@ class DashboardViewModel @Inject constructor(
     companion object {
         private const val TAG = "DashboardViewModel"
 
-        /** Maximum number of songs fetched for the recommended spanned art grid. */
+        /** Total number of songs shown in the recommended spanned art grid. */
         private const val RECOMMENDED_MAX_COUNT = 6
+
+        /** Number of slots in the recommended grid filled from the most-played list. */
+        private const val RECOMMENDED_MOST_PLAYED_COUNT = 4
+
+        /** Number of slots in the recommended grid filled from the recently-played list. */
+        private const val RECOMMENDED_RECENTLY_PLAYED_COUNT = 2
     }
 }
