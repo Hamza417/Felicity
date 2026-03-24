@@ -120,7 +120,7 @@ class ArtFlow : MediaFragment() {
                     onMenuItemClick = { id ->
                         when (id) {
                             R.string.songs_settings -> {
-                                parentFragmentManager.showSongsMenu()
+                                childFragmentManager.showSongsMenu()
                             }
                             R.string.carousel_settings -> {
                                 childFragmentManager.showCarouselMenu()

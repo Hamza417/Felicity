@@ -28,6 +28,10 @@ class SongsMenu : ScopedBottomSheetFragment() {
                 dismiss()
             }
         }
+
+        binding.openAppSettings.setOnClickListener {
+            openAppSettings()
+        }
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
