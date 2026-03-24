@@ -18,7 +18,6 @@ import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.BehaviourPreferences
-import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
@@ -28,6 +27,7 @@ import app.simple.felicity.ui.preferences.sub.TypeFaces
 import java.util.Locale
 import java.util.function.Supplier
 
+@Suppress("unused")
 open class PreferenceFragment : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -47,7 +47,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.PANEL,
                 onPreferenceAction = { view, callback ->
                     openFragment(Themes.newInstance(), Themes.TAG)
-                    true
                 }
         )
 
@@ -58,7 +57,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.PANEL,
                 onPreferenceAction = { view, callback ->
                     openFragment(AccentColors.newInstance(), AccentColors.TAG)
-                    true
                 }
         )
 
@@ -74,7 +72,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.PANEL,
                 onPreferenceAction = { view, callback ->
                     openFragment(TypeFaces.newInstance(), TypeFaces.TAG)
-                    true
                 }
         )
 
@@ -87,7 +84,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SLIDER,
                 onPreferenceAction = { view, callback ->
                     AppearancePreferences.setCornerRadius((view as FelicitySeekbar).getProgress())
-                    true
                 },
                 valueProvider = Supplier {
                     SeekbarState(
@@ -111,7 +107,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SLIDER,
                 onPreferenceAction = { view, callback ->
                     AppearancePreferences.setListSpacing((view as FelicitySeekbar).getProgress())
-                    true
                 },
                 valueProvider = Supplier {
                     SeekbarState(
@@ -158,7 +153,7 @@ open class PreferenceFragment : MediaFragment() {
                                 }
                             },
                             onDismiss = {
-                                callback
+
                             }
                     ).show()
                 }
@@ -194,7 +189,7 @@ open class PreferenceFragment : MediaFragment() {
                                 }
                             },
                             onDismiss = {
-                                callback
+
                             }
                     ).show()
                 }
@@ -209,7 +204,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     AppearancePreferences.setShadowEffect((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     AppearancePreferences.isShadowEffectOn()
@@ -225,7 +219,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     AlbumArtPreferences.setShadowEnabled((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     AlbumArtPreferences.isShadowEnabled()
@@ -239,7 +232,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     AlbumArtPreferences.setRoundedCornersEnabled((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     AlbumArtPreferences.isRoundedCornersEnabled()
@@ -253,7 +245,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     AlbumArtPreferences.setCropEnabled((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     AlbumArtPreferences.isCropEnabled()
@@ -267,7 +258,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     AlbumArtPreferences.setGreyscaleEnabled((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     AlbumArtPreferences.isGreyscaleEnabled()
@@ -306,11 +296,11 @@ open class PreferenceFragment : MediaFragment() {
                 icon = R.drawable.ic_felicity_full,
                 type = PreferenceType.POPUP,
                 valueProvider = {
-                    when (HomePreferences.getHomeInterface()) {
-                        HomePreferences.HOME_INTERFACE_DASHBOARD -> getString(R.string.dashboard)
-                        HomePreferences.HOME_INTERFACE_ARTFLOW -> getString(R.string.artflow)
-                        HomePreferences.HOME_INTERFACE_SPANNED -> getString(R.string.spanned)
-                        HomePreferences.HOME_INTERFACE_SIMPLE -> getString(R.string.simple)
+                    when (UserInterfacePreferences.getHomeInterface()) {
+                        UserInterfacePreferences.HOME_INTERFACE_DASHBOARD -> getString(R.string.dashboard)
+                        UserInterfacePreferences.HOME_INTERFACE_ARTFLOW -> getString(R.string.artflow)
+                        UserInterfacePreferences.HOME_INTERFACE_SPANNED -> getString(R.string.spanned)
+                        UserInterfacePreferences.HOME_INTERFACE_SIMPLE -> getString(R.string.simple)
                         else -> getString(R.string.app_name)
                     }
                 },
@@ -329,25 +319,25 @@ open class PreferenceFragment : MediaFragment() {
                             onMenuItemClick = {
                                 when (it) {
                                     R.string.dashboard -> {
-                                        HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_DASHBOARD)
+                                        UserInterfacePreferences.setHomeInterface(UserInterfacePreferences.HOME_INTERFACE_DASHBOARD)
                                         (view as TextView).text = getString(R.string.dashboard)
                                     }
                                     R.string.spanned -> {
-                                        HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_SPANNED)
+                                        UserInterfacePreferences.setHomeInterface(UserInterfacePreferences.HOME_INTERFACE_SPANNED)
                                         (view as TextView).text = getString(R.string.spanned)
                                     }
                                     R.string.artflow -> {
-                                        HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_ARTFLOW)
+                                        UserInterfacePreferences.setHomeInterface(UserInterfacePreferences.HOME_INTERFACE_ARTFLOW)
                                         (view as TextView).text = getString(R.string.artflow)
                                     }
                                     R.string.simple -> {
-                                        HomePreferences.setHomeInterface(HomePreferences.HOME_INTERFACE_SIMPLE)
+                                        UserInterfacePreferences.setHomeInterface(UserInterfacePreferences.HOME_INTERFACE_SIMPLE)
                                         (view as TextView).text = getString(R.string.simple)
                                     }
                                 }
                             },
                             onDismiss = {
-                                callback
+
                             }
                     ).show()
                 }
@@ -362,7 +352,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     UserInterfacePreferences.setMarginAroundMiniplayer((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     UserInterfacePreferences.isMarginAroundMiniplayer()
@@ -433,7 +422,6 @@ open class PreferenceFragment : MediaFragment() {
                 onPreferenceAction = { view, callback ->
                     val isChecked = (view as FelicitySwitch).isChecked
                     BehaviourPreferences.setPredictiveBack(isChecked)
-                    true
                 }
         )
 
@@ -448,7 +436,6 @@ open class PreferenceFragment : MediaFragment() {
                 onPreferenceAction = { view, callback ->
                     val isChecked = (view as FelicitySwitch).isChecked
                     BehaviourPreferences.setHapticFeedback(isChecked)
-                    true
                 }
         )
 
@@ -465,7 +452,6 @@ open class PreferenceFragment : MediaFragment() {
                 onPreferenceAction = { view, callback ->
                     val isChecked = (view as FelicitySwitch).isChecked
                     BehaviourPreferences.setMiniplayerAlwaysVisible(isChecked)
-                    true
                 }
         )
 
@@ -573,7 +559,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     AudioPreferences.setFallbackToSoftwareDecoder((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     AudioPreferences.isFallbackToSoftwareDecoderEnabled()
@@ -589,7 +574,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     AudioPreferences.setHiresOutput((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     AudioPreferences.isHiresOutputEnabled()
@@ -608,7 +592,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     AudioPreferences.setIsStereoDownmixForced((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     AudioPreferences.isStereoDownmixForced()
@@ -622,7 +605,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     AudioPreferences.setGaplessPlayback((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     AudioPreferences.isGaplessPlaybackEnabled()
@@ -636,7 +618,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     AudioPreferences.setSkipSilence((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     AudioPreferences.isSkipSilenceEnabled()
@@ -706,7 +687,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SLIDER,
                 onPreferenceAction = { view, callback ->
                     LibraryPreferences.setMinimumAudioLength((view as FelicitySeekbar).getProgress().toInt())
-                    true
                 },
                 valueProvider = Supplier {
                     SeekbarState(
@@ -730,7 +710,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SLIDER,
                 onPreferenceAction = { view, callback ->
                     LibraryPreferences.setMinimumAudioSize((view as FelicitySeekbar).getProgress().toInt())
-                    true
                 },
                 valueProvider = Supplier {
                     SeekbarState(
@@ -756,7 +735,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     LibraryPreferences.setSkipNomedia((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     LibraryPreferences.isSkipNomedia()
@@ -770,7 +748,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     LibraryPreferences.setSkipHiddenFiles((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     LibraryPreferences.isSkipHiddenFiles()
@@ -784,7 +761,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     LibraryPreferences.setSkipHiddenFolders((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     LibraryPreferences.isSkipHiddenFolders()
@@ -816,7 +792,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     AccessibilityPreferences.setStrokeAroundMiniplayer((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     AccessibilityPreferences.isStrokeAroundMiniplayerOn()
@@ -830,7 +805,6 @@ open class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, _ ->
                     AccessibilityPreferences.setDarkerMiniplayerShadow((view as FelicitySwitch).isChecked)
-                    true
                 },
                 valueProvider = Supplier {
                     AccessibilityPreferences.isDarkerMiniplayerShadow()
