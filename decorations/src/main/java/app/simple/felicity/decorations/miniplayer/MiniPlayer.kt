@@ -905,6 +905,16 @@ class MiniPlayer @JvmOverloads constructor(
      * Only the currently settled page renders the real [progress] value; neighboring
      * pages render an empty track so they slide in cleanly without a stale fill.
      *
+     * When the player is **not** in seek mode the fill is rendered with a three-stop
+     * [LinearGradient]: the bulk of the bar is a solid flat fill and, as the current
+     * progress position is approached, the color fades to fully transparent. This gives
+     * the trailing edge a soft, blended look against whatever is behind it rather than
+     * terminating with a hard clip. The fade zone spans [h] pixels (the view height),
+     * clamped so it never exceeds the actual filled width.
+     *
+     * During an active seek drag the gradient is replaced with a plain solid fill so
+     * the scrubber thumb position remains crisp and unambiguous.
+     *
      * @param canvas the canvas, already clipped to this page's horizontal rect
      * @param tx     left edge of this page in canvas coordinates (negative when sliding in from right)
      * @param pageW  page width in pixels (equals view width)
@@ -929,8 +939,35 @@ class MiniPlayer @JvmOverloads constructor(
         // Filled portion
         if (fill > 0f && fillAlpha > 0) {
             val fillRight = progressLeft + (progressRight - progressLeft) * fill
-            progressFillPaint.color = Color.argb(fillAlpha, r, g, b)
+            val fillColor = Color.argb(fillAlpha, r, g, b)
+
+            if (!isInSeekMode) {
+                // Keep the bar flat for most of its length and apply a fade-to-transparent
+                // gradient only near the trailing edge so the endpoint blends softly.
+                val fillWidth = fillRight - progressLeft
+                val gradientWidth = minOf(h, fillWidth)
+                val blendStart = fillRight - gradientWidth
+                val solidFraction = if (fillWidth > 0f) {
+                    ((blendStart - progressLeft) / fillWidth).coerceIn(0f, 1f)
+                } else 0f
+
+                progressFillPaint.shader = LinearGradient(
+                        progressLeft, 0f, fillRight, 0f,
+                        intArrayOf(fillColor, fillColor, Color.argb(0, r, g, b)),
+                        floatArrayOf(0f, solidFraction, 1f),
+                        Shader.TileMode.CLAMP
+                )
+            } else {
+                // Flat solid fill during seek mode — the gradient would make it harder
+                // to judge the exact scrubber position.
+                progressFillPaint.shader = null
+                progressFillPaint.color = fillColor
+            }
+
             canvas.drawRect(progressLeft, 0f, fillRight, h, progressFillPaint)
+        } else {
+            // No fill visible — release any shader so the paint is not left in a dirty state.
+            progressFillPaint.shader = null
         }
     }
 
