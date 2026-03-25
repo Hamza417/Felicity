@@ -1,9 +1,9 @@
-package app.simple.felicity.milkdrop
+package app.simple.felicity.milkdrop.managers
 
 import android.content.res.AssetManager
-import app.simple.felicity.milkdrop.PresetManager.PRESETS_ROOT
-import app.simple.felicity.milkdrop.PresetManager.clearCache
-import app.simple.felicity.milkdrop.PresetManager.listAll
+import app.simple.felicity.milkdrop.managers.PresetManager.PRESETS_ROOT
+import app.simple.felicity.milkdrop.managers.PresetManager.clearCache
+import app.simple.felicity.milkdrop.managers.PresetManager.listAll
 import app.simple.felicity.milkdrop.models.MilkdropPreset
 
 /**
@@ -33,12 +33,12 @@ object PresetManager {
 
     /**
      * Returns a flat, case-insensitively sorted list of every `.milk` preset found
-     * under [PRESETS_ROOT] in the given [AssetManager].
+     * under [PRESETS_ROOT] in the given [android.content.res.AssetManager].
      *
      * The result is cached after the first call and reused on subsequent calls,
      * so this is safe to call repeatedly from multiple ViewModels.
      *
-     * @param assets The application [AssetManager] used to traverse the asset tree.
+     * @param assets The application [android.content.res.AssetManager] used to traverse the asset tree.
      * @return Sorted flat list of all presets across every subdirectory.
      */
     fun listAll(assets: AssetManager): List<MilkdropPreset> {
@@ -116,4 +116,3 @@ object PresetManager {
         return result
     }
 }
-

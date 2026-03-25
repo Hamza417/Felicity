@@ -1,4 +1,4 @@
-package app.simple.felicity.milkdrop
+package app.simple.felicity.milkdrop.bridges
 
 /**
  * JNI bindings for the native projectM 4.x milkdrop visualizer.
@@ -134,8 +134,7 @@ class ProjectMBridge {
 
     companion object {
         init {
-            System.loadLibrary("felicity_milkdropd")
+            System.loadLibrary("felicity_milkdrop")
         }
     }
 }
-

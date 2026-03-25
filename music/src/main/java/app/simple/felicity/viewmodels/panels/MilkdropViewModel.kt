@@ -4,7 +4,7 @@ import android.app.Application
 import android.content.SharedPreferences
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import app.simple.felicity.milkdrop.PresetManager
+import app.simple.felicity.milkdrop.managers.PresetManager
 import app.simple.felicity.preferences.MilkdropPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

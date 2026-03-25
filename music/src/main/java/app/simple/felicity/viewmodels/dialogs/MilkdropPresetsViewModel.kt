@@ -3,7 +3,7 @@ package app.simple.felicity.viewmodels.dialogs
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import app.simple.felicity.milkdrop.PresetManager
+import app.simple.felicity.milkdrop.managers.PresetManager
 import app.simple.felicity.milkdrop.models.MilkdropPreset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

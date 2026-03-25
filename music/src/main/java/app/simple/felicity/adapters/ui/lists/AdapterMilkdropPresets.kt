@@ -10,7 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterMilkdropPresetBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.milkdrop.PresetManager
+import app.simple.felicity.milkdrop.managers.PresetManager
 import app.simple.felicity.milkdrop.models.MilkdropPreset
 
 /**

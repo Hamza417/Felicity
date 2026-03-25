@@ -3,7 +3,7 @@ package app.simple.felicity.milkdrop.renderer
 import android.opengl.GLSurfaceView
 import android.util.Log
 import app.simple.felicity.engine.processors.VisualizerProcessor
-import app.simple.felicity.milkdrop.ProjectMBridge
+import app.simple.felicity.milkdrop.bridges.ProjectMBridge
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
