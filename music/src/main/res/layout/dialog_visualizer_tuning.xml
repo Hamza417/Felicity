@@ -26,6 +26,36 @@
                 android:layout_width="0dp"
                 android:padding="@dimen/padding_15"
                 android:layout_height="wrap_content"
+                android:text="@string/visualizer"
+                android:layout_weight="1"
+                android:layout_gravity="center_vertical"
+                android:textSize="@dimen/text_size_14"
+                app:appFontStyle="bold"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.toggles.FelicitySwitch
+                android:id="@+id/visualizer_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical" />
+
+        </LinearLayout>
+
+        <app.simple.felicity.decorations.theme.ThemeDivider
+            android:layout_width="match_parent"
+            android:layout_marginVertical="@dimen/padding_5"
+            android:layout_height="1px" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:orientation="horizontal">
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="0dp"
+                android:padding="@dimen/padding_15"
+                android:layout_height="wrap_content"
                 android:text="@string/style"
                 android:layout_weight="1"
                 android:layout_gravity="center_vertical"

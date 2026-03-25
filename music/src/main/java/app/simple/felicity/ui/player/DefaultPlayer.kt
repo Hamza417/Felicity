@@ -52,6 +52,7 @@ class DefaultPlayer : MediaFragment() {
         requireView().setOnTouchListener(swipeDownListener)
         requireHiddenMiniPlayer()
         updateState()
+        setVisualizerState()
 
         // Mirror swipe-down-to-close behavior on the album art pager so that a downward
         // swipe on the cover image dismisses the player, exactly like swiping on any other
@@ -195,9 +196,6 @@ class DefaultPlayer : MediaFragment() {
         }
 
         binding.visualizerButton.setOnClickListener {
-            //            val newEnabled = !PlayerPreferences.isVisualizerEnabled()
-            //            PlayerPreferences.setVisualizerEnabled(newEnabled)
-            //            updateEqualizerButtonAlpha(newEnabled)
             openFragment(Milkdrop.newInstance(), Milkdrop.TAG)
         }
 
@@ -206,18 +204,25 @@ class DefaultPlayer : MediaFragment() {
             true
         }
 
-        updateEqualizerButtonAlpha(PlayerPreferences.isVisualizerEnabled())
+    }
 
-        // Wire the visualizer view's twin buffers directly to the audio processor so the
-        // audio thread can write FFT magnitudes without any intermediate coroutine hop.
-        // setDirectOutput is a no-op when the processor is not yet available (service not
-        // started), but in practice the service starts before this fragment is shown.
-        VisualizerManager.processor?.setDirectOutput(
-                binding.visualizer.bufferA,
-                binding.visualizer.bufferB,
-                binding.visualizer.isBufferAFront,
-                binding.visualizer
-        )
+    private fun setVisualizerState() {
+        if (PlayerPreferences.isVisualizerEnabled()) {
+            // Wire the visualizer view's twin buffers directly to the audio processor so the
+            // audio thread can write FFT magnitudes without any intermediate coroutine hop.
+            // setDirectOutput is a no-op when the processor is not yet available (service not
+            // started), but in practice the service starts before this fragment is shown.
+            VisualizerManager.processor?.setDirectOutput(
+                    binding.visualizer.bufferA,
+                    binding.visualizer.bufferB,
+                    binding.visualizer.isBufferAFront,
+                    binding.visualizer
+            )
+        } else {
+            VisualizerManager.processor?.clearDirectOutput()
+        }
+
+        binding.visualizer.visibility = if (PlayerPreferences.isVisualizerEnabled()) View.VISIBLE else View.GONE
     }
 
     private fun updateState() {
@@ -336,21 +341,11 @@ class DefaultPlayer : MediaFragment() {
         binding.favorite.setFavorite(audio.isFavorite, animate = true)
     }
 
-    /**
-     * Dims the equalizer/visualizer button when the visualizer is disabled so the user
-     * can tell at a glance whether the overlay is currently active.
-     *
-     * @param enabled `true` when the visualizer is shown; `false` when hidden.
-     */
-    private fun updateEqualizerButtonAlpha(enabled: Boolean) {
-        binding.visualizerButton.alpha = if (enabled) 1f else 0.4f
-    }
-
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             PlayerPreferences.VISUALIZER_ENABLED -> {
-                updateEqualizerButtonAlpha(PlayerPreferences.isVisualizerEnabled())
+                setVisualizerState()
             }
         }
     }

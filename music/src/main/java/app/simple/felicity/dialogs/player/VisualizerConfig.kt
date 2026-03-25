@@ -10,6 +10,7 @@ import app.simple.felicity.databinding.DialogVisualizerTuningBinding
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
+import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.VisualizerPreferences
 import java.util.Locale
 
@@ -26,6 +27,11 @@ class VisualizerConfig : MediaBottomDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         updateLyricsAlignmentState()
+
+        binding.visualizerToggle.isChecked = PlayerPreferences.isVisualizerEnabled()
+        binding.visualizerToggle.setOnCheckedChangeListener { _, isChecked ->
+            PlayerPreferences.setVisualizerEnabled(isChecked)
+        }
 
         binding.textSizeSeekbar.setProgress(VisualizerPreferences.getVisualizerLatency().toFloat())
         binding.textSizeSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
