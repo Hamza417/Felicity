@@ -41,6 +41,8 @@ future.
   and DSD for audiophile-grade sound quality.
 - **Multi-Channel Audio Support:** Support for multichannel audio formats like 5.1 and 7.1 surround
   sound for an immersive listening experience.
+- **Milkdrop Visualizer:** Twin buffer enabled Milkdrop visualizer support powered by a native DSP,
+  rendering on GL surface at native fps in real-time.
 
 ### User Interface
 
@@ -82,7 +84,7 @@ This feature list is not exhaustive and only main features are listed.
 - [x] Dynamic theming and custom animations
 - [x] Embedded lyrics support
 - [x] Realtime audio visualizer
-- [ ] Milkdrop visualizer support
+- [x] Milkdrop visualizer support
 - [ ] Crossfade support
 - [ ] Multiple Player interface styles.
 - [ ] Playlist support
@@ -105,7 +107,7 @@ F-Droid release is currently not sure, the Glide library is breaking the reprodu
 
 ## Screenshots
 
-Last Updated: 16 March 2026
+Last Updated: 25 March 2026
 
 |                                                                      |                                                                      |                                                                      |
 |----------------------------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------|
@@ -115,6 +117,7 @@ Last Updated: 16 March 2026
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/12.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/13.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/14.png) |
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/15.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/16.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/17.png) |
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/18.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/19.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/20.png) |
+| ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/21.png) |                                                                      |                                                                      |
 
 |                                                                      |
 |----------------------------------------------------------------------|
