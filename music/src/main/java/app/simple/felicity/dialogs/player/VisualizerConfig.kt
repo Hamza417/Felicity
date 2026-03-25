@@ -7,12 +7,10 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogVisualizerTuningBinding
-import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.VisualizerPreferences
-import java.util.Locale
 
 class VisualizerConfig : MediaBottomDialogFragment() {
 
@@ -33,18 +31,6 @@ class VisualizerConfig : MediaBottomDialogFragment() {
             PlayerPreferences.setVisualizerEnabled(isChecked)
         }
 
-        binding.textSizeSeekbar.setProgress(VisualizerPreferences.getVisualizerLatency().toFloat())
-        binding.textSizeSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
-            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
-                if (fromUser) {
-                    VisualizerPreferences.setVisualizerLatency(progress.toLong())
-                }
-            }
-        })
-
-        binding.textSizeSeekbar.setRightLabelProvider { progress, f1, f2 ->
-            String.format(Locale.getDefault(), "%d ms", progress.toInt())
-        }
 
         binding.particlesToggle.isChecked = VisualizerPreferences.areParticlesEnabled()
         binding.particlesToggle.setOnCheckedChangeListener { _, isChecked ->
