@@ -478,6 +478,7 @@ class MiniPlayer @JvmOverloads constructor(
                     isInSeekMode = false
                     animateProgressAlpha(1f)
                     animateSeekThumb(show = false)
+                    animateSeekFlat(flat = false)
                 } else if (isBeingDragged) {
                     scrollEngine.finishDrag(vx, dragStartScrollPx)
                 } else if (event.actionMasked == MotionEvent.ACTION_UP) {
@@ -524,6 +525,7 @@ class MiniPlayer @JvmOverloads constructor(
                 scrollEngine.cancelAnimation()
                 animateEdgeFade(show = false)
                 animateSeekThumb(show = true)
+                animateSeekFlat(flat = true)
                 context.vibrateEffect(VibrationEffect.EFFECT_CLICK, TAG)
             } else {
                 callbacks?.onItemLongClick(scrollEngine.currentPage.coerceAtLeast(0))
@@ -765,6 +767,16 @@ class MiniPlayer @JvmOverloads constructor(
     private var seekThumbAlphaAnimator: ValueAnimator? = null
 
     /**
+     * Morph fraction between the trailing-edge gradient look and a fully flat solid fill.
+     * 0 = gradient (normal playback appearance), 1 = flat solid (seek mode appearance).
+     * Animated via [animateSeekFlat] so the transition is smooth rather than an abrupt switch.
+     */
+    private var seekFlatFraction: Float = 0f
+
+    /** Animator driving [seekFlatFraction] during seek mode entry and exit. */
+    private var seekFlatAnimator: ValueAnimator? = null
+
+    /**
      * Thin solid line drawn at the current progress position during seek mode.
      * [Paint.Cap.BUTT] ensures no rounded terminations on either end.
      * A [Paint.setShadowLayer] is applied per-frame to produce the bleeding glow.
@@ -941,28 +953,27 @@ class MiniPlayer @JvmOverloads constructor(
             val fillRight = progressLeft + (progressRight - progressLeft) * fill
             val fillColor = Color.argb(fillAlpha, r, g, b)
 
-            if (!isInSeekMode) {
-                // Keep the bar flat for most of its length and apply a fade-to-transparent
-                // gradient only near the trailing edge so the endpoint blends softly.
-                val fillWidth = fillRight - progressLeft
-                val gradientWidth = minOf(h, fillWidth)
-                val blendStart = fillRight - gradientWidth
-                val solidFraction = if (fillWidth > 0f) {
-                    ((blendStart - progressLeft) / fillWidth).coerceIn(0f, 1f)
-                } else 0f
+            // Compute the natural gradient zone: the fade-to-transparent tail is [h] pixels
+            // wide, clamped so it never exceeds the actual filled width.
+            val fillWidth = fillRight - progressLeft
+            val gradientWidth = minOf(h, fillWidth)
+            val blendStart = fillRight - gradientWidth
+            val naturalSolidFraction = if (fillWidth > 0f) {
+                ((blendStart - progressLeft) / fillWidth).coerceIn(0f, 1f)
+            } else 0f
 
-                progressFillPaint.shader = LinearGradient(
-                        progressLeft, 0f, fillRight, 0f,
-                        intArrayOf(fillColor, fillColor, Color.argb(0, r, g, b)),
-                        floatArrayOf(0f, solidFraction, 1f),
-                        Shader.TileMode.CLAMP
-                )
-            } else {
-                // Flat solid fill during seek mode — the gradient would make it harder
-                // to judge the exact scrubber position.
-                progressFillPaint.shader = null
-                progressFillPaint.color = fillColor
-            }
+            // Interpolate toward a flat solid fill as seekFlatFraction approaches 1.
+            // solidFraction reaches 1 (no gradient tail) and endAlpha reaches fillAlpha
+            // (opaque end stop) so the LinearGradient collapses to a uniform solid color.
+            val effectiveSolidFraction = naturalSolidFraction + (1f - naturalSolidFraction) * seekFlatFraction
+            val effectiveEndAlpha = (fillAlpha * seekFlatFraction).toInt().coerceIn(0, 255)
+
+            progressFillPaint.shader = LinearGradient(
+                    progressLeft, 0f, fillRight, 0f,
+                    intArrayOf(fillColor, fillColor, Color.argb(effectiveEndAlpha, r, g, b)),
+                    floatArrayOf(0f, effectiveSolidFraction, 1f),
+                    Shader.TileMode.CLAMP
+            )
 
             canvas.drawRect(progressLeft, 0f, fillRight, h, progressFillPaint)
         } else {
@@ -985,6 +996,30 @@ class MiniPlayer @JvmOverloads constructor(
             interpolator = if (show) DecelerateInterpolator() else AccelerateInterpolator()
             addUpdateListener {
                 seekThumbAlpha = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    /**
+     * Animates [seekFlatFraction] between the gradient look (0) and the flat solid fill (1).
+     *
+     * When [flat] is `true` the trailing-edge gradient collapses into a solid fill so
+     * the exact scrubber position reads clearly. When [flat] is `false` it expands back
+     * into the soft blended gradient used during normal playback.
+     *
+     * @param flat `true` to animate toward solid fill, `false` to animate back to gradient
+     */
+    private fun animateSeekFlat(flat: Boolean) {
+        val target = if (flat) 1f else 0f
+        if (seekFlatFraction == target && seekFlatAnimator?.isRunning != true) return
+        seekFlatAnimator?.cancel()
+        seekFlatAnimator = ValueAnimator.ofFloat(seekFlatFraction, target).apply {
+            duration = if (flat) 220L else 380L
+            interpolator = if (flat) AccelerateDecelerateInterpolator() else DecelerateInterpolator()
+            addUpdateListener {
+                seekFlatFraction = it.animatedValue as Float
                 invalidate()
             }
             start()
