@@ -18,6 +18,7 @@ import app.simple.felicity.preferences.FolderHierarchyPreferences
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Folder
+import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import app.simple.felicity.viewmodels.panels.FolderHierarchyViewModel.FolderHierarchyContents
 import com.bumptech.glide.Glide
@@ -166,7 +167,7 @@ class AdapterFolderHierarchy(contents: FolderHierarchyContents) : RecyclerView.A
 
         fun bind(audio: Audio) {
             binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.artist)
+            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
             binding.tertiaryDetail.setTextOrUnknown(audio.album)
             binding.title.addAudioQualityIcon(audio)
             bindSelectionState(audio)

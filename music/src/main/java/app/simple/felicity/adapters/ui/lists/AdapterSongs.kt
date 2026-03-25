@@ -17,6 +17,7 @@ import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import com.bumptech.glide.Glide
 
@@ -105,7 +106,6 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
         }
     }
 
-
     override fun getItemCount(): Int = songs.size
     override fun getItemViewType(position: Int): Int = SongsPreferences.getGridType()
 
@@ -133,7 +133,7 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
 
         fun bind(audio: Audio, isLightBind: Boolean) {
             binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.artist)
+            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
             binding.tertiaryDetail.setTextOrUnknown(audio.album)
             binding.title.addAudioQualityIcon(audio)
             bindSelectionState(audio)

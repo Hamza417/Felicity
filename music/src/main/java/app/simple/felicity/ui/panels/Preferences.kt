@@ -15,6 +15,7 @@ import app.simple.felicity.ui.preferences.main.Appearance
 import app.simple.felicity.ui.preferences.main.Behavior
 import app.simple.felicity.ui.preferences.main.Engine
 import app.simple.felicity.ui.preferences.main.Library
+import app.simple.felicity.ui.preferences.main.List
 import app.simple.felicity.ui.preferences.main.UserInterface
 import app.simple.felicity.viewmodels.panels.PreferencesViewModel
 
@@ -59,6 +60,9 @@ class Preferences : MediaFragment() {
                         }
                         R.string.library -> {
                             openFragment(Library.newInstance(), Library.TAG)
+                        }
+                        R.string.list -> {
+                            openFragment(List.newInstance(), List.TAG)
                         }
                         R.string.accessibility -> {
                             openFragment(Accessibility.newInstance(), Accessibility.TAG)

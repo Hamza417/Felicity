@@ -1,5 +1,6 @@
 package app.simple.felicity.repository.utils
 
+import app.simple.felicity.preferences.ListPreferences
 import app.simple.felicity.repository.models.Audio
 import net.jpountz.xxhash.XXHashFactory
 
@@ -7,6 +8,8 @@ import net.jpountz.xxhash.XXHashFactory
  * Utility functions for audio-related operations.
  */
 object AudioUtils {
+
+    var albumArtistOverArtist: Boolean = ListPreferences.isAlbumArtistOverArtist()
 
     /**
      * Generates a stable 64-bit identifier from a subset of [Audio] metadata fields.
@@ -24,5 +27,13 @@ object AudioUtils {
         val hasher = factory.hash64()
         val bytes = key.toByteArray(Charsets.UTF_8)
         return hasher.hash(bytes, 0, bytes.size, 0x9747b28c)
+    }
+
+    fun Audio.getArtists(): String {
+        if (albumArtistOverArtist) {
+            return albumArtist ?: "Unknown Album Artist"
+        }
+
+        return artist ?: "Unknown Artist"
     }
 }

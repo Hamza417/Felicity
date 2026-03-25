@@ -22,6 +22,7 @@ import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.ui.panels.Lyrics.Companion.TEXT_SIZE_DEBOUNCE_MS
 import app.simple.felicity.viewmodels.player.LyricsViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -175,7 +176,7 @@ class Lyrics : MediaFragment() {
     private fun updateState() {
         val audio = MediaManager.getCurrentSong() ?: return
         binding.name.text = audio.title
-        binding.artist.text = audio.artist
+        binding.artist.text = audio.getArtists()
         binding.lrc.setDuration(audio.duration)
         binding.seekbar.setMax(audio.duration.toFloat())
         binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
@@ -225,7 +226,7 @@ class Lyrics : MediaFragment() {
             lyricsViewModel.loadLrcData()
             val forward = MediaManager.lastNavigationDirection
             binding.name.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
-            binding.artist.setTextWithEffect(audio.artist ?: getString(R.string.unknown), forward, 50L)
+            binding.artist.setTextWithEffect(audio.getArtists() ?: getString(R.string.unknown), forward, 50L)
             binding.lrc.setDuration(audio.duration)
             binding.seekbar.setMaxWithReset(audio.duration.toFloat())
         }

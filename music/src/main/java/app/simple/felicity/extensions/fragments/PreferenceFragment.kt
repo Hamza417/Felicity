@@ -19,6 +19,7 @@ import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.LibraryPreferences
+import app.simple.felicity.preferences.ListPreferences
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.ui.preferences.sub.AccentColors
@@ -814,6 +815,30 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(userInterfaceHeader)
         preferences.add(strokeAroundMiniplayer)
         preferences.add(darkerMiniplayerShadow)
+
+        return preferences
+    }
+
+    protected fun createListPanel(): List<Preference> {
+        val preferences = mutableListOf<Preference>()
+
+        val metadataHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.metadata)
+
+        val albumArtistsInsteadOfArtists = Preference(
+                title = R.string.show_album_artists,
+                summary = R.string.show_album_artists_summary,
+                icon = R.drawable.ic_artist,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    ListPreferences.setAlbumArtistOverArtist((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    ListPreferences.isAlbumArtistOverArtist()
+                }
+        )
+
+        preferences.add(metadataHeader)
+        preferences.add(albumArtistsInsteadOfArtists)
 
         return preferences
     }

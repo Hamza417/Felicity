@@ -26,6 +26,7 @@ import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.panels.Lyrics
 import app.simple.felicity.ui.panels.Milkdrop
@@ -228,7 +229,7 @@ class DefaultPlayer : MediaFragment() {
     private fun updateState() {
         val audio = MediaManager.getCurrentSong() ?: return
         binding.title.text = audio.title ?: getString(R.string.unknown)
-        binding.artist.text = audio.artist ?: getString(R.string.unknown)
+        binding.artist.text = audio.getArtists()
         binding.album.text = audio.album ?: getString(R.string.unknown)
         binding.pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
         binding.seekbar.setMax(audio.duration.toFloat())
@@ -305,7 +306,7 @@ class DefaultPlayer : MediaFragment() {
         super.onAudio(audio)
         val forward = MediaManager.lastNavigationDirection
         binding.title.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
-        binding.artist.setTextWithEffect(audio.artist ?: getString(R.string.unknown), forward, 50L)
+        binding.artist.setTextWithEffect(audio.getArtists(), forward, 50L)
         binding.album.setTextWithEffect(audio.album ?: getString(R.string.unknown), forward, 100L)
         binding.pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
         binding.seekbar.setMaxWithReset(audio.duration.toFloat())

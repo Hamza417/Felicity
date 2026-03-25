@@ -23,6 +23,7 @@ import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.shared.utils.ColorUtils.changeAlpha
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
@@ -150,7 +151,7 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
 
         fun bind(audio: Audio, isLightBind: Boolean) {
             binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.artist)
+            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
             binding.tertiaryDetail.setTextOrUnknown(audio.album)
             binding.title.addAudioQualityIcon(audio)
             bindSelectionState(audio)
