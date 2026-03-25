@@ -89,6 +89,7 @@ dependencies {
     implementation project(':shared')
     implementation project(':repository')
     implementation project(':engine')
+    implementation project(':milkdrop')
 
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 

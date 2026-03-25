@@ -28,6 +28,7 @@ import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.panels.Lyrics
+import app.simple.felicity.ui.panels.Milkdrop
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Search
 import com.bumptech.glide.Glide
@@ -194,9 +195,10 @@ class DefaultPlayer : MediaFragment() {
         }
 
         binding.visualizerButton.setOnClickListener {
-            val newEnabled = !PlayerPreferences.isVisualizerEnabled()
-            PlayerPreferences.setVisualizerEnabled(newEnabled)
-            updateEqualizerButtonAlpha(newEnabled)
+            //            val newEnabled = !PlayerPreferences.isVisualizerEnabled()
+            //            PlayerPreferences.setVisualizerEnabled(newEnabled)
+            //            updateEqualizerButtonAlpha(newEnabled)
+            openFragment(Milkdrop.newInstance(), Milkdrop.TAG)
         }
 
         binding.visualizerButton.setOnLongClickListener {

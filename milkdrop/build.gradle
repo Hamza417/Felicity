@@ -1,0 +1,48 @@
+plugins {
+    id 'com.android.library'
+}
+
+apply from: rootProject.file('common.gradle')
+
+android {
+    namespace 'app.simple.felicity.milkdrop'
+
+    // Keep in sync with the engine module so both use the same NDK toolchain.
+    ndkVersion "29.0.14206865"
+
+    defaultConfig {
+        externalNativeBuild {
+            cmake {
+                // Require C++17 — projectM 4.x depends on it throughout.
+                cppFlags "-std=c++17"
+
+                // Pass projectM configuration flags as CMake cache entries.
+                // These are also set inside CMakeLists.txt via CACHE FORCE, but
+                // listing them here makes the intent explicit in the Gradle layer.
+                arguments "-DENABLE_GLES=ON",
+                        "-DBUILD_TESTING=OFF",
+                        "-DPROJECTM_BUILD_TESTS=OFF",
+                        "-DPROJECTM_BUILD_SDLUI=OFF",
+                        "-DBUILD_SHARED_LIBS=OFF",
+                        "-DENABLE_LLVM=OFF",
+                        "-DPROJECTM_USE_SYSTEM_GLM=OFF"
+
+                // Build for all relevant 64-bit ABIs; add armeabi-v7a if legacy
+                // 32-bit devices need to be supported.
+                abiFilters "arm64-v8a", "x86_64"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/jni/CMakeLists.txt"
+            version "3.22.1+"
+        }
+    }
+}
+
+dependencies {
+    // Engine module: VisualizerManager + VisualizerProcessor PCM tap
+    implementation project(':engine')
+}

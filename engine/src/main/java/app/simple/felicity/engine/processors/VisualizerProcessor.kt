@@ -73,6 +73,40 @@ class VisualizerProcessor : BaseAudioProcessor() {
     /** Opaque pointer to the native `FFTContext`; 0 if the context was not created or was destroyed. */
     private var nativeHandle: Long = 0L
 
+    // Raw PCM window tap
+
+    /**
+     * Optional callback invoked on the audio thread with the raw mono PCM window
+     * immediately before each FFT pass.
+     *
+     * The [FloatArray] passed to [onPcmWindow] is the internal [sampleBuffer] — it
+     * must NOT be retained past the call.  The callee should copy the data (or pass
+     * it synchronously to a native buffer) before returning.
+     */
+    fun interface PcmWindowCallback {
+        /**
+         * @param samples Raw mono PCM samples for one FFT window.
+         * @param count   Number of valid samples; always equal to [FFT_SIZE].
+         */
+        fun onPcmWindow(samples: FloatArray, count: Int)
+    }
+
+    @Volatile
+    private var pcmWindowCallback: PcmWindowCallback? = null
+
+    /**
+     * Registers a [PcmWindowCallback] that receives each raw mono PCM window before
+     * the FFT pass.  Pass null to unregister.
+     *
+     * Thread-safe: the assignment is guarded by [@Volatile] so the audio thread
+     * always observes the latest value.
+     *
+     * @param callback Callback to receive PCM windows, or null to remove.
+     */
+    fun setPcmWindowCallback(callback: PcmWindowCallback?) {
+        pcmWindowCallback = callback
+    }
+
     // Direct twin-buffer output
 
     /**
@@ -195,6 +229,9 @@ class VisualizerProcessor : BaseAudioProcessor() {
             bufferIndex++
 
             if (bufferIndex >= fftSize) {
+                // Deliver raw mono PCM to any registered tap (e.g., the milkdrop renderer)
+                // before the FFT pass consumes it.
+                pcmWindowCallback?.onPcmWindow(sampleBuffer, fftSize)
                 processAndEmit()
                 bufferIndex = 0
             }
