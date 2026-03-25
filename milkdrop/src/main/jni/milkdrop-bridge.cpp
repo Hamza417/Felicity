@@ -69,7 +69,7 @@ extern "C" {
  * @return          Opaque handle cast to [jlong], or 0 on failure.
  */
 JNIEXPORT jlong JNICALL
-Java_app_simple_felicity_milkdrop_ProjectMBridge_nativeCreate(
+Java_app_simple_felicity_milkdrop_bridges_ProjectMBridge_nativeCreate(
         JNIEnv * /*env*/, jobject /*thiz*/, jint width, jint height) {
 
     projectm_handle handle = projectm_create();
@@ -98,7 +98,7 @@ Java_app_simple_felicity_milkdrop_ProjectMBridge_nativeCreate(
  * @param height    New viewport height in pixels.
  */
 JNIEXPORT void JNICALL
-Java_app_simple_felicity_milkdrop_ProjectMBridge_nativeSurfaceChanged(
+Java_app_simple_felicity_milkdrop_bridges_ProjectMBridge_nativeSurfaceChanged(
         JNIEnv * /*env*/, jobject /*thiz*/, jlong nativePtr, jint width, jint height) {
 
     if (!nativePtr) return;
@@ -122,7 +122,7 @@ Java_app_simple_felicity_milkdrop_ProjectMBridge_nativeSurfaceChanged(
  * @param stereo    Pass JNI_TRUE for interleaved stereo, JNI_FALSE for mono.
  */
 JNIEXPORT void JNICALL
-Java_app_simple_felicity_milkdrop_ProjectMBridge_nativeAddPcmData(
+Java_app_simple_felicity_milkdrop_bridges_ProjectMBridge_nativeAddPcmData(
         JNIEnv *env, jobject /*thiz*/, jlong nativePtr, jfloatArray samples,
         jint count, jboolean stereo) {
 
@@ -147,7 +147,7 @@ Java_app_simple_felicity_milkdrop_ProjectMBridge_nativeAddPcmData(
  * @param nativePtr Opaque handle returned by [nativeCreate].
  */
 JNIEXPORT void JNICALL
-Java_app_simple_felicity_milkdrop_ProjectMBridge_nativeRenderFrame(
+Java_app_simple_felicity_milkdrop_bridges_ProjectMBridge_nativeRenderFrame(
         JNIEnv * /*env*/, jobject /*thiz*/, jlong nativePtr) {
 
     if (!nativePtr) return;
@@ -169,7 +169,7 @@ Java_app_simple_felicity_milkdrop_ProjectMBridge_nativeRenderFrame(
  * @param smooth     When true, projectM cross-fades into the new preset.
  */
 JNIEXPORT void JNICALL
-Java_app_simple_felicity_milkdrop_ProjectMBridge_nativeLoadPresetData(
+Java_app_simple_felicity_milkdrop_bridges_ProjectMBridge_nativeLoadPresetData(
         JNIEnv *env, jobject /*thiz*/, jlong nativePtr, jstring data, jboolean smooth) {
 
     if (!nativePtr || !data) return;
@@ -193,7 +193,7 @@ Java_app_simple_felicity_milkdrop_ProjectMBridge_nativeLoadPresetData(
  * @param nativePtr Opaque handle returned by [nativeCreate].
  */
 JNIEXPORT void JNICALL
-Java_app_simple_felicity_milkdrop_ProjectMBridge_nativeDestroy(
+Java_app_simple_felicity_milkdrop_bridges_ProjectMBridge_nativeDestroy(
         JNIEnv * /*env*/, jobject /*thiz*/, jlong nativePtr) {
 
     if (!nativePtr) return;
