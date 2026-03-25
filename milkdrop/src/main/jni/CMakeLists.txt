@@ -23,6 +23,9 @@ set(BUILD_SHARED_LIBS     OFF CACHE BOOL "Static build for JNI bundling"      FO
 # Use the GLM copy that projectM manages itself
 set(PROJECTM_USE_SYSTEM_GLM OFF CACHE BOOL "Use projectM-bundled GLM" FORCE)
 
+# Force the debug postfix to be completely empty
+set(CMAKE_DEBUG_POSTFIX "")
+
 # ---------------------------------------------------------------------------
 # Fetch projectM from the official repository at a pinned release tag.
 # GIT_SHALLOW is set to FALSE so that any git submodules inside the
