@@ -97,15 +97,12 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
+        android:layout_marginBottom="@dimen/padding_20"
         app:felicityLabelBackgroundEnabled="true"
         app:felicityLabelGap="@dimen/padding_15"
         app:felicityLabelsEnabled="true"
         app:felicityThumbRadius="@dimen/padding_10"
         app:felicityThumbRingWidth="@dimen/padding_10"
         app:felicityTrackHeight="@dimen/padding_10" />
-
-    <Space
-        android:layout_width="match_parent"
-        android:layout_height="@dimen/padding_20" />
 
 </app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>

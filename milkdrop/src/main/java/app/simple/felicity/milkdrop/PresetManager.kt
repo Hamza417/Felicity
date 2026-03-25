@@ -45,7 +45,10 @@ object PresetManager {
         cache?.let { return it }
         return synchronized(this) {
             cache ?: scanDirectory(assets, PRESETS_ROOT)
-                .sortedWith(compareBy { it.name.lowercase() })
+                .sortedWith(compareBy(
+                        { it.path.substringBeforeLast("/").lowercase() },
+                        { it.name.lowercase() }
+                ))
                 .also { cache = it }
         }
     }
