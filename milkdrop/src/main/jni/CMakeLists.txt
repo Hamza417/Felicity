@@ -30,7 +30,7 @@ set(PROJECTM_USE_SYSTEM_GLM OFF CACHE BOOL "Use projectM-bundled GLM" FORCE)
 # ---------------------------------------------------------------------------
 FetchContent_Declare(projectm
     GIT_REPOSITORY     https://github.com/projectM-visualizer/projectm.git
-    GIT_TAG            v4.1.3
+    GIT_TAG            v4.1.6
     GIT_SHALLOW        FALSE
     GIT_SUBMODULES_RECURSE TRUE
 )
