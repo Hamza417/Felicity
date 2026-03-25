@@ -125,6 +125,10 @@ class Milkdrop : MediaFragment() {
         }
     }
 
+    override fun getTransitionType(): TransitionType {
+        return TransitionType.SLIDE
+    }
+
     companion object {
         /** Back-stack tag used when adding this fragment to the back stack. */
         const val TAG = "Milkdrop"
