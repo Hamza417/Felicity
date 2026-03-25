@@ -1,12 +1,21 @@
 package app.simple.felicity.ui.panels
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.databinding.FragmentMilkdropBinding
+import app.simple.felicity.dialogs.player.MilkdropPresets.Companion.showMilkdropPresets
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.preferences.MilkdropPreferences
+import app.simple.felicity.viewmodels.panels.MilkdropViewModel
+import kotlinx.coroutines.launch
 
 /**
  * Full-screen Milkdrop visualizer fragment.
@@ -21,6 +30,11 @@ import app.simple.felicity.extensions.fragments.MediaFragment
  * also explicitly cleared in [onDestroyView] so the audio thread holds no stale
  * reference to the renderer after the view hierarchy is torn down.
  *
+ * Preset selection is persisted in [MilkdropPreferences] and reloaded via
+ * [MilkdropViewModel].  Whenever [MilkdropPreferences.LAST_PRESET] changes (from
+ * the presets dialog), [onSharedPreferenceChanged] triggers a ViewModel reload which
+ * re-emits the new preset content and calls [loadCurrentPreset].
+ *
  * [GLSurfaceView.onResume] and [GLSurfaceView.onPause] are forwarded from the
  * fragment lifecycle so that the EGL rendering thread pauses correctly when the app
  * is backgrounded.
@@ -30,6 +44,8 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 class Milkdrop : MediaFragment() {
 
     private lateinit var binding: FragmentMilkdropBinding
+
+    private val viewModel: MilkdropViewModel by viewModels()
 
     override fun onCreateView(
             inflater: LayoutInflater,
@@ -43,43 +59,71 @@ class Milkdrop : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Hide the mini player — this is a full-screen visualizer.
-        requireHiddenMiniPlayer()
+        requireLightBarIcons()
+        requireTransparentMiniPlayer()
 
         // Re-register the PCM tap in case the player service started after the
         // surface view's onAttachedToWindow fired (which would have left the tap null).
         VisualizerManager.processor?.let { processor ->
             binding.milkdropSurface.connectProcessor(processor)
         }
+
+        // Open the presets bottom-sheet on the Presets button.
+        binding.presets.setOnClickListener {
+            childFragmentManager.showMilkdropPresets()
+        }
+
+        // Observe preset content emitted by the ViewModel and load it into projectM.
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.presetContent.collect { content ->
+                    content?.let { loadCurrentPreset(it) }
+                }
+            }
+        }
+    }
+
+    /**
+     * Passes the preset text to the surface view, which marshals the call to the GL thread
+     * via [android.opengl.GLSurfaceView.queueEvent].
+     *
+     * @param content Full text content of the `.milk` preset file.
+     */
+    private fun loadCurrentPreset(content: String) {
+        binding.milkdropSurface.loadPreset(content, smooth = true)
     }
 
     override fun onResume() {
         super.onResume()
-        // Resume the GL render thread when the fragment comes back to the foreground.
         binding.milkdropSurface.onResume()
-        // Re-register in case the processor was replaced while paused (service restart).
         VisualizerManager.processor?.let { processor ->
             binding.milkdropSurface.connectProcessor(processor)
         }
     }
 
     override fun onPause() {
-        // Pause the GL render thread before the fragment goes to the background.
-        // Must be called before super.onPause() so the surface is still valid.
         binding.milkdropSurface.onPause()
         super.onPause()
     }
 
     override fun onDestroyView() {
-        // Sever the PCM tap before the view hierarchy is torn down so the audio
-        // thread cannot write into a destroyed renderer.
         binding.milkdropSurface.disconnectProcessor()
         super.onDestroyView()
     }
 
-    /** This fragment occupies the full screen; the mini player must stay hidden. */
-    override val wantsMiniPlayerVisible: Boolean
-        get() = false
+    /**
+     * When the user picks a preset in [app.simple.felicity.dialogs.player.MilkdropPresets],
+     * the dialog saves [MilkdropPreferences.LAST_PRESET] which triggers this callback.
+     * Asking the ViewModel to reload causes it to read the new file from assets and
+     * re-emit [MilkdropViewModel.presetContent], which the collector above will forward
+     * to projectM.
+     */
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            MilkdropPreferences.LAST_PRESET -> viewModel.reloadFromPreferences()
+        }
+    }
 
     companion object {
         /** Back-stack tag used when adding this fragment to the back stack. */
@@ -89,4 +133,3 @@ class Milkdrop : MediaFragment() {
         fun newInstance(): Milkdrop = Milkdrop()
     }
 }
-

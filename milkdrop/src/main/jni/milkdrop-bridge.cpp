@@ -156,6 +156,34 @@ Java_app_simple_felicity_milkdrop_ProjectMBridge_nativeRenderFrame(
 }
 
 /**
+ * Loads a Milkdrop preset from its raw text content.
+ *
+ * Must be called on the GL thread (via [GLSurfaceView.queueEvent]) while the
+ * OpenGL ES context is current.  projectM will begin transitioning to the new
+ * preset immediately.
+ *
+ * @param env        JNI environment pointer.
+ * @param thiz       Calling Kotlin object (unused).
+ * @param nativePtr  Opaque handle returned by [nativeCreate].
+ * @param data       Full text content of the `.milk` preset file.
+ * @param smooth     When true, projectM cross-fades into the new preset.
+ */
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_milkdrop_ProjectMBridge_nativeLoadPresetData(
+        JNIEnv *env, jobject /*thiz*/, jlong nativePtr, jstring data, jboolean smooth) {
+
+    if (!nativePtr || !data) return;
+    auto *handle = reinterpret_cast<projectm_handle>(nativePtr);
+
+    const char *presetText = env->GetStringUTFChars(data, nullptr);
+    if (presetText) {
+        projectm_load_preset_data(handle, presetText, static_cast<bool>(smooth));
+        env->ReleaseStringUTFChars(data, presetText);
+        BRIDGE_LOGI("Preset data loaded (smooth=%d)", static_cast<int>(smooth));
+    }
+}
+
+/**
  * Destroys the projectM instance and frees all associated native resources.
  *
  * After this call [nativePtr] is invalid and must not be used again.

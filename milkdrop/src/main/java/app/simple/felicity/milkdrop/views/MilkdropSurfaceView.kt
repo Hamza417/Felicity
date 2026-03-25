@@ -79,6 +79,20 @@ class MilkdropSurfaceView @JvmOverloads constructor(
     // ── Public API ────────────────────────────────────────────────────────────
 
     /**
+     * Loads a Milkdrop preset from raw text content.
+     *
+     * The call is automatically marshalled to the GL thread via [queueEvent] so it is
+     * safe to call from any thread (e.g. the main thread inside a [viewLifecycleOwner]
+     * coroutine).
+     *
+     * @param content Full text content of the `.milk` preset file.
+     * @param smooth  When `true`, projectM cross-fades into the new preset.
+     */
+    fun loadPreset(content: String, smooth: Boolean = true) {
+        queueEvent { renderer.loadPreset(content, smooth) }
+    }
+
+    /**
      * Explicitly registers the renderer's PCM tap on [processor].
      *
      * Call this from the host fragment when [VisualizerManager.processor] was null

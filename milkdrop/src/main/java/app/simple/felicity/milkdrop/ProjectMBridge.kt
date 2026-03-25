@@ -108,12 +108,28 @@ class ProjectMBridge {
         nativeHandle = 0L
     }
 
+    /**
+     * Loads a Milkdrop preset from its raw text content.
+     *
+     * Must be called on the GL thread (via [android.opengl.GLSurfaceView.queueEvent]) while
+     * the OpenGL ES context is current.
+     *
+     * @param content Full text of the `.milk` preset file.
+     * @param smooth  When `true`, projectM cross-fades into the new preset.
+     *                Defaults to `true` for a visually smooth transition.
+     */
+    fun loadPresetData(content: String, smooth: Boolean = true) {
+        if (!isCreated) return
+        nativeLoadPresetData(nativeHandle, content, smooth)
+    }
+
     // Native declarations — implemented in milkdrop-bridge.cpp
 
     private external fun nativeCreate(width: Int, height: Int): Long
     private external fun nativeSurfaceChanged(nativePtr: Long, width: Int, height: Int)
     private external fun nativeAddPcmData(nativePtr: Long, samples: FloatArray, count: Int, isStereo: Boolean)
     private external fun nativeRenderFrame(nativePtr: Long)
+    private external fun nativeLoadPresetData(nativePtr: Long, data: String, smooth: Boolean)
     private external fun nativeDestroy(nativePtr: Long)
 
     companion object {

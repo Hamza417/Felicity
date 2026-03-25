@@ -117,6 +117,19 @@ class MilkdropGLRenderer : GLSurfaceView.Renderer, VisualizerProcessor.PcmWindow
     // ── Cleanup ────────────────────────────────────────────────────────────────
 
     /**
+     * Loads a Milkdrop preset from raw text content.
+     *
+     * Must be called on the GL thread (e.g. via [android.opengl.GLSurfaceView.queueEvent])
+     * while the EGL context is current.
+     *
+     * @param content Full text content of the `.milk` preset file.
+     * @param smooth  When `true`, projectM cross-fades into the new preset.
+     */
+    fun loadPreset(content: String, smooth: Boolean = true) {
+        bridge.loadPresetData(content, smooth)
+    }
+
+    /**
      * Destroys the native projectM instance.
      *
      * Must be called on the GL thread (via [GLSurfaceView.queueEvent]) so that the

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_gravity="bottom"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:padding="@dimen/padding_15"
+    android:layout_height="wrap_content">
+
+    <app.simple.felicity.decorations.corners.DynamicCornerLinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:padding="@dimen/padding_15"
+        android:orientation="vertical">
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/presets"
+            android:textSize="@dimen/text_size_16"
+            app:appFontStyle="bold"
+            app:textColorStyle="heading" />
+
+        <app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
+            android:id="@+id/presets_recycler_view"
+            android:layout_width="match_parent"
+            android:layout_marginTop="@dimen/padding_10"
+            android:layout_height="400dp"
+            app:isFadingEdgeRequired="true"
+            app:navigationPaddingRequired="false"
+            app:statusPaddingRequired="false" />
+
+    </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+
+</FrameLayout>
