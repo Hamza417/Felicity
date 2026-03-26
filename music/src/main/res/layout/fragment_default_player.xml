@@ -31,17 +31,60 @@
         android:layout_width="match_parent"
         android:layout_height="1px" />
 
-    <app.simple.felicity.decorations.highlight.HighlightTextView
-        android:id="@+id/pcm_info"
-        android:layout_width="wrap_content"
-        android:textSize="@dimen/text_size_12"
-        android:layout_gravity="center_horizontal"
-        android:paddingHorizontal="@dimen/padding_10"
-        android:paddingVertical="@dimen/padding_1"
-        android:layout_marginVertical="@dimen/padding_10"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:appFontStyle="bold"
-        app:textColorStyle="primary" />
+        android:layout_marginHorizontal="@dimen/padding_15"
+        android:orientation="horizontal">
+
+        <app.simple.felicity.decorations.views.FavoriteButton
+            android:id="@+id/favorite"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="@dimen/button_size"
+            android:layout_marginEnd="@dimen/padding_1"
+            android:padding="@dimen/padding_8"
+            android:src="@drawable/ic_favorite_border"
+            app:buttonTintType="regular" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/visualizer_button"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="@dimen/button_size"
+            android:layout_marginEnd="@dimen/padding_1"
+            android:src="@drawable/ic_graphic_eq"
+            android:layout_gravity="center_vertical"
+            app:buttonTintType="regular" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/equalizer"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="@dimen/button_size"
+            android:layout_marginEnd="@dimen/padding_1"
+            android:padding="@dimen/padding_8"
+            android:src="@drawable/ic_equalizer"
+            app:buttonTintType="regular" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/search"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="@dimen/button_size"
+            android:layout_marginEnd="@dimen/padding_1"
+            android:src="@drawable/ic_search"
+            app:buttonTintType="regular" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/menu"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="@dimen/button_size"
+            android:src="@drawable/ic_more_vert"
+            app:buttonTintType="regular" />
+
+    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -55,7 +98,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
-            android:padding="@dimen/padding_5"
+            android:paddingVertical="@dimen/padding_5"
+            android:paddingHorizontal="@dimen/padding_10"
             app:appFontStyle="bold"
             app:textColorStyle="primary" />
 
@@ -65,7 +109,8 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:layout_marginStart="@dimen/padding_5"
-            android:padding="@dimen/padding_5"
+            android:paddingVertical="@dimen/padding_5"
+            android:paddingHorizontal="@dimen/padding_10"
             android:text="@string/lyrics"
             app:appFontStyle="bold"
             app:textColorStyle="primary" />
@@ -76,47 +121,18 @@
             android:layout_height="match_parent"
             android:layout_marginHorizontal="@dimen/padding_10" />
 
-        <app.simple.felicity.decorations.views.FavoriteButton
-            android:id="@+id/favorite"
-            android:layout_width="@dimen/button_size"
-            android:layout_height="@dimen/button_size"
-            android:layout_marginEnd="@dimen/padding_1"
-            android:padding="@dimen/padding_8"
-            android:src="@drawable/ic_favorite_border"
-            app:buttonTintType="regular" />
-
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-            android:id="@+id/visualizer_button"
-            android:layout_width="@dimen/button_size"
-            android:layout_height="@dimen/button_size"
-            android:layout_marginEnd="@dimen/padding_1"
-            android:src="@drawable/ic_graphic_eq"
+        <app.simple.felicity.decorations.highlight.HighlightTextView
+            android:id="@+id/pcm_info"
+            android:layout_width="wrap_content"
+            android:textSize="@dimen/text_size_12"
             android:layout_gravity="center_vertical"
-            app:buttonTintType="regular" />
-
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-            android:id="@+id/equalizer"
-            android:layout_width="@dimen/button_size"
-            android:layout_height="@dimen/button_size"
-            android:layout_marginEnd="@dimen/padding_1"
-            android:padding="@dimen/padding_8"
-            android:src="@drawable/ic_equalizer"
-            app:buttonTintType="regular" />
-
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-            android:id="@+id/search"
-            android:layout_width="@dimen/button_size"
-            android:layout_height="@dimen/button_size"
-            android:layout_marginEnd="@dimen/padding_1"
-            android:src="@drawable/ic_search"
-            app:buttonTintType="regular" />
-
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-            android:id="@+id/menu"
-            android:layout_width="@dimen/button_size"
-            android:layout_height="@dimen/button_size"
-            android:src="@drawable/ic_more_vert"
-            app:buttonTintType="regular" />
+            android:paddingHorizontal="@dimen/padding_10"
+            android:paddingVertical="@dimen/padding_1"
+            android:layout_marginVertical="@dimen/padding_10"
+            android:layout_height="wrap_content"
+            app:appFontStyle="bold"
+            app:highlightMode="outline"
+            app:textColorStyle="primary" />
 
     </LinearLayout>
 

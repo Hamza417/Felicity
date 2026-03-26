@@ -73,7 +73,6 @@ class ArtFlowHome : MediaFragment() {
                 FelicitySideBar.SidebarItem(R.drawable.ic_artist),
                 FelicitySideBar.SidebarItem(R.drawable.ic_album),
                 FelicitySideBar.SidebarItem(R.drawable.ic_menu),
-                FelicitySideBar.SidebarItem(R.drawable.ic_play),
                 FelicitySideBar.SidebarItem(R.drawable.ic_search),
                 FelicitySideBar.SidebarItem(R.drawable.ic_settings)
         ))
@@ -134,9 +133,6 @@ class ArtFlowHome : MediaFragment() {
                             },
                             onDismiss = {}
                     ).show()
-                }
-                R.drawable.ic_play -> {
-                    openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
                 }
                 R.drawable.ic_search -> {
                     openFragment(Search.newInstance(), Search.TAG)

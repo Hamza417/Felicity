@@ -237,6 +237,23 @@
         <attr name="wsvMaxBarHeight" format="float" />
     </declare-styleable>
 
+    <!--
+        HighlightTextView: pill-shaped, tappable label-button with configurable highlight style.
+        highlightMode    – flat (filled, default), outline (stroke only), or both.
+        highlightCustomColor – pins the fill/stroke color to a fixed value, bypassing any theme or
+                               accent. Omit the attribute (or do not set it) to use theme colors.
+        highlightStrokeWidth – stroke thickness for outline and both modes (default: 1.5dp).
+    -->
+    <declare-styleable name="HighlightTextView">
+        <attr name="highlightMode" format="enum">
+            <enum name="flat" value="0" />
+            <enum name="outline" value="1" />
+            <enum name="both" value="2" />
+        </attr>
+        <attr name="highlightCustomColor" format="color|reference" />
+        <attr name="highlightStrokeWidth" format="dimension" />
+    </declare-styleable>
+
     <!-- FelicityVisualizer: real-time audio spectrum bar and wave visualizer -->
     <declare-styleable name="FelicityVisualizer">
         <!--
