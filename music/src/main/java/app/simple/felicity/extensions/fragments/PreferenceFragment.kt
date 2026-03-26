@@ -9,7 +9,10 @@ import app.simple.felicity.R
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.toggles.FelicitySwitch
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
+import app.simple.felicity.decorations.toggles.FelicityButtonGroup
+import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.enums.PreferenceType
+import app.simple.felicity.models.ButtonGroupState
 import app.simple.felicity.models.Preference
 import app.simple.felicity.models.SeekbarState
 import app.simple.felicity.popups.home.PopupHomeInterfaceMenu
@@ -128,35 +131,25 @@ abstract class PreferenceFragment : MediaFragment() {
                 title = R.string.thumb_shape,
                 summary = R.string.thumb_shape_summary,
                 icon = -1,
-                type = PreferenceType.POPUP,
+                type = PreferenceType.BUTTON_GROUP,
                 valueProvider = {
-                    when (AppearancePreferences.getSeekbarThumbStyle()) {
-                        AppearancePreferences.SEEKBAR_THUMB_PILL -> getString(R.string.pill)
-                        AppearancePreferences.SEEKBAR_THUMB_CIRCLE -> getString(R.string.circle)
-                        else -> getString(R.string.pill)
-                    }
-                },
-                onPreferenceAction = { view, callback ->
-                    SharedScrollViewPopup(
-                            container = requireContainerView(),
-                            anchorView = view,
-                            menuItems = listOf(R.string.pill, R.string.circle),
-                            onMenuItemClick = {
-                                when (it) {
-                                    R.string.pill -> {
-                                        AppearancePreferences.setSeekbarThumbStyle(AppearancePreferences.SEEKBAR_THUMB_PILL)
-                                        (view as TextView).text = getString(R.string.pill)
-                                    }
-                                    R.string.circle -> {
-                                        AppearancePreferences.setSeekbarThumbStyle(AppearancePreferences.SEEKBAR_THUMB_CIRCLE)
-                                        (view as TextView).text = getString(R.string.circle)
-                                    }
-                                }
-                            },
-                            onDismiss = {
-
+                    ButtonGroupState(
+                            buttons = listOf(
+                                    Button(textResId = R.string.pill),
+                                    Button(textResId = R.string.circle),
+                            ),
+                            selectedIndex = when (AppearancePreferences.getSeekbarThumbStyle()) {
+                                AppearancePreferences.SEEKBAR_THUMB_PILL -> 0
+                                else -> 1
                             }
-                    ).show()
+                    )
+                },
+                onPreferenceAction = { view, _ ->
+                    val style = when ((view as FelicityButtonGroup).getSelectedIndex()) {
+                        0 -> AppearancePreferences.SEEKBAR_THUMB_PILL
+                        else -> AppearancePreferences.SEEKBAR_THUMB_CIRCLE
+                    }
+                    AppearancePreferences.setSeekbarThumbStyle(style)
                 }
         )
 
@@ -164,35 +157,25 @@ abstract class PreferenceFragment : MediaFragment() {
                 title = R.string.knob_style,
                 summary = R.string.knob_style_summary,
                 icon = -1,
-                type = PreferenceType.POPUP,
+                type = PreferenceType.BUTTON_GROUP,
                 valueProvider = {
-                    when (AppearancePreferences.getKnobStyle()) {
-                        AppearancePreferences.KNOB_STYLE_DEFAULT -> getString(R.string.flat)
-                        AppearancePreferences.KNOB_STYLE_NEU -> getString(R.string.neumorphic)
-                        else -> getString(R.string.flat)
-                    }
-                },
-                onPreferenceAction = { view, callback ->
-                    SharedScrollViewPopup(
-                            container = requireContainerView(),
-                            anchorView = view,
-                            menuItems = listOf(R.string.flat, R.string.neumorphic),
-                            onMenuItemClick = {
-                                when (it) {
-                                    R.string.flat -> {
-                                        AppearancePreferences.setKnobStyle(AppearancePreferences.KNOB_STYLE_DEFAULT)
-                                        (view as TextView).text = getString(R.string.flat)
-                                    }
-                                    R.string.neumorphic -> {
-                                        AppearancePreferences.setKnobStyle(AppearancePreferences.KNOB_STYLE_NEU)
-                                        (view as TextView).text = getString(R.string.neumorphic)
-                                    }
-                                }
-                            },
-                            onDismiss = {
-
+                    ButtonGroupState(
+                            buttons = listOf(
+                                    Button(textResId = R.string.flat),
+                                    Button(textResId = R.string.neumorphic),
+                            ),
+                            selectedIndex = when (AppearancePreferences.getKnobStyle()) {
+                                AppearancePreferences.KNOB_STYLE_DEFAULT -> 0
+                                else -> 1
                             }
-                    ).show()
+                    )
+                },
+                onPreferenceAction = { view, _ ->
+                    val style = when ((view as FelicityButtonGroup).getSelectedIndex()) {
+                        0 -> AppearancePreferences.KNOB_STYLE_DEFAULT
+                        else -> AppearancePreferences.KNOB_STYLE_NEU
+                    }
+                    AppearancePreferences.setKnobStyle(style)
                 }
         )
 
@@ -377,36 +360,25 @@ abstract class PreferenceFragment : MediaFragment() {
                 title = R.string.fast_scroll_behavior,
                 summary = R.string.fast_scroll_behavior_summary,
                 icon = R.drawable.ic_swipe_vertical,
-                type = PreferenceType.POPUP,
+                type = PreferenceType.BUTTON_GROUP,
                 valueProvider = {
-                    when (BehaviourPreferences.getFastScrollBehavior()) {
-                        BehaviourPreferences.HIDE_FAST_SCROLLBAR -> getString(R.string.hide)
-                        BehaviourPreferences.FADE_FAST_SCROLLBAR -> getString(R.string.fade)
-                        else -> getString(R.string.app_name)
-                    }
-                },
-                onPreferenceAction = { view, callback ->
-                    SharedScrollViewPopup(
-                            container = requireContainerView(),
-                            anchorView = view,
-                            menuItems = listOf(R.string.hide, R.string.fade),
-                            menuIcons = listOf(R.drawable.ic_hide_16dp, R.drawable.ic_opacity_16dp),
-                            onMenuItemClick = {
-                                when (it) {
-                                    R.string.hide -> {
-                                        BehaviourPreferences.setFastScrollBehavior(BehaviourPreferences.HIDE_FAST_SCROLLBAR)
-                                        (view as TextView).text = getString(R.string.hide)
-                                    }
-                                    R.string.fade -> {
-                                        BehaviourPreferences.setFastScrollBehavior(BehaviourPreferences.FADE_FAST_SCROLLBAR)
-                                        (view as TextView).text = getString(R.string.fade)
-                                    }
-                                }
-                            },
-                            onDismiss = {
-
+                    ButtonGroupState(
+                            buttons = listOf(
+                                    Button(textResId = R.string.hide),
+                                    Button(textResId = R.string.fade),
+                            ),
+                            selectedIndex = when (BehaviourPreferences.getFastScrollBehavior()) {
+                                BehaviourPreferences.HIDE_FAST_SCROLLBAR -> 0
+                                else -> 1
                             }
-                    ).show()
+                    )
+                },
+                onPreferenceAction = { view, _ ->
+                    val behavior = when ((view as FelicityButtonGroup).getSelectedIndex()) {
+                        0 -> BehaviourPreferences.HIDE_FAST_SCROLLBAR
+                        else -> BehaviourPreferences.FADE_FAST_SCROLLBAR
+                    }
+                    BehaviourPreferences.setFastScrollBehavior(behavior)
                 }
         )
 
@@ -444,31 +416,28 @@ abstract class PreferenceFragment : MediaFragment() {
                 title = R.string.transition,
                 summary = R.string.transition_summary,
                 icon = -1,
-                type = PreferenceType.POPUP,
+                type = PreferenceType.BUTTON_GROUP,
                 valueProvider = {
-                    when (BehaviourPreferences.getFragmentTransition()) {
-                        BehaviourPreferences.TRANSITION_Z -> getString(R.string.depth)
-                        BehaviourPreferences.TRANSITION_X -> getString(R.string.drift)
-                        BehaviourPreferences.TRANSITION_FADE -> getString(R.string.fade)
-                        else -> getString(R.string.depth)
-                    }
+                    ButtonGroupState(
+                            buttons = listOf(
+                                    Button(textResId = R.string.depth),
+                                    Button(textResId = R.string.drift),
+                                    Button(textResId = R.string.fade),
+                            ),
+                            selectedIndex = when (BehaviourPreferences.getFragmentTransition()) {
+                                BehaviourPreferences.TRANSITION_Z -> 0
+                                BehaviourPreferences.TRANSITION_X -> 1
+                                else -> 2
+                            }
+                    )
                 },
-                onPreferenceAction = { view, callback ->
-                    SharedScrollViewPopup(
-                            container = requireContainerView(),
-                            anchorView = view,
-                            menuItems = listOf(R.string.depth, R.string.drift, R.string.fade),
-                            onMenuItemClick = {
-                                val transition = when (it) {
-                                    R.string.depth -> BehaviourPreferences.TRANSITION_Z
-                                    R.string.drift -> BehaviourPreferences.TRANSITION_X
-                                    else -> BehaviourPreferences.TRANSITION_FADE
-                                }
-                                BehaviourPreferences.setFragmentTransition(transition)
-                                (view as TextView).text = getString(it)
-                            },
-                            onDismiss = {}
-                    ).show()
+                onPreferenceAction = { view, _ ->
+                    val transition = when ((view as FelicityButtonGroup).getSelectedIndex()) {
+                        0 -> BehaviourPreferences.TRANSITION_Z
+                        1 -> BehaviourPreferences.TRANSITION_X
+                        else -> BehaviourPreferences.TRANSITION_FADE
+                    }
+                    BehaviourPreferences.setFragmentTransition(transition)
                 }
         )
 

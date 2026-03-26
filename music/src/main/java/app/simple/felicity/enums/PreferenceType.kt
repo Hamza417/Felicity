@@ -10,4 +10,5 @@ enum class PreferenceType {
     SLIDER,
     PANEL,
     WARN,
+    BUTTON_GROUP,
 }

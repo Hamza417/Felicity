@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.databinding.AdapterPreferenceButtonGroupBinding
 import app.simple.felicity.databinding.AdapterPreferenceDialogBinding
 import app.simple.felicity.databinding.AdapterPreferenceHeaderBinding
 import app.simple.felicity.databinding.AdapterPreferencePanelBinding
@@ -44,6 +45,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             }
             VIEW_TYPE_WARNING -> {
                 Warning(AdapterPreferenceWarningBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            }
+            VIEW_TYPE_BUTTON_GROUP -> {
+                ButtonGroup(AdapterPreferenceButtonGroupBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
             else -> {
                 throw IllegalArgumentException()
@@ -165,6 +169,25 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                 val preference = preferences[position]
                 holder.binding.warning.setText(preference.title)
             }
+            is ButtonGroup -> {
+                val preference = preferences[position]
+                holder.binding.title.setText(preference.title)
+                holder.binding.summary.setText(preference.summary)
+
+                if (preference.icon != -1) {
+                    holder.binding.icon.setImageResource(preference.icon)
+                }
+
+                val state = preference.valueAsButtonGroupStateProvider
+                    ?: throw IllegalStateException("ButtonGroupState cannot be null for button_group preference")
+
+                holder.binding.buttonGroup.setButtons(state.buttons)
+                holder.binding.buttonGroup.setSelectedIndex(state.selectedIndex, animate = false, notifyListener = false)
+
+                holder.binding.buttonGroup.setOnButtonSelectedListener {
+                    preference.onPreferenceAction?.invoke(holder.binding.buttonGroup) { /* no-op */ }
+                }
+            }
         }
     }
 
@@ -187,6 +210,7 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             PreferenceType.DIALOG -> VIEW_TYPE_DIALOG
             PreferenceType.PANEL -> VIEW_TYPE_PANEL
             PreferenceType.WARN -> VIEW_TYPE_WARNING
+            PreferenceType.BUTTON_GROUP -> VIEW_TYPE_BUTTON_GROUP
             else -> throw IllegalArgumentException("Unknown view type at position $position")
         }
     }
@@ -200,6 +224,8 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
     inner class Panel(val binding: AdapterPreferencePanelBinding) : VerticalListViewHolder(binding.root)
 
     inner class Warning(val binding: AdapterPreferenceWarningBinding) : VerticalListViewHolder(binding.root)
+
+    inner class ButtonGroup(val binding: AdapterPreferenceButtonGroupBinding) : VerticalListViewHolder(binding.root)
 
     inner class Switch(val binding: AdapterPreferenceSwitchBinding) : VerticalListViewHolder(binding.root) {
         init {
@@ -224,5 +250,6 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
         const val VIEW_TYPE_SUB_HEADER = 6
         const val VIEW_TYPE_DIALOG = 7
         const val VIEW_TYPE_WARNING = 8
+        const val VIEW_TYPE_BUTTON_GROUP = 9
     }
 }

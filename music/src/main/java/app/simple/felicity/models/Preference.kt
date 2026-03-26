@@ -67,6 +67,9 @@ class Preference {
 
     val valueAsBooleanProvider: Boolean?
         get() = valueProvider?.get() as Boolean?
+
+    val valueAsButtonGroupStateProvider: ButtonGroupState?
+        get() = valueProvider?.get() as ButtonGroupState?
 }
 
 
