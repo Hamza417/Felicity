@@ -29,6 +29,9 @@
             android:layout_width="match_parent"
             android:layout_height="350dp"
             android:layout_marginTop="@dimen/padding_10"
+            android:fadingEdge="vertical"
+            android:requiresFadingEdge="vertical"
+            android:fadingEdgeLength="@dimen/padding_15"
             app:isFadingEdgeRequired="true"
             app:navigationPaddingRequired="false"
             app:statusPaddingRequired="false">
@@ -194,6 +197,24 @@
 
                         <app.simple.felicity.decorations.typeface.TypeFaceTextView
                             android:id="@+id/value_resampler_rates"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingVertical="@dimen/padding_1"
+                            android:textSize="@dimen/text_size_12"
+                            app:appFontStyle="bold"
+                            app:textColorStyle="secondary" />
+
+                        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                            android:id="@+id/value_resampler_type"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingVertical="@dimen/padding_1"
+                            android:textSize="@dimen/text_size_12"
+                            app:appFontStyle="bold"
+                            app:textColorStyle="secondary" />
+
+                        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                            android:id="@+id/value_resampler_cutoff"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:paddingVertical="@dimen/padding_1"

@@ -311,6 +311,8 @@
     <string name="input_rate">Input Rate</string>
     <string name="output_rate">Output Rate</string>
     <string name="io_rate">I/O Rate</string>
+    <string name="resampler_type">Type</string>
+    <string name="resampler_cutoff">Cutoff</string>
     <string name="quality">Quality</string>
     <string name="dsp">DSP</string>
     <string name="pcm_format">PCM Format</string>
@@ -322,4 +324,5 @@
     <string name="bit_depth_in">Bit Depth In</string>
     <string name="bit_depth_out">Bit Depth Out</string>
     <string name="disabled">Disabled</string>
+    <string name="insert_and_play">Insert in Queue and Play</string>
 </resources>

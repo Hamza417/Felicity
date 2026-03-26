@@ -145,9 +145,22 @@ class AudioPipelineDialog : ScopedBottomSheetFragment() {
                 getString(R.string.io_rate),
                 getString(R.string.format_io_rate, inRate, outRate))
 
+        b.valueResamplerType.text = createSpannedString(
+                getString(R.string.resampler_type),
+                snapshot.resamplerType)
+
+        b.valueResamplerCutoff.text = createSpannedString(
+                getString(R.string.resampler_cutoff),
+                if (snapshot.resamplerCutoffHz > 0) {
+                    val cutOffPercent: Int = snapshot.resamplerCutoffHz * 100 / snapshot.inputSampleRate
+                    getString(R.string.format_hz_cutoff, snapshot.resamplerCutoffHz, cutOffPercent)
+                } else {
+                    "—"
+                })
+
         b.valueResamplerQuality.text = createSpannedString(
                 getString(R.string.quality),
-                snapshot.resamplerQuality.ifBlank { "—" })
+                snapshot.resamplerQuality)
 
         // DSP
         b.valueDspFormat.text = createSpannedString(

@@ -1070,7 +1070,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      *
      * Must be called from the main thread because several [ExoPlayer] API calls
      * (e.g., [ExoPlayer.audioFormat]) are not thread-safe. All call sites guarantee
-     * this by using [Dispatchers.Main.immediate] or being inside main-thread callbacks.
+     * this by using [Dispatchers.Main] or being inside main-thread callbacks.
      */
     private fun buildAndPushSnapshot() {
         if (!::player.isInitialized) return
@@ -1097,22 +1097,16 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
         // Decoder info
         val decoderLabel = when {
-            currentDecoderName.contains("ffmpeg", ignoreCase = true) -> "FFmpeg"
+            currentDecoderName.contains("ffmpeg", ignoreCase = true) -> "Felicity Native FFmpeg Decoder"
             currentDecoderName.contains("c2.", ignoreCase = true) -> currentDecoderName
             currentDecoderName != "Unknown" -> currentDecoderName
-            AudioPreferences.getAudioDecoder() == AudioPreferences.FFMPEG -> "FFmpeg (pending)"
+            AudioPreferences.getAudioDecoder() == AudioPreferences.FFMPEG -> "Felicity Native FFmpeg Decoder (pending)"
             else -> "Android Built-in (pending)"
         }
 
-        // Resampler state: compare source sample rate with DSP (post-decode) sample rate
+        // Resampler state: keep source and DSP rates for later characterisation
         val inputSampleRate = sampleRateHz
         val dspSampleRateHz = dspInputFormat.sampleRate.takeIf { it > 0 } ?: sampleRateHz
-        val outputSampleRate = dspSampleRateHz
-        val resamplerQuality = if (inputSampleRate == 0 || inputSampleRate == outputSampleRate) {
-            "None"
-        } else {
-            "Android Built-in"
-        }
 
         // DSP state
         val dspFormatStr = pcmEncodingToFormatString(dspInputFormat.encoding)
@@ -1134,6 +1128,33 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         val deviceBitDepthOut = getDeviceBitDepth(outputDevice, deviceBitDepthIn)
         val deviceSampleRate = getDeviceSampleRate(outputDevice, sampleRateHz)
 
+        // Full resampler characterisation — requires deviceSampleRate to detect HAL-level resampling.
+        // SW resampling: ExoPlayer/Android pipeline changes rate before AudioTrack.
+        // HW resampling: the AudioTrack/HAL resamples because its native rate ≠ what we write.
+        val swResampling = inputSampleRate > 0 && inputSampleRate != dspSampleRateHz
+        val hwResampling = dspSampleRateHz > 0 && dspSampleRateHz != deviceSampleRate
+        val resamplerType = when {
+            swResampling && hwResampling -> "SW + HW"
+            swResampling -> "Software"
+            hwResampling -> "Hardware (HAL)"
+            else -> "None"
+        }
+        val resamplerQuality = when {
+            swResampling && hwResampling -> "Android SRC + HAL"
+            swResampling -> "Android SRC"
+            hwResampling -> "HAL Native"
+            else -> "Passthrough"
+        }
+        // Nyquist anti-aliasing cutoff = min rate in the chain ÷ 2
+        val resamplerCutoffHz = if (swResampling || hwResampling) {
+            listOf(inputSampleRate, dspSampleRateHz, deviceSampleRate)
+                    .filter { it > 0 }
+                    .minOrNull()
+                    ?.div(2) ?: 0
+        } else {
+            0
+        }
+
         val snapshot = AudioPipelineSnapshot(
                 trackFormat = trackFormat,
                 bitDepth = bitDepth,
@@ -1142,8 +1163,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 channels = channels,
                 decoderName = decoderLabel,
                 inputSampleRate = inputSampleRate,
-                outputSampleRate = outputSampleRate,
+                outputSampleRate = dspSampleRateHz,
+                resamplerType = resamplerType,
                 resamplerQuality = resamplerQuality,
+                resamplerCutoffHz = resamplerCutoffHz,
                 dspFormat = dspFormatStr,
                 dspSampleRate = dspSampleRateHz,
                 activeEqName = activeEqName,

@@ -26,6 +26,7 @@
 
     <!-- Audio Pipeline Dialog — value format strings -->
     <string name="format_hz">%1$d Hz</string>
+    <string name="format_hz_cutoff">%1$d Hz, %2$d%%</string>
     <string name="format_kbps">%1$d kbps</string>
     <string name="format_bit_depth">%1$d-bit</string>
     <string name="format_percent">%1$d%%</string>

@@ -14,7 +14,12 @@ data class AudioPipelineSnapshot(
         // Resampler State (From Audio Engine)
         val inputSampleRate: Int,
         val outputSampleRate: Int,
+        /** Who is resampling: `"None"`, `"Software"`, `"Hardware (HAL)"`, or `"SW + HW"`. */
+        val resamplerType: String,
+        /** Resampler implementation quality: `"Passthrough"`, `"Android SRC"`, `"HAL Native"`, or `"Android SRC + HAL"`. */
         val resamplerQuality: String,
+        /** Theoretical Nyquist anti-aliasing cutoff in Hz; `0` when resampling is bypassed. */
+        val resamplerCutoffHz: Int,
 
         // DSP State
         val dspFormat: String,   // e.g., "Float32"
@@ -39,7 +44,9 @@ data class AudioPipelineSnapshot(
                 " decoderName='$decoderName'," +
                 " inputSampleRate=$inputSampleRate," +
                 " outputSampleRate=$outputSampleRate," +
+                " resamplerType='$resamplerType'," +
                 " resamplerQuality='$resamplerQuality'," +
+                " resamplerCutoffHz=$resamplerCutoffHz," +
                 " dspFormat='$dspFormat'," +
                 " dspSampleRate=$dspSampleRate," +
                 " activeEqName=$activeEqName," +
