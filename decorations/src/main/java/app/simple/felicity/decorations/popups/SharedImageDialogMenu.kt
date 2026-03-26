@@ -5,6 +5,7 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
+import android.annotation.SuppressLint
 import android.graphics.Color
 import android.graphics.Rect
 import android.view.Gravity
@@ -320,6 +321,7 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         }
     }
 
+    @SuppressLint("Recycle")
     fun dismiss() {
         if (isDismissing || !isShowing) return
         isDismissing = true
@@ -381,48 +383,65 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
             interpolator = DECELERATE_CUBIC
         }
 
-        // Image position animation back to source, starting from the current live position.
-        val xAnimator = ValueAnimator.ofInt(startLeft, sourceRect.left).apply {
-            duration = DURATION
-            interpolator = EMPHASIZED_INTERPOLATOR
-            addUpdateListener {
-                imageParams.leftMargin = it.animatedValue as Int
-                animatingImageView.layoutParams = imageParams
-            }
-        }
+        // Build the animator list. The position morph is only included when the source
+        // ImageView is still present and visible within the window; otherwise the overlay
+        // simply fades out from wherever it currently sits so we never fly it to a stale,
+        // off-screen, or detached target.
+        val animators = mutableListOf<Animator>(
+                scrimAnimator, containerAlphaAnimator, contentAlphaAnimator,
+                contentScaleXAnimator, contentScaleYAnimator
+        )
 
-        val yAnimator = ValueAnimator.ofInt(startTop, sourceRect.top).apply {
-            duration = DURATION
-            interpolator = EMPHASIZED_INTERPOLATOR
-            addUpdateListener {
-                imageParams.topMargin = it.animatedValue as Int
-                animatingImageView.layoutParams = imageParams
-            }
-        }
+        if (isSourceReachable()) {
+            // Re-capture source position in case it has scrolled since show() was called.
+            sourceImageView.getGlobalVisibleRect(sourceRect)
+            sourceRect.offset(-containerRect.left, -containerRect.top)
 
-        val widthAnimator = ValueAnimator.ofInt(startWidth, sourceRect.width()).apply {
-            duration = DURATION
-            interpolator = EMPHASIZED_INTERPOLATOR
-            addUpdateListener {
-                imageParams.width = it.animatedValue as Int
-                animatingImageView.layoutParams = imageParams
+            animators += ValueAnimator.ofInt(startLeft, sourceRect.left).apply {
+                duration = DURATION
+                interpolator = EMPHASIZED_INTERPOLATOR
+                addUpdateListener {
+                    imageParams.leftMargin = it.animatedValue as Int
+                    animatingImageView.layoutParams = imageParams
+                }
             }
-        }
 
-        val heightAnimator = ValueAnimator.ofInt(startHeight, sourceRect.height()).apply {
-            duration = DURATION
-            interpolator = EMPHASIZED_INTERPOLATOR
-            addUpdateListener {
-                imageParams.height = it.animatedValue as Int
-                animatingImageView.layoutParams = imageParams
+            animators += ValueAnimator.ofInt(startTop, sourceRect.top).apply {
+                duration = DURATION
+                interpolator = EMPHASIZED_INTERPOLATOR
+                addUpdateListener {
+                    imageParams.topMargin = it.animatedValue as Int
+                    animatingImageView.layoutParams = imageParams
+                }
+            }
+
+            animators += ValueAnimator.ofInt(startWidth, sourceRect.width()).apply {
+                duration = DURATION
+                interpolator = EMPHASIZED_INTERPOLATOR
+                addUpdateListener {
+                    imageParams.width = it.animatedValue as Int
+                    animatingImageView.layoutParams = imageParams
+                }
+            }
+
+            animators += ValueAnimator.ofInt(startHeight, sourceRect.height()).apply {
+                duration = DURATION
+                interpolator = EMPHASIZED_INTERPOLATOR
+                addUpdateListener {
+                    imageParams.height = it.animatedValue as Int
+                    animatingImageView.layoutParams = imageParams
+                }
+            }
+        } else {
+            // Source is gone or outside the window — fade the overlay out in place.
+            animators += ObjectAnimator.ofFloat(animatingImageView, View.ALPHA, 1f, 0f).apply {
+                duration = DURATION
+                interpolator = DECELERATE_CUBIC
             }
         }
 
         AnimatorSet().apply {
-            playTogether(
-                    scrimAnimator, containerAlphaAnimator, contentAlphaAnimator, contentScaleXAnimator, contentScaleYAnimator,
-                    xAnimator, yAnimator, widthAnimator, heightAnimator
-            )
+            playTogether(animators)
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
                     cleanup()
@@ -486,6 +505,24 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         container.dispatchTouchEvent(cancelEvent)
 
         cancelEvent.recycle()
+    }
+
+    /**
+     * Returns true only when the source ImageView is still attached to the window,
+     * has a live parent, and its globally visible bounds intersect the container —
+     * meaning it is a valid, on-screen target to morph back into.
+     *
+     * If this returns false, dismiss() skips the position morph and fades the
+     * animating overlay out in place instead of flying it to a stale location.
+     */
+    private fun isSourceReachable(): Boolean {
+        if (!sourceImageView.isAttachedToWindow) return false
+        if (sourceImageView.parent == null) return false
+        val sourceVisible = Rect()
+        if (!sourceImageView.getGlobalVisibleRect(sourceVisible)) return false
+        val containerVisible = Rect()
+        if (!container.getGlobalVisibleRect(containerVisible)) return false
+        return Rect.intersects(sourceVisible, containerVisible)
     }
 
     private fun setupBackPressListener() {
