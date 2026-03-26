@@ -1,28 +1,24 @@
 package app.simple.felicity.ui.panels
 
-import android.content.SharedPreferences
-import android.content.res.ColorStateList
-import android.graphics.Color
+import android.annotation.SuppressLint
 import android.os.Bundle
-import android.text.format.DateUtils
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import app.simple.felicity.R
+import androidx.viewpager2.widget.ViewPager2
+import app.simple.felicity.adapters.ui.lists.AdapterMilkdropPager
 import app.simple.felicity.databinding.FragmentMilkdropBinding
-import app.simple.felicity.decorations.seekbars.FelicitySeekbar
-import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.dialogs.player.MilkdropPresets.Companion.showMilkdropPresets
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
-import app.simple.felicity.preferences.MilkdropPreferences
-import app.simple.felicity.repository.constants.MediaConstants
-import app.simple.felicity.repository.managers.MediaManager
-import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.ui.panels.Milkdrop.Companion.OVERLAY_VISIBLE_MS
 import app.simple.felicity.viewmodels.panels.MilkdropViewModel
 import kotlinx.coroutines.launch
 
@@ -30,21 +26,17 @@ import kotlinx.coroutines.launch
  * Full-screen Milkdrop visualizer fragment.
  *
  * Hosts a [app.simple.felicity.milkdrop.views.MilkdropSurfaceView] that renders
- * projectM 4.x presets in real time.  Audio data is delivered to projectM via the
+ * projectM 4.x presets in real time.  Audio data is delivered via the
  * [VisualizerProcessor][app.simple.felicity.engine.processors.VisualizerProcessor]
- * PCM-window tap, which the surface view manages automatically on attach/detach.
+ * PCM-window tap managed by the surface view on attach/detach.
  *
- * The fragment re-registers the PCM tap in [onViewCreated] to cover the edge case
- * where the player service started after [onAttachedToWindow] fired.  The tap is
- * also explicitly cleared in [onDestroyView] so the audio thread holds no stale
- * reference to the renderer after the view hierarchy is torn down.
+ * A semi-transparent overlay at the top of the screen contains a [ViewPager2] that
+ * lists every bundled preset.  Swiping left or right scrolls through presets and
+ * immediately loads the newly selected one into projectM.  The overlay fades out
+ * automatically after [OVERLAY_VISIBLE_MS] milliseconds of inactivity and reappears
+ * whenever the screen is tapped.
  *
- * Preset selection is persisted in [MilkdropPreferences] and reloaded via
- * [MilkdropViewModel].  Whenever [MilkdropPreferences.LAST_PRESET] changes (from
- * the presets dialog), [onSharedPreferenceChanged] triggers a ViewModel reload which
- * re-emits the new preset content and calls [loadCurrentPreset].
- *
- * [GLSurfaceView.onResume] and [GLSurfaceView.onPause] are forwarded from the
+ * `GLSurfaceView.onResume` and `GLSurfaceView.onPause` are forwarded from the
  * fragment lifecycle so that the EGL rendering thread pauses correctly when the app
  * is backgrounded.
  *
@@ -56,6 +48,18 @@ class Milkdrop : MediaFragment() {
 
     private val viewModel: MilkdropViewModel by viewModels()
 
+    private var pagerAdapter: AdapterMilkdropPager? = null
+
+    private val fadeHandler = Handler(Looper.getMainLooper())
+
+    private val fadeOutRunnable = Runnable {
+        binding.presetPagerContainer
+            .animate()
+            .alpha(0f)
+            .setDuration(FADE_DURATION_MS)
+            .start()
+    }
+
     override fun onCreateView(
             inflater: LayoutInflater,
             container: ViewGroup?,
@@ -65,15 +69,12 @@ class Milkdrop : MediaFragment() {
         return binding.root
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         requireLightBarIcons()
-        requireHiddenMiniPlayer()
-        updateState()
-
-        binding.seekbar.setLabelBackgroundEnabled(false)
-        applyControlsOverlayColors()
+        requireTransparentMiniPlayer()
 
         // Re-register the PCM tap in case the player service started after the
         // surface view's onAttachedToWindow fired (which would have left the tap null).
@@ -81,12 +82,88 @@ class Milkdrop : MediaFragment() {
             binding.milkdropSurface.connectProcessor(processor)
         }
 
-        // Open the presets bottom-sheet on the Presets button.
-        binding.presets.setOnClickListener {
+        setupPresetPager()
+        observeViewModel()
+
+        // Show overlay on any tap on the surface view (GLSurfaceView does not consume touches).
+        val surfaceTouchListener = { v: View, event: MotionEvent ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> showOverlay()
+                MotionEvent.ACTION_UP -> v.performClick()
+            }
+            false
+        }
+        binding.milkdropSurface.setOnTouchListener(surfaceTouchListener)
+
+        // Catch any unhandled taps on the root so the overlay reappears regardless of
+        // which part of the screen the user touches.
+        binding.root.setOnClickListener { showOverlay() }
+
+        // Toggle the automatic preset shuffle and reset the fade timer so the user
+        // can immediately see the new button state.
+        binding.shufflePreset.setOnClickListener {
+            viewModel.toggleShuffle()
+            showOverlay()
+        }
+
+        binding.presetList.setOnClickListener {
             childFragmentManager.showMilkdropPresets()
         }
 
-        // Observe preset content emitted by the ViewModel and load it into projectM.
+        // Schedule the first auto-hide so the overlay does not linger on cold start.
+        scheduleOverlayFadeOut()
+    }
+
+    /**
+     * Configures the [ViewPager2] adapter and registers the page-change callback that
+     * triggers a preset load whenever the user swipes to a new page.
+     */
+    private fun setupPresetPager() {
+        pagerAdapter = AdapterMilkdropPager { showOverlay() }
+        binding.presetPager.adapter = pagerAdapter
+
+        binding.presetPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                viewModel.loadPresetAtIndex(position)
+            }
+        })
+    }
+
+    /**
+     * Collects all ViewModel flows and routes updates to the UI.
+     *
+     * - [MilkdropViewModel.presets]          — populates the pager adapter and restores the
+     *   saved scroll position on first emission.
+     * - [MilkdropViewModel.currentIndex]     — scrolls the pager when shuffle picks a new preset.
+     * - [MilkdropViewModel.presetContent]    — pushes new preset text into projectM.
+     * - [MilkdropViewModel.isShuffleEnabled] — updates the shuffle button visual state.
+     */
+    private fun observeViewModel() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.presets.collect { list ->
+                    pagerAdapter?.submitList(list)
+                    // Restore the previously saved position once the list is ready.
+                    if (list.isNotEmpty()) {
+                        val index = viewModel.currentIndex.value.coerceIn(0, list.lastIndex)
+                        binding.presetPager.setCurrentItem(index, false)
+                    }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.currentIndex.collect { index ->
+                    val itemCount = pagerAdapter?.itemCount ?: 0
+                    if (itemCount > 0 && index != binding.presetPager.currentItem) {
+                        // Smooth-scroll so the shuffle transition is visible to the user.
+                        binding.presetPager.setCurrentItem(index, true)
+                    }
+                }
+            }
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.presetContent.collect { content ->
@@ -95,57 +172,39 @@ class Milkdrop : MediaFragment() {
             }
         }
 
-        binding.next.setOnClickListener {
-            MediaManager.next()
-        }
-
-        binding.previous.setOnClickListener {
-            MediaManager.previous()
-        }
-
-        binding.play.setOnClickListener {
-            MediaManager.flipState()
-        }
-
-        binding.seekbar.setLeftLabelProvider { progress, _, _ ->
-            DateUtils.formatElapsedTime(progress.toLong().div(1000))
-        }
-
-        binding.seekbar.setRightLabelProvider { _, _, max ->
-            DateUtils.formatElapsedTime(max.toLong().div(1000))
-        }
-
-        binding.search.setOnClickListener {
-            openFragment(Search.newInstance(), Search.TAG)
-        }
-
-        binding.seekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
-            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
-                if (fromUser) {
-                    MediaManager.seekTo(progress.toLong())
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.isShuffleEnabled.collect { enabled ->
+                    // Full opacity when shuffle is on; dimmed when off.
+                    binding.shufflePreset.alpha = if (enabled) 1.0f else 0.35f
                 }
             }
-        })
+        }
     }
 
     /**
-     * Tints every interactive element in the controls overlay panel to 70 % opaque white
-     * so that the controls feel soft and non-distracting against the dark Milkdrop surface.
+     * Makes the preset pager overlay fully visible and resets the auto-hide countdown.
      *
-     * This must be called after view inflation because the underlying custom views
-     * ([ThemeImageButton][app.simple.felicity.decorations.theme.ThemeImageButton] and
-     * [TypeFaceTextView]) override colors inside their own `init` blocks; programmatic
-     * assignment after inflation therefore wins over any XML color attribute.
+     * Safe to call from any event handler (touch, page change, etc.).
      */
-    private fun applyControlsOverlayColors() {
-        val semiWhite = ColorStateList.valueOf(Color.argb(179, 255, 255, 255))
-        binding.next.imageTintList = semiWhite
-        binding.previous.imageTintList = semiWhite
-        binding.search.imageTintList = semiWhite
-        binding.play.iconColor = Color.argb(179, 255, 255, 255)
-        binding.name.setTextColor(semiWhite)
-        binding.artist.setTextColor(semiWhite)
-        binding.controlsContainer.setBackgroundColor(Color.TRANSPARENT)
+    private fun showOverlay() {
+        fadeHandler.removeCallbacks(fadeOutRunnable)
+        binding.presetPagerContainer
+            .animate()
+            .alpha(1f)
+            .setDuration(FADE_DURATION_MS)
+            .start()
+        scheduleOverlayFadeOut()
+    }
+
+    /**
+     * Posts [fadeOutRunnable] to run after [OVERLAY_VISIBLE_MS] milliseconds.
+     *
+     * Any previously pending post is removed by [showOverlay] before this is called,
+     * so the timer always restarts from zero on each interaction.
+     */
+    private fun scheduleOverlayFadeOut() {
+        fadeHandler.postDelayed(fadeOutRunnable, OVERLAY_VISIBLE_MS)
     }
 
     /**
@@ -156,52 +215,6 @@ class Milkdrop : MediaFragment() {
      */
     private fun loadCurrentPreset(content: String) {
         binding.milkdropSurface.loadPreset(content, smooth = true)
-    }
-
-    private fun updateState() {
-        val audio = MediaManager.getCurrentSong() ?: return
-        binding.name.text = audio.title
-        binding.artist.text = audio.artist
-        binding.seekbar.setMax(audio.duration.toFloat())
-        binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
-        updatePlayButtonState(MediaManager.isPlaying())
-    }
-
-    private fun updatePlayButtonState(isPlaying: Boolean) {
-        if (isPlaying) {
-            binding.play.playing()
-        } else {
-            binding.play.paused()
-        }
-    }
-
-    override fun onSeekChanged(seek: Long) {
-        super.onSeekChanged(seek)
-        binding.seekbar.setProgress(seek.toFloat(), fromUser = false, animate = true)
-    }
-
-    override fun onAudio(audio: Audio) {
-        super.onAudio(audio)
-
-        val forward = MediaManager.lastNavigationDirection
-        binding.name.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
-        binding.artist.setTextWithEffect(audio.artist ?: getString(R.string.unknown), forward, 50L)
-        binding.seekbar.setMaxWithReset(audio.duration.toFloat())
-
-        // Always refresh the seek position (covers predictive-back resume and actual changes).
-        binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
-    }
-
-    override fun onPlaybackStateChanged(state: Int) {
-        super.onPlaybackStateChanged(state)
-        when (state) {
-            MediaConstants.PLAYBACK_PLAYING -> {
-                updatePlayButtonState(true)
-            }
-            MediaConstants.PLAYBACK_PAUSED -> {
-                updatePlayButtonState(false)
-            }
-        }
     }
 
     override fun onResume() {
@@ -218,34 +231,25 @@ class Milkdrop : MediaFragment() {
     }
 
     override fun onDestroyView() {
+        fadeHandler.removeCallbacksAndMessages(null)
+        pagerAdapter = null
         binding.milkdropSurface.disconnectProcessor()
         super.onDestroyView()
-    }
-
-    /**
-     * When the user picks a preset in [app.simple.felicity.dialogs.player.MilkdropPresets],
-     * the dialog saves [MilkdropPreferences.LAST_PRESET] which triggers this callback.
-     * Asking the ViewModel to reload causes it to read the new file from assets and
-     * re-emit [MilkdropViewModel.presetContent], which the collector above will forward
-     * to projectM.
-     */
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
-        super.onSharedPreferenceChanged(sharedPreferences, key)
-        when (key) {
-            MilkdropPreferences.LAST_PRESET -> viewModel.reloadFromPreferences()
-        }
     }
 
     override fun getTransitionType(): TransitionType {
         return TransitionType.SLIDE
     }
 
-    override val wantsMiniPlayerVisible: Boolean
-        get() = false
-
     companion object {
         /** Back-stack tag used when adding this fragment to the back stack. */
         const val TAG = "Milkdrop"
+
+        /** Duration of each fade-in and fade-out animation in milliseconds. */
+        private const val FADE_DURATION_MS = 500L
+
+        /** How long the overlay stays fully visible after the last interaction. */
+        private const val OVERLAY_VISIBLE_MS = 3_000L
 
         /** Creates a new instance with no arguments. */
         fun newInstance(): Milkdrop = Milkdrop()

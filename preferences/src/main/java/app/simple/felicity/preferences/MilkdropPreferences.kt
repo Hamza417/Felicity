@@ -17,6 +17,9 @@ object MilkdropPreferences {
     /** SharedPreferences key for the currently selected preset asset path. */
     const val LAST_PRESET = "milkdrop_last_preset"
 
+    /** SharedPreferences key for the preset auto-shuffle toggle state. */
+    const val SHUFFLE_ENABLED = "milkdrop_shuffle_enabled"
+
     /**
      * Persists the asset path of the most recently selected preset.
      *
@@ -35,6 +38,26 @@ object MilkdropPreferences {
     fun getLastPreset(): String {
         return SharedPreferences.getSharedPreferences()
             .getString(LAST_PRESET, "") ?: ""
+    }
+
+    /**
+     * Persists the preset auto-shuffle enabled state.
+     *
+     * @param enabled `true` to enable automatic preset cycling, `false` to stop.
+     */
+    fun setShuffleEnabled(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit {
+            putBoolean(SHUFFLE_ENABLED, enabled)
+        }
+    }
+
+    /**
+     * Returns whether preset auto-shuffle is currently enabled.
+     * Defaults to `false` on first launch.
+     */
+    fun isShuffleEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences()
+            .getBoolean(SHUFFLE_ENABLED, false)
     }
 }
 

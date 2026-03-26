@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Vertical gradient used as the background for the Milkdrop preset pager overlay.
+    Fades from a semi-transparent black at the top edge (to keep white text legible
+    against any projectM waveform) down to fully transparent so the visualizer
+    bleeds through naturally below the panel.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <!-- angle 270 = top (startColor) to bottom (endColor) -->
+    <gradient
+        android:angle="270"
+        android:endColor="#00000000"
+        android:startColor="#CC000000" />
+
+</shape>
+
