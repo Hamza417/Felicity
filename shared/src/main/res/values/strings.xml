@@ -303,13 +303,14 @@
     <string name="show_album_artists">Show Album Artists</string>
     <string name="show_album_artists_summary">Show album artists instead of artists in the artists field of the lists in the app.</string>
 
-    <!-- Audio Pipeline Dialog -->
+    <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">Track Info</string>
     <string name="channels">Channels</string>
     <string name="decoder_name">Decoder Name</string>
     <string name="resampler">Resampler</string>
     <string name="input_rate">Input Rate</string>
     <string name="output_rate">Output Rate</string>
+    <string name="io_rate">I/O Rate</string>
     <string name="quality">Quality</string>
     <string name="dsp">DSP</string>
     <string name="pcm_format">PCM Format</string>

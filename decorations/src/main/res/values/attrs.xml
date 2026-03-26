@@ -271,4 +271,22 @@
         </attr>
     </declare-styleable>
 
+    <!-- Attributes for PipelineArrowView -->
+    <declare-styleable name="PipelineArrowView">
+
+        <!--
+            Drawable shown centered at the top of the arrow view, just before the connecting
+            line begins. Represents the start/source stage of this pipeline segment.
+            If not set (or set to @null) the line begins at the very top edge.
+        -->
+        <attr name="startIcon" format="reference" />
+
+        <!--
+            Drawable shown centered at the bottom of the arrow view, below the arrowhead.
+            Represents the destination/end stage of this pipeline segment.
+            If not set (or set to @null) the arrowhead terminates at the very bottom edge.
+        -->
+        <attr name="endIcon" format="reference" />
+
+    </declare-styleable>
 </resources>

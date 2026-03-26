@@ -34,6 +34,7 @@
             android:singleLine="true"
             android:textSize="@dimen/text_size_18"
             app:appFontStyle="bold"
+            app:drawableTintStyle="custom"
             app:layout_constraintBottom_toTopOf="@+id/secondary_detail"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/cover"

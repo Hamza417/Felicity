@@ -78,7 +78,7 @@
         android:ellipsize="marquee"
         android:layout_marginTop="@dimen/padding_5"
         android:singleLine="true"
-        app:appFontStyle="bold"
+        app:appFontStyle="black"
         app:textColorStyle="heading" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
