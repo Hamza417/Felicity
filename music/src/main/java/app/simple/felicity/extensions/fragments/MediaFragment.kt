@@ -117,15 +117,22 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         when {
             isSameQueue && isSameSong -> {
                 // Case 1: Same queue, same song — just open the player
-                openDefaultPlayer()
-            }
-            isSameSong -> {
-                // Case 2: Same song playing but queue is different — update queue silently and open player
-                updateQueueSilently(songs, position)
+                openDefaultPlayer().also {
+                    /**
+                     * User tapped the same song that's already playing or paused in the queue.
+                     * Open the player without changing anything, but if the song was paused,
+                     * resume playback since the user explicitly tapped it.
+                     */
+                    MediaManager.startPlayingIfPaused()
+                }
             }
             isSameQueue && !isSameSong -> {
                 // Case 4: Same queue but different song — user tapped explicitly, always play.
                 MediaManager.updatePosition(position, forcePlay = true)
+            }
+            isSameSong -> {
+                // Case 2: Same song playing but queue is different — update queue silently and open player
+                updateQueueSilently(songs, position)
             }
             else -> {
                 // Case 3: Different queue and different song — default behavior
@@ -133,6 +140,13 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 createSongHistoryDatabase(songs)
             }
         }
+
+        /**
+         * Show miniplayer in all cases when setting media items, because if the user is explicitly tapping
+         * to play a song, they likely want quick access to playback controls. This also ensures the miniplayer
+         * is visible when navigating to the player from a different screen (e.g. from the playing queue or from a notification)
+         */
+        showMiniPlayer()
     }
 
     /**

@@ -418,6 +418,12 @@ object MediaManager {
         startSeekPositionUpdates()
     }
 
+    fun startPlayingIfPaused() {
+        if (mediaController?.isPlaying == false) {
+            play()
+        }
+    }
+
     fun stop() {
         mediaController?.stop()
         stopSeekPositionUpdates()
