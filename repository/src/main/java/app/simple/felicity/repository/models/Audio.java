@@ -201,7 +201,6 @@ public class Audio implements Parcelable {
         this.name = name;
     }
     
-    @Nullable
     public String getTitle() {
         if (title == null || title.isEmpty()) {
             return getName();
@@ -216,11 +215,7 @@ public class Audio implements Parcelable {
     
     @Nullable
     public String getArtist() {
-        if (artist == null || artist.isEmpty()) {
-            return NOT_AVAILABLE;
-        } else {
-            return artist;
-        }
+        return artist;
     }
     
     public void setArtist(@Nullable String artist) {

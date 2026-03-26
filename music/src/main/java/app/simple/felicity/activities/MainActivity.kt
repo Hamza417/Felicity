@@ -33,6 +33,7 @@ import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.services.AudioDatabaseService
+import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.ui.home.ArtFlowHome
@@ -142,8 +143,8 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                 Log.d("MainActivity", "songListFlow: ${songs.size}")
                 val items = songs.map { audio ->
                     MiniPlayerItem(
-                            title = audio.title ?: audio.name ?: "",
-                            artist = audio.artist ?: "",
+                            title = audio.title,
+                            artist = audio.getArtists(),
                             payload = audio
                     )
                 }
