@@ -236,7 +236,7 @@ public class HighlightTextView extends TypeFaceTextView {
     public void onAccentChanged(@NonNull Accent accent) {
         super.onAccentChanged(accent);
         if (!useCustomColor) {
-            resolveStrokeColor();
+            applyChipBackground();
             applyRippleForeground();
         }
     }
