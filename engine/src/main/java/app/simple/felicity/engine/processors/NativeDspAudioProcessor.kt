@@ -104,6 +104,25 @@ class NativeDspAudioProcessor(
     private var saturationDrive: Float = 0f
 
     /**
+     * Returns the [AudioProcessor.AudioFormat] that this processor is currently configured for.
+     *
+     * Returns [AudioProcessor.AudioFormat.NOT_SET] when the processor has not yet received a
+     * valid audio format (i.e., before [configure] is called or after [reset]).
+     * Used by [AudioPipelineManager] to populate the DSP section of [AudioPipelineSnapshot].
+     */
+    val currentInputFormat: AudioProcessor.AudioFormat
+        get() = inputFormat
+
+    /**
+     * Returns the current stereo width value in the range [0.0, 2.0].
+     *
+     * 0.0 = full mono, 1.0 = natural stereo passthrough, 2.0 = maximum widening.
+     * Exposed so [AudioPipelineManager] can convert it to a percentage for the snapshot.
+     */
+    val currentStereoWidth: Float
+        get() = stereoWidth
+
+    /**
      * Configures the processor for [inputAudioFormat]. A new [DspProcessor] native context
      * is created (or reconfigured) on every format change; all stored parameters are
      * re-applied atomically so effect settings survive decoder switches and Hi-Res toggles.

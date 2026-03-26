@@ -4,12 +4,20 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioFormat
+import android.media.AudioManager
+import android.media.AudioTrack
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
@@ -18,8 +26,10 @@ import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.DecoderReuseEvaluation
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
@@ -33,9 +43,11 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import app.simple.felicity.engine.R
+import app.simple.felicity.engine.managers.AudioPipelineManager
 import app.simple.felicity.engine.managers.AudioProcessorManager
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.engine.managers.VisualizerManager
+import app.simple.felicity.engine.model.AudioPipelineSnapshot
 import app.simple.felicity.engine.notifications.PlaybackErrorNotifier
 import app.simple.felicity.manager.SharedPreferences.initRegisterSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
@@ -59,6 +71,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import javax.inject.Inject
 
 /**
@@ -124,6 +137,29 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
     /** The decoder the user had configured before a fallback attempt was started. */
     private var preFallbackDecoder: Int = AudioPreferences.LOCAL_DECODER
+
+    /**
+     * The name of the most recently initialized audio decoder, captured via [analyticsListener].
+     * Defaults to "Unknown" until [AnalyticsListener.onAudioDecoderInitialized] fires.
+     */
+    private var currentDecoderName: String = "Unknown"
+
+    /**
+     * The compressed source [Format] most recently delivered to the audio renderer.
+     * Updated via [AnalyticsListener.onAudioInputFormatChanged]; `null` before the
+     * first track is decoded.
+     */
+    private var currentAudioInputFormat: Format? = null
+
+    /**
+     * The currently active audio output device, or `null` if detection has not yet
+     * run. Updated whenever [audioDeviceCallback] fires or [detectActiveOutputDevice]
+     * is called explicitly.
+     */
+    private var currentOutputDevice: AudioDeviceInfo? = null
+
+    /** Coroutine job that pushes a fresh [AudioPipelineSnapshot] every 3 seconds while playing. */
+    private var snapshotPulseJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -244,6 +280,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
         // Set initial repeat button in the notification
         mediaSession?.setCustomLayout(listOf(buildRepeatCommandButton(PlayerPreferences.getRepeatMode())))
+
+        // Detect the current output device and subscribe to future device changes so the
+        // snapshot is refreshed whenever headphones or a BT device is connected / disconnected.
+        currentOutputDevice = detectActiveOutputDevice()
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioManager.registerAudioDeviceCallback(audioDeviceCallback, Handler(Looper.getMainLooper()))
     }
 
     /**
@@ -314,6 +356,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         applyRepeatMode(PlayerPreferences.getRepeatMode())
 
         player.addListener(playerListener)
+        player.addAnalyticsListener(analyticsListener)
     }
 
     /**
@@ -548,6 +591,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         configureGaplessPlayback()
         applyRepeatMode(PlayerPreferences.getRepeatMode())
         player.addListener(playerListener)
+        player.addAnalyticsListener(analyticsListener)
     }
 
     /**
@@ -623,9 +667,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             if (isPlaying) {
                 MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
                 startPeriodicStateSaving()
+                startSnapshotPulse()
+                buildAndPushSnapshot()
             } else if (player.playbackState == Player.STATE_READY) {
                 MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
                 stopPeriodicStateSaving()
+                stopSnapshotPulse()
                 savePlaybackStateToDatabase() // Save immediately when paused
             }
         }
@@ -661,11 +708,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                         MediaManager.handleQueueEnded()
                     }
                     stopPeriodicStateSaving()
+                    stopSnapshotPulse()
                     savePlaybackStateToDatabase()
                 }
                 Player.STATE_IDLE -> {
                     MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_STOPPED)
                     stopPeriodicStateSaving()
+                    stopSnapshotPulse()
                 }
             }
         }
@@ -771,6 +820,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
             MediaManager.notifyCurrentPosition(player.currentMediaItemIndex)
             savePlaybackStateToDatabase() // Save when track changes
+            buildAndPushSnapshot()
         }
 
         override fun onPositionDiscontinuity(
@@ -785,6 +835,57 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 previousItemEndPositionMs = oldPosition.positionMs
                 previousItemDurationMs = player.duration.coerceAtLeast(0L)
             }
+        }
+    }
+
+    /**
+     * Captures decoder initialization and compressed-source format changes so the
+     * [AudioPipelineSnapshot] always reflects the active decoder name and track format.
+     *
+     * Both callbacks fire on the main thread, so accessing [player] and calling
+     * [buildAndPushSnapshot] is safe without any additional dispatching.
+     */
+    private val analyticsListener = object : AnalyticsListener {
+
+        override fun onAudioDecoderInitialized(
+                eventTime: AnalyticsListener.EventTime,
+                decoderName: String,
+                initializedTimestampMs: Long,
+                initializationDurationMs: Long
+        ) {
+            currentDecoderName = decoderName
+            Log.d(TAG, "Audio decoder initialized: $decoderName")
+            buildAndPushSnapshot()
+        }
+
+        override fun onAudioInputFormatChanged(
+                eventTime: AnalyticsListener.EventTime,
+                format: Format,
+                decoderReuseEvaluation: DecoderReuseEvaluation?
+        ) {
+            currentAudioInputFormat = format
+            Log.d(TAG, "Audio input format changed: ${format.sampleMimeType} @ ${format.sampleRate}Hz")
+            buildAndPushSnapshot()
+        }
+    }
+
+    /**
+     * Listens for audio output device additions and removals (e.g., plugging in wired
+     * headphones or connecting a Bluetooth device). On each change the active output device
+     * is re-detected and a fresh snapshot is pushed.
+     */
+    private val audioDeviceCallback = object : AudioDeviceCallback() {
+
+        override fun onAudioDevicesAdded(addedDevices: Array<AudioDeviceInfo>) {
+            currentOutputDevice = detectActiveOutputDevice()
+            Log.d(TAG, "Audio device added: ${addedDevices.firstOrNull()?.productName}")
+            buildAndPushSnapshot()
+        }
+
+        override fun onAudioDevicesRemoved(removedDevices: Array<AudioDeviceInfo>) {
+            currentOutputDevice = detectActiveOutputDevice()
+            Log.d(TAG, "Audio device removed: ${removedDevices.firstOrNull()?.productName}")
+            buildAndPushSnapshot()
         }
     }
 
@@ -891,6 +992,16 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         savePlaybackStateToDatabase()
         unregisterSharedPreferenceChangeListener()
 
+        // Stop the periodic snapshot pulse before releasing resources.
+        stopSnapshotPulse()
+
+        // Unregister the audio-device-change callback so no stale reference is held after teardown.
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
+
+        // Clear the snapshot so observers know the pipeline is no longer active.
+        AudioPipelineManager.updateSnapshot(null)
+
         // Detach the equalizer processor reference before releasing the player so the
         // manager does not hold a stale reference after teardown.
         EqualizerManager.detachProcessor()
@@ -911,6 +1022,299 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         serviceScope.launch {
             PlaybackStateManager.saveCurrentPlaybackState(applicationContext, TAG)
         }
+    }
+
+    /**
+     * Starts a coroutine that pushes a refreshed [AudioPipelineSnapshot] to
+     * [AudioPipelineManager] every 3 seconds while playback is active.
+     *
+     * The coroutine runs on the main dispatcher so [player] state can be read safely.
+     * If a pulse job is already active this is a no-op.
+     */
+    private fun startSnapshotPulse() {
+        if (snapshotPulseJob?.isActive == true) return
+
+        snapshotPulseJob = serviceScope.launch(Dispatchers.Main.immediate) {
+            while (isActive) {
+                delay(3_000L)
+                buildAndPushSnapshot()
+            }
+        }
+
+        Log.d(TAG, "Started snapshot pulse")
+    }
+
+    /**
+     * Cancels the running snapshot pulse coroutine, if any.
+     */
+    private fun stopSnapshotPulse() {
+        snapshotPulseJob?.cancel()
+        snapshotPulseJob = null
+        Log.d(TAG, "Stopped snapshot pulse")
+    }
+
+    /**
+     * Assembles a fully-populated [AudioPipelineSnapshot] from all available sources
+     * and pushes it to [AudioPipelineManager].
+     *
+     * Must be called from the main thread because several [ExoPlayer] API calls
+     * (e.g., [ExoPlayer.audioFormat]) are not thread-safe. All call sites guarantee
+     * this by using [Dispatchers.Main.immediate] or being inside main-thread callbacks.
+     */
+    private fun buildAndPushSnapshot() {
+        if (!::player.isInitialized) return
+
+        val inputFormat = currentAudioInputFormat
+        val dspInputFormat = audioProcessorManager.nativeDspProcessor.currentInputFormat
+        val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
+
+        val outputDevice = currentOutputDevice ?: detectActiveOutputDevice().also {
+            currentOutputDevice = it
+        }
+
+        // Track metadata from the compressed source format
+        val trackFormat = mimeTypeToFormatString(inputFormat?.sampleMimeType)
+        val bitDepth = when {
+            inputFormat?.pcmEncoding != null && inputFormat.pcmEncoding != Format.NO_VALUE -> {
+                pcmEncodingToBitDepth(inputFormat.pcmEncoding)
+            }
+            else -> 16
+        }
+        val sampleRateHz = inputFormat?.sampleRate?.takeIf { it > 0 } ?: 0
+        val bitrateKbps = (inputFormat?.bitrate?.takeIf { it != Format.NO_VALUE } ?: 0) / 1000
+        val channels = inputFormat?.channelCount?.takeIf { it > 0 } ?: 0
+
+        // Decoder info
+        val decoderLabel = when {
+            currentDecoderName.contains("ffmpeg", ignoreCase = true) -> "FFmpeg"
+            currentDecoderName.contains("c2.", ignoreCase = true) -> currentDecoderName
+            currentDecoderName != "Unknown" -> currentDecoderName
+            AudioPreferences.getAudioDecoder() == AudioPreferences.FFMPEG -> "FFmpeg (pending)"
+            else -> "Android Built-in (pending)"
+        }
+
+        // Resampler state: compare source sample rate with DSP (post-decode) sample rate
+        val inputSampleRate = sampleRateHz
+        val dspSampleRateHz = dspInputFormat.sampleRate.takeIf { it > 0 } ?: sampleRateHz
+        val outputSampleRate = dspSampleRateHz
+        val resamplerQuality = if (inputSampleRate == 0 || inputSampleRate == outputSampleRate) {
+            "None"
+        } else {
+            "Android Built-in"
+        }
+
+        // DSP state
+        val dspFormatStr = pcmEncodingToFormatString(dspInputFormat.encoding)
+        val activeEqName = when {
+            !EqualizerPreferences.isEqEnabled() -> null
+            EqualizerPreferences.getAllBandGains().all { it == 0f }
+                    && EqualizerPreferences.getBassDb() == 0f
+                    && EqualizerPreferences.getTrebleDb() == 0f -> "Flat"
+            else -> "Custom"
+        }
+        val stereoExpandPercent = (EqualizerPreferences.getStereoWidth() * 100).roundToInt()
+
+        // Buffer and latency estimation from actual AudioTrack minimum buffer size
+        val (buffersStr, latencyEstimateMs) = computeBufferInfo(dspInputFormat)
+
+        // Hardware output device info
+        val deviceName = outputDevice?.productName?.toString() ?: "Unknown"
+        val deviceBitDepthIn = if (hiresEnabled) 32 else 16
+        val deviceBitDepthOut = getDeviceBitDepth(outputDevice, deviceBitDepthIn)
+        val deviceSampleRate = getDeviceSampleRate(outputDevice, sampleRateHz)
+
+        val snapshot = AudioPipelineSnapshot(
+                trackFormat = trackFormat,
+                bitDepth = bitDepth,
+                sampleRateHz = sampleRateHz,
+                bitrateKbps = bitrateKbps,
+                channels = channels,
+                decoderName = decoderLabel,
+                inputSampleRate = inputSampleRate,
+                outputSampleRate = outputSampleRate,
+                resamplerQuality = resamplerQuality,
+                dspFormat = dspFormatStr,
+                dspSampleRate = dspSampleRateHz,
+                activeEqName = activeEqName,
+                stereoExpandPercent = stereoExpandPercent,
+                buffers = buffersStr,
+                latencyMs = latencyEstimateMs,
+                deviceName = deviceName,
+                deviceBitDepthIn = deviceBitDepthIn,
+                deviceBitDepthOut = deviceBitDepthOut,
+                deviceSampleRate = deviceSampleRate
+        )
+
+        AudioPipelineManager.updateSnapshot(snapshot)
+        Log.v(TAG, "Pipeline snapshot updated: $trackFormat @ ${sampleRateHz}Hz via $decoderLabel → $deviceName")
+    }
+
+    /**
+     * Converts a MIME type string (e.g., `"audio/flac"`) to a short human-readable format
+     * label (e.g., `"FLAC"`). Falls back to the subtype in uppercase for unknown types.
+     *
+     * @param mimeType The MIME type from [Format.sampleMimeType], or `null`.
+     * @return A short uppercase label describing the audio format.
+     */
+    private fun mimeTypeToFormatString(mimeType: String?): String = when {
+        mimeType == null -> "Unknown"
+        mimeType.contains("flac", ignoreCase = true) -> "FLAC"
+        mimeType.contains("mp4a") || mimeType.contains("aac") -> "AAC"
+        mimeType.contains("mpeg") || mimeType.contains("mp3") -> "MP3"
+        mimeType.contains("vorbis") -> "OGG"
+        mimeType.contains("opus") -> "OPUS"
+        mimeType.contains("wav") || mimeType.contains("wave") -> "WAV"
+        mimeType.contains("alac") -> "ALAC"
+        mimeType.contains("aiff") -> "AIFF"
+        mimeType.contains("wma") -> "WMA"
+        mimeType.contains("raw") -> "PCM"
+        mimeType.contains("dsd") || mimeType.contains("dsf") -> "DSD"
+        mimeType.contains("ape") -> "APE"
+        else -> mimeType.substringAfterLast('/', mimeType).uppercase()
+    }
+
+    /**
+     * Maps a Media3 [C.ENCODING_PCM_*] constant to a bit-depth integer.
+     *
+     * @param encoding A PCM encoding constant from [C].
+     * @return The bit depth (8, 16, 24, or 32), defaulting to 16 for unknown encodings.
+     */
+    private fun pcmEncodingToBitDepth(encoding: Int): Int = when (encoding) {
+        C.ENCODING_PCM_8BIT -> 8
+        C.ENCODING_PCM_16BIT -> 16
+        C.ENCODING_PCM_24BIT -> 24
+        C.ENCODING_PCM_32BIT -> 32
+        C.ENCODING_PCM_FLOAT -> 32
+        else -> 16
+    }
+
+    /**
+     * Maps a Media3 [C.ENCODING_PCM_*] constant to a human-readable DSP format string.
+     *
+     * @param encoding A PCM encoding constant from [C].
+     * @return A display string such as `"PCM 16-bit"` or `"Float32"`.
+     */
+    private fun pcmEncodingToFormatString(encoding: Int): String = when (encoding) {
+        C.ENCODING_PCM_8BIT -> "PCM 8-bit"
+        C.ENCODING_PCM_16BIT -> "PCM 16-bit"
+        C.ENCODING_PCM_24BIT -> "PCM 24-bit"
+        C.ENCODING_PCM_32BIT -> "PCM 32-bit"
+        C.ENCODING_PCM_FLOAT -> "Float32"
+        else -> "Unknown"
+    }
+
+    /**
+     * Estimates the AudioTrack double-buffer size and total audio chain latency for the
+     * given [dspInputFormat].
+     *
+     * Uses [AudioTrack.getMinBufferSize] to derive the minimum frame count at the
+     * DSP sample rate, then estimates end-to-end latency as twice the buffer duration
+     * plus a fixed 15 ms hardware/driver overhead.
+     *
+     * @param dspInputFormat The [AudioProcessor.AudioFormat] currently active in [NativeDspAudioProcessor].
+     * @return A pair of (human-readable buffer string, estimated latency in ms).
+     */
+    private fun computeBufferInfo(dspInputFormat: AudioProcessor.AudioFormat): Pair<String, Int> {
+        val sr = dspInputFormat.sampleRate.takeIf { it > 0 } ?: 44100
+        val ch = dspInputFormat.channelCount.takeIf { it > 0 } ?: 2
+
+        val channelConfig = if (ch == 1) AudioFormat.CHANNEL_OUT_MONO else AudioFormat.CHANNEL_OUT_STEREO
+        val afEncoding = when (dspInputFormat.encoding) {
+            C.ENCODING_PCM_FLOAT, C.ENCODING_PCM_32BIT -> AudioFormat.ENCODING_PCM_FLOAT
+            else -> AudioFormat.ENCODING_PCM_16BIT
+        }
+
+        val minBufBytes = AudioTrack.getMinBufferSize(sr, channelConfig, afEncoding).coerceAtLeast(1)
+        val bytesPerFrame = when (dspInputFormat.encoding) {
+            C.ENCODING_PCM_FLOAT, C.ENCODING_PCM_32BIT -> 4 * ch
+            C.ENCODING_PCM_24BIT -> 3 * ch
+            else -> 2 * ch
+        }
+
+        val framesInBuffer = minBufBytes / bytesPerFrame.coerceAtLeast(1)
+        val bufferMs = if (sr > 0) framesInBuffer * 1000 / sr else 0
+        // Double-buffer (2×) is ExoPlayer's DefaultAudioSink default; add 15 ms for hardware latency.
+        val latencyEstimate = bufferMs * 2 + 15
+
+        return Pair("2x (${bufferMs}ms, $framesInBuffer frames)", latencyEstimate)
+    }
+
+    /**
+     * Selects the highest-priority active audio output device from the system device list.
+     *
+     * Priority order: USB headset / USB device → Bluetooth A2DP → Bluetooth SCO →
+     * wired headset → wired headphones → built-in earpiece → built-in speaker → other.
+     *
+     * @return The best-matching [AudioDeviceInfo], or `null` if no output devices are found.
+     */
+    private fun detectActiveOutputDevice(): AudioDeviceInfo? {
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+        return devices.maxByOrNull { outputDevicePriority(it.type) }
+    }
+
+    /**
+     * Returns a numeric priority for the given [AudioDeviceInfo] type so the most
+     * desirable (highest fidelity) output device wins in [detectActiveOutputDevice].
+     *
+     * @param type An [AudioDeviceInfo.TYPE_*] constant.
+     * @return Priority integer; higher means more preferred.
+     */
+    private fun outputDevicePriority(type: Int): Int = when (type) {
+        AudioDeviceInfo.TYPE_USB_DEVICE,
+        AudioDeviceInfo.TYPE_USB_HEADSET -> 100
+        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> 80
+        AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> 75
+        AudioDeviceInfo.TYPE_WIRED_HEADSET -> 60
+        AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> 55
+        AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> 20
+        AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> 10
+        else -> 0
+    }
+
+    /**
+     * Returns the maximum PCM bit depth supported by [device] by inspecting
+     * [AudioDeviceInfo.getEncodings]. Falls back to [fallback] when the device
+     * reports no encodings or when [device] is `null`.
+     *
+     * @param device   The output device to inspect, or `null`.
+     * @param fallback Bit depth to return when no encoding info is available.
+     * @return Maximum supported bit depth: 8, 16, 24, or 32.
+     */
+    private fun getDeviceBitDepth(device: AudioDeviceInfo?, fallback: Int): Int {
+        device ?: return fallback
+        val encodings = device.encodings
+        if (encodings.isEmpty()) return fallback
+        return when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                    && encodings.contains(AudioFormat.ENCODING_PCM_32BIT) -> 32
+            encodings.contains(AudioFormat.ENCODING_PCM_FLOAT) -> 32
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                    && encodings.contains(AudioFormat.ENCODING_PCM_24BIT_PACKED) -> 24
+            encodings.contains(AudioFormat.ENCODING_PCM_16BIT) -> 16
+            else -> fallback
+        }
+    }
+
+    /**
+     * Returns the best matching sample rate supported by [device] for the given [sourceSampleRate].
+     *
+     * Prefers the highest rate that does not exceed [sourceSampleRate] so the hardware
+     * does not up-sample unnecessarily. If all device rates are above the source rate the
+     * minimum device rate is returned. Returns [sourceSampleRate] when [device] is `null`
+     * or its sample-rate list is empty.
+     *
+     * @param device           The output device to inspect, or `null`.
+     * @param sourceSampleRate The source track's sample rate in Hz.
+     * @return The best-matching hardware sample rate in Hz.
+     */
+    private fun getDeviceSampleRate(device: AudioDeviceInfo?, sourceSampleRate: Int): Int {
+        device ?: return sourceSampleRate
+        val rates = device.sampleRates
+        if (rates.isEmpty()) return sourceSampleRate
+        return rates.filter { it <= sourceSampleRate }.maxOrNull()
+                ?: rates.minOrNull()
+                ?: sourceSampleRate
     }
 
     private fun startPeriodicStateSaving() {
