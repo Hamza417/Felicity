@@ -57,6 +57,12 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
     private var isDismissing = false
     private var isShowing = false
 
+    /** Holds the running show animation so it can be interrupted by an early dismiss. */
+    private var showAnimatorSet: AnimatorSet? = null
+
+    /** Tracks the live scrim color so dismiss() can fade out from the actual current opacity. */
+    private var currentScrimColor: Int = Color.TRANSPARENT
+
     private var sourceRect = Rect()
     private var targetRect = Rect()
     private var containerRect = Rect()
@@ -219,7 +225,10 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         val scrimAnimator = ValueAnimator.ofArgb(Color.TRANSPARENT, SCRIM_COLOR.toColorInt()).apply {
             duration = (DURATION * 1.2).toLong()
             interpolator = DECELERATE_CUBIC
-            addUpdateListener { scrimView.setBackgroundColor(it.animatedValue as Int) }
+            addUpdateListener {
+                currentScrimColor = it.animatedValue as Int
+                scrimView.setBackgroundColor(currentScrimColor)
+            }
         }
 
         // Image position animation to target
@@ -285,15 +294,26 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
             interpolator = DECELERATE_CUBIC
         }
 
-        AnimatorSet().apply {
+        showAnimatorSet = AnimatorSet().apply {
             playTogether(
                     scrimAnimator, xAnimator, yAnimator, widthAnimator, heightAnimator,
                     containerAlphaAnimator, contentAlphaAnimator, contentScaleXAnimator, contentScaleYAnimator
             )
             addListener(object : AnimatorListenerAdapter() {
+                private var cancelled = false
+
+                override fun onAnimationCancel(animation: Animator) {
+                    cancelled = true
+                }
+
                 override fun onAnimationEnd(animation: Animator) {
-                    targetImageView.alpha = 1f
-                    animatingImageView.alpha = 0f
+                    // Do not swap alpha when the animation was cancelled mid-show;
+                    // dismiss() will handle visibility from the current state.
+                    if (!cancelled) {
+                        targetImageView.alpha = 1f
+                        animatingImageView.alpha = 0f
+                    }
+                    showAnimatorSet = null
                 }
             })
             start()
@@ -306,20 +326,25 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         backCallback?.remove()
         backCallback = null
 
+        // Stop the show animation wherever it is. onAnimationEnd will fire but the
+        // cancelled flag prevents the alpha swap, so we own the view state from here.
+        showAnimatorSet?.cancel()
+        showAnimatorSet = null
 
-        // Re-capture target position in case dialog moved
+        // Re-capture target position in case the dialog moved
         targetImageView.getGlobalVisibleRect(targetRect)
         targetRect.offset(-containerRect.left, -containerRect.top)
 
-        // Show animating image at target position with source drawable, hide target
+        // Read the animating view's current position — this works whether the show
+        // animation completed normally or was cancelled mid-flight.
         val imageParams = animatingImageView.layoutParams as FrameLayout.LayoutParams
-        imageParams.leftMargin = targetRect.left
-        imageParams.topMargin = targetRect.top
-        imageParams.width = targetRect.width()
-        imageParams.height = targetRect.height()
-        animatingImageView.layoutParams = imageParams
-        // Return trip: adopt source display properties immediately so the image renders
-        // consistently as it shrinks back towards the source item's bounds.
+        val startLeft = imageParams.leftMargin
+        val startTop = imageParams.topMargin
+        val startWidth = imageParams.width
+        val startHeight = imageParams.height
+
+        // Switch the overlay to source rendering properties and make it visible.
+        // The target ImageView is hidden so only the overlay is seen during the return trip.
         animatingImageView.setImageDrawable(sourceImageView.drawable)
         animatingImageView.scaleType = sourceScaleType
         animatingImageView.adjustViewBounds = sourceImageView.adjustViewBounds
@@ -327,37 +352,37 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         animatingImageView.alpha = 1f
         targetImageView.alpha = 0f
 
-        // Scrim fade out
-        val scrimAnimator = ValueAnimator.ofArgb(SCRIM_COLOR.toColorInt(), Color.TRANSPARENT).apply {
+        // Scrim fade out — start from the actual current opacity, not a fixed value,
+        // so an interrupted mid-show dismiss does not jump to full opacity first.
+        val scrimAnimator = ValueAnimator.ofArgb(currentScrimColor, Color.TRANSPARENT).apply {
             duration = DURATION
             interpolator = DECELERATE_CUBIC
             addUpdateListener { scrimView.setBackgroundColor(it.animatedValue as Int) }
         }
 
-        // Content container fade out
-        val containerAlphaAnimator = ObjectAnimator.ofFloat(contentContainer, View.ALPHA, 1f, 0f).apply {
+        // Content fade/scale out — start from whatever the show animation left them at.
+        val containerAlphaAnimator = ObjectAnimator.ofFloat(contentContainer, View.ALPHA, contentContainer.alpha, 0f).apply {
             duration = (DURATION * 0.7).toLong()
             interpolator = DECELERATE_CUBIC
         }
 
-        // Content (binding.root) fade and scale out (reverse of popup_in)
-        val contentAlphaAnimator = ObjectAnimator.ofFloat(binding.root, View.ALPHA, 1f, 0f).apply {
+        val contentAlphaAnimator = ObjectAnimator.ofFloat(binding.root, View.ALPHA, binding.root.alpha, 0f).apply {
             duration = (DURATION * 0.7).toLong()
             interpolator = DECELERATE_CUBIC
         }
 
-        val contentScaleXAnimator = ObjectAnimator.ofFloat(binding.root, View.SCALE_X, 1f, CONTENT_SCALE_X_START).apply {
+        val contentScaleXAnimator = ObjectAnimator.ofFloat(binding.root, View.SCALE_X, binding.root.scaleX, CONTENT_SCALE_X_START).apply {
             duration = (DURATION * 0.7).toLong()
             interpolator = DECELERATE_CUBIC
         }
 
-        val contentScaleYAnimator = ObjectAnimator.ofFloat(binding.root, View.SCALE_Y, 1f, CONTENT_SCALE_Y_START).apply {
+        val contentScaleYAnimator = ObjectAnimator.ofFloat(binding.root, View.SCALE_Y, binding.root.scaleY, CONTENT_SCALE_Y_START).apply {
             duration = (DURATION * 0.7).toLong()
             interpolator = DECELERATE_CUBIC
         }
 
-        // Image position animation back to source
-        val xAnimator = ValueAnimator.ofInt(targetRect.left, sourceRect.left).apply {
+        // Image position animation back to source, starting from the current live position.
+        val xAnimator = ValueAnimator.ofInt(startLeft, sourceRect.left).apply {
             duration = DURATION
             interpolator = EMPHASIZED_INTERPOLATOR
             addUpdateListener {
@@ -366,7 +391,7 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
             }
         }
 
-        val yAnimator = ValueAnimator.ofInt(targetRect.top, sourceRect.top).apply {
+        val yAnimator = ValueAnimator.ofInt(startTop, sourceRect.top).apply {
             duration = DURATION
             interpolator = EMPHASIZED_INTERPOLATOR
             addUpdateListener {
@@ -375,7 +400,7 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
             }
         }
 
-        val widthAnimator = ValueAnimator.ofInt(targetRect.width(), sourceRect.width()).apply {
+        val widthAnimator = ValueAnimator.ofInt(startWidth, sourceRect.width()).apply {
             duration = DURATION
             interpolator = EMPHASIZED_INTERPOLATOR
             addUpdateListener {
@@ -384,7 +409,7 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
             }
         }
 
-        val heightAnimator = ValueAnimator.ofInt(targetRect.height(), sourceRect.height()).apply {
+        val heightAnimator = ValueAnimator.ofInt(startHeight, sourceRect.height()).apply {
             duration = DURATION
             interpolator = EMPHASIZED_INTERPOLATOR
             addUpdateListener {
@@ -432,6 +457,7 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
 
     private fun cleanup() {
         sourceImageView.alpha = 1f
+        currentScrimColor = Color.TRANSPARENT
         container.removeView(dialogContainer)
         container.removeView(scrimView)
         onDismiss?.invoke()
