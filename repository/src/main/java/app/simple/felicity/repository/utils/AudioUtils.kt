@@ -1,5 +1,6 @@
 package app.simple.felicity.repository.utils
 
+import app.simple.felicity.core.utils.StringUtils.ifNullOrBlank
 import app.simple.felicity.preferences.ListPreferences
 import app.simple.felicity.repository.models.Audio
 import net.jpountz.xxhash.XXHashFactory
@@ -31,9 +32,9 @@ object AudioUtils {
 
     fun Audio.getArtists(): String {
         if (albumArtistOverArtist) {
-            return albumArtist ?: "Unknown Album Artist"
+            return albumArtist.ifNullOrBlank("Unknown")
         }
 
-        return artist ?: "Unknown Artist"
+        return artist.ifNullOrBlank("Unknown")
     }
 }
