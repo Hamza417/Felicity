@@ -1148,12 +1148,19 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // Nyquist anti-aliasing cutoff = min rate in the chain ÷ 2
         val resamplerCutoffHz = if (swResampling || hwResampling) {
             listOf(inputSampleRate, dspSampleRateHz, deviceSampleRate)
-                    .filter { it > 0 }
-                    .minOrNull()
-                    ?.div(2) ?: 0
+                .filter { it > 0 }
+                .minOrNull()
+                ?.div(2) ?: 0
         } else {
             0
         }
+
+        // Determine the true boundaries of the resampling chain for the UI
+        // If SW resampling happens, the chain starts at the input file's rate. Otherwise, it starts at the DSP rate.
+        val effectiveInRate = if (swResampling) inputSampleRate else dspSampleRateHz
+
+        // If HW resampling happens, the chain ends at the hardware's forced rate. Otherwise, it ends at the DSP rate.
+        val effectiveOutRate = if (hwResampling) deviceSampleRate else dspSampleRateHz
 
         val snapshot = AudioPipelineSnapshot(
                 trackFormat = trackFormat,
@@ -1167,6 +1174,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 resamplerType = resamplerType,
                 resamplerQuality = resamplerQuality,
                 resamplerCutoffHz = resamplerCutoffHz,
+                effectiveInputSampleRate = effectiveInRate,
+                effectiveOutputSampleRate = effectiveOutRate,
                 dspFormat = dspFormatStr,
                 dspSampleRate = dspSampleRateHz,
                 activeEqName = activeEqName,

@@ -139,11 +139,13 @@ class AudioPipelineDialog : ScopedBottomSheetFragment() {
                 snapshot.decoderName.ifBlank { "—" })
 
         // Resampler — I/O rates are merged into one value using a format string
-        val inRate = if (snapshot.inputSampleRate > 0) getString(R.string.format_hz, snapshot.inputSampleRate) else "—"
-        val outRate = if (snapshot.outputSampleRate > 0) getString(R.string.format_hz, snapshot.outputSampleRate) else "—"
+        val inRateStr = if (snapshot.effectiveInputSampleRate > 0) getString(R.string.format_hz, snapshot.effectiveInputSampleRate) else "—"
+        val outRateStr = if (snapshot.effectiveOutputSampleRate > 0) getString(R.string.format_hz, snapshot.effectiveOutputSampleRate) else "—"
+
         b.valueResamplerRates.text = createSpannedString(
                 getString(R.string.io_rate),
-                getString(R.string.format_io_rate, inRate, outRate))
+                getString(R.string.format_io_rate, inRateStr, outRateStr)
+        )
 
         b.valueResamplerType.text = createSpannedString(
                 getString(R.string.resampler_type),

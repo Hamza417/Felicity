@@ -20,6 +20,8 @@ data class AudioPipelineSnapshot(
         val resamplerQuality: String,
         /** Theoretical Nyquist anti-aliasing cutoff in Hz; `0` when resampling is bypassed. */
         val resamplerCutoffHz: Int,
+        val effectiveInputSampleRate: Int, // Effective input sample rate after resampling (e.g., 44100, 48000, etc.)
+        val effectiveOutputSampleRate: Int, // Effective output sample rate after resampling (e.g., 44100, 48000, etc.)
 
         // DSP State
         val dspFormat: String,   // e.g., "Float32"
