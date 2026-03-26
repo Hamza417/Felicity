@@ -11,8 +11,7 @@
         android:layout_height="wrap_content"
         android:clipChildren="false"
         android:clipToPadding="false"
-        android:padding="@dimen/padding_15"
-        android:orientation="horizontal">
+        android:padding="@dimen/padding_15">
 
         <ImageView
             android:id="@+id/cover"
@@ -28,17 +27,18 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="10dp"
+            android:layout_marginTop="8dp"
             android:ellipsize="marquee"
-            android:singleLine="true"
             android:marqueeRepeatLimit="marquee_forever"
             android:maxLines="1"
+            android:singleLine="true"
             android:textSize="@dimen/text_size_18"
-            android:layout_marginTop="8dp"
             app:appFontStyle="bold"
             app:layout_constraintBottom_toTopOf="@+id/secondary_detail"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/cover"
             app:layout_constraintTop_toTopOf="@+id/cover"
+            app:layout_constraintVertical_chainStyle="packed"
             app:textColorStyle="primary" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -47,9 +47,9 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="10dp"
             android:ellipsize="marquee"
-            android:singleLine="true"
             android:marqueeRepeatLimit="marquee_forever"
             android:maxLines="1"
+            android:singleLine="true"
             android:textSize="@dimen/desc_text_size"
             app:appFontStyle="regular"
             app:layout_constraintBottom_toTopOf="@+id/tertiary_detail"
@@ -62,15 +62,15 @@
             android:id="@+id/tertiary_detail"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
             android:layout_marginHorizontal="10dp"
             android:ellipsize="marquee"
-            android:singleLine="true"
             android:marqueeRepeatLimit="marquee_forever"
             android:maxLines="1"
+            android:singleLine="true"
             android:textSize="@dimen/desc_text_size"
-            android:layout_marginBottom="8dp"
             app:appFontStyle="regular"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintBottom_toBottomOf="@+id/cover"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@id/cover"
             app:layout_constraintTop_toBottomOf="@+id/secondary_detail"
@@ -91,7 +91,7 @@
         android:clipToPadding="false"
         android:layout_height="wrap_content">
 
-        <LinearLayout
+        <app.simple.felicity.decorations.views.PopupLinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
@@ -341,7 +341,7 @@
                 app:drawableTintStyle="regular"
                 app:textColorStyle="primary" />
 
-        </LinearLayout>
+        </app.simple.felicity.decorations.views.PopupLinearLayout>
 
     </androidx.core.widget.NestedScrollView>
 
