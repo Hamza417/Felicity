@@ -15,10 +15,13 @@ import androidx.annotation.RequiresApi
 import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
 import app.simple.felicity.R
+import app.simple.felicity.decorations.transitions.SeekableSharedAxisFadeTransition
+import app.simple.felicity.decorations.transitions.SeekableSharedAxisXTransition
 import app.simple.felicity.decorations.transitions.SeekableSharedAxisZTransition
 import app.simple.felicity.decorations.transitions.SeekableSlideTransition
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.theme.managers.ThemeUtils
 import app.simple.felicity.ui.panels.Preferences
@@ -71,7 +74,10 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
      */
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
-
+            BehaviourPreferences.FRAGMENT_TRANSITION -> {
+                clearTransitions()
+                applyFragmentTransition()
+            }
         }
     }
 
@@ -146,13 +152,29 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
 
     /**
      * Sets fragment transitions prior to creating a new fragment.
-     * Used with shared elements
+     * The specific transition class used is determined by [BehaviourPreferences.getFragmentTransition].
      */
     open fun setTransitions() {
-        enterTransition = SeekableSharedAxisZTransition(true)
-        exitTransition = SeekableSharedAxisZTransition(true)
-        reenterTransition = SeekableSharedAxisZTransition(false)
-        returnTransition = SeekableSharedAxisZTransition(false)
+        when (BehaviourPreferences.getFragmentTransition()) {
+            BehaviourPreferences.TRANSITION_X -> {
+                enterTransition = SeekableSharedAxisXTransition(true)
+                exitTransition = SeekableSharedAxisXTransition(true)
+                reenterTransition = SeekableSharedAxisXTransition(false)
+                returnTransition = SeekableSharedAxisXTransition(false)
+            }
+            BehaviourPreferences.TRANSITION_FADE -> {
+                enterTransition = SeekableSharedAxisFadeTransition(true)
+                exitTransition = SeekableSharedAxisFadeTransition(true)
+                reenterTransition = SeekableSharedAxisFadeTransition(false)
+                returnTransition = SeekableSharedAxisFadeTransition(false)
+            }
+            else -> {
+                enterTransition = SeekableSharedAxisZTransition(true)
+                exitTransition = SeekableSharedAxisZTransition(true)
+                reenterTransition = SeekableSharedAxisZTransition(false)
+                returnTransition = SeekableSharedAxisZTransition(false)
+            }
+        }
     }
 
     open fun setSlideTransitions() {

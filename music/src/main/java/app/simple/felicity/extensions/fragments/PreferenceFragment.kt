@@ -440,6 +440,38 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val fragmentTransition = Preference(
+                title = R.string.transition,
+                summary = R.string.transition_summary,
+                icon = -1,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (BehaviourPreferences.getFragmentTransition()) {
+                        BehaviourPreferences.TRANSITION_Z -> getString(R.string.depth)
+                        BehaviourPreferences.TRANSITION_X -> getString(R.string.drift)
+                        BehaviourPreferences.TRANSITION_FADE -> getString(R.string.fade)
+                        else -> getString(R.string.depth)
+                    }
+                },
+                onPreferenceAction = { view, callback ->
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(R.string.depth, R.string.drift, R.string.fade),
+                            onMenuItemClick = {
+                                val transition = when (it) {
+                                    R.string.depth -> BehaviourPreferences.TRANSITION_Z
+                                    R.string.drift -> BehaviourPreferences.TRANSITION_X
+                                    else -> BehaviourPreferences.TRANSITION_FADE
+                                }
+                                BehaviourPreferences.setFragmentTransition(transition)
+                                (view as TextView).text = getString(it)
+                            },
+                            onDismiss = {}
+                    ).show()
+                }
+        )
+
         val miniplayerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.miniplayer)
 
         val miniPlayerVisibilityToggle = Preference(
@@ -504,6 +536,7 @@ abstract class PreferenceFragment : MediaFragment() {
             preferences.add(predictiveBackToggle)
         }
         preferences.add(hapticToggle)
+        preferences.add(fragmentTransition)
         preferences.add(miniplayerHeader)
         preferences.add(miniPlayerVisibilityToggle)
         preferences.add(playerHeader)

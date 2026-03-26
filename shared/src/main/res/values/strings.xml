@@ -292,6 +292,10 @@
     <string name="no_effect">No Effect</string>
     <string name="text_change_effect">Text Change Effect</string>
     <string name="text_change_effect_summary">Controls the animation used when the song title, artist, and album text update on track change.</string>
+    <string name="transition">Transition</string>
+    <string name="transition_summary">Select the animation style used when navigating between screens.</string>
+    <string name="depth">Depth</string>
+    <string name="drift">Drift</string>
     <string name="presets">Presets</string>
     <string name="visualizer">Visualizer</string>
     <string name="list_desc">Change how lists are presented in the app.</string>

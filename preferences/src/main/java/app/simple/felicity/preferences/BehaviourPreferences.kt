@@ -19,6 +19,7 @@ object BehaviourPreferences {
     private const val HAPTIC_FEEDBACK = "haptic_feedback"
     const val MINIPLAYER_ALWAYS_VISIBLE = "miniplayer_always_visible"
     const val TEXT_CHANGE_EFFECT = "text_change_effect"
+    const val FRAGMENT_TRANSITION = "fragment_transition"
 
     const val HIDE_FAST_SCROLLBAR = 0
     const val FADE_FAST_SCROLLBAR = 1
@@ -34,6 +35,15 @@ object BehaviourPreferences {
 
     /** Text change animation: typewriter character-by-character reveal. */
     const val TEXT_EFFECT_TYPEWRITING = 3
+
+    /** Fragment transition: shared axis Z — fragments scale and fade along the depth axis. */
+    const val TRANSITION_Z = 0
+
+    /** Fragment transition: shared axis X — fragments drift and crossfade along the horizontal axis. */
+    const val TRANSITION_X = 1
+
+    /** Fragment transition: crossfade — fragments fade in and out with no translation. */
+    const val TRANSITION_FADE = 2
 
     // ---------------------------------------------------------------------------------------------------------- //
 
@@ -144,5 +154,27 @@ object BehaviourPreferences {
     fun getTextChangeEffect(): Int {
         return SharedPreferences.getSharedPreferences()
             .getInt(TEXT_CHANGE_EFFECT, TEXT_EFFECT_TYPEWRITING)
+    }
+
+    // ---------------------------------------------------------------------------------------------------------- //
+
+    /**
+     * Persists the fragment transition style used when navigating between screens.
+     *
+     * @param transition One of [TRANSITION_Z], [TRANSITION_X], or [TRANSITION_FADE].
+     */
+    fun setFragmentTransition(transition: Int) {
+        SharedPreferences.getSharedPreferences().edit {
+            putInt(FRAGMENT_TRANSITION, transition)
+        }
+    }
+
+    /**
+     * Returns the currently saved fragment transition style.
+     * Defaults to [TRANSITION_Z] when the preference has not been set.
+     */
+    fun getFragmentTransition(): Int {
+        return SharedPreferences.getSharedPreferences()
+            .getInt(FRAGMENT_TRANSITION, TRANSITION_Z)
     }
 }
