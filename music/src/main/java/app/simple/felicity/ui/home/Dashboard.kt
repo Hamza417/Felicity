@@ -159,21 +159,53 @@ class Dashboard : MediaFragment() {
             }
         }
 
-        val adapter = AdapterRecommended(data)
-        binding.recommendedGrid.setHasFixedSize(false)
-        binding.recommendedGrid.layoutManager = layoutManager
-        binding.recommendedGrid.adapter = adapter
-        binding.recommendedGrid.scheduleLayoutAnimation()
+        if (binding.recommendedGrid.adapter != null) {
+            binding.recommendedGrid.animate()
+                .alpha(0f)
+                .scaleX(0.9F)
+                .scaleY(0.9F)
+                .setDuration(300)
+                .withEndAction {
+                    binding.recommendedGrid.adapter = null
+                    binding.recommendedGrid.layoutManager = layoutManager
+                    val adapter = AdapterRecommended(data)
+                    binding.recommendedGrid.adapter = adapter
+                    binding.recommendedGrid.scheduleLayoutAnimation()
 
-        adapter.setCallbacks(object : AdapterRecommendedCallbacks {
-            override fun onItemClicked(items: List<Audio>, position: Int) {
-                setMediaItems(items, position)
-            }
+                    adapter.setCallbacks(object : AdapterRecommendedCallbacks {
+                        override fun onItemClicked(items: List<Audio>, position: Int) {
+                            setMediaItems(items, position)
+                        }
 
-            override fun onItemLongClicked(items: List<Audio>, position: Int, imageView: ImageView) {
-                openSongsMenu(items, position, imageView)
-            }
-        })
+                        override fun onItemLongClicked(items: List<Audio>, position: Int, imageView: ImageView) {
+                            openSongsMenu(items, position, imageView)
+                        }
+                    })
+
+                    binding.recommendedGrid.animate()
+                        .alpha(1f)
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(300)
+                        .start()
+                }.start()
+        } else {
+            val adapter = AdapterRecommended(data)
+            binding.recommendedGrid.setHasFixedSize(false)
+            binding.recommendedGrid.layoutManager = layoutManager
+            binding.recommendedGrid.adapter = adapter
+            binding.recommendedGrid.scheduleLayoutAnimation()
+
+            adapter.setCallbacks(object : AdapterRecommendedCallbacks {
+                override fun onItemClicked(items: List<Audio>, position: Int) {
+                    setMediaItems(items, position)
+                }
+
+                override fun onItemLongClicked(items: List<Audio>, position: Int, imageView: ImageView) {
+                    openSongsMenu(items, position, imageView)
+                }
+            })
+        }
 
         // IMPORTANT: Update the grid's height to fit its content
         // (otherwise the shuffle animation will cause it to collapse to zero height and disappear).

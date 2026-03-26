@@ -144,14 +144,14 @@
 
                 </LinearLayout>
 
-                <androidx.recyclerview.widget.RecyclerView
+                <app.simple.felicity.decorations.views.CornerRadiusRectRecyclerView
                     android:id="@+id/recommended_grid"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layoutAnimation="@anim/spanned_animation_controller"
                     android:nestedScrollingEnabled="false"
                     android:overScrollMode="never"
-                    android:paddingHorizontal="@dimen/padding_20"
+                    android:layout_marginHorizontal="@dimen/padding_20"
                     android:clipToPadding="false" />
 
             </LinearLayout>
