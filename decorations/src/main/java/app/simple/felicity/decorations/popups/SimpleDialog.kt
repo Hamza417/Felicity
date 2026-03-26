@@ -127,6 +127,10 @@ class SimpleDialog<VB : ViewBinding> private constructor(
             alpha = CONTENT_ALPHA_START
             scaleX = CONTENT_SCALE_START
             scaleY = CONTENT_SCALE_START
+            // Consume all touches within the dialog bounds so they do not propagate
+            // to the scrim view and trigger an accidental dismiss.
+            isClickable = true
+            isFocusable = true
             addView(binding.root)
         }
 

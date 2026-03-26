@@ -6,7 +6,6 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.graphics.Color
-import android.graphics.Outline
 import android.graphics.Rect
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -21,7 +20,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.toColorInt
 import androidx.core.view.doOnLayout
 import androidx.viewbinding.ViewBinding
-import app.simple.felicity.preferences.AppearancePreferences
 
 /**
  * A custom dialog framework that animates an ImageView from a RecyclerView
@@ -137,8 +135,6 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
     }
 
     private fun setupAnimatingImageView() {
-        val cornerRadius = AppearancePreferences.getCornerRadius()
-
         // Capture source scale properties — used only for the dismiss return trip
         sourceScaleType = sourceImageView.scaleType
 
@@ -155,14 +151,6 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
             adjustViewBounds = sourceImageView.adjustViewBounds
             cropToPadding = sourceImageView.cropToPadding
             setImageDrawable(sourceImageView.drawable)
-
-            // Apply corner clipping
-            clipToOutline = true
-            outlineProvider = object : android.view.ViewOutlineProvider() {
-                override fun getOutline(view: View, outline: Outline) {
-                    outline.setRoundRect(0, 0, view.width, view.height, cornerRadius)
-                }
-            }
         }
     }
 
@@ -183,7 +171,10 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
                     Gravity.CENTER
             )
             alpha = 0f
-            // Don't apply scale to content container - it affects target position calculation
+            // Consume all touches within the dialog bounds so they do not propagate
+            // to the scrim view and trigger an accidental dismiss.
+            isClickable = true
+            isFocusable = true
             addView(binding.root)
         }
 
@@ -202,8 +193,6 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
     }
 
     private fun animateShow() {
-        val cornerRadius = AppearancePreferences.getCornerRadius()
-        val targetCornerRadius = getTargetCornerRadius()
 
         // Read target display properties now that layout is complete
         targetScaleType = targetImageView.scaleType
@@ -272,20 +261,6 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
             }
         }
 
-        // Corner radius animation
-        val cornerAnimator = ValueAnimator.ofFloat(cornerRadius, targetCornerRadius).apply {
-            duration = DURATION
-            interpolator = EMPHASIZED_INTERPOLATOR
-            addUpdateListener { value ->
-                val radius = value.animatedValue as Float
-                animatingImageView.outlineProvider = object : android.view.ViewOutlineProvider() {
-                    override fun getOutline(view: View, outline: Outline) {
-                        outline.setRoundRect(0, 0, view.width, view.height, radius)
-                    }
-                }
-                animatingImageView.invalidateOutline()
-            }
-        }
 
         // Content container fade in
         val containerAlphaAnimator = ObjectAnimator.ofFloat(contentContainer, View.ALPHA, 0f, 1f).apply {
@@ -313,11 +288,10 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         AnimatorSet().apply {
             playTogether(
                     scrimAnimator, xAnimator, yAnimator, widthAnimator, heightAnimator,
-                    cornerAnimator, containerAlphaAnimator, contentAlphaAnimator, contentScaleXAnimator, contentScaleYAnimator
+                    containerAlphaAnimator, contentAlphaAnimator, contentScaleXAnimator, contentScaleYAnimator
             )
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
-                    // animatingImageView already has target properties — just swap visibility
                     targetImageView.alpha = 1f
                     animatingImageView.alpha = 0f
                 }
@@ -332,8 +306,6 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         backCallback?.remove()
         backCallback = null
 
-        val cornerRadius = AppearancePreferences.getCornerRadius()
-        val targetCornerRadius = getTargetCornerRadius()
 
         // Re-capture target position in case dialog moved
         targetImageView.getGlobalVisibleRect(targetRect)
@@ -421,25 +393,10 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
             }
         }
 
-        // Corner radius animation back
-        val cornerAnimator = ValueAnimator.ofFloat(targetCornerRadius, cornerRadius).apply {
-            duration = DURATION
-            interpolator = EMPHASIZED_INTERPOLATOR
-            addUpdateListener { value ->
-                val radius = value.animatedValue as Float
-                animatingImageView.outlineProvider = object : android.view.ViewOutlineProvider() {
-                    override fun getOutline(view: View, outline: Outline) {
-                        outline.setRoundRect(0, 0, view.width, view.height, radius)
-                    }
-                }
-                animatingImageView.invalidateOutline()
-            }
-        }
-
         AnimatorSet().apply {
             playTogether(
                     scrimAnimator, containerAlphaAnimator, contentAlphaAnimator, contentScaleXAnimator, contentScaleYAnimator,
-                    xAnimator, yAnimator, widthAnimator, heightAnimator, cornerAnimator
+                    xAnimator, yAnimator, widthAnimator, heightAnimator
             )
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
@@ -517,13 +474,6 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         activity.onBackPressedDispatcher.addCallback(backCallback!!)
     }
 
-    /**
-     * Override to provide custom corner radius for the target image.
-     * Default returns the app's corner radius preference.
-     */
-    protected open fun getTargetCornerRadius(): Float {
-        return AppearancePreferences.getCornerRadius()
-    }
 
     /**
      * Called when the dialog content view is created.
