@@ -1,6 +1,7 @@
 package app.simple.felicity.engine.model
 
 data class AudioPipelineSnapshot(
+        // Track Info
         val trackFormat: String, // e.g., "FLAC"
         val bitDepth: Int,       // e.g., 16, 24
         val sampleRateHz: Int,   // e.g., 44100
@@ -28,4 +29,26 @@ data class AudioPipelineSnapshot(
         val deviceBitDepthIn: Int,      // e.g., 16
         val deviceBitDepthOut: Int,     // e.g., 24
         val deviceSampleRate: Int
-)
+) {
+    override fun toString(): String {
+        return "AudioPipelineSnapshot(trackFormat='$trackFormat'," +
+                " bitDepth=$bitDepth," +
+                " sampleRateHz=$sampleRateHz," +
+                " bitrateKbps=$bitrateKbps," +
+                " channels=$channels," +
+                " decoderName='$decoderName'," +
+                " inputSampleRate=$inputSampleRate," +
+                " outputSampleRate=$outputSampleRate," +
+                " resamplerQuality='$resamplerQuality'," +
+                " dspFormat='$dspFormat'," +
+                " dspSampleRate=$dspSampleRate," +
+                " activeEqName=$activeEqName," +
+                " stereoExpandPercent=$stereoExpandPercent," +
+                " buffers='$buffers'," +
+                " latencyMs=$latencyMs," +
+                " deviceName='$deviceName'," +
+                " deviceBitDepthIn=$deviceBitDepthIn," +
+                " deviceBitDepthOut=$deviceBitDepthOut," +
+                " deviceSampleRate=$deviceSampleRate)"
+    }
+}

@@ -1,8 +1,11 @@
 package app.simple.felicity.engine.managers
 
 import app.simple.felicity.engine.model.AudioPipelineSnapshot
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
@@ -29,6 +32,26 @@ object AudioPipelineManager {
      * computed after the service starts.
      */
     val snapshotFlow: StateFlow<AudioPipelineSnapshot?> = _snapshotFlow.asStateFlow()
+
+    private val _refreshRequestFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    /**
+     * Hot flow that emits a [Unit] whenever any observer calls [requestRefresh].
+     *
+     * [FelicityPlayerService] collects this flow and responds by calling
+     * `buildAndPushSnapshot()` immediately, bypassing the 3-second pulse interval.
+     */
+    val refreshRequestFlow: SharedFlow<Unit> = _refreshRequestFlow.asSharedFlow()
+
+    /**
+     * Asks the service to immediately push a fresh [AudioPipelineSnapshot].
+     *
+     * Safe to call from any thread. Typically called by [AudioPipelineDialog] when
+     * it opens so the first snapshot appears without waiting for the periodic pulse.
+     */
+    fun requestRefresh() {
+        _refreshRequestFlow.tryEmit(Unit)
+    }
 
     /**
      * Replaces the current snapshot value and notifies all active collectors.

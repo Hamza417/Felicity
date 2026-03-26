@@ -24,9 +24,9 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DecoderReuseEvaluation
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
-import androidx.media3.exoplayer.DecoderReuseEvaluation
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
@@ -71,8 +71,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 /**
  * Service responsible for managing audio playback using ExoPlayer with dynamic decoder switching support.
@@ -286,6 +286,14 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         currentOutputDevice = detectActiveOutputDevice()
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, Handler(Looper.getMainLooper()))
+
+        // Respond to on-demand snapshot requests emitted by the UI (e.g., AudioPipelineDialog
+        // opening). The collect runs on the main dispatcher so player APIs are safe to call.
+        serviceScope.launch(Dispatchers.Main.immediate) {
+            AudioPipelineManager.refreshRequestFlow.collect {
+                buildAndPushSnapshot()
+            }
+        }
     }
 
     /**
@@ -699,6 +707,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 Player.STATE_READY -> {
                     if (player.playWhenReady) MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
                     else MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
+                    buildAndPushSnapshot()
                 }
                 Player.STATE_ENDED -> {
                     // Only treat as a true "ended" event in REPEAT_OFF mode.
@@ -724,7 +733,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 PlaybackException.ERROR_CODE_DECODING_FAILED,
                 PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED,
                 PlaybackException.ERROR_CODE_AUDIO_TRACK_WRITE_FAILED,
-                PlaybackException.ERROR_CODE_DECODER_INIT_FAILED -> {
+                PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+                PlaybackException.ERROR_CODE_DECODING_RESOURCES_RECLAIMED -> {
                     Log.e(TAG, "Decoding error for current track: ${error.message} (code: ${error.errorCode})")
 
                     val failedItem = player.currentMediaItem
@@ -1035,6 +1045,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         if (snapshotPulseJob?.isActive == true) return
 
         snapshotPulseJob = serviceScope.launch(Dispatchers.Main.immediate) {
+            buildAndPushSnapshot() // fire once immediately so the UI never waits
             while (isActive) {
                 delay(3_000L)
                 buildAndPushSnapshot()
@@ -1313,8 +1324,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         val rates = device.sampleRates
         if (rates.isEmpty()) return sourceSampleRate
         return rates.filter { it <= sourceSampleRate }.maxOrNull()
-                ?: rates.minOrNull()
-                ?: sourceSampleRate
+            ?: rates.minOrNull()
+            ?: sourceSampleRate
     }
 
     private fun startPeriodicStateSaving() {

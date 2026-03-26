@@ -16,6 +16,7 @@ import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.pager.ImagePageAdapter
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
+import app.simple.felicity.dialogs.app.AudioPipelineDialog.Companion.showAudioPipeline
 import app.simple.felicity.dialogs.player.VisualizerConfig.Companion.showVisualizerConfig
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.engine.utils.PcmInfoFormatter
@@ -156,6 +157,10 @@ class DefaultPlayer : MediaFragment() {
             }
             PlayerPreferences.setRepeatMode(next)
             updateRepeatButtonIcon(next)
+        }
+
+        binding.pcmInfo.setOnClickListener {
+            childFragmentManager.showAudioPipeline()
         }
 
         // Observe repeat mode changes from the service (e.g. on startup)
