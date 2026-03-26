@@ -64,11 +64,11 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
      * Driven by {@link #animator}.
      */
     private float checkPhase = 0f;
-
+    
     private final RectF backgroundRect = new RectF();
-
+    
     private Drawable checkedIcon;
-
+    
     private ValueAnimator animator = null;
     private ValueAnimator colorAnimator = null;
     private ValueAnimator elevationAnimator = null;
@@ -251,7 +251,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
             // Animate the tick stroke erasing itself from end back toward the start.
             animator = ValueAnimator.ofFloat(checkPhase, 0f);
             animator.setDuration(duration);
-            animator.setInterpolator(new DecelerateInterpolator(3f));
+            animator.setInterpolator(new DecelerateInterpolator());
             animator.addUpdateListener(animation -> {
                 checkPhase = (float) animation.getAnimatedValue();
                 invalidate();
@@ -336,7 +336,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         pathMeasure = new PathMeasure(checkPath, false);
         pathLength = pathMeasure.getLength();
     }
-
+    
     public int getDuration() {
         return duration;
     }
@@ -484,7 +484,7 @@ public class CheckBox extends View implements ThemeChangedListener, SharedPrefer
         y = h / 2f;
         buildCheckPath();
     }
-
+    
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int desiredWidth = getResources().getDimensionPixelSize(R.dimen.checkbox_dimensions);

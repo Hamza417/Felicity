@@ -22,7 +22,7 @@
         android:layout_marginTop="5dp"
         android:layout_width="match_parent"
         android:textSize="@dimen/text_size_14"
-        app:appFontStyle="regular"
+        app:appFontStyle="medium"
         app:textColorStyle="secondary" />
 
     <LinearLayout
@@ -44,8 +44,8 @@
             android:layout_gravity="center_vertical"
             android:layout_marginStart="@dimen/padding_10"
             android:text="@string/delete_lyrics_too"
-            android:textSize="@dimen/text_size_14"
-            app:appFontStyle="regular"
+            android:textSize="@dimen/text_size_12"
+            app:appFontStyle="medium"
             app:textColorStyle="primary" />
 
     </LinearLayout>
