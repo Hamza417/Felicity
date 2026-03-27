@@ -319,6 +319,15 @@
                             app:appFontStyle="bold"
                             app:textColorStyle="secondary" />
 
+                        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                            android:id="@+id/value_audio_output_mode"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingVertical="@dimen/padding_1"
+                            android:textSize="@dimen/text_size_12"
+                            app:appFontStyle="bold"
+                            app:textColorStyle="secondary" />
+
                     </LinearLayout>
                 </LinearLayout>
 

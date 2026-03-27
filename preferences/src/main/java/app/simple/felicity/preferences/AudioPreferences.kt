@@ -11,6 +11,17 @@ object AudioPreferences {
     const val SKIP_SILENCE = "skip_silence"
     const val IS_STEREO_DOWNMIX_FORCED = "is_stereo_downmix_forced"
 
+    /**
+     * Boolean flag that enables the AAudio low-latency output path.
+     *
+     * When true the audio engine writes processed PCM directly to an [AAudioStream] opened
+     * with [AAUDIO_PERFORMANCE_MODE_LOW_LATENCY], bypassing the standard
+     * AudioTrack / AudioFlinger mixer pipeline. This reduces output latency at the cost of
+     * exclusive hardware access (shared mode is used as a fallback when exclusive mode is
+     * unavailable). Defaults to false so the standard AudioTrack path remains active by default.
+     */
+    const val AAUDIO_ENABLED = "aaudio_enabled"
+
     private const val FALLBACK_TO_SW_DECODER = "fallback_to_sw_decoder"
 
     const val LOCAL_DECODER = 0
@@ -74,5 +85,26 @@ object AudioPreferences {
 
     fun isStereoDownmixForced(): Boolean {
         return SharedPreferences.getSharedPreferences().getBoolean(IS_STEREO_DOWNMIX_FORCED, true)
+    }
+
+    /**
+     * Persists whether the AAudio low-latency output path is enabled.
+     *
+     * When enabled, processed PCM is written to an [AAudioStream] with
+     * [AAUDIO_PERFORMANCE_MODE_LOW_LATENCY] instead of going through the standard
+     * AudioTrack pipeline. Defaults to false.
+     *
+     * @param enabled True to route audio through the AAudio direct-to-HAL path.
+     */
+    fun setAaudioEnabled(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(AAUDIO_ENABLED, enabled) }
+    }
+
+    /**
+     * Returns whether the AAudio low-latency output path is currently enabled.
+     * Defaults to false (standard AudioTrack path).
+     */
+    fun isAaudioEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(AAUDIO_ENABLED, false)
     }
 }

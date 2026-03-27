@@ -627,6 +627,26 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val outputHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.output)
+
+        /**
+         * Toggle that routes the post-DSP float32 PCM stream through the AAudio
+         * direct-to-HAL path instead of the standard AudioTrack pipeline.
+         * Requires API 26 (Android 8.0) or higher.
+         */
+        val aaudioToggle = Preference(
+                title = R.string.aaudio_enabled,
+                summary = R.string.aaudio_enabled_summary,
+                icon = R.drawable.ic_timer,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AudioPreferences.setAaudioEnabled((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    AudioPreferences.isAaudioEnabled()
+                }
+        )
+
         preferences.add(decoderHeader)
         preferences.add(currentDecoder)
         preferences.add(fallbackToSWToggle)
@@ -636,6 +656,8 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(stereoDownmixing)
         preferences.add(gaplessToggle)
         preferences.add(skipSilenceToggle)
+        preferences.add(outputHeader)
+        preferences.add(aaudioToggle)
 
         return preferences
     }

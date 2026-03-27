@@ -43,6 +43,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import app.simple.felicity.engine.R
+import app.simple.felicity.engine.audio.AaudioAudioSink
 import app.simple.felicity.engine.managers.AudioPipelineManager
 import app.simple.felicity.engine.managers.AudioProcessorManager
 import app.simple.felicity.engine.managers.EqualizerManager
@@ -239,7 +240,15 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
                 audioSink.setOffloadMode(offloadMode)
 
-                return audioSink
+                /**
+                 * Wrap the [DefaultAudioSink] with [AaudioAudioSink] unconditionally.
+                 * The wrapper is a transparent forwarding sink when AAudio is disabled;
+                 * when [AudioPreferences.isAaudioEnabled] returns true, [handleBuffer]
+                 * also routes float PCM to the native AAudio stream for direct-to-HAL
+                 * low-latency output. The [DefaultAudioSink] (with its [AudioTrack] muted)
+                 * is kept alive for clock and state management.
+                 */
+                return AaudioAudioSink(audioSink, context)
             }
 
             override fun buildAudioRenderers(
@@ -1162,6 +1171,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // If HW resampling happens, the chain ends at the hardware's forced rate. Otherwise, it ends at the DSP rate.
         val effectiveOutRate = if (hwResampling) deviceSampleRate else dspSampleRateHz
 
+        // Reflect the active output API in the snapshot so the pipeline dialog can show it.
+        val audioOutputMode = if (AudioPreferences.isAaudioEnabled()) "AAudio (Low Latency)" else "AudioTrack"
+
         val snapshot = AudioPipelineSnapshot(
                 trackFormat = trackFormat,
                 bitDepth = bitDepth,
@@ -1182,6 +1194,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 stereoExpandPercent = stereoExpandPercent,
                 buffers = buffersStr,
                 latencyMs = latencyEstimateMs,
+                audioOutputMode = audioOutputMode,
                 deviceName = deviceName,
                 deviceBitDepthIn = deviceBitDepthIn,
                 deviceBitDepthOut = deviceBitDepthOut,

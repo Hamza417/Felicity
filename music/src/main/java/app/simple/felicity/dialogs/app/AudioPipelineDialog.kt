@@ -189,6 +189,10 @@ class AudioPipelineDialog : ScopedBottomSheetFragment() {
                 getString(R.string.latency),
                 getString(R.string.format_approx_ms, snapshot.latencyMs))
 
+        b.valueAudioOutputMode.text = createSpannedString(
+                getString(R.string.audio_output_mode),
+                snapshot.audioOutputMode.ifBlank { "—" })
+
         // Output Device — bit depths are merged into one value using a format string
         b.valueDeviceName.text = createSpannedString(
                 getString(R.string.device_name),

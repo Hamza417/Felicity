@@ -171,8 +171,21 @@ class NativeDspAudioProcessor(
      * full native DSP chain in-place via [DspProcessor.processAudio], then re-encodes back to the
      * original PCM format.
      *
-     * For [C.ENCODING_PCM_FLOAT] with unity preamp, the ByteBuffer is read as a FloatBuffer
-     * directly, skipping per-sample conversion — the fastest possible path.
+     * Float32 guarantee — every encoding is widened to 32-bit float BEFORE entering [workBuf]
+     * and the native DSP chain. No 16-bit (or any integer) arithmetic is performed inside the
+     * processing loop:
+     *  - [C.ENCODING_PCM_16BIT]: [PcmUtils.readFloat] widens Short → Float via `/ 32768f` before
+     *    the value lands in [workBuf]; the Short is never written back until [PcmUtils.writeFloat]
+     *    at the very end.
+     *  - [C.ENCODING_PCM_24BIT]: three raw bytes are assembled into an Int then divided by
+     *    `8388608f` (Float) — the intermediate Int is only used for bit-shifting, not DSP.
+     *  - [C.ENCODING_PCM_32BIT]: raw Int → Float via `/ 2.1474836E9f`; same pattern.
+     *  - [C.ENCODING_PCM_FLOAT]: samples are bulk-copied as Float32 with no conversion.
+     * All NEON SIMD stages inside [DspProcessor] operate on `float32x2_t` / `float32x4_t`
+     * vectors — confirmed by inspection of [dsp-engine.cpp].
+     *
+     * For [C.ENCODING_PCM_FLOAT] with unity preamp, the [ByteBuffer] is read as a [FloatBuffer]
+     * view directly into [workBuf] — the fastest possible path with zero per-sample overhead.
      *
      * @param inputBuffer Raw PCM data from the upstream processor; position is advanced by
      *                    exactly [ByteBuffer.remaining] bytes on return.
@@ -207,22 +220,41 @@ class NativeDspAudioProcessor(
         val preamp = preampLinearGain
 
         /**
-         * Fast path for float PCM with unity gain: use the ByteBuffer's FloatBuffer view
-         * to bulk-read all samples without per-element conversion or scaling.
+         * Input stage: all PCM encodings are converted to 32-bit float here.
+         * After this block [workBuf] contains only Float32 values in the range
+         * approximately [-1.0, 1.0] (float PCM may legally exceed this range with headroom).
+         * No integer arithmetic crosses into the DSP path below.
+         *
+         * Fast path: for float PCM + unity gain (the common Hi-Res / DSP bypass case),
+         * the [ByteBuffer] is bulk-read via [asFloatBuffer] — no per-sample loop needed.
+         * The `preamp == 1f` check is exact because [preampLinearGain] is set to
+         * `10f.pow(0f / 20f)` = `1.0f` exactly under IEEE 754 when the dB value is 0.
          */
         if (encoding == C.ENCODING_PCM_FLOAT && preamp == 1f) {
             inputBuffer.asFloatBuffer().get(workBuf)
             inputBuffer.position(inputBuffer.limit())
         } else {
+            /**
+             * General path: [PcmUtils.readFloat] always returns a 32-bit float.
+             * The incoming Short / Int is widened to Float inside [readFloat] before
+             * any arithmetic — it is never stored back as an integer.
+             */
             for (i in 0 until numSamples) {
                 workBuf[i] = PcmUtils.readFloat(inputBuffer, encoding) * preamp
             }
         }
 
-        /** Apply the full DSP chain in-place via a single JNI call. */
+        /**
+         * DSP stage: entirely float32 — [workBuf] (FloatArray) is processed in-place by
+         * the NEON-accelerated native engine. All biquad states, gain coefficients, and
+         * intermediate SIMD vectors are 32-bit throughout (see [dsp-engine.cpp]).
+         */
         dsp.processAudio(workBuf)
 
-        /** Re-encode the processed floats back to the original PCM format. */
+        /**
+         * Output stage: float32 values in [workBuf] are scaled and packed back into the
+         * target integer encoding only here — integers never appear earlier in the chain.
+         */
         val buf = acquireOutputBuffer(remaining)
 
         if (encoding == C.ENCODING_PCM_FLOAT) {

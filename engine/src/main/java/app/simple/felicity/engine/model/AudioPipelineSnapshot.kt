@@ -1,5 +1,15 @@
 package app.simple.felicity.engine.model
 
+/**
+ * Immutable snapshot of the complete audio pipeline state at a single point in time.
+ *
+ * Populated by [FelicityPlayerService.buildAndPushSnapshot] and pushed to
+ * [AudioPipelineManager] for display in [AudioPipelineDialog]. Every field represents
+ * a specific layer of the pipeline from the encoded source file through to the
+ * hardware output device.
+ *
+ * @author Hamza417
+ */
 data class AudioPipelineSnapshot(
         // Track Info
         val trackFormat: String, // e.g., "FLAC"
@@ -31,6 +41,13 @@ data class AudioPipelineSnapshot(
         val buffers: String, // e.g., "e.g. 2x (40ms, 1800 audio frames)"
         val latencyMs: Int, // Total latency from source to output in milliseconds
 
+        /**
+         * Active audio output API mode.
+         * "AudioTrack" for the standard Android pipeline; "AAudio (Low Latency)" when the
+         * direct-to-HAL [AaudioOutputProcessor] path is active.
+         */
+        val audioOutputMode: String,
+
         // Hardware Output Device
         val deviceName: String,         // e.g., "realme Buds T310"
         val deviceBitDepthIn: Int,      // e.g., 16
@@ -55,6 +72,7 @@ data class AudioPipelineSnapshot(
                 " stereoExpandPercent=$stereoExpandPercent," +
                 " buffers='$buffers'," +
                 " latencyMs=$latencyMs," +
+                " audioOutputMode='$audioOutputMode'," +
                 " deviceName='$deviceName'," +
                 " deviceBitDepthIn=$deviceBitDepthIn," +
                 " deviceBitDepthOut=$deviceBitDepthOut," +
