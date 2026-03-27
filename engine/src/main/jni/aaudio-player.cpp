@@ -35,22 +35,6 @@
 #define AAUDIO_LOGI(...) __android_log_print(ANDROID_LOG_INFO,  AAUDIO_TAG, __VA_ARGS__)
 #define AAUDIO_LOGW(...) __android_log_print(ANDROID_LOG_WARN,  AAUDIO_TAG, __VA_ARGS__)
 
-/** Buffer multiplier applied to the burst size for safe (Bluetooth) mode. */
-static constexpr int32_t kSafeBufferBursts = 8;
-
-/**
- * Buffer multiplier applied to the burst size for normal (wired / speaker) mode.
- *
- * This was previously 2, which produced a ~4–10 ms window on most chipsets.
- * That headroom is far too small when AAudio is driven in write mode from
- * ExoPlayer's rendering thread: any Android scheduling jitter, a GC pause, or
- * AudioTrack lock contention can delay the write call long enough to starve the
- * HAL, causing the rhythmic "chakk chakk" / diesel-engine underrun noise that was
- * audible on speaker and wired output in hi-res mode. For music playback, output
- * latency is irrelevant, so 8× matches the Bluetooth safe-mode setting and gives
- * ample headroom without any audible downside.
- */
-static constexpr int32_t kFastBufferBursts = 8;
 
 /**
  * Converts [numSamples] float32 samples from [src] to signed 16-bit integers in [dst].
@@ -236,8 +220,8 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioCre
                 static_cast<int>(AAUDIO_FORMAT_PCM_FLOAT),
                 (actualSharing == AAUDIO_SHARING_MODE_EXCLUSIVE) ? "EXCLUSIVE" : "SHARED",
                 ctx->safeBufferMode ? 1 : 0,
-                burstFrames, targetFrames,
-                (ctx->sampleRate > 0) ? (targetFrames * 1000 / ctx->sampleRate) : -1);
+                burstFrames, finalFrames,
+                (ctx->sampleRate > 0) ? (finalFrames * 1000 / ctx->sampleRate) : -1);
 
     return reinterpret_cast<jlong>(ctx);
 }

@@ -650,14 +650,14 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(decoderHeader)
         preferences.add(currentDecoder)
         preferences.add(fallbackToSWToggle)
+        preferences.add(outputHeader)
+        preferences.add(aaudioToggle)
         preferences.add(playbackHeader)
         preferences.add(hiresToggle)
         preferences.add(hiresWarning)
         preferences.add(stereoDownmixing)
         preferences.add(gaplessToggle)
         preferences.add(skipSilenceToggle)
-        preferences.add(outputHeader)
-        preferences.add(aaudioToggle)
 
         return preferences
     }

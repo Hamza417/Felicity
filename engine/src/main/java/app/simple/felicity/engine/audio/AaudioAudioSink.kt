@@ -65,6 +65,13 @@ class AaudioAudioSink(
     private var pendingVolume: Float = 1f
 
     /**
+     * Tracks whether the delegate [DefaultAudioSink] is currently muted (volume = 0)
+     * because AAudio is producing the audible output. Used to avoid redundant
+     * [AudioTrack.setVolume] calls on every [handleBuffer] frame.
+     */
+    private var delegateMuted: Boolean = false
+
+    /**
      * Configures the sink for [inputFormat]. Always delegates to [DefaultAudioSink],
      * then — when [AudioPreferences.isAaudioEnabled] is true — creates or recreates the
      * native AAudio stream. Bluetooth routing is detected at this point so the stream
@@ -80,7 +87,16 @@ class AaudioAudioSink(
         val sr = inputFormat.sampleRate.takeIf { it > 0 } ?: return
         val ch = inputFormat.channelCount.takeIf { it > 0 } ?: return
 
-        if (!AudioPreferences.isAaudioEnabled()) return
+        if (!AudioPreferences.isAaudioEnabled()) {
+            /**
+             * AAudio is off. If a stale stream exists from a previous session,
+             * release it and restore the delegate's volume.
+             */
+            if (aaudioStream != null) {
+                releaseAaudioStream()
+            }
+            return
+        }
 
         if (sr != currentSampleRate || ch != currentChannelCount || aaudioStream?.isReady != true) {
             releaseAaudioStream()
@@ -99,11 +115,21 @@ class AaudioAudioSink(
                 aaudioStream = stream
                 currentSampleRate = sr
                 currentChannelCount = ch
+
+                /**
+                 * Mute the delegate AudioTrack immediately so only the AAudio stream
+                 * produces audible output. Without this, both the AudioTrack and the
+                 * AAudio stream play the same PCM simultaneously, causing double
+                 * volume and a timing-offset echo.
+                 */
+                muteDelegateIfNeeded()
+
                 Log.i(TAG, "AAudio stream configured — sampleRate=$sr, channels=$ch, " +
                         "encoding=$enc, actualFormat=${stream.getActualFormatName()}, " +
                         "safeBuffers=$useSafeBuffers")
             } else {
                 Log.e(TAG, "AAudio stream creation failed for sampleRate=$sr, channels=$ch")
+                unmuteDelegateIfNeeded()
             }
         }
     }
@@ -112,6 +138,7 @@ class AaudioAudioSink(
     override fun play() {
         super.play()
         if (AudioPreferences.isAaudioEnabled()) {
+            muteDelegateIfNeeded()
             aaudioStream?.start()
         }
     }
@@ -137,8 +164,16 @@ class AaudioAudioSink(
     ): Boolean {
         val stream = aaudioStream
         if (!AudioPreferences.isAaudioEnabled() || stream?.isReady != true) {
+            unmuteDelegateIfNeeded()
             return super.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
         }
+
+        /**
+         * Ensure the delegate stays muted while AAudio is driving output. This
+         * covers the edge case where ExoPlayer called [setVolume] before the
+         * AAudio stream was created and the delegate inherited a non-zero volume.
+         */
+        muteDelegateIfNeeded()
 
         /**
          * Snapshot the readable slice BEFORE the delegate potentially advances
@@ -170,7 +205,12 @@ class AaudioAudioSink(
      */
     override fun setVolume(volume: Float) {
         pendingVolume = volume
-        super.setVolume(if (AudioPreferences.isAaudioEnabled()) 0f else volume)
+        val aaudioActive = AudioPreferences.isAaudioEnabled() && aaudioStream?.isReady == true
+        if (aaudioActive) {
+            muteDelegateIfNeeded()
+        } else {
+            unmuteDelegateIfNeeded()
+        }
     }
 
     /**
@@ -262,7 +302,31 @@ class AaudioAudioSink(
         aaudioStream = null
         currentSampleRate = 0
         currentChannelCount = 0
+        unmuteDelegateIfNeeded()
         Log.i(TAG, "AAudio stream released")
+    }
+
+    /**
+     * Mutes the delegate [DefaultAudioSink] (volume = 0) so only the AAudio stream
+     * is audible. No-op if already muted.
+     */
+    private fun muteDelegateIfNeeded() {
+        if (!delegateMuted) {
+            super.setVolume(0f)
+            delegateMuted = true
+        }
+    }
+
+    /**
+     * Restores the delegate [DefaultAudioSink] volume to the last value ExoPlayer
+     * requested ([pendingVolume]) so the normal AudioTrack path is audible again.
+     * No-op if not currently muted.
+     */
+    private fun unmuteDelegateIfNeeded() {
+        if (delegateMuted) {
+            super.setVolume(pendingVolume)
+            delegateMuted = false
+        }
     }
 
     companion object {
