@@ -128,9 +128,26 @@ class FooterSpacingItemDecoration(footerHeight: Int = 0) : RecyclerView.ItemDeco
     /**
      * Removes this decoration from the attached [RecyclerView] and clears the reference.
      * Safe to call multiple times.
+     *
+     * **Note:** prefer [release] when the owning fragment is being destroyed so that
+     * the decoration (and its bottom spacing) stays in place during the exit transition,
+     * preventing a visible layout jump in the list.
      */
     fun detach() {
         attachedRecyclerView?.removeItemDecoration(this)
+        attachedRecyclerView = null
+    }
+
+    /**
+     * Clears the internal [RecyclerView] reference **without** removing this decoration
+     * from the list. Use this instead of [detach] when the host fragment is being torn
+     * down so the bottom spacing is preserved throughout the exit transition and the list
+     * does not jump.
+     *
+     * The decoration remains on the [RecyclerView] and will be collected along with it.
+     * Safe to call multiple times.
+     */
+    fun release() {
         attachedRecyclerView = null
     }
 }

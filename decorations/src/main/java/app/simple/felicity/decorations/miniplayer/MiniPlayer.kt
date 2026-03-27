@@ -2044,18 +2044,36 @@ class MiniPlayer @JvmOverloads constructor(
     @Suppress("unused")
     fun attachToRecyclerViews(vararg rvs: RecyclerView) = rvs.forEach { attachToRecyclerView(it) }
 
+    /**
+     * Detaches the scroll listener from [rv] and releases the footer spacing decoration
+     * without removing it from the list.
+     *
+     * Using [FooterSpacingItemDecoration.release] instead of
+     * [FooterSpacingItemDecoration.detach] intentionally keeps the bottom spacing in place
+     * while the host fragment is being torn down, preventing a visible layout jump in the
+     * [RecyclerView] during the exit transition.
+     *
+     * @param rv The [RecyclerView] to detach from.
+     */
     fun detachFromRecyclerView(rv: RecyclerView) {
         attached.remove(rv)?.let { rv.removeOnScrollListener(it) }
-        footerDecorations.remove(rv)?.detach()
+        footerDecorations.remove(rv)?.release()
     }
 
     @Suppress("unused")
     fun detachFromRecyclerViews(vararg rvs: RecyclerView) = rvs.forEach { detachFromRecyclerView(it) }
 
+    /**
+     * Detaches scroll listeners from all attached [RecyclerView]s and releases every
+     * footer spacing decoration without removing them from their lists.
+     *
+     * See [detachFromRecyclerView] for the rationale behind using
+     * [FooterSpacingItemDecoration.release] instead of [FooterSpacingItemDecoration.detach].
+     */
     fun detachFromAllRecyclerViews() {
         attached.forEach { (rv, l) -> rv.removeOnScrollListener(l) }
         attached.clear()
-        footerDecorations.forEach { (_, deco) -> deco.detach() }
+        footerDecorations.forEach { (_, deco) -> deco.release() }
         footerDecorations.clear()
     }
 
