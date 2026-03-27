@@ -52,6 +52,15 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
     private var angle = 0f
     private var colour: Int
 
+    /**
+     * Snapshot of [AppearancePreferences.isShadowEffectOn] taken at construction time.
+     *
+     * Capturing it here ensures that the rendered output and the disk/memory cache key are always
+     * derived from the same value — preventing a stale cache hit when the preference is toggled
+     * between two requests.
+     */
+    private var shadowEffectEnabled: Boolean = false
+
     @IntDef(EAST, NORTHEAST, NORTH, NORTHWEST, WEST, SOUTHWEST, SOUTH, SOUTHEAST)
     @Retention(AnnotationRetention.SOURCE)
     annotation class Direction
@@ -154,7 +163,7 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
 
         //Create Shadow Paint
         val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            colorFilter = if (AppearancePreferences.isShadowEffectOn()) {
+            colorFilter = if (shadowEffectEnabled) {
                 ColorMatrixColorFilter(ColorMatrix().apply {
                     setScale(SHADOW_SCALE_RGB, SHADOW_SCALE_RGB, SHADOW_SCALE_RGB, SHADOW_SCALE_ALPHA)
                 })
@@ -166,7 +175,7 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
 
         if (blurRadius <= MAX_BLUR_RADIUS) {
             //Apply Blur
-            shadow = if (AppearancePreferences.isShadowEffectOn()) {
+            shadow = if (shadowEffectEnabled) {
                 Toolkit.blur(source, blurRadius.toInt())
             } else {
                 createBitmap(source.width, source.height)
@@ -185,7 +194,7 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
             val scaled = source.scale(source.width, source.height)
 
             //Apply Blur
-            shadow = if (AppearancePreferences.isShadowEffectOn()) {
+            shadow = if (shadowEffectEnabled) {
                 Toolkit.blur(scaled, MAX_BLUR_RADIUS.toInt())
             } else {
                 createBitmap(source.width, source.height)
@@ -209,6 +218,7 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
                     && elevation == other.elevation
                     && angle == other.angle
                     && colour == other.colour
+                    && shadowEffectEnabled == other.shadowEffectEnabled
         }
         return false
     }
@@ -218,7 +228,8 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
                              Util.hashCode(blurRadius,
                                            Util.hashCode(elevation,
                                                          Util.hashCode(angle,
-                                                                       Util.hashCode(colour)))))
+                                                                       Util.hashCode(colour,
+                                                                                     Util.hashCode(if (shadowEffectEnabled) 1 else 0))))))
     }
 
     override fun updateDiskCacheKey(messageDigest: MessageDigest) {
@@ -228,7 +239,7 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
         messages.add(ByteBuffer.allocate(java.lang.Float.SIZE / java.lang.Byte.SIZE).putFloat(elevation).array())
         messages.add(ByteBuffer.allocate(java.lang.Float.SIZE / java.lang.Byte.SIZE).putFloat(angle).array())
         messages.add(ByteBuffer.allocate(Integer.SIZE / java.lang.Byte.SIZE).putInt(colour).array())
-        messages.add(ByteBuffer.allocate(java.lang.Long.SIZE).putLong(System.currentTimeMillis()).array())
+        messages.add(ByteBuffer.allocate(1).put(if (shadowEffectEnabled) 1.toByte() else 0.toByte()).array())
         for (c in messages.indices) {
             messageDigest.update(messages[c])
         }
@@ -253,5 +264,6 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
 
     init {
         colour = Color.argb(60, 0, 0, 0)
+        shadowEffectEnabled = AppearancePreferences.isShadowEffectOn()
     }
 }

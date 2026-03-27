@@ -12,6 +12,7 @@ import android.graphics.PorterDuffXfermode
 import android.graphics.Shader
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
+import com.bumptech.glide.util.Util
 import java.security.MessageDigest
 
 class ReflectionDarkenTransformation(
@@ -76,5 +77,20 @@ class ReflectionDarkenTransformation(
         reflection.recycle()
         return output
     }
-}
 
+    override fun equals(other: Any?): Boolean {
+        if (other is ReflectionDarkenTransformation) {
+            return darkenPercent == other.darkenPercent
+                    && darkenOverlayAlpha == other.darkenOverlayAlpha
+                    && reflectionAlpha == other.reflectionAlpha
+        }
+        return false
+    }
+
+    override fun hashCode(): Int {
+        return Util.hashCode(
+                darkenPercent.toBits(),
+                Util.hashCode(darkenOverlayAlpha, Util.hashCode(reflectionAlpha))
+        )
+    }
+}

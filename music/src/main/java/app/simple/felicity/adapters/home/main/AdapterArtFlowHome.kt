@@ -111,7 +111,6 @@ class AdapterArtFlowHome(private var data: List<ArtFlowData<Any>>) : RecyclerVie
                         item = data.items[position],
                         roundedCorners = false,
                         blur = false,
-                        skipCache = false,
                         crop = true
                 )
             }

@@ -39,7 +39,6 @@ class AdapterGridArt(private val data: ArtFlowData<Any>) :
                             item = item,
                             shadow = false,
                             roundedCorners = false,
-                            skipCache = true,
                             darken = false)
 
                     holder.binding.container.setOnClickListener {

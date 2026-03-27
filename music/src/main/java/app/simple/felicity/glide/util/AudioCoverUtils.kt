@@ -2,6 +2,7 @@ package app.simple.felicity.glide.util
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import android.widget.ImageView
 import app.simple.felicity.R
 import app.simple.felicity.glide.transformation.Blur
@@ -13,10 +14,14 @@ import app.simple.felicity.glide.transformation.RoundedCorners
 import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.Transformation
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
+import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.CustomTarget
+import com.bumptech.glide.request.target.Target
 import com.bumptech.glide.request.transition.Transition
 
 object AudioCoverUtils {
@@ -25,12 +30,11 @@ object AudioCoverUtils {
             shadow: Boolean = false,
             roundedCorners: Boolean = false,
             blur: Boolean = false,
-            skipCache: Boolean = false,
             greyscale: Boolean = false,
             darken: Boolean = false,
             crop: Boolean = true
     ) {
-        val transformations = mutableListOf<Transformation<android.graphics.Bitmap>>()
+        val transformations = mutableListOf<Transformation<Bitmap>>()
 
         if (crop) transformations.add(CenterCrop())
         if (roundedCorners) transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt()))
@@ -52,15 +56,22 @@ object AudioCoverUtils {
             .dontTransform() // This way we can apply our own transformations and skip the module specific ones
             .transform(*transformations.toTypedArray())
             .load(item)
+            .diskCacheStrategy(DiskCacheStrategy.ALL)
+            .listener(object : RequestListener<Bitmap> {
+                override fun onLoadFailed(e: GlideException?, p1: Any, p2: com.bumptech.glide.request.target.Target<Bitmap>, isFirstResource: Boolean): Boolean {
+                    Log.e("GlideCache", "Load failed", e)
+                    return false
+                }
+
+                override fun onResourceReady(p0: Bitmap, model: Any, p2: Target<Bitmap>, dataSource: DataSource, isFirstResource: Boolean): Boolean {
+                    // This is the magic line. It will print exactly where the image came from.
+                    Log.d("GlideCache", "Loaded from: $dataSource")
+                    return false
+                }
+            })
             .error(R.drawable.ic_felicity)
 
-        val finalRequest = if (skipCache) {
-            glideRequest.skipMemoryCache(true).diskCacheStrategy(DiskCacheStrategy.NONE)
-        } else {
-            glideRequest
-        }
-
-        finalRequest.into(this)
+        glideRequest.into(this)
     }
 
     fun ImageView.loadArtCoverWithPayload(item: Any) {
@@ -68,7 +79,6 @@ object AudioCoverUtils {
                 item = item,
                 shadow = AlbumArtPreferences.isShadowEnabled(),
                 blur = false,
-                skipCache = true,
                 greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
                 darken = false,
                 crop = AlbumArtPreferences.isCropEnabled(),

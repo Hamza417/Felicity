@@ -580,7 +580,6 @@ class PageAdapter(
                         item = data.items[position],
                         roundedCorners = false,
                         blur = false,
-                        skipCache = false,
                         crop = true
                 )
             }

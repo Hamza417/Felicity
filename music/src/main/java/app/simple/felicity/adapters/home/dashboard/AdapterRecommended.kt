@@ -35,7 +35,6 @@ class AdapterRecommended(private var list: List<Audio>) :
                     item = item,
                     shadow = false,
                     roundedCorners = false,
-                    skipCache = true,
                     darken = false)
 
             holder.binding.container.setOnClickListener {

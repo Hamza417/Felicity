@@ -12,7 +12,7 @@ import java.security.MessageDigest
 class BottomAlphaGradient : BitmapTransformation() {
 
     override fun updateDiskCacheKey(messageDigest: MessageDigest) {
-        messageDigest.update("BottomAlphaGradientTransformation".toByteArray())
+        messageDigest.update(ID_BYTES)
     }
 
     override fun transform(pool: BitmapPool, toTransform: Bitmap, outWidth: Int, outHeight: Int): Bitmap {
@@ -38,5 +38,18 @@ class BottomAlphaGradient : BitmapTransformation() {
         val canvas = Canvas(result)
         canvas.drawBitmap(mutableBitmap, 0f, 0f, null)
         return result
+    }
+
+    override fun equals(other: Any?): Boolean {
+        return other is BottomAlphaGradient
+    }
+
+    override fun hashCode(): Int {
+        return ID.hashCode()
+    }
+
+    companion object {
+        private const val ID = "app.simple.felicity.glide.transformations.BottomAlphaGradient"
+        private val ID_BYTES = ID.toByteArray(CHARSET)
     }
 }

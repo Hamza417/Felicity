@@ -86,7 +86,6 @@ class DefaultPlayer : MediaFragment() {
                                             crop = true,
                                             roundedCorners = false,
                                             blur = false,
-                                            skipCache = false,
                                             greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
                                             darken = false)
                         },
