@@ -1,6 +1,8 @@
 package app.simple.felicity.decorations.pager
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
@@ -1017,7 +1019,35 @@ class FelicityPager @JvmOverloads constructor(
         stopAutoSlide()
         cancelAnimation()
         cancelWrapAnimation()
-        recycleAllPages()
+        if (isActivityAlive()) {
+            recycleAllPages()
+        } else {
+            // Activity is destroyed or finishing; skip adapter callbacks to avoid
+            // triggering Glide (or any other loader) against a dead context. Just
+            // wipe internal state — the system will release the views anyway.
+            activePages.clear()
+            recyclePool.clear()
+            removeAllViews()
+        }
+    }
+
+    /**
+     * Returns `true` when the host [Activity] is still in a usable state, i.e. it has not
+     * been destroyed or is not in the process of finishing. Walks up the [ContextWrapper]
+     * chain so that themed or wrapped contexts are handled correctly.
+     *
+     * When the [context] is not backed by an [Activity] at all (e.g. an application context
+     * used in tests), the method conservatively returns `true`.
+     */
+    private fun isActivityAlive(): Boolean {
+        var ctx: Context = context
+        while (ctx is ContextWrapper) {
+            if (ctx is Activity) {
+                return !ctx.isDestroyed && !ctx.isFinishing
+            }
+            ctx = ctx.baseContext
+        }
+        return true
     }
 
     fun getCurrentImageView(): ImageView {
