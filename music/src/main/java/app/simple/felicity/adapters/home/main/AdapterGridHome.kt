@@ -3,6 +3,7 @@ package app.simple.felicity.adapters.home.main
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.adapters.home.sub.AdapterGridArt
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
@@ -16,7 +17,7 @@ import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.utils.ArrayUtils.getTwoRandomIndices
 
-class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
+class AdapterGridHome(private var data: List<ArtFlowData<Any>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var adapterSpannedHomeCallbacks: AdapterSpannedHomeCallbacks? = null
 
@@ -122,6 +123,26 @@ class AdapterGridHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.A
         }
 
         return null
+    }
+
+    /**
+     * Replaces the current section data and dispatches granular change notifications computed by
+     * [DiffUtil]. Sections are matched by [ArtFlowData.title] so only rows whose content actually
+     * changed are rebound, preserving the art-grid layout and animation state on untouched rows.
+     *
+     * @param newData The updated list of [ArtFlowData] sections.
+     */
+    fun updateData(newData: List<ArtFlowData<Any>>) {
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = data.size
+            override fun getNewListSize() = newData.size
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int) =
+                data[oldItemPosition].title == newData[newItemPosition].title
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int) =
+                data[oldItemPosition].items == newData[newItemPosition].items
+        })
+        data = newData
+        diff.dispatchUpdatesTo(this)
     }
 
     fun setAdapterSpannedHomeCallbacks(callbacks: AdapterSpannedHomeCallbacks) {

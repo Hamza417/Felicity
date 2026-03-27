@@ -6,8 +6,10 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewTreeObserver
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterGridHome
 import app.simple.felicity.adapters.home.main.AdapterGridHome.Companion.AdapterSpannedHomeCallbacks
@@ -15,6 +17,7 @@ import app.simple.felicity.adapters.home.sub.AdapterGridArt
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.randomViewHolder
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
@@ -26,7 +29,18 @@ import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.viewmodels.panels.HomeViewModel
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
+/**
+ * Home fragment that presents curated song collections as a spanned art grid with periodic
+ * randomization. The four data sources (Favorites, Recently Played, Most Played, Recently Added)
+ * are collected as independent [kotlinx.coroutines.flow.StateFlow]s from [HomeViewModel] and
+ * combined into a single [AdapterGridHome] data set. Reactive Room flows ensure that any
+ * addition or deletion in the library is reflected immediately without a restart.
+ *
+ * @author Hamza417
+ */
 class SpannedHome : MediaFragment() {
 
     private lateinit var binding: FragmentHomeSpannedBinding
@@ -44,72 +58,87 @@ class SpannedHome : MediaFragment() {
         binding.recyclerView.setBackgroundColor(Color.BLACK)
         binding.recyclerView.requireAttachedMiniPlayer()
 
-        homeViewModel.getData().observe(viewLifecycleOwner) { it ->
-            val adapter = AdapterGridHome(it)
-            binding.recyclerView.setHasFixedSize(false)
-            binding.recyclerView.adapter = adapter
-            binding.recyclerView.scheduleLayoutAnimation()
-            binding.recyclerView.itemAnimator = null
+        var adapter: AdapterGridHome? = null
 
-            adapter.setAdapterSpannedHomeCallbacks(object : AdapterSpannedHomeCallbacks {
-                override fun onMenuClicked(view: View) {
-                    // childFragmentManager.showHomeMenu()
-                    openPreferencesPanel()
-                }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                combine(
+                        homeViewModel.favorites,
+                        homeViewModel.recentlyPlayed,
+                        homeViewModel.mostPlayed,
+                        homeViewModel.recentlyAdded
+                ) { favorites, recentlyPlayed, mostPlayed, recentlyAdded ->
+                    buildSections(favorites, recentlyPlayed, mostPlayed, recentlyAdded)
+                }.collect { sections ->
+                    Log.d(TAG, "Data received: ${sections.size} sections")
+                    if (sections.isEmpty()) return@collect
 
-                override fun onItemClicked(items: List<Any>, position: Int) {
-                    when (items.first()) {
-                        is Audio -> {
-                            // setMediaItems(items.filterIsInstance<Song>(), position)
-                        }
-                        is Artist -> {
-                            openFragment(ArtistPage.newInstance(items.filterIsInstance<Artist>()[position]), ArtistPage.TAG)
-                        }
-                        is Album -> {
-                            openFragment(AlbumPage.newInstance(items.filterIsInstance<Album>()[position]), AlbumPage.TAG)
-                        }
-                        else -> {
-                            Log.w(TAG, "onItemClicked: Unsupported item type: ${items.first()::class.java.simpleName}")
-                        }
+                    if (adapter == null) {
+                        adapter = AdapterGridHome(sections)
+                        binding.recyclerView.setHasFixedSize(false)
+                        binding.recyclerView.adapter = adapter
+                        binding.recyclerView.scheduleLayoutAnimation()
+                        binding.recyclerView.itemAnimator = null
+
+                        adapter!!.setAdapterSpannedHomeCallbacks(object : AdapterSpannedHomeCallbacks {
+                            override fun onMenuClicked(view: View) {
+                                openPreferencesPanel()
+                            }
+
+                            override fun onItemClicked(items: List<Any>, position: Int) {
+                                when (items.first()) {
+                                    is Audio -> {}
+                                    is Artist -> openFragment(ArtistPage.newInstance(items.filterIsInstance<Artist>()[position]), ArtistPage.TAG)
+                                    is Album -> openFragment(AlbumPage.newInstance(items.filterIsInstance<Album>()[position]), AlbumPage.TAG)
+                                    else -> Log.w(TAG, "onItemClicked: Unsupported item type: ${items.first()::class.java.simpleName}")
+                                }
+                            }
+
+                            override fun onItemLongClicked(item: Any) {}
+
+                            override fun onButtonClicked(title: Int) {
+                                when (title) {
+                                    R.string.songs -> openFragment(Songs.newInstance(), Songs.TAG)
+                                    R.string.albums -> openFragment(Albums.newInstance(), Albums.TAG)
+                                    R.string.artists -> openFragment(Artists.newInstance(), Artists.TAG)
+                                    R.string.genres -> openFragment(Genres.newInstance(), Genres.TAG)
+                                    R.string.playing_queue -> openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
+                                    else -> Log.w(TAG, "onButtonClicked: Unsupported button title: $title")
+                                }
+                            }
+                        })
+
+                        requireView().startTransitionOnPreDraw()
+                    } else {
+                        adapter!!.updateData(sections)
                     }
                 }
-
-                override fun onItemLongClicked(item: Any) {
-
-                }
-
-                override fun onButtonClicked(title: Int) {
-                    when (title) {
-                        R.string.songs -> {
-                            openFragment(Songs.newInstance(), Songs.TAG)
-                        }
-                        R.string.albums -> {
-                            openFragment(Albums.newInstance(), Albums.TAG)
-                        }
-                        R.string.artists -> {
-                            openFragment(Artists.newInstance(), Artists.TAG)
-                        }
-                        R.string.genres -> {
-                            openFragment(Genres.newInstance(), Genres.TAG)
-                        }
-                        R.string.playing_queue -> {
-                            openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
-                        }
-                        else -> {
-                            Log.w(TAG, "onButtonClicked: Unsupported button title: $title")
-                        }
-                    }
-                }
-            })
-
-            binding.recyclerView.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
-                override fun onPreDraw(): Boolean {
-                    binding.recyclerView.viewTreeObserver.removeOnPreDrawListener(this)
-                    startPostponedEnterTransition()
-                    return true
-                }
-            })
+            }
         }
+    }
+
+    /**
+     * Assembles the ordered list of [ArtFlowData] sections passed to [AdapterGridHome].
+     * Sections whose backing list is empty are omitted so the grid never shows an empty row.
+     *
+     * @param favorites      Latest favorites snapshot.
+     * @param recentlyPlayed Latest recently-played snapshot.
+     * @param mostPlayed     Latest most-played snapshot.
+     * @param recentlyAdded  Latest recently-added snapshot.
+     * @return Ordered list of non-empty [ArtFlowData] sections.
+     */
+    private fun buildSections(
+            favorites: List<Audio>,
+            recentlyPlayed: List<Audio>,
+            mostPlayed: List<Audio>,
+            recentlyAdded: List<Audio>
+    ): List<ArtFlowData<Any>> {
+        val sections = mutableListOf<ArtFlowData<Any>>()
+        if (favorites.isNotEmpty()) sections.add(ArtFlowData(R.string.favorites, favorites))
+        if (recentlyPlayed.isNotEmpty()) sections.add(ArtFlowData(R.string.recently_played, recentlyPlayed))
+        if (mostPlayed.isNotEmpty()) sections.add(ArtFlowData(R.string.most_played, mostPlayed))
+        if (recentlyAdded.isNotEmpty()) sections.add(ArtFlowData(R.string.recently_added, recentlyAdded))
+        return sections
     }
 
     private val randomizer: Runnable = object : Runnable {
@@ -151,6 +180,11 @@ class SpannedHome : MediaFragment() {
     }
 
     companion object {
+        /**
+         * Creates a new instance of [SpannedHome].
+         *
+         * @return A freshly instantiated [SpannedHome] fragment.
+         */
         fun newInstance(): SpannedHome {
             val args = Bundle()
             val fragment = SpannedHome()
@@ -160,7 +194,5 @@ class SpannedHome : MediaFragment() {
 
         const val TAG = "SpannedHome"
         private const val DELAY = 5_000L
-        private const val BASIC_DURATION = 1_500L
-        private const val SMALL_DURATION = 250L
     }
 }

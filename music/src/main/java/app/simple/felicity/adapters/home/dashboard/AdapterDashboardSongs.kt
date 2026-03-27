@@ -1,9 +1,9 @@
 package app.simple.felicity.adapters.home.dashboard
 
-import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterCarouselBinding
@@ -55,14 +55,23 @@ class AdapterDashboardSongs(
     }
 
     /**
-     * Replaces the current data set with [newSongs] and refreshes the list.
+     * Replaces the current data set with [newSongs] and dispatches granular change notifications
+     * computed by [DiffUtil]. Items are identified by [Audio.id] so additions, removals, and
+     * moves are all animated individually without resetting the scroll position.
      *
      * @param newSongs The updated list of songs to display.
      */
-    @SuppressLint("NotifyDataSetChanged")
     fun updateData(newSongs: List<Audio>) {
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = songs.size
+            override fun getNewListSize() = newSongs.size
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int) =
+                songs[oldItemPosition].id == newSongs[newItemPosition].id
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int) =
+                songs[oldItemPosition] == newSongs[newItemPosition]
+        })
         songs = newSongs
-        notifyDataSetChanged()
+        diff.dispatchUpdatesTo(this)
     }
 
     /**

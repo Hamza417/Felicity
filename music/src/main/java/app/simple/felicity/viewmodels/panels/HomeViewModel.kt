@@ -3,20 +3,19 @@ package app.simple.felicity.viewmodels.panels
 import android.app.Application
 import android.content.SharedPreferences
 import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
-import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.preferences.LibraryPreferences
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.SongStatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,9 +23,13 @@ import javax.inject.Inject
 /**
  * ViewModel for the ArtFlow home screen.
  *
- * <p>Loads curated song collections (Favorites, Recently Played, Most Played, and Recently Added)
- * to populate the image-slider rows on the home screen. Each section is represented as an
- * [ArtFlowData] wrapping a list of [app.simple.felicity.repository.models.Audio] objects.
+ * Exposes four independent [StateFlow] streams — one per curated section (Favorites,
+ * Recently Played, Most Played, Recently Added). Each stream is backed by a long-lived
+ * Room flow so any addition or deletion in the audio database is immediately forwarded to
+ * the UI without requiring a restart.
+ *
+ * Each section has its own [Job] so flows can be cancelled and restarted independently
+ * when library-filter preferences change.
  *
  * @author Hamza417
  */
@@ -37,84 +40,87 @@ class HomeViewModel @Inject constructor(
         private val songStatRepository: SongStatRepository
 ) : WrappedViewModel(application) {
 
-    private val data: MutableLiveData<List<ArtFlowData<Any>>> by lazy {
-        MutableLiveData<List<ArtFlowData<Any>>>().also {
-            Log.d(TAG, "LiveData initialized")
-            loadData()
+    private val _favorites = MutableStateFlow<List<Audio>>(emptyList())
+
+    /** Favorite songs, re-emitted whenever the audio table changes. */
+    val favorites: StateFlow<List<Audio>> = _favorites.asStateFlow()
+
+    private val _recentlyPlayed = MutableStateFlow<List<Audio>>(emptyList())
+
+    /** Recently-played songs ordered by last-played timestamp descending, re-emitted on stat table changes. */
+    val recentlyPlayed: StateFlow<List<Audio>> = _recentlyPlayed.asStateFlow()
+
+    private val _mostPlayed = MutableStateFlow<List<Audio>>(emptyList())
+
+    /** Most-played songs ordered by play count descending, re-emitted on stat table changes. */
+    val mostPlayed: StateFlow<List<Audio>> = _mostPlayed.asStateFlow()
+
+    private val _recentlyAdded = MutableStateFlow<List<Audio>>(emptyList())
+
+    /** Recently-added songs ordered by date-added descending, re-emitted on audio table changes. */
+    val recentlyAdded: StateFlow<List<Audio>> = _recentlyAdded.asStateFlow()
+
+    private var favoritesJob: Job? = null
+    private var recentlyPlayedJob: Job? = null
+    private var mostPlayedJob: Job? = null
+    private var recentlyAddedJob: Job? = null
+
+    init {
+        startFavoritesFlow()
+        startRecentlyPlayedFlow()
+        startMostPlayedFlow()
+        startRecentlyAddedFlow()
+    }
+
+    private fun startFavoritesFlow() {
+        favoritesJob?.cancel()
+        favoritesJob = viewModelScope.launch {
+            audioRepository.getFavoriteAudio()
+                .catch { e -> Log.e(TAG, "Error loading favorites", e); emit(emptyList()) }
+                .flowOn(Dispatchers.IO)
+                .collect { list ->
+                    _favorites.value = list.take(TAKE_COUNT)
+                    Log.d(TAG, "favorites updated: ${list.size} songs")
+                }
         }
     }
 
-    /**
-     * Returns the [LiveData] stream of curated home sections.
-     *
-     * @return Observable list of [ArtFlowData] sections for the home slider.
-     */
-    fun getData(): LiveData<List<ArtFlowData<Any>>> = data
-
-    private fun loadData() {
-        viewModelScope.launch(Dispatchers.IO) {
-            Log.d(TAG, "Loading home data…")
-
-            try {
-                val favoritesDeferred = async {
-                    audioRepository.getFavoriteAudio()
-                        .catch { e -> Log.e(TAG, "Error loading favorites", e); emit(emptyList()) }
-                        .flowOn(Dispatchers.IO)
-                        .first()
-                        .take(TAKE_COUNT)
+    private fun startRecentlyPlayedFlow() {
+        recentlyPlayedJob?.cancel()
+        recentlyPlayedJob = viewModelScope.launch {
+            songStatRepository.getRecentlyPlayed()
+                .catch { e -> Log.e(TAG, "Error loading recently played", e); emit(emptyList()) }
+                .flowOn(Dispatchers.IO)
+                .collect { list ->
+                    _recentlyPlayed.value = list.take(TAKE_COUNT)
+                    Log.d(TAG, "recentlyPlayed updated: ${list.size} songs")
                 }
+        }
+    }
 
-                val recentlyPlayedDeferred = async {
-                    songStatRepository.getRecentlyPlayed()
-                        .catch { e -> Log.e(TAG, "Error loading recently played", e); emit(emptyList()) }
-                        .flowOn(Dispatchers.IO)
-                        .first()
-                        .take(TAKE_COUNT)
+    private fun startMostPlayedFlow() {
+        mostPlayedJob?.cancel()
+        mostPlayedJob = viewModelScope.launch {
+            songStatRepository.getMostPlayed()
+                .catch { e -> Log.e(TAG, "Error loading most played", e); emit(emptyList()) }
+                .flowOn(Dispatchers.IO)
+                .collect { list ->
+                    _mostPlayed.value = list.take(TAKE_COUNT)
+                    Log.d(TAG, "mostPlayed updated: ${list.size} songs")
                 }
+        }
+    }
 
-                val mostPlayedDeferred = async {
-                    songStatRepository.getMostPlayed()
-                        .catch { e -> Log.e(TAG, "Error loading most played", e); emit(emptyList()) }
-                        .flowOn(Dispatchers.IO)
-                        .first()
-                        .take(TAKE_COUNT)
+    private fun startRecentlyAddedFlow() {
+        recentlyAddedJob?.cancel()
+        recentlyAddedJob = viewModelScope.launch {
+            audioRepository.getRecentAudio()
+                .catch { e -> Log.e(TAG, "Error loading recently added", e); emit(mutableListOf()) }
+                .flowOn(Dispatchers.IO)
+                .collect { list ->
+                    _recentlyAdded.value = list.take(TAKE_COUNT)
+                    Log.d(TAG, "recentlyAdded updated: ${list.size} songs")
                 }
-
-                val recentlyAddedDeferred = async {
-                    audioRepository.getRecentAudio()
-                        .catch { e -> Log.e(TAG, "Error loading recently added", e); emit(mutableListOf()) }
-                        .flowOn(Dispatchers.IO)
-                        .first()
-                        .take(TAKE_COUNT)
-                }
-
-                val favorites = favoritesDeferred.await()
-                val recentlyPlayed = recentlyPlayedDeferred.await()
-                val mostPlayed = mostPlayedDeferred.await()
-                val recentlyAdded = recentlyAddedDeferred.await()
-
-                Log.d(TAG, "Favorites: ${favorites.size}, RecentlyPlayed: ${recentlyPlayed.size}, " +
-                        "MostPlayed: ${mostPlayed.size}, RecentlyAdded: ${recentlyAdded.size}")
-
-                val artFlowData = mutableListOf<ArtFlowData<Any>>()
-                if (favorites.isNotEmpty()) {
-                    artFlowData.add(ArtFlowData(R.string.favorites, favorites))
-                }
-                if (recentlyPlayed.isNotEmpty()) {
-                    artFlowData.add(ArtFlowData(R.string.recently_played, recentlyPlayed))
-                }
-                if (mostPlayed.isNotEmpty()) {
-                    artFlowData.add(ArtFlowData(R.string.most_played, mostPlayed))
-                }
-                if (recentlyAdded.isNotEmpty()) {
-                    artFlowData.add(ArtFlowData(R.string.recently_added, recentlyAdded))
-                }
-
-                Log.d(TAG, "Data loaded successfully: ${artFlowData.size} sections")
-                data.postValue(artFlowData)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading home data", e)
-            }
         }
     }
 
@@ -123,8 +129,11 @@ class HomeViewModel @Inject constructor(
         when (key) {
             LibraryPreferences.MINIMUM_AUDIO_SIZE,
             LibraryPreferences.MINIMUM_AUDIO_LENGTH -> {
-                Log.d(TAG, "onSharedPreferenceChanged: Relevant preference changed, reloading data")
-                loadData()
+                Log.d(TAG, "onSharedPreferenceChanged: Relevant preference changed, restarting flows")
+                startFavoritesFlow()
+                startRecentlyPlayedFlow()
+                startMostPlayedFlow()
+                startRecentlyAddedFlow()
             }
         }
     }

@@ -3,6 +3,7 @@ package app.simple.felicity.adapters.home.dashboard
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterGridImageBinding
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
@@ -14,10 +15,10 @@ import app.simple.felicity.repository.models.Audio
  * Renders each [Audio] item as a full-bleed square image with an overlaid title.
  * Supports tap to play and long-press to open the song context menu.
  *
- * @param list The list of recommended [Audio] items to display.
+ * @param list The initial list of recommended [Audio] items to display.
  * @author Hamza417
  */
-class AdapterRecommended(private val list: List<Audio>) :
+class AdapterRecommended(private var list: List<Audio>) :
         RecyclerView.Adapter<AdapterRecommended.Holder>() {
 
     private lateinit var callbacks: AdapterRecommendedCallbacks
@@ -39,13 +40,13 @@ class AdapterRecommended(private val list: List<Audio>) :
 
             holder.binding.container.setOnClickListener {
                 if (list.isNotEmpty()) {
-                    callbacks.onItemClicked(list, position)
+                    callbacks.onItemClicked(list, holder.bindingAdapterPosition)
                 }
             }
 
             holder.binding.container.setOnLongClickListener {
                 if (list.isNotEmpty()) {
-                    callbacks.onItemLongClicked(list, position, holder.binding.art)
+                    callbacks.onItemLongClicked(list, holder.bindingAdapterPosition, holder.binding.art)
                 }
                 true
             }
@@ -73,6 +74,26 @@ class AdapterRecommended(private val list: List<Audio>) :
 
     fun updateItem(position: Int) {
         notifyItemChanged(position)
+    }
+
+    /**
+     * Replaces the current data set with [newList] and dispatches granular change notifications
+     * computed by [DiffUtil]. Items are identified by [Audio.id] so additions, removals, and
+     * moves are animated individually without a full rebind.
+     *
+     * @param newList The updated list of recommended songs.
+     */
+    fun updateData(newList: List<Audio>) {
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = list.size
+            override fun getNewListSize() = newList.size
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int) =
+                list[oldItemPosition].id == newList[newItemPosition].id
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int) =
+                list[oldItemPosition] == newList[newItemPosition]
+        })
+        list = newList
+        diff.dispatchUpdatesTo(this)
     }
 
     fun setCallbacks(callbacks: AdapterRecommendedCallbacks) {

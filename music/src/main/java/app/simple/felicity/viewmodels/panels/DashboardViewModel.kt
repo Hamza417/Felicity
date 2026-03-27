@@ -12,11 +12,12 @@ import app.simple.felicity.repository.shuffle.Shuffle.millerShuffle
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -61,6 +62,16 @@ class DashboardViewModel @Inject constructor(
     val recommended: StateFlow<List<Audio>?> = _recommended.asStateFlow()
 
     /**
+     * Incremented each time the user explicitly requests a new recommendation shuffle.
+     * Including this value in the [combine] for the recommended flow ensures a reshuffle
+     * even when the underlying data has not changed.
+     */
+    private val _recommendedRefreshTrigger = MutableStateFlow(0)
+
+    /** Active coroutine job collecting the recommended combined flow. */
+    private var recommendedJob: Job? = null
+
+    /**
      * The first seven panel navigation elements shown in the collapsed browse grid.
      * These represent the most commonly used sections of the app.
      */
@@ -97,13 +108,13 @@ class DashboardViewModel @Inject constructor(
     )
 
     init {
-        loadRecentlyPlayed()
-        loadRecentlyAdded()
-        loadFavorites()
-        loadRecommended()
+        startRecentlyPlayedFlow()
+        startRecentlyAddedFlow()
+        startFavoritesFlow()
+        startRecommendedFlow()
     }
 
-    private fun loadRecentlyPlayed() {
+    private fun startRecentlyPlayedFlow() {
         viewModelScope.launch {
             songStatRepository.getRecentlyPlayed()
                 .catch { exception ->
@@ -111,15 +122,14 @@ class DashboardViewModel @Inject constructor(
                     emit(emptyList())
                 }
                 .flowOn(Dispatchers.IO)
-                .first()
-                .also { list ->
+                .collect { list ->
                     _recentlyPlayed.value = list
-                    Log.d(TAG, "loadRecentlyPlayed: ${list.size} songs loaded")
+                    Log.d(TAG, "recentlyPlayed updated: ${list.size} songs")
                 }
         }
     }
 
-    private fun loadRecentlyAdded() {
+    private fun startRecentlyAddedFlow() {
         viewModelScope.launch {
             audioRepository.getRecentAudio()
                 .catch { exception ->
@@ -127,15 +137,14 @@ class DashboardViewModel @Inject constructor(
                     emit(mutableListOf())
                 }
                 .flowOn(Dispatchers.IO)
-                .first()
-                .also { list ->
+                .collect { list ->
                     _recentlyAdded.value = list
-                    Log.d(TAG, "loadRecentlyAdded: ${list.size} songs loaded")
+                    Log.d(TAG, "recentlyAdded updated: ${list.size} songs")
                 }
         }
     }
 
-    private fun loadFavorites() {
+    private fun startFavoritesFlow() {
         viewModelScope.launch {
             audioRepository.getFavoriteAudio()
                 .catch { exception ->
@@ -143,60 +152,88 @@ class DashboardViewModel @Inject constructor(
                     emit(emptyList())
                 }
                 .flowOn(Dispatchers.IO)
-                .first()
-                .also { list ->
+                .collect { list ->
                     _favorites.value = list
-                    Log.d(TAG, "loadFavorites: ${list.size} favorites loaded")
+                    Log.d(TAG, "favorites updated: ${list.size} songs")
                 }
         }
     }
 
-    private fun loadRecommended() {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val mostPlayed = songStatRepository.getMostPlayed()
-                    .first()
-                    .take(RECOMMENDED_MOST_PLAYED_COUNT)
-
-                val recentlyPlayedIds = mostPlayed.map { it.id }.toHashSet()
-                val recentlyPlayed = songStatRepository.getRecentlyPlayed()
-                    .first()
-                    .filterNot { it.id in recentlyPlayedIds }
-                    .take(RECOMMENDED_RECENTLY_PLAYED_COUNT)
-
-                val composed = (mostPlayed + recentlyPlayed).distinctBy { it.id }
-
-                val songs = if (composed.size >= RECOMMENDED_MAX_COUNT) {
-                    composed.shuffled().take(RECOMMENDED_MAX_COUNT)
-                } else {
-                    // Fill remaining slots from the full library using a random shuffle
-                    val existingIds = composed.map { it.id }.toHashSet()
-                    val filler = audioRepository.getAllAudioList()
-                        .filterNot { it.id in existingIds }
-                        .millerShuffle()
-                        .take(RECOMMENDED_MAX_COUNT - composed.size)
-                    (composed + filler).shuffled()
-                }
-
-                if (songs.isNotEmpty()) {
-                    _recommended.value = songs
-                }
-                Log.d(TAG, "loadRecommended: posted ${songs.size} songs " +
-                        "(${mostPlayed.size} most-played, ${recentlyPlayed.size} recently-played)")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading recommended section", e)
+    /**
+     * Starts (or restarts) the recommended-grid flow by combining three reactive Room flows
+     * with [_recommendedRefreshTrigger]. Any change in the audio table, the stats table, or
+     * an explicit refresh request will trigger a full recompute of the recommendation list.
+     *
+     * The previous collection job is cancelled before a new one starts to avoid duplicate
+     * emissions when [refreshRecommended] is called.
+     */
+    private fun startRecommendedFlow() {
+        recommendedJob?.cancel()
+        recommendedJob = viewModelScope.launch(Dispatchers.IO) {
+            combine(
+                    songStatRepository.getMostPlayed(),
+                    songStatRepository.getRecentlyPlayed(),
+                    audioRepository.getAllAudio(),
+                    _recommendedRefreshTrigger
+            ) { mostPlayed, recentlyPlayed, allAudio, _ ->
+                computeRecommended(mostPlayed, recentlyPlayed, allAudio)
             }
+                .catch { e -> Log.e(TAG, "Error loading recommended section", e) }
+                .collect { songs ->
+                    if (songs.isNotEmpty()) {
+                        _recommended.value = songs
+                        Log.d(TAG, "recommended updated: ${songs.size} songs")
+                    }
+                }
+        }
+    }
+
+    /**
+     * Pure function that derives the final recommended list from the three data sources.
+     * Keeps the top [RECOMMENDED_MOST_PLAYED_COUNT] most-played songs, adds up to
+     * [RECOMMENDED_RECENTLY_PLAYED_COUNT] recently-played songs that are not already
+     * in the most-played set, then fills remaining slots from the full library using
+     * [millerShuffle].
+     *
+     * @param mostPlayedList  Latest most-played list from the stats table.
+     * @param recentlyPlayedList  Latest recently-played list from the stats table.
+     * @param allAudio  Latest full audio library snapshot.
+     * @return A shuffled list of up to [RECOMMENDED_MAX_COUNT] songs.
+     */
+    private fun computeRecommended(
+            mostPlayedList: List<Audio>,
+            recentlyPlayedList: List<Audio>,
+            allAudio: List<Audio>
+    ): List<Audio> {
+        val mostPlayed = mostPlayedList.take(RECOMMENDED_MOST_PLAYED_COUNT)
+        val mostPlayedIds = mostPlayed.map { it.id }.toHashSet()
+        val recentlyPlayed = recentlyPlayedList
+            .filterNot { it.id in mostPlayedIds }
+            .take(RECOMMENDED_RECENTLY_PLAYED_COUNT)
+
+        val composed = (mostPlayed + recentlyPlayed).distinctBy { it.id }
+
+        return if (composed.size >= RECOMMENDED_MAX_COUNT) {
+            composed.shuffled().take(RECOMMENDED_MAX_COUNT)
+        } else {
+            val existingIds = composed.map { it.id }.toHashSet()
+            val filler = allAudio
+                .filterNot { it.id in existingIds }
+                .millerShuffle()
+                .take(RECOMMENDED_MAX_COUNT - composed.size)
+            (composed + filler).shuffled()
         }
     }
 
     /**
      * Triggers a fresh random selection of songs for the recommended grid.
      *
-     * Should be called when the user explicitly requests new recommendations
-     * via the refresh button on the dashboard.
+     * Increments [_recommendedRefreshTrigger] so the combined flow emits a new value
+     * and [computeRecommended] runs again with the current data set, producing a new
+     * shuffled result even when the underlying DB tables have not changed.
      */
     fun refreshRecommended() {
-        loadRecommended()
+        _recommendedRefreshTrigger.value++
     }
 
     companion object {

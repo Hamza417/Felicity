@@ -272,6 +272,8 @@ class Dashboard : MediaFragment() {
                 }
             })
             binding.recentlyPlayedList.adapter = recentlyPlayedAdapter
+        } else {
+            recentlyPlayedAdapter!!.updateData(songs)
         }
     }
 
@@ -293,6 +295,8 @@ class Dashboard : MediaFragment() {
                 }
             })
             binding.recentlyAddedList.adapter = recentlyAddedAdapter
+        } else {
+            recentlyAddedAdapter!!.updateData(songs)
         }
     }
 
@@ -314,6 +318,8 @@ class Dashboard : MediaFragment() {
                 }
             })
             binding.favoritesList.adapter = favoritesAdapter
+        } else {
+            favoritesAdapter!!.updateData(songs)
         }
     }
 

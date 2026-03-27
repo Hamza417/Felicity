@@ -10,6 +10,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterArtFlowHome
 import app.simple.felicity.databinding.FragmentHomeArtflowBinding
@@ -17,6 +20,7 @@ import app.simple.felicity.decorations.flowsidemenu.FelicitySideBar
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolder
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.panels.Albums
@@ -33,9 +37,9 @@ import app.simple.felicity.ui.panels.RecentlyPlayed
 import app.simple.felicity.ui.panels.Search
 import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.ui.panels.Year
-import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.viewmodels.panels.HomeViewModel
-import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
 /**
  * Home fragment that presents curated song collections (Favorites, Recently Played, Most Played,
@@ -54,7 +58,6 @@ class ArtFlowHome : MediaFragment() {
         return binding.root
     }
 
-    @OptIn(FlowPreview::class)
     @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -146,75 +149,116 @@ class ArtFlowHome : MediaFragment() {
             }
         }
 
-        homeViewModel.getData().observe(viewLifecycleOwner) { data ->
-            Log.d(TAG, "Data received: ${data.size} items")
-            val adapter = AdapterArtFlowHome(data)
+        var adapter: AdapterArtFlowHome? = null
 
-            binding.recyclerView.adapter = adapter
-            binding.recyclerView.setHasFixedSize(true)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                combine(
+                        homeViewModel.favorites,
+                        homeViewModel.recentlyPlayed,
+                        homeViewModel.mostPlayed,
+                        homeViewModel.recentlyAdded
+                ) { favorites, recentlyPlayed, mostPlayed, recentlyAdded ->
+                    buildSections(favorites, recentlyPlayed, mostPlayed, recentlyAdded)
+                }.collect { sections ->
+                    Log.d(TAG, "Data received: ${sections.size} sections")
+                    if (sections.isEmpty()) return@collect
 
-            adapter.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
-                override fun onItemClicked(imageView: ImageView, rowPosition: Int, itemPosition: Int) {
-                    val audios = data[rowPosition].items.filterIsInstance<Audio>()
-                    if (audios.isEmpty()) return
-                    setMediaItems(audios, itemPosition)
-                }
+                    if (adapter == null) {
+                        adapter = AdapterArtFlowHome(sections)
+                        binding.recyclerView.adapter = adapter
+                        binding.recyclerView.setHasFixedSize(true)
 
-                override fun onItemLongClicked(imageView: ImageView, rowPosition: Int, itemPosition: Int) {
-                    binding.sideBar.hide()
-                    val audios = data[rowPosition].items.filterIsInstance<Audio>()
-                    if (audios.isEmpty()) return
-
-                    val rowHolder = binding.recyclerView
-                        .findViewHolderForAdapterPosition(rowPosition) as? AdapterArtFlowHome.Holder
-                    rowHolder?.binding?.felicitySlider?.stop()
-
-                    openSongsMenu(audios, itemPosition, imageView) {
-                        rowHolder?.binding?.felicitySlider?.start()
-                        postDelayed(250L) {
-                            binding.sideBar.show()
-                        }
-                    }
-                }
-
-                override fun onClicked(view: View, position: Int, itemPosition: Int) {
-                    Log.d(TAG, "Section container clicked at position: $position, itemPosition: $itemPosition")
-                }
-
-                override fun onClicked(view: View, position: Int) {
-                    Log.d(TAG, "Section container clicked at position: $position")
-                }
-
-                override fun onPanelItemClicked(title: Int, view: View) {
-                    Log.d(TAG, "Panel item clicked with title: $title")
-                    when (title) {
-                        R.string.favorites -> openFragment(Favorites.newInstance(), Favorites.TAG)
-                        R.string.recently_played -> openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
-                        R.string.most_played -> openFragment(MostPlayed.newInstance(), MostPlayed.TAG)
-                        R.string.recently_added -> openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
-                        else -> Log.w(TAG, "Unknown panel item clicked with title: $title")
-                    }
-                }
-            })
-
-            binding.recyclerView.setOnTouchListener { _, event ->
-                when (event.action) {
-                    MotionEvent.ACTION_UP -> {
-                        binding.recyclerView.forEachViewHolder<AdapterArtFlowHome.Holder> {
-                            postDelayed(1_000L) {
-                                it.binding.felicitySlider.start()
+                        adapter!!.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
+                            override fun onItemClicked(imageView: ImageView, rowPosition: Int, itemPosition: Int) {
+                                val audios = adapter?.getSection(rowPosition)?.items?.filterIsInstance<Audio>()
+                                if (audios.isNullOrEmpty()) return
+                                setMediaItems(audios, itemPosition)
                             }
+
+                            override fun onItemLongClicked(imageView: ImageView, rowPosition: Int, itemPosition: Int) {
+                                binding.sideBar.hide()
+                                val audios = adapter?.getSection(rowPosition)?.items?.filterIsInstance<Audio>()
+                                if (audios.isNullOrEmpty()) return
+
+                                val rowHolder = binding.recyclerView
+                                    .findViewHolderForAdapterPosition(rowPosition) as? AdapterArtFlowHome.Holder
+                                rowHolder?.binding?.felicitySlider?.stop()
+
+                                openSongsMenu(audios, itemPosition, imageView) {
+                                    rowHolder?.binding?.felicitySlider?.start()
+                                    postDelayed(250L) {
+                                        binding.sideBar.show()
+                                    }
+                                }
+                            }
+
+                            override fun onClicked(view: View, position: Int, itemPosition: Int) {
+                                Log.d(TAG, "Section container clicked at position: $position, itemPosition: $itemPosition")
+                            }
+
+                            override fun onClicked(view: View, position: Int) {
+                                Log.d(TAG, "Section container clicked at position: $position")
+                            }
+
+                            override fun onPanelItemClicked(title: Int, view: View) {
+                                Log.d(TAG, "Panel item clicked with title: $title")
+                                when (title) {
+                                    R.string.favorites -> openFragment(Favorites.newInstance(), Favorites.TAG)
+                                    R.string.recently_played -> openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
+                                    R.string.most_played -> openFragment(MostPlayed.newInstance(), MostPlayed.TAG)
+                                    R.string.recently_added -> openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
+                                    else -> Log.w(TAG, "Unknown panel item clicked with title: $title")
+                                }
+                            }
+                        })
+
+                        binding.recyclerView.setOnTouchListener { _, event ->
+                            when (event.action) {
+                                MotionEvent.ACTION_UP -> {
+                                    binding.recyclerView.forEachViewHolder<AdapterArtFlowHome.Holder> {
+                                        postDelayed(1_000L) {
+                                            it.binding.felicitySlider.start()
+                                        }
+                                    }
+                                }
+                                MotionEvent.ACTION_DOWN -> {}
+                            }
+                            false
                         }
-                    }
-                    MotionEvent.ACTION_DOWN -> {
+
+                        requireView().startTransitionOnPreDraw()
+                    } else {
+                        adapter!!.updateData(sections)
                     }
                 }
-
-                false
             }
-
-            requireView().startTransitionOnPreDraw()
         }
+    }
+
+    /**
+     * Assembles the ordered list of [ArtFlowData] sections that will be passed to
+     * [AdapterArtFlowHome]. Sections whose list is empty are omitted so the adapter
+     * never shows an empty row.
+     *
+     * @param favorites      Latest favorites snapshot from [HomeViewModel.favorites].
+     * @param recentlyPlayed Latest recently-played snapshot from [HomeViewModel.recentlyPlayed].
+     * @param mostPlayed     Latest most-played snapshot from [HomeViewModel.mostPlayed].
+     * @param recentlyAdded  Latest recently-added snapshot from [HomeViewModel.recentlyAdded].
+     * @return Ordered list of non-empty [ArtFlowData] sections.
+     */
+    private fun buildSections(
+            favorites: List<Audio>,
+            recentlyPlayed: List<Audio>,
+            mostPlayed: List<Audio>,
+            recentlyAdded: List<Audio>
+    ): List<ArtFlowData<Any>> {
+        val sections = mutableListOf<ArtFlowData<Any>>()
+        if (favorites.isNotEmpty()) sections.add(ArtFlowData(R.string.favorites, favorites))
+        if (recentlyPlayed.isNotEmpty()) sections.add(ArtFlowData(R.string.recently_played, recentlyPlayed))
+        if (mostPlayed.isNotEmpty()) sections.add(ArtFlowData(R.string.most_played, mostPlayed))
+        if (recentlyAdded.isNotEmpty()) sections.add(ArtFlowData(R.string.recently_added, recentlyAdded))
+        return sections
     }
 
     companion object {

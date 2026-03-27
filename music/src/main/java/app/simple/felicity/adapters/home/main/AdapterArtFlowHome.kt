@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterHomeArtflowBinding
@@ -23,7 +24,7 @@ import com.bumptech.glide.Glide
  *
  * @author Hamza417
  */
-class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
+class AdapterArtFlowHome(private var data: List<ArtFlowData<Any>>) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var adapterArtFlowHomeCallbacks: AdapterArtFlowHomeCallbacks? = null
 
@@ -132,6 +133,38 @@ class AdapterArtFlowHome(private val data: List<ArtFlowData<Any>>) : RecyclerVie
             onItemLongClick = listener
         }
     }
+
+    /**
+     * Replaces the entire data set and dispatches granular change notifications computed by
+     * [DiffUtil]. Sections are identified by their [ArtFlowData.title] string resource, so a
+     * section that gains or loses items triggers a targeted [notifyItemChanged] rather than a
+     * full rebind. This preserves the [RecyclerView] scroll position and keeps running
+     * [app.simple.felicity.decorations.pager.FelicitySlider] animations alive on untouched rows.
+     *
+     * @param newData The updated list of [ArtFlowData] sections.
+     */
+    fun updateData(newData: List<ArtFlowData<Any>>) {
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = data.size
+            override fun getNewListSize() = newData.size
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int) =
+                data[oldItemPosition].title == newData[newItemPosition].title
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int) =
+                data[oldItemPosition].items == newData[newItemPosition].items
+        })
+        data = newData
+        diff.dispatchUpdatesTo(this)
+    }
+
+    /**
+     * Returns the [ArtFlowData] section at [rowPosition], or `null` if the position is
+     * out of bounds. Callbacks should use this instead of closing over a stale list
+     * reference so they always operate on the latest data after a [updateData] call.
+     *
+     * @param rowPosition Zero-based row index.
+     * @return The section at that position, or `null`.
+     */
+    fun getSection(rowPosition: Int): ArtFlowData<Any>? = data.getOrNull(rowPosition)
 
     /**
      * Registers a callback for slider-row and panel-title interaction events.
