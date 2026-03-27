@@ -20,8 +20,6 @@
  *    opening, the buffer is sized to 8× the burst count so the Bluetooth stack can drain
  *    it without underruns.
  *
- * Requires Android API 26 (Android 8.0, Oreo) or higher.
- *
  * @author Hamza417
  */
 

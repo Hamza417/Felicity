@@ -86,7 +86,7 @@ static void convertFloatToInt16(const float *__restrict src,
 #else
     for (int32_t i = 0; i < numSamples; ++i) {
         float s = src[i] * 32767.0f;
-        dst[i]  = static_cast<int16_t>(
+        dst[i] = static_cast<int16_t>(
                 s < -32768.0f ? -32768 : (s > 32767.0f ? 32767 : static_cast<int16_t>(s)));
     }
 #endif
@@ -127,15 +127,15 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioCre
         return 0L;
     }
 
-    ctx->sampleRate               = static_cast<int32_t>(sampleRate);
-    ctx->channelCount             = static_cast<int32_t>(channelCount);
-    ctx->safeBufferMode           = (useSafeBuffers == JNI_TRUE);
+    ctx->sampleRate = static_cast<int32_t>(sampleRate);
+    ctx->channelCount = static_cast<int32_t>(channelCount);
+    ctx->safeBufferMode = (useSafeBuffers == JNI_TRUE);
     ctx->running.store(false);
-    ctx->latencyMs                = -1;
-    ctx->stream                   = nullptr;
-    ctx->conversionBuffer         = nullptr;
+    ctx->latencyMs = -1;
+    ctx->stream = nullptr;
+    ctx->conversionBuffer = nullptr;
     ctx->conversionBufferCapacity = 0;
-    ctx->actualFormat             = AAUDIO_FORMAT_PCM_FLOAT; // overwritten after open
+    ctx->actualFormat = AAUDIO_FORMAT_PCM_FLOAT; // overwritten after open
 
     AAudioStreamBuilder *builder = nullptr;
     aaudio_result_t result = AAudio_createStreamBuilder(&builder);
@@ -195,16 +195,37 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioCre
         AAUDIO_LOGI("nativeAaudioCreate: HAL confirmed AAUDIO_FORMAT_PCM_FLOAT");
     }
 
-    /**
-     * Bug 2 fix: set a safe buffer size based on the actual burst count.
-     * Both Bluetooth and wired / speaker paths now use 8× the burst count.
-     * The previous 2× fast-path buffer (~4–10 ms) was too small for write-mode
-     * AAudio driven by ExoPlayer's rendering thread and caused underrun noise.
+/**
+     * Bug 2 fix: Time-based buffer sizing to prevent Hi-Res gaping.
+     * We need to guarantee enough milliseconds of headroom to survive Java thread
+     * jitter/GC pauses, regardless of how fast the sample rate consumes frames.
      */
-    const int32_t burstFrames  = AAudioStream_getFramesPerBurst(ctx->stream);
-    const int32_t multiplier   = ctx->safeBufferMode ? kSafeBufferBursts : kFastBufferBursts;
-    const int32_t targetFrames = burstFrames * multiplier;
-    AAudioStream_setBufferSizeInFrames(ctx->stream, targetFrames);
+    const int32_t burstFrames = AAudioStream_getFramesPerBurst(ctx->stream);
+    const int32_t actualSampleRate = AAudioStream_getSampleRate(ctx->stream);
+
+    // Check if the OS actually granted the hi-res sample rate
+    if (actualSampleRate != ctx->sampleRate) {
+        AAUDIO_LOGW("Requested %d Hz, but HAL forced %d Hz. Timings may shift.",
+                    ctx->sampleRate, actualSampleRate);
+    }
+
+    // Aim for ~40ms of buffer headroom for wired, and ~80ms for Bluetooth
+    const int32_t targetHeadroomMs = ctx->safeBufferMode ? 80 : 40;
+
+    // Calculate how many frames we need to hit that time target
+    int32_t targetFrames = (actualSampleRate * targetHeadroomMs) / 1000;
+
+    // AAudio performs best when the buffer is an exact multiple of the burst size
+    int32_t calculatedMultiplier = (targetFrames / burstFrames) + 1;
+
+    // Safety clamp (don't go below 2 bursts, don't exceed max capacity)
+    if (calculatedMultiplier < 2) calculatedMultiplier = 2;
+    int32_t finalFrames = burstFrames * calculatedMultiplier;
+
+    int32_t maxCapacity = AAudioStream_getBufferCapacityInFrames(ctx->stream);
+    if (finalFrames > maxCapacity) finalFrames = maxCapacity;
+
+    AAudioStream_setBufferSizeInFrames(ctx->stream, finalFrames);
 
     const aaudio_sharing_mode_t actualSharing = AAudioStream_getSharingMode(ctx->stream);
     AAUDIO_LOGI("AaudioContext created — sampleRate=%d, channels=%d, "
@@ -301,7 +322,7 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWri
                 env->ReleaseFloatArrayElements(pcmBuffer, buf, JNI_ABORT);
                 return;
             }
-            ctx->conversionBuffer         = newBuf;
+            ctx->conversionBuffer = newBuf;
             ctx->conversionBufferCapacity = totalSamples;
         }
 
@@ -353,7 +374,7 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioGet
     if (!ctx || !ctx->stream || !ctx->running.load()) return -1;
 
     const int64_t framesWritten = AAudioStream_getFramesWritten(ctx->stream);
-    int64_t presentedFrames       = 0;
+    int64_t presentedFrames = 0;
     int64_t presentationTimeNanos = 0;
 
     const aaudio_result_t result = AAudioStream_getTimestamp(
