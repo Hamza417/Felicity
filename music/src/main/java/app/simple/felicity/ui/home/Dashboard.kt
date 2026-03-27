@@ -21,7 +21,7 @@ import app.simple.felicity.databinding.FragmentHomeDashboardBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
 import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
-import app.simple.felicity.decorations.utils.TextViewUtils.setTypeWriting
+import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
@@ -92,7 +92,7 @@ class Dashboard : MediaFragment() {
 
         binding.scrollView.requireAttachedMiniPlayer()
 
-        binding.openAppSettings.setOnClickListener {
+        binding.settings.setOnClickListener {
             openPreferencesPanel()
         }
 
@@ -350,8 +350,10 @@ class Dashboard : MediaFragment() {
     }
 
     private fun updateStates(audio: Audio) {
-        binding.currentlyPlaying.setTypeWriting(
-                getString(R.string.now_playing, audio.title))
+        binding.currentlyPlaying.setTextWithEffect(
+                getString(R.string.now_playing, audio.title),
+                isForward = MediaManager.lastNavigationDirection
+        )
     }
 
     companion object {

@@ -69,7 +69,7 @@ public class HighlightTextView extends TypeFaceTextView {
      */
     public static final int MODE_BOTH = 2;
     
-    private static final float DEFAULT_STROKE_DP = 1.5f;
+    private static final float DEFAULT_STROKE_DP = 1f;
     
     private int highlightMode = MODE_FLAT;
     private boolean useCustomColor = false;
