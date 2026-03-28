@@ -1062,7 +1062,7 @@ class MiniPlayer @JvmOverloads constructor(
     // -------------------------------------------------------------------------
 
     /** Whether the edge-fade effect is enabled. Toggle with [setEdgeFadeEnabled]. */
-    private var edgeFadeEnabled = true
+    private var edgeFadeEnabled = false
 
     /** Current opacity of the edge fades; 0 = hidden, 1 = fully visible. */
     private var edgeFadeAlpha = 0f
@@ -1801,6 +1801,16 @@ class MiniPlayer @JvmOverloads constructor(
      */
     private val footerDecorations: MutableMap<RecyclerView, FooterSpacingItemDecoration> = mutableMapOf()
 
+    /**
+     * Decorations that were released via [FooterSpacingItemDecoration.release] but not yet
+     * physically removed from their [RecyclerView]. Tracked so that [attachToRecyclerView]
+     * can remove the stale decoration before adding a fresh one, preventing doubled footer
+     * spacing that would otherwise accumulate on each predictive-back cancel cycle.
+     *
+     * @author Hamza417
+     */
+    private val pendingReleaseDecorations: MutableMap<RecyclerView, FooterSpacingItemDecoration> = mutableMapOf()
+
     private val showInterpolator = DecelerateInterpolator()
     private val hideInterpolator = AccelerateInterpolator()
     private val slideInterpolator = AccelerateDecelerateInterpolator()
@@ -2032,6 +2042,14 @@ class MiniPlayer @JvmOverloads constructor(
         recyclerView.addOnScrollListener(listener)
         attached[recyclerView] = listener
 
+        // Remove any stale decoration left behind by a previous release() call (e.g., after
+        // a predictive-back cancel) before adding a fresh one. Without this, each re-attach
+        // cycle stacks another FooterSpacingItemDecoration on the same RecyclerView, doubling
+        // (and re-doubling) the footer spacing with every back-gesture cancel.
+        pendingReleaseDecorations.remove(recyclerView)?.let { stale ->
+            recyclerView.removeItemDecoration(stale)
+        }
+
         // Add a footer spacing decoration so the last list item is never permanently
         // hidden beneath the floating miniplayer — mirrors AppHeader's header decoration.
         val footerDeco = FooterSpacingItemDecoration(getRequiredFooterSpacing())
@@ -2053,11 +2071,18 @@ class MiniPlayer @JvmOverloads constructor(
      * while the host fragment is being torn down, preventing a visible layout jump in the
      * [RecyclerView] during the exit transition.
      *
+     * The released decoration is also added to [pendingReleaseDecorations] so that a
+     * subsequent [attachToRecyclerView] call on the same [RecyclerView] (e.g., after a
+     * predictive-back cancel) can remove the stale decoration before adding a fresh one.
+     *
      * @param rv The [RecyclerView] to detach from.
      */
     fun detachFromRecyclerView(rv: RecyclerView) {
         attached.remove(rv)?.let { rv.removeOnScrollListener(it) }
-        footerDecorations.remove(rv)?.release()
+        footerDecorations.remove(rv)?.let { deco ->
+            pendingReleaseDecorations[rv] = deco
+            deco.release()
+        }
     }
 
     @Suppress("unused")
@@ -2069,11 +2094,15 @@ class MiniPlayer @JvmOverloads constructor(
      *
      * See [detachFromRecyclerView] for the rationale behind using
      * [FooterSpacingItemDecoration.release] instead of [FooterSpacingItemDecoration.detach].
+     * Released decorations are also added to [pendingReleaseDecorations].
      */
     fun detachFromAllRecyclerViews() {
         attached.forEach { (rv, l) -> rv.removeOnScrollListener(l) }
         attached.clear()
-        footerDecorations.forEach { (_, deco) -> deco.release() }
+        footerDecorations.forEach { (rv, deco) ->
+            pendingReleaseDecorations[rv] = deco
+            deco.release()
+        }
         footerDecorations.clear()
     }
 
