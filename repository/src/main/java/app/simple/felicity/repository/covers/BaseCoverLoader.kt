@@ -12,8 +12,8 @@ import java.io.File
  *
  * @author Hamza417
  */
-internal object CoverLoader {
-    private const val TAG = "CoverLoader"
+internal object BaseCoverLoader {
+    private const val TAG = "BaseCoverLoader"
     private const val ALBUM_ART_PATH = "/album_art.png"
 
     /**
@@ -176,7 +176,7 @@ internal object CoverLoader {
     }
 
     fun loadEmptyAudioCover(): Bitmap? {
-        val stream = CoverLoader::class.java.getResourceAsStream(ALBUM_ART_PATH) ?: return null
+        val stream = BaseCoverLoader::class.java.getResourceAsStream(ALBUM_ART_PATH) ?: return null
         return try {
             BitmapFactory.decodeStream(stream)
         } catch (_: Exception) {

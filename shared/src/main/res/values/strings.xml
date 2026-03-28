@@ -331,4 +331,6 @@
     <string name="aaudio_enabled">AAudio (Low Latency)</string>
     <string name="aaudio_enabled_summary">Use the AAudio API for a direct-to-HAL output path with significantly reduced latency.</string>
     <string name="audio_output_mode">Output API</string>
+    <string name="prefer_media_store_art">Prefer MediaStore Album Arts</string>
+    <string name="prefer_media_store_art_summary">Use album arts from MediaStore when available instead of scanning album arts from audio files. This may cause a delay in showing album arts for newly added songs until the MediaStore is updated.</string>
 </resources>

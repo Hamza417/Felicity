@@ -1,5 +1,6 @@
 package app.simple.felicity.glide.artistcover
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import app.simple.felicity.repository.covers.ArtistCover
@@ -14,13 +15,14 @@ import java.io.FileNotFoundException
  * Delegates to ArtistCover.load() for centralized artist cover loading logic.
  */
 class ArtistCoverFetcher internal constructor(
+        private val context: Context,
         private val artist: Artist
 ) : DataFetcher<Bitmap> {
 
     override fun loadData(priority: Priority, callback: DataFetcher.DataCallback<in Bitmap>) {
         try {
             // Delegate to ArtistCover for centralized artist cover loading
-            val bitmap = ArtistCover.load(artist)
+            val bitmap = ArtistCover.load(context, artist)
                 ?: throw FileNotFoundException("Could not find artist artwork for: ${artist.name}")
 
             callback.onDataReady(bitmap)

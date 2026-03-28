@@ -5,6 +5,8 @@ import app.simple.felicity.manager.SharedPreferences
 
 object LibraryPreferences {
 
+    private const val USE_MEDIASTORE_ARTWORK = "use_mediastore_artwork"
+
     const val MINIMUM_AUDIO_LENGTH = "minimum_audio_length"
     const val MINIMUM_AUDIO_SIZE = "minimum_audio_size"
 
@@ -58,6 +60,16 @@ object LibraryPreferences {
 
     fun setSkipHiddenFolders(skip: Boolean) {
         SharedPreferences.getSharedPreferences().edit { putBoolean(SKIP_HIDDEN_FOLDERS, skip) }
+    }
+
+    // ----------------------------------------------------------------------------------------------------- //
+
+    fun isUseMediaStoreArtwork(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(USE_MEDIASTORE_ARTWORK, true)
+    }
+
+    fun setUseMediaStoreArtwork(use: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(USE_MEDIASTORE_ARTWORK, use) }
     }
 }
 

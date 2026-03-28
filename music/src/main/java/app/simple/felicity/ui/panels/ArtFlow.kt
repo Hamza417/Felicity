@@ -30,7 +30,7 @@ class ArtFlow : MediaFragment() {
 
     private lateinit var binding: FragmentArtflowBinding
     private val songsViewModel: SongsViewModel by viewModels({ requireActivity() })
-    private val coverCache = ArtFlowCoverCache(maxMemoryCacheSizeMB = 50)
+    private val coverCache by lazy { ArtFlowCoverCache(context = requireContext().applicationContext, maxMemoryCacheSizeMB = 50) }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentArtflowBinding.inflate(inflater, container, false)

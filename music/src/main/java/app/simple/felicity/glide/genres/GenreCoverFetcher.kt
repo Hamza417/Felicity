@@ -25,8 +25,8 @@ class GenreCoverFetcher internal constructor(private val context: Context, priva
     override fun loadData(priority: Priority, callback: DataFetcher.DataCallback<in Bitmap>) {
         when {
             GenresPreferences.isGenreCoversEnabled() -> {
-                // Try to load from actual audio files first
-                val coverFromFiles = GenreCover.load(genre)
+                // Try to load from actual audio files first (MediaStore path included via context).
+                val coverFromFiles = GenreCover.load(context, genre)
                 if (coverFromFiles != null) {
                     callback.onDataReady(coverFromFiles)
                 } else {

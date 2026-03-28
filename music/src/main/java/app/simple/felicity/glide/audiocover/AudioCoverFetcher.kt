@@ -1,5 +1,6 @@
 package app.simple.felicity.glide.audiocover
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import app.simple.felicity.repository.covers.AudioCover
@@ -14,13 +15,14 @@ import java.io.FileNotFoundException
  * Delegates to AudioCover.load() for centralized audio cover loading logic.
  */
 class AudioCoverFetcher internal constructor(
+        private val context: Context,
         private val audio: Audio
 ) : DataFetcher<Bitmap> {
 
     override fun loadData(priority: Priority, callback: DataFetcher.DataCallback<in Bitmap>) {
         try {
             // Delegate to AudioCover for centralized audio cover loading
-            val bitmap = AudioCover.load(audio)
+            val bitmap = AudioCover.load(context, audio)
                 ?: throw FileNotFoundException("Could not find audio artwork for: ${audio.title}")
 
             callback.onDataReady(bitmap)

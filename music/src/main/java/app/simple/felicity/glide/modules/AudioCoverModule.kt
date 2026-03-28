@@ -60,7 +60,7 @@ class AudioCoverModule : AppGlideModule() {
         registry.append(Audio::class.java, Bitmap::class.java, AudioCoverLoader.Factory(context))
         registry.append(Artist::class.java, Bitmap::class.java, ArtistCoverLoader.Factory(context))
         registry.append(Genre::class.java, Bitmap::class.java, GenreCoverLoader.Factory(context))
-        registry.append(Folder::class.java, Bitmap::class.java, FolderCoverLoader.Factory())
-        registry.append(YearGroup::class.java, Bitmap::class.java, YearCoverLoader.Factory())
+        registry.append(Folder::class.java, Bitmap::class.java, FolderCoverLoader.Factory(context))
+        registry.append(YearGroup::class.java, Bitmap::class.java, YearCoverLoader.Factory(context))
     }
 }

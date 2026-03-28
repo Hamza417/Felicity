@@ -10,13 +10,19 @@ import com.bumptech.glide.load.model.ModelLoaderFactory
 import com.bumptech.glide.load.model.MultiModelLoaderFactory
 import com.bumptech.glide.signature.ObjectKey
 
-class AlbumCoverLoader() : ModelLoader<Album, Bitmap> {
+/**
+ * Glide [ModelLoader] for [Album] → [Bitmap] that wires a [Context] into
+ * [AlbumCoverFetcher] so it can query the MediaStore album art cache.
+ *
+ * @author Hamza417
+ */
+class AlbumCoverLoader(private val context: Context) : ModelLoader<Album, Bitmap> {
     override fun buildLoadData(album: Album, width: Int, height: Int, options: Options): ModelLoader.LoadData<Bitmap> {
-        return ModelLoader.LoadData(ObjectKey(album), AlbumCoverFetcher(album))
+        return ModelLoader.LoadData(ObjectKey(album), AlbumCoverFetcher(context, album))
     }
 
     fun getResourceFetcher(model: Album): DataFetcher<Bitmap> {
-        return AlbumCoverFetcher(model)
+        return AlbumCoverFetcher(context, model)
     }
 
     override fun handles(model: Album): Boolean {
@@ -25,7 +31,7 @@ class AlbumCoverLoader() : ModelLoader<Album, Bitmap> {
 
     internal class Factory(private val context: Context) : ModelLoaderFactory<Album, Bitmap> {
         override fun build(multiFactory: MultiModelLoaderFactory): ModelLoader<Album, Bitmap> {
-            return AlbumCoverLoader()
+            return AlbumCoverLoader(context)
         }
 
         override fun teardown() {}

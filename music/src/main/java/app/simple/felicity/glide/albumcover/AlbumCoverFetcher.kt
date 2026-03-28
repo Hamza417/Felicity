@@ -1,5 +1,6 @@
 package app.simple.felicity.glide.albumcover
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import app.simple.felicity.repository.covers.AlbumCover
@@ -14,13 +15,14 @@ import java.io.FileNotFoundException
  * Delegates to AlbumCover.load() for centralized album cover loading logic.
  */
 class AlbumCoverFetcher internal constructor(
+        private val context: Context,
         private val album: Album
 ) : DataFetcher<Bitmap> {
 
     override fun loadData(priority: Priority, callback: DataFetcher.DataCallback<in Bitmap>) {
         try {
             // Delegate to AlbumCover for centralized album cover loading
-            val bitmap = AlbumCover.load(album)
+            val bitmap = AlbumCover.load(context, album)
                 ?: throw FileNotFoundException("Could not find album artwork for: ${album.name}")
 
             callback.onDataReady(bitmap)

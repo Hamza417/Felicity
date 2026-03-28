@@ -1,5 +1,6 @@
 package app.simple.felicity.ui.panels
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import android.util.LruCache
@@ -35,6 +36,7 @@ import kotlin.math.abs
  */
 @Suppress("unused")
 class ArtFlowCoverCache(
+        private val context: Context,
         maxMemoryCacheSizeMB: Int = 25
 ) {
     private val TAG = "ArtFlowCoverCache"
@@ -110,7 +112,7 @@ class ArtFlowCoverCache(
      * Updates the active preload window to `centerIndex ± radius`.
      *
      * The window is managed incrementally:
-     * - Indices that have **left** the window have their pending jobs cancelled immediately
+     * - Indices that have **left** the window have their pending jobs canceled immediately
      *   (and if cancellation arrives during the debounce delay, no I/O is started at all).
      * - Indices **still inside** the window keep their existing jobs without any restart.
      * - Indices **newly entering** the window get a fresh job that waits [LOAD_DEBOUNCE_MS]
@@ -235,7 +237,7 @@ class ArtFlowCoverCache(
         if (index !in audioList.indices) return null
         return try {
             val audio = audioList[index]
-            val bitmap = AudioCover.load(audio) ?: return null
+            val bitmap = AudioCover.load(context, audio) ?: return null
 
             if (maxDimension > 0) {
                 val w = bitmap.width

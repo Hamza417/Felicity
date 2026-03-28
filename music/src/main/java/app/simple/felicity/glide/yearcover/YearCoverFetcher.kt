@@ -1,5 +1,6 @@
 package app.simple.felicity.glide.yearcover
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import app.simple.felicity.repository.covers.YearCover
@@ -9,13 +10,21 @@ import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.data.DataFetcher
 import java.io.FileNotFoundException
 
+/**
+ * Glide [DataFetcher] for loading year group cover artwork.
+ * Delegates to [YearCover.load] for centralized loading logic, including the
+ * optional MediaStore fast path when the user preference is enabled.
+ *
+ * @author Hamza417
+ */
 class YearCoverFetcher internal constructor(
+        private val context: Context,
         private val yearGroup: YearGroup
 ) : DataFetcher<Bitmap> {
 
     override fun loadData(priority: Priority, callback: DataFetcher.DataCallback<in Bitmap>) {
         try {
-            val bitmap = YearCover.load(yearGroup)
+            val bitmap = YearCover.load(context, yearGroup)
                 ?: throw FileNotFoundException("Could not find artwork for year: ${yearGroup.year}")
             callback.onDataReady(bitmap)
         } catch (e: Exception) {
@@ -36,4 +45,3 @@ class YearCoverFetcher internal constructor(
         private const val TAG = "YearCoverFetcher"
     }
 }
-

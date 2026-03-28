@@ -7,10 +7,10 @@ import android.view.View
 import android.widget.TextView
 import app.simple.felicity.R
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
-import app.simple.felicity.decorations.toggles.FelicitySwitch
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
+import app.simple.felicity.decorations.toggles.FelicitySwitch
+import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.models.ButtonGroupState
 import app.simple.felicity.models.Preference
@@ -703,6 +703,21 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val albumArtHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.album_art)
+
+        val mediaStoreArt = Preference(
+                title = R.string.prefer_media_store_art,
+                summary = R.string.prefer_media_store_art_summary,
+                icon = R.drawable.ic_image,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    LibraryPreferences.setUseMediaStoreArtwork((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    LibraryPreferences.isUseMediaStoreArtwork()
+                }
+        )
+
         val scannerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.scanner)
 
         val minimumAudioLength = Preference(
@@ -794,6 +809,8 @@ abstract class PreferenceFragment : MediaFragment() {
 
         preferences.add(shuffleHeader)
         preferences.add(currentShuffle)
+        preferences.add(albumArtHeader)
+        preferences.add(mediaStoreArt)
         preferences.add(scannerHeader)
         preferences.add(minimumAudioLength)
         preferences.add(minimumAudioSize)

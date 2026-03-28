@@ -61,7 +61,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
     private var predictiveBackCallback: OnBackInvokedCallback? = null
 
-    /** Active palette-extraction job. Cancelled when a new song fires before the old one finishes. */
+    /** Active palette-extraction job. Canceled when a new song fires before the old one finishes. */
     private var paletteJob: Job? = null
 
     /** ID of the song whose palette is already applied — skip re-extraction for the same track. */
@@ -231,7 +231,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
      * Called on the main thread once the media queue and playback state have been fully
      * restored from the database (or determined to be empty on first launch).
      *
-     * Subclasses should override this to perform any UI initialisation that must wait
+     * Subclasses should override this to perform any UI initialization that must wait
      * until songs and themes are ready, such as revealing the miniplayer.
      *
      * @author Hamza417
@@ -252,7 +252,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         paletteJob = lifecycleScope.launch(Dispatchers.IO) {
             try {
                 // Load raw bitmap on the IO dispatcher (file / MediaMetadataRetriever).
-                val rawBitmap: Bitmap = AudioCover.load(audio) ?: return@launch // TODO: add a fallback bitmap?
+                val rawBitmap: Bitmap = AudioCover.load(this@BaseActivity, audio) ?: return@launch // TODO: add a fallback bitmap?
 
                 // Downscale to a small thumbnail before palette math to keep CPU cost low.
                 // 128×128 gives MonetPalette's 64-sample grid more than enough data.
