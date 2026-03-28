@@ -143,7 +143,7 @@ class FelicityPager @JvmOverloads constructor(
         fun onVerticalDrag(totalDeltaY: Float, event: MotionEvent) {}
 
         /**
-         * Called when the drag gesture ends (finger lifted or gesture cancelled).
+         * Called when the drag gesture ends (finger lifted or gesture canceled).
          *
          * @param totalDeltaY Total vertical displacement in pixels since [onVerticalDragBegin].
          * @param velocityY   Vertical fling velocity in pixels per second at the moment of release.
@@ -545,10 +545,20 @@ class FelicityPager @JvmOverloads constructor(
                 initialMotionX = ev.x
                 initialMotionY = ev.y
                 lastMotionX = ev.x
+                // Lock parent intercept immediately on DOWN so a vertical RecyclerView
+                // ancestor cannot steal horizontal swipes before direction is confirmed.
+                // The lock is re-opened below if the gesture turns out to be vertical.
+                parent?.requestDisallowInterceptTouchEvent(true)
             }
             MotionEvent.ACTION_MOVE -> {
                 val dx = abs(ev.x - initialMotionX)
                 val dy = abs(ev.y - initialMotionY)
+                // If the gesture is clearly vertical, re-allow the parent (e.g., a vertical
+                // RecyclerView) to intercept and scroll normally.
+                if (dy > touchSlop * 0.6f && dy > dx) {
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                    return false
+                }
                 // Only intercept when the gesture is clearly horizontal, so that a
                 // primarily-vertical swipe is never stolen from a parent swipe-to-close handler.
                 if (dx > touchSlop * 0.6f && dx > dy) return true
@@ -569,9 +579,11 @@ class FelicityPager @JvmOverloads constructor(
                 isVerticalDrag = false
                 velocityTracker?.recycle()
                 velocityTracker = VelocityTracker.obtain().apply { addMovement(event) }
-                // Do not call requestDisallowInterceptTouchEvent(true) here — wait until
-                // the gesture direction is confirmed as horizontal. This allows a parent
-                // swipe-to-close view to intercept a vertical drag before this pager locks it.
+                // Lock parent intercept immediately so a vertical ancestor (e.g., RecyclerView)
+                // cannot steal this gesture before the direction has been confirmed as horizontal.
+                // If the gesture turns out to be vertical, requestDisallowInterceptTouchEvent(false)
+                // is called in the MOVE handler to re-open parent interception.
+                parent?.requestDisallowInterceptTouchEvent(true)
             }
             MotionEvent.ACTION_MOVE -> {
                 velocityTracker?.addMovement(event)
