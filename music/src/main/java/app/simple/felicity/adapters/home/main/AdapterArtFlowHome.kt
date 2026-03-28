@@ -84,6 +84,8 @@ class AdapterArtFlowHome(private var data: List<ArtFlowData<Any>>) : RecyclerVie
      * long-click events via optional lambdas.
      *
      * @param data The section whose items are displayed as slides.
+     *
+     * TODO - check for memory leaks here, I think the pager is not releasing the adapter
      */
     private inner class SliderAdapter(private val data: ArtFlowData<Any>) : FelicityPager.PageAdapter {
 
@@ -119,9 +121,13 @@ class AdapterArtFlowHome(private var data: List<ArtFlowData<Any>>) : RecyclerVie
         }
 
         override fun onRecycleView(position: Int, view: View) {
-            val iv = view as ImageView
-            Glide.with(iv.context).clear(iv)
-            iv.setImageDrawable(null)
+            try {
+                val iv = view as ImageView
+                Glide.with(iv.context).clear(iv)
+            } catch (e: IllegalArgumentException) {
+                // View was already detached from window, ignore.
+                e.printStackTrace()
+            }
         }
 
         fun setOnItemClickListener(listener: (position: Int, imageView: ImageView) -> Unit) {
@@ -148,6 +154,7 @@ class AdapterArtFlowHome(private var data: List<ArtFlowData<Any>>) : RecyclerVie
             override fun getNewListSize() = newData.size
             override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int) =
                 data[oldItemPosition].title == newData[newItemPosition].title
+
             override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int) =
                 data[oldItemPosition].items == newData[newItemPosition].items
         })

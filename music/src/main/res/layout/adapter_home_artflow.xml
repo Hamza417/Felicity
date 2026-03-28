@@ -15,20 +15,21 @@
         android:layout_height="match_parent"
         app:showIndicator="true" />
 
-    <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+    <app.simple.felicity.decorations.highlight.HighlightTextView
         android:id="@+id/title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
         android:layout_marginHorizontal="@dimen/padding_15"
         android:layout_marginBottom="@dimen/padding_25"
-        android:textSize="@dimen/text_size_22"
+        android:textSize="@dimen/text_size_18"
         android:padding="@dimen/padding_10"
         android:drawablePadding="@dimen/padding_20"
         app:appFontStyle="bold"
         app:drawableEndCompat="@drawable/ic_for_arrow"
         app:drawableTint="@color/white"
         app:drawableTintStyle="custom"
+        app:highlightCustomColor="#50000000"
         app:textColorStyle="white" />
 
 </FrameLayout>

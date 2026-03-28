@@ -13,6 +13,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterArtFlowHome
 import app.simple.felicity.databinding.FragmentHomeArtflowBinding
@@ -22,6 +23,7 @@ import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.Artists
@@ -51,6 +53,7 @@ import kotlinx.coroutines.launch
 class ArtFlowHome : MediaFragment() {
 
     private lateinit var binding: FragmentHomeArtflowBinding
+    private lateinit var gridLayoutManager: GridLayoutManager
     private val homeViewModel: HomeViewModel by viewModels({ requireActivity() })
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -61,6 +64,10 @@ class ArtFlowHome : MediaFragment() {
     @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        val spanCount = if (BarHeight.isLandscape(requireContext())) 3 else 1
+        gridLayoutManager = GridLayoutManager(requireContext(), spanCount)
+        binding.recyclerView.layoutManager = gridLayoutManager
 
         postponeEnterTransition()
         requireLightBarIcons()
@@ -169,16 +176,16 @@ class ArtFlowHome : MediaFragment() {
                         binding.recyclerView.adapter = adapter
                         binding.recyclerView.setHasFixedSize(true)
 
-                        adapter!!.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
+                        adapter.setAdapterArtFlowHomeCallbacks(object : AdapterArtFlowHome.Companion.AdapterArtFlowHomeCallbacks {
                             override fun onItemClicked(imageView: ImageView, rowPosition: Int, itemPosition: Int) {
-                                val audios = adapter?.getSection(rowPosition)?.items?.filterIsInstance<Audio>()
+                                val audios = adapter.getSection(rowPosition)?.items?.filterIsInstance<Audio>()
                                 if (audios.isNullOrEmpty()) return
                                 setMediaItems(audios, itemPosition)
                             }
 
                             override fun onItemLongClicked(imageView: ImageView, rowPosition: Int, itemPosition: Int) {
                                 binding.sideBar.hide()
-                                val audios = adapter?.getSection(rowPosition)?.items?.filterIsInstance<Audio>()
+                                val audios = adapter.getSection(rowPosition)?.items?.filterIsInstance<Audio>()
                                 if (audios.isNullOrEmpty()) return
 
                                 val rowHolder = binding.recyclerView
@@ -229,7 +236,7 @@ class ArtFlowHome : MediaFragment() {
 
                         requireView().startTransitionOnPreDraw()
                     } else {
-                        adapter!!.updateData(sections)
+                        adapter.updateData(sections)
                     }
                 }
             }
