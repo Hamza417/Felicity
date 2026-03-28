@@ -5,6 +5,7 @@
     android:orientation="horizontal"
     android:layout_height="match_parent"
     android:paddingHorizontal="@dimen/padding_20"
+    android:clipChildren="false"
     app:navigationPaddingRequired="true"
     app:statusPaddingRequired="false">
 
@@ -24,6 +25,8 @@
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="0.75"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:orientation="vertical">
 
         <Space
