@@ -28,6 +28,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/icon"
         app:layout_constraintTop_toTopOf="@+id/icon"
-        app:textColorStyle="tertiary" />
+        app:textColorStyle="accent" />
 
 </app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout>
