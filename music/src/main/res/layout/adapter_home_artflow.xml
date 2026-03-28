@@ -1,19 +1,16 @@
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.square.SquareFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/container"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
-    <app.simple.felicity.decorations.views.SquareView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@drawable/fg_art_tint" />
-
     <app.simple.felicity.decorations.pager.FelicitySlider
         android:id="@+id/felicitySlider"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:showIndicator="true" />
+        app:showIndicator="true"
+        app:slideIntervalMs="5000"
+        app:slideSwiftness="0.2" />
 
     <app.simple.felicity.decorations.highlight.HighlightTextView
         android:id="@+id/title"
@@ -32,4 +29,4 @@
         app:highlightCustomColor="#50000000"
         app:textColorStyle="white" />
 
-</FrameLayout>
+</app.simple.felicity.decorations.square.SquareFrameLayout>

@@ -23,6 +23,7 @@ import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.databinding.DialogDeleteSongBinding
 import app.simple.felicity.databinding.DialogSongMenuBinding
 import app.simple.felicity.databinding.DialogSureBinding
+import app.simple.felicity.decorations.popups.SharedImageDialogMenu
 import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.dialogs.app.AudioInformation.Companion.showAudioInfo
@@ -36,6 +37,7 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.shuffle.Shuffle.shuffle
+import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.pages.AlbumPage
@@ -480,6 +482,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 miniPlayerCallbacks?.onShowMiniPlayer()
                 onDismiss?.invoke()
             }
+            .setWidthRatio(if (BarHeight.isLandscape(requireContext())) 0.5F else SharedImageDialogMenu.DEFAULT_WIDTH_RATIO)
             .build()
             .show()
     }
