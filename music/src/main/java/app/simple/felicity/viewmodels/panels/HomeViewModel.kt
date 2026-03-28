@@ -9,6 +9,10 @@ import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.SongStatRepository
+import app.simple.felicity.repository.shuffle.Shuffle.millerShuffle
+import app.simple.felicity.viewmodels.panels.HomeViewModel.Companion.RECOMMENDED_MAX_COUNT
+import app.simple.felicity.viewmodels.panels.HomeViewModel.Companion.RECOMMENDED_MOST_PLAYED_COUNT
+import app.simple.felicity.viewmodels.panels.HomeViewModel.Companion.RECOMMENDED_RECENTLY_PLAYED_COUNT
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -16,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -60,6 +65,24 @@ class HomeViewModel @Inject constructor(
     /** Recently-added songs ordered by date-added descending, re-emitted on audio table changes. */
     val recentlyAdded: StateFlow<List<Audio>> = _recentlyAdded.asStateFlow()
 
+    private val _recommended = MutableStateFlow<List<Audio>>(emptyList())
+
+    /**
+     * A random selection of songs fetched from the database on each explicit
+     * refresh, used to populate the spanned art grid in the recommended section.
+     */
+    val recommended: StateFlow<List<Audio>> = _recommended.asStateFlow()
+
+    /** Active coroutine job collecting the recommended combined flow. */
+    private var recommendedJob: Job? = null
+
+    /**
+     * Incremented each time the user explicitly requests a new recommendation shuffle.
+     * Including this value in the [combine] for the recommended flow ensures a reshuffle
+     * even when the underlying data has not changed.
+     */
+    private val _recommendedRefreshTrigger = MutableStateFlow(0)
+
     private var favoritesJob: Job? = null
     private var recentlyPlayedJob: Job? = null
     private var mostPlayedJob: Job? = null
@@ -70,6 +93,7 @@ class HomeViewModel @Inject constructor(
         startRecentlyPlayedFlow()
         startMostPlayedFlow()
         startRecentlyAddedFlow()
+        startRecommendedFlow()
     }
 
     private fun startFavoritesFlow() {
@@ -124,6 +148,72 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Starts (or restarts) the recommended-grid flow by combining three reactive Room flows
+     * with [_recommendedRefreshTrigger]. Any change in the audio table, the stats table, or
+     * an explicit refresh request will trigger a full recompute of the recommendation list.
+     *
+     * The previous collection job is cancelled before a new one starts to avoid duplicate
+     * emissions when [refreshRecommended] is called.
+     */
+    private fun startRecommendedFlow() {
+        recommendedJob?.cancel()
+        recommendedJob = viewModelScope.launch(Dispatchers.IO) {
+            combine(
+                    songStatRepository.getMostPlayed(),
+                    songStatRepository.getRecentlyPlayed(),
+                    audioRepository.getAllAudio(),
+                    _recommendedRefreshTrigger
+            ) { mostPlayed, recentlyPlayed, allAudio, _ ->
+                computeRecommended(mostPlayed, recentlyPlayed, allAudio)
+            }
+                .catch { e -> Log.e(TAG, "Error loading recommended section", e) }
+                .collect { songs ->
+                    if (songs.isNotEmpty()) {
+                        _recommended.value = songs
+                        Log.d(TAG, "recommended updated: ${songs.size} songs")
+                    }
+                }
+        }
+    }
+
+    /**
+     * Pure function that derives the final recommended list from the three data sources.
+     * Keeps the top [RECOMMENDED_MOST_PLAYED_COUNT] most-played songs, adds up to
+     * [RECOMMENDED_RECENTLY_PLAYED_COUNT] recently-played songs that are not already
+     * in the most-played set, then fills remaining slots from the full library using
+     * [millerShuffle].
+     *
+     * @param mostPlayedList  Latest most-played list from the stats table.
+     * @param recentlyPlayedList  Latest recently-played list from the stats table.
+     * @param allAudio  Latest full audio library snapshot.
+     * @return A shuffled list of up to [RECOMMENDED_MAX_COUNT] songs.
+     */
+    private fun computeRecommended(
+            mostPlayedList: List<Audio>,
+            recentlyPlayedList: List<Audio>,
+            allAudio: List<Audio>
+    ): List<Audio> {
+        val mostPlayed = mostPlayedList.take(RECOMMENDED_MOST_PLAYED_COUNT)
+        val mostPlayedIds = mostPlayed.map { it.id }.toHashSet()
+        val recentlyPlayed = recentlyPlayedList
+            .filterNot { it.id in mostPlayedIds }
+            .take(RECOMMENDED_RECENTLY_PLAYED_COUNT)
+
+        val composed = (mostPlayed + recentlyPlayed).distinctBy { it.id }
+
+        return if (composed.size >= RECOMMENDED_MAX_COUNT) {
+            composed.shuffled().take(RECOMMENDED_MAX_COUNT)
+        } else {
+            val existingIds = composed.map { it.id }.toHashSet()
+            val filler = allAudio
+                .filterNot { it.id in existingIds }
+                .millerShuffle()
+                .take(RECOMMENDED_MAX_COUNT - composed.size)
+            (composed + filler).shuffled()
+        }
+    }
+
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
@@ -141,5 +231,14 @@ class HomeViewModel @Inject constructor(
     companion object {
         private const val TAG = "HomeViewModel"
         private const val TAKE_COUNT = 18
+
+        /** Total number of songs shown in the recommended spanned art grid. */
+        private const val RECOMMENDED_MAX_COUNT = 9
+
+        /** Number of slots in the recommended grid filled from the most-played list. */
+        private const val RECOMMENDED_MOST_PLAYED_COUNT = 6
+
+        /** Number of slots in the recommended grid filled from the recently-played list. */
+        private const val RECOMMENDED_RECENTLY_PLAYED_COUNT = 3
     }
 }

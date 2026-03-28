@@ -164,9 +164,10 @@ class ArtFlowHome : MediaFragment() {
                         homeViewModel.favorites,
                         homeViewModel.recentlyPlayed,
                         homeViewModel.mostPlayed,
-                        homeViewModel.recentlyAdded
-                ) { favorites, recentlyPlayed, mostPlayed, recentlyAdded ->
-                    buildSections(favorites, recentlyPlayed, mostPlayed, recentlyAdded)
+                        homeViewModel.recentlyAdded,
+                        homeViewModel.recommended
+                ) { favorites, recentlyPlayed, mostPlayed, recentlyAdded, recommended ->
+                    buildSections(favorites, recentlyPlayed, mostPlayed, recentlyAdded, recommended)
                 }.collect { sections ->
                     Log.d(TAG, "Data received: ${sections.size} sections")
                     if (sections.isEmpty()) return@collect
@@ -258,9 +259,11 @@ class ArtFlowHome : MediaFragment() {
             favorites: List<Audio>,
             recentlyPlayed: List<Audio>,
             mostPlayed: List<Audio>,
-            recentlyAdded: List<Audio>
+            recentlyAdded: List<Audio>,
+            recommended: List<Audio>
     ): List<ArtFlowData<Any>> {
         val sections = mutableListOf<ArtFlowData<Any>>()
+        if (recommended.isNotEmpty()) sections.add(ArtFlowData(R.string.recommended, recommended))
         if (favorites.isNotEmpty()) sections.add(ArtFlowData(R.string.favorites, favorites))
         if (recentlyPlayed.isNotEmpty()) sections.add(ArtFlowData(R.string.recently_played, recentlyPlayed))
         if (mostPlayed.isNotEmpty()) sections.add(ArtFlowData(R.string.most_played, mostPlayed))
