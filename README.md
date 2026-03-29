@@ -126,9 +126,6 @@ Last Updated: 25 March 2026
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/09.png) |
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/10.png) |
 
-## App's Name and Icon Design
-I am open to ideas and suggestions about the app's name and icon design. If you have inputs to add you can do so in this [discussion thread](https://github.com/Hamza417/Felicity/discussions/20).
-
 ## License
 
 **Felicity Music Player** Copyright © 2026 - Hamza Rizwan
