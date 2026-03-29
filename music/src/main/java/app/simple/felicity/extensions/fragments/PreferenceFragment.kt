@@ -647,6 +647,11 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val aaudioWarning = Preference(
+                title = R.string.aaudio_warning,
+                type = PreferenceType.WARN
+        )
+
         preferences.add(decoderHeader)
         preferences.add(currentDecoder)
         preferences.add(fallbackToSWToggle)
