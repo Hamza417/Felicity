@@ -20,7 +20,7 @@ import app.simple.felicity.milkdrop.models.MilkdropPreset
  * @author Hamza417
  */
 class AdapterMilkdropPager(
-        private val onPageClicked: () -> Unit
+        private val onPageClicked: () -> Unit,
 ) : RecyclerView.Adapter<AdapterMilkdropPager.PageViewHolder>() {
 
     private var presets: List<MilkdropPreset> = emptyList()

@@ -12,17 +12,15 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Top overlay: fades in on interaction and auto-hides after a short idle period. -->
     <app.simple.felicity.decorations.padding.InsetLinearLayout
         android:id="@+id/preset_pager_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
-        android:background="@drawable/bg_milkdrop_top_overlay"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingTop="@dimen/padding_15"
-        android:paddingHorizontal="@dimen/padding_15"
+        android:backgroundTint="#80000000"
+        android:layout_margin="@dimen/padding_15"
         app:navigationPaddingRequired="false"
         app:statusPaddingRequired="true">
 
@@ -41,14 +39,6 @@
             android:contentDescription="@string/shuffle"
             android:layout_marginEnd="@dimen/gap"
             android:src="@drawable/ic_shuffle"
-            app:buttonTintType="white" />
-
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-            android:id="@+id/preset_list"
-            android:layout_width="@dimen/button_size"
-            android:layout_height="@dimen/button_size"
-            android:contentDescription="@string/presets"
-            android:src="@drawable/ic_list"
             app:buttonTintType="white" />
 
     </app.simple.felicity.decorations.padding.InsetLinearLayout>

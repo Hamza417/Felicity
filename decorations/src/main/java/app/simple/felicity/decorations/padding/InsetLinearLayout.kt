@@ -2,7 +2,13 @@ package app.simple.felicity.decorations.padding
 
 import android.content.Context
 import android.util.AttributeSet
+import android.util.Log
+import android.view.View
+import android.view.ViewGroup
 import android.widget.LinearLayout
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import app.simple.felicity.decoration.R
 
 /**
@@ -36,7 +42,36 @@ class InsetLinearLayout @JvmOverloads constructor(
         )
         ta.recycle()
 
-        Utils.applySystemBarPadding(this, statusPaddingRequired, navigationPaddingRequired)
+        applySystemBarMargin(this, statusPaddingRequired, navigationPaddingRequired)
+    }
+
+    private fun applySystemBarMargin(viewGroup: ViewGroup, statusMarginRequired: Boolean, navigationMarginRequired: Boolean) {
+        ViewCompat.setOnApplyWindowInsetsListener(viewGroup) { v: View?, windowInsets: WindowInsetsCompat? ->
+            val insets: Insets = windowInsets!!.getInsets(WindowInsetsCompat.Type.systemBars())
+            val layoutParams = viewGroup.layoutParams
+
+            // Ensure the layout params support margins
+            if (layoutParams is MarginLayoutParams) {
+                val marginParams = layoutParams
+
+                if (statusMarginRequired && navigationMarginRequired) {
+                    marginParams.topMargin += insets.top
+                    marginParams.bottomMargin += insets.bottom
+                } else if (statusMarginRequired) {
+                    marginParams.topMargin += insets.top
+                } else if (navigationMarginRequired) {
+                    marginParams.bottomMargin += insets.bottom
+                }
+
+                // Apply the updated layout parameters back to the view
+                viewGroup.setLayoutParams(marginParams)
+            } else {
+                Log.w("SystemBarMargin", "View's LayoutParams must be MarginLayoutParams to apply margins.")
+            }
+
+            Log.d("Margin", "Insets applied: $insets")
+            WindowInsetsCompat.CONSUMED
+        }
     }
 }
 

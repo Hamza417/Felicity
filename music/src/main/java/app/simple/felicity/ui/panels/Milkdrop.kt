@@ -1,6 +1,7 @@
 package app.simple.felicity.ui.panels
 
 import android.annotation.SuppressLint
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -18,8 +19,12 @@ import app.simple.felicity.databinding.FragmentMilkdropBinding
 import app.simple.felicity.dialogs.player.MilkdropPresets.Companion.showMilkdropPresets
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.preferences.AppearancePreferences.getCornerRadius
 import app.simple.felicity.ui.panels.Milkdrop.Companion.OVERLAY_VISIBLE_MS
 import app.simple.felicity.viewmodels.panels.MilkdropViewModel
+import com.google.android.material.shape.CornerFamily
+import com.google.android.material.shape.MaterialShapeDrawable
+import com.google.android.material.shape.ShapeAppearanceModel
 import kotlinx.coroutines.launch
 
 /**
@@ -75,6 +80,7 @@ class Milkdrop : MediaFragment() {
 
         requireLightBarIcons()
         requireTransparentMiniPlayer()
+        setPresetPagerBackground()
 
         // Re-register the PCM tap in case the player service started after the
         // surface view's onAttachedToWindow fired (which would have left the tap null).
@@ -106,10 +112,6 @@ class Milkdrop : MediaFragment() {
             showOverlay()
         }
 
-        binding.presetList.setOnClickListener {
-            childFragmentManager.showMilkdropPresets()
-        }
-
         // Schedule the first auto-hide so the overlay does not linger on cold start.
         scheduleOverlayFadeOut()
     }
@@ -119,7 +121,14 @@ class Milkdrop : MediaFragment() {
      * triggers a preset load whenever the user swipes to a new page.
      */
     private fun setupPresetPager() {
-        pagerAdapter = AdapterMilkdropPager { showOverlay() }
+        pagerAdapter = AdapterMilkdropPager {
+            if (binding.presetPagerContainer.alpha < 1f) {
+                showOverlay()
+            } else {
+                childFragmentManager.showMilkdropPresets()
+            }
+        }
+
         binding.presetPager.adapter = pagerAdapter
 
         binding.presetPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
@@ -217,6 +226,19 @@ class Milkdrop : MediaFragment() {
         binding.milkdropSurface.loadPreset(content, smooth = true)
     }
 
+    private fun setPresetPagerBackground() {
+        val shapeAppearanceModel = ShapeAppearanceModel()
+            .toBuilder()
+            .setAllCorners(CornerFamily.ROUNDED, getCornerRadius())
+            .build()
+
+        val materialShapeDrawable = MaterialShapeDrawable(shapeAppearanceModel)
+
+        materialShapeDrawable.setStroke(0.5F, Color.WHITE)
+
+        binding.presetPagerContainer.background = materialShapeDrawable
+    }
+
     override fun onResume() {
         super.onResume()
         binding.milkdropSurface.onResume()
@@ -249,7 +271,7 @@ class Milkdrop : MediaFragment() {
         private const val FADE_DURATION_MS = 500L
 
         /** How long the overlay stays fully visible after the last interaction. */
-        private const val OVERLAY_VISIBLE_MS = 3_000L
+        private const val OVERLAY_VISIBLE_MS = 5_000L
 
         /** Creates a new instance with no arguments. */
         fun newInstance(): Milkdrop = Milkdrop()
