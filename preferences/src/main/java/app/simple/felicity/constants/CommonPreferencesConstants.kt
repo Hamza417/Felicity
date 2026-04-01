@@ -25,14 +25,36 @@ object CommonPreferencesConstants {
     const val BY_NUMBER_OF_ALBUMS = 15
 
     // Grid size constants
-    const val GRID_SIZE_ONE = 1
+    const val LIST_SIZE_ONE = 1
+    const val LIST_SIZE_TWO = 2
+    const val LIST_SIZE_THREE = 2
     const val GRID_SIZE_TWO = 2
     const val GRID_SIZE_THREE = 3
     const val GRID_SIZE_FOUR = 4
     const val GRID_SIZE_FIVE = 5
     const val GRID_SIZE_SIX = 6
+    const val GRID_SIZE_ONE = 7
 
     // Grid type constants
     const val GRID_TYPE_LIST = 0
     const val GRID_TYPE_GRID = 1
+
+    enum class LayoutMode(val spanCount: Int, val isGrid: Boolean) {
+        LIST_ONE(1, false),
+        LIST_TWO(2, false),
+        LIST_THREE(3, false),
+        GRID_TWO(2, true),
+        GRID_THREE(3, true),
+        GRID_FOUR(4, true),
+        GRID_FIVE(5, true),
+        GRID_SIX(6, true),
+    }
+
+    fun String.toLayoutMode(): LayoutMode {
+        return try {
+            LayoutMode.valueOf(this)
+        } catch (_: IllegalArgumentException) {
+            LayoutMode.LIST_ONE
+        }
+    }
 }

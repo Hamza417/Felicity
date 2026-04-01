@@ -57,7 +57,7 @@ class Artists : PanelFragment() {
         // Initialize layout manager once
         gridLayoutManager = GridLayoutManager(requireContext(), ArtistPreferences.getGridSize())
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(ArtistPreferences.getGridType(), ArtistPreferences.getGridSize())
+        binding.recyclerView.setGridType(ArtistPreferences.getGridType())
 
         setupClickListeners()
 
@@ -225,7 +225,7 @@ class Artists : PanelFragment() {
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             ArtistPreferences.GRID_TYPE_PORTRAIT, ArtistPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(ArtistPreferences.getGridType(), ArtistPreferences.getGridSize())
+                binding.recyclerView.setGridType(ArtistPreferences.getGridType())
                 headerBinding.gridType.setGridTypeValue(ArtistPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)

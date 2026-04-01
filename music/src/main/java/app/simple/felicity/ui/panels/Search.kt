@@ -63,7 +63,7 @@ class Search : PanelFragment() {
 
         gridLayoutManager = GridLayoutManager(requireContext(), SearchPreferences.getGridSize())
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(SearchPreferences.getGridType(), SearchPreferences.getGridSize())
+        binding.recyclerView.setGridType(SearchPreferences.getGridType())
 
         setupClickListeners()
 
@@ -188,7 +188,7 @@ class Search : PanelFragment() {
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             SearchPreferences.GRID_TYPE_PORTRAIT, SearchPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(SearchPreferences.getGridType(), SearchPreferences.getGridSize())
+                binding.recyclerView.setGridType(SearchPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }

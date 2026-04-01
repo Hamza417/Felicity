@@ -63,7 +63,7 @@ class MostPlayed : PanelFragment() {
 
         gridLayoutManager = GridLayoutManager(requireContext(), MostPlayedPreferences.getGridSize())
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(MostPlayedPreferences.getGridType(), MostPlayedPreferences.getGridSize())
+        binding.recyclerView.setGridType(MostPlayedPreferences.getGridType())
 
         setupClickListeners()
 
@@ -183,7 +183,7 @@ class MostPlayed : PanelFragment() {
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             MostPlayedPreferences.GRID_TYPE_PORTRAIT, MostPlayedPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(MostPlayedPreferences.getGridType(), MostPlayedPreferences.getGridSize())
+                binding.recyclerView.setGridType(MostPlayedPreferences.getGridType())
                 headerBinding.gridType.setGridTypeValue(MostPlayedPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)

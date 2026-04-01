@@ -130,7 +130,7 @@ open class PanelFragment : MediaFragment() {
         }
     }
 
-    fun SpacingRecyclerView.setGridType(gridType: Int, size: Int) {
+    fun SpacingRecyclerView.setGridType(gridType: Int) {
         val gridLayoutManager = this.layoutManager as? GridLayoutManager
         when (gridType) {
             CommonPreferencesConstants.GRID_TYPE_LIST -> {

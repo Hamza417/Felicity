@@ -57,7 +57,7 @@ class Year : PanelFragment() {
 
         gridLayoutManager = GridLayoutManager(requireContext(), YearPreferences.getGridSize())
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(YearPreferences.getGridType(), YearPreferences.getGridSize())
+        binding.recyclerView.setGridType(YearPreferences.getGridType())
 
         setupClickListeners()
 
@@ -182,7 +182,7 @@ class Year : PanelFragment() {
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             YearPreferences.GRID_TYPE_PORTRAIT, YearPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(YearPreferences.getGridType(), YearPreferences.getGridSize())
+                binding.recyclerView.setGridType(YearPreferences.getGridType())
                 headerBinding.gridType.setGridTypeValue(YearPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)

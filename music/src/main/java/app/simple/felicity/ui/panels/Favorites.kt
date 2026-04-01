@@ -66,7 +66,7 @@ class Favorites : PanelFragment() {
 
         gridLayoutManager = GridLayoutManager(requireContext(), FavoritesPreferences.getGridSize())
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(FavoritesPreferences.getGridType(), FavoritesPreferences.getGridSize())
+        binding.recyclerView.setGridType(FavoritesPreferences.getGridType())
 
         setupClickListeners()
 
@@ -280,7 +280,7 @@ class Favorites : PanelFragment() {
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             FavoritesPreferences.GRID_TYPE_PORTRAIT, FavoritesPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(FavoritesPreferences.getGridType(), FavoritesPreferences.getGridSize())
+                binding.recyclerView.setGridType(FavoritesPreferences.getGridType())
                 headerBinding.gridType.setGridTypeValue(FavoritesPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)

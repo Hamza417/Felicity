@@ -302,6 +302,16 @@
     <string name="metadata">Metadata</string>
     <string name="show_album_artists">Show Album Artists</string>
     <string name="show_album_artists_summary">Show album artists instead of artists in the artists field of the lists in the app.</string>
+    <string name="copy">Copy</string>
+
+    <!-- List/Grid styles -->
+    <string name="list_x2">List x2</string>
+    <string name="List_x3">List x3</string>
+    <string name="grid_x2">Grid x2</string>
+    <string name="grid_x3">Grid x3</string>
+    <string name="grid_x4">Grid x4</string>
+    <string name="grid_x5">Grid x5</string>
+    <string name="grid_x6">Grid x6</string>
 
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">Track Info</string>
@@ -334,5 +344,4 @@
     <string name="prefer_media_store_art">Prefer MediaStore Album Arts</string>
     <string name="prefer_media_store_art_summary">Use album arts from MediaStore when available instead of scanning album arts from audio files. This may cause a delay in showing album arts for newly added songs until the MediaStore is updated.</string>
     <string name="aaudio_warning">AAudio is highly experimental at the moment and there is no guarantee it will work on all devices and perform as expected.</string>
-    <string name="copy">Copy</string>
 </resources>

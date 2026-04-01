@@ -65,7 +65,7 @@ class RecentlyPlayed : PanelFragment() {
 
         gridLayoutManager = GridLayoutManager(requireContext(), RecentlyPlayedPreferences.getGridSize())
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(RecentlyPlayedPreferences.getGridType(), RecentlyPlayedPreferences.getGridSize())
+        binding.recyclerView.setGridType(RecentlyPlayedPreferences.getGridType())
 
         setupClickListeners()
 
@@ -185,7 +185,7 @@ class RecentlyPlayed : PanelFragment() {
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             RecentlyPlayedPreferences.GRID_TYPE_PORTRAIT, RecentlyPlayedPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(RecentlyPlayedPreferences.getGridType(), RecentlyPlayedPreferences.getGridSize())
+                binding.recyclerView.setGridType(RecentlyPlayedPreferences.getGridType())
                 headerBinding.gridType.setGridTypeValue(RecentlyPlayedPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)

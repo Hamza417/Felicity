@@ -57,7 +57,7 @@ class Albums : PanelFragment() {
         // Initialize layout manager once
         gridLayoutManager = GridLayoutManager(requireContext(), AlbumPreferences.getGridSize())
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(AlbumPreferences.getGridType(), AlbumPreferences.getGridSize())
+        binding.recyclerView.setGridType(AlbumPreferences.getGridType())
 
         setupClickListeners()
 
@@ -206,7 +206,7 @@ class Albums : PanelFragment() {
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             AlbumPreferences.GRID_TYPE_PORTRAIT, AlbumPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(AlbumPreferences.getGridType(), AlbumPreferences.getGridSize())
+                binding.recyclerView.setGridType(AlbumPreferences.getGridType())
                 headerBinding.gridType.setGridTypeValue(AlbumPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)

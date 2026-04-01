@@ -74,7 +74,7 @@ class FoldersHierarchy : PanelFragment() {
 
         gridLayoutManager = GridLayoutManager(requireContext(), FolderHierarchyPreferences.getGridSize())
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(FolderHierarchyPreferences.getGridType(), FolderHierarchyPreferences.getGridSize())
+        binding.recyclerView.setGridType(FolderHierarchyPreferences.getGridType())
 
         setupSpanSizeLookup()
         setupClickListeners()
@@ -229,7 +229,7 @@ class FoldersHierarchy : PanelFragment() {
             }
             FolderHierarchyPreferences.GRID_TYPE_PORTRAIT,
             FolderHierarchyPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(FolderHierarchyPreferences.getGridType(), FolderHierarchyPreferences.getGridSize())
+                binding.recyclerView.setGridType(FolderHierarchyPreferences.getGridType())
                 headerBinding.gridType.setGridTypeValue(FolderHierarchyPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)

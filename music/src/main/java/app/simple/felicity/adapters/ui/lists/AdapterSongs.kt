@@ -71,6 +71,11 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
 
     private val songs: List<Audio> get() = differ.currentList
 
+    var layoutMode: CommonPreferencesConstants.LayoutMode = SongsPreferences.getGridSize()
+        set(value) {
+            field = value
+        }
+
     init {
         setHasStableIds(true)
         // Seed the tracked ID so the first song-change correctly un-highlights the
@@ -81,11 +86,8 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
     override fun getItemId(position: Int): Long = songs[position].id
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
-        return when (viewType) {
-            CommonPreferencesConstants.GRID_TYPE_LIST -> {
-                ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-            }
-            CommonPreferencesConstants.GRID_TYPE_GRID -> {
+        return when {
+            layoutMode.isGrid -> {
                 GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
             else -> {
@@ -107,7 +109,6 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
     }
 
     override fun getItemCount(): Int = songs.size
-    override fun getItemViewType(position: Int): Int = SongsPreferences.getGridType()
 
     override fun onViewRecycled(holder: VerticalListViewHolder) {
         holder.itemView.clearAnimation()

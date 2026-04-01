@@ -60,7 +60,7 @@ class Folders : PanelFragment() {
 
         gridLayoutManager = GridLayoutManager(requireContext(), FoldersPreferences.getGridSize())
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(FoldersPreferences.getGridType(), FoldersPreferences.getGridSize())
+        binding.recyclerView.setGridType(FoldersPreferences.getGridType())
 
         setupClickListeners()
 
@@ -210,7 +210,7 @@ class Folders : PanelFragment() {
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             FoldersPreferences.GRID_TYPE_PORTRAIT, FoldersPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(FoldersPreferences.getGridType(), FoldersPreferences.getGridSize())
+                binding.recyclerView.setGridType(FoldersPreferences.getGridType())
                 headerBinding.gridType.setGridTypeValue(FoldersPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)

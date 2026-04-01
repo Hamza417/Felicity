@@ -59,7 +59,7 @@ class Genres : PanelFragment() {
         // Initialize layout manager once
         gridLayoutManager = GridLayoutManager(requireContext(), GenresPreferences.getGridSize())
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(GenresPreferences.getGridType(), GenresPreferences.getGridSize())
+        binding.recyclerView.setGridType(GenresPreferences.getGridType())
 
         // Re-attach existing adapter immediately so the RecyclerView is never blank on return
         adapterGenres?.let { binding.recyclerView.adapter = it }
@@ -203,7 +203,7 @@ class Genres : PanelFragment() {
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
             GenresPreferences.GRID_TYPE_PORTRAIT, GenresPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(GenresPreferences.getGridType(), GenresPreferences.getGridSize())
+                binding.recyclerView.setGridType(GenresPreferences.getGridType())
                 headerBinding.gridType.setGridTypeValue(GenresPreferences.getGridType())
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
