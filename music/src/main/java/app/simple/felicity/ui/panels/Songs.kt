@@ -240,9 +240,10 @@ class Songs : PanelFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             SongsPreferences.GRID_SIZE_PORTRAIT, SongsPreferences.GRID_SIZE_LANDSCAPE -> {
+                val newMode = SongsPreferences.getGridSize()
+                gridLayoutManager?.spanCount = newMode.spanCount
+                adapterSongs?.layoutMode = newMode
                 binding.recyclerView.beginDelayedTransition()
-                adapterSongs?.layoutMode = SongsPreferences.getGridSize()
-                gridLayoutManager?.spanCount = SongsPreferences.getGridSize().spanCount
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
         }

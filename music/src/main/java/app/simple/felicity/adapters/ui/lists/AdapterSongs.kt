@@ -72,9 +72,6 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
     private val songs: List<Audio> get() = differ.currentList
 
     var layoutMode: CommonPreferencesConstants.LayoutMode = SongsPreferences.getGridSize()
-        set(value) {
-            field = value
-        }
 
     init {
         setHasStableIds(true)
@@ -85,14 +82,15 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
 
     override fun getItemId(position: Int): Long = songs[position].id
 
+    override fun getItemViewType(position: Int): Int {
+        return if (layoutMode.isGrid) VIEW_TYPE_GRID else VIEW_TYPE_LIST
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
-        return when {
-            layoutMode.isGrid -> {
-                GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-            }
-            else -> {
-                ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-            }
+        return when (viewType) {
+            VIEW_TYPE_GRID -> GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            VIEW_TYPE_LIST -> ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            else -> ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
         }
     }
 
@@ -174,5 +172,10 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
     }
 
     companion object {
+        /** View type constant for a single-column list row. */
+        const val VIEW_TYPE_LIST = 0
+
+        /** View type constant for a multi-column grid cell. */
+        const val VIEW_TYPE_GRID = 1
     }
 }

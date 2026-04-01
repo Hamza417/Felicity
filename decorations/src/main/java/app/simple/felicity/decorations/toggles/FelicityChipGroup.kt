@@ -116,7 +116,7 @@ class FelicityChipGroup @JvmOverloads constructor(
     private val selectedIndices = mutableSetOf<Int>()
     private val chipViews = mutableListOf<ChipItemView>()
     private var chips: List<ChipButton> = emptyList()
-    private var onSelectionChangedListener: ((Set<Int>) -> Unit)? = null
+    private var onSelectionChangedListener: ((Set<ChipButton>) -> Unit)? = null
 
     init {
         isHorizontalScrollBarEnabled = false
@@ -146,10 +146,12 @@ class FelicityChipGroup @JvmOverloads constructor(
     /**
      * Registers a callback that is invoked whenever the selection state of any chip changes.
      *
-     * @param listener A lambda that receives the full set of currently selected indices after
-     *                 each change.
+     * @param listener A lambda that receives the full set of currently selected [ChipButton]
+     *                 objects after each change, allowing callers to identify chips by their
+     *                 [ChipButton.tag] or [ChipButton.textResId] rather than a fragile positional
+     *                 index.
      */
-    fun setOnSelectionChangedListener(listener: (Set<Int>) -> Unit) {
+    fun setOnSelectionChangedListener(listener: (Set<ChipButton>) -> Unit) {
         onSelectionChangedListener = listener
     }
 
@@ -173,7 +175,7 @@ class FelicityChipGroup @JvmOverloads constructor(
                 if (notifyListener) {
                     previous?.let { chips.getOrNull(it)?.onSelectionChanged?.invoke(false) }
                     chips.getOrNull(index)?.onSelectionChanged?.invoke(true)
-                    onSelectionChangedListener?.invoke(selectedIndices.toSet())
+                    onSelectionChangedListener?.invoke(getSelectedChips())
                 }
             }
 
@@ -182,7 +184,7 @@ class FelicityChipGroup @JvmOverloads constructor(
                 chipViews.getOrNull(index)?.updateSelectionState(true, animate)
                 if (notifyListener) {
                     chips.getOrNull(index)?.onSelectionChanged?.invoke(true)
-                    onSelectionChangedListener?.invoke(selectedIndices.toSet())
+                    onSelectionChangedListener?.invoke(getSelectedChips())
                 }
             }
         }
@@ -194,9 +196,27 @@ class FelicityChipGroup @JvmOverloads constructor(
     fun getSelectedIndices(): Set<Int> = selectedIndices.toSet()
 
     /**
+     * Returns the set of currently selected [ChipButton] objects.
+     */
+    fun getSelectedChips(): Set<ChipButton> = selectedIndices.mapNotNull { chips.getOrNull(it) }.toSet()
+
+    /**
      * Returns the selected chip index in single-selection mode, or -1 if no chip is selected.
      */
     fun getSelectedIndex(): Int = selectedIndices.firstOrNull() ?: -1
+
+    /**
+     * Programmatically selects the chip whose [ChipButton.tag] equals [tag].
+     * If no chip matches, the call is a no-op.
+     *
+     * @param tag            The tag value to look up.
+     * @param animate        Whether to animate the color transition.
+     * @param notifyListener Whether to fire per-chip and group-level callbacks.
+     */
+    fun setSelectedByTag(tag: Any?, animate: Boolean = false, notifyListener: Boolean = false) {
+        val index = chips.indexOfFirst { it.tag == tag }
+        if (index >= 0) setSelectedIndex(index, animate, notifyListener)
+    }
 
     // -------------------------------------------------------------------------
     // Internal chip management
@@ -361,7 +381,7 @@ class FelicityChipGroup @JvmOverloads constructor(
                     }
                     updateSelectionState(true, animate = true)
                     chip.onSelectionChanged?.invoke(true)
-                    onSelectionChangedListener?.invoke(selectedIndices.toSet())
+                    onSelectionChangedListener?.invoke(getSelectedChips())
                 }
 
                 SELECTION_MULTI -> {
@@ -369,7 +389,7 @@ class FelicityChipGroup @JvmOverloads constructor(
                     if (newState) selectedIndices.add(index) else selectedIndices.remove(index)
                     updateSelectionState(newState, animate = true)
                     chip.onSelectionChanged?.invoke(newState)
-                    onSelectionChangedListener?.invoke(selectedIndices.toSet())
+                    onSelectionChangedListener?.invoke(getSelectedChips())
                 }
             }
         }
@@ -488,12 +508,17 @@ class FelicityChipGroup @JvmOverloads constructor(
      * Represents a single chip item within a [FelicityChipGroup].
      *
      * @param textResId          String resource ID for the chip label.
+     * @param tag                Optional opaque value attached to this chip. Use it to associate
+     *                           a domain object (e.g., an enum constant) with the chip so that
+     *                           [setOnSelectionChangedListener] callbacks can identify which
+     *                           chip is selected without relying on positional indices.
      * @param onSelectionChanged Optional callback invoked with the new boolean selection state
      *                           whenever this chip is selected or deselected by user interaction
      *                           or a programmatic call with notifyListener set to true.
      */
     data class ChipButton(
             @StringRes val textResId: Int,
+            val tag: Any? = null,
             val onSelectionChanged: ((Boolean) -> Unit)? = null,
     )
 }
