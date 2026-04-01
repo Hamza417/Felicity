@@ -213,7 +213,7 @@ class FelicityPager @JvmOverloads constructor(
             // Width is 0 — the view has not been laid out yet.
             // Defer the initial page load until the first layout pass completes.
             post {
-                if (this.adapter === adapter && width > 0) {
+                if (this.adapter === adapter && width > 0 && isAttachedToWindow && isActivityAlive()) {
                     ensurePages()
                     applyTranslations()
                     dispatchScrolled()
@@ -308,9 +308,15 @@ class FelicityPager @JvmOverloads constructor(
      * Loads and attaches the page at [position] if it is not already active.
      * The view is immediately positioned via [applyTranslationTo] using the current
      * [width] so it lands in the correct place even before the next layout pass.
+     *
+     * Bails out immediately if the host activity is no longer alive to prevent stale
+     * image-loader requests (e.g. Glide) from being issued against a destroyed context.
      */
     private fun loadPage(position: Int) {
         val ad = adapter ?: return
+        // Guard against Glide / image-loader crashes when the activity has been destroyed
+        // or is finishing. This can happen when a Choreographer frame fires during teardown.
+        if (!isActivityAlive()) return
         if (position !in 0 until ad.getCount()) return
         if (activePages.containsKey(position)) return
         val v = obtainView(position)
@@ -393,7 +399,9 @@ class FelicityPager @JvmOverloads constructor(
      */
     fun setCurrentItem(item: Int, smoothScroll: Boolean = false) {
         if (width == 0) {
-            post { setCurrentItem(item, smoothScroll) }
+            // Defer until after layout, but only execute if the view is still attached
+            // and the host activity is alive to avoid triggering loads post-destruction.
+            post { if (isAttachedToWindow && isActivityAlive()) setCurrentItem(item, smoothScroll) }
             return
         }
         val bounded = item.coerceIn(0, maxLastPage())
@@ -796,6 +804,13 @@ class FelicityPager @JvmOverloads constructor(
      */
     private fun advanceAnimation(nowMs: Long) {
         if (!animating) return
+        // If the host activity died while a frame was already queued (e.g. the fragment
+        // was hidden instead of replaced, or the timing window during teardown was hit),
+        // abort and cancel so we never call loadPage / onBindView against a dead context.
+        if (!isActivityAlive()) {
+            cancelAnimation()
+            return
+        }
         if (animStartTime == -1L) animStartTime = nowMs
         val elapsed = (nowMs - animStartTime).coerceAtLeast(0L)
         val tRaw = if (animDuration > 0L) (elapsed.toFloat() / animDuration).coerceIn(0f, 1f) else 1f
@@ -820,12 +835,17 @@ class FelicityPager @JvmOverloads constructor(
      * Cancels any running settle animation and immediately transitions the scroll state
      * to [SCROLL_STATE_IDLE]. The pager stays at its current [scrollPx].
      * Also cancels any in-progress wrap-around animation.
+     *
+     * The Choreographer callback is removed unconditionally (not just when [animating] is set)
+     * so that a desynchronized [animPosted] flag cannot leave a stale frame queued.
      */
     private fun cancelAnimation() {
+        // Always remove the callback — guards against the edge case where animPosted
+        // became true but animating was already reset to false.
+        if (animPosted) choreographer.removeFrameCallback(frameCallback)
+        animPosted = false
         if (animating) {
             animating = false
-            if (animPosted) choreographer.removeFrameCallback(frameCallback)
-            animPosted = false
             dispatchStateChanged(SCROLL_STATE_IDLE)
         }
         cancelWrapAnimation()
@@ -853,6 +873,9 @@ class FelicityPager @JvmOverloads constructor(
     private val autoSlideRunnable = object : Runnable {
         override fun run() {
             val count = pageCount()
+            // Stop the slide chain if the view has been detached (e.g. fragment hidden via
+            // hide() so onDetachedFromWindow was never triggered) or if the activity is gone.
+            if (!isAttachedToWindow || !isActivityAlive()) return
             if (autoSlideInterval > 0 && count > 1 && scrollState != SCROLL_STATE_DRAGGING) {
                 if (autoSlideLoop && currentPage >= count - 1) {
                     // Smooth wrap-around: scroll *forward* past last page to a virtual
@@ -939,6 +962,12 @@ class FelicityPager @JvmOverloads constructor(
 
     private fun advanceWrapAnimation(nowMs: Long) {
         if (!wrapAnimating) return
+        // Mirror the same activity-alive guard used in advanceAnimation to avoid
+        // calling onBindView / Glide against a destroyed context during wrap scrolls.
+        if (!isActivityAlive()) {
+            cancelWrapAnimation()
+            return
+        }
         if (wrapAnimStartMs == -1L) wrapAnimStartMs = nowMs
         val elapsed = (nowMs - wrapAnimStartMs).coerceAtLeast(0L)
         val tRaw = if (wrapAnimDuration > 0L) (elapsed.toFloat() / wrapAnimDuration).coerceIn(0f, 1f) else 1f
@@ -974,10 +1003,11 @@ class FelicityPager @JvmOverloads constructor(
     }
 
     private fun cancelWrapAnimation() {
+        // Always remove the callback to prevent stale frames from firing.
+        if (wrapAnimPosted) choreographer.removeFrameCallback(wrapFrameCallback)
+        wrapAnimPosted = false
         if (wrapAnimating) {
             wrapAnimating = false
-            if (wrapAnimPosted) choreographer.removeFrameCallback(wrapFrameCallback)
-            wrapAnimPosted = false
             // Clean up the clone view if present.
             activePages.remove(WRAP_PAGE_KEY)?.let { v ->
                 adapter?.onRecycleView(0, v)
@@ -1018,7 +1048,7 @@ class FelicityPager @JvmOverloads constructor(
             applyTranslations()
         } else {
             post {
-                if (width > 0) {
+                if (width > 0 && isAttachedToWindow && isActivityAlive()) {
                     ensurePages()
                     applyTranslations()
                 }
