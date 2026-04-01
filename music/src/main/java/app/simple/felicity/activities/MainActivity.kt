@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
+import app.simple.felicity.crash.CrashReporter
 import app.simple.felicity.databinding.ActivityMainBinding
 import app.simple.felicity.decorations.miniplayer.MiniPlayer
 import app.simple.felicity.decorations.miniplayer.MiniPlayerItem
@@ -58,6 +59,12 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     private val permissionViewModel by viewModels<PermissionViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        /**
+         * Initialize the crash reporter to intercept uncaught exceptions
+         */
+        CrashReporter(applicationContext).initialize()
+
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)

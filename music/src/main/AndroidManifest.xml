@@ -49,6 +49,10 @@
                 android:value="" />
         </activity>
 
+        <activity
+            android:name=".activities.CrashReporterActivity"
+            android:exported="false" />
+
         <service
             android:name=".repository.services.AudioDatabaseService"
             android:exported="false" />

@@ -1,13 +1,12 @@
 package app.simple.felicity.activities
 
-import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
-import app.simple.felicity.decorations.ripple.DynamicRippleTextView
-import app.simple.felicity.decorations.typeface.TypeFaceTextView
+import app.simple.felicity.databinding.ActivityCrashBinding
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.factories.misc.ErrorViewModelFactory
 import app.simple.felicity.preferences.CrashPreferences
@@ -22,36 +21,22 @@ import kotlinx.coroutines.launch
 
 class CrashReporterActivity : BaseActivity() {
 
-    private lateinit var warning: TypeFaceTextView
-    private lateinit var message: TypeFaceTextView
-    private lateinit var cause: TypeFaceTextView
-    private lateinit var timestamp: TypeFaceTextView
-    private lateinit var error: TypeFaceTextView
-    private lateinit var send: DynamicRippleTextView
-    private lateinit var close: DynamicRippleTextView
+    private lateinit var binding: ActivityCrashBinding
     private lateinit var errorViewModel: ErrorViewModel
 
     private var isPreview = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_crash)
-
-        warning = findViewById(R.id.warning)
-        message = findViewById(R.id.message)
-        cause = findViewById(R.id.cause)
-        warning = findViewById(R.id.warning)
-        timestamp = findViewById(R.id.timestamp)
-        error = findViewById(R.id.error)
-        send = findViewById(R.id.send)
-        close = findViewById(R.id.close)
+        binding = ActivityCrashBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         intent.getStringExtra(MODE_NORMAL)?.let { crash ->
-            warning.setText(R.string.the_app_has_crashed)
-            timestamp.text = CrashPreferences.getCrashLog().toDate()
-            cause.text = CrashPreferences.getCause()
+            binding.warning.setText(R.string.the_app_has_crashed)
+            binding.timestamp.text = CrashPreferences.getCrashLog().toDate()
+            binding.cause.text = CrashPreferences.getCause()
                 ?: getString(R.string.not_available)
-            message.text = CrashPreferences.getMessage()
+            binding.message.text = CrashPreferences.getMessage()
                 ?: getString(R.string.desc_not_available)
             showTrace(crash)
             saveTraceToDataBase(crash)
@@ -61,25 +46,25 @@ class CrashReporterActivity : BaseActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(MODE_PREVIEW, StackTrace::class.java)?.let { crash ->
                 isPreview = true
-                warning.setText(R.string.crash_report)
-                timestamp.text = crash.timestamp.toDate()
-                cause.text = crash.cause ?: getString(R.string.not_available)
-                message.text = crash.message ?: getString(R.string.desc_not_available)
+                binding.warning.setText(R.string.crash_report)
+                binding.timestamp.text = crash.timestamp.toDate()
+                binding.cause.text = crash.cause ?: getString(R.string.not_available)
+                binding.message.text = crash.message ?: getString(R.string.desc_not_available)
                 showTrace(crash.trace)
             }
         } else {
             @Suppress("DEPRECATION")
             intent.getParcelableExtra<StackTrace>(MODE_PREVIEW)?.let { crash ->
                 isPreview = true
-                warning.setText(R.string.crash_report)
-                timestamp.text = crash.timestamp.toDate()
-                cause.text = crash.cause ?: getString(R.string.not_available)
-                message.text = crash.message ?: getString(R.string.desc_not_available)
+                binding.warning.setText(R.string.crash_report)
+                binding.timestamp.text = crash.timestamp.toDate()
+                binding.cause.text = crash.cause ?: getString(R.string.not_available)
+                binding.message.text = crash.message ?: getString(R.string.desc_not_available)
                 showTrace(crash.trace)
             }
         }
 
-        close.setOnClickListener {
+        binding.close.setOnClickListener {
             close()
         }
     }
@@ -89,22 +74,15 @@ class CrashReporterActivity : BaseActivity() {
             ViewModelProvider(this, ErrorViewModelFactory(crash))[ErrorViewModel::class.java]
 
         errorViewModel.getSpanned().observe(this) {
-            error.text = it
+            binding.error.text = it
         }
 
-        send.setOnClickListener {
-            val shareIntent = Intent(Intent.ACTION_SEND)
-            shareIntent.type = "text/plain"
-            shareIntent.putExtra(Intent.EXTRA_SUBJECT, getString(R.string.the_app_has_crashed))
-            shareIntent.putExtra(Intent.EXTRA_TEXT, crash.trim().trimIndent())
-            startActivity(Intent.createChooser(shareIntent, "Crash Log"))
+        binding.copy.setOnClickListener {
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val clip = android.content.ClipData.newPlainText("Crash Trace", crash)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
         }
-    }
-
-    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
-    override fun onBackPressed() {
-        super.onBackPressed()
-        close()
     }
 
     private fun close() {
@@ -124,10 +102,10 @@ class CrashReporterActivity : BaseActivity() {
                 runCatching {
                     val stackTrace =
                         StackTrace(
-                            trace,
-                            CrashPreferences.getMessage() ?: getString(R.string.desc_not_available),
-                            CrashPreferences.getCause() ?: getString(R.string.not_available),
-                            System.currentTimeMillis()
+                                trace,
+                                CrashPreferences.getMessage() ?: getString(R.string.desc_not_available),
+                                CrashPreferences.getCause() ?: getString(R.string.not_available),
+                                System.currentTimeMillis()
                         )
                     val stackTraceDatabase = StackTraceDatabase.getInstance(applicationContext)
                     stackTraceDatabase!!.stackTraceDao()!!.insertTrace(stackTrace)

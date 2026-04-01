@@ -46,6 +46,7 @@ public class CrashReporter implements Thread.UncaughtExceptionHandler {
         CrashPreferences.INSTANCE.saveCause(StackTraceUtils.getCause(throwable).toString());
 
         Intent intent = new Intent(context, CrashReporterActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra(CrashReporterActivity.MODE_NORMAL, stacktrace);
         context.startActivity(intent);
 
