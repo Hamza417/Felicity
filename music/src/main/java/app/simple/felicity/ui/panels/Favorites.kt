@@ -12,14 +12,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
-import app.simple.felicity.adapters.ui.lists.AdapterSongs
+import app.simple.felicity.adapters.ui.lists.AdapterFavorites
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentFavoritesBinding
 import app.simple.felicity.databinding.HeaderFavoritesBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.favorites.FavoritesMenu.Companion.showFavoritesMenu
 import app.simple.felicity.dialogs.favorites.FavoritesSort.Companion.showFavoritesSort
 import app.simple.felicity.dialogs.songs.ShuffleAlgorithmDialog.Companion.showShuffleAlgorithmDialog
@@ -45,7 +44,7 @@ class Favorites : PanelFragment() {
     private lateinit var binding: FragmentFavoritesBinding
     private lateinit var headerBinding: HeaderFavoritesBinding
 
-    private var adapterSongs: AdapterSongs? = null
+    private var adapterSongs: AdapterFavorites? = null
     private var gridLayoutManager: GridLayoutManager? = null
 
     private val favoritesViewModel: FavoritesViewModel by viewModels()
@@ -64,9 +63,9 @@ class Favorites : PanelFragment() {
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.attachSlideFastScroller()
 
-        gridLayoutManager = GridLayoutManager(requireContext(), FavoritesPreferences.getGridSize())
+        val mode = FavoritesPreferences.getGridSize()
+        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(FavoritesPreferences.getGridType())
 
         setupClickListeners()
 
@@ -92,8 +91,6 @@ class Favorites : PanelFragment() {
     private fun setupClickListeners() {
         headerBinding.sortStyle.setFavoritesSort()
         headerBinding.sortOrder.setFavoritesOrder()
-        headerBinding.gridSize.setGridSizeValue(FavoritesPreferences.getGridSize())
-        headerBinding.gridType.setGridTypeValue(FavoritesPreferences.getGridType())
 
         headerBinding.menu.setOnClickListener {
             childFragmentManager.showFavoritesMenu()
@@ -120,71 +117,17 @@ class Favorites : PanelFragment() {
         headerBinding.search.setOnClickListener {
             openSearch()
         }
-
-        headerBinding.gridSize.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(
-                            R.string.one,
-                            R.string.two,
-                            R.string.three,
-                            R.string.four,
-                            R.string.five,
-                            R.string.six),
-                    menuIcons = listOf(
-                            R.drawable.ic_one_16,
-                            R.drawable.ic_two_16dp,
-                            R.drawable.ic_three_16dp,
-                            R.drawable.ic_four_16dp,
-                            R.drawable.ic_five_16dp,
-                            R.drawable.ic_six_16dp),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.one -> FavoritesPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
-                            R.string.two -> FavoritesPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
-                            R.string.three -> FavoritesPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
-                            R.string.four -> FavoritesPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
-                            R.string.five -> FavoritesPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
-                            R.string.six -> FavoritesPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
-                        }
-                    },
-                    onDismiss = {}
-            ).show()
-        }
-
-        headerBinding.gridType.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(
-                            R.string.list,
-                            R.string.grid
-                    ),
-                    menuIcons = listOf(
-                            R.drawable.ic_list_16dp,
-                            R.drawable.ic_grid_16dp
-                    ),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.list -> FavoritesPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
-                            R.string.grid -> FavoritesPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
-                        }
-                    },
-                    onDismiss = {}
-            ).show()
-        }
     }
 
     /**
      * Updates the favorites list and refreshes all header chips.
-     * Initialises the adapter on first call and diffs subsequent updates.
+     * Initializes the adapter on first call and diffs subsequent updates.
      *
      * @param songs the latest sorted list of favorite [Audio] entries
      */
     private fun updateFavoritesList(songs: List<Audio>) {
         if (adapterSongs == null) {
-            adapterSongs = AdapterSongs(songs)
+            adapterSongs = AdapterFavorites(songs)
             adapterSongs?.setHasStableIds(true)
             adapterSongs?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
@@ -274,14 +217,9 @@ class Favorites : PanelFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             FavoritesPreferences.GRID_SIZE_PORTRAIT, FavoritesPreferences.GRID_SIZE_LANDSCAPE -> {
-                headerBinding.gridSize.setGridSizeValue(FavoritesPreferences.getGridSize())
-                binding.recyclerView.beginDelayedTransition()
-                gridLayoutManager?.spanCount = FavoritesPreferences.getGridSize()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
-            }
-            FavoritesPreferences.GRID_TYPE_PORTRAIT, FavoritesPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(FavoritesPreferences.getGridType())
-                headerBinding.gridType.setGridTypeValue(FavoritesPreferences.getGridType())
+                val newMode = FavoritesPreferences.getGridSize()
+                gridLayoutManager?.spanCount = newMode.spanCount
+                adapterSongs?.layoutMode = newMode
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }

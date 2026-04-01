@@ -12,13 +12,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
-import app.simple.felicity.adapters.ui.lists.AdapterSongs
+import app.simple.felicity.adapters.ui.lists.AdapterRecentlyAdded
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
-import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentRecentlyAddedBinding
 import app.simple.felicity.databinding.HeaderRecentlyAddedBinding
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
+import app.simple.felicity.dialogs.recentlyadded.RecentlyAddedMenu.Companion.showRecentlyAddedMenu
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.RecentlyAddedPreferences
 import app.simple.felicity.repository.models.Audio
@@ -34,7 +33,7 @@ class RecentlyAdded : PanelFragment() {
     private lateinit var binding: FragmentRecentlyAddedBinding
     private lateinit var headerBinding: HeaderRecentlyAddedBinding
 
-    private var adapterSongs: AdapterSongs? = null
+    private var adapterSongs: AdapterRecentlyAdded? = null
     private var gridLayoutManager: GridLayoutManager? = null
 
     private val recentlyAddedViewModel: RecentlyAddedViewModel by viewModels({ requireActivity() })
@@ -53,9 +52,9 @@ class RecentlyAdded : PanelFragment() {
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
 
-        gridLayoutManager = GridLayoutManager(requireContext(), RecentlyAddedPreferences.getGridSize())
+        val mode = RecentlyAddedPreferences.getGridSize()
+        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(RecentlyAddedPreferences.getGridType())
 
         setupClickListeners()
 
@@ -79,9 +78,6 @@ class RecentlyAdded : PanelFragment() {
     }
 
     private fun setupClickListeners() {
-        headerBinding.gridSize.setGridSizeValue(RecentlyAddedPreferences.getGridSize())
-        headerBinding.gridType.setGridTypeValue(RecentlyAddedPreferences.getGridType())
-
         headerBinding.shuffle.setOnClickListener {
             val songs = recentlyAddedViewModel.songs.value
             if (songs.isNotEmpty()) shuffleMediaItems(songs)
@@ -91,49 +87,14 @@ class RecentlyAdded : PanelFragment() {
             openSearch()
         }
 
-        headerBinding.gridSize.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(R.string.one, R.string.two, R.string.three,
-                                       R.string.four, R.string.five, R.string.six),
-                    menuIcons = listOf(R.drawable.ic_one_16, R.drawable.ic_two_16dp,
-                                       R.drawable.ic_three_16dp, R.drawable.ic_four_16dp,
-                                       R.drawable.ic_five_16dp, R.drawable.ic_six_16dp),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.one -> RecentlyAddedPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
-                            R.string.two -> RecentlyAddedPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
-                            R.string.three -> RecentlyAddedPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
-                            R.string.four -> RecentlyAddedPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
-                            R.string.five -> RecentlyAddedPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
-                            R.string.six -> RecentlyAddedPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
-                        }
-                    },
-                    onDismiss = {}
-            ).show()
-        }
-
-        headerBinding.gridType.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(R.string.list, R.string.grid),
-                    menuIcons = listOf(R.drawable.ic_list_16dp, R.drawable.ic_grid_16dp),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.list -> RecentlyAddedPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
-                            R.string.grid -> RecentlyAddedPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
-                        }
-                    },
-                    onDismiss = {}
-            ).show()
+        headerBinding.menu.setOnClickListener {
+            childFragmentManager.showRecentlyAddedMenu()
         }
     }
 
     private fun updateSongsList(songs: List<Audio>) {
         if (adapterSongs == null) {
-            adapterSongs = AdapterSongs(songs)
+            adapterSongs = AdapterRecentlyAdded(songs)
             adapterSongs?.setHasStableIds(true)
             adapterSongs?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
@@ -155,22 +116,15 @@ class RecentlyAdded : PanelFragment() {
         headerBinding.count.text = getString(R.string.x_songs, songs.size)
         headerBinding.hours.text = songs.sumOf { it.duration }
             .toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
-        headerBinding.gridSize.setGridSizeValue(RecentlyAddedPreferences.getGridSize())
-        headerBinding.gridType.setGridTypeValue(RecentlyAddedPreferences.getGridType())
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             RecentlyAddedPreferences.GRID_SIZE_PORTRAIT, RecentlyAddedPreferences.GRID_SIZE_LANDSCAPE -> {
-                headerBinding.gridSize.setGridSizeValue(RecentlyAddedPreferences.getGridSize())
-                binding.recyclerView.beginDelayedTransition()
-                gridLayoutManager?.spanCount = RecentlyAddedPreferences.getGridSize()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
-            }
-            RecentlyAddedPreferences.GRID_TYPE_PORTRAIT, RecentlyAddedPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(RecentlyAddedPreferences.getGridType())
-                headerBinding.gridType.setGridTypeValue(RecentlyAddedPreferences.getGridType())
+                val newMode = RecentlyAddedPreferences.getGridSize()
+                gridLayoutManager?.spanCount = newMode.spanCount
+                adapterSongs?.layoutMode = newMode
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }

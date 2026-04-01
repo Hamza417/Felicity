@@ -1,4 +1,4 @@
-package app.simple.felicity.dialogs.genres
+package app.simple.felicity.dialogs.year
 
 import android.content.SharedPreferences
 import android.os.Bundle
@@ -9,23 +9,22 @@ import androidx.fragment.app.FragmentManager
 import app.simple.felicity.R
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.core.singletons.AppOrientation
-import app.simple.felicity.databinding.DialogGenreMenuBinding
+import app.simple.felicity.databinding.DialogSongsMenuBinding
 import app.simple.felicity.decorations.toggles.FelicityChipGroup
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
-import app.simple.felicity.preferences.GenresPreferences
+import app.simple.felicity.preferences.YearPreferences
 
 /**
- * Bottom-sheet menu dialog for the Genres panel, containing the list style selector
- * and the genre cover toggle.
+ * Bottom-sheet menu dialog for the Year panel containing the list style selector.
  *
  * @author Hamza417
  */
-class DialogGenreMenu : ScopedBottomSheetFragment() {
+class YearMenu : ScopedBottomSheetFragment() {
 
-    private lateinit var binding: DialogGenreMenuBinding
+    private lateinit var binding: DialogSongsMenuBinding
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        binding = DialogGenreMenuBinding.inflate(inflater, container, false)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        binding = DialogSongsMenuBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -58,17 +57,11 @@ class DialogGenreMenu : ScopedBottomSheetFragment() {
         )
 
         binding.listStyleChipGroup.shouldRestoreStates = false
-        binding.listStyleChipGroup.setSelectedByTag(GenresPreferences.getGridSize())
+        binding.listStyleChipGroup.setSelectedByTag(YearPreferences.getGridSize())
 
         binding.listStyleChipGroup.setOnSelectionChangedListener { selected ->
             val mode = selected.firstOrNull()?.tag as? CommonPreferencesConstants.LayoutMode ?: return@setOnSelectionChangedListener
-            GenresPreferences.setGridSize(mode)
-        }
-
-        binding.genreCover.isChecked = GenresPreferences.isGenreCoversEnabled()
-
-        binding.genreCover.setOnCheckedChangeListener { _, bool ->
-            GenresPreferences.setGenreCoversEnabled(bool)
+            YearPreferences.setGridSize(mode)
         }
 
         binding.openAppSettings.setOnClickListener {
@@ -78,27 +71,26 @@ class DialogGenreMenu : ScopedBottomSheetFragment() {
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
-        when (key) {
-            GenresPreferences.SHOW_GENRE_COVERS -> {
-                // Handled via preference listener in panel
-            }
-        }
     }
 
     companion object {
-        fun newInstance(): DialogGenreMenu {
+        private const val TAG = "YearMenu"
+
+        fun newInstance(): YearMenu {
             val args = Bundle()
-            val fragment = DialogGenreMenu()
+            val fragment = YearMenu()
             fragment.arguments = args
             return fragment
         }
 
-        fun FragmentManager.showGenreMenu(): DialogGenreMenu {
+        /**
+         * Shows a [YearMenu] bottom-sheet from the given [FragmentManager].
+         */
+        fun FragmentManager.showYearMenu(): YearMenu {
             val dialog = newInstance()
             dialog.show(this, TAG)
             return dialog
         }
-
-        private const val TAG = "DialogGenreMenu"
     }
 }
+

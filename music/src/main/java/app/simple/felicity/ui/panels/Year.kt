@@ -18,8 +18,8 @@ import app.simple.felicity.databinding.FragmentYearBinding
 import app.simple.felicity.databinding.HeaderYearBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.year.DialogYearSort.Companion.showYearSortDialog
+import app.simple.felicity.dialogs.year.YearMenu.Companion.showYearMenu
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.YearPreferences
 import app.simple.felicity.repository.models.YearGroup
@@ -30,6 +30,11 @@ import app.simple.felicity.viewmodels.panels.YearViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+/**
+ * Panel fragment displaying song groups organized by release year.
+ *
+ * @author Hamza417
+ */
 @AndroidEntryPoint
 class Year : PanelFragment() {
 
@@ -55,9 +60,9 @@ class Year : PanelFragment() {
         binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
 
-        gridLayoutManager = GridLayoutManager(requireContext(), YearPreferences.getGridSize())
+        val mode = YearPreferences.getGridSize()
+        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(YearPreferences.getGridType())
 
         setupClickListeners()
 
@@ -82,7 +87,7 @@ class Year : PanelFragment() {
 
     private fun setupClickListeners() {
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showYearSortDialog()
+            childFragmentManager.showYearMenu()
         }
 
         headerBinding.sortOrder.setOnClickListener {
@@ -95,45 +100,6 @@ class Year : PanelFragment() {
 
         headerBinding.search.setOnClickListener {
             openSearch()
-        }
-
-        headerBinding.gridSize.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(R.string.one, R.string.two, R.string.three,
-                                       R.string.four, R.string.five, R.string.six),
-                    menuIcons = listOf(R.drawable.ic_one_16, R.drawable.ic_two_16dp,
-                                       R.drawable.ic_three_16dp, R.drawable.ic_four_16dp,
-                                       R.drawable.ic_five_16dp, R.drawable.ic_six_16dp),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.one -> YearPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
-                            R.string.two -> YearPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
-                            R.string.three -> YearPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
-                            R.string.four -> YearPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
-                            R.string.five -> YearPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
-                            R.string.six -> YearPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
-                        }
-                    },
-                    onDismiss = {}
-            ).show()
-        }
-
-        headerBinding.gridType.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(R.string.list, R.string.grid),
-                    menuIcons = listOf(R.drawable.ic_list_16dp, R.drawable.ic_grid_16dp),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.list -> YearPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
-                            R.string.grid -> YearPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
-                        }
-                    },
-                    onDismiss = {}
-            ).show()
         }
     }
 
@@ -167,23 +133,14 @@ class Year : PanelFragment() {
                 sorts = listOf(CommonPreferencesConstants.BY_YEAR),
                 preference = YearPreferences.getSortStyle()
         )
-
-        headerBinding.gridSize.setGridSizeValue(YearPreferences.getGridSize())
-        headerBinding.gridType.setGridTypeValue(YearPreferences.getGridType())
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             YearPreferences.GRID_SIZE_PORTRAIT, YearPreferences.GRID_SIZE_LANDSCAPE -> {
-                headerBinding.gridSize.setGridSizeValue(YearPreferences.getGridSize())
-                binding.recyclerView.beginDelayedTransition()
-                gridLayoutManager?.spanCount = YearPreferences.getGridSize()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
-            }
-            YearPreferences.GRID_TYPE_PORTRAIT, YearPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(YearPreferences.getGridType())
-                headerBinding.gridType.setGridTypeValue(YearPreferences.getGridType())
+                val newMode = YearPreferences.getGridSize()
+                gridLayoutManager?.spanCount = newMode.spanCount
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }

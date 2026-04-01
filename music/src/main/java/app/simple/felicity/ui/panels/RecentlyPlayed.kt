@@ -12,14 +12,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
-import app.simple.felicity.adapters.ui.lists.AdapterSongsWithStat
-import app.simple.felicity.adapters.ui.lists.AdapterSongsWithStat.Companion.formatRelativeTime
+import app.simple.felicity.adapters.ui.lists.AdapterRecentlyPlayed
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
-import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentRecentlyPlayedBinding
 import app.simple.felicity.databinding.HeaderRecentlyPlayedBinding
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
+import app.simple.felicity.dialogs.recentlyplayed.RecentlyPlayedMenu.Companion.showRecentlyPlayedMenu
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.RecentlyPlayedPreferences
 import app.simple.felicity.repository.models.Audio
@@ -44,7 +42,7 @@ class RecentlyPlayed : PanelFragment() {
     private lateinit var binding: FragmentRecentlyPlayedBinding
     private lateinit var headerBinding: HeaderRecentlyPlayedBinding
 
-    private var adapterSongs: AdapterSongsWithStat? = null
+    private var adapterSongs: AdapterRecentlyPlayed? = null
     private var gridLayoutManager: GridLayoutManager? = null
 
     private val recentlyPlayedViewModel: RecentlyPlayedViewModel by viewModels({ requireActivity() })
@@ -63,9 +61,9 @@ class RecentlyPlayed : PanelFragment() {
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
 
-        gridLayoutManager = GridLayoutManager(requireContext(), RecentlyPlayedPreferences.getGridSize())
+        val mode = RecentlyPlayedPreferences.getGridSize()
+        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(RecentlyPlayedPreferences.getGridType())
 
         setupClickListeners()
 
@@ -89,9 +87,6 @@ class RecentlyPlayed : PanelFragment() {
     }
 
     private fun setupClickListeners() {
-        headerBinding.gridSize.setGridSizeValue(RecentlyPlayedPreferences.getGridSize())
-        headerBinding.gridType.setGridTypeValue(RecentlyPlayedPreferences.getGridType())
-
         headerBinding.shuffle.setOnClickListener {
             val songs = recentlyPlayedViewModel.songs.value
             if (songs.isNotEmpty()) shuffleMediaItems(songs.map { it.audio })
@@ -101,55 +96,14 @@ class RecentlyPlayed : PanelFragment() {
             openSearch()
         }
 
-        headerBinding.gridSize.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(R.string.one, R.string.two, R.string.three,
-                                       R.string.four, R.string.five, R.string.six),
-                    menuIcons = listOf(R.drawable.ic_one_16, R.drawable.ic_two_16dp,
-                                       R.drawable.ic_three_16dp, R.drawable.ic_four_16dp,
-                                       R.drawable.ic_five_16dp, R.drawable.ic_six_16dp),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.one -> RecentlyPlayedPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
-                            R.string.two -> RecentlyPlayedPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
-                            R.string.three -> RecentlyPlayedPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
-                            R.string.four -> RecentlyPlayedPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
-                            R.string.five -> RecentlyPlayedPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
-                            R.string.six -> RecentlyPlayedPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
-                        }
-                    },
-                    onDismiss = {}
-            ).show()
-        }
-
-        headerBinding.gridType.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(R.string.list, R.string.grid),
-                    menuIcons = listOf(R.drawable.ic_list_16dp, R.drawable.ic_grid_16dp),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.list -> RecentlyPlayedPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
-                            R.string.grid -> RecentlyPlayedPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
-                        }
-                    },
-                    onDismiss = {}
-            ).show()
+        headerBinding.menu.setOnClickListener {
+            childFragmentManager.showRecentlyPlayedMenu()
         }
     }
 
     private fun updateSongsList(songs: List<AudioWithStat>) {
         if (adapterSongs == null) {
-            adapterSongs = AdapterSongsWithStat(
-                    initial = songs,
-                    gridTypeProvider = { RecentlyPlayedPreferences.getGridType() },
-                    statTextProvider = { item ->
-                        formatRelativeTime(item.lastPlayed)
-                    }
-            )
+            adapterSongs = AdapterRecentlyPlayed(initial = songs)
             adapterSongs?.setHasStableIds(true)
             adapterSongs?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
@@ -171,22 +125,15 @@ class RecentlyPlayed : PanelFragment() {
         headerBinding.count.text = getString(R.string.x_songs, songs.size)
         headerBinding.hours.text = songs.sumOf { it.audio.duration }
             .toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
-        headerBinding.gridSize.setGridSizeValue(RecentlyPlayedPreferences.getGridSize())
-        headerBinding.gridType.setGridTypeValue(RecentlyPlayedPreferences.getGridType())
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             RecentlyPlayedPreferences.GRID_SIZE_PORTRAIT, RecentlyPlayedPreferences.GRID_SIZE_LANDSCAPE -> {
-                headerBinding.gridSize.setGridSizeValue(RecentlyPlayedPreferences.getGridSize())
-                binding.recyclerView.beginDelayedTransition()
-                gridLayoutManager?.spanCount = RecentlyPlayedPreferences.getGridSize()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
-            }
-            RecentlyPlayedPreferences.GRID_TYPE_PORTRAIT, RecentlyPlayedPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(RecentlyPlayedPreferences.getGridType())
-                headerBinding.gridType.setGridTypeValue(RecentlyPlayedPreferences.getGridType())
+                val newMode = RecentlyPlayedPreferences.getGridSize()
+                gridLayoutManager?.spanCount = newMode.spanCount
+                adapterSongs?.layoutMode = newMode
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }

@@ -89,7 +89,8 @@ class AdapterGenres(initial: List<Genre>) : FastScrollAdapter<VerticalListViewHo
 
     override fun getItemId(position: Int): Long = list[position].id
     override fun getItemCount(): Int = list.size
-    override fun getItemViewType(position: Int): Int = GenresPreferences.getGridType()
+    override fun getItemViewType(position: Int): Int =
+        if (GenresPreferences.getGridSize().isGrid) CommonPreferencesConstants.GRID_TYPE_GRID else CommonPreferencesConstants.GRID_TYPE_LIST
 
     inner class GridHolder(private val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
         fun bind(genre: Genre, isLightBind: Boolean) {

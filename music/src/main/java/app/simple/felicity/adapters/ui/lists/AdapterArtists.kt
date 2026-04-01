@@ -90,7 +90,8 @@ class AdapterArtists(initial: List<Artist>) : FastScrollAdapter<VerticalListView
     }
 
     override fun getItemCount(): Int = artists.size
-    override fun getItemViewType(position: Int): Int = ArtistPreferences.getGridType()
+    override fun getItemViewType(position: Int): Int =
+        if (ArtistPreferences.getGridSize().isGrid) CommonPreferencesConstants.GRID_TYPE_GRID else CommonPreferencesConstants.GRID_TYPE_LIST
 
     override fun onViewRecycled(holder: VerticalListViewHolder) {
         holder.itemView.clearAnimation()

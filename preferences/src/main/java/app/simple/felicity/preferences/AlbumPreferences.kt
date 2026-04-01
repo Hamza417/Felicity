@@ -4,16 +4,15 @@ import androidx.core.content.edit
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.constants.CommonPreferencesConstants.ASCENDING
 import app.simple.felicity.constants.CommonPreferencesConstants.BY_ALBUM_NAME
+import app.simple.felicity.constants.CommonPreferencesConstants.toLayoutMode
 import app.simple.felicity.core.singletons.AppOrientation
 import app.simple.felicity.manager.SharedPreferences
 
 object AlbumPreferences {
     const val ALBUM_SORT = "album_sort_"
     const val SORTING_STYLE = "_album_sorting_style__"
-    const val GRID_SIZE_PORTRAIT = "album_grid_size"
-    const val GRID_SIZE_LANDSCAPE = "album_grid_size_landscape"
-    const val GRID_TYPE_PORTRAIT = "album_grid_type_portrait"
-    const val GRID_TYPE_LANDSCAPE = "album_grid_type_landscape"
+    const val GRID_SIZE_PORTRAIT = "album_grid_size_portrait1"
+    const val GRID_SIZE_LANDSCAPE = "album_grid_size_landscape1"
 
     // ----------------------------------------------------------------------------------------- //
 
@@ -44,39 +43,29 @@ object AlbumPreferences {
         }
     }
 
-    fun getGridSize(): Int {
+    /**
+     * Returns the current [CommonPreferencesConstants.LayoutMode] for the given orientation.
+     */
+    fun getGridSize(): CommonPreferencesConstants.LayoutMode {
         return if (AppOrientation.isLandscape().not()) {
             SharedPreferences.getSharedPreferences()
-                .getInt(GRID_SIZE_PORTRAIT, CommonPreferencesConstants.GRID_SIZE_ONE)
+                .getString(GRID_SIZE_PORTRAIT, CommonPreferencesConstants.LayoutMode.LIST_ONE.name)!!.toLayoutMode()
         } else {
             SharedPreferences.getSharedPreferences()
-                .getInt(GRID_SIZE_LANDSCAPE, CommonPreferencesConstants.GRID_SIZE_TWO)
+                .getString(GRID_SIZE_LANDSCAPE, CommonPreferencesConstants.LayoutMode.GRID_TWO.name)!!.toLayoutMode()
         }
     }
 
-    fun setGridSize(size: Int) {
+    /**
+     * Persists the [CommonPreferencesConstants.LayoutMode] for the current orientation.
+     *
+     * @param mode the layout mode to save
+     */
+    fun setGridSize(mode: CommonPreferencesConstants.LayoutMode) {
         if (AppOrientation.isLandscape().not()) {
-            SharedPreferences.getSharedPreferences().edit { putInt(GRID_SIZE_PORTRAIT, size) }
+            SharedPreferences.getSharedPreferences().edit { putString(GRID_SIZE_PORTRAIT, mode.name) }
         } else {
-            SharedPreferences.getSharedPreferences().edit { putInt(GRID_SIZE_LANDSCAPE, size) }
-        }
-    }
-
-    fun getGridType(): Int {
-        return if (AppOrientation.isLandscape().not()) {
-            SharedPreferences.getSharedPreferences()
-                .getInt(GRID_TYPE_PORTRAIT, CommonPreferencesConstants.GRID_TYPE_LIST)
-        } else {
-            SharedPreferences.getSharedPreferences()
-                .getInt(GRID_TYPE_LANDSCAPE, CommonPreferencesConstants.GRID_TYPE_LIST)
-        }
-    }
-
-    fun setGridType(type: Int) {
-        if (AppOrientation.isLandscape().not()) {
-            SharedPreferences.getSharedPreferences().edit { putInt(GRID_TYPE_PORTRAIT, type) }
-        } else {
-            SharedPreferences.getSharedPreferences().edit { putInt(GRID_TYPE_LANDSCAPE, type) }
+            SharedPreferences.getSharedPreferences().edit { putString(GRID_SIZE_LANDSCAPE, mode.name) }
         }
     }
 }

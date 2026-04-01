@@ -89,7 +89,8 @@ class AdapterFolders(initial: List<Folder>) : FastScrollAdapter<VerticalListView
 
     override fun getItemId(position: Int): Long = list[position].id
     override fun getItemCount(): Int = list.size
-    override fun getItemViewType(position: Int): Int = FoldersPreferences.getGridType()
+    override fun getItemViewType(position: Int): Int =
+        if (FoldersPreferences.getGridSize().isGrid) CommonPreferencesConstants.GRID_TYPE_GRID else CommonPreferencesConstants.GRID_TYPE_LIST
 
     inner class GridHolder(private val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
         fun bind(folder: Folder, isLightBind: Boolean) {

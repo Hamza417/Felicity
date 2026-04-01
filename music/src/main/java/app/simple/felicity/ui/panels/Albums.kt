@@ -18,7 +18,7 @@ import app.simple.felicity.databinding.FragmentAlbumsBinding
 import app.simple.felicity.databinding.HeaderAlbumsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
+import app.simple.felicity.dialogs.albums.AlbumsMenu.Companion.showAlbumsMenu
 import app.simple.felicity.dialogs.albums.AlbumsSort.Companion.showAlbumsSort
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.AlbumPreferences
@@ -29,6 +29,11 @@ import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.viewmodels.panels.AlbumsViewModel
 import kotlinx.coroutines.launch
 
+/**
+ * Panel fragment displaying the user's albums with sort, grid layout, and search support.
+ *
+ * @author Hamza417
+ */
 class Albums : PanelFragment() {
 
     private lateinit var binding: FragmentAlbumsBinding
@@ -54,26 +59,21 @@ class Albums : PanelFragment() {
         binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
 
-        // Initialize layout manager once
-        gridLayoutManager = GridLayoutManager(requireContext(), AlbumPreferences.getGridSize())
+        val mode = AlbumPreferences.getGridSize()
+        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(AlbumPreferences.getGridType())
 
         setupClickListeners()
 
-        // Re-attach existing adapter immediately so the RecyclerView is never blank on return
         adapterAlbums?.let { binding.recyclerView.adapter = it }
 
-        // Observe StateFlow with proper lifecycle handling for immediate updates
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 albumsViewModel.albums
                     .collect { albums ->
-                        // Skip empty initial state, but allow empty updates after adapter exists
                         if (albums.isNotEmpty()) {
                             updateAlbumsList(albums)
                         } else if (adapterAlbums != null) {
-                            // Allow empty list update if adapter already exists (e.g., after deletion)
                             updateAlbumsList(albums)
                         }
                     }
@@ -100,60 +100,8 @@ class Albums : PanelFragment() {
             openSearch()
         }
 
-        headerBinding.gridSize.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(R.string.one,
-                                       R.string.two,
-                                       R.string.three,
-                                       R.string.four,
-                                       R.string.five,
-                                       R.string.six),
-                    menuIcons = listOf(R.drawable.ic_one_16,
-                                       R.drawable.ic_two_16dp,
-                                       R.drawable.ic_three_16dp,
-                                       R.drawable.ic_four_16dp,
-                                       R.drawable.ic_five_16dp,
-                                       R.drawable.ic_six_16dp),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.one -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
-                            R.string.two -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
-                            R.string.three -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
-                            R.string.four -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
-                            R.string.five -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
-                            R.string.six -> AlbumPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
-                        }
-                    },
-                    onDismiss = {
-
-                    }
-            ).show()
-        }
-
-        headerBinding.gridType.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(
-                            R.string.list,
-                            R.string.grid
-                    ),
-                    menuIcons = listOf(
-                            R.drawable.ic_list_16dp,
-                            R.drawable.ic_grid_16dp,
-                    ),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.list -> AlbumPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
-                            R.string.grid -> AlbumPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
-                        }
-                    },
-                    onDismiss = {
-
-                    }
-            ).show()
+        headerBinding.menu.setOnClickListener {
+            childFragmentManager.showAlbumsMenu()
         }
     }
 
@@ -191,23 +139,14 @@ class Albums : PanelFragment() {
                 ),
                 preference = AlbumPreferences.getAlbumSort()
         )
-
-        headerBinding.gridSize.setGridSizeValue(AlbumPreferences.getGridSize())
-        headerBinding.gridType.setGridTypeValue(AlbumPreferences.getGridType())
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             AlbumPreferences.GRID_SIZE_PORTRAIT, AlbumPreferences.GRID_SIZE_LANDSCAPE -> {
-                headerBinding.gridSize.setGridSizeValue(AlbumPreferences.getGridSize())
-                binding.recyclerView.beginDelayedTransition()
-                gridLayoutManager?.spanCount = AlbumPreferences.getGridSize()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
-            }
-            AlbumPreferences.GRID_TYPE_PORTRAIT, AlbumPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(AlbumPreferences.getGridType())
-                headerBinding.gridType.setGridTypeValue(AlbumPreferences.getGridType())
+                val newMode = AlbumPreferences.getGridSize()
+                gridLayoutManager?.spanCount = newMode.spanCount
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
@@ -220,18 +159,10 @@ class Albums : PanelFragment() {
                 val firstAlphabetToIndex = linkedMapOf<String, Int>()
                 albums.forEachIndexed { index, album ->
                     val firstChar = album.name?.firstOrNull()?.uppercaseChar()
-                    val key = if (firstChar != null && firstChar.isLetter()) {
-                        firstChar.toString()
-                    } else {
-                        "#"
-                    }
-                    if (!firstAlphabetToIndex.containsKey(key)) {
-                        firstAlphabetToIndex[key] = index
-                    }
+                    val key = if (firstChar != null && firstChar.isLetter()) firstChar.toString() else "#"
+                    if (!firstAlphabetToIndex.containsKey(key)) firstAlphabetToIndex[key] = index
                 }
-                return firstAlphabetToIndex.map { (char, index) ->
-                    SectionedFastScroller.Position(char, index)
-                }
+                return firstAlphabetToIndex.map { (char, index) -> SectionedFastScroller.Position(char, index) }
             }
             CommonPreferencesConstants.BY_ARTIST -> {
                 val firstAlphabetToIndex = linkedMapOf<Char, Int>()
@@ -242,9 +173,7 @@ class Albums : PanelFragment() {
                         }
                     }
                 }
-                return firstAlphabetToIndex.map { (char, index) ->
-                    SectionedFastScroller.Position(char.toString(), index)
-                }
+                return firstAlphabetToIndex.map { (char, index) -> SectionedFastScroller.Position(char.toString(), index) }
             }
             CommonPreferencesConstants.BY_FIRST_YEAR, CommonPreferencesConstants.BY_LAST_YEAR -> {
                 val yearToIndex = linkedMapOf<String, Int>()
@@ -254,14 +183,9 @@ class Albums : PanelFragment() {
                     } else {
                         album.lastYear
                     }.toString()
-
-                    if (!yearToIndex.containsKey(year)) {
-                        yearToIndex[year] = index
-                    }
+                    if (!yearToIndex.containsKey(year)) yearToIndex[year] = index
                 }
-                return yearToIndex.map { (year, index) ->
-                    SectionedFastScroller.Position(year, index)
-                }
+                return yearToIndex.map { (year, index) -> SectionedFastScroller.Position(year, index) }
             }
         }
 

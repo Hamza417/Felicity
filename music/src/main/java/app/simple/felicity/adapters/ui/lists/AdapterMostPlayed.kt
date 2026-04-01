@@ -1,7 +1,6 @@
 package app.simple.felicity.adapters.ui.lists
 
 import android.annotation.SuppressLint
-import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.AsyncDifferConfig
@@ -16,7 +15,7 @@ import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
-import app.simple.felicity.preferences.AlbumPreferences
+import app.simple.felicity.preferences.MostPlayedPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioWithStat
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
@@ -24,42 +23,25 @@ import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import com.bumptech.glide.Glide
 
 /**
- * Recycler adapter for song lists that append a per-item stat value to the album line,
- * displayed as {@code "Album Name • stat text"}. Used by the Recently Played panel
- * (relative last-played time) and the Most Played panel (play count).
- *
- * <p>Uses the same {@code adapter_style_list} and {@code adapter_style_grid} layouts that
- * {@link AdapterSongs} uses, so the visual style is identical across all song panels.
- * The caller supplies a [gridTypeProvider] so each panel can use its own preference key,
- * and a [statTextProvider] that returns just the stat portion of the third line (e.g.
- * {@code "2 minutes ago"} or {@code "5 times"}).</p>
+ * Recycler adapter for the Most Played panel. Displays each song's play count on the
+ * tertiary detail line as {@code "Album \u2022 N times"}. Uses [MostPlayedPreferences.getGridSize]
+ * so the Most Played layout mode is fully independent from other song panels.
  *
  * @author Hamza417
  */
-class AdapterSongsWithStat(
-        initial: List<AudioWithStat>,
-        private val statTextProvider: (AudioWithStat) -> CharSequence
-) : FastScrollAdapter<VerticalListViewHolder>() {
+class AdapterMostPlayed(initial: List<AudioWithStat>) : FastScrollAdapter<VerticalListViewHolder>() {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
 
     private val listUpdateCallback = object : ListUpdateCallback {
         @SuppressLint("NotifyDataSetChanged")
         override fun onInserted(position: Int, count: Int) {
-            if (count > 100) {
-                notifyDataSetChanged()
-            } else {
-                notifyItemRangeInserted(position, count)
-            }
+            if (count > 100) notifyDataSetChanged() else notifyItemRangeInserted(position, count)
         }
 
         @SuppressLint("NotifyDataSetChanged")
         override fun onRemoved(position: Int, count: Int) {
-            if (count > 100) {
-                notifyDataSetChanged()
-            } else {
-                notifyItemRangeRemoved(position, count)
-            }
+            if (count > 100) notifyDataSetChanged() else notifyItemRangeRemoved(position, count)
         }
 
         override fun onMoved(fromPosition: Int, toPosition: Int) {
@@ -80,7 +62,6 @@ class AdapterSongsWithStat(
                     oldItem.audio.artist == newItem.audio.artist &&
                     oldItem.audio.album == newItem.audio.album &&
                     oldItem.audio.duration == newItem.audio.duration &&
-                    oldItem.lastPlayed == newItem.lastPlayed &&
                     oldItem.playCount == newItem.playCount
         }
     }
@@ -95,6 +76,9 @@ class AdapterSongsWithStat(
     /** Extracted [Audio] list used when passing items to media or callback consumers. */
     private val audioList: List<Audio> get() = songs.map { it.audio }
 
+    /** Current layout mode; update this when the preference changes to trigger a view-type refresh. */
+    var layoutMode: CommonPreferencesConstants.LayoutMode = MostPlayedPreferences.getGridSize()
+
     init {
         setHasStableIds(true)
         differ.submitList(initial.toList())
@@ -102,20 +86,15 @@ class AdapterSongsWithStat(
 
     override fun getItemId(position: Int): Long = songs[position].audio.id
 
+    override fun getItemViewType(position: Int): Int =
+        if (layoutMode.isGrid) CommonPreferencesConstants.GRID_TYPE_GRID else CommonPreferencesConstants.GRID_TYPE_LIST
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
-            CommonPreferencesConstants.GRID_TYPE_LIST -> {
-                ListHolder(AdapterStyleListBinding.inflate(
-                        LayoutInflater.from(parent.context), parent, false))
-            }
-            CommonPreferencesConstants.GRID_TYPE_GRID -> {
-                GridHolder(AdapterStyleGridBinding.inflate(
-                        LayoutInflater.from(parent.context), parent, false))
-            }
-            else -> {
-                ListHolder(AdapterStyleListBinding.inflate(
-                        LayoutInflater.from(parent.context), parent, false))
-            }
+            CommonPreferencesConstants.GRID_TYPE_GRID ->
+                GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            else ->
+                ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
         }
     }
 
@@ -128,14 +107,6 @@ class AdapterSongsWithStat(
     }
 
     override fun getItemCount(): Int = songs.size
-
-    override fun getItemViewType(position: Int): Int {
-        return if (AlbumPreferences.getGridSize().isGrid) {
-            CommonPreferencesConstants.GRID_TYPE_GRID
-        } else {
-            CommonPreferencesConstants.GRID_TYPE_LIST
-        }
-    }
 
     override fun onViewRecycled(holder: VerticalListViewHolder) {
         holder.itemView.clearAnimation()
@@ -157,18 +128,18 @@ class AdapterSongsWithStat(
     }
 
     /**
-     * Builds the combined album + stat string for the tertiary detail line.
-     * If the album name is absent the stat text is shown on its own.
+     * Builds the combined album + play count string for the tertiary detail line.
+     * If the album name is absent the count text is shown on its own.
+     *
+     * @param item the [AudioWithStat] whose tertiary text is being built
      */
-    private fun buildTertiaryText(item: AudioWithStat): CharSequence {
+    private fun buildTertiaryText(item: AudioWithStat): String {
         val album = item.audio.album?.takeIf { it.isNotEmpty() }
-        val stat = statTextProvider(item)
+        val stat = "${item.playCount} times"
         return if (album != null) "$album \u2022 $stat" else stat
     }
 
-    inner class ListHolder(val binding: AdapterStyleListBinding) :
-            VerticalListViewHolder(binding.root) {
-
+    inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
         fun bind(item: AudioWithStat, isLightBind: Boolean) {
             val audio = item.audio
             binding.title.setTextOrUnknown(audio.title)
@@ -188,9 +159,7 @@ class AdapterSongsWithStat(
         }
     }
 
-    inner class GridHolder(val binding: AdapterStyleGridBinding) :
-            VerticalListViewHolder(binding.root) {
-
+    inner class GridHolder(val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
         fun bind(item: AudioWithStat, isLightBind: Boolean) {
             val audio = item.audio
             binding.title.setTextOrUnknown(audio.title)
@@ -208,19 +177,5 @@ class AdapterSongsWithStat(
             }
         }
     }
-
-    companion object {
-        /**
-         * Returns a human-readable relative time string for [timestamp], such as
-         * "2 minutes ago", "Yesterday", "3 weeks ago", or "Last month".
-         */
-        fun formatRelativeTime(timestamp: Long): CharSequence {
-            return DateUtils.getRelativeTimeSpanString(
-                    timestamp,
-                    System.currentTimeMillis(),
-                    DateUtils.MINUTE_IN_MILLIS,
-                    DateUtils.FORMAT_ABBREV_RELATIVE
-            )
-        }
-    }
 }
+

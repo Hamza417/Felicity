@@ -90,7 +90,14 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
         }
     }
 
-    override fun getItemViewType(position: Int): Int = AlbumPreferences.getGridType()
+    override fun getItemViewType(position: Int): Int {
+        return if (AlbumPreferences.getGridSize().isGrid) {
+            CommonPreferencesConstants.GRID_TYPE_GRID
+        } else {
+            CommonPreferencesConstants.GRID_TYPE_LIST
+        }
+    }
+
     override fun getItemCount(): Int = albums.size
 
     override fun onViewRecycled(holder: VerticalListViewHolder) {

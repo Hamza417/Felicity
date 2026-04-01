@@ -19,8 +19,8 @@ import app.simple.felicity.databinding.FragmentFoldersBinding
 import app.simple.felicity.databinding.HeaderFoldersBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.folders.DialogFolderSort.Companion.showFoldersSortDialog
+import app.simple.felicity.dialogs.folders.FoldersMenu.Companion.showFoldersMenu
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.FoldersPreferences
 import app.simple.felicity.repository.models.Folder
@@ -31,6 +31,11 @@ import app.simple.felicity.viewmodels.panels.FoldersViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+/**
+ * Panel fragment displaying the user's music folders with sort and grid layout support.
+ *
+ * @author Hamza417
+ */
 @AndroidEntryPoint
 class Folders : PanelFragment() {
 
@@ -58,9 +63,9 @@ class Folders : PanelFragment() {
         binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
 
-        gridLayoutManager = GridLayoutManager(requireContext(), FoldersPreferences.getGridSize())
+        val mode = FoldersPreferences.getGridSize()
+        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(FoldersPreferences.getGridType())
 
         setupClickListeners()
 
@@ -87,7 +92,7 @@ class Folders : PanelFragment() {
 
     private fun setupClickListeners() {
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showFoldersSortDialog()
+            childFragmentManager.showFoldersMenu()
         }
 
         headerBinding.sortOrder.setOnClickListener {
@@ -100,58 +105,6 @@ class Folders : PanelFragment() {
 
         headerBinding.search.setOnClickListener {
             openSearch()
-        }
-
-        headerBinding.gridSize.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(R.string.one,
-                                       R.string.two,
-                                       R.string.three,
-                                       R.string.four,
-                                       R.string.five,
-                                       R.string.six),
-                    menuIcons = listOf(R.drawable.ic_one_16,
-                                       R.drawable.ic_two_16dp,
-                                       R.drawable.ic_three_16dp,
-                                       R.drawable.ic_four_16dp,
-                                       R.drawable.ic_five_16dp,
-                                       R.drawable.ic_six_16dp),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.one -> FoldersPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
-                            R.string.two -> FoldersPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
-                            R.string.three -> FoldersPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
-                            R.string.four -> FoldersPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
-                            R.string.five -> FoldersPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
-                            R.string.six -> FoldersPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
-                        }
-                    },
-                    onDismiss = {}
-            ).show()
-        }
-
-        headerBinding.gridType.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(
-                            R.string.list,
-                            R.string.grid
-                    ),
-                    menuIcons = listOf(
-                            R.drawable.ic_list_16dp,
-                            R.drawable.ic_grid_16dp
-                    ),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.list -> FoldersPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
-                            R.string.grid -> FoldersPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
-                        }
-                    },
-                    onDismiss = {}
-            ).show()
         }
     }
 
@@ -195,23 +148,14 @@ class Folders : PanelFragment() {
                 ),
                 preference = FoldersPreferences.getSortStyle()
         )
-
-        headerBinding.gridSize.setGridSizeValue(FoldersPreferences.getGridSize())
-        headerBinding.gridType.setGridTypeValue(FoldersPreferences.getGridType())
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             FoldersPreferences.GRID_SIZE_PORTRAIT, FoldersPreferences.GRID_SIZE_LANDSCAPE -> {
-                headerBinding.gridSize.setGridSizeValue(FoldersPreferences.getGridSize())
-                binding.recyclerView.beginDelayedTransition()
-                gridLayoutManager?.spanCount = FoldersPreferences.getGridSize()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
-            }
-            FoldersPreferences.GRID_TYPE_PORTRAIT, FoldersPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(FoldersPreferences.getGridType())
-                headerBinding.gridType.setGridTypeValue(FoldersPreferences.getGridType())
+                val newMode = FoldersPreferences.getGridSize()
+                gridLayoutManager?.spanCount = newMode.spanCount
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
@@ -224,35 +168,19 @@ class Folders : PanelFragment() {
                 val firstAlphabetToIndex = linkedMapOf<String, Int>()
                 folders.forEachIndexed { index, folder ->
                     val firstChar = folder.name.firstOrNull()?.uppercaseChar()
-                    val key = if (firstChar != null && firstChar.isLetter()) {
-                        firstChar.toString()
-                    } else {
-                        "#"
-                    }
-                    if (!firstAlphabetToIndex.containsKey(key)) {
-                        firstAlphabetToIndex[key] = index
-                    }
+                    val key = if (firstChar != null && firstChar.isLetter()) firstChar.toString() else "#"
+                    if (!firstAlphabetToIndex.containsKey(key)) firstAlphabetToIndex[key] = index
                 }
-                firstAlphabetToIndex.map { (char, index) ->
-                    SectionedFastScroller.Position(char, index)
-                }
+                firstAlphabetToIndex.map { (char, index) -> SectionedFastScroller.Position(char, index) }
             }
             CommonPreferencesConstants.BY_PATH -> {
                 val firstAlphabetToIndex = linkedMapOf<String, Int>()
                 folders.forEachIndexed { index, folder ->
                     val firstChar = folder.path.firstOrNull()?.uppercaseChar()
-                    val key = if (firstChar != null && firstChar.isLetter()) {
-                        firstChar.toString()
-                    } else {
-                        "/"
-                    }
-                    if (!firstAlphabetToIndex.containsKey(key)) {
-                        firstAlphabetToIndex[key] = index
-                    }
+                    val key = if (firstChar != null && firstChar.isLetter()) firstChar.toString() else "/"
+                    if (!firstAlphabetToIndex.containsKey(key)) firstAlphabetToIndex[key] = index
                 }
-                firstAlphabetToIndex.map { (char, index) ->
-                    SectionedFastScroller.Position(char, index)
-                }
+                firstAlphabetToIndex.map { (char, index) -> SectionedFastScroller.Position(char, index) }
             }
             else -> emptyList()
         }
@@ -269,4 +197,3 @@ class Folders : PanelFragment() {
         }
     }
 }
-

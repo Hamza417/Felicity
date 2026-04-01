@@ -18,7 +18,6 @@ import app.simple.felicity.databinding.FragmentGenresBinding
 import app.simple.felicity.databinding.HeaderGenresBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.genres.DialogGenreMenu.Companion.showGenreMenu
 import app.simple.felicity.dialogs.genres.DialogGenreSort.Companion.showGenresSortDialog
 import app.simple.felicity.extensions.fragments.PanelFragment
@@ -31,6 +30,11 @@ import app.simple.felicity.viewmodels.panels.GenresViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+/**
+ * Panel fragment displaying the user's genres with sort, grid layout, and search support.
+ *
+ * @author Hamza417
+ */
 @AndroidEntryPoint
 class Genres : PanelFragment() {
 
@@ -56,12 +60,10 @@ class Genres : PanelFragment() {
         binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
 
-        // Initialize layout manager once
-        gridLayoutManager = GridLayoutManager(requireContext(), GenresPreferences.getGridSize())
+        val mode = GenresPreferences.getGridSize()
+        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(GenresPreferences.getGridType())
 
-        // Re-attach existing adapter immediately so the RecyclerView is never blank on return
         adapterGenres?.let { binding.recyclerView.adapter = it }
 
         setupClickListeners()
@@ -80,8 +82,6 @@ class Genres : PanelFragment() {
     }
 
     override fun onDestroyView() {
-        // Do NOT null out adapterGenres — keep it alive across view destruction
-        // so returning from a child fragment re-attaches it instantly without a flash.
         gridLayoutManager = null
         super.onDestroyView()
     }
@@ -101,62 +101,6 @@ class Genres : PanelFragment() {
 
         headerBinding.search.setOnClickListener {
             openSearch()
-        }
-
-        headerBinding.gridSize.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(R.string.one,
-                                       R.string.two,
-                                       R.string.three,
-                                       R.string.four,
-                                       R.string.five,
-                                       R.string.six),
-                    menuIcons = listOf(R.drawable.ic_one_16,
-                                       R.drawable.ic_two_16dp,
-                                       R.drawable.ic_three_16dp,
-                                       R.drawable.ic_four_16dp,
-                                       R.drawable.ic_five_16dp,
-                                       R.drawable.ic_six_16dp),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.one -> GenresPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
-                            R.string.two -> GenresPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
-                            R.string.three -> GenresPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
-                            R.string.four -> GenresPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
-                            R.string.five -> GenresPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
-                            R.string.six -> GenresPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
-                        }
-                    },
-                    onDismiss = {
-
-                    }
-            ).show()
-        }
-
-        headerBinding.gridType.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(
-                            R.string.list,
-                            R.string.grid
-                    ),
-                    menuIcons = listOf(
-                            R.drawable.ic_list_16dp,
-                            R.drawable.ic_grid_16dp
-                    ),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.list -> GenresPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
-                            R.string.grid -> GenresPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
-                        }
-                    },
-                    onDismiss = {
-
-                    }
-            ).show()
         }
     }
 
@@ -189,22 +133,14 @@ class Genres : PanelFragment() {
 
         headerBinding.sortStyle.setCurrentSortStyle()
         headerBinding.sortOrder.setCurrentSortOrder()
-        headerBinding.gridSize.setGridSizeValue(GenresPreferences.getGridSize())
-        headerBinding.gridType.setGridTypeValue(GenresPreferences.getGridType())
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             GenresPreferences.GRID_SIZE_PORTRAIT, GenresPreferences.GRID_SIZE_LANDSCAPE -> {
-                headerBinding.gridSize.setGridSizeValue(GenresPreferences.getGridSize())
-                binding.recyclerView.beginDelayedTransition()
-                gridLayoutManager?.spanCount = GenresPreferences.getGridSize()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
-            }
-            GenresPreferences.GRID_TYPE_PORTRAIT, GenresPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(GenresPreferences.getGridType())
-                headerBinding.gridType.setGridTypeValue(GenresPreferences.getGridType())
+                val newMode = GenresPreferences.getGridSize()
+                gridLayoutManager?.spanCount = newMode.spanCount
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
@@ -220,22 +156,12 @@ class Genres : PanelFragment() {
                 val firstAlphabetToIndex = linkedMapOf<String, Int>()
                 genres.forEachIndexed { index, genre ->
                     val firstChar = genre.name?.firstOrNull()?.uppercaseChar()
-                    val key = if (firstChar != null && firstChar.isLetter()) {
-                        firstChar.toString()
-                    } else {
-                        "#"
-                    }
-                    if (!firstAlphabetToIndex.containsKey(key)) {
-                        firstAlphabetToIndex[key] = index
-                    }
+                    val key = if (firstChar != null && firstChar.isLetter()) firstChar.toString() else "#"
+                    if (!firstAlphabetToIndex.containsKey(key)) firstAlphabetToIndex[key] = index
                 }
-                firstAlphabetToIndex.map { (char, index) ->
-                    SectionedFastScroller.Position(char, index)
-                }
+                firstAlphabetToIndex.map { (char, index) -> SectionedFastScroller.Position(char, index) }
             }
-            else -> {
-                listOf()
-            }
+            else -> listOf()
         }
     }
 
