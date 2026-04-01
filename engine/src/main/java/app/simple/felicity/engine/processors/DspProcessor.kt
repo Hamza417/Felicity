@@ -9,9 +9,9 @@ import kotlin.math.abs
  * Owns a single native [DspContext] that applies a complete, zero-allocation DSP chain
  * to a caller-provided [FloatArray] of interleaved PCM samples in a single JNI call:
  *
- *   1. 10-band peaking EQ (ISO standard: 31 Hz through 16 kHz, RBJ biquad)
- *   2. Bass low-shelf  (250 Hz, S = 1)
- *   3. Treble high-shelf (4000 Hz, S = 1)
+ *   1. 10-band peaking EQ (ISO standard: 31 Hz through 16 kHz, RBJ biquad) — gated by [setEqEnabled]
+ *   2. Bass low-shelf  (250 Hz, S = 1) — always active, independent of the EQ toggle
+ *   3. Treble high-shelf (4000 Hz, S = 1) — always active, independent of the EQ toggle
  *   4. Stereo widening via M/S matrix
  *   5. Constant-power pan / balance
  *   6. Tape-style soft saturation (algebraic sigmoid, no tanh)
@@ -34,7 +34,7 @@ import kotlin.math.abs
  * @author Hamza417
  */
 class DspProcessor(
-        private val visualizerProcessor: VisualizerProcessor,
+        visualizerProcessor: VisualizerProcessor,
         sampleRate: Int,
         channelCount: Int
 ) {
@@ -87,16 +87,31 @@ class DspProcessor(
     }
 
     /**
-     * Enables or disables the entire EQ stage (10-band, bass, treble).
+     * Enables or disables the 10-band peaking EQ only.
      *
-     * When disabled the EQ biquad chain is completely skipped in [processAudio],
-     * reducing CPU load to only the subsequent stereo-widening, pan, and saturation stages.
+     * The bass and treble shelf filters are NOT affected by this toggle — they remain
+     * active at all times as long as their gain deviates from flat. Only the 10-band
+     * peaking EQ is bypassed when [enabled] is false, reducing CPU load for that stage.
      *
-     * @param enabled True to activate the EQ; false for full EQ bypass.
+     * @param enabled True to activate the 10-band EQ; false to bypass only the EQ bands.
      */
     fun setEqEnabled(enabled: Boolean) {
         if (nativeHandle == 0L) return
         nativeDspSetEqEnabled(nativeHandle, enabled)
+    }
+
+    /**
+     * Updates the bass and treble shelf gains independently of the 10-band EQ.
+     *
+     * These shelves are always active regardless of the value passed to [setEqEnabled].
+     * Call this whenever the bass or treble knob value changes.
+     *
+     * @param bassDb   Bass low-shelf gain in dB; clamped to [-12, +12].
+     * @param trebleDb Treble high-shelf gain in dB; clamped to [-12, +12].
+     */
+    fun setBassAndTreble(bassDb: Float, trebleDb: Float) {
+        if (nativeHandle == 0L) return
+        nativeDspSetBassAndTreble(nativeHandle, bassDb, trebleDb)
     }
 
     /**
@@ -187,11 +202,12 @@ class DspProcessor(
     }
 
     /**
-     * Convenience helper that resets the EQ to flat, stereo width to natural,
-     * pan to center, and saturation to off in one call.
+     * Convenience helper that resets the EQ to flat, bass/treble to 0 dB, stereo width
+     * to natural, pan to center, and saturation to off in one call.
      */
     fun resetToDefaults() {
-        setEqBands(FloatArray(10) { 0f }, 0f, 0f)
+        setEqBands(FloatArray(10), 0f, 0f)
+        setBassAndTreble(0f, 0f)
         setEqEnabled(true)
         setStereoWidth(1f)
         setBalance(0f)
@@ -253,12 +269,22 @@ class DspProcessor(
     )
 
     /**
-     * Enables or disables the EQ/bass/treble processing stage.
+     * Enables or disables the 10-band peaking EQ stage only.
      *
      * @param handle  Opaque pointer from [nativeDspCreate].
-     * @param enabled True to activate; false to bypass.
+     * @param enabled True to activate; false to bypass only the EQ bands.
      */
     private external fun nativeDspSetEqEnabled(handle: Long, enabled: Boolean)
+
+    /**
+     * Updates the bass and treble shelf gains, recomputing their biquad coefficients.
+     * Bass and treble are always active and independent of the EQ enable flag.
+     *
+     * @param handle   Opaque pointer from [nativeDspCreate].
+     * @param bassDb   Bass low-shelf gain in dB.
+     * @param trebleDb Treble high-shelf gain in dB.
+     */
+    private external fun nativeDspSetBassAndTreble(handle: Long, bassDb: Float, trebleDb: Float)
 
     /**
      * Stores the stereo width and recomputes the M/S direct and cross gain coefficients.

@@ -3,10 +3,13 @@
  * @brief JNI bridge and implementation for the Felicity unified native DSP engine.
  *
  * Exposes a single hot-path JNI function, [nativeDspProcessAudio], that applies the full
- * DSP chain — 10-band EQ, bass/treble shelves, stereo widening, pan, and tape saturation —
- * to a caller-provided [jfloatArray] entirely in-place. Zero heap allocations occur on the
- * audio hot path; the input array is pinned with [GetFloatArrayElements] and committed back
- * with mode 0 via [ReleaseFloatArrayElements].
+ * DSP chain — 10-band EQ (gated by the EQ enable switch), bass/treble shelves (always active),
+ * stereo widening, pan, and tape saturation — to a caller-provided [jfloatArray] entirely
+ * in-place. Zero heap allocations occur on the audio hot path; the input array is pinned with
+ * [GetFloatArrayElements] and committed back with mode 0 via [ReleaseFloatArrayElements].
+ *
+ * The bass and treble shelf stages are independent from the EQ enable toggle and are always
+ * processed as long as their gain deviates from flat by more than [kDspFlatThresholdDb].
  *
  * ARM NEON SIMD acceleration is used throughout:
  *   - Biquad EQ: [float32x2_t] processes the left and right channels simultaneously for
@@ -705,15 +708,16 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetEqBands(
 }
 
 /**
- * Enables or disables the entire EQ stage (10-band + bass + treble).
+ * Enables or disables the 10-band peaking EQ stage only.
  *
- * When disabled the EQ, bass, and treble biquad stages are completely skipped in
- * [nativeDspProcessAudio], saving significant CPU time on the hot path.
+ * The bass low-shelf and treble high-shelf filters are NOT affected by this toggle —
+ * they continue to process audio independently whenever their gain deviates from flat.
+ * Disabling the EQ skips only the 10 peaking bands, saving CPU time on the hot path.
  *
  * @param env     JNI environment pointer.
  * @param thiz    Calling Java/Kotlin object (unused).
  * @param handle  Opaque pointer returned by [nativeDspCreate].
- * @param enabled True to activate the EQ stage; false for full bypass.
+ * @param enabled True to activate the 10-band EQ stage; false to bypass only the EQ bands.
  */
 JNIEXPORT void JNICALL
 Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetEqEnabled(
@@ -723,6 +727,35 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetEqEnabled(
     auto *ctx = reinterpret_cast<DspContext *>(handle);
     if (!ctx) return;
     ctx->eqEnabled = (enabled == JNI_TRUE);
+}
+
+/**
+ * Updates the bass and treble shelf gains independently from the 10-band EQ.
+ *
+ * This function recomputes the low-shelf and high-shelf biquad coefficients without
+ * touching the 10-band peaking EQ coefficients. Call this whenever the bass or treble
+ * knob changes so that these shelves remain active regardless of the EQ enable toggle.
+ *
+ * @param env      JNI environment pointer.
+ * @param thiz     Calling Java/Kotlin object (unused).
+ * @param handle   Opaque pointer returned by [nativeDspCreate].
+ * @param bassDb   Bass low-shelf gain in dB; range [-12, +12].
+ * @param trebleDb Treble high-shelf gain in dB; range [-12, +12].
+ */
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetBassAndTreble(
+        JNIEnv * /*env*/, jobject /*thiz*/,
+        jlong handle, jfloat bassDb, jfloat trebleDb) {
+
+    auto *ctx = reinterpret_cast<DspContext *>(handle);
+    if (!ctx) return;
+
+    ctx->bassCoeffs = computeLowShelf(kDspBassShelfHz, static_cast<float>(bassDb), ctx->sampleRate);
+    ctx->bassFlat = fabsf(static_cast<float>(bassDb)) < kDspFlatThresholdDb;
+
+    ctx->trebleCoeffs = computeHighShelf(kDspTrebleShelfHz, static_cast<float>(trebleDb),
+                                         ctx->sampleRate);
+    ctx->trebleFlat = fabsf(static_cast<float>(trebleDb)) < kDspFlatThresholdDb;
 }
 
 /**
@@ -807,10 +840,12 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetSaturation(
  * The unified, zero-allocation audio processing hot path.
  *
  * Pins the JVM array with [GetFloatArrayElements], applies the full DSP chain in
- * the order [EQ] -> [bass/treble shelves] -> [stereo widening] -> [balance] ->
- * [tape saturation], then feeds the processed audio into the visualizer ring buffer.
- * The modified array is committed back to the JVM heap via [ReleaseFloatArrayElements]
- * with mode 0. No heap allocations occur inside this function.
+ * the order [10-band EQ (if enabled)] -> [bass shelf] -> [treble shelf] ->
+ * [stereo widening] -> [balance] -> [tape saturation], then feeds the processed
+ * audio into the visualizer ring buffer. Bass and treble are always applied
+ * regardless of the EQ enable state. The modified array is committed back to the
+ * JVM heap via [ReleaseFloatArrayElements] with mode 0. No heap allocations occur
+ * inside this function.
  *
  * @param env       JNI environment pointer.
  * @param thiz      Calling Java/Kotlin object (unused).
@@ -850,53 +885,55 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspProcessAudio(
     const float satComp = ctx->satCompensation;
 
     /**
-     * Stage 1: 10-Band EQ + Bass shelf + Treble shelf.
-     * Entire stage is skipped when the EQ is disabled or all bands are flat.
-     * Individual bands/shelves with identity coefficients resolve to a no-op
-     * inside applyBiquadStereo (b1=b2=a1=a2=0 → no multiply-adds needed by the
-     * compiler after inlining, but we guard the call explicitly to be safe).
+     * Stage 1: 10-Band peaking EQ.
+     * Skipped entirely when the EQ is disabled or all bands are flat.
+     * Bass and treble shelves are processed independently in Stage 2 below,
+     * and are NOT affected by the [eqEnabled] toggle.
      */
-    if (eqEn) {
-        if (!eqFlat) {
-            if (ch == 2) {
-                for (int b = 0; b < kDspEqBandCount; ++b) {
-                    applyBiquadStereo(buf, numFrames,
-                                      ctx->eqCoeffs[b],
-                                      ctx->eqState[0][b],
-                                      ctx->eqState[1][b]);
-                }
-            } else {
-                for (int b = 0; b < kDspEqBandCount; ++b) {
-                    applyBiquadMono(buf, totalSamples,
-                                    ctx->eqCoeffs[b],
-                                    ctx->eqState[0][b]);
-                }
-            }
-        }
-
-        if (!bassFlat) {
-            if (ch == 2) {
+    if (eqEn && !eqFlat) {
+        if (ch == 2) {
+            for (int b = 0; b < kDspEqBandCount; ++b) {
                 applyBiquadStereo(buf, numFrames,
-                                  ctx->bassCoeffs,
-                                  ctx->bassState[0], ctx->bassState[1]);
-            } else {
-                applyBiquadMono(buf, totalSamples, ctx->bassCoeffs, ctx->bassState[0]);
+                                  ctx->eqCoeffs[b],
+                                  ctx->eqState[0][b],
+                                  ctx->eqState[1][b]);
             }
-        }
-
-        if (!trebleFlat) {
-            if (ch == 2) {
-                applyBiquadStereo(buf, numFrames,
-                                  ctx->trebleCoeffs,
-                                  ctx->trebleState[0], ctx->trebleState[1]);
-            } else {
-                applyBiquadMono(buf, totalSamples, ctx->trebleCoeffs, ctx->trebleState[0]);
+        } else {
+            for (int b = 0; b < kDspEqBandCount; ++b) {
+                applyBiquadMono(buf, totalSamples,
+                                ctx->eqCoeffs[b],
+                                ctx->eqState[0][b]);
             }
         }
     }
 
     /**
-     * Stage 2: Stereo widening via M/S matrix.
+     * Stage 2: Bass low-shelf and treble high-shelf.
+     * These stages are always active and are independent from the [eqEnabled] toggle.
+     * Each shelf is skipped individually when its gain is within [kDspFlatThresholdDb] of 0 dB.
+     */
+    if (!bassFlat) {
+        if (ch == 2) {
+            applyBiquadStereo(buf, numFrames,
+                              ctx->bassCoeffs,
+                              ctx->bassState[0], ctx->bassState[1]);
+        } else {
+            applyBiquadMono(buf, totalSamples, ctx->bassCoeffs, ctx->bassState[0]);
+        }
+    }
+
+    if (!trebleFlat) {
+        if (ch == 2) {
+            applyBiquadStereo(buf, numFrames,
+                              ctx->trebleCoeffs,
+                              ctx->trebleState[0], ctx->trebleState[1]);
+        } else {
+            applyBiquadMono(buf, totalSamples, ctx->trebleCoeffs, ctx->trebleState[0]);
+        }
+    }
+
+    /**
+     * Stage 3: Stereo widening via M/S matrix.
      * Skipped when width is neutral (direct = 1, cross = 0) or stream is mono.
      */
     if (ch == 2 && (fabsf(direct - 1.0f) > kWidenEpsilon || fabsf(cross) > kWidenEpsilon)) {
@@ -904,7 +941,7 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspProcessAudio(
     }
 
     /**
-     * Stage 3: Constant-power pan / balance.
+     * Stage 4: Constant-power pan / balance.
      * Skipped when both gains are effectively unity.
      */
     if (ch == 2 && (fabsf(lGain - 1.0f) > kPanEpsilon || fabsf(rGain - 1.0f) > kPanEpsilon)) {
@@ -912,7 +949,7 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspProcessAudio(
     }
 
     /**
-     * Stage 4: Tape saturation.
+     * Stage 5: Tape saturation.
      * Skipped when drive is below the epsilon threshold, saving the NEON loop overhead
      * for the very common "clean" playback scenario.
      */
@@ -921,7 +958,7 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspProcessAudio(
     }
 
     /**
-     * Stage 5: Visualizer handoff.
+     * Stage 6: Visualizer handoff.
      * Accumulate mono downmix and trigger the FFT when the buffer is full.
      * This is the only stage that is not conditional — the visualizer always receives
      * the fully processed audio so the spectrum display reflects all active effects.

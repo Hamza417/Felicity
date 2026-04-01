@@ -6,9 +6,9 @@
  * mono downmix scratch buffer that feeds the visualizer FFT.
  *
  * The full DSP chain applied by [nativeProcessAudio] is, in order:
- *   1. 10-band peaking EQ (ISO standard center frequencies, RBJ biquad)
- *   2. Bass low-shelf filter (250 Hz, S = 1)
- *   3. Treble high-shelf filter (4000 Hz, S = 1)
+ *   1. 10-band peaking EQ (ISO standard center frequencies, RBJ biquad) — gated by [eqEnabled]
+ *   2. Bass low-shelf filter (250 Hz, S = 1) — always active, independent of [eqEnabled]
+ *   3. Treble high-shelf filter (4000 Hz, S = 1) — always active, independent of [eqEnabled]
  *   4. Stereo widening via M/S matrix
  *   5. Constant-power pan / balance
  *   6. Tape-style soft saturation via algebraic sigmoid
@@ -100,7 +100,7 @@ struct DspContext {
      */
     BiquadState eqState[kDspMaxChannels][kDspEqBandCount];
 
-    /** When false the entire EQ + bass + treble stage is skipped without touching samples. */
+    /** When false only the 10-band peaking EQ stage is skipped; bass and treble remain active. */
     bool eqEnabled;
 
     /** True when every EQ band gain is within +/-[kDspFlatThresholdDb] of 0 dB. */
