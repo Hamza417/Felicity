@@ -8,11 +8,11 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import app.simple.felicity.R
 import app.simple.felicity.constants.CommonPreferencesConstants
+import app.simple.felicity.core.singletons.AppOrientation
 import app.simple.felicity.databinding.DialogSongsMenuBinding
 import app.simple.felicity.decorations.toggles.FelicityChipGroup
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.SongsPreferences
-import app.simple.felicity.shared.utils.BarHeight
 
 class SongsMenu : ScopedBottomSheetFragment() {
 
@@ -26,7 +26,7 @@ class SongsMenu : ScopedBottomSheetFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val isLandscape = BarHeight.isLandscape(requireContext())
+        val isLandscape = AppOrientation.isLandscape()
 
         binding.listStyleChipGroup.setChips(
                 if (isLandscape) {
@@ -51,6 +51,7 @@ class SongsMenu : ScopedBottomSheetFragment() {
                 }
         )
 
+        binding.listStyleChipGroup.shouldRestoreStates = false
         binding.listStyleChipGroup.setSelectedByTag(SongsPreferences.getGridSize())
 
         binding.listStyleChipGroup.setOnSelectionChangedListener { selected ->

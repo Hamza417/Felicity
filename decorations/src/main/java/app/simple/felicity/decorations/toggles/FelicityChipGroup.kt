@@ -83,6 +83,13 @@ class FelicityChipGroup @JvmOverloads constructor(
             updateChipMargins()
         }
 
+    /**
+     * Whether to save and restore the selected chip indices across configuration changes. If false,
+     * the chip group will always start with no chips selected after a configuration change. Default is
+     * false.
+     */
+    var shouldRestoreStates = false
+
     @ColorInt
     private var accentColor: Int = if (isInEditMode) {
         0xFF6200EE.toInt()
@@ -301,9 +308,11 @@ class FelicityChipGroup @JvmOverloads constructor(
     override fun onRestoreInstanceState(state: Parcelable?) {
         if (state is SavedState) {
             super.onRestoreInstanceState(state.superState)
-            selectedIndices.clear()
-            selectedIndices.addAll(state.selectedIndices.toList())
-            post { refreshAllChipStates(animate = false) }
+            if (shouldRestoreStates) {
+                selectedIndices.clear()
+                selectedIndices.addAll(state.selectedIndices.toList())
+                post { refreshAllChipStates(animate = false) }
+            }
         } else {
             super.onRestoreInstanceState(state)
         }
