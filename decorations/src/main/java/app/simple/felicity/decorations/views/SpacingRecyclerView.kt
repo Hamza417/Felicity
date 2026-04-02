@@ -8,10 +8,10 @@ import androidx.transition.Fade
 import androidx.transition.TransitionManager
 import androidx.transition.TransitionSet
 import app.simple.felicity.decorations.itemdecorations.SpacingItemDecoration
-import app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
+import app.simple.felicity.decorations.pinch.ZoomingRecyclerView
 import app.simple.felicity.preferences.AppearancePreferences
 
-open class SpacingRecyclerView : CustomVerticalRecyclerView {
+open class SpacingRecyclerView : ZoomingRecyclerView {
 
     constructor(context: android.content.Context) : super(context)
     constructor(context: android.content.Context, attrs: android.util.AttributeSet?) : super(context, attrs)

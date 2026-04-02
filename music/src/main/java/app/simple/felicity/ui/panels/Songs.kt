@@ -19,6 +19,7 @@ import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.databinding.HeaderSongsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
+import app.simple.felicity.decorations.pinch.ZoomItemAnimator
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.songs.ShuffleAlgorithmDialog.Companion.showShuffleAlgorithmDialog
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
@@ -61,6 +62,7 @@ class Songs : PanelFragment() {
         // Initialize layout manager once
         gridLayoutManager = GridLayoutManager(requireContext(), SongsPreferences.getGridSize().spanCount)
         binding.recyclerView.layoutManager = gridLayoutManager
+        ZoomItemAnimator().setup(binding.recyclerView)
 
         setupClickListeners()
 
