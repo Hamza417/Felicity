@@ -74,20 +74,48 @@ public class SeekableSlideTransition extends BaseSeekableTransition {
         
         /*
          * Clean up when the animation finishes or gets cancelled.
-         * Also reset our control flag so the next transition starts fresh.
+         *
+         * onAnimationEnd fires for both forward completion (progress → 1) and predictive
+         * back cancel reversal (progress → 0). The threshold of 0.5 reliably distinguishes
+         * which case occurred and ensures the view lands in its correct terminal state.
+         *
+         * onAnimationCancel fires only for programmatic interruptions (not predictive back
+         * cancels, which play the animator naturally back to 0). In that case the initial
+         * state is always the safe fallback.
          */
         animator.addListener(new AnimatorListenerAdapter() {
+            private boolean cancelled = false;
+
             @Override
             public void onAnimationEnd(Animator animation) {
-                view.setTranslationX(0f);
-                view.setAlpha(1f);
+                if (cancelled) {
+                    return;
+                }
+                float p = (float) ((ValueAnimator) animation).getAnimatedValue();
+                if (p >= 0.5f) {
+                    view.setTranslationX(endTranslationX);
+                    view.setAlpha(endAlpha);
+                    if (artFlow != null) {
+                        artFlow.setAlpha(endAlpha);
+                    }
+                } else {
+                    view.setTranslationX(startTranslationX);
+                    view.setAlpha(startAlpha);
+                    if (artFlow != null) {
+                        artFlow.setAlpha(startAlpha);
+                    }
+                }
                 resetControlFlag();
             }
-            
+
             @Override
             public void onAnimationCancel(Animator animation) {
-                view.setTranslationX(0f);
-                view.setAlpha(1f);
+                cancelled = true;
+                view.setTranslationX(startTranslationX);
+                view.setAlpha(startAlpha);
+                if (artFlow != null) {
+                    artFlow.setAlpha(startAlpha);
+                }
                 resetControlFlag();
             }
         });

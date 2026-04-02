@@ -30,25 +30,18 @@ import app.simple.felicity.decorations.artflow.ArtFlow;
  */
 public abstract class BaseSeekableTransition extends Visibility {
     
-    /**
-     * This flag helps us detect if we're in predictive back gesture mode.
-     * When true, the animation is being controlled by the user's finger dragging back.
-     * When false, the animation is running normally with smooth deceleration.
-     */
-    private boolean isBeingControlled = false;
-
     public static final int DECELERATE_FACTOR = 3;
+    @Nullable
+    private PredictiveBackListener predictiveBackListener;
     protected static final long DEFAULT_DURATION = 500L;
     protected final boolean forward;
     /**
      * Set to true the first time {@link #getProgress} detects that the animator is being
      * seeked by a gesture (not running freely). This survives until the transition ends or
-     * is cancelled so the {@link Transition.TransitionListener} can distinguish a
+     * is canceled so the {@link Transition.TransitionListener} can distinguish a
      * predictive-back completion from an ordinary navigation completion.
      */
     private boolean wasEverSeeked = false;
-    @Nullable
-    private PredictiveBackListener predictiveBackListener;
     
     /**
      * Finds an ArtFlow view in the view hierarchy and sets its alpha to 0.
@@ -134,10 +127,8 @@ public abstract class BaseSeekableTransition extends Visibility {
             TransitionValues startValues,
             TransitionValues endValues) {
         /*
-         * When a transition is created, we assume it might be controlled by a gesture.
          * Reset wasEverSeeked so each new transition instance starts with a clean slate.
          */
-        isBeingControlled = true;
         wasEverSeeked = false;
         return super.createAnimator(sceneRoot, startValues, endValues);
     }
@@ -175,27 +166,30 @@ public abstract class BaseSeekableTransition extends Visibility {
      * <p>
      * When the gesture is actively dragging, {@code isRunning()} returns {@code false}
      * because Android drives the animator with {@code setCurrentPlayTime()} rather than
-     * letting it play. In that case, the raw linear progress is returned so the transition
+     * letting it play. In that case the raw linear progress is returned so the transition
      * follows the finger exactly, and the {@link PredictiveBackListener} receives a progress
      * update.
      * <p>
-     * Once the animator is released and plays on its own, a decelerate curve is applied for
-     * a smooth, polished feel.
+     * Once the gesture is released and the animator plays freely (cancel reversal or confirm
+     * completion), the progress is kept linear. Applying a decelerate curve at this stage
+     * would re-map the mid-range value left by the gesture to a much larger output
+     * (e.g., 0.12 → 0.54), causing a sudden visual snap. The decelerate effect is therefore
+     * reserved exclusively for normal, non-gesture navigation where the animator always starts
+     * from 0.
      */
     protected float getProgress(ValueAnimator animation) {
         float rawProgress = (float) animation.getAnimatedValue();
-        
+
         /*
-         * The isRunning() check is key. When Android controls the animation with setCurrentPlayTime()
-         * during predictive back, isRunning() returns false. When the animation actually plays,
-         * isRunning() returns true.
+         * isRunning() is false while Android seeks the animator via setCurrentPlayTime()
+         * during the gesture, and true once the animator plays freely after release.
          */
         boolean isRunning = animation.isRunning();
         
-        if (isBeingControlled && !isRunning) {
+        if (!isRunning) {
             /*
-             * Predictive back mode: use raw linear progress so the transition follows the
-             * finger drag perfectly. Also record that this transition was seeked so the
+             * Gesture-controlled seeking: return raw linear progress so the transition
+             * follows the finger exactly. Record that this transition was seeked so the
              * TransitionListener can confirm it was a predictive back gesture.
              */
             wasEverSeeked = true;
@@ -203,17 +197,34 @@ public abstract class BaseSeekableTransition extends Visibility {
                 predictiveBackListener.onPredictiveBackProgressed(rawProgress);
             }
             return rawProgress;
+        } else if (wasEverSeeked) {
+            /*
+             * Post-gesture free play (cancel reversal or confirm completion): keep linear
+             * to prevent a sudden visual jump. The decelerate interpolator applied to a
+             * mid-range value (e.g. 0.12) would map it to a much larger output (e.g. 0.54),
+             * causing the view to snap rather than continue smoothly from the gesture position.
+             */
+            return rawProgress;
         } else {
             /*
-             * Normal animation mode: apply the decelerate curve for a smooth, professional
-             * feel. The animation starts fast and slows down at the end.
+             * Normal (non-gesture) navigation: apply the decelerate curve for a polished feel.
+             * This is safe here because the animator always starts from 0, so the curve is
+             * applied from the correct origin.
              */
-            isBeingControlled = false;
             DecelerateInterpolator decelerateInterpolator = new DecelerateInterpolator(DECELERATE_FACTOR);
             return decelerateInterpolator.getInterpolation(rawProgress);
         }
     }
 
+    /**
+     * Resets the gesture-tracking state at the end of each animator lifecycle.
+     * Subclasses must call this from both {@code onAnimationEnd} and {@code onAnimationCancel}
+     * so that a recycled transition instance (if the framework ever reuses one) starts clean.
+     */
+    protected void resetControlFlag() {
+        wasEverSeeked = false;
+    }
+    
     /**
      * Callback interface for predictive back gesture events that originate from
      * a seekable transition. Listeners receive progress, cancel, and confirm events
@@ -230,7 +241,7 @@ public abstract class BaseSeekableTransition extends Visibility {
         void onPredictiveBackProgressed(float progress);
         
         /**
-         * Called when the back gesture is cancelled and this transition reverses to its
+         * Called when the back gesture is canceled and this transition reverses to its
          * original state. Use this to restore any UI state that was changed speculatively
          * during the gesture (for example, mini-player visibility or status-bar colors).
          */
@@ -241,14 +252,6 @@ public abstract class BaseSeekableTransition extends Visibility {
          * The fragment lifecycle will subsequently restore state through its own events.
          */
         void onPredictiveBackConfirmed();
-    }
-    
-    /**
-     * Marks that the animation is no longer being controlled.
-     * Should be called when animation ends or is canceled.
-     */
-    protected void resetControlFlag() {
-        isBeingControlled = false;
     }
 }
 

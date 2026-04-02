@@ -63,19 +63,40 @@ public class SeekableSharedAxisFadeTransition extends BaseSeekableTransition {
         });
 
         /*
-         * Restore full opacity when the animation finishes or is cancelled
-         * so subsequent renders are not affected by a leftover alpha value.
+         * Clean up when the animation finishes or gets cancelled.
+         *
+         * onAnimationEnd fires for both forward completion (progress → 1) and predictive
+         * back cancel reversal (progress → 0). The threshold of 0.5 reliably distinguishes
+         * which case occurred and ensures the view lands in its correct terminal state.
+         *
+         * onAnimationCancel fires only for programmatic interruptions (not predictive back
+         * cancels, which play the animator naturally back to 0). In that case the initial
+         * state is always the safe fallback.
          */
         animator.addListener(new AnimatorListenerAdapter() {
+            private boolean cancelled = false;
+
             @Override
             public void onAnimationEnd(Animator animation) {
-                view.setAlpha(1f);
+                if (cancelled) {
+                    return;
+                }
+                float p = (float) ((ValueAnimator) animation).getAnimatedValue();
+                float finalAlpha = p >= 0.5f ? endAlpha : startAlpha;
+                view.setAlpha(finalAlpha);
+                if (artFlow != null) {
+                    artFlow.setAlpha(finalAlpha);
+                }
                 resetControlFlag();
             }
 
             @Override
             public void onAnimationCancel(Animator animation) {
-                view.setAlpha(1f);
+                cancelled = true;
+                view.setAlpha(startAlpha);
+                if (artFlow != null) {
+                    artFlow.setAlpha(startAlpha);
+                }
                 resetControlFlag();
             }
         });
