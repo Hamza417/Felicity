@@ -21,53 +21,65 @@ import app.simple.felicity.shared.utils.StackTraceUtils;
  * Ref: https://stackoverflow.com/questions/601503/how-do-i-obtain-crash-data-from-my-android-application
  */
 public class CrashReporter implements Thread.UncaughtExceptionHandler {
-
+    
     private final String TAG = getClass().getSimpleName();
     private final Context context;
     private final Thread.UncaughtExceptionHandler defaultUncaughtExceptionHandler;
-
+    
     public CrashReporter(Context context) {
         this.context = context;
         defaultUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
     }
-
+    
     public void uncaughtException(@NonNull Thread thread, Throwable throwable) {
         final long crashTimeStamp = System.currentTimeMillis();
         final Writer result = new StringWriter();
         final PrintWriter printWriter = new PrintWriter(result);
-
+        
         throwable.printStackTrace(printWriter);
         String stacktrace = result.toString();
         printWriter.close();
-
+        
         StackTraceUtils.create(stacktrace, new File(context.getExternalFilesDir("logs"), "crashLog_" + crashTimeStamp));
         CrashPreferences.INSTANCE.saveCrashLog(crashTimeStamp);
         CrashPreferences.INSTANCE.saveMessage(throwable.toString());
         CrashPreferences.INSTANCE.saveCause(StackTraceUtils.getCause(throwable).toString());
-
+        
         Intent intent = new Intent(context, CrashReporterActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra(CrashReporterActivity.MODE_NORMAL, stacktrace);
         context.startActivity(intent);
-
+        
         defaultUncaughtExceptionHandler.uncaughtException(thread, throwable);
     }
-
+    
     public void initialize() {
         long timeStamp = CrashPreferences.INSTANCE.getCrashLog();
-
+        
         if (timeStamp != CrashPreferences.crashTimestampEmptyDefault) {
-            String stack = StackTraceUtils.read(new File(context.getExternalFilesDir("logs"), "crashLog_" + timeStamp));
-            Intent intent = new Intent(context, CrashReporterActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.putExtra(CrashReporterActivity.MODE_NORMAL, stack);
-            context.startActivity(intent);
+            try {
+                String stack = StackTraceUtils.read(new File(context.getExternalFilesDir("logs"), "crashLog_" + timeStamp));
+                Intent intent = new Intent(context, CrashReporterActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                intent.putExtra(CrashReporterActivity.MODE_NORMAL, stack);
+                context.startActivity(intent);
+            } catch (RuntimeException e) {
+                // Wipe the crash log if it is corrupted
+                File crashLog = new File(context.getExternalFilesDir("logs"), "crashLog_" + timeStamp);
+                if (crashLog.exists()) {
+                    boolean deleted = crashLog.delete();
+                    Log.d(TAG, "Corrupted crash log deleted: " + deleted);
+                }
+                
+                // Reset the crash log timestamp to default value
+                CrashPreferences.INSTANCE.saveCrashLog(CrashPreferences.crashTimestampEmptyDefault);
+            }
         }
-
+        
         Thread.setDefaultUncaughtExceptionHandler(new CrashReporter(context));
     }
-
-    @SuppressWarnings("unused")
+    
+    @SuppressWarnings ("unused")
     public void saveTraceToDataBase(Throwable throwable) {
         new Thread(() -> {
             Log.d(TAG, "Thread started");
