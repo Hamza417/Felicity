@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import app.simple.felicity.milkdrop.managers.PresetManager
 import app.simple.felicity.milkdrop.models.MilkdropPreset
 import app.simple.felicity.preferences.MilkdropPreferences
+import app.simple.felicity.viewmodels.panels.MilkdropViewModel.Companion.SHUFFLE_INTERVAL_MS
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -158,7 +159,7 @@ class MilkdropViewModel(application: Application) : AndroidViewModel(application
      * Loads the preset at [index] directly on the calling coroutine — avoids launching
      * a nested coroutine when called from inside the shuffle loop.
      */
-    private suspend fun loadPresetAtIndexInternal(index: Int) {
+    private fun loadPresetAtIndexInternal(index: Int) {
         val list = _presets.value
         if (index < 0 || index >= list.size) return
         val preset = list[index]
@@ -195,6 +196,12 @@ class MilkdropViewModel(application: Application) : AndroidViewModel(application
     override fun onCleared() {
         stopShuffle()
         super.onCleared()
+    }
+
+    fun refreshCurrentPreset() {
+        viewModelScope.launch(Dispatchers.IO) {
+            loadPresetAtIndexInternal(_currentIndex.value)
+        }
     }
 
     companion object {

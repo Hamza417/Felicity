@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -253,10 +254,50 @@ class Milkdrop : MediaFragment() {
     }
 
     override fun onDestroyView() {
+        Log.d(TAG, "onDestroyView: Disconnecting surface and clearing adapter")
         fadeHandler.removeCallbacksAndMessages(null)
         pagerAdapter = null
         binding.milkdropSurface.disconnectProcessor()
         super.onDestroyView()
+    }
+
+    /**
+     * Pauses GL rendering before the predictive back transition starts applying alpha to
+     * the fragment's root view.
+     *
+     * [android.opengl.GLSurfaceView] renders on its own compositor window layer and is
+     * excluded from the hardware compositing layer that Android creates when a view's alpha
+     * drops below 1.0. Calling [android.opengl.GLSurfaceView.onPause] here parks the GL
+     * thread cleanly so the surface goes to a defined paused state instead of going blank
+     * mid-frame. Because [MilkdropSurfaceView] sets
+     * [android.opengl.GLSurfaceView.preserveEGLContextOnPause] to {@code true}, the EGL
+     * context and all GL state survive the pause and rendering resumes instantly on cancel.
+     */
+    override fun onStartPredictiveBack() {
+        super.onStartPredictiveBack()
+        binding.milkdropSurface.onPause()
+    }
+
+    /**
+     * Resumes GL rendering after the user abandons the predictive back gesture.
+     *
+     * Because [android.opengl.GLSurfaceView.preserveEGLContextOnPause] is {@code true},
+     * the EGL context is still valid after the pause issued in [onStartPredictiveBack], so
+     * [android.opengl.GLSurfaceView.onResume] brings rendering back without triggering a
+     * full bridge recreation. The processor connection is also re-established in case it
+     * was cleared while the GL thread was parked.
+     *
+     * [MilkdropViewModel.refreshCurrentPreset] is always called unconditionally so the
+     * active preset is guaranteed to be reloaded even if the EGL context was lost and
+     * recreated during the transition (e.g., due to hardware-layer compositing).
+     */
+    override fun onCancelPredictiveBack() {
+        super.onCancelPredictiveBack()
+        binding.milkdropSurface.onResume()
+        VisualizerManager.processor?.let { processor ->
+            binding.milkdropSurface.connectProcessor(processor)
+        }
+        viewModel.refreshCurrentPreset()
     }
 
     override fun getTransitionType(): TransitionType {

@@ -4,13 +4,14 @@ import android.content.Context
 import android.opengl.GLSurfaceView
 import android.util.AttributeSet
 import app.simple.felicity.engine.managers.VisualizerManager
+import app.simple.felicity.engine.processors.VisualizerProcessor
 import app.simple.felicity.milkdrop.renderer.MilkdropGLRenderer
 
 /**
  * A [GLSurfaceView] that renders the projectM 4.x milkdrop visualizer.
  *
  * On attachment to a window the view registers [MilkdropGLRenderer] as the
- * [VisualizerProcessor][app.simple.felicity.engine.processors.VisualizerProcessor]
+ * [VisualizerProcessor][VisualizerProcessor]
  * PCM-window callback so the audio thread can feed raw mono PCM directly into
  * projectM without any intermediate queuing or allocation.
  *
@@ -43,13 +44,19 @@ class MilkdropSurfaceView @JvmOverloads constructor(
         // Render at the display refresh rate regardless of whether new audio data
         // has arrived; projectM interpolates smoothly between audio windows.
         renderMode = RENDERMODE_CONTINUOUSLY
+
+        // Keep the EGL context alive across onPause/onResume so that short pauses
+        // (e.g. predictive back gesture cancel) do not tear down and rebuild the
+        // entire GL state. Without this, every resume triggers onSurfaceCreated and
+        // requires a full bridge recreation.
+        preserveEGLContextOnPause = true
     }
 
     // ── Window attachment / detachment ────────────────────────────────────────
 
     /**
      * Registers the renderer as the PCM-window callback on the live
-     * [VisualizerProcessor][app.simple.felicity.engine.processors.VisualizerProcessor]
+     * [VisualizerProcessor][VisualizerProcessor]
      * so that audio data flows immediately when the view becomes visible.
      *
      * If the player service has not started yet and [VisualizerManager.processor] is
@@ -101,7 +108,7 @@ class MilkdropSurfaceView @JvmOverloads constructor(
      *
      * @param processor The live [VisualizerProcessor] provided by the player service.
      */
-    fun connectProcessor(processor: app.simple.felicity.engine.processors.VisualizerProcessor) {
+    fun connectProcessor(processor: VisualizerProcessor) {
         processor.setPcmWindowCallback(renderer)
     }
 

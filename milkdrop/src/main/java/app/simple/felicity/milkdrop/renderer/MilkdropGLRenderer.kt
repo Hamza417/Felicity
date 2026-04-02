@@ -43,6 +43,18 @@ class MilkdropGLRenderer : GLSurfaceView.Renderer, VisualizerProcessor.PcmWindow
      */
     private var surfaceHeight = 0
 
+    /**
+     * Raw text content of the most recently loaded `.milk` preset, or `null` if no preset
+     * has been loaded yet in this renderer instance.
+     *
+     * This is written and read exclusively on the GL thread, so no synchronization is needed.
+     * It is used to restore the active preset immediately after [ProjectMBridge.create] so
+     * that EGL context loss events (e.g., those triggered by Android's hardware-layer
+     * compositing path when a parent view's alpha drops below 1.0 during a fragment
+     * transition) do not leave projectM displaying its built-in default preset.
+     */
+    private var lastPresetContent: String? = null
+
     // ── VisualizerProcessor.PcmWindowCallback ─────────────────────────────────
 
     /**
@@ -66,17 +78,31 @@ class MilkdropGLRenderer : GLSurfaceView.Renderer, VisualizerProcessor.PcmWindow
     /**
      * Called by the GL thread when a fresh EGL context is created.
      *
-     * The initial size may be (0, 0) here; [onSurfaceChanged] fires immediately after
-     * with the real dimensions. If size is already known (e.g., after a context loss
-     * recovery), the bridge is created here with the cached size.
+     * Every call to this method signals that all OpenGL objects (textures, programs,
+     * framebuffers) that were allocated in any previous context are now invalid. The
+     * bridge is therefore unconditionally destroyed and recreated here regardless of
+     * whether it was previously initialized.
+     *
+     * This handles both the initial creation and any EGL context-loss recovery scenario,
+     * including the one triggered by Android's hardware-layer compositing path when a
+     * parent view has alpha less than 1.0 applied during a fragment transition.
      *
      * @param gl     Legacy GL 1.x interface — unused; this renderer targets ES 3.
      * @param config EGL configuration for the surface.
      */
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         Log.i(TAG, "onSurfaceCreated — size=${surfaceWidth}x${surfaceHeight}")
-        if (surfaceWidth > 0 && surfaceHeight > 0 && !bridge.isCreated) {
+        // Destroy any existing bridge before recreating. The native destroy call may
+        // attempt to release GL objects; since they belonged to the now-dead context
+        // the GL driver will silently ignore deletions of unknown object IDs, so this
+        // is safe even when called with a brand-new context current.
+        bridge.destroy()
+        if (surfaceWidth > 0 && surfaceHeight > 0) {
             bridge.create(surfaceWidth, surfaceHeight)
+            // Immediately restore the last active preset so that EGL context loss events
+            // (e.g., triggered by hardware-layer compositing during fragment transitions)
+            // do not leave projectM displaying its built-in default preset.
+            lastPresetContent?.let { bridge.loadPresetData(it, smooth = false) }
         }
     }
 
@@ -122,10 +148,14 @@ class MilkdropGLRenderer : GLSurfaceView.Renderer, VisualizerProcessor.PcmWindow
      * Must be called on the GL thread (e.g. via [android.opengl.GLSurfaceView.queueEvent])
      * while the EGL context is current.
      *
+     * The content is also cached in [lastPresetContent] so it can be restored automatically
+     * if the EGL context is lost and recreated (see [onSurfaceCreated]).
+     *
      * @param content Full text content of the `.milk` preset file.
      * @param smooth  When `true`, projectM cross-fades into the new preset.
      */
     fun loadPreset(content: String, smooth: Boolean = true) {
+        lastPresetContent = content
         bridge.loadPresetData(content, smooth)
     }
 
