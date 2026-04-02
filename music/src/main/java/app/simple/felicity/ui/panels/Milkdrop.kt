@@ -297,7 +297,6 @@ class Milkdrop : MediaFragment() {
         VisualizerManager.processor?.let { processor ->
             binding.milkdropSurface.connectProcessor(processor)
         }
-        viewModel.refreshCurrentPreset()
     }
 
     override fun getTransitionType(): TransitionType {

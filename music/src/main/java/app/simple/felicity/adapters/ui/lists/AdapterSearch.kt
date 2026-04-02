@@ -7,6 +7,8 @@ import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.adapters.ui.lists.AdapterSongs.Companion.VIEW_TYPE_GRID
+import app.simple.felicity.adapters.ui.lists.AdapterSongs.Companion.VIEW_TYPE_LIST
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterStyleGridBinding
@@ -25,6 +27,8 @@ class AdapterSearch(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHo
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
     private var attachedRecyclerView: RecyclerView? = null
+
+    var layoutMode: CommonPreferencesConstants.LayoutMode = SearchPreferences.getGridSize()
 
     private val listUpdateCallback = object : ListUpdateCallback {
         override fun onInserted(position: Int, count: Int) {
@@ -115,7 +119,9 @@ class AdapterSearch(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHo
 
     override fun getItemCount(): Int = songs.size
 
-    override fun getItemViewType(position: Int): Int = SearchPreferences.getGridType()
+    override fun getItemViewType(position: Int): Int {
+        return if (layoutMode.isGrid) VIEW_TYPE_GRID else VIEW_TYPE_LIST
+    }
 
     override fun onViewRecycled(holder: VerticalListViewHolder) {
         holder.itemView.clearAnimation()
