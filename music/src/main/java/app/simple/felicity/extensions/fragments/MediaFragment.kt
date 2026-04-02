@@ -652,6 +652,24 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     override val wantsMiniPlayerVisible: Boolean
         get() = shouldShowMiniPlayer
 
+    /**
+     * Re-asserts the correct mini player visibility for this fragment when a predictive back
+     * gesture is cancelled. This is necessary because the previous fragment's lifecycle may
+     * partially advance while the gesture is in progress (for example, via
+     * {@code repeatOnLifecycle(STARTED)}), which can imperatively call {@code showMiniPlayer()}
+     * and leave the shared mini player in a leaked state. Calling this on cancel ensures the
+     * mini player reflects what this fragment actually wants, since the fragment remains the
+     * current visible screen after the gesture is abandoned.
+     */
+    override fun onCancelPredictiveBack() {
+        super.onCancelPredictiveBack()
+        if (shouldShowMiniPlayer) {
+            showMiniPlayer()
+        } else {
+            hideMiniPlayer()
+        }
+    }
+
     companion object {
         private const val TAG = "MediaFragment"
     }

@@ -6,14 +6,19 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowInsetsAnimation
+import androidx.activity.BackEventCompat
 import androidx.annotation.IntegerRes
 import androidx.annotation.RequiresApi
 import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import app.simple.felicity.R
 import app.simple.felicity.decorations.transitions.SeekableSharedAxisFadeTransition
 import app.simple.felicity.decorations.transitions.SeekableSharedAxisXTransition
@@ -49,8 +54,14 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
      */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // postponeEnterTransition()
         applyFragmentTransition()
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        if (BehaviourPreferences.isPredictiveBackEnabled()) {
+            setupPredictiveBackObserver()
+        }
     }
 
     override fun onResume() {
@@ -97,8 +108,8 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
 
         // Apply the same transition to the current fragment
         when (nextTransitionType) {
-            ScopedFragment.TransitionType.SHARED_AXIS -> setTransitions()
-            ScopedFragment.TransitionType.SLIDE -> setSlideTransitions()
+            TransitionType.SHARED_AXIS -> setTransitions()
+            TransitionType.SLIDE -> setSlideTransitions()
         }
 
         // Apply transition to the next fragment
@@ -235,6 +246,65 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    open fun setupBackPressedCallback(view: ViewGroup) {
+        // This method is preserved for subclasses that need to intercept the back press
+        // (e.g., to show a confirmation dialog before allowing navigation back).
+        // NOTE: Registering an enabled OnBackPressedCallback intercepts the gesture before
+        // FragmentManager processes it, which disables the seekable transition seeking.
+        // If you only need to observe predictive back events without intercepting, override
+        // onStartPredictiveBack / onProgressPredictiveBack / onCancelPredictiveBack instead,
+        // which are driven by FragmentManager.OnBackStackChangedListener and do not break seeking.
+    }
+
+    /**
+     * Sets up a [FragmentManager.OnBackStackChangedListener] on the activity's support
+     * fragment manager to observe predictive back gesture events for this fragment.
+     * <p>
+     * Unlike registering an [androidx.activity.OnBackPressedCallback], this approach does
+     * not intercept the back press, so the seekable transition mechanism in
+     * [app.simple.felicity.decorations.transitions.BaseSeekableTransition] continues to
+     * work unimpeded.
+     * <p>
+     * The listener is automatically removed when this fragment's view is destroyed.
+     */
+    private fun setupPredictiveBackObserver() {
+        val backStackListener = object : FragmentManager.OnBackStackChangedListener {
+            override fun onBackStackChanged() {
+                // no-op — we only care about the predictive back event callbacks below
+            }
+
+            override fun onBackStackChangeStarted(fragment: Fragment, pop: Boolean) {
+                if (pop && fragment === this@ScopedFragment) {
+                    onStartPredictiveBack()
+                }
+            }
+
+            override fun onBackStackChangeProgressed(backEvent: BackEventCompat) {
+                onProgressPredictiveBack(backEvent.progress)
+            }
+
+            override fun onBackStackChangeCancelled() {
+                onCancelPredictiveBack()
+            }
+
+            override fun onBackStackChangeCommitted(fragment: Fragment, pop: Boolean) {
+                if (pop && fragment === this@ScopedFragment) {
+                    onConfirmPredictiveBack()
+                }
+            }
+        }
+
+        requireActivity().supportFragmentManager.addOnBackStackChangedListener(backStackListener)
+
+        viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onDestroy(owner: LifecycleOwner) {
+                requireActivity().supportFragmentManager
+                    .removeOnBackStackChangedListener(backStackListener)
+            }
+        })
+    }
+
     protected fun startPostViewTransition(view: View) {
         (view.parent as? ViewGroup)?.doOnPreDraw {
             startPostponedEnterTransition()
@@ -258,6 +328,47 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
 
     protected fun popBackStack() {
         requireActivity().supportFragmentManager.popBackStack()
+    }
+
+    /**
+     * Called when the predictive back gesture starts and this fragment begins transitioning
+     * away. Override to snapshot or pre-adjust any UI state that needs to change during the
+     * gesture. The fragment's lifecycle remains in the RESUMED state until the gesture is
+     * either committed or cancelled, so this is the right place for pre-gesture setup.
+     */
+    open fun onStartPredictiveBack() {
+        Log.d(TAG, "Predictive back started")
+    }
+
+    /**
+     * Called each frame while the predictive back gesture is in progress.
+     *
+     * @param progress A normalized value in the range [0.0, 1.0] indicating how far the
+     *                 user has dragged. Use this to drive any custom gesture-driven UI
+     *                 changes such as dimming overlays or secondary animations.
+     */
+    open fun onProgressPredictiveBack(progress: Float) {
+        Log.d(TAG, "Predictive back progress: $progress")
+    }
+
+    /**
+     * Called when the user abandons the predictive back gesture before committing.
+     * Override to restore any UI state that was changed speculatively during
+     * [onStartPredictiveBack] or [onProgressPredictiveBack]. The fragment remains the
+     * current visible fragment after this call, and its lifecycle stays at RESUMED.
+     */
+    open fun onCancelPredictiveBack() {
+        Log.d(TAG, "Predictive back cancelled")
+    }
+
+    /**
+     * Called when the user commits the predictive back gesture and back navigation proceeds.
+     * The fragment's lifecycle will subsequently move through PAUSED, STOPPED, and DESTROYED.
+     * In most cases no action is needed here because the lifecycle events handle cleanup,
+     * but this hook is available for any commit-specific one-time work.
+     */
+    open fun onConfirmPredictiveBack() {
+        Log.d(TAG, "Predictive back confirmed")
     }
 
     protected fun startTransitionOnPreDraw(view: View, onPreDraw: () -> Unit) {
