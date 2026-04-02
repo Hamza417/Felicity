@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.extensions.views.MediaAwareRippleLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:padding="@dimen/padding_8"
+    android:orientation="vertical">
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:drawablePadding="@dimen/padding_5"
+        android:ellipsize="end"
+        android:gravity="center_vertical"
+        android:maxLines="1"
+        android:textSize="@dimen/text_size_16"
+        app:appFontStyle="bold"
+        app:drawableTintStyle="custom"
+        app:layout_constraintBottom_toTopOf="@+id/secondary_detail"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/cover"
+        app:layout_constraintTop_toTopOf="@+id/cover"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:textColorStyle="primary" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/secondary_detail"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="@dimen/desc_text_size"
+        app:appFontStyle="regular"
+        app:layout_constraintBottom_toTopOf="@+id/tertiary_detail"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/cover"
+        app:layout_constraintTop_toBottomOf="@+id/title"
+        app:textColorStyle="accent" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/tertiary_detail"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="@dimen/desc_text_size"
+        app:appFontStyle="regular"
+        app:layout_constraintBottom_toBottomOf="@+id/cover"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/cover"
+        app:layout_constraintTop_toBottomOf="@+id/secondary_detail"
+        app:textColorStyle="secondary" />
+
+</app.simple.felicity.extensions.views.MediaAwareRippleLinearLayout>

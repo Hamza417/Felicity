@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.ListUpdateCallback
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterStyleGridBinding
+import app.simple.felicity.databinding.AdapterStyleLabelsBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -80,12 +81,16 @@ class AdapterFavorites(initial: List<Audio>) : FastScrollAdapter<VerticalListVie
 
     override fun getItemId(position: Int): Long = songs[position].id
 
-    override fun getItemViewType(position: Int): Int =
-        if (layoutMode.isGrid) VIEW_TYPE_GRID else VIEW_TYPE_LIST
+    override fun getItemViewType(position: Int): Int = when {
+        layoutMode.isLabel -> VIEW_TYPE_LABEL
+        layoutMode.isGrid -> VIEW_TYPE_GRID
+        else -> VIEW_TYPE_LIST
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
             VIEW_TYPE_GRID -> GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            VIEW_TYPE_LABEL -> LabelHolder(AdapterStyleLabelsBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             else -> ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
         }
     }
@@ -95,6 +100,7 @@ class AdapterFavorites(initial: List<Audio>) : FastScrollAdapter<VerticalListVie
         when (holder) {
             is ListHolder -> holder.bind(song, isLightBind)
             is GridHolder -> holder.bind(song, isLightBind)
+            is LabelHolder -> holder.bind(song, isLightBind)
         }
     }
 
@@ -106,6 +112,7 @@ class AdapterFavorites(initial: List<Audio>) : FastScrollAdapter<VerticalListVie
         when (holder) {
             is ListHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
             is GridHolder -> Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
+            is LabelHolder -> Unit
         }
     }
 
@@ -156,12 +163,33 @@ class AdapterFavorites(initial: List<Audio>) : FastScrollAdapter<VerticalListVie
         }
     }
 
+    inner class LabelHolder(val binding: AdapterStyleLabelsBinding) : VerticalListViewHolder(binding.root) {
+        fun bind(audio: Audio, isLightBind: Boolean) {
+            binding.title.setTextOrUnknown(audio.title)
+            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
+            binding.tertiaryDetail.setTextOrUnknown(audio.album)
+            binding.title.addAudioQualityIcon(audio)
+            binding.container.setAudioID(audio.id)
+            if (isLightBind) return
+            binding.container.setOnLongClickListener {
+                generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, null)
+                true
+            }
+            binding.container.setOnClickListener {
+                generalAdapterCallbacks?.onSongClicked(songs, bindingAdapterPosition, it)
+            }
+        }
+    }
+
     companion object {
         /** View type constant for a single-column list row. */
-        const val VIEW_TYPE_LIST = 0
+        const val VIEW_TYPE_LIST = CommonPreferencesConstants.GRID_TYPE_LIST
 
         /** View type constant for a multi-column grid cell. */
-        const val VIEW_TYPE_GRID = 1
+        const val VIEW_TYPE_GRID = CommonPreferencesConstants.GRID_TYPE_GRID
+
+        /** View type constant for a label-only row (no cover art). */
+        const val VIEW_TYPE_LABEL = CommonPreferencesConstants.GRID_TYPE_LABEL
     }
 }
 

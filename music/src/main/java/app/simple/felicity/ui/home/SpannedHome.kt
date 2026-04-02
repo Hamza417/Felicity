@@ -80,7 +80,7 @@ class SpannedHome : MediaFragment() {
                         binding.recyclerView.scheduleLayoutAnimation()
                         binding.recyclerView.itemAnimator = null
 
-                        adapter!!.setAdapterSpannedHomeCallbacks(object : AdapterSpannedHomeCallbacks {
+                        adapter.setAdapterSpannedHomeCallbacks(object : AdapterSpannedHomeCallbacks {
                             override fun onMenuClicked(view: View) {
                                 openPreferencesPanel()
                             }
@@ -110,7 +110,7 @@ class SpannedHome : MediaFragment() {
 
                         requireView().startTransitionOnPreDraw()
                     } else {
-                        adapter!!.updateData(sections)
+                        adapter.updateData(sections)
                     }
                 }
             }

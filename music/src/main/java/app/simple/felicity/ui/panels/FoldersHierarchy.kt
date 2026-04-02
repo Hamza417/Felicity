@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -183,8 +184,8 @@ class FoldersHierarchy : PanelFragment() {
                     setMediaItems(songs, position)
                 }
 
-                override fun onSongLongClicked(songs: List<Audio>, position: Int, view: View) {
-                    openSongsMenu(songs, position, view as? android.widget.ImageView ?: return)
+                override fun onSongLongClicked(songs: List<Audio>, position: Int, imageView: ImageView?) {
+                    openSongsMenu(songs, position, imageView)
                 }
             })
             binding.recyclerView.adapter = adapter

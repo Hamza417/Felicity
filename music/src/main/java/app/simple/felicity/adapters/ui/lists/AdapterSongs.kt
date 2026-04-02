@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.ListUpdateCallback
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterStyleGridBinding
+import app.simple.felicity.databinding.AdapterStyleLabelsBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -83,13 +84,17 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
     override fun getItemId(position: Int): Long = songs[position].id
 
     override fun getItemViewType(position: Int): Int {
-        return if (layoutMode.isGrid) VIEW_TYPE_GRID else VIEW_TYPE_LIST
+        return when {
+            layoutMode.isLabel -> CommonPreferencesConstants.GRID_TYPE_LABEL
+            layoutMode.isGrid -> CommonPreferencesConstants.GRID_TYPE_GRID
+            else -> CommonPreferencesConstants.GRID_TYPE_LIST
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
-            VIEW_TYPE_GRID -> GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-            VIEW_TYPE_LIST -> ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            CommonPreferencesConstants.GRID_TYPE_GRID -> GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            CommonPreferencesConstants.GRID_TYPE_LABEL -> LabelHolder(AdapterStyleLabelsBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             else -> ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
         }
     }
@@ -97,12 +102,9 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
     override fun onBind(holder: VerticalListViewHolder, position: Int, isLightBind: Boolean) {
         val song = songs[position]
         when (holder) {
-            is ListHolder -> {
-                holder.bind(song, isLightBind)
-            }
-            is GridHolder -> {
-                holder.bind(song, isLightBind)
-            }
+            is ListHolder -> holder.bind(song, isLightBind)
+            is GridHolder -> holder.bind(song, isLightBind)
+            is LabelHolder -> holder.bind(song, isLightBind)
         }
     }
 
@@ -114,6 +116,7 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
         when (holder) {
             is ListHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
             is GridHolder -> Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
+            is LabelHolder -> Unit
         }
     }
 
@@ -171,11 +174,27 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
         }
     }
 
-    companion object {
-        /** View type constant for a single-column list row. */
-        const val VIEW_TYPE_LIST = 0
+    inner class LabelHolder(val binding: AdapterStyleLabelsBinding) : VerticalListViewHolder(binding.root) {
+        fun bind(song: Audio, isLightBind: Boolean) {
+            binding.title.setTextOrUnknown(song.title)
+            binding.secondaryDetail.setTextOrUnknown(song.getArtists())
+            binding.tertiaryDetail.setTextOrUnknown(song.album)
+            binding.title.addAudioQualityIcon(song)
+            binding.container.setAudioID(song.id)
+            if (isLightBind) return
+            binding.container.setOnLongClickListener {
+                generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, null)
+                true
+            }
+            binding.container.setOnClickListener {
+                generalAdapterCallbacks?.onSongClicked(songs, bindingAdapterPosition, it)
+            }
+        }
+    }
 
-        /** View type constant for a multi-column grid cell. */
-        const val VIEW_TYPE_GRID = 1
+    companion object {
+        const val VIEW_TYPE_LIST = CommonPreferencesConstants.GRID_TYPE_LIST
+        const val VIEW_TYPE_GRID = CommonPreferencesConstants.GRID_TYPE_GRID
+        const val VIEW_TYPE_LABEL = CommonPreferencesConstants.GRID_TYPE_LABEL
     }
 }

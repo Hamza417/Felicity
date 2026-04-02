@@ -48,7 +48,7 @@ class AdapterFolderHierarchy(contents: FolderHierarchyContents) : RecyclerView.A
         return if (position < folderCount) {
             folders[position].id
         } else {
-            songs[position - folderCount].id.toLong()
+            songs[position - folderCount].id
         }
     }
 

@@ -1,10 +1,12 @@
 package app.simple.felicity.callbacks;
 
 import android.view.View;
+import android.widget.ImageView;
 
 import java.util.List;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import app.simple.felicity.repository.models.Album;
 import app.simple.felicity.repository.models.Artist;
@@ -23,7 +25,7 @@ public interface GeneralAdapterCallbacks {
     
     }
     
-    default void onSongLongClicked(@NonNull List <Audio> songs, int position, @NonNull View view) {
+    default void onSongLongClicked(@NonNull List <Audio> songs, int position, @Nullable ImageView imageView) {
     
     }
     

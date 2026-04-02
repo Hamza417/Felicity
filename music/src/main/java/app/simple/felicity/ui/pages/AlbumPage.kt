@@ -117,9 +117,9 @@ class AlbumPage : MediaFragment() {
                 shuffleMediaItems(audios)
             }
 
-            override fun onSongLongClicked(songs: List<Audio>, position: Int, view: View) {
-                super.onSongLongClicked(songs, position, view)
-                openSongsMenu(songs, position, view as ImageView)
+            override fun onSongLongClicked(songs: List<Audio>, position: Int, imageView: ImageView?) {
+                super.onSongLongClicked(songs, position, imageView)
+                openSongsMenu(songs, position, imageView)
             }
 
             override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {

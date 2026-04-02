@@ -101,8 +101,8 @@ class GenrePage : MediaFragment() {
                 setMediaItems(songs, position)
             }
 
-            override fun onSongLongClicked(songs: List<Audio>, position: Int, view: View) {
-                openSongsMenu(songs, position, view as ImageView)
+            override fun onSongLongClicked(songs: List<Audio>, position: Int, imageView: ImageView?) {
+                openSongsMenu(songs, position, imageView)
             }
 
             override fun onPlayClicked(audios: MutableList<Audio>, position: Int) {

@@ -10,6 +10,7 @@ import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterStyleGridBinding
+import app.simple.felicity.databinding.AdapterStyleLabelsBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -70,14 +71,14 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
-            CommonPreferencesConstants.GRID_TYPE_LIST -> {
-                ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-            }
             CommonPreferencesConstants.GRID_TYPE_GRID -> {
                 GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
+            CommonPreferencesConstants.GRID_TYPE_LABEL -> {
+                LabelHolder(AdapterStyleLabelsBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            }
             else -> {
-                throw IllegalArgumentException("Invalid view type")
+                ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
         }
     }
@@ -87,14 +88,16 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
         when (holder) {
             is ListHolder -> holder.bind(album, isLightBind)
             is GridHolder -> holder.bind(album, isLightBind)
+            is LabelHolder -> holder.bind(album, isLightBind)
         }
     }
 
     override fun getItemViewType(position: Int): Int {
-        return if (AlbumPreferences.getGridSize().isGrid) {
-            CommonPreferencesConstants.GRID_TYPE_GRID
-        } else {
-            CommonPreferencesConstants.GRID_TYPE_LIST
+        val mode = AlbumPreferences.getGridSize()
+        return when {
+            mode.isLabel -> CommonPreferencesConstants.GRID_TYPE_LABEL
+            mode.isGrid -> CommonPreferencesConstants.GRID_TYPE_GRID
+            else -> CommonPreferencesConstants.GRID_TYPE_LIST
         }
     }
 
@@ -105,6 +108,7 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
         when (holder) {
             is ListHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
             is GridHolder -> Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
+            is LabelHolder -> Unit
         }
     }
 
@@ -142,6 +146,22 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
             binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
             if (isLightBind) return
             binding.albumArt.loadArtCoverWithPayload(album)
+            binding.container.setOnLongClickListener {
+                generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)
+                true
+            }
+            binding.container.setOnClickListener {
+                generalAdapterCallbacks?.onAlbumClicked(albums, bindingAdapterPosition, it)
+            }
+        }
+    }
+
+    inner class LabelHolder(val binding: AdapterStyleLabelsBinding) : VerticalListViewHolder(binding.root) {
+        fun bind(album: Album, isLightBind: Boolean) {
+            binding.title.setTextOrUnknown(album.name)
+            binding.tertiaryDetail.setTextOrUnknown(album.artist)
+            binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
+            if (isLightBind) return
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)
                 true

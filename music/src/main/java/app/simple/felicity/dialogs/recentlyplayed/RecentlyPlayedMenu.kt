@@ -33,6 +33,8 @@ class RecentlyPlayedMenu : ScopedBottomSheetFragment() {
         val isLandscape = AppOrientation.isLandscape()
         val list: List<CommonPreferencesConstants.LayoutMode> = if (isLandscape) {
             listOf(
+                    CommonPreferencesConstants.LayoutMode.LABEL_ONE,
+                    CommonPreferencesConstants.LayoutMode.LABEL_TWO,
                     CommonPreferencesConstants.LayoutMode.LIST_ONE,
                     CommonPreferencesConstants.LayoutMode.LIST_TWO,
                     CommonPreferencesConstants.LayoutMode.LIST_THREE,
@@ -44,6 +46,8 @@ class RecentlyPlayedMenu : ScopedBottomSheetFragment() {
             )
         } else {
             listOf(
+                    CommonPreferencesConstants.LayoutMode.LABEL_ONE,
+                    CommonPreferencesConstants.LayoutMode.LABEL_TWO,
                     CommonPreferencesConstants.LayoutMode.LIST_ONE,
                     CommonPreferencesConstants.LayoutMode.LIST_TWO,
                     CommonPreferencesConstants.LayoutMode.GRID_TWO,

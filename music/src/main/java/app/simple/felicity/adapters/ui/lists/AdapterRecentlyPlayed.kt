@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.ListUpdateCallback
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterStyleGridBinding
+import app.simple.felicity.databinding.AdapterStyleLabelsBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -88,13 +89,18 @@ class AdapterRecentlyPlayed(initial: List<AudioWithStat>) : FastScrollAdapter<Ve
 
     override fun getItemId(position: Int): Long = songs[position].audio.id
 
-    override fun getItemViewType(position: Int): Int =
-        if (layoutMode.isGrid) CommonPreferencesConstants.GRID_TYPE_GRID else CommonPreferencesConstants.GRID_TYPE_LIST
+    override fun getItemViewType(position: Int): Int = when {
+        layoutMode.isLabel -> CommonPreferencesConstants.GRID_TYPE_LABEL
+        layoutMode.isGrid -> CommonPreferencesConstants.GRID_TYPE_GRID
+        else -> CommonPreferencesConstants.GRID_TYPE_LIST
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
             CommonPreferencesConstants.GRID_TYPE_GRID ->
                 GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            CommonPreferencesConstants.GRID_TYPE_LABEL ->
+                LabelHolder(AdapterStyleLabelsBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             else ->
                 ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
         }
@@ -105,6 +111,7 @@ class AdapterRecentlyPlayed(initial: List<AudioWithStat>) : FastScrollAdapter<Ve
         when (holder) {
             is ListHolder -> holder.bind(item, isLightBind)
             is GridHolder -> holder.bind(item, isLightBind)
+            is LabelHolder -> holder.bind(item, isLightBind)
         }
     }
 
@@ -116,6 +123,7 @@ class AdapterRecentlyPlayed(initial: List<AudioWithStat>) : FastScrollAdapter<Ve
         when (holder) {
             is ListHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
             is GridHolder -> Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
+            is LabelHolder -> Unit
         }
     }
 
@@ -172,6 +180,25 @@ class AdapterRecentlyPlayed(initial: List<AudioWithStat>) : FastScrollAdapter<Ve
             binding.albumArt.loadArtCoverWithPayload(audio)
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onSongLongClicked(audioList, bindingAdapterPosition, binding.albumArt)
+                true
+            }
+            binding.container.setOnClickListener {
+                generalAdapterCallbacks?.onSongClicked(audioList, bindingAdapterPosition, it)
+            }
+        }
+    }
+
+    inner class LabelHolder(val binding: AdapterStyleLabelsBinding) : VerticalListViewHolder(binding.root) {
+        fun bind(item: AudioWithStat, isLightBind: Boolean) {
+            val audio = item.audio
+            binding.title.setTextOrUnknown(audio.title)
+            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
+            binding.tertiaryDetail.text = buildTertiaryText(item)
+            binding.title.addAudioQualityIcon(audio)
+            binding.container.setAudioID(audio.id)
+            if (isLightBind) return
+            binding.container.setOnLongClickListener {
+                generalAdapterCallbacks?.onSongLongClicked(audioList, bindingAdapterPosition, null)
                 true
             }
             binding.container.setOnClickListener {

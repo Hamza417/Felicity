@@ -1,18 +1,23 @@
 package app.simple.felicity.decorations.ripple;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.LinearLayout;
 
 import java.util.Objects;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import app.simple.felicity.decorations.corners.LayoutBackground;
 import app.simple.felicity.preferences.AppearancePreferences;
+import app.simple.felicity.shared.utils.ColorUtils;
 import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
@@ -22,6 +27,9 @@ public class DynamicRippleLinearLayout extends LinearLayout implements SharedPre
     
     private float radius = AppearancePreferences.INSTANCE.getCornerRadius();
     private float cornerFactor = 1;
+    public static final long RIPPLE_DURATION = 500;
+    private boolean isSelected = false;
+    private ValueAnimator backgroundAnimator;
     
     public DynamicRippleLinearLayout(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -120,5 +128,63 @@ public class DynamicRippleLinearLayout extends LinearLayout implements SharedPre
     public void setCornerFactor(float cornerFactor) {
         this.cornerFactor = cornerFactor;
         init();
+    }
+    
+    public void setSelected(boolean selected, boolean animate) {
+        isSelected = selected;
+        setDefaultBackground(selected, animate);
+    }
+    
+    /**
+     * Use this method to track selection in {@link androidx.recyclerview.widget.RecyclerView}.
+     * This will change the background according to the accent color and will also keep
+     * save the ripple effect.
+     *
+     * @param selected true for selected item
+     */
+    public void setDefaultBackground(boolean selected, boolean animate) {
+        int accentColor = ColorUtils.INSTANCE.changeAlpha(ThemeManager.INSTANCE.getAccent().getSecondaryAccentColor(), 100);
+        int transparentColor = Color.TRANSPARENT;
+        int currentColor = getBackgroundTintList() != null ? getBackgroundTintList().getDefaultColor()
+                : selected ? accentColor : transparentColor;
+        
+        if (animate) {
+            if (selected) {
+                if (backgroundAnimator != null && backgroundAnimator.isRunning()) {
+                    backgroundAnimator.cancel();
+                }
+                backgroundAnimator = ValueAnimator.ofArgb(currentColor, accentColor);
+                backgroundAnimator.setDuration(RIPPLE_DURATION);
+                backgroundAnimator.setInterpolator(new DecelerateInterpolator());
+                backgroundAnimator.addUpdateListener(animation -> {
+                    int animatedValue = (int) animation.getAnimatedValue();
+                    setBackgroundTintList(ColorStateList.valueOf(animatedValue));
+                    LayoutBackground.setBackground(getContext(), this, null, radius);
+                });
+                backgroundAnimator.start();
+            } else {
+                if (backgroundAnimator != null && backgroundAnimator.isRunning()) {
+                    backgroundAnimator.cancel();
+                }
+                backgroundAnimator = ValueAnimator.ofArgb(currentColor, transparentColor);
+                backgroundAnimator.setInterpolator(new DecelerateInterpolator());
+                backgroundAnimator.setDuration(RIPPLE_DURATION);
+                backgroundAnimator.addUpdateListener(animation -> {
+                    int animatedValue = (int) animation.getAnimatedValue();
+                    setBackgroundTintList(ColorStateList.valueOf(animatedValue));
+                    LayoutBackground.setBackground(getContext(), this, null, radius);
+                });
+                backgroundAnimator.start();
+            }
+        } else {
+            if (selected) {
+                setBackgroundTintList(ColorStateList.valueOf(transparentColor));
+                setBackgroundTintList(ColorStateList.valueOf(accentColor));
+                LayoutBackground.setBackground(getContext(), this, null, radius);
+            } else {
+                setBackground(null);
+                setBackground(RippleUtils.getRippleDrawable());
+            }
+        }
     }
 }

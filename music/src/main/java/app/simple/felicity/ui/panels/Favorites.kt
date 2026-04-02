@@ -134,8 +134,8 @@ class Favorites : PanelFragment() {
                     setMediaItems(songs, position)
                 }
 
-                override fun onSongLongClicked(audios: MutableList<Audio>, position: Int, view: View) {
-                    openSongsMenu(audios, position, view as ImageView)
+                override fun onSongLongClicked(audios: MutableList<Audio>, position: Int, imageView: ImageView?) {
+                    openSongsMenu(audios, position, imageView)
                 }
             })
             binding.recyclerView.adapter = adapterSongs

@@ -10,6 +10,7 @@ import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterStyleGridBinding
+import app.simple.felicity.databinding.AdapterStyleLabelsBinding
 import app.simple.felicity.databinding.AdapterYearListBinding
 import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -61,14 +62,14 @@ class AdapterYear(initial: List<YearGroup>) : FastScrollAdapter<VerticalListView
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
-            CommonPreferencesConstants.GRID_TYPE_LIST -> {
-                ListHolder(AdapterYearListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-            }
             CommonPreferencesConstants.GRID_TYPE_GRID -> {
                 GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
+            CommonPreferencesConstants.GRID_TYPE_LABEL -> {
+                LabelHolder(AdapterStyleLabelsBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            }
             else -> {
-                throw IllegalArgumentException("Invalid view type: $viewType")
+                ListHolder(AdapterYearListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
         }
     }
@@ -78,13 +79,20 @@ class AdapterYear(initial: List<YearGroup>) : FastScrollAdapter<VerticalListView
         when (holder) {
             is GridHolder -> holder.bind(yearGroup, isLightBind)
             is ListHolder -> holder.bind(yearGroup, isLightBind)
+            is LabelHolder -> holder.bind(yearGroup, isLightBind)
         }
     }
 
     override fun getItemId(position: Int): Long = list[position].id
     override fun getItemCount(): Int = list.size
-    override fun getItemViewType(position: Int): Int =
-        if (YearPreferences.getGridSize().isGrid) CommonPreferencesConstants.GRID_TYPE_GRID else CommonPreferencesConstants.GRID_TYPE_LIST
+    override fun getItemViewType(position: Int): Int {
+        val mode = YearPreferences.getGridSize()
+        return when {
+            mode.isLabel -> CommonPreferencesConstants.GRID_TYPE_LABEL
+            mode.isGrid -> CommonPreferencesConstants.GRID_TYPE_GRID
+            else -> CommonPreferencesConstants.GRID_TYPE_LIST
+        }
+    }
 
     inner class GridHolder(private val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
         fun bind(yearGroup: YearGroup, isLightBind: Boolean) {
@@ -105,6 +113,17 @@ class AdapterYear(initial: List<YearGroup>) : FastScrollAdapter<VerticalListView
                     R.plurals.number_of_songs, yearGroup.songCount, yearGroup.songCount)
             if (isLightBind) return
             binding.cover.loadArtCoverWithPayload(yearGroup)
+            binding.container.setOnClickListener { callbacks?.onYearGroupClicked(yearGroup, it) }
+        }
+    }
+
+    inner class LabelHolder(private val binding: AdapterStyleLabelsBinding) : VerticalListViewHolder(binding.root) {
+        fun bind(yearGroup: YearGroup, isLightBind: Boolean) {
+            binding.title.text = yearGroup.year
+            binding.secondaryDetail.text = context.resources.getQuantityString(
+                    R.plurals.number_of_songs, yearGroup.songCount, yearGroup.songCount)
+            binding.tertiaryDetail.gone(false)
+            if (isLightBind) return
             binding.container.setOnClickListener { callbacks?.onYearGroupClicked(yearGroup, it) }
         }
     }

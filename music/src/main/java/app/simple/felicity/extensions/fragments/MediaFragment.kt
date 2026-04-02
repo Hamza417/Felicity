@@ -28,6 +28,7 @@ import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.dialogs.app.AudioInformation.Companion.showAudioInfo
 import app.simple.felicity.dialogs.lyrics.Lyrics.Companion.showLyrics
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
@@ -38,6 +39,7 @@ import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.shuffle.Shuffle.shuffle
 import app.simple.felicity.shared.utils.BarHeight
+import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.pages.AlbumPage
@@ -322,169 +324,170 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     protected fun openSongsMenu(
             audios: List<Audio>,
             position: Int,
-            imageView: ImageView,
+            imageView: ImageView?,
             onDismiss: (() -> Unit)? = null) {
-        SimpleSharedImageDialog.Builder(
-                container = requireContainerView(),
-                sourceImageView = imageView,
-                inflateBinding = DialogSongMenuBinding::inflate,
-                targetImageViewProvider = { it.cover })
-            .onViewCreated { binding ->
-                miniPlayerCallbacks?.onHideMiniPlayer()
-                val audio = audios[position]
-                binding.title.text = audio.title
-                binding.title.addAudioQualityIcon(audio)
-                binding.secondaryDetail.text = audio.artist
-                binding.tertiaryDetail.text = audio.album
 
-                // Hide "Add to Queue" and "Play Next" when the song is already playing
-                val isCurrentlyPlaying = MediaManager.getCurrentSong()?.id == audio.id
-                if (isCurrentlyPlaying) {
-                    binding.addToQueue.gone(animate = false)
-                    binding.playNext.gone(animate = false)
-                }
+        val audio = audios[position]
 
-                // Hide "Go to Artist" if artist is unknown/empty
-                if (audio.artist.isNullOrBlank()) {
-                    binding.goToArtist.gone(animate = false)
-                }
+        val onViewCreated: (DialogSongMenuBinding) -> Unit = { binding ->
+            miniPlayerCallbacks?.onHideMiniPlayer()
+            binding.title.text = audio.title
+            binding.title.addAudioQualityIcon(audio)
+            binding.secondaryDetail.text = audio.artist
+            binding.tertiaryDetail.text = audio.album
 
-                // Hide "Go to Album" if album is unknown/empty
-                if (audio.album.isNullOrBlank()) {
-                    binding.goToAlbum.gone(animate = false)
-                }
+            if (imageView.isNull()) {
+                binding.cover.loadArtCoverWithPayload(audio)
+            }
 
-                // Update dynamic labels based on Audio model state (no DB query needed)
-                if (audio.isFavorite) {
-                    binding.addToFavorites.text = getString(R.string.remove_from_favorites)
-                }
-                // "Always Skip" toggles: show "Never Skip" label when song is already skipped
-                if (audio.isAlwaysSkip) {
-                    binding.alwaysSkip.text = getString(R.string.never_skip)
-                }
-            }.onDialogInflated { binding, dismiss ->
-                val audio = audios[position]
+            val isCurrentlyPlaying = MediaManager.getCurrentSong()?.id == audio.id
+            if (isCurrentlyPlaying) {
+                binding.addToQueue.gone(animate = false)
+                binding.playNext.gone(animate = false)
+            }
 
-                binding.play.setOnClickListener {
-                    val pos = audios.indexOfFirst { it.id == audio.id }.coerceAtLeast(0)
-                    setMediaItems(audios, pos)
-                    dismiss()
-                }
+            if (audio.artist.isNullOrBlank()) binding.goToArtist.gone(animate = false)
+            if (audio.album.isNullOrBlank()) binding.goToAlbum.gone(animate = false)
+            if (audio.isFavorite) binding.addToFavorites.text = getString(R.string.remove_from_favorites)
+            if (audio.isAlwaysSkip) binding.alwaysSkip.text = getString(R.string.never_skip)
+        }
 
-                binding.addToQueue.setOnClickListener {
-                    MediaManager.addToQueue(audio)
-                    openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
-                    dismiss()
-                }
+        val onDialogInflated: (DialogSongMenuBinding, () -> Unit) -> Unit = { binding, dismiss ->
+            binding.play.setOnClickListener {
+                val pos = audios.indexOfFirst { it.id == audio.id }.coerceAtLeast(0)
+                setMediaItems(audios, pos)
+                dismiss()
+            }
 
-                binding.playNext.setOnClickListener {
-                    MediaManager.playNext(audio)
-                    dismiss()
-                }
+            binding.addToQueue.setOnClickListener {
+                MediaManager.addToQueue(audio)
+                openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
+                dismiss()
+            }
 
-                binding.addToPlaylist.setOnClickListener {
+            binding.playNext.setOnClickListener {
+                MediaManager.playNext(audio)
+                dismiss()
+            }
 
-                }
+            binding.addToPlaylist.setOnClickListener {
 
-                binding.goToArtist.setOnClickListener {
-                    val artistName = audio.artist ?: return@setOnClickListener
-                    val artist = Artist(
-                            id = artistName.hashCode().toLong(),
-                            name = artistName,
-                            albumCount = 0,
-                            trackCount = 0
-                    )
-                    openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
-                    dismiss()
-                }
+            }
 
-                binding.goToAlbum.setOnClickListener {
-                    val albumName = audio.album ?: return@setOnClickListener
-                    val artistName = audio.artist ?: ""
-                    val album = Album(
-                            id = audio.albumId,
-                            name = albumName,
-                            artist = artistName,
-                            artistId = artistName.hashCode().toLong()
-                    )
-                    openFragment(AlbumPage.newInstance(album), AlbumPage.TAG)
-                    dismiss()
-                }
+            binding.goToArtist.setOnClickListener {
+                val artistName = audio.artist ?: return@setOnClickListener
+                val artist = Artist(
+                        id = artistName.hashCode().toLong(),
+                        name = artistName,
+                        albumCount = 0,
+                        trackCount = 0
+                )
+                openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
+                dismiss()
+            }
 
-                binding.addToFavorites.setOnClickListener {
-                    viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                        val newFav = !audio.isFavorite
-                        AudioDatabase.getInstance(requireContext()).audioDao()?.setFavorite(audio.id, newFav)
-                        audio.isFavorite = newFav
-                        if (MediaManager.getCurrentSong()?.id == audio.id) {
-                            withContext(Dispatchers.Main) { MediaManager.notifyCurrentSongUpdated() }
-                        }
-                    }
-                    dismiss()
-                }
+            binding.goToAlbum.setOnClickListener {
+                val albumName = audio.album ?: return@setOnClickListener
+                val artistName = audio.artist ?: ""
+                val album = Album(
+                        id = audio.albumId,
+                        name = albumName,
+                        artist = artistName,
+                        artistId = artistName.hashCode().toLong()
+                )
+                openFragment(AlbumPage.newInstance(album), AlbumPage.TAG)
+                dismiss()
+            }
 
-                // Single toggle button: "Always Skip" when not skipped, "Never Skip" when already skipped
-                binding.alwaysSkip.setOnClickListener {
-                    viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                        val newSkip = !audio.isAlwaysSkip
-                        AudioDatabase.getInstance(requireContext()).audioDao()?.setAlwaysSkip(audio.id, newSkip)
-                        audio.setAlwaysSkip(newSkip)
-                        // If this song is currently playing and was just marked always-skip, advance
-                        if (newSkip && MediaManager.getCurrentSong()?.id == audio.id) {
-                            withContext(Dispatchers.Main) { MediaManager.next() }
-                        }
-                    }
-                    dismiss()
-                }
-
-                binding.share.setOnClickListener {
-                    val file = audio.file
-                    val uri = FileProvider.getUriForFile(
-                            requireContext(),
-                            "${requireContext().packageName}.provider",
-                            file
-                    )
-
-                    ShareCompat.IntentBuilder(requireContext())
-                        .setType("audio/*")
-                        .setText(audio.title)
-                        .setStream(uri)
-                        .startChooser()
-
-                    dismiss()
-                }
-
-                binding.delete.setOnClickListener {
-                    dismiss()
-                    showAudioDeleteConfirmation(audio) { confirmed, lyrics ->
-                        if (confirmed) {
-                            deleteSong(audio, lyrics)
-                        } else {
-                            // Reopen the menu if user cancels
-                            openSongsMenu(audios, position, imageView)
-                        }
+            binding.addToFavorites.setOnClickListener {
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    val newFav = !audio.isFavorite
+                    AudioDatabase.getInstance(requireContext()).audioDao()?.setFavorite(audio.id, newFav)
+                    audio.isFavorite = newFav
+                    if (MediaManager.getCurrentSong()?.id == audio.id) {
+                        withContext(Dispatchers.Main) { MediaManager.notifyCurrentSongUpdated() }
                     }
                 }
+                dismiss()
+            }
 
-                binding.lyrics.setOnClickListener {
-                    childFragmentManager.showLyrics(audio).also {
-                        dismiss()
+            binding.alwaysSkip.setOnClickListener {
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    val newSkip = !audio.isAlwaysSkip
+                    AudioDatabase.getInstance(requireContext()).audioDao()?.setAlwaysSkip(audio.id, newSkip)
+                    audio.setAlwaysSkip(newSkip)
+                    if (newSkip && MediaManager.getCurrentSong()?.id == audio.id) {
+                        withContext(Dispatchers.Main) { MediaManager.next() }
                     }
                 }
+                dismiss()
+            }
 
-                binding.info.setOnClickListener {
-                    childFragmentManager.showAudioInfo(audio).also {
-                        dismiss()
+            binding.share.setOnClickListener {
+                val file = audio.file
+                val uri = FileProvider.getUriForFile(
+                        requireContext(),
+                        "${requireContext().packageName}.provider",
+                        file
+                )
+                ShareCompat.IntentBuilder(requireContext())
+                    .setType("audio/*")
+                    .setText(audio.title)
+                    .setStream(uri)
+                    .startChooser()
+                dismiss()
+            }
+
+            binding.delete.setOnClickListener {
+                dismiss()
+                showAudioDeleteConfirmation(audio) { confirmed, lyrics ->
+                    if (confirmed) {
+                        deleteSong(audio, lyrics)
+                    } else {
+                        openSongsMenu(audios, position, imageView)
                     }
                 }
             }
-            .onDismiss {
-                miniPlayerCallbacks?.onShowMiniPlayer()
-                onDismiss?.invoke()
+
+            binding.lyrics.setOnClickListener {
+                childFragmentManager.showLyrics(audio).also { dismiss() }
             }
-            .setWidthRatio(if (BarHeight.isLandscape(requireContext())) 0.5F else SharedImageDialogMenu.DEFAULT_WIDTH_RATIO)
-            .build()
-            .show()
+
+            binding.info.setOnClickListener {
+                childFragmentManager.showAudioInfo(audio).also { dismiss() }
+            }
+        }
+
+        val onDismissCallback: () -> Unit = {
+            miniPlayerCallbacks?.onShowMiniPlayer()
+            onDismiss?.invoke()
+        }
+
+        val widthRatio = if (BarHeight.isLandscape(requireContext())) 0.5F else SharedImageDialogMenu.DEFAULT_WIDTH_RATIO
+
+        if (imageView != null) {
+            SimpleSharedImageDialog.Builder(
+                    container = requireContainerView(),
+                    sourceImageView = imageView,
+                    inflateBinding = DialogSongMenuBinding::inflate,
+                    targetImageViewProvider = { it.cover })
+                .onViewCreated(onViewCreated)
+                .onDialogInflated(onDialogInflated)
+                .onDismiss(onDismissCallback)
+                .setWidthRatio(widthRatio)
+                .build()
+                .show()
+        } else {
+            SimpleDialog.Builder(
+                    container = requireContainerView(),
+                    inflateBinding = DialogSongMenuBinding::inflate)
+                .onViewCreated(onViewCreated)
+                .onDialogInflated(onDialogInflated)
+                .onDismiss(onDismissCallback)
+                .setWidthRatio(widthRatio)
+                .build()
+                .show()
+        }
     }
 
     /**

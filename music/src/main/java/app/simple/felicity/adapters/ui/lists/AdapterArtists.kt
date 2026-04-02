@@ -10,6 +10,7 @@ import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterStyleGridBinding
+import app.simple.felicity.databinding.AdapterStyleLabelsBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -69,14 +70,14 @@ class AdapterArtists(initial: List<Artist>) : FastScrollAdapter<VerticalListView
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
-            CommonPreferencesConstants.GRID_TYPE_LIST -> {
-                ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-            }
             CommonPreferencesConstants.GRID_TYPE_GRID -> {
                 GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
+            CommonPreferencesConstants.GRID_TYPE_LABEL -> {
+                LabelHolder(AdapterStyleLabelsBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            }
             else -> {
-                throw IllegalArgumentException("Invalid view type")
+                ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
         }
     }
@@ -86,12 +87,19 @@ class AdapterArtists(initial: List<Artist>) : FastScrollAdapter<VerticalListView
         when (holder) {
             is ListHolder -> holder.bind(artist, isLightBind)
             is GridHolder -> holder.bind(artist, isLightBind)
+            is LabelHolder -> holder.bind(artist, isLightBind)
         }
     }
 
     override fun getItemCount(): Int = artists.size
-    override fun getItemViewType(position: Int): Int =
-        if (ArtistPreferences.getGridSize().isGrid) CommonPreferencesConstants.GRID_TYPE_GRID else CommonPreferencesConstants.GRID_TYPE_LIST
+    override fun getItemViewType(position: Int): Int {
+        val mode = ArtistPreferences.getGridSize()
+        return when {
+            mode.isLabel -> CommonPreferencesConstants.GRID_TYPE_LABEL
+            mode.isGrid -> CommonPreferencesConstants.GRID_TYPE_GRID
+            else -> CommonPreferencesConstants.GRID_TYPE_LIST
+        }
+    }
 
     override fun onViewRecycled(holder: VerticalListViewHolder) {
         holder.itemView.clearAnimation()
@@ -131,6 +139,22 @@ class AdapterArtists(initial: List<Artist>) : FastScrollAdapter<VerticalListView
             if (isLightBind) return
             binding.albumArt.loadArtCoverWithPayload(item = artist)
 
+            binding.container.setOnLongClickListener {
+                generalAdapterCallbacks?.onArtistLongClicked(artists, bindingAdapterPosition, it)
+                true
+            }
+            binding.container.setOnClickListener {
+                generalAdapterCallbacks?.onArtistClicked(artists, bindingAdapterPosition, it)
+            }
+        }
+    }
+
+    inner class LabelHolder(val binding: AdapterStyleLabelsBinding) : VerticalListViewHolder(binding.root) {
+        fun bind(artist: Artist, isLightBind: Boolean) {
+            binding.title.setTextOrUnknown(artist.name)
+            binding.tertiaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_albums, artist.albumCount, artist.albumCount))
+            binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, artist.trackCount, artist.trackCount))
+            if (isLightBind) return
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onArtistLongClicked(artists, bindingAdapterPosition, it)
                 true

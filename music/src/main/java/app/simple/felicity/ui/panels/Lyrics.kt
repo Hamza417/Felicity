@@ -226,7 +226,7 @@ class Lyrics : MediaFragment() {
             lyricsViewModel.loadLrcData()
             val forward = MediaManager.lastNavigationDirection
             binding.name.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
-            binding.artist.setTextWithEffect(audio.getArtists() ?: getString(R.string.unknown), forward, 50L)
+            binding.artist.setTextWithEffect(audio.getArtists(), forward, 50L)
             binding.lrc.setDuration(audio.duration)
             binding.seekbar.setMaxWithReset(audio.duration.toFloat())
         }

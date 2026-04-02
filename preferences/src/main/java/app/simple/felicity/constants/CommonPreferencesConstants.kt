@@ -38,8 +38,11 @@ object CommonPreferencesConstants {
     // Grid type constants
     const val GRID_TYPE_LIST = 0
     const val GRID_TYPE_GRID = 1
+    const val GRID_TYPE_LABEL = 2
 
-    enum class LayoutMode(val spanCount: Int, val isGrid: Boolean) {
+    enum class LayoutMode(val spanCount: Int, val isGrid: Boolean, val isLabel: Boolean = false) {
+        LABEL_ONE(1, false, true),
+        LABEL_TWO(2, false, true),
         LIST_ONE(1, false),
         LIST_TWO(2, false),
         LIST_THREE(3, false),

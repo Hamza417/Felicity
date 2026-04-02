@@ -11,6 +11,7 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterFoldersListBinding
 import app.simple.felicity.databinding.AdapterStyleGridBinding
+import app.simple.felicity.databinding.AdapterStyleLabelsBinding
 import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
@@ -67,14 +68,14 @@ class AdapterFolders(initial: List<Folder>) : FastScrollAdapter<VerticalListView
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
-            CommonPreferencesConstants.GRID_TYPE_LIST -> {
-                ListHolder(AdapterFoldersListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-            }
             CommonPreferencesConstants.GRID_TYPE_GRID -> {
                 GridHolder(AdapterStyleGridBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
+            CommonPreferencesConstants.GRID_TYPE_LABEL -> {
+                LabelHolder(AdapterStyleLabelsBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            }
             else -> {
-                throw IllegalArgumentException("Invalid view type: $viewType")
+                ListHolder(AdapterFoldersListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
         }
     }
@@ -84,13 +85,20 @@ class AdapterFolders(initial: List<Folder>) : FastScrollAdapter<VerticalListView
         when (holder) {
             is GridHolder -> holder.bind(folder, isLightBind)
             is ListHolder -> holder.bind(folder, isLightBind)
+            is LabelHolder -> holder.bind(folder, isLightBind)
         }
     }
 
     override fun getItemId(position: Int): Long = list[position].id
     override fun getItemCount(): Int = list.size
-    override fun getItemViewType(position: Int): Int =
-        if (FoldersPreferences.getGridSize().isGrid) CommonPreferencesConstants.GRID_TYPE_GRID else CommonPreferencesConstants.GRID_TYPE_LIST
+    override fun getItemViewType(position: Int): Int {
+        val mode = FoldersPreferences.getGridSize()
+        return when {
+            mode.isLabel -> CommonPreferencesConstants.GRID_TYPE_LABEL
+            mode.isGrid -> CommonPreferencesConstants.GRID_TYPE_GRID
+            else -> CommonPreferencesConstants.GRID_TYPE_LIST
+        }
+    }
 
     inner class GridHolder(private val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
         fun bind(folder: Folder, isLightBind: Boolean) {
@@ -109,6 +117,16 @@ class AdapterFolders(initial: List<Folder>) : FastScrollAdapter<VerticalListView
             binding.songCount.text = context.resources.getQuantityString(R.plurals.number_of_songs, folder.songCount, folder.songCount)
             if (isLightBind) return
             binding.cover.loadArtCoverWithPayload(folder)
+            binding.container.setOnClickListener { callbacks?.onFolderClicked(folder, it) }
+        }
+    }
+
+    inner class LabelHolder(private val binding: AdapterStyleLabelsBinding) : VerticalListViewHolder(binding.root) {
+        fun bind(folder: Folder, isLightBind: Boolean) {
+            binding.title.text = folder.name
+            binding.secondaryDetail.text = context.resources.getQuantityString(R.plurals.number_of_songs, folder.songCount, folder.songCount)
+            binding.tertiaryDetail.gone(false)
+            if (isLightBind) return
             binding.container.setOnClickListener { callbacks?.onFolderClicked(folder, it) }
         }
     }

@@ -1,5 +1,16 @@
 package app.simple.felicity.ui.pages
 
+/**
+ * Fragment that displays the artist page, showing all related data such as
+ * songs, albums, and genres associated with a given [Artist].
+ *
+ * This fragment observes [ArtistViewerViewModel] and updates the UI reactively
+ * whenever new [PageData] is emitted. It also handles all user interactions
+ * through [GeneralAdapterCallbacks].
+ *
+ * @author Hamza417
+ */
+
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -56,6 +67,10 @@ class ArtistPage : MediaFragment() {
         return binding.root
     }
 
+    /**
+     * Called when the view is created. Sets up the RecyclerView, postpones the enter transition,
+     * and begins collecting [PageData] from the [ArtistViewerViewModel].
+     */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         binding.recyclerView.requireAttachedMiniPlayer()
@@ -72,6 +87,14 @@ class ArtistPage : MediaFragment() {
         }
     }
 
+    /**
+     * Updates the artist page UI with the given [PageData].
+     *
+     * Creates a new [PageAdapter] on first call, or updates the existing one with fresh data.
+     * Also re-attaches the adapter to the RecyclerView if the reference was lost during navigation.
+     *
+     * @param data The [PageData] containing songs, albums, genres, and other artist-related content.
+     */
     private fun updateArtistPage(data: PageData) {
         val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
         binding.recyclerView.addItemDecorationSafely(PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))
@@ -96,6 +119,12 @@ class ArtistPage : MediaFragment() {
         requireView().startTransitionOnPreDraw()
     }
 
+    /**
+     * Registers all interaction callbacks on the [PageAdapter] via [GeneralAdapterCallbacks].
+     *
+     * Handles song clicks, long-clicks, play/shuffle actions, artist/album/genre navigation,
+     * and the overflow menu for the current artist.
+     */
     private fun setupAdapterCallbacks() {
         pageAdapter?.setArtistAdapterListener(object : GeneralAdapterCallbacks {
             override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
@@ -103,8 +132,8 @@ class ArtistPage : MediaFragment() {
                 setMediaItems(songs, position)
             }
 
-            override fun onSongLongClicked(songs: List<Audio>, position: Int, view: View) {
-                openSongsMenu(songs, position, view as ImageView)
+            override fun onSongLongClicked(songs: List<Audio>, position: Int, imageView: ImageView?) {
+                openSongsMenu(songs, position, imageView)
             }
 
             override fun onPlayClicked(audios: MutableList<Audio>, position: Int) {
@@ -172,6 +201,12 @@ class ArtistPage : MediaFragment() {
     companion object {
         const val TAG = "ArtistPage"
 
+        /**
+         * Creates a new instance of [ArtistPage] with the given [artist] bundled as arguments.
+         *
+         * @param artist The [Artist] whose data will be displayed in this fragment.
+         * @return A new [ArtistPage] instance ready to be committed via a fragment transaction.
+         */
         fun newInstance(artist: Artist): ArtistPage {
             val args = Bundle()
             args.putParcelable(BundleConstants.ARTIST, artist)
