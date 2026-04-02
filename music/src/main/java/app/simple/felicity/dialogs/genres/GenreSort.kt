@@ -10,7 +10,7 @@ import app.simple.felicity.databinding.DialogSortGenresBinding
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.GenresPreferences
 
-class DialogGenreSort : ScopedBottomSheetFragment() {
+class GenreSort : ScopedBottomSheetFragment() {
 
     private lateinit var binding: DialogSortGenresBinding
 
@@ -46,15 +46,15 @@ class DialogGenreSort : ScopedBottomSheetFragment() {
     companion object {
         const val TAG = "GenresSort"
 
-        fun newInstance(): DialogGenreSort {
+        fun newInstance(): GenreSort {
             val args = Bundle()
-            val fragment = DialogGenreSort()
+            val fragment = GenreSort()
             fragment.arguments = args
             return fragment
         }
 
-        fun FragmentManager.showGenresSortDialog(): DialogGenreSort {
-            val fragment = findFragmentByTag(TAG) as? DialogGenreSort ?: newInstance()
+        fun FragmentManager.showGenresSortDialog(): GenreSort {
+            val fragment = findFragmentByTag(TAG) as? GenreSort ?: newInstance()
             if (!fragment.isAdded) {
                 fragment.show(this, TAG)
             }

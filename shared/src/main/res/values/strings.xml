@@ -304,15 +304,6 @@
     <string name="show_album_artists_summary">Show album artists instead of artists in the artists field of the lists in the app.</string>
     <string name="copy">Copy</string>
 
-    <!-- List/Grid styles -->
-    <string name="list_x2">List x2</string>
-    <string name="List_x3">List x3</string>
-    <string name="grid_x2">Grid x2</string>
-    <string name="grid_x3">Grid x3</string>
-    <string name="grid_x4">Grid x4</string>
-    <string name="grid_x5">Grid x5</string>
-    <string name="grid_x6">Grid x6</string>
-
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">Track Info</string>
     <string name="channels">Channels</string>

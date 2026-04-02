@@ -6,11 +6,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
-import app.simple.felicity.R
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.core.singletons.AppOrientation
 import app.simple.felicity.databinding.DialogSongsMenuBinding
-import app.simple.felicity.decorations.toggles.FelicityChipGroup
+import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.RecentlyAddedPreferences
 
@@ -32,37 +31,42 @@ class RecentlyAddedMenu : ScopedBottomSheetFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val isLandscape = AppOrientation.isLandscape()
-
-        binding.listStyleChipGroup.setChips(
-                if (isLandscape) {
-                    listOf(
-                            FelicityChipGroup.ChipButton(R.string.list, CommonPreferencesConstants.LayoutMode.LIST_ONE),
-                            FelicityChipGroup.ChipButton(R.string.list_x2, CommonPreferencesConstants.LayoutMode.LIST_TWO),
-                            FelicityChipGroup.ChipButton(R.string.List_x3, CommonPreferencesConstants.LayoutMode.LIST_THREE),
-                            FelicityChipGroup.ChipButton(R.string.grid_x2, CommonPreferencesConstants.LayoutMode.GRID_TWO),
-                            FelicityChipGroup.ChipButton(R.string.grid_x3, CommonPreferencesConstants.LayoutMode.GRID_THREE),
-                            FelicityChipGroup.ChipButton(R.string.grid_x4, CommonPreferencesConstants.LayoutMode.GRID_FOUR),
-                            FelicityChipGroup.ChipButton(R.string.grid_x5, CommonPreferencesConstants.LayoutMode.GRID_FIVE),
-                            FelicityChipGroup.ChipButton(R.string.grid_x6, CommonPreferencesConstants.LayoutMode.GRID_SIX),
-                    )
-                } else {
-                    listOf(
-                            FelicityChipGroup.ChipButton(R.string.list, CommonPreferencesConstants.LayoutMode.LIST_ONE),
-                            FelicityChipGroup.ChipButton(R.string.list_x2, CommonPreferencesConstants.LayoutMode.LIST_TWO),
-                            FelicityChipGroup.ChipButton(R.string.grid_x2, CommonPreferencesConstants.LayoutMode.GRID_TWO),
-                            FelicityChipGroup.ChipButton(R.string.grid_x3, CommonPreferencesConstants.LayoutMode.GRID_THREE),
-                            FelicityChipGroup.ChipButton(R.string.grid_x4, CommonPreferencesConstants.LayoutMode.GRID_FOUR),
-                    )
-                }
-        )
-
-        binding.listStyleChipGroup.shouldRestoreStates = false
-        binding.listStyleChipGroup.setSelectedByTag(RecentlyAddedPreferences.getGridSize())
-
-        binding.listStyleChipGroup.setOnSelectionChangedListener { selected ->
-            val mode = selected.firstOrNull()?.tag as? CommonPreferencesConstants.LayoutMode ?: return@setOnSelectionChangedListener
-            RecentlyAddedPreferences.setGridSize(mode)
+        val list: List<CommonPreferencesConstants.LayoutMode> = if (isLandscape) {
+            listOf(
+                    CommonPreferencesConstants.LayoutMode.LIST_ONE,
+                    CommonPreferencesConstants.LayoutMode.LIST_TWO,
+                    CommonPreferencesConstants.LayoutMode.LIST_THREE,
+                    CommonPreferencesConstants.LayoutMode.GRID_TWO,
+                    CommonPreferencesConstants.LayoutMode.GRID_THREE,
+                    CommonPreferencesConstants.LayoutMode.GRID_FOUR,
+                    CommonPreferencesConstants.LayoutMode.GRID_FIVE,
+                    CommonPreferencesConstants.LayoutMode.GRID_SIX,
+            )
+        } else {
+            listOf(
+                    CommonPreferencesConstants.LayoutMode.LIST_ONE,
+                    CommonPreferencesConstants.LayoutMode.LIST_TWO,
+                    CommonPreferencesConstants.LayoutMode.GRID_TWO,
+                    CommonPreferencesConstants.LayoutMode.GRID_THREE,
+                    CommonPreferencesConstants.LayoutMode.GRID_FOUR,
+            )
         }
+
+        binding.listStyleSeekbar.setStepMode(true)
+        binding.listStyleSeekbar.setMin(1f)
+        binding.listStyleSeekbar.setMax(list.size.toFloat())
+        binding.listStyleSeekbar.setStepSize(1)
+        binding.listStyleSeekbar.setStep(list.indexOf(RecentlyAddedPreferences.getGridSize()))
+
+        binding.listStyleSeekbar.setOnStepSeekChangeListener(object : FelicitySeekbar.OnStepSeekChangeListener {
+            override fun onStepChanged(seekbar: FelicitySeekbar, step: Int, fromUser: Boolean) {
+            }
+
+            override fun onStopTrackingTouch(seekbar: FelicitySeekbar) {
+                val mode = list.getOrNull(seekbar.getCurrentStep()) ?: return
+                RecentlyAddedPreferences.setGridSize(mode)
+            }
+        })
 
         binding.openAppSettings.setOnClickListener {
             openAppSettings()

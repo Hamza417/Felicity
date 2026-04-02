@@ -1,4 +1,4 @@
-package app.simple.felicity.dialogs.recentlyplayed
+package app.simple.felicity.dialogs.genres
 
 import android.content.SharedPreferences
 import android.os.Bundle
@@ -8,22 +8,23 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.core.singletons.AppOrientation
-import app.simple.felicity.databinding.DialogSongsMenuBinding
+import app.simple.felicity.databinding.DialogGenreMenuBinding
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
-import app.simple.felicity.preferences.RecentlyPlayedPreferences
+import app.simple.felicity.preferences.GenresPreferences
 
 /**
- * Bottom-sheet menu dialog for the Recently Played panel containing the list style selector.
+ * Bottom-sheet menu dialog for the Genres panel, containing the list style selector
+ * and the genre cover toggle.
  *
  * @author Hamza417
  */
-class RecentlyPlayedMenu : ScopedBottomSheetFragment() {
+class GenreMenu : ScopedBottomSheetFragment() {
 
-    private lateinit var binding: DialogSongsMenuBinding
+    private lateinit var binding: DialogGenreMenuBinding
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        binding = DialogSongsMenuBinding.inflate(inflater, container, false)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        binding = DialogGenreMenuBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -56,7 +57,7 @@ class RecentlyPlayedMenu : ScopedBottomSheetFragment() {
         binding.listStyleSeekbar.setMin(1f)
         binding.listStyleSeekbar.setMax(list.size.toFloat())
         binding.listStyleSeekbar.setStepSize(1)
-        binding.listStyleSeekbar.setStep(list.indexOf(RecentlyPlayedPreferences.getGridSize()))
+        binding.listStyleSeekbar.setStep(list.indexOf(GenresPreferences.getGridSize()))
 
         binding.listStyleSeekbar.setOnStepSeekChangeListener(object : FelicitySeekbar.OnStepSeekChangeListener {
             override fun onStepChanged(seekbar: FelicitySeekbar, step: Int, fromUser: Boolean) {
@@ -64,9 +65,15 @@ class RecentlyPlayedMenu : ScopedBottomSheetFragment() {
 
             override fun onStopTrackingTouch(seekbar: FelicitySeekbar) {
                 val mode = list.getOrNull(seekbar.getCurrentStep()) ?: return
-                RecentlyPlayedPreferences.setGridSize(mode)
+                GenresPreferences.setGridSize(mode)
             }
         })
+
+        binding.genreCover.isChecked = GenresPreferences.isGenreCoversEnabled()
+
+        binding.genreCover.setOnCheckedChangeListener { _, bool ->
+            GenresPreferences.setGenreCoversEnabled(bool)
+        }
 
         binding.openAppSettings.setOnClickListener {
             openAppSettings()
@@ -75,26 +82,27 @@ class RecentlyPlayedMenu : ScopedBottomSheetFragment() {
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            GenresPreferences.SHOW_GENRE_COVERS -> {
+                // Handled via preference listener in panel
+            }
+        }
     }
 
     companion object {
-        private const val TAG = "RecentlyPlayedMenu"
-
-        fun newInstance(): RecentlyPlayedMenu {
+        fun newInstance(): GenreMenu {
             val args = Bundle()
-            val fragment = RecentlyPlayedMenu()
+            val fragment = GenreMenu()
             fragment.arguments = args
             return fragment
         }
 
-        /**
-         * Shows a [RecentlyPlayedMenu] bottom-sheet from the given [FragmentManager].
-         */
-        fun FragmentManager.showRecentlyPlayedMenu(): RecentlyPlayedMenu {
+        fun FragmentManager.showGenreMenu(): GenreMenu {
             val dialog = newInstance()
             dialog.show(this, TAG)
             return dialog
         }
+
+        private const val TAG = "GenreMenu"
     }
 }
-

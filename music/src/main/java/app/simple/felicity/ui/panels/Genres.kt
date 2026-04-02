@@ -18,8 +18,8 @@ import app.simple.felicity.databinding.FragmentGenresBinding
 import app.simple.felicity.databinding.HeaderGenresBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.dialogs.genres.DialogGenreMenu.Companion.showGenreMenu
-import app.simple.felicity.dialogs.genres.DialogGenreSort.Companion.showGenresSortDialog
+import app.simple.felicity.dialogs.genres.GenreMenu.Companion.showGenreMenu
+import app.simple.felicity.dialogs.genres.GenreSort.Companion.showGenresSortDialog
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.models.Genre
