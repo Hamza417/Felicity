@@ -1455,7 +1455,7 @@ class MiniPlayer @JvmOverloads constructor(
     // Play/pause state
     // -------------------------------------------------------------------------
 
-    private val playPauseDrawer = MiniPlayerPlayPauseDrawer(context)
+    private val playPauseDrawer = MiniPlayerPlayPauseDrawer()
     private var ppIsPlaying = false
     private var ppAnimator: ValueAnimator? = null
 
