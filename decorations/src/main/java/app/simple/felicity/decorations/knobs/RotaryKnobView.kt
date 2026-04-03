@@ -534,8 +534,16 @@ class RotaryKnobView @JvmOverloads constructor(
         )
 
         // Distribute division lines evenly across the full sweep, endpoints included.
+        // Guard against any array size mismatch across all co-allocated arrays, not just
+        // divisionAngles, so a stale partial resize never causes an ArrayIndexOutOfBoundsException
+        // during the loop below.
         val n = divisionCount
-        if (divisionAngles.size != n) {
+        if (divisionAngles.size != n
+                || divisionScales.size != n
+                || divisionTargets.size != n
+                || divisionAnimators.size != n
+                || divisionCos.size != n
+                || divisionSin.size != n) {
             divisionAnimators.forEach { it?.cancel() }
             divisionAngles = FloatArray(n)
             divisionScales = FloatArray(n)
@@ -564,6 +572,14 @@ class RotaryKnobView @JvmOverloads constructor(
                 (cx - knobRadiusPx).toInt(), (cy - knobRadiusPx).toInt(),
                 (cx - knobRadiusPx).toInt() + kr * 2, (cy - knobRadiusPx).toInt() + kr * 2
         )
+
+        // Snap division scales to match the current knobRotation every time geometry is
+        // (re)computed.  Without this, setKnobPosition(animate=false) called before the first
+        // layout pass is a no-op (divisionAngles is empty at that point), and the scales remain
+        // all-zero after the layout pass because recalcGeometry never re-syncs them.  Calling
+        // snapDivisionScales here guarantees the correct filled/unfilled state is reflected on
+        // the very first draw regardless of the order in which layout and setKnobPosition occur.
+        onKnobRotationChanged(snapDivisions = true)
         invalidate()
     }
 

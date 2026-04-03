@@ -13,6 +13,7 @@ import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
 import androidx.annotation.ColorInt
 import androidx.annotation.Px
+import app.simple.felicity.manager.SharedPreferences.registerListener
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
@@ -173,17 +174,20 @@ class SimpleRotaryKnobDrawable(
 
     override fun onAttachedToKnobView() {
         ThemeManager.addListener(this)
-        app.simple.felicity.manager.SharedPreferences.registerListener(this)
-        glowEnabled = try {
-            AppearancePreferences.isShadowEffectOn()
-        } catch (_: Exception) {
-            false
+        try {
+            registerListener(this)
+            glowEnabled = try {
+                AppearancePreferences.isShadowEffectOn()
+            } catch (_: Exception) {
+                false
+            }
+            val theme = ThemeManager.theme
+            if (theme.viewGroupTheme != null) {
+                applyTheme(theme)
+            }
+            applyAccent(ThemeManager.accent)
+        } catch (_: NullPointerException) {
         }
-        val theme = ThemeManager.theme
-        if (theme.viewGroupTheme != null) {
-            applyTheme(theme)
-        }
-        applyAccent(ThemeManager.accent)
     }
 
     override fun onDetachedFromKnobView() {
