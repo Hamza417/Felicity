@@ -337,7 +337,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
      * either committed or cancelled, so this is the right place for pre-gesture setup.
      */
     open fun onStartPredictiveBack() {
-        Log.d(TAG, "Predictive back started")
+
     }
 
     /**
@@ -358,7 +358,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
      * current visible fragment after this call, and its lifecycle stays at RESUMED.
      */
     open fun onCancelPredictiveBack() {
-        Log.d(TAG, "Predictive back cancelled")
+
     }
 
     /**
@@ -368,7 +368,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
      * but this hook is available for any commit-specific one-time work.
      */
     open fun onConfirmPredictiveBack() {
-        Log.d(TAG, "Predictive back confirmed")
+
     }
 
     protected fun startTransitionOnPreDraw(view: View, onPreDraw: () -> Unit) {
