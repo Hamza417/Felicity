@@ -44,12 +44,6 @@ class Equalizer : MediaFragment() {
     private lateinit var binding: FragmentEqualizerBinding
     private val viewModel: EqualizerViewModel by viewModels()
 
-    /**
-     * Tracks which panels have already had their knobs wired up.
-     * Index 0 = EQ screen, 1 = speaker screen, 2 = reverb screen.
-     */
-    private val panelInitialized = BooleanArray(3) { false }
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentEqualizerBinding.inflate(inflater, container, false)
         return binding.root
@@ -96,24 +90,12 @@ class Equalizer : MediaFragment() {
      * deferred until the first swipe via the ViewFlipper listener.
      */
     private fun applyInitialState(state: EqualizerViewModel.EqualizerInitialState) {
-        // Always set up panel 0 first.
-        if (!panelInitialized[0]) {
-            panelInitialized[0] = true
-            binding.equalizerScreen.equalizerSwitch.isChecked = state.isEqEnabled
-            updateEqualizerEnabledState(state.isEqEnabled, animate = false)
-            setupEqualizerSliders(state)
-            setupEqKnobs(state)
-        }
-
-        // Set up any panel that was already visible before the state arrived.
-        val currentPanel = binding.viewFlipper.displayedChild
-        if (currentPanel == 1 && !panelInitialized[1]) {
-            panelInitialized[1] = true
-            setupSpeakerKnobs(state)
-        } else if (currentPanel == 2 && !panelInitialized[2]) {
-            panelInitialized[2] = true
-            setupReverbKnobs(state)
-        }
+        binding.equalizerScreen.equalizerSwitch.isChecked = state.isEqEnabled
+        updateEqualizerEnabledState(state.isEqEnabled, animate = false)
+        setupEqualizerSliders(state)
+        setupEqKnobs(state)
+        setupSpeakerKnobs(state)
+        setupReverbKnobs(state)
     }
 
     fun setupViewFlipper(savedInstanceState: Bundle?) {
@@ -136,18 +118,6 @@ class Equalizer : MediaFragment() {
 
         binding.viewFlipper.setOnScreenChangedListener { index ->
             binding.panelGroup.setSelectedIndex(index, animate = true, notifyListener = false)
-
-            // Lazy panel initialization: configure knobs only the first time each panel
-            // is shown. If the ViewModel state is not ready yet the panel will be set up
-            // in applyInitialState() once it arrives.
-            if (!panelInitialized[index]) {
-                val state = viewModel.initialState.value ?: return@setOnScreenChangedListener
-                panelInitialized[index] = true
-                when (index) {
-                    1 -> setupSpeakerKnobs(state)
-                    2 -> setupReverbKnobs(state)
-                }
-            }
         }
     }
 
