@@ -5,7 +5,7 @@ import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
+import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -15,12 +15,19 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.viewpager2.widget.ViewPager2
+import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterMilkdropPager
 import app.simple.felicity.databinding.FragmentMilkdropBinding
+import app.simple.felicity.decorations.seekbars.FelicitySeekbar
+import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.dialogs.player.MilkdropPresets.Companion.showMilkdropPresets
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.AppearancePreferences.getCornerRadius
+import app.simple.felicity.repository.constants.MediaConstants
+import app.simple.felicity.repository.managers.MediaManager
+import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.ui.panels.Milkdrop.Companion.OVERLAY_VISIBLE_MS
 import app.simple.felicity.viewmodels.panels.MilkdropViewModel
 import com.google.android.material.shape.CornerFamily
@@ -61,7 +68,7 @@ class Milkdrop : MediaFragment() {
     private val fadeOutRunnable = Runnable {
         binding.presetPagerContainer
             .animate()
-            .alpha(0f)
+            .alpha(0.25f)
             .setDuration(FADE_DURATION_MS)
             .start()
     }
@@ -80,7 +87,7 @@ class Milkdrop : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         requireLightBarIcons()
-        requireTransparentMiniPlayer()
+        requireHiddenMiniPlayer()
         setPresetPagerBackground()
 
         // Re-register the PCM tap in case the player service started after the
@@ -113,6 +120,34 @@ class Milkdrop : MediaFragment() {
             showOverlay()
         }
 
+        binding.seekbar.setLeftLabelProvider { progress, _, _ ->
+            DateUtils.formatElapsedTime(progress.toLong().div(1000))
+        }
+
+        binding.seekbar.setRightLabelProvider { _, _, max ->
+            DateUtils.formatElapsedTime(max.toLong().div(1000))
+        }
+
+        binding.seekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
+            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
+                if (fromUser) {
+                    MediaManager.seekTo(progress.toLong())
+                }
+            }
+        })
+
+        binding.next.setOnClickListener {
+            MediaManager.next()
+        }
+
+        binding.previous.setOnClickListener {
+            MediaManager.previous()
+        }
+
+        binding.play.setOnClickListener {
+            MediaManager.flipState()
+        }
+
         // Schedule the first auto-hide so the overlay does not linger on cold start.
         scheduleOverlayFadeOut()
     }
@@ -123,11 +158,7 @@ class Milkdrop : MediaFragment() {
      */
     private fun setupPresetPager() {
         pagerAdapter = AdapterMilkdropPager {
-            if (binding.presetPagerContainer.alpha < 1f) {
-                showOverlay()
-            } else {
-                childFragmentManager.showMilkdropPresets()
-            }
+            childFragmentManager.showMilkdropPresets()
         }
 
         binding.presetPager.adapter = pagerAdapter
@@ -168,7 +199,7 @@ class Milkdrop : MediaFragment() {
                     val itemCount = pagerAdapter?.itemCount ?: 0
                     if (itemCount > 0 && index != binding.presetPager.currentItem) {
                         // Smooth-scroll so the shuffle transition is visible to the user.
-                        binding.presetPager.setCurrentItem(index, true)
+                        binding.presetPager.setCurrentItem(index, false)
                     }
                 }
             }
@@ -235,10 +266,58 @@ class Milkdrop : MediaFragment() {
 
         val materialShapeDrawable = MaterialShapeDrawable(shapeAppearanceModel)
 
-        materialShapeDrawable.setStroke(0.5F, Color.WHITE)
+        materialShapeDrawable.setStroke(0.5F, Color.DKGRAY)
 
         binding.presetPagerContainer.background = materialShapeDrawable
     }
+
+    private fun updateState() {
+        val audio = MediaManager.getCurrentSong() ?: return
+        binding.name.text = audio.title
+        binding.artist.text = audio.getArtists()
+        binding.seekbar.setMax(audio.duration.toFloat())
+        binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
+        updatePlayButtonState(MediaManager.isPlaying())
+    }
+
+    private fun updatePlayButtonState(isPlaying: Boolean) {
+        if (isPlaying) {
+            binding.play.playing()
+        } else {
+            binding.play.paused()
+        }
+    }
+
+    override fun onAudio(audio: Audio) {
+        super.onAudio(audio)
+        val forward = MediaManager.lastNavigationDirection
+        binding.name.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
+        binding.artist.setTextWithEffect(audio.getArtists(), forward, 50L)
+        binding.seekbar.setMaxWithReset(audio.duration.toFloat())
+
+        // Always refresh the seek position (covers predictive-back resume and actual changes).
+        binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
+    }
+
+    override fun onPlaybackStateChanged(state: Int) {
+        super.onPlaybackStateChanged(state)
+        when (state) {
+            MediaConstants.PLAYBACK_PLAYING -> {
+                updatePlayButtonState(true)
+            }
+            MediaConstants.PLAYBACK_PAUSED -> {
+                updatePlayButtonState(false)
+            }
+        }
+    }
+
+    override fun onSeekChanged(seek: Long) {
+        super.onSeekChanged(seek)
+        binding.seekbar.setProgress(seek.toFloat(), fromUser = false, animate = true)
+    }
+
+    override val wantsMiniPlayerVisible: Boolean
+        get() = false
 
     override fun onResume() {
         super.onResume()
@@ -254,7 +333,6 @@ class Milkdrop : MediaFragment() {
     }
 
     override fun onDestroyView() {
-        Log.d(TAG, "onDestroyView: Disconnecting surface and clearing adapter")
         fadeHandler.removeCallbacksAndMessages(null)
         pagerAdapter = null
         binding.milkdropSurface.disconnectProcessor()
