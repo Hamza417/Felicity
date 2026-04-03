@@ -5,6 +5,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -16,6 +17,9 @@ import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.But
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
+import app.simple.felicity.viewmodels.panels.EqualizerViewModel
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -25,15 +29,26 @@ import kotlinx.coroutines.launch
  * updates. The 10-band sliders also drive [EqualizerManager] directly so the hardware
  * [android.media.audiofx.Equalizer] effect is updated in real-time.
  *
- * Band gains are loaded from preferences on view creation and kept in sync with
- * [EqualizerManager.bandGainsFlow] so any external change (e.g., a future preset loader)
- * is reflected in the UI automatically.
+ * All initial preference reads are offloaded to the IO thread through [EqualizerViewModel]
+ * so that the main thread is never blocked during fragment startup. Speaker and reverb panel
+ * knobs are configured lazily the first time each panel is shown, avoiding any work for
+ * panels the user never opens in a given session.
+ *
+ * Band gains are kept in sync with [EqualizerManager.bandGainsFlow] so any external change
+ * (e.g., a future preset loader) is reflected in the UI automatically.
  *
  * @author Hamza417
  */
 class Equalizer : MediaFragment() {
 
     private lateinit var binding: FragmentEqualizerBinding
+    private val viewModel: EqualizerViewModel by viewModels()
+
+    /**
+     * Tracks which panels have already had their knobs wired up.
+     * Index 0 = EQ screen, 1 = speaker screen, 2 = reverb screen.
+     */
+    private val panelInitialized = BooleanArray(3) { false }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentEqualizerBinding.inflate(inflater, container, false)
@@ -44,10 +59,10 @@ class Equalizer : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
         requireHiddenMiniPlayer()
 
-        binding.equalizerScreen.equalizerSwitch.isChecked = EqualizerPreferences.isEqEnabled()
-        updateEqualizerEnabledState(EqualizerPreferences.isEqEnabled(), false)
+        setupViewFlipper(savedInstanceState)
 
-
+        // Wire up the EQ switch eagerly — it has no preference read on the hot path
+        // because the ViewModel will deliver the real value via initialState below.
         binding.equalizerScreen.equalizerSwitch.setOnCheckedChangeListener { _, isChecked ->
             EqualizerPreferences.setEqEnabled(isChecked)
             updateEqualizerEnabledState(isChecked)
@@ -60,10 +75,45 @@ class Equalizer : MediaFragment() {
             }
         }
 
-        setupEqualizerSliders()
-        setupKnobs()
-        setupReverbKnobs()
-        setupViewFlipper(savedInstanceState)
+        // Register live-update observers for the EQ sliders. Initial values are applied
+        // once the ViewModel delivers its state below.
+        setupEqualizerSliderObservers()
+
+        // Collect the ViewModel's initial state (loaded on the IO thread) to populate
+        // all visible controls without blocking the main thread.
+        viewLifecycleOwner.lifecycleScope.launch {
+            val state = viewModel.initialState.filterNotNull().first()
+            applyInitialState(state)
+        }
+    }
+
+    /**
+     * Applies the fully loaded [EqualizerViewModel.EqualizerInitialState] to the UI.
+     *
+     * Panel 0 (EQ screen) is set up immediately since it is always the default visible
+     * panel. Panel 1 (speaker) and panel 2 (reverb) are set up here only when the user
+     * has already swiped to them before the ViewModel state arrived; otherwise they are
+     * deferred until the first swipe via the ViewFlipper listener.
+     */
+    private fun applyInitialState(state: EqualizerViewModel.EqualizerInitialState) {
+        // Always set up panel 0 first.
+        if (!panelInitialized[0]) {
+            panelInitialized[0] = true
+            binding.equalizerScreen.equalizerSwitch.isChecked = state.isEqEnabled
+            updateEqualizerEnabledState(state.isEqEnabled, animate = false)
+            setupEqualizerSliders(state)
+            setupEqKnobs(state)
+        }
+
+        // Set up any panel that was already visible before the state arrived.
+        val currentPanel = binding.viewFlipper.displayedChild
+        if (currentPanel == 1 && !panelInitialized[1]) {
+            panelInitialized[1] = true
+            setupSpeakerKnobs(state)
+        } else if (currentPanel == 2 && !panelInitialized[2]) {
+            panelInitialized[2] = true
+            setupReverbKnobs(state)
+        }
     }
 
     fun setupViewFlipper(savedInstanceState: Bundle?) {
@@ -80,14 +130,24 @@ class Equalizer : MediaFragment() {
 
         binding.panelGroup.setSelectedIndex(initialScreen, animate = false, notifyListener = false)
 
-        // Sync the button group when the user taps a panel button.
         binding.panelGroup.setOnButtonSelectedListener { index ->
             binding.viewFlipper.displayedChild = index
         }
 
-        // Sync the button group when the user swipes between screens.
         binding.viewFlipper.setOnScreenChangedListener { index ->
             binding.panelGroup.setSelectedIndex(index, animate = true, notifyListener = false)
+
+            // Lazy panel initialization: configure knobs only the first time each panel
+            // is shown. If the ViewModel state is not ready yet the panel will be set up
+            // in applyInitialState() once it arrives.
+            if (!panelInitialized[index]) {
+                val state = viewModel.initialState.value ?: return@setOnScreenChangedListener
+                panelInitialized[index] = true
+                when (index) {
+                    1 -> setupSpeakerKnobs(state)
+                    2 -> setupReverbKnobs(state)
+                }
+            }
         }
     }
 
@@ -95,14 +155,12 @@ class Equalizer : MediaFragment() {
     // 10-band EQ sliders
     // -------------------------------------------------------------------------
 
-    private fun setupEqualizerSliders() {
-        // Restore persisted band gains immediately — no animation so UI is ready before
-        // the user sees it.
-        binding.equalizerScreen.equalizerSliders.setAllGains(EqualizerPreferences.getAllBandGains(), animate = false)
-        binding.equalizerScreen.equalizerSliders.setPreampGain(EqualizerPreferences.getPreampDb(), animate = false)
-
-        // Forward every user drag to EqualizerManager which persists the value and
-        // applies it to the hardware Equalizer in real-time.
+    /**
+     * Registers the live-update flow observers for the EQ sliders. Initial values are NOT
+     * applied here — they come from the ViewModel's [EqualizerViewModel.initialState].
+     * This split avoids any synchronous preference read on the main thread.
+     */
+    private fun setupEqualizerSliderObservers() {
         binding.equalizerScreen.equalizerSliders.setOnBandChangedListener { bandIndex, gain, fromUser ->
             if (fromUser) {
                 Log.d(TAG, "Band $bandIndex changed to ${gain}dB by user")
@@ -114,8 +172,6 @@ class Equalizer : MediaFragment() {
             }
         }
 
-        // Observe band-gains flow so any externally driven change (preset load,
-        // reset-all, etc.) is immediately reflected in the slider positions.
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.bandGainsFlow.collect { gains ->
@@ -124,8 +180,6 @@ class Equalizer : MediaFragment() {
             }
         }
 
-        // Observe preamp flow independently so a future preset loader or reset
-        // that changes only the preamp is reflected without a full gains update.
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.preampFlow.collect { db ->
@@ -133,6 +187,16 @@ class Equalizer : MediaFragment() {
                 }
             }
         }
+    }
+
+    /**
+     * Applies the initial slider positions from [state]. Called once after the ViewModel
+     * delivers its state, keeping the restore animation disabled so the UI is ready
+     * before the user sees it.
+     */
+    private fun setupEqualizerSliders(state: EqualizerViewModel.EqualizerInitialState) {
+        binding.equalizerScreen.equalizerSliders.setAllGains(state.bandGains, animate = false)
+        binding.equalizerScreen.equalizerSliders.setPreampGain(state.preampDb, animate = false)
     }
 
     private fun updateEqualizerEnabledState(isEnabled: Boolean, animate: Boolean = true) {
@@ -151,16 +215,21 @@ class Equalizer : MediaFragment() {
     }
 
     // -------------------------------------------------------------------------
-    // Rotary knobs (balance, stereo widening, tape saturation)
+    // EQ screen knobs (bass, treble)
     // -------------------------------------------------------------------------
 
-    private fun setupKnobs() {
+    /**
+     * Wires up the bass and treble knobs on the EQ screen using initial values from
+     * [state]. These knobs are part of panel 0 so they are configured eagerly alongside
+     * the EQ sliders.
+     */
+    private fun setupEqKnobs(state: EqualizerViewModel.EqualizerInitialState) {
         // Bass knob (low-shelf at 250 Hz).
-        // Knob value 0-100 maps to gain -12 dB (full cut) … 0 dB (center) … +12 dB (full boost).
+        // Knob value 0-100 maps to gain -12 dB (full cut) ... 0 dB (center) ... +12 dB (full boost).
         binding.equalizerScreen.bassKnob.centerSnapEnabled = true
         binding.equalizerScreen.bassKnob.setTickTexts("-12", "+12")
         binding.equalizerScreen.bassKnob.divisionCount = 48 * 2
-        binding.equalizerScreen.bassKnob.setKnobPosition(bassDbToKnobValue(EqualizerPreferences.getBassDb()), animate = false)
+        binding.equalizerScreen.bassKnob.setKnobPosition(bassDbToKnobValue(state.bassDb), animate = false)
         binding.equalizerScreen.bassKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
@@ -181,11 +250,11 @@ class Equalizer : MediaFragment() {
         })
 
         // Treble knob (high-shelf at 4000 Hz).
-        // Knob value 0-100 maps to gain -12 dB (full cut) … 0 dB (center) … +12 dB (full boost).
+        // Knob value 0-100 maps to gain -12 dB (full cut) ... 0 dB (center) ... +12 dB (full boost).
         binding.equalizerScreen.trebleKnob.centerSnapEnabled = true
         binding.equalizerScreen.trebleKnob.setTickTexts("-12", "+12")
         binding.equalizerScreen.trebleKnob.divisionCount = 48 * 2
-        binding.equalizerScreen.trebleKnob.setKnobPosition(trebleDbToKnobValue(EqualizerPreferences.getTrebleDb()), animate = false)
+        binding.equalizerScreen.trebleKnob.setKnobPosition(trebleDbToKnobValue(state.trebleDb), animate = false)
         binding.equalizerScreen.trebleKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
@@ -204,12 +273,22 @@ class Equalizer : MediaFragment() {
                 }
             }
         })
+    }
 
+    // -------------------------------------------------------------------------
+    // Speaker screen knobs (balance, stereo widening, tape saturation)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Wires up the three knobs on the speaker screen. Called lazily the first time
+     * the user swipes to panel 1.
+     */
+    private fun setupSpeakerKnobs(state: EqualizerViewModel.EqualizerInitialState) {
         // Balance knob (constant-power panning).
-        // Knob value 0-100 maps to pan -1 (full left) … 0 (center) … +1 (full right).
+        // Knob value 0-100 maps to pan -1 (full left) ... 0 (center) ... +1 (full right).
         binding.speakerScreen.balanceKnob.centerSnapEnabled = true
         binding.speakerScreen.balanceKnob.setTickTexts("L", "R")
-        binding.speakerScreen.balanceKnob.setKnobPosition(panToKnobValue(EqualizerPreferences.getBalance()), animate = false)
+        binding.speakerScreen.balanceKnob.setKnobPosition(panToKnobValue(state.balance), animate = false)
         binding.speakerScreen.balanceKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
@@ -230,10 +309,10 @@ class Equalizer : MediaFragment() {
         })
 
         // Stereo widening knob (mid/side matrix).
-        // Knob value 0-100 maps to width 0.0 (mono) … 1.0 (normal) … 2.0 (max wide).
+        // Knob value 0-100 maps to width 0.0 (mono) ... 1.0 (normal) ... 2.0 (max wide).
         binding.speakerScreen.stereoWideningKnob.centerSnapEnabled = true
         binding.speakerScreen.stereoWideningKnob.setTickTexts("M", "W")
-        binding.speakerScreen.stereoWideningKnob.setKnobPosition(widthToKnobValue(EqualizerPreferences.getStereoWidth()), animate = false)
+        binding.speakerScreen.stereoWideningKnob.setKnobPosition(widthToKnobValue(state.stereoWidth), animate = false)
         binding.speakerScreen.stereoWideningKnob.divisionCount = 10 * 10
         binding.speakerScreen.stereoWideningKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
@@ -256,9 +335,9 @@ class Equalizer : MediaFragment() {
         })
 
         // Tape saturation knob (algebraic soft-clip drive).
-        // Knob value 0-100 maps to drive 0.0 (clean/off) … 4.0 (maximum saturation).
+        // Knob value 0-100 maps to drive 0.0 (clean/off) ... 4.0 (maximum saturation).
         binding.speakerScreen.tapeSaturationKnob.setTickTexts("0", "4")
-        binding.speakerScreen.tapeSaturationKnob.setKnobPosition(driveToKnobValue(EqualizerPreferences.getTapeSaturationDrive()), animate = false)
+        binding.speakerScreen.tapeSaturationKnob.setKnobPosition(driveToKnobValue(state.tapeSaturationDrive), animate = false)
         binding.speakerScreen.tapeSaturationKnob.divisionCount = 4 * 10
         binding.speakerScreen.tapeSaturationKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
@@ -282,25 +361,23 @@ class Equalizer : MediaFragment() {
     }
 
     // -------------------------------------------------------------------------
-    // Reverb knobs (mix, fade, size)
+    // Reverb screen knobs (mix, fade, size, damp)
     // -------------------------------------------------------------------------
 
     /**
-     * Wires up the three reverb knobs on the reverb screen:
-     *  - Mix: wet/dry ratio [0 .. 100%]
-     *  - Fade: reverb decay time [Short .. Long]
-     *  - Size: room size [S .. L]
+     * Wires up the four reverb knobs on the reverb screen. Called lazily the first time
+     * the user swipes to panel 2.
      *
      * Each knob writes to [EqualizerPreferences], which is observed by the player service
      * and forwarded to the native DSP engine in real-time.
      */
-    private fun setupReverbKnobs() {
+    private fun setupReverbKnobs(state: EqualizerViewModel.EqualizerInitialState) {
         // Mix knob — wet/dry ratio.
-        // Knob value 0-100 maps to mix 0.0 (dry) … 1.0 (fully wet).
+        // Knob value 0-100 maps to mix 0.0 (dry) ... 1.0 (fully wet).
         binding.reverbScreen.reverbMixKnob.setTickTexts("0%", "100%")
         binding.reverbScreen.reverbMixKnob.divisionCount = 100
         binding.reverbScreen.reverbMixKnob.setKnobPosition(
-                reverbMixToKnob(EqualizerPreferences.getReverbMix()), animate = false)
+                reverbMixToKnob(state.reverbMix), animate = false)
         binding.reverbScreen.reverbMixKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
@@ -317,11 +394,11 @@ class Equalizer : MediaFragment() {
         })
 
         // Fade knob — reverb decay time.
-        // Knob value 0-100 maps to decay 0.0 (very short) … 1.0 (very long hall).
+        // Knob value 0-100 maps to decay 0.0 (very short) ... 1.0 (very long hall).
         binding.reverbScreen.reverbFadeKnob.setTickTexts("S", "L")
         binding.reverbScreen.reverbFadeKnob.divisionCount = 100
         binding.reverbScreen.reverbFadeKnob.setKnobPosition(
-                reverbDecayToKnob(EqualizerPreferences.getReverbDecay()), animate = false)
+                reverbDecayToKnob(state.reverbDecay), animate = false)
         binding.reverbScreen.reverbFadeKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
@@ -342,11 +419,11 @@ class Equalizer : MediaFragment() {
         })
 
         // Size knob — room size.
-        // Knob value 0-100 maps to size 0.0 (small room) … 1.0 (large hall).
+        // Knob value 0-100 maps to size 0.0 (small room) ... 1.0 (large hall).
         binding.reverbScreen.reverbSizeKnob.setTickTexts("S", "L")
         binding.reverbScreen.reverbSizeKnob.divisionCount = 100
         binding.reverbScreen.reverbSizeKnob.setKnobPosition(
-                reverbSizeToKnob(EqualizerPreferences.getReverbSize()), animate = false)
+                reverbSizeToKnob(state.reverbSize), animate = false)
         binding.reverbScreen.reverbSizeKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
@@ -366,13 +443,13 @@ class Equalizer : MediaFragment() {
             }
         })
 
-        // Damp knob — high-frequency damping, independent of Fade (decay).
-        // Knob value 0-100 maps to damp 0.0 (brightest tail) … 1.0 (darkest tail).
+        // Damp knob — high-frequency damping, independent of the Fade (decay) knob.
+        // Knob value 0-100 maps to damp 0.0 (brightest tail) ... 1.0 (darkest tail).
         // Decoupled from decay so long-but-dark and short-but-bright rooms are both possible.
         binding.reverbScreen.reverbDampKnob.setTickTexts("B", "D")
         binding.reverbScreen.reverbDampKnob.divisionCount = 100
         binding.reverbScreen.reverbDampKnob.setKnobPosition(
-                reverbDampToKnob(EqualizerPreferences.getReverbDamp()), animate = false)
+                reverbDampToKnob(state.reverbDamp), animate = false)
         binding.reverbScreen.reverbDampKnob.setListener(object : RotaryKnobListener {
             override fun onIncrement(value: Float) {}
 
@@ -406,58 +483,58 @@ class Equalizer : MediaFragment() {
 
         const val TAG = "Equalizer"
 
-        /** Maps knob position [0..100] → pan [-1..1]. */
+        /** Maps knob position [0..100] to pan [-1..1]. */
         fun knobValueToPan(knobValue: Float): Float = ((knobValue - 50f) / 50f).coerceIn(-1f, 1f)
 
-        /** Maps pan [-1..1] → knob position [0..100]. */
+        /** Maps pan [-1..1] to knob position [0..100]. */
         fun panToKnobValue(pan: Float): Float = ((pan * 50f) + 50f).coerceIn(0f, 100f)
 
-        /** Maps knob position [0..100] → stereo width [0..2]. */
+        /** Maps knob position [0..100] to stereo width [0..2]. */
         fun knobValueToWidth(knobValue: Float): Float = (knobValue / 50f).coerceIn(0f, 2f)
 
-        /** Maps stereo width [0..2] → knob position [0..100]. */
+        /** Maps stereo width [0..2] to knob position [0..100]. */
         fun widthToKnobValue(width: Float): Float = (width * 50f).coerceIn(0f, 100f)
 
-        /** Maps knob position [0..100] → tape saturation drive [0..4]. */
+        /** Maps knob position [0..100] to tape saturation drive [0..4]. */
         fun knobValueToDrive(knobValue: Float): Float = (knobValue / 100f * 4f).coerceIn(0f, 4f)
 
-        /** Maps tape saturation drive [0..4] → knob position [0..100]. */
+        /** Maps tape saturation drive [0..4] to knob position [0..100]. */
         fun driveToKnobValue(drive: Float): Float = (drive / 4f * 100f).coerceIn(0f, 100f)
 
-        /** Maps knob position [0..100] → bass/treble gain [-12..+12] dB. */
+        /** Maps knob position [0..100] to bass/treble gain [-12..+12] dB. */
         fun knobValueToBassDb(knobValue: Float): Float = ((knobValue - 50f) / 50f * 12f).coerceIn(-12f, 12f)
 
-        /** Maps bass gain [-12..+12] dB → knob position [0..100]. */
+        /** Maps bass gain [-12..+12] dB to knob position [0..100]. */
         fun bassDbToKnobValue(db: Float): Float = ((db / 12f * 50f) + 50f).coerceIn(0f, 100f)
 
-        /** Maps knob position [0..100] → treble gain [-12..+12] dB. */
+        /** Maps knob position [0..100] to treble gain [-12..+12] dB. */
         fun knobValueToTrebleDb(knobValue: Float): Float = ((knobValue - 50f) / 50f * 12f).coerceIn(-12f, 12f)
 
-        /** Maps treble gain [-12..+12] dB → knob position [0..100]. */
+        /** Maps treble gain [-12..+12] dB to knob position [0..100]. */
         fun trebleDbToKnobValue(db: Float): Float = ((db / 12f * 50f) + 50f).coerceIn(0f, 100f)
 
-        /** Maps knob position [0..100] → reverb wet/dry mix [0..1]. */
+        /** Maps knob position [0..100] to reverb wet/dry mix [0..1]. */
         fun knobToReverbMix(knobValue: Float): Float = (knobValue / 100f).coerceIn(0f, 1f)
 
-        /** Maps reverb wet/dry mix [0..1] → knob position [0..100]. */
+        /** Maps reverb wet/dry mix [0..1] to knob position [0..100]. */
         fun reverbMixToKnob(mix: Float): Float = (mix * 100f).coerceIn(0f, 100f)
 
-        /** Maps knob position [0..100] → reverb decay parameter [0..1]. */
+        /** Maps knob position [0..100] to reverb decay parameter [0..1]. */
         fun knobToReverbDecay(knobValue: Float): Float = (knobValue / 100f).coerceIn(0f, 1f)
 
-        /** Maps reverb decay parameter [0..1] → knob position [0..100]. */
+        /** Maps reverb decay parameter [0..1] to knob position [0..100]. */
         fun reverbDecayToKnob(decay: Float): Float = (decay * 100f).coerceIn(0f, 100f)
 
-        /** Maps knob position [0..100] → reverb room-size parameter [0..1]. */
+        /** Maps knob position [0..100] to reverb room-size parameter [0..1]. */
         fun knobToReverbSize(knobValue: Float): Float = (knobValue / 100f).coerceIn(0f, 1f)
 
-        /** Maps reverb room-size parameter [0..1] → knob position [0..100]. */
+        /** Maps reverb room-size parameter [0..1] to knob position [0..100]. */
         fun reverbSizeToKnob(size: Float): Float = (size * 100f).coerceIn(0f, 100f)
 
-        /** Maps knob position [0..100] → reverb high-frequency damping [0..1]. */
+        /** Maps knob position [0..100] to reverb high-frequency damping [0..1]. */
         fun knobToReverbDamp(knobValue: Float): Float = (knobValue / 100f).coerceIn(0f, 1f)
 
-        /** Maps reverb high-frequency damping [0..1] → knob position [0..100]. */
+        /** Maps reverb high-frequency damping [0..1] to knob position [0..100]. */
         fun reverbDampToKnob(damp: Float): Float = (damp * 100f).coerceIn(0f, 100f)
 
         private const val SCREEN_STATE_KEY = "screen_state"

@@ -1,87 +1,87 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:layout_height="match_parent">
 
-    <LinearLayout
-        android:layout_width="match_parent"
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/mid_guideline"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.5" />
+
+    <app.simple.felicity.decorations.knobs.RotaryKnobView
+        android:id="@+id/balanceKnob"
+        android:layout_width="@dimen/balance_knob_dimension"
+        android:layout_height="@dimen/balance_knob_dimension"
         android:layout_marginTop="@dimen/padding_15"
-        android:orientation="horizontal">
+        app:layout_constraintEnd_toStartOf="@+id/mid_guideline"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/balance_label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:textSize="@dimen/text_size_12"
+        android:text="@string/balance"
+        android:gravity="center"
+        android:ellipsize="marquee"
+        android:layout_marginTop="@dimen/padding_10"
+        android:maxLines="1"
+        android:singleLine="true"
+        android:marqueeRepeatLimit="marquee_forever"
+        app:appFontStyle="regular"
+        app:layout_constraintEnd_toStartOf="@+id/mid_guideline"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/balanceKnob"
+        app:textColorStyle="heading" />
 
-            <app.simple.felicity.decorations.knobs.RotaryKnobView
-                android:id="@+id/balanceKnob"
-                android:layout_width="@dimen/balance_knob_dimension"
-                android:layout_height="@dimen/balance_knob_dimension"
-                android:layout_gravity="center" />
+    <app.simple.felicity.decorations.knobs.RotaryKnobView
+        android:id="@+id/stereo_widening_knob"
+        android:layout_width="@dimen/balance_knob_dimension"
+        android:layout_height="@dimen/balance_knob_dimension"
+        android:layout_marginTop="@dimen/padding_15"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/mid_guideline"
+        app:layout_constraintTop_toTopOf="parent" />
 
-            <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="@dimen/text_size_12"
-                android:text="@string/balance"
-                android:gravity="center"
-                android:ellipsize="marquee"
-                android:layout_marginTop="@dimen/padding_10"
-                android:maxLines="1"
-                android:singleLine="true"
-                android:marqueeRepeatLimit="marquee_forever"
-                android:layout_gravity="center_vertical"
-                app:appFontStyle="regular"
-                app:textColorStyle="heading" />
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/stereo_widening_label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:textSize="@dimen/text_size_12"
+        android:gravity="center"
+        android:ellipsize="marquee"
+        android:layout_marginTop="@dimen/padding_10"
+        android:maxLines="1"
+        android:singleLine="true"
+        android:marqueeRepeatLimit="marquee_forever"
+        android:text="@string/stereo_widening"
+        app:appFontStyle="regular"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/mid_guideline"
+        app:layout_constraintTop_toBottomOf="@+id/stereo_widening_knob"
+        app:textColorStyle="heading" />
 
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <app.simple.felicity.decorations.knobs.RotaryKnobView
-                android:id="@+id/stereo_widening_knob"
-                android:layout_width="@dimen/balance_knob_dimension"
-                android:layout_height="@dimen/balance_knob_dimension"
-                android:layout_gravity="center" />
-
-            <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="@dimen/text_size_12"
-                android:gravity="center"
-                android:ellipsize="marquee"
-                android:layout_marginTop="@dimen/padding_10"
-                android:maxLines="1"
-                android:singleLine="true"
-                android:marqueeRepeatLimit="marquee_forever"
-                android:text="@string/stereo_widening"
-                android:layout_gravity="center_vertical"
-                app:appFontStyle="regular"
-                app:textColorStyle="heading" />
-
-        </LinearLayout>
-
-    </LinearLayout>
-
-    <Space
-        android:layout_width="match_parent"
-        android:layout_height="@dimen/padding_10" />
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/first_row_barrier"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="bottom"
+        app:constraint_referenced_ids="balance_label,stereo_widening_label" />
 
     <app.simple.felicity.decorations.knobs.RotaryKnobView
         android:id="@+id/tape_saturation_knob"
         android:layout_width="@dimen/balance_knob_dimension"
         android:layout_height="@dimen/balance_knob_dimension"
-        android:layout_gravity="center" />
+        android:layout_marginTop="@dimen/padding_10"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/first_row_barrier" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:textSize="@dimen/text_size_12"
         android:text="@string/tape_saturation"
@@ -90,9 +90,11 @@
         android:maxLines="1"
         android:singleLine="true"
         android:marqueeRepeatLimit="marquee_forever"
-        android:layout_gravity="center_vertical"
         android:layout_marginTop="@dimen/padding_10"
         app:appFontStyle="regular"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tape_saturation_knob"
         app:textColorStyle="heading" />
 
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

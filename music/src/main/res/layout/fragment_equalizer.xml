@@ -5,29 +5,34 @@
     android:orientation="vertical"
     android:layout_height="match_parent">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingHorizontal="@dimen/padding_15"
-        android:orientation="horizontal">
+        android:paddingHorizontal="@dimen/padding_15">
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/eq_title"
             android:layout_width="0dp"
-            android:layout_weight="1"
             android:layout_height="wrap_content"
             android:textSize="@dimen/text_size_36"
             android:text="@string/equalizer"
             android:paddingVertical="@dimen/padding_10"
             app:appFontStyle="black"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/panel_group"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
             app:textColorStyle="primary" />
 
         <app.simple.felicity.decorations.toggles.FelicityButtonGroup
             android:id="@+id/panel_group"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical" />
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-    </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <app.simple.felicity.decorations.theme.ThemeDivider
         android:layout_width="match_parent"
