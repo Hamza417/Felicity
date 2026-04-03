@@ -191,6 +191,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 audioProcessorManager.applyNightMode(EqualizerPreferences.isNightModeEnabled())
                 // applyEqualizerState covers 10-band EQ, bass, treble, preamp, and enabled flag.
                 audioProcessorManager.applyEqualizerState()
+                // Reverb is applied after all tone-shaping so it adds only spatial depth.
+                audioProcessorManager.applyReverb(
+                        EqualizerPreferences.getReverbMix(),
+                        EqualizerPreferences.getReverbDecay(),
+                        EqualizerPreferences.getReverbSize()
+                )
 
                 // Build the processor array dynamically
                 val processors = mutableListOf<AudioProcessor>()
@@ -985,6 +991,15 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 val db = EqualizerPreferences.getTrebleDb()
                 Log.d(TAG, "Treble gain preference changed to: ${db}dB")
                 audioProcessorManager.applyTreble(db)
+            }
+            EqualizerPreferences.REVERB_MIX,
+            EqualizerPreferences.REVERB_DECAY,
+            EqualizerPreferences.REVERB_SIZE -> {
+                val mix = EqualizerPreferences.getReverbMix()
+                val decay = EqualizerPreferences.getReverbDecay()
+                val size = EqualizerPreferences.getReverbSize()
+                Log.d(TAG, "Reverb preference changed — mix=$mix, decay=$decay, size=$size")
+                audioProcessorManager.applyReverb(mix, decay, size)
             }
             else -> {
                 // Handle each individual EQ band preference change

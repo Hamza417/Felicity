@@ -12,7 +12,8 @@
  *   4. Stereo widening via M/S matrix
  *   5. Constant-power pan / balance
  *   6. Tape-style soft saturation via algebraic sigmoid
- *   7. Mono downmix accumulation → visualizer FFT trigger
+ *   7. Freeverb-style stereo reverb (parallel combs + series allpasses) — gated by [reverbEnabled]
+ *   8. Mono downmix accumulation → visualizer FFT trigger
  *
  * @author Hamza417
  */
@@ -47,6 +48,48 @@ static constexpr float kDspTrebleShelfHz = 4000.0f;
 static constexpr float kDspEqCenterHz[kDspEqBandCount] = {
         31.f, 62.f, 125.f, 250.f, 500.f,
         1000.f, 2000.f, 4000.f, 8000.f, 16000.f
+};
+
+/** Maximum number of samples in a single reverb delay line (~85 ms at 48 kHz). */
+static constexpr int kReverbMaxDelayLen = 4096;
+
+/** Number of parallel comb filters per reverb channel. */
+static constexpr int kReverbCombCount = 4;
+
+/** Number of series all-pass diffusors per reverb channel. */
+static constexpr int kReverbAllpassCount = 2;
+
+/** Wet-mix level below which the reverb stage is bypassed entirely. */
+static constexpr float kReverbWetEpsilon = 0.001f;
+
+/** All-pass feedback coefficient (classic Schroeder constant). */
+static constexpr float kReverbAllpassG = 0.5f;
+
+/**
+ * A single ring-buffer delay line used by a comb or all-pass reverb filter.
+ *
+ * The buffer is heap-allocated in nativeDspCreate with length kReverbMaxDelayLen and
+ * freed in nativeDspDestroy. The active length [len] may be less than the allocated
+ * size and is recomputed when the sample rate or room-size parameter changes.
+ */
+struct ReverbLine {
+    float *buf;       ///< Heap-allocated ring buffer; capacity = kReverbMaxDelayLen floats.
+    int len;       ///< Active delay length in samples; always <= kReverbMaxDelayLen.
+    int pos;       ///< Current write cursor within [0, len).
+    float feedback;  ///< Feedback gain: controls decay time in comb filters; 0.5 in allpasses.
+    float damp1;     ///< One-pole LP damping coefficient; 0 = bright, 1 = very dark.
+    float dampState; ///< Single-pole LP filter state for high-frequency roll-off.
+};
+
+/**
+ * All comb and all-pass delay lines for one stereo channel of the reverb unit.
+ *
+ * Left and right channels hold slightly different delay lengths (offset by ~23 samples
+ * at 44100 Hz) to create natural stereo decorrelation without a separate stereo matrix.
+ */
+struct ReverbChannel {
+    ReverbLine comb[kReverbCombCount];       ///< kReverbCombCount parallel comb filters.
+    ReverbLine allpass[kReverbAllpassCount]; ///< kReverbAllpassCount series all-pass diffusors.
 };
 
 /**
@@ -154,6 +197,30 @@ struct DspContext {
      * Keeps the perceived loudness roughly constant across all drive settings.
      */
     float satCompensation;
+
+    /** Left-channel reverb filter state (4 combs + 2 allpasses). */
+    ReverbChannel reverbL;
+
+    /** Right-channel reverb filter state (4 combs + 2 allpasses). */
+    ReverbChannel reverbR;
+
+    /**
+     * Wet signal linear gain in [0, 1]. 0 = fully dry (reverb bypassed); 1 = fully wet.
+     * The dry signal gain is (1 - reverbWet) so total perceived loudness is preserved.
+     */
+    float reverbWet;
+
+    /** Dry signal gain = 1 - reverbWet, cached to avoid per-frame subtraction. */
+    float reverbDry;
+
+    /** True when reverbWet exceeds kReverbWetEpsilon and the reverb stage is active. */
+    bool reverbEnabled;
+
+    /** User decay parameter [0, 1] cached so reconfigure() can rebuild coefficients. */
+    float reverbDecayParam;
+
+    /** User room-size parameter [0, 1] cached so reconfigure() can resize delay lines. */
+    float reverbSizeParam;
 
     /**
      * Non-owning pointer to the [FFTContext] shared with [VisualizerProcessor].

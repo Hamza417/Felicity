@@ -4,27 +4,22 @@
  *
  * Exposes a single hot-path JNI function, [nativeDspProcessAudio], that applies the full
  * DSP chain — 10-band EQ (gated by the EQ enable switch), bass/treble shelves (always active),
- * stereo widening, pan, and tape saturation — to a caller-provided [jfloatArray] entirely
- * in-place. Zero heap allocations occur on the audio hot path; the input array is pinned with
- * [GetFloatArrayElements] and committed back with mode 0 via [ReleaseFloatArrayElements].
+ * stereo widening, pan, tape saturation, and Freeverb-style stereo reverb — to a caller-provided
+ * [jfloatArray] entirely in-place. Zero heap allocations occur on the audio hot path; the input
+ * array is pinned with [GetFloatArrayElements] and committed back with mode 0 via
+ * [ReleaseFloatArrayElements].
  *
- * The bass and treble shelf stages are independent from the EQ enable toggle and are always
- * processed as long as their gain deviates from flat by more than [kDspFlatThresholdDb].
+ * The reverb stage uses a classic Freeverb topology:
+ *   - 4 parallel comb filters per channel with high-frequency damping in the feedback path.
+ *   - 2 series all-pass diffusors per channel (constant feedback 0.5).
+ *   - Left and right channels have slightly different delay lengths (+23 samples at 44100 Hz)
+ *     for natural stereo decorrelation.
+ *   - Reverb is placed AFTER all tone-shaping stages so it adds pure spatial depth without
+ *     interacting with the equalization or saturation character.
  *
- * ARM NEON SIMD acceleration is used throughout:
- *   - Biquad EQ: [float32x2_t] processes the left and right channels simultaneously for
- *     each stereo frame; the outer loop is unrolled to consume 2 stereo frames (4 samples)
- *     per iteration — satisfying the 4-sample concurrency requirement.
- *   - Stereo widening: [float32x4_t] covers 2 stereo frames (4 samples) per instruction.
- *   - Balance/pan: [float32x4_t] covers 4 samples per multiply.
- *   - Tape saturation: [float32x4_t] applies the algebraic sigmoid to 4 samples per cycle
- *     using Newton-Raphson reciprocal estimation — avoiding the expensive [tanh] call.
- *
- * After saturation the engine accumulates a per-frame mono downmix into an internal scratch
- * buffer ([DspContext::vizMono]). Once the buffer is full it applies the pre-computed Hann
- * window, runs [pffft_transform_ordered], computes per-band RMS magnitudes into
- * [DspContext::bandMagnitudes], and sets [DspContext::fftFrameReady]. Kotlin then calls
- * [nativeDspReadBandMagnitudes] to retrieve the magnitudes without any allocation.
+ * ARM NEON SIMD acceleration is used for the biquad EQ, stereo widening, balance, and
+ * saturation stages. The reverb hot path uses a scalar loop because the feedback-dependent
+ * data hazards in ring-buffer processing prevent effective SIMD vectorization.
  *
  * @author Hamza417
  */
@@ -482,6 +477,191 @@ static void applySaturation(float *__restrict buf, int numSamples,
 #endif
 }
 
+/** Base comb filter delay lengths (samples at 44100 Hz) — left channel. */
+static const int kCombBaseLenL[kReverbCombCount] = {1116, 1188, 1277, 1356};
+
+/** Base comb filter delay lengths — right channel (+23 for stereo decorrelation). */
+static const int kCombBaseLenR[kReverbCombCount] = {1139, 1211, 1300, 1379};
+
+/** Base all-pass delay lengths (samples at 44100 Hz) — left channel. */
+static const int kAllpassBaseLenL[kReverbAllpassCount] = {556, 441};
+
+/** Base all-pass delay lengths — right channel (+23 for stereo decorrelation). */
+static const int kAllpassBaseLenR[kReverbAllpassCount] = {579, 464};
+
+/**
+ * Recomputes every reverb delay-line length and coefficient from the cached user
+ * parameters [reverbDecayParam] and [reverbSizeParam], scales for the current
+ * [sampleRate], then zeros all ring buffers and filter states to prevent click artifacts.
+ *
+ * Called from [nativeDspCreate], [nativeDspConfigure], and [nativeDspSetReverb].
+ *
+ * @param ctx DSP context whose reverb state is to be rebuilt.
+ */
+static void configureReverb(DspContext *ctx) {
+    const float decay = ctx->reverbDecayParam;
+    const float size = ctx->reverbSizeParam;
+    const float srScale = (float) ctx->sampleRate / 44100.0f;
+    const float sizeScale = 0.5f + 0.5f * size;   /** [0.5, 1.0] */
+
+    /** Feedback coefficient: longer decay = higher feedback [0.40, 0.95]. */
+    const float feedback = 0.40f + 0.55f * decay;
+
+    /** High-frequency damping coefficient: more decay = less damping (brighter tail). */
+    const float damp1 = 0.30f + 0.40f * (1.0f - decay);
+
+    for (int i = 0; i < kReverbCombCount; ++i) {
+        int lenL = (int) ((float) kCombBaseLenL[i] * srScale * sizeScale);
+        int lenR = (int) ((float) kCombBaseLenR[i] * srScale * sizeScale);
+        lenL = (lenL < 1) ? 1 : (lenL >= kReverbMaxDelayLen ? kReverbMaxDelayLen - 1 : lenL);
+        lenR = (lenR < 1) ? 1 : (lenR >= kReverbMaxDelayLen ? kReverbMaxDelayLen - 1 : lenR);
+
+        ctx->reverbL.comb[i].len = lenL;
+        ctx->reverbL.comb[i].pos = 0;
+        ctx->reverbL.comb[i].feedback = feedback;
+        ctx->reverbL.comb[i].damp1 = damp1;
+        ctx->reverbL.comb[i].dampState = 0.f;
+        if (ctx->reverbL.comb[i].buf)
+            memset(ctx->reverbL.comb[i].buf, 0, kReverbMaxDelayLen * sizeof(float));
+
+        ctx->reverbR.comb[i].len = lenR;
+        ctx->reverbR.comb[i].pos = 0;
+        ctx->reverbR.comb[i].feedback = feedback;
+        ctx->reverbR.comb[i].damp1 = damp1;
+        ctx->reverbR.comb[i].dampState = 0.f;
+        if (ctx->reverbR.comb[i].buf)
+            memset(ctx->reverbR.comb[i].buf, 0, kReverbMaxDelayLen * sizeof(float));
+    }
+
+    for (int i = 0; i < kReverbAllpassCount; ++i) {
+        int lenL = (int) ((float) kAllpassBaseLenL[i] * srScale * sizeScale);
+        int lenR = (int) ((float) kAllpassBaseLenR[i] * srScale * sizeScale);
+        lenL = (lenL < 1) ? 1 : (lenL >= kReverbMaxDelayLen ? kReverbMaxDelayLen - 1 : lenL);
+        lenR = (lenR < 1) ? 1 : (lenR >= kReverbMaxDelayLen ? kReverbMaxDelayLen - 1 : lenR);
+
+        ctx->reverbL.allpass[i].len = lenL;
+        ctx->reverbL.allpass[i].pos = 0;
+        ctx->reverbL.allpass[i].feedback = kReverbAllpassG;
+        ctx->reverbL.allpass[i].dampState = 0.f;
+        if (ctx->reverbL.allpass[i].buf)
+            memset(ctx->reverbL.allpass[i].buf, 0, kReverbMaxDelayLen * sizeof(float));
+
+        ctx->reverbR.allpass[i].len = lenR;
+        ctx->reverbR.allpass[i].pos = 0;
+        ctx->reverbR.allpass[i].feedback = kReverbAllpassG;
+        ctx->reverbR.allpass[i].dampState = 0.f;
+        if (ctx->reverbR.allpass[i].buf)
+            memset(ctx->reverbR.allpass[i].buf, 0, kReverbMaxDelayLen * sizeof(float));
+    }
+}
+
+/**
+ * Advances a single comb filter by one sample and returns the delayed output.
+ *
+ * A one-pole LP filter is applied inside the feedback path to absorb high-frequency
+ * energy over time (simulating air absorption in a real room):
+ *   filteredFb = out * (1 - damp1) + prevFiltered * damp1
+ *   buf[pos] = in + filteredFb * feedback
+ *
+ * @param in   Input sample.
+ * @param line Comb filter ring buffer and state; modified in-place.
+ * @return Delayed and damped comb output.
+ */
+static inline float processComb(float in, ReverbLine &line) {
+    const float out = line.buf[line.pos];
+    line.dampState = out * (1.0f - line.damp1) + line.dampState * line.damp1;
+    line.buf[line.pos] = in + line.dampState * line.feedback;
+    line.pos = (line.pos + 1 >= line.len) ? 0 : (line.pos + 1);
+    return out;
+}
+
+/**
+ * Advances a single all-pass filter by one sample and returns its output.
+ *
+ * Classic Schroeder all-pass recurrence (constant power, unity gain in magnitude):
+ *   stored  = in + g * buf[pos]
+ *   out     = buf[pos] - in
+ *   buf[pos] = stored
+ *
+ * @param in   Input sample.
+ * @param line All-pass ring buffer and state; modified in-place.
+ * @return Diffused all-pass output.
+ */
+static inline float processAllpass(float in, ReverbLine &line) {
+    const float bufSample = line.buf[line.pos];
+    const float out = bufSample - in;
+    line.buf[line.pos] = in + bufSample * line.feedback;
+    line.pos = (line.pos + 1 >= line.len) ? 0 : (line.pos + 1);
+    return out;
+}
+
+/**
+ * Applies the Freeverb reverb to a stereo interleaved buffer in-place.
+ *
+ * Left and right channels are processed independently through their respective
+ * parallel comb filters and series all-pass diffusors, producing decorrelated
+ * reverb tails that simulate the natural spatialization of a real room.
+ *
+ * Input is scaled by the Freeverb fixed-gain of 0.015 before the comb bank so that
+ * the steady-state reverb output level is approximately equal to the dry signal
+ * at all decay settings, making the wet/dry [mix] knob feel linear in loudness.
+ *
+ * @param buf       Pointer to interleaved stereo PCM buffer (L0, R0, L1, R1, ...).
+ * @param numFrames Number of stereo frames in [buf].
+ * @param ctx       DSP context that owns the reverb channel state.
+ */
+static void applyReverbStereo(float *__restrict buf, int numFrames, DspContext *ctx) {
+    const float wet = ctx->reverbWet;
+    const float dry = ctx->reverbDry;
+
+    for (int i = 0; i < numFrames; ++i) {
+        const float inL = buf[2 * i];
+        const float inR = buf[2 * i + 1];
+        const float scaledL = inL * 0.015f;
+        const float scaledR = inR * 0.015f;
+
+        float sumL = 0.f, sumR = 0.f;
+        for (int c = 0; c < kReverbCombCount; ++c) {
+            sumL += processComb(scaledL, ctx->reverbL.comb[c]);
+            sumR += processComb(scaledR, ctx->reverbR.comb[c]);
+        }
+
+        for (int a = 0; a < kReverbAllpassCount; ++a) {
+            sumL = processAllpass(sumL, ctx->reverbL.allpass[a]);
+            sumR = processAllpass(sumR, ctx->reverbR.allpass[a]);
+        }
+
+        buf[2 * i] = dry * inL + wet * sumL;
+        buf[2 * i + 1] = dry * inR + wet * sumR;
+    }
+}
+
+/**
+ * Applies the reverb to a mono buffer in-place using only the left-channel state.
+ *
+ * @param buf        Pointer to the mono PCM sample array.
+ * @param numSamples Total number of samples.
+ * @param ctx        DSP context that owns the reverb state.
+ */
+static void applyReverbMono(float *__restrict buf, int numSamples, DspContext *ctx) {
+    const float wet = ctx->reverbWet;
+    const float dry = ctx->reverbDry;
+
+    for (int i = 0; i < numSamples; ++i) {
+        const float in = buf[i];
+        const float scaled = in * 0.015f;
+
+        float sum = 0.f;
+        for (int c = 0; c < kReverbCombCount; ++c) {
+            sum += processComb(scaled, ctx->reverbL.comb[c]);
+        }
+        for (int a = 0; a < kReverbAllpassCount; ++a) {
+            sum = processAllpass(sum, ctx->reverbL.allpass[a]);
+        }
+        buf[i] = dry * in + wet * sum;
+    }
+}
+
 /**
  * Accumulates a mono downmix of the current block into [DspContext::vizMono].
  * When the ring buffer is full ([vizBufPos] reaches [FFTContext::size]) the function
@@ -621,6 +801,27 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspCreate(
     ctx->satDrive = 0.0f;
     ctx->satCompensation = 1.0f;
 
+    /**
+     * Reverb: allocate all delay-line buffers and configure default parameters.
+     * Default: wet = 0 (bypassed), decay = 0.5 (medium), size = 0.5 (medium room).
+     */
+    for (int i = 0; i < kReverbCombCount; ++i) {
+        ctx->reverbL.comb[i].buf = static_cast<float *>(calloc(kReverbMaxDelayLen, sizeof(float)));
+        ctx->reverbR.comb[i].buf = static_cast<float *>(calloc(kReverbMaxDelayLen, sizeof(float)));
+    }
+    for (int i = 0; i < kReverbAllpassCount; ++i) {
+        ctx->reverbL.allpass[i].buf = static_cast<float *>(calloc(kReverbMaxDelayLen,
+                                                                  sizeof(float)));
+        ctx->reverbR.allpass[i].buf = static_cast<float *>(calloc(kReverbMaxDelayLen,
+                                                                  sizeof(float)));
+    }
+    ctx->reverbWet = 0.0f;
+    ctx->reverbDry = 1.0f;
+    ctx->reverbEnabled = false;
+    ctx->reverbDecayParam = 0.5f;
+    ctx->reverbSizeParam = 0.5f;
+    configureReverb(ctx);
+
     clearAllBiquadState(ctx);
 
     DSP_LOGI("DspContext created — sampleRate=%d, channels=%d, fftSize=%d",
@@ -661,6 +862,9 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspConfigure(
 
     clearAllBiquadState(ctx);
     ctx->vizBufPos = 0;
+
+    /** Recompute reverb delay-line lengths for the new sample rate. */
+    configureReverb(ctx);
 
     DSP_LOGI("DspContext reconfigured — sampleRate=%d, channels=%d",
              ctx->sampleRate, ctx->channelCount);
@@ -883,6 +1087,7 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspProcessAudio(
     const float rGain = ctx->rightGain;
     const float satDrive = ctx->satDrive;
     const float satComp = ctx->satCompensation;
+    const bool reverbActive = ctx->reverbEnabled;
 
     /**
      * Stage 1: 10-Band peaking EQ.
@@ -958,7 +1163,26 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspProcessAudio(
     }
 
     /**
-     * Stage 6: Visualizer handoff.
+     * Stage 6: Freeverb-style stereo reverb.
+     *
+     * Applied AFTER all tone-shaping stages (EQ, bass/treble, saturation) so the reverb
+     * adds pure spatial depth without altering the tonal character of the dry signal.
+     * The reverb is also applied after stereo widening and balance so the spatial image is
+     * correct before the room simulation layer is added.
+     *
+     * Skipped entirely when reverbWet is below kReverbWetEpsilon to save CPU on the
+     * common "dry" playback scenario.
+     */
+    if (reverbActive) {
+        if (ch == 2) {
+            applyReverbStereo(buf, numFrames, ctx);
+        } else {
+            applyReverbMono(buf, totalSamples, ctx);
+        }
+    }
+
+    /**
+     * Stage 7: Visualizer handoff.
      * Accumulate mono downmix and trigger the FFT when the buffer is full.
      * This is the only stage that is not conditional — the visualizer always receives
      * the fully processed audio so the spectrum display reflects all active effects.
@@ -1026,9 +1250,68 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspDestroy(
 
     free(ctx->vizMono);
     free(ctx->bandMagnitudes);
+
+    /** Free all reverb delay-line ring buffers. */
+    for (int i = 0; i < kReverbCombCount; ++i) {
+        free(ctx->reverbL.comb[i].buf);
+        free(ctx->reverbR.comb[i].buf);
+    }
+    for (int i = 0; i < kReverbAllpassCount; ++i) {
+        free(ctx->reverbL.allpass[i].buf);
+        free(ctx->reverbR.allpass[i].buf);
+    }
+
     free(ctx);
 
     DSP_LOGI("DspContext destroyed");
+}
+
+/**
+ * Updates the reverb wet/dry mix, decay time, and room size, then recomputes all
+ * comb and all-pass delay-line lengths and coefficients.
+ *
+ * Changing [decay] or [size] clears all delay-line buffers to avoid audible click
+ * artifacts from abrupt length transitions; a brief mute of the reverb tail is
+ * therefore expected when these parameters change.
+ *
+ * Changing only [mix] (wet/dry ratio) is artifact-free and can be animated smoothly
+ * by the UI without any audible discontinuity.
+ *
+ * @param env    JNI environment pointer.
+ * @param thiz   Calling Java/Kotlin object (unused).
+ * @param handle Opaque pointer returned by [nativeDspCreate].
+ * @param mix    Wet/dry mix in [0.0, 1.0]. 0 = dry only (bypass); 1 = fully wet.
+ * @param decay  Reverb decay time in [0.0, 1.0]. 0 = very short; 1 = very long.
+ * @param size   Room size in [0.0, 1.0]. 0 = small room; 1 = large hall.
+ */
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetReverb(
+        JNIEnv * /*env*/, jobject /*thiz*/,
+        jlong handle, jfloat mix, jfloat decay, jfloat size) {
+
+    auto *ctx = reinterpret_cast<DspContext *>(handle);
+    if (!ctx) return;
+
+    ctx->reverbWet = fmaxf(0.f, fminf(1.f, static_cast<float>(mix)));
+    ctx->reverbDry = 1.0f - ctx->reverbWet;
+    ctx->reverbEnabled = (ctx->reverbWet > kReverbWetEpsilon);
+
+    const float newDecay = fmaxf(0.f, fminf(1.f, static_cast<float>(decay)));
+    const float newSize = fmaxf(0.f, fminf(1.f, static_cast<float>(size)));
+
+    /**
+     * Only rebuild delay-line lengths when decay or size actually changed to avoid
+     * unnecessary buffer clears and brief reverb tail mutes.
+     */
+    const bool reconfig = fabsf(newDecay - ctx->reverbDecayParam) > 0.001f
+                          || fabsf(newSize - ctx->reverbSizeParam) > 0.001f;
+
+    ctx->reverbDecayParam = newDecay;
+    ctx->reverbSizeParam = newSize;
+
+    if (reconfig) {
+        configureReverb(ctx);
+    }
 }
 
 } // extern "C"

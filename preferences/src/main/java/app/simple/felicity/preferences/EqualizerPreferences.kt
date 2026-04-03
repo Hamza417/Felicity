@@ -75,6 +75,28 @@ object EqualizerPreferences {
      */
     const val TREBLE_DB = "eq_treble_db"
 
+    /**
+     * Reverb wet/dry mix stored as a float in [0 .. 1].
+     * 0.0 = fully dry (reverb bypassed, default), 1.0 = fully wet (only reverb output).
+     * Applied by the native DSP engine after all equalization and saturation stages.
+     */
+    const val REVERB_MIX = "eq_reverb_mix"
+
+    /**
+     * Reverb decay time stored as a float in [0 .. 1].
+     * 0.0 = very short tail, 1.0 = long hall reverb.
+     * Internally maps to comb-filter feedback [0.40 .. 0.95] and damping coefficients.
+     * Default is 0.5 (medium decay).
+     */
+    const val REVERB_DECAY = "eq_reverb_decay"
+
+    /**
+     * Reverb room size stored as a float in [0 .. 1].
+     * 0.0 = small room (short delay lines), 1.0 = large hall (long delay lines).
+     * Default is 0.5 (medium room).
+     */
+    const val REVERB_SIZE = "eq_reverb_size"
+
     fun setBalance(pan: Float) {
         SharedPreferences.getSharedPreferences().edit { putFloat(BALANCE, pan.coerceIn(-1f, 1f)) }
     }
@@ -243,5 +265,60 @@ object EqualizerPreferences {
      */
     fun getTrebleDb(): Float {
         return SharedPreferences.getSharedPreferences().getFloat(TREBLE_DB, 0f)
+    }
+
+    // -------------------------------------------------------------------------
+    // Reverb
+    // -------------------------------------------------------------------------
+
+    /**
+     * Persists the reverb wet/dry mix, clamped to [0 .. 1].
+     *
+     * @param mix Mix value. 0.0 = dry only (bypass); 1.0 = fully wet.
+     */
+    fun setReverbMix(mix: Float) {
+        SharedPreferences.getSharedPreferences().edit { putFloat(REVERB_MIX, mix.coerceIn(0f, 1f)) }
+    }
+
+    /**
+     * Returns the persisted reverb wet/dry mix.
+     * Defaults to 0.0 (bypassed) when no value has been saved yet.
+     */
+    fun getReverbMix(): Float {
+        return SharedPreferences.getSharedPreferences().getFloat(REVERB_MIX, 0f)
+    }
+
+    /**
+     * Persists the reverb decay time parameter, clamped to [0 .. 1].
+     *
+     * @param decay Decay value. 0.0 = very short; 1.0 = very long hall.
+     */
+    fun setReverbDecay(decay: Float) {
+        SharedPreferences.getSharedPreferences().edit { putFloat(REVERB_DECAY, decay.coerceIn(0f, 1f)) }
+    }
+
+    /**
+     * Returns the persisted reverb decay time parameter.
+     * Defaults to 0.5 (medium decay) when no value has been saved yet.
+     */
+    fun getReverbDecay(): Float {
+        return SharedPreferences.getSharedPreferences().getFloat(REVERB_DECAY, 0.5f)
+    }
+
+    /**
+     * Persists the reverb room-size parameter, clamped to [0 .. 1].
+     *
+     * @param size Room size. 0.0 = small room; 1.0 = large hall.
+     */
+    fun setReverbSize(size: Float) {
+        SharedPreferences.getSharedPreferences().edit { putFloat(REVERB_SIZE, size.coerceIn(0f, 1f)) }
+    }
+
+    /**
+     * Returns the persisted reverb room-size parameter.
+     * Defaults to 0.5 (medium room) when no value has been saved yet.
+     */
+    fun getReverbSize(): Float {
+        return SharedPreferences.getSharedPreferences().getFloat(REVERB_SIZE, 0.5f)
     }
 }

@@ -263,6 +263,10 @@
     <string name="haptic_feedback">Haptic Feedbacks</string>
     <string name="haptic_feedback_summary">Toggle haptic feedbacks on various interactions in the app.</string>
     <string name="tape_saturation">Tape Saturation</string>
+    <string name="reverb">Reverb</string>
+    <string name="reverb_mix">Mix</string>
+    <string name="reverb_fade">Fade</string>
+    <string name="reverb_size">Size</string>
     <string name="dashboard">Dashboard</string>
     <string name="now_playing">Now Playing: %1$s</string>
     <string name="knob_style">Knob Style</string>

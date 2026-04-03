@@ -140,6 +140,20 @@ class AudioProcessorManager {
     }
 
     /**
+     * Applies the reverb wet/dry mix, decay time, and room size to [nativeDspProcessor].
+     *
+     * The reverb is placed after all equalization and saturation in the DSP chain so it
+     * contributes only spatial depth without altering the tonal character of the signal.
+     *
+     * @param mix   Wet/dry mix in [0.0, 1.0]. 0.0 = bypass.
+     * @param decay Decay time in [0.0, 1.0]. 0.0 = very short; 1.0 = long hall.
+     * @param size  Room size in [0.0, 1.0]. 0.0 = small room; 1.0 = large hall.
+     */
+    fun applyReverb(mix: Float, decay: Float, size: Float) {
+        nativeDspProcessor.setReverb(mix, decay, size)
+    }
+
+    /**
      * Applies the persisted 10-band EQ state (all band gains, preamp, and the enabled flag)
      * plus bass and treble shelf gains to [nativeDspProcessor].
      *

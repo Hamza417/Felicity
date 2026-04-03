@@ -103,6 +103,18 @@ class NativeDspAudioProcessor(
     @Volatile
     private var saturationDrive: Float = 0f
 
+    /** Reverb wet/dry mix in [0.0, 1.0]; 0 = bypassed. */
+    @Volatile
+    private var reverbMix: Float = 0f
+
+    /** Reverb decay time parameter in [0.0, 1.0]; 0 = very short, 1 = very long. */
+    @Volatile
+    private var reverbDecay: Float = 0.5f
+
+    /** Room size parameter in [0.0, 1.0]; 0 = small room, 1 = large hall. */
+    @Volatile
+    private var reverbSize: Float = 0.5f
+
     /**
      * Returns the [AudioProcessor.AudioFormat] that this processor is currently configured for.
      *
@@ -405,6 +417,24 @@ class NativeDspAudioProcessor(
         dspProcessor?.setSaturation(saturationDrive)
     }
 
+    /**
+     * Sets the reverb wet/dry mix, decay time, and room size, applying them immediately
+     * to the native DSP engine.
+     *
+     * The reverb is positioned after all EQ and saturation in the chain so it contributes
+     * only spatial depth, not tonal coloring.
+     *
+     * @param mix   Wet/dry mix in [0.0, 1.0]. 0 = dry only (bypass).
+     * @param decay Decay time in [0.0, 1.0]. 0 = very short; 1 = very long hall.
+     * @param size  Room size in [0.0, 1.0]. 0 = small; 1 = large hall.
+     */
+    fun setReverb(mix: Float, decay: Float, size: Float) {
+        reverbMix = mix.coerceIn(0f, 1f)
+        reverbDecay = decay.coerceIn(0f, 1f)
+        reverbSize = size.coerceIn(0f, 1f)
+        dspProcessor?.setReverb(reverbMix, reverbDecay, reverbSize)
+    }
+
     /** Pushes all stored parameter fields to the native [DspProcessor] after (re)creation. */
     private fun pushAllParameters() {
         val dsp = dspProcessor ?: return
@@ -413,6 +443,7 @@ class NativeDspAudioProcessor(
         dsp.setStereoWidth(stereoWidth)
         dsp.setBalance(pan)
         dsp.setSaturation(saturationDrive)
+        dsp.setReverb(reverbMix, reverbDecay, reverbSize)
     }
 
     private fun releaseNativeContext() {

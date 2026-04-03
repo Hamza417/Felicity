@@ -62,6 +62,7 @@ class Equalizer : MediaFragment() {
 
         setupEqualizerSliders()
         setupKnobs()
+        setupReverbKnobs()
         setupViewFlipper(savedInstanceState)
     }
 
@@ -280,6 +281,92 @@ class Equalizer : MediaFragment() {
         outState.putInt(SCREEN_STATE_KEY, binding.viewFlipper.displayedChild)
     }
 
+    // -------------------------------------------------------------------------
+    // Reverb knobs (mix, fade, size)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Wires up the three reverb knobs on the reverb screen:
+     *  - Mix: wet/dry ratio [0 .. 100%]
+     *  - Fade: reverb decay time [Short .. Long]
+     *  - Size: room size [S .. L]
+     *
+     * Each knob writes to [EqualizerPreferences], which is observed by the player service
+     * and forwarded to the native DSP engine in real-time.
+     */
+    private fun setupReverbKnobs() {
+        // Mix knob — wet/dry ratio.
+        // Knob value 0-100 maps to mix 0.0 (dry) … 1.0 (fully wet).
+        binding.reverbScreen.reverbMixKnob.setTickTexts("0%", "100%")
+        binding.reverbScreen.reverbMixKnob.divisionCount = 100
+        binding.reverbScreen.reverbMixKnob.setKnobPosition(
+                reverbMixToKnob(EqualizerPreferences.getReverbMix()), animate = false)
+        binding.reverbScreen.reverbMixKnob.setListener(object : RotaryKnobListener {
+            override fun onIncrement(value: Float) {}
+
+            override fun onRotate(value: Float) {
+                val mix = knobToReverbMix(value)
+                EqualizerPreferences.setReverbMix(mix)
+                Log.d(TAG, "Reverb mix updated: ${(mix * 100).toInt()}%")
+            }
+
+            override fun onLabel(value: Float): String {
+                val mix = knobToReverbMix(value)
+                return if (mix < 0.005f) "Off" else "${"%.0f".format(mix * 100)}%"
+            }
+        })
+
+        // Fade knob — reverb decay time.
+        // Knob value 0-100 maps to decay 0.0 (very short) … 1.0 (very long hall).
+        binding.reverbScreen.reverbFadeKnob.setTickTexts("S", "L")
+        binding.reverbScreen.reverbFadeKnob.divisionCount = 100
+        binding.reverbScreen.reverbFadeKnob.setKnobPosition(
+                reverbDecayToKnob(EqualizerPreferences.getReverbDecay()), animate = false)
+        binding.reverbScreen.reverbFadeKnob.setListener(object : RotaryKnobListener {
+            override fun onIncrement(value: Float) {}
+
+            override fun onRotate(value: Float) {
+                val decay = knobToReverbDecay(value)
+                EqualizerPreferences.setReverbDecay(decay)
+                Log.d(TAG, "Reverb decay updated: ${"%.2f".format(decay)}")
+            }
+
+            override fun onLabel(value: Float): String {
+                val decay = knobToReverbDecay(value)
+                return when {
+                    decay < 0.05f -> "Short"
+                    decay > 0.95f -> "Long"
+                    else -> "${"%.0f".format(decay * 100)}%"
+                }
+            }
+        })
+
+        // Size knob — room size.
+        // Knob value 0-100 maps to size 0.0 (small room) … 1.0 (large hall).
+        binding.reverbScreen.reverbSizeKnob.setTickTexts("S", "L")
+        binding.reverbScreen.reverbSizeKnob.divisionCount = 100
+        binding.reverbScreen.reverbSizeKnob.setKnobPosition(
+                reverbSizeToKnob(EqualizerPreferences.getReverbSize()), animate = false)
+        binding.reverbScreen.reverbSizeKnob.setListener(object : RotaryKnobListener {
+            override fun onIncrement(value: Float) {}
+
+            override fun onRotate(value: Float) {
+                val size = knobToReverbSize(value)
+                EqualizerPreferences.setReverbSize(size)
+                Log.d(TAG, "Reverb size updated: ${"%.2f".format(size)}")
+            }
+
+            override fun onLabel(value: Float): String {
+                val size = knobToReverbSize(value)
+                return when {
+                    size < 0.05f -> "S"
+                    size > 0.95f -> "L"
+                    else -> "${"%.0f".format(size * 100)}%"
+                }
+            }
+        })
+    }
+
     override val wantsMiniPlayerVisible: Boolean
         get() = false
 
@@ -322,6 +409,24 @@ class Equalizer : MediaFragment() {
 
         /** Maps treble gain [-12..+12] dB → knob position [0..100]. */
         fun trebleDbToKnobValue(db: Float): Float = ((db / 12f * 50f) + 50f).coerceIn(0f, 100f)
+
+        /** Maps knob position [0..100] → reverb wet/dry mix [0..1]. */
+        fun knobToReverbMix(knobValue: Float): Float = (knobValue / 100f).coerceIn(0f, 1f)
+
+        /** Maps reverb wet/dry mix [0..1] → knob position [0..100]. */
+        fun reverbMixToKnob(mix: Float): Float = (mix * 100f).coerceIn(0f, 100f)
+
+        /** Maps knob position [0..100] → reverb decay parameter [0..1]. */
+        fun knobToReverbDecay(knobValue: Float): Float = (knobValue / 100f).coerceIn(0f, 1f)
+
+        /** Maps reverb decay parameter [0..1] → knob position [0..100]. */
+        fun reverbDecayToKnob(decay: Float): Float = (decay * 100f).coerceIn(0f, 100f)
+
+        /** Maps knob position [0..100] → reverb room-size parameter [0..1]. */
+        fun knobToReverbSize(knobValue: Float): Float = (knobValue / 100f).coerceIn(0f, 1f)
+
+        /** Maps reverb room-size parameter [0..1] → knob position [0..100]. */
+        fun reverbSizeToKnob(size: Float): Float = (size * 100f).coerceIn(0f, 100f)
 
         private const val SCREEN_STATE_KEY = "screen_state"
     }

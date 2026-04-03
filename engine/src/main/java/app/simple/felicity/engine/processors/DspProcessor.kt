@@ -154,6 +154,29 @@ class DspProcessor(
     }
 
     /**
+     * Sets the reverb wet/dry mix, decay time, and room size.
+     *
+     * The reverb is positioned after all equalization and saturation in the DSP chain so
+     * it adds pure spatial depth without altering the tonal character of the signal.
+     *
+     * Changing [decay] or [size] will briefly clear the reverb delay lines (audible as a
+     * very short mute of the reverb tail). Animating only [mix] is artifact-free.
+     *
+     * @param mix   Wet/dry mix in [0.0, 1.0]. 0.0 = dry only (bypass); 1.0 = fully wet.
+     * @param decay Reverb decay time in [0.0, 1.0]. 0.0 = very short; 1.0 = very long hall.
+     * @param size  Room size in [0.0, 1.0]. 0.0 = small room; 1.0 = large hall.
+     */
+    fun setReverb(mix: Float, decay: Float, size: Float) {
+        if (nativeHandle == 0L) return
+        nativeDspSetReverb(
+                nativeHandle,
+                mix.coerceIn(0f, 1f),
+                decay.coerceIn(0f, 1f),
+                size.coerceIn(0f, 1f)
+        )
+    }
+
+    /**
      * The zero-allocation audio processing hot path.
      *
      * Passes [pcmBuffer] directly into the native DSP chain where it is modified in-place.
@@ -203,7 +226,7 @@ class DspProcessor(
 
     /**
      * Convenience helper that resets the EQ to flat, bass/treble to 0 dB, stereo width
-     * to natural, pan to center, and saturation to off in one call.
+     * to natural, pan to center, saturation to off, and reverb to bypassed in one call.
      */
     fun resetToDefaults() {
         setEqBands(FloatArray(10), 0f, 0f)
@@ -212,6 +235,7 @@ class DspProcessor(
         setStereoWidth(1f)
         setBalance(0f)
         setSaturation(0f)
+        setReverb(0f, 0.5f, 0.5f)
     }
 
     /**
@@ -309,6 +333,17 @@ class DspProcessor(
      * @param drive  Drive in [0.0, 4.0].
      */
     private external fun nativeDspSetSaturation(handle: Long, drive: Float)
+
+    /**
+     * Updates the reverb wet/dry mix, decay, and room size, recomputing delay-line
+     * lengths and feedback coefficients when [decay] or [size] changes.
+     *
+     * @param handle Opaque pointer from [nativeDspCreate].
+     * @param mix    Wet/dry mix in [0.0, 1.0].
+     * @param decay  Decay time parameter in [0.0, 1.0].
+     * @param size   Room-size parameter in [0.0, 1.0].
+     */
+    private external fun nativeDspSetReverb(handle: Long, mix: Float, decay: Float, size: Float)
 
     /**
      * Zero-allocation hot-path entrypoint. Applies the full DSP chain to [pcmBuffer]
