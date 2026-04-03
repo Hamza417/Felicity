@@ -1,5 +1,6 @@
 package app.simple.felicity.ui.home
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -22,7 +23,9 @@ import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDe
 import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
 import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
-import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.dialogs.app.AppLabel.Companion.showAppLabel
+import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.preferences.MainPreferences
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ViewUtils.gone
@@ -66,7 +69,7 @@ import kotlinx.coroutines.launch
  * @author Hamza417
  */
 @AndroidEntryPoint
-class Dashboard : MediaFragment() {
+class Dashboard : PanelFragment() {
 
     private lateinit var binding: FragmentHomeDashboardBinding
 
@@ -83,6 +86,12 @@ class Dashboard : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        binding.label.setAppLabel()
+
+        binding.label.setOnClickListener {
+            childFragmentManager.showAppLabel()
+        }
 
         showMiniPlayer()
         setupHeader()
@@ -360,6 +369,15 @@ class Dashboard : MediaFragment() {
                 getString(R.string.now_playing, audio.title),
                 isForward = MediaManager.lastNavigationDirection
         )
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            MainPreferences.APP_LABEL -> {
+                binding.label.setAppLabel()
+            }
+        }
     }
 
     companion object {

@@ -14,6 +14,7 @@ import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.SpacingRecyclerView
 import app.simple.felicity.preferences.BehaviourPreferences
+import app.simple.felicity.preferences.MainPreferences
 import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
@@ -148,6 +149,10 @@ open class PanelFragment : MediaFragment() {
                 applySpacing()
             }
         }
+    }
+
+    protected fun AppCompatTextView.setAppLabel() {
+        this.text = MainPreferences.getAppLabel(requireContext())
     }
 
     protected fun openSearch() {

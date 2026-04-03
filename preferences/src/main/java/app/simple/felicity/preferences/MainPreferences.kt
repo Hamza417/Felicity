@@ -1,8 +1,11 @@
 package app.simple.felicity.preferences
 
+import android.content.Context
 import app.simple.felicity.manager.SharedPreferences
 
 object MainPreferences {
+
+    const val APP_LABEL = "app_label"
 
     private const val DATA_LOADED = "data_loaded"
     private const val FLOATING_MENU_HEIGHT = "bottom_menu_height"
@@ -25,5 +28,16 @@ object MainPreferences {
 
     fun getFloatingMenuHeight(): Int {
         return SharedPreferences.getSharedPreferences().getInt(FLOATING_MENU_HEIGHT, 0)
+    }
+
+    // ---------------------------------------------------------------------------------------------//
+
+    fun setAppLabel(label: String) {
+        SharedPreferences.getSharedPreferences().edit().putString(APP_LABEL, label).apply()
+    }
+
+    fun getAppLabel(context: Context): String {
+        return SharedPreferences.getSharedPreferences()
+            .getString(APP_LABEL, context.getString(R.string.app_name)) ?: ""
     }
 }

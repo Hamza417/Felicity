@@ -14,9 +14,11 @@ import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.databinding.HeaderHomeBinding
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.AppLabel.Companion.showAppLabel
 import app.simple.felicity.dialogs.home.SimpleHomeMenu.Companion.showHomeMenu
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.HomePreferences
+import app.simple.felicity.preferences.MainPreferences
 import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Favorites
@@ -56,6 +58,7 @@ class SimpleHome : PanelFragment() {
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.requireAttachedMiniPlayer()
+        headerBinding.label.setAppLabel()
 
         gridLayoutManager = GridLayoutManager(requireContext(), 1)
         updateGridLayoutSpanCount()
@@ -74,6 +77,10 @@ class SimpleHome : PanelFragment() {
             adapterSimpleHome!!.setLayoutType(HomePreferences.getHomeLayoutType())
             setupAdapterCallbacks()
             binding.recyclerView.adapter = adapterSimpleHome
+        }
+
+        headerBinding.label.setOnClickListener {
+            childFragmentManager.showAppLabel()
         }
     }
 
@@ -158,6 +165,9 @@ class SimpleHome : PanelFragment() {
                 updateGridLayoutSpanCount()
                 binding.recyclerView.scheduleLayoutAnimation()
                 adapterSimpleHome?.notifyItemRangeChanged(0, adapterSimpleHome?.itemCount ?: 0)
+            }
+            MainPreferences.APP_LABEL -> {
+                headerBinding.label.setAppLabel()
             }
         }
     }

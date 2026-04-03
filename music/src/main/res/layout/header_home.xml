@@ -14,7 +14,8 @@
         android:paddingHorizontal="@dimen/padding_15"
         android:orientation="horizontal">
 
-        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/label"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
