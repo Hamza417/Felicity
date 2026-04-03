@@ -831,32 +831,38 @@ class SlideFastScroller @JvmOverloads constructor(
             return
         }
 
-        val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
-        val firstVisible = layoutManager.findFirstVisibleItemPosition()
+        // Use pixel-accurate scroll metrics as the primary source so the thumb position
+        // changes continuously with every scroll pixel rather than ticking by whole item steps.
+        // This is the same mapping used in scrollToPercentSmooth, keeping drag and passive
+        // scroll in perfect agreement.
+        val scrollRange = rv.computeVerticalScrollRange() - rv.computeVerticalScrollExtent()
+        val newPercent: Float
 
-        if (firstVisible == RecyclerView.NO_POSITION || firstVisible < 0) return
-
-        val firstView = layoutManager.findViewByPosition(firstVisible)
-
-        val newPercent = if (firstView != null) {
-            val viewTop = firstView.top
-            val itemHeight = firstView.height
-
-            // Fallback for edge cases where view exists but layout pass hasn't assigned height
-            if (itemHeight <= 0) {
-                firstVisible.toFloat() / (count - 1).toFloat()
-            } else {
-                val offsetPercent = (-viewTop.toFloat() / itemHeight.toFloat()).coerceIn(0f, 1f)
-                ((firstVisible + offsetPercent) / (count - 1).toFloat()).coerceIn(0f, 1f)
-            }
+        if (scrollRange > 0) {
+            newPercent = (rv.computeVerticalScrollOffset().toFloat() / scrollRange.toFloat())
+                .coerceIn(0f, 1f)
         } else {
-            // Fallback for edge cases where layout manager cannot find the view
-            firstVisible.toFloat() / (count - 1).toFloat()
+            // Fallback: item-based formula when scroll range is not yet available.
+            val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
+            val firstVisible = layoutManager.findFirstVisibleItemPosition()
+            if (firstVisible == RecyclerView.NO_POSITION || firstVisible < 0) return
+            val firstView = layoutManager.findViewByPosition(firstVisible)
+            newPercent = if (firstView != null && firstView.height > 0) {
+                val offsetPercent = (-firstView.top.toFloat() / firstView.height.toFloat())
+                    .coerceIn(0f, 1f)
+                ((firstVisible + offsetPercent) / (count - 1).toFloat()).coerceIn(0f, 1f)
+            } else {
+                firstVisible.toFloat() / (count - 1).toFloat()
+            }
         }
+
+        // Resolve the first visible position for currentAdapterPosition tracking.
+        val layoutManager = rv.layoutManager as? LinearLayoutManager
+        val firstVisible = layoutManager?.findFirstVisibleItemPosition() ?: 0
 
         // Visual state and invalidation must happen continuously for smooth tracking.
         percent = newPercent
-        currentAdapterPosition = firstVisible
+        currentAdapterPosition = if (firstVisible >= 0) firstVisible else 0
         invalidate()
     }
 
