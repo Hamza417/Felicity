@@ -25,6 +25,7 @@ import android.os.Parcel
 import android.os.Parcelable
 import android.os.VibrationEffect
 import android.util.AttributeSet
+import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.VelocityTracker
@@ -1833,6 +1834,21 @@ class MiniPlayer @JvmOverloads constructor(
     private val resetManualRunnable = Runnable { isManuallyControlled = false }
 
     /**
+     * The single in-flight [ValueAnimator] that drives every [translationY] transition —
+     * show, hide, snap, and all scroll-driven slides share this one instance so they
+     * can never fight each other.
+     *
+     * Using [ValueAnimator] instead of [ViewPropertyAnimator] ensures that the start
+     * value is captured **synchronously** at call time (via [slideTo]) rather than on
+     * the next Choreographer frame, which eliminates the race where the framework's
+     * internal shadow of [translationY] disagrees with the real value and causes the
+     * animation to end instantly without any visible movement.
+     *
+     * @author Hamza417
+     */
+    private var tyAnimator: ValueAnimator? = null
+
+    /**
      * The [hideDistance] value captured at the end of the most recent [onSizeChanged] call.
      * Used by the next [onSizeChanged] to compute the correct translationY fraction when the
      * view size or its margins change (e.g. on configuration change or nav-bar inset update).
@@ -1852,9 +1868,60 @@ class MiniPlayer @JvmOverloads constructor(
     private fun isFullyShown() = translationY <= epsilon
     private fun isFullyHidden() = abs(translationY - hideDistance) <= epsilon
 
+    /**
+     * Cancels any in-flight [tyAnimator] and starts a new [ValueAnimator] that moves
+     * [translationY] from its **current value at call time** to [target].
+     *
+     * Unlike [ViewPropertyAnimator], the start value is captured synchronously here so
+     * there is no one-frame window in which external code can change [translationY] and
+     * cause the framework to silently skip the animation.
+     *
+     * [onEnd] is invoked only on natural completion; it is suppressed when the animator
+     * is canceled (e.g., by a subsequent call to [slideTo], [show], or [hide]).
+     *
+     * When [from] already equals [target] the animator is not started and [onEnd] is
+     * called immediately so the caller's post-animation bookkeeping always runs.
+     *
+     * @param target       destination [translationY] in pixels
+     * @param duration     animation length in milliseconds
+     * @param interpolator easing curve to apply
+     * @param onEnd        optional block called on natural completion
+     * @author Hamza417
+     */
+    private fun slideTo(
+            target: Float,
+            duration: Long,
+            interpolator: android.view.animation.Interpolator,
+            onEnd: (() -> Unit)? = null) {
+        tyAnimator?.cancel()
+        val from = translationY
+        if (from == target) {
+            onEnd?.invoke()
+            return
+        }
+        tyAnimator = ValueAnimator.ofFloat(from, target).apply {
+            this.duration = duration
+            this.interpolator = interpolator
+            addUpdateListener { translationY = it.animatedValue as Float }
+            if (onEnd != null) {
+                var canceled = false
+                addListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationCancel(animation: Animator) {
+                        canceled = true
+                    }
+
+                    override fun onAnimationEnd(animation: Animator) {
+                        if (!canceled) onEnd()
+                    }
+                })
+            }
+            start()
+        }
+    }
+
     /** Slide the player into view. Pass `animated = false` for an instant jump. */
     fun show(animated: Boolean = true) {
-        animate().cancel()
+        tyAnimator?.cancel()
         visibility = VISIBLE
         alpha = 1f
         pendingRestoreFraction = null
@@ -1868,12 +1935,13 @@ class MiniPlayer @JvmOverloads constructor(
                 }
             }); return
         }
+        Log.d(TAG, "Showing mini player (animated=$animated)")
         animateTy(0f, animated)
     }
 
     /** Slide the player out of view. Pass `animated = false` for an instant jump. */
     fun hide(animated: Boolean = true) {
-        animate().cancel()
+        tyAnimator?.cancel()
         visibility = VISIBLE
         pendingRestoreFraction = null
         pendingRestoreTranslationY = null
@@ -1900,24 +1968,24 @@ class MiniPlayer @JvmOverloads constructor(
 
     private fun animateTy(target: Float, animated: Boolean) {
         if (!animated) {
+            tyAnimator?.cancel()
             translationY = target
             suppressAutoFromRecyclerUntilIdle = false
             resetManualHandler.removeCallbacks(resetManualRunnable)
             resetManualHandler.postDelayed(resetManualRunnable, 500)
             return
         }
-        animate().translationY(target).setDuration(ANIM_DURATION_MS)
-            .setInterpolator(slideInterpolator)
-            .withEndAction {
-                suppressAutoFromRecyclerUntilIdle = false
-                resetManualHandler.removeCallbacks(resetManualRunnable)
-                resetManualHandler.postDelayed(resetManualRunnable, 500)
-            }.start()
+
+        slideTo(target, ANIM_DURATION_MS, slideInterpolator) {
+            suppressAutoFromRecyclerUntilIdle = false
+            resetManualHandler.removeCallbacks(resetManualRunnable)
+            resetManualHandler.postDelayed(resetManualRunnable, 500)
+        }
     }
 
     private fun updateForScrollDelta(dy: Int) {
         if (height == 0 || suppressAutoFromRecyclerUntilIdle || isManuallyControlled || isAlwaysVisible) return
-        animate().cancel()
+        tyAnimator?.cancel()
         val target = (translationY + dy).coerceIn(0f, hideDistance)
         if (target != translationY) translationY = target
     }
@@ -1932,7 +2000,7 @@ class MiniPlayer @JvmOverloads constructor(
         }
         var applied = false
         pendingRestoreFraction?.let { f ->
-            animate().cancel()
+            tyAnimator?.cancel()
             translationY = when {
                 f >= 0.995f -> hideDistance
                 f <= 0.005f -> 0f
@@ -1941,7 +2009,7 @@ class MiniPlayer @JvmOverloads constructor(
             applied = true
         }
         if (!applied) pendingRestoreTranslationY?.let {
-            animate().cancel()
+            tyAnimator?.cancel()
             translationY = it.coerceIn(0f, hideDistance)
         }
         pendingRestoreFraction = null
@@ -1968,12 +2036,8 @@ class MiniPlayer @JvmOverloads constructor(
                 if (!rv.canScrollVertically(1)
                         && !isManuallyControlled
                         && !suppressAutoFromRecyclerUntilIdle) {
-                    animate().cancel()
                     if (!isFullyShown()) {
-                        animate().translationY(0f)
-                            .setDuration(250)
-                            .setInterpolator(showInterpolator)
-                            .start()
+                        slideTo(0f, 250, showInterpolator)
                     }
                     return
                 }
@@ -1987,12 +2051,11 @@ class MiniPlayer @JvmOverloads constructor(
                     when (newState) {
                         RecyclerView.SCROLL_STATE_DRAGGING -> {
                             hadImmersiveDrag = true
-                            if (!isFullyHidden()) animate().translationY(hideDistance).setDuration(250).setInterpolator(hideInterpolator).start()
+                            if (!isFullyHidden()) slideTo(hideDistance, 250, hideInterpolator)
                         }
                         RecyclerView.SCROLL_STATE_SETTLING, RecyclerView.SCROLL_STATE_IDLE -> {
                             if (hadImmersiveDrag && !isFullyShown()) {
-                                animate().translationY(0f).setDuration(250).setInterpolator(showInterpolator)
-                                    .withEndAction { hadImmersiveDrag = false }.start()
+                                slideTo(0f, 250, showInterpolator) { hadImmersiveDrag = false }
                             } else if (newState == RecyclerView.SCROLL_STATE_IDLE) {
                                 hadImmersiveDrag = false
                             }
@@ -2012,28 +2075,28 @@ class MiniPlayer @JvmOverloads constructor(
                         // mid-overscroll and IDLE fires with the player fully hidden.
                         if (!rv.canScrollVertically(1) && !isManuallyControlled) {
                             if (!isFullyShown()) {
-                                animate().translationY(0f).setDuration(250).setInterpolator(showInterpolator).start()
+                                slideTo(0f, 250, showInterpolator)
                             }
                             return
                         }
                         // Always snap to shown when the preference is on.
                         if (isAlwaysVisible) {
                             if (!isFullyShown()) {
-                                animate().translationY(0f).setDuration(250).setInterpolator(showInterpolator).start()
+                                slideTo(0f, 250, showInterpolator)
                             }
                             return
                         }
                         if (isFullyShown() || isFullyHidden()) return
                         if (translationY <= hideDistance / 2f)
-                            animate().translationY(0f).setDuration(250).setInterpolator(showInterpolator).start()
+                            slideTo(0f, 250, showInterpolator)
                         else
-                            animate().translationY(hideDistance).setDuration(250).setInterpolator(hideInterpolator).start()
+                            slideTo(hideDistance, 250, hideInterpolator)
                     }
                     RecyclerView.SCROLL_STATE_DRAGGING -> {
                         // Only hide on drag-start when there is more list content below and
                         // the always-visible preference is not active.
                         if (!isAlwaysVisible && isFullyShown() && rv.canScrollVertically(1)) {
-                            animate().translationY(hideDistance).setDuration(250).setInterpolator(hideInterpolator).start()
+                            slideTo(hideDistance, 250, hideInterpolator)
                         }
                     }
                 }
@@ -2186,25 +2249,15 @@ class MiniPlayer @JvmOverloads constructor(
 
         val snapRunnable = Runnable {
             if (!isManuallyControlled) {
-                animate().cancel()
                 if (!scrollView.canScrollVertically(1) || isAlwaysVisible) {
                     if (!isFullyShown()) {
-                        animate().translationY(0f)
-                            .setDuration(250)
-                            .setInterpolator(showInterpolator)
-                            .start()
+                        slideTo(0f, 250, showInterpolator)
                     }
                 } else {
                     if (translationY <= hideDistance / 2f) {
-                        animate().translationY(0f)
-                            .setDuration(250)
-                            .setInterpolator(showInterpolator)
-                            .start()
+                        slideTo(0f, 250, showInterpolator)
                     } else {
-                        animate().translationY(hideDistance)
-                            .setDuration(250)
-                            .setInterpolator(hideInterpolator)
-                            .start()
+                        slideTo(hideDistance, 250, hideInterpolator)
                     }
                 }
             }
@@ -2219,12 +2272,8 @@ class MiniPlayer @JvmOverloads constructor(
             if (!nsv.canScrollVertically(1)
                     && !isManuallyControlled
                     && !suppressAutoFromRecyclerUntilIdle) {
-                animate().cancel()
                 if (!isFullyShown()) {
-                    animate().translationY(0f)
-                        .setDuration(250)
-                        .setInterpolator(showInterpolator)
-                        .start()
+                    slideTo(0f, 250, showInterpolator)
                 }
                 return@OnScrollChangeListener
             }
@@ -2389,6 +2438,7 @@ class MiniPlayer @JvmOverloads constructor(
         progressBarAlphaAnimator?.cancel()
         progressValueAnimator?.cancel()
         seekThumbAlphaAnimator?.cancel()
+        tyAnimator?.cancel()
         resetManualHandler.removeCallbacks(resetManualRunnable)
         isManuallyControlled = false
         hadImmersiveDrag = false
