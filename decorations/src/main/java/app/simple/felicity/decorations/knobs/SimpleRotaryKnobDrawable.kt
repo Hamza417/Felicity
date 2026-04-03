@@ -1,6 +1,7 @@
 package app.simple.felicity.decorations.knobs
 
 import android.animation.ValueAnimator
+import android.content.SharedPreferences
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ColorFilter
@@ -48,7 +49,7 @@ class SimpleRotaryKnobDrawable(
         var strokeWidthFraction: Float = DEFAULT_STROKE_WIDTH_FRACTION,
         var indicatorRadiusFraction: Float = DEFAULT_INDICATOR_RADIUS_FRACTION,
         @Px private var intrinsicSizePx: Int = DEFAULT_INTRINSIC_SIZE_PX
-) : RotaryKnobDrawable(), ThemeChangedListener {
+) : RotaryKnobDrawable(), ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
 
     @ColorInt
     private var accentColor: Int = DEFAULT_ACCENT_COLOR
@@ -58,6 +59,13 @@ class SimpleRotaryKnobDrawable(
 
     @ColorInt
     private var bodyColor: Int = DEFAULT_BODY_COLOR
+
+    /**
+     * Cached result of [AppearancePreferences.isShadowEffectOn]. Updated whenever the
+     * [AppearancePreferences.SHADOW_EFFECT] preference changes via [onSharedPreferenceChanged]
+     * so that [draw] never performs a [android.content.SharedPreferences] lookup per frame.
+     */
+    private var glowEnabled: Boolean = false
 
     // ── Paints ──────────────────────────────────────────────────────────────────
 
@@ -165,6 +173,12 @@ class SimpleRotaryKnobDrawable(
 
     override fun onAttachedToKnobView() {
         ThemeManager.addListener(this)
+        app.simple.felicity.manager.SharedPreferences.registerListener(this)
+        glowEnabled = try {
+            AppearancePreferences.isShadowEffectOn()
+        } catch (_: Exception) {
+            false
+        }
         val theme = ThemeManager.theme
         if (theme.viewGroupTheme != null) {
             applyTheme(theme)
@@ -174,8 +188,20 @@ class SimpleRotaryKnobDrawable(
 
     override fun onDetachedFromKnobView() {
         ThemeManager.removeListener(this)
+        app.simple.felicity.manager.SharedPreferences.unregisterListener(this)
         stateAnimator?.cancel()
         indicatorGlowAnimator?.cancel()
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        if (key == AppearancePreferences.SHADOW_EFFECT) {
+            glowEnabled = try {
+                AppearancePreferences.isShadowEffectOn()
+            } catch (_: Exception) {
+                false
+            }
+            invalidateSelf()
+        }
     }
 
     // ── ThemeChangedListener ──────────────────────────────────────────────────────
@@ -204,7 +230,6 @@ class SimpleRotaryKnobDrawable(
         val indicatorCy = cy - bodyRadius * INDICATOR_DISTANCE_FRACTION
         val maxGlowRadius = knobRadius * GLOW_RADIUS_FRACTION
         val ringRect = RectF(cx - bodyRadius, cy - bodyRadius, cx + bodyRadius, cy + bodyRadius)
-        val glowEnabled = AppearancePreferences.isShadowEffectOn()
 
         // Body fill — no glow.
         bodyPaint.color = bodyColor

@@ -104,6 +104,26 @@ class RotaryKnobView @JvmOverloads constructor(
     /** Target scale for each line (0f or 1f). Tracked so redundant animator restarts are skipped. */
     private var divisionTargets = FloatArray(0)
 
+    /**
+     * Pre-computed cosine of each division angle, populated in [recalcGeometry].
+     * Eliminates a [Math.toRadians] + [cos] call per progressed line per frame in [onDraw].
+     */
+    private var divisionCos = FloatArray(0)
+
+    /**
+     * Pre-computed sine of each division angle, populated in [recalcGeometry].
+     * Eliminates a [Math.toRadians] + [sin] call per progressed line per frame in [onDraw].
+     */
+    private var divisionSin = FloatArray(0)
+
+    /**
+     * Angular half-width of a single division line in degrees.
+     * Pre-computed in [recalcGeometry] because it is identical for every line in the loop
+     * and depends only on [divStrokeWidthPx] and [arcCentreRadiusPx], both of which are
+     * fixed per layout pass. Hoisting it eliminates 200+ [Math.toDegrees] calls per frame.
+     */
+    private var halfLineAngleDegCached = 0f
+
     /** Paint for idle arc segments drawn between division lines in the remaining region. */
     private val arcPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -521,11 +541,18 @@ class RotaryKnobView @JvmOverloads constructor(
             divisionScales = FloatArray(n)
             divisionTargets = FloatArray(n)
             divisionAnimators = arrayOfNulls(n)
+            divisionCos = FloatArray(n)
+            divisionSin = FloatArray(n)
         }
         for (i in 0 until n) {
             val fraction = if (n > 1) i.toFloat() / (n - 1).toFloat() else 0f
             divisionAngles[i] = ARC_START_ANGLE + fraction * ARC_SWEEP
+            val rad = Math.toRadians(divisionAngles[i].toDouble())
+            divisionCos[i] = cos(rad).toFloat()
+            divisionSin[i] = sin(rad).toFloat()
         }
+        // Pre-compute the angular half-width that is constant for all lines in a given layout.
+        halfLineAngleDegCached = Math.toDegrees((divStrokeWidthPx / 2f / arcCentreRadiusPx).toDouble()).toFloat()
 
         val labelSizePx = r * labelTextSizeFraction
         labelPaint.textSize = labelSizePx
@@ -547,6 +574,8 @@ class RotaryKnobView @JvmOverloads constructor(
         divisionAngles = FloatArray(divisionCount)
         divisionTargets = FloatArray(divisionCount)
         divisionAnimators = arrayOfNulls(divisionCount)
+        divisionCos = FloatArray(divisionCount)
+        divisionSin = FloatArray(divisionCount)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -556,17 +585,6 @@ class RotaryKnobView @JvmOverloads constructor(
         val idleColor = divisionIdleColor
         val accentColor = divisionAccentColor
 
-        /**
-         * Map knob rotation (START..END) to a canvas-space angle (ARC_START..ARC_START+ARC_SWEEP).
-         * Division lines at or before this angle are considered progressed.
-         */
-        val knobCanvasAngle = ARC_START_ANGLE + ((knobRotation - START) / (END - START)) * ARC_SWEEP
-
-        // Start/reverse per-line ValueAnimators for any line whose target has flipped.
-        // In centerSnapEnabled mode progress radiates outward from the midpoint;
-        // in normal mode it sweeps from the start (left) up to the knob position.
-        val centreCanvasAngle = if (centerSnapEnabled) ARC_START_ANGLE + ARC_SWEEP / 2f else Float.NaN
-        updateDivisionAnimators(knobCanvasAngle, centreCanvasAngle)
 
         /**
          * Draw the arc/division ring as two non-overlapping gutter regions:
@@ -589,15 +607,14 @@ class RotaryKnobView @JvmOverloads constructor(
             // Compute the angular half-width of this division line at current scale so the arc
             // segment starts cleanly after the line's edge (gutter effect).
             val lineLen = divIdleLengthPx + (divProgressLengthPx - divIdleLengthPx) * scale.coerceAtLeast(0.001f)
-            val halfLineAngleDeg = Math.toDegrees((divStrokeWidthPx / 2f / arcCentreRadiusPx).toDouble()).toFloat()
+            val halfLineAngleDeg = halfLineAngleDegCached
 
             if (scale > 0.001f) {
                 // PROGRESSED — draw the accent division line, no arc.
                 val innerR = arcCentreRadiusPx - lineLen / 2f
                 val outerR = arcCentreRadiusPx + lineLen / 2f
-                val rad = Math.toRadians(lineAngle.toDouble())
-                val cosA = cos(rad).toFloat()
-                val sinA = sin(rad).toFloat()
+                val cosA = divisionCos[i]
+                val sinA = divisionSin[i]
                 canvas.drawLine(
                         cx + cosA * innerR, cy + sinA * innerR,
                         cx + cosA * outerR, cy + sinA * outerR,
@@ -830,6 +847,7 @@ class RotaryKnobView @JvmOverloads constructor(
                 labelText = listener?.onLabel(v) ?: ""
                 listener?.onRotate(v)
                 listener?.onIncrement(abs(delta))
+                onKnobRotationChanged()
                 invalidate()
                 return true
             }
@@ -899,6 +917,7 @@ class RotaryKnobView @JvmOverloads constructor(
                 knobDrawable.onProgrammaticPositionChanged()
             }
             firstPositionSet = false
+            onKnobRotationChanged(snapDivisions = true)
             invalidate()
         }
     }
@@ -916,6 +935,7 @@ class RotaryKnobView @JvmOverloads constructor(
             addUpdateListener { anim ->
                 knobRotation = anim.animatedValue as Float
                 labelText = listener?.onLabel(angleToValue(knobRotation)) ?: ""
+                onKnobRotationChanged()
                 invalidate()
             }
             start()
@@ -1004,6 +1024,57 @@ class RotaryKnobView @JvmOverloads constructor(
     /** Maps a value in 0..100 to a knob angle in [START]..[END]. */
     private fun valueToAngle(volume: Float): Float =
         START + (volume / 100f) * (END - START)
+
+    /**
+     * Called whenever [knobRotation] changes to synchronize the division line states.
+     *
+     * Keeping [ValueAnimator] decisions out of [onDraw] means the draw path never allocates
+     * or cancels animator objects — those decisions are made exactly once at the source of
+     * each rotation change, not re-evaluated on every rendered frame.
+     *
+     * @param snapDivisions When true all division scales jump instantly to their computed
+     *                      targets without starting any [ValueAnimator]. Used by the
+     *                      non-animated path of [setKnobPosition] so that a programmatic
+     *                      snap feels immediate and never spawns per-line animators.
+     */
+    private fun onKnobRotationChanged(snapDivisions: Boolean = false) {
+        val knobCanvasAngle = ARC_START_ANGLE + ((knobRotation - START) / (END - START)) * ARC_SWEEP
+        val centreCanvasAngle = if (centerSnapEnabled) ARC_START_ANGLE + ARC_SWEEP / 2f else Float.NaN
+        if (snapDivisions) {
+            snapDivisionScales(knobCanvasAngle, centreCanvasAngle)
+        } else {
+            updateDivisionAnimators(knobCanvasAngle, centreCanvasAngle)
+        }
+    }
+
+    /**
+     * Immediately sets all division scales and targets to their computed values for the
+     * current knob position, canceling any in-flight [ValueAnimator] instances.
+     *
+     * Used by [setKnobPosition] with `animate = false` so that programmatic position
+     * restores (e.g., restoring saved state when the panel opens) never trigger a
+     * cascading wave of per-line animators that choke the main thread.
+     */
+    private fun snapDivisionScales(knobCanvasAngle: Float, centreCanvasAngle: Float) {
+        val centreMode = centreCanvasAngle.isFinite()
+        divisionAnimators.forEach { it?.cancel() }
+        for (i in divisionAngles.indices) {
+            val lineAngle = divisionAngles[i]
+            val target = if (centreMode) {
+                val isBetween = if (knobCanvasAngle >= centreCanvasAngle) {
+                    lineAngle in centreCanvasAngle..knobCanvasAngle
+                } else {
+                    lineAngle in knobCanvasAngle..centreCanvasAngle
+                }
+                if (isBetween) 1f else 0f
+            } else {
+                if (lineAngle <= knobCanvasAngle) 1f else 0f
+            }
+            divisionScales[i] = target
+            divisionTargets[i] = target
+            divisionAnimators[i] = null
+        }
+    }
 
     /** Light tick fired every [HAPTIC_TICK_INTERVAL_DEG] degrees of rotation. */
     private fun vibrateRotationTick() {
