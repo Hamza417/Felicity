@@ -32,7 +32,7 @@
             android:marqueeRepeatLimit="marquee_forever"
             android:maxLines="1"
             android:singleLine="true"
-            android:textSize="@dimen/text_size_18"
+            android:textSize="@dimen/text_size_16"
             app:appFontStyle="bold"
             app:drawableTintStyle="custom"
             app:layout_constraintBottom_toTopOf="@+id/secondary_detail"
