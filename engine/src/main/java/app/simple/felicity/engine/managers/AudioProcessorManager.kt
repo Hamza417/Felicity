@@ -140,17 +140,21 @@ class AudioProcessorManager {
     }
 
     /**
-     * Applies the reverb wet/dry mix, decay time, and room size to [nativeDspProcessor].
+     * Applies the reverb wet/dry mix, decay time, high-frequency damping, and room size
+     * to [nativeDspProcessor].
      *
      * The reverb is placed after all equalization and saturation in the DSP chain so it
      * contributes only spatial depth without altering the tonal character of the signal.
+     * All four parameters are applied with no buffer clearing, safe to call during live
+     * user interaction.
      *
      * @param mix   Wet/dry mix in [0.0, 1.0]. 0.0 = bypass.
      * @param decay Decay time in [0.0, 1.0]. 0.0 = very short; 1.0 = long hall.
+     * @param damp  High-frequency damping in [0.0, 1.0]. 0.0 = bright; 1.0 = dark tail.
      * @param size  Room size in [0.0, 1.0]. 0.0 = small room; 1.0 = large hall.
      */
-    fun applyReverb(mix: Float, decay: Float, size: Float) {
-        nativeDspProcessor.setReverb(mix, decay, size)
+    fun applyReverb(mix: Float, decay: Float, damp: Float, size: Float) {
+        nativeDspProcessor.setReverb(mix, decay, damp, size)
     }
 
     /**

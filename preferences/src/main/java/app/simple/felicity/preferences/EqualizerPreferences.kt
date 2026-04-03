@@ -3,6 +3,7 @@
 import androidx.core.content.edit
 import app.simple.felicity.manager.SharedPreferences
 import app.simple.felicity.preferences.EqualizerPreferences.EQ_BAND_KEY_PREFIX
+import app.simple.felicity.preferences.EqualizerPreferences.REVERB_DECAY
 
 /**
  * Manages all equalizer-related audio processing preferences for the Felicity playback engine.
@@ -89,6 +90,14 @@ object EqualizerPreferences {
      * Default is 0.5 (medium decay).
      */
     const val REVERB_DECAY = "eq_reverb_decay"
+
+    /**
+     * Reverb high-frequency damping stored as a float in [0 .. 1].
+     * 0.0 = brightest tail (minimal high-freq absorption), 1.0 = darkest tail (heavy damping).
+     * Independent of [REVERB_DECAY] so the user can set a long but dark room or a short but
+     * bright one. Default is 0.3 (moderately bright, natural-sounding tail).
+     */
+    const val REVERB_DAMP = "eq_reverb_damp"
 
     /**
      * Reverb room size stored as a float in [0 .. 1].
@@ -303,6 +312,23 @@ object EqualizerPreferences {
      */
     fun getReverbDecay(): Float {
         return SharedPreferences.getSharedPreferences().getFloat(REVERB_DECAY, 0.5f)
+    }
+
+    /**
+     * Persists the reverb high-frequency damping parameter, clamped to [0 .. 1].
+     *
+     * @param damp Damping value. 0.0 = brightest tail; 1.0 = darkest tail.
+     */
+    fun setReverbDamp(damp: Float) {
+        SharedPreferences.getSharedPreferences().edit { putFloat(REVERB_DAMP, damp.coerceIn(0f, 1f)) }
+    }
+
+    /**
+     * Returns the persisted reverb high-frequency damping parameter.
+     * Defaults to 0.3 (moderately bright) when no value has been saved yet.
+     */
+    fun getReverbDamp(): Float {
+        return SharedPreferences.getSharedPreferences().getFloat(REVERB_DAMP, 0.3f)
     }
 
     /**

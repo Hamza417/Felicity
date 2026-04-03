@@ -195,6 +195,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 audioProcessorManager.applyReverb(
                         EqualizerPreferences.getReverbMix(),
                         EqualizerPreferences.getReverbDecay(),
+                        EqualizerPreferences.getReverbDamp(),
                         EqualizerPreferences.getReverbSize()
                 )
 
@@ -994,12 +995,14 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             }
             EqualizerPreferences.REVERB_MIX,
             EqualizerPreferences.REVERB_DECAY,
+            EqualizerPreferences.REVERB_DAMP,
             EqualizerPreferences.REVERB_SIZE -> {
                 val mix = EqualizerPreferences.getReverbMix()
                 val decay = EqualizerPreferences.getReverbDecay()
+                val damp = EqualizerPreferences.getReverbDamp()
                 val size = EqualizerPreferences.getReverbSize()
-                Log.d(TAG, "Reverb preference changed — mix=$mix, decay=$decay, size=$size")
-                audioProcessorManager.applyReverb(mix, decay, size)
+                Log.d(TAG, "Reverb preference changed — mix=$mix, decay=$decay, damp=$damp, size=$size")
+                audioProcessorManager.applyReverb(mix, decay, damp, size)
             }
             else -> {
                 // Handle each individual EQ band preference change

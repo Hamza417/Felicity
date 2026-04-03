@@ -490,69 +490,118 @@ static const int kAllpassBaseLenL[kReverbAllpassCount] = {556, 441};
 static const int kAllpassBaseLenR[kReverbAllpassCount] = {579, 464};
 
 /**
- * Recomputes every reverb delay-line length and coefficient from the cached user
- * parameters [reverbDecayParam] and [reverbSizeParam], scales for the current
- * [sampleRate], then zeros all ring buffers and filter states to prevent click artifacts.
+ * Zeroes all reverb delay-line ring buffers and resets every write cursor and damping
+ * filter state to zero.
  *
- * Called from [nativeDspCreate], [nativeDspConfigure], and [nativeDspSetReverb].
+ * Call this only on initial construction or after a sample-rate change — never during
+ * real-time parameter dragging. The audio thread reads these buffers continuously;
+ * wiping them during live interaction causes the reverb tail to stutter.
  *
- * @param ctx DSP context whose reverb state is to be rebuilt.
+ * @param ctx DSP context whose reverb buffers are to be cleared.
  */
-static void configureReverb(DspContext *ctx) {
-    const float decay = ctx->reverbDecayParam;
+static void clearReverbBuffers(DspContext *ctx) {
+    for (int i = 0; i < kReverbCombCount; ++i) {
+        if (ctx->reverbL.comb[i].buf)
+            memset(ctx->reverbL.comb[i].buf, 0, kReverbMaxDelayLen * sizeof(float));
+        if (ctx->reverbR.comb[i].buf)
+            memset(ctx->reverbR.comb[i].buf, 0, kReverbMaxDelayLen * sizeof(float));
+        ctx->reverbL.comb[i].pos = 0;
+        ctx->reverbR.comb[i].pos = 0;
+        ctx->reverbL.comb[i].dampState = 0.f;
+        ctx->reverbR.comb[i].dampState = 0.f;
+    }
+    for (int i = 0; i < kReverbAllpassCount; ++i) {
+        if (ctx->reverbL.allpass[i].buf)
+            memset(ctx->reverbL.allpass[i].buf, 0, kReverbMaxDelayLen * sizeof(float));
+        if (ctx->reverbR.allpass[i].buf)
+            memset(ctx->reverbR.allpass[i].buf, 0, kReverbMaxDelayLen * sizeof(float));
+        ctx->reverbL.allpass[i].pos = 0;
+        ctx->reverbR.allpass[i].pos = 0;
+    }
+}
+
+/**
+ * Recomputes all delay-line lengths from [reverbSizeParam] and the current [sampleRate].
+ *
+ * Does NOT clear the ring buffers. Old content will decay naturally through the feedback
+ * path, avoiding any audible stutter when the user drags the Size knob in real-time.
+ * If a write cursor now sits beyond the new length it is wrapped back into range.
+ *
+ * @param ctx DSP context whose delay lengths are to be updated.
+ */
+static void updateReverbSize(DspContext *ctx) {
     const float size = ctx->reverbSizeParam;
     const float srScale = (float) ctx->sampleRate / 44100.0f;
-    const float sizeScale = 0.5f + 0.5f * size;   /** [0.5, 1.0] */
-
-    /** Feedback coefficient: longer decay = higher feedback [0.40, 0.95]. */
-    const float feedback = 0.40f + 0.55f * decay;
-
-    /** High-frequency damping coefficient: more decay = less damping (brighter tail). */
-    const float damp1 = 0.30f + 0.40f * (1.0f - decay);
+    const float sizeScale = 0.5f + 0.5f * size;  /** [0.5, 1.0] */
 
     for (int i = 0; i < kReverbCombCount; ++i) {
         int lenL = (int) ((float) kCombBaseLenL[i] * srScale * sizeScale);
         int lenR = (int) ((float) kCombBaseLenR[i] * srScale * sizeScale);
         lenL = (lenL < 1) ? 1 : (lenL >= kReverbMaxDelayLen ? kReverbMaxDelayLen - 1 : lenL);
         lenR = (lenR < 1) ? 1 : (lenR >= kReverbMaxDelayLen ? kReverbMaxDelayLen - 1 : lenR);
-
         ctx->reverbL.comb[i].len = lenL;
-        ctx->reverbL.comb[i].pos = 0;
-        ctx->reverbL.comb[i].feedback = feedback;
-        ctx->reverbL.comb[i].damp1 = damp1;
-        ctx->reverbL.comb[i].dampState = 0.f;
-        if (ctx->reverbL.comb[i].buf)
-            memset(ctx->reverbL.comb[i].buf, 0, kReverbMaxDelayLen * sizeof(float));
-
         ctx->reverbR.comb[i].len = lenR;
-        ctx->reverbR.comb[i].pos = 0;
-        ctx->reverbR.comb[i].feedback = feedback;
-        ctx->reverbR.comb[i].damp1 = damp1;
-        ctx->reverbR.comb[i].dampState = 0.f;
-        if (ctx->reverbR.comb[i].buf)
-            memset(ctx->reverbR.comb[i].buf, 0, kReverbMaxDelayLen * sizeof(float));
+        /** Guard cursors: if they now exceed the new length, wrap them back into range. */
+        if (ctx->reverbL.comb[i].pos >= lenL) ctx->reverbL.comb[i].pos = 0;
+        if (ctx->reverbR.comb[i].pos >= lenR) ctx->reverbR.comb[i].pos = 0;
     }
-
     for (int i = 0; i < kReverbAllpassCount; ++i) {
         int lenL = (int) ((float) kAllpassBaseLenL[i] * srScale * sizeScale);
         int lenR = (int) ((float) kAllpassBaseLenR[i] * srScale * sizeScale);
         lenL = (lenL < 1) ? 1 : (lenL >= kReverbMaxDelayLen ? kReverbMaxDelayLen - 1 : lenL);
         lenR = (lenR < 1) ? 1 : (lenR >= kReverbMaxDelayLen ? kReverbMaxDelayLen - 1 : lenR);
-
         ctx->reverbL.allpass[i].len = lenL;
-        ctx->reverbL.allpass[i].pos = 0;
-        ctx->reverbL.allpass[i].feedback = kReverbAllpassG;
-        ctx->reverbL.allpass[i].dampState = 0.f;
-        if (ctx->reverbL.allpass[i].buf)
-            memset(ctx->reverbL.allpass[i].buf, 0, kReverbMaxDelayLen * sizeof(float));
-
         ctx->reverbR.allpass[i].len = lenR;
-        ctx->reverbR.allpass[i].pos = 0;
-        ctx->reverbR.allpass[i].feedback = kReverbAllpassG;
-        ctx->reverbR.allpass[i].dampState = 0.f;
-        if (ctx->reverbR.allpass[i].buf)
-            memset(ctx->reverbR.allpass[i].buf, 0, kReverbMaxDelayLen * sizeof(float));
+        if (ctx->reverbL.allpass[i].pos >= lenL) ctx->reverbL.allpass[i].pos = 0;
+        if (ctx->reverbR.allpass[i].pos >= lenR) ctx->reverbR.allpass[i].pos = 0;
     }
+}
+
+/**
+ * Recomputes comb-filter feedback and high-frequency damping coefficients from the
+ * independent user parameters [reverbDecayParam] and [reverbDampParam].
+ *
+ * Does NOT touch delay lengths or ring buffers. Safe to call at any time, including
+ * during continuous knob dragging at UI frame rates with zero audible artifact.
+ *
+ * Mapping:
+ *   feedback = 0.40 + 0.55 * decay  →  [0.40 (short) … 0.95 (long)]
+ *   damp1    = 0.10 + 0.70 * damp   →  [0.10 (bright) … 0.80 (dark)]
+ *
+ * All-pass filters always use kReverbAllpassG = 0.5 and need no damping update.
+ *
+ * @param ctx DSP context whose comb coefficients are to be updated.
+ */
+static void updateReverbCoeffs(DspContext *ctx) {
+    const float feedback = 0.40f + 0.55f * ctx->reverbDecayParam;
+    const float damp1 = 0.10f + 0.70f * ctx->reverbDampParam;
+
+    for (int i = 0; i < kReverbCombCount; ++i) {
+        ctx->reverbL.comb[i].feedback = feedback;
+        ctx->reverbL.comb[i].damp1 = damp1;
+        ctx->reverbR.comb[i].feedback = feedback;
+        ctx->reverbR.comb[i].damp1 = damp1;
+    }
+    for (int i = 0; i < kReverbAllpassCount; ++i) {
+        ctx->reverbL.allpass[i].feedback = kReverbAllpassG;
+        ctx->reverbR.allpass[i].feedback = kReverbAllpassG;
+    }
+}
+
+/**
+ * Full reverb initialization: recomputes delay lengths, coefficients, and then zeroes
+ * all ring buffers.
+ *
+ * Use only on context creation or sample-rate change. For real-time parameter updates
+ * during playback, prefer the granular [updateReverbSize] / [updateReverbCoeffs] helpers
+ * to avoid the memset-induced stutter on the audio thread.
+ *
+ * @param ctx DSP context to fully initialize.
+ */
+static void initReverb(DspContext *ctx) {
+    updateReverbSize(ctx);
+    updateReverbCoeffs(ctx);
+    clearReverbBuffers(ctx);
 }
 
 /**
@@ -803,7 +852,7 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspCreate(
 
     /**
      * Reverb: allocate all delay-line buffers and configure default parameters.
-     * Default: wet = 0 (bypassed), decay = 0.5 (medium), size = 0.5 (medium room).
+     * Default: wet = 0 (bypassed), decay = 0.5, damp = 0.3 (moderately bright), size = 0.5.
      */
     for (int i = 0; i < kReverbCombCount; ++i) {
         ctx->reverbL.comb[i].buf = static_cast<float *>(calloc(kReverbMaxDelayLen, sizeof(float)));
@@ -819,8 +868,9 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspCreate(
     ctx->reverbDry = 1.0f;
     ctx->reverbEnabled = false;
     ctx->reverbDecayParam = 0.5f;
+    ctx->reverbDampParam = 0.3f;
     ctx->reverbSizeParam = 0.5f;
-    configureReverb(ctx);
+    initReverb(ctx);
 
     clearAllBiquadState(ctx);
 
@@ -863,8 +913,11 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspConfigure(
     clearAllBiquadState(ctx);
     ctx->vizBufPos = 0;
 
-    /** Recompute reverb delay-line lengths for the new sample rate. */
-    configureReverb(ctx);
+    /**
+     * Recompute reverb delay-line lengths and coefficients for the new sample rate,
+     * then clear all ring buffers to guarantee a silence start at the new rate.
+     */
+    initReverb(ctx);
 
     DSP_LOGI("DspContext reconfigured — sampleRate=%d, channels=%d",
              ctx->sampleRate, ctx->channelCount);
@@ -1267,27 +1320,34 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspDestroy(
 }
 
 /**
- * Updates the reverb wet/dry mix, decay time, and room size, then recomputes all
- * comb and all-pass delay-line lengths and coefficients.
+ * Updates the reverb wet/dry mix, decay time, high-frequency damping, and room size.
  *
- * Changing [decay] or [size] clears all delay-line buffers to avoid audible click
- * artifacts from abrupt length transitions; a brief mute of the reverb tail is
- * therefore expected when these parameters change.
+ * Each parameter is handled independently and without any memset:
  *
- * Changing only [mix] (wet/dry ratio) is artifact-free and can be animated smoothly
- * by the UI without any audible discontinuity.
+ *   mix change   — immediate: only reverbWet/Dry are updated. Zero-artifact.
+ *   decay change — updateReverbCoeffs() only: adjusts feedback on live comb filters.
+ *                  Old reverb tail transitions smoothly through the feedback path.
+ *   damp change  — updateReverbCoeffs() only: adjusts the LP damping coefficient.
+ *                  The filter-state dampState is preserved so the transition is smooth.
+ *   size change  — updateReverbSize() + updateReverbCoeffs(): resizes delay lines and
+ *                  guards write cursors. Old content in the buffers fades out naturally
+ *                  via the feedback < 1 path. No memset, no stutter.
+ *
+ * This design is safe to call at UI refresh rates (e.g., 60 Hz from onProgressChanged)
+ * without any audible stuttering or clicking during continuous knob dragging.
  *
  * @param env    JNI environment pointer.
  * @param thiz   Calling Java/Kotlin object (unused).
  * @param handle Opaque pointer returned by [nativeDspCreate].
  * @param mix    Wet/dry mix in [0.0, 1.0]. 0 = dry only (bypass); 1 = fully wet.
- * @param decay  Reverb decay time in [0.0, 1.0]. 0 = very short; 1 = very long.
+ * @param decay  Decay time in [0.0, 1.0]. 0 = very short; 1 = very long hall.
+ * @param damp   High-frequency damping in [0.0, 1.0]. 0 = bright tail; 1 = dark tail.
  * @param size   Room size in [0.0, 1.0]. 0 = small room; 1 = large hall.
  */
 JNIEXPORT void JNICALL
 Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetReverb(
         JNIEnv * /*env*/, jobject /*thiz*/,
-        jlong handle, jfloat mix, jfloat decay, jfloat size) {
+        jlong handle, jfloat mix, jfloat decay, jfloat damp, jfloat size) {
 
     auto *ctx = reinterpret_cast<DspContext *>(handle);
     if (!ctx) return;
@@ -1297,20 +1357,26 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetReverb(
     ctx->reverbEnabled = (ctx->reverbWet > kReverbWetEpsilon);
 
     const float newDecay = fmaxf(0.f, fminf(1.f, static_cast<float>(decay)));
+    const float newDamp = fmaxf(0.f, fminf(1.f, static_cast<float>(damp)));
     const float newSize = fmaxf(0.f, fminf(1.f, static_cast<float>(size)));
 
-    /**
-     * Only rebuild delay-line lengths when decay or size actually changed to avoid
-     * unnecessary buffer clears and brief reverb tail mutes.
-     */
-    const bool reconfig = fabsf(newDecay - ctx->reverbDecayParam) > 0.001f
-                          || fabsf(newSize - ctx->reverbSizeParam) > 0.001f;
+    const bool sizeChanged = fabsf(newSize - ctx->reverbSizeParam) > 0.001f;
+    const bool coeffsChanged = fabsf(newDecay - ctx->reverbDecayParam) > 0.001f
+                               || fabsf(newDamp - ctx->reverbDampParam) > 0.001f;
 
     ctx->reverbDecayParam = newDecay;
+    ctx->reverbDampParam = newDamp;
     ctx->reverbSizeParam = newSize;
 
-    if (reconfig) {
-        configureReverb(ctx);
+    /**
+     * Apply only the minimal update needed — no memset is ever called here.
+     * Old reverb content transitions smoothly through the natural feedback decay path.
+     */
+    if (sizeChanged) {
+        updateReverbSize(ctx);
+    }
+    if (coeffsChanged || sizeChanged) {
+        updateReverbCoeffs(ctx);
     }
 }
 

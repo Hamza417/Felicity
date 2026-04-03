@@ -219,6 +219,13 @@ struct DspContext {
     /** User decay parameter [0, 1] cached so reconfigure() can rebuild coefficients. */
     float reverbDecayParam;
 
+    /**
+     * User high-frequency damping parameter [0, 1], independent of [reverbDecayParam].
+     * 0.0 = brightest tail (minimal high-freq absorption); 1.0 = darkest tail (heavy damping).
+     * Decoupled from decay so the user can independently control room length and tone.
+     */
+    float reverbDampParam;
+
     /** User room-size parameter [0, 1] cached so reconfigure() can resize delay lines. */
     float reverbSizeParam;
 

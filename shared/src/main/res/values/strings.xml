@@ -266,6 +266,7 @@
     <string name="reverb">Reverb</string>
     <string name="reverb_mix">Mix</string>
     <string name="reverb_fade">Fade</string>
+    <string name="reverb_damp">Damp</string>
     <string name="reverb_size">Size</string>
     <string name="dashboard">Dashboard</string>
     <string name="now_playing">Now Playing: %1$s</string>

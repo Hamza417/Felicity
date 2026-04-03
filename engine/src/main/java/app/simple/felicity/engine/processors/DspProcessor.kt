@@ -154,24 +154,26 @@ class DspProcessor(
     }
 
     /**
-     * Sets the reverb wet/dry mix, decay time, and room size.
+     * Sets the reverb wet/dry mix, decay time, high-frequency damping, and room size.
      *
      * The reverb is positioned after all equalization and saturation in the DSP chain so
      * it adds pure spatial depth without altering the tonal character of the signal.
      *
-     * Changing [decay] or [size] will briefly clear the reverb delay lines (audible as a
-     * very short mute of the reverb tail). Animating only [mix] is artifact-free.
+     * Each parameter is applied independently with no buffer clearing, making it safe
+     * to call continuously during live knob interaction at UI frame rates.
      *
-     * @param mix   Wet/dry mix in [0.0, 1.0]. 0.0 = dry only (bypass); 1.0 = fully wet.
-     * @param decay Reverb decay time in [0.0, 1.0]. 0.0 = very short; 1.0 = very long hall.
+     * @param mix   Wet/dry mix in [0.0, 1.0]. 0.0 = dry only (bypass).
+     * @param decay Decay time in [0.0, 1.0]. 0.0 = very short; 1.0 = very long hall.
+     * @param damp  High-frequency damping in [0.0, 1.0]. 0.0 = bright tail; 1.0 = dark tail.
      * @param size  Room size in [0.0, 1.0]. 0.0 = small room; 1.0 = large hall.
      */
-    fun setReverb(mix: Float, decay: Float, size: Float) {
+    fun setReverb(mix: Float, decay: Float, damp: Float, size: Float) {
         if (nativeHandle == 0L) return
         nativeDspSetReverb(
                 nativeHandle,
                 mix.coerceIn(0f, 1f),
                 decay.coerceIn(0f, 1f),
+                damp.coerceIn(0f, 1f),
                 size.coerceIn(0f, 1f)
         )
     }
@@ -235,7 +237,7 @@ class DspProcessor(
         setStereoWidth(1f)
         setBalance(0f)
         setSaturation(0f)
-        setReverb(0f, 0.5f, 0.5f)
+        setReverb(0f, 0.5f, 0.3f, 0.5f)
     }
 
     /**
@@ -335,15 +337,16 @@ class DspProcessor(
     private external fun nativeDspSetSaturation(handle: Long, drive: Float)
 
     /**
-     * Updates the reverb wet/dry mix, decay, and room size, recomputing delay-line
-     * lengths and feedback coefficients when [decay] or [size] changes.
+     * Updates the reverb wet/dry mix, decay, high-frequency damping, and room size.
+     * Each parameter is applied independently with no buffer clearing.
      *
      * @param handle Opaque pointer from [nativeDspCreate].
      * @param mix    Wet/dry mix in [0.0, 1.0].
      * @param decay  Decay time parameter in [0.0, 1.0].
+     * @param damp   High-frequency damping in [0.0, 1.0]. 0.0 = bright; 1.0 = dark.
      * @param size   Room-size parameter in [0.0, 1.0].
      */
-    private external fun nativeDspSetReverb(handle: Long, mix: Float, decay: Float, size: Float)
+    private external fun nativeDspSetReverb(handle: Long, mix: Float, decay: Float, damp: Float, size: Float)
 
     /**
      * Zero-allocation hot-path entrypoint. Applies the full DSP chain to [pcmBuffer]

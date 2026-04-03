@@ -365,6 +365,32 @@ class Equalizer : MediaFragment() {
                 }
             }
         })
+
+        // Damp knob — high-frequency damping, independent of Fade (decay).
+        // Knob value 0-100 maps to damp 0.0 (brightest tail) … 1.0 (darkest tail).
+        // Decoupled from decay so long-but-dark and short-but-bright rooms are both possible.
+        binding.reverbScreen.reverbDampKnob.setTickTexts("B", "D")
+        binding.reverbScreen.reverbDampKnob.divisionCount = 100
+        binding.reverbScreen.reverbDampKnob.setKnobPosition(
+                reverbDampToKnob(EqualizerPreferences.getReverbDamp()), animate = false)
+        binding.reverbScreen.reverbDampKnob.setListener(object : RotaryKnobListener {
+            override fun onIncrement(value: Float) {}
+
+            override fun onRotate(value: Float) {
+                val damp = knobToReverbDamp(value)
+                EqualizerPreferences.setReverbDamp(damp)
+                Log.d(TAG, "Reverb damp updated: ${"%.2f".format(damp)}")
+            }
+
+            override fun onLabel(value: Float): String {
+                val damp = knobToReverbDamp(value)
+                return when {
+                    damp < 0.05f -> "Bright"
+                    damp > 0.95f -> "Dark"
+                    else -> "${"%.0f".format(damp * 100)}%"
+                }
+            }
+        })
     }
 
     override val wantsMiniPlayerVisible: Boolean
@@ -427,6 +453,12 @@ class Equalizer : MediaFragment() {
 
         /** Maps reverb room-size parameter [0..1] → knob position [0..100]. */
         fun reverbSizeToKnob(size: Float): Float = (size * 100f).coerceIn(0f, 100f)
+
+        /** Maps knob position [0..100] → reverb high-frequency damping [0..1]. */
+        fun knobToReverbDamp(knobValue: Float): Float = (knobValue / 100f).coerceIn(0f, 1f)
+
+        /** Maps reverb high-frequency damping [0..1] → knob position [0..100]. */
+        fun reverbDampToKnob(damp: Float): Float = (damp * 100f).coerceIn(0f, 100f)
 
         private const val SCREEN_STATE_KEY = "screen_state"
     }
