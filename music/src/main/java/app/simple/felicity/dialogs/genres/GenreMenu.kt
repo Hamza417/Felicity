@@ -23,7 +23,7 @@ class GenreMenu : ScopedBottomSheetFragment() {
 
     private lateinit var binding: DialogGenreMenuBinding
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = DialogGenreMenuBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -73,12 +73,6 @@ class GenreMenu : ScopedBottomSheetFragment() {
             }
         })
 
-        binding.genreCover.isChecked = GenresPreferences.isGenreCoversEnabled()
-
-        binding.genreCover.setOnCheckedChangeListener { _, bool ->
-            GenresPreferences.setGenreCoversEnabled(bool)
-        }
-
         binding.openAppSettings.setOnClickListener {
             openAppSettings()
         }
@@ -87,9 +81,6 @@ class GenreMenu : ScopedBottomSheetFragment() {
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
-            GenresPreferences.SHOW_GENRE_COVERS -> {
-                // Handled via preference listener in panel
-            }
         }
     }
 

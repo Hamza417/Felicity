@@ -13,4 +13,25 @@ data class Genre(
     override fun toString(): String {
         return "Genre(id=$id, name=$name, songPaths=$songPaths, songCount=$songCount)"
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Genre) return false
+
+        if (id != other.id) return false
+        if (name != other.name) return false
+        if (songPaths != other.songPaths) return false
+        if (songCount != other.songCount) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = id.hashCode()
+        result = 31 * result + (name?.hashCode() ?: 0)
+        result = 31 * result + songPaths.hashCode()
+        result = 31 * result + songCount
+        return result
+    }
+
 }

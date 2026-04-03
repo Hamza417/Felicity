@@ -144,9 +144,6 @@ class Genres : PanelFragment() {
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
-            GenresPreferences.SHOW_GENRE_COVERS -> {
-                adapterGenres?.notifyDataSetChanged()
-            }
         }
     }
 

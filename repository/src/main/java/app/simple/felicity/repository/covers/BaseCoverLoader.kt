@@ -175,13 +175,9 @@ internal object BaseCoverLoader {
         )
     }
 
-    fun loadEmptyAudioCover(): Bitmap? {
-        val stream = BaseCoverLoader::class.java.getResourceAsStream(ALBUM_ART_PATH) ?: return null
-        return try {
-            BitmapFactory.decodeStream(stream)
-        } catch (_: Exception) {
-            null
-        }
+    fun loadEmptyAudioCover(): Bitmap {
+        val stream = BaseCoverLoader::class.java.getResourceAsStream(ALBUM_ART_PATH)
+        return BitmapFactory.decodeStream(stream)
     }
 }
 

@@ -12,7 +12,6 @@ object GenresPreferences {
 
     const val GRID_SIZE_PORTRAIT = "genres_grid_size_portrait1"
     const val GRID_SIZE_LANDSCAPE = "genres_grid_size_landscape1"
-    const val SHOW_GENRE_COVERS = "show_genre_covers"
     const val GENRE_SORT_STYLE = "genre_sort"
     const val SORT_ORDER = "genre_sorting_style"
 
@@ -42,16 +41,6 @@ object GenresPreferences {
         } else {
             SharedPreferences.getSharedPreferences().edit { putString(GRID_SIZE_PORTRAIT, mode.name) }
         }
-    }
-
-    // --------------------------------------------------------------------------------------------
-
-    fun isGenreCoversEnabled(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(SHOW_GENRE_COVERS, true)
-    }
-
-    fun setGenreCoversEnabled(enabled: Boolean) {
-        SharedPreferences.getSharedPreferences().edit { putBoolean(SHOW_GENRE_COVERS, enabled) }
     }
 
     // --------------------------------------------------------------------------------------------

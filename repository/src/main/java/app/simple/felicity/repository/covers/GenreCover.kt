@@ -30,7 +30,7 @@ object GenreCover {
      * @param genre Genre model with [Genre.songPaths]
      * @return Bitmap of genre cover, or null if no artwork is found
      */
-    fun load(context: Context, genre: Genre): Bitmap? {
+    fun load(context: Context, genre: Genre): Bitmap {
         if (genre.songPaths.isNotEmpty()) {
             if (LibraryPreferences.isUseMediaStoreArtwork()) {
                 // Primary: resolve from MediaStore using the first song path.
@@ -62,6 +62,6 @@ object GenreCover {
             }
         }
 
-        return null
+        return BaseCoverLoader.loadEmptyAudioCover()
     }
 }
