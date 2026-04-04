@@ -123,7 +123,7 @@ class WaveformViewModel @Inject constructor(
                 } catch (e: Exception) {
                     Log.e(TAG, "Amplituda extraction failed on IO thread for ${audio.title}", e)
                     if (currentPath == audio.path) {
-                        waveformData.postValue(FloatArray(0))
+                        postFlatData(audio) // Show the ghost waveform if extraction fails
                     }
                 }
             }

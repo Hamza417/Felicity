@@ -366,8 +366,13 @@ class WaveformSeekbar @JvmOverloads constructor(
             if (barCenterX + barWidthPx / 2f < 0f || barCenterX - barWidthPx / 2f > w) continue
 
             val amp = drawnAmplitudes[i].coerceIn(0f, 1f)
-            val isPast = barCenterX <= centerX
-            barPaint.color = if (isPast) playedColor else unplayedColor
+
+            // Smoothly crossfade between played and unplayed color over a ±transitionZone window
+            // centered on the playhead, so the color change is gradual rather than an instant switch.
+            val transitionZone = barStep * TRANSITION_ZONE
+            val distFromCenter = barCenterX - centerX
+            val colorT = ((distFromCenter + transitionZone) / (2f * transitionZone)).coerceIn(0f, 1f)
+            barPaint.color = blendArgb(playedColor, unplayedColor, colorT)
 
             // Bars closest to the center playhead render at full opacity; bars toward the outer
             // edges fade toward HIGHLIGHT_MIN_ALPHA, creating a spotlight effect.
@@ -459,10 +464,14 @@ class WaveformSeekbar @JvmOverloads constructor(
 
         // Draw pill backgrounds behind each label when a highlight mode is active
         if (labelHighlightMode != LABEL_HIGHLIGHT_NONE) {
-            // Horizontal and vertical padding inside the pill, plus corner radius
+            // Use actual font metrics so the pill precisely hugs the visible text glyphs,
+            // ensuring the text is perfectly centered inside the pill vertically.
+            val fm = labelPaint.fontMetrics
             val pillHPad = labelPaddingPx * 0.55f
             val pillVPad = labelPaddingPx * 0.22f
-            val pillR = (labelTextSizePx + pillVPad * 2f) / 2f
+            val textVisualTop = textY + fm.ascent
+            val textVisualBottom = textY + fm.descent
+            val pillR = (textVisualBottom - textVisualTop + pillVPad * 2f) / 2f
 
             labelBgPaint.color = labelHighlightFillColor
             labelBgStrokePaint.color = labelHighlightStrokeColor
@@ -471,9 +480,9 @@ class WaveformSeekbar @JvmOverloads constructor(
                 val tw = labelPaint.measureText(leftLabel)
                 pillRect.set(
                         labelPaddingPx - pillHPad,
-                        textY - labelTextSizePx - pillVPad,
+                        textVisualTop - pillVPad,
                         labelPaddingPx + tw + pillHPad,
-                        textY + pillVPad
+                        textVisualBottom + pillVPad
                 )
                 drawLabelPill(canvas, pillRect, pillR)
             }
@@ -482,9 +491,9 @@ class WaveformSeekbar @JvmOverloads constructor(
                 val tw = labelPaint.measureText(rightLabel)
                 pillRect.set(
                         w - labelPaddingPx - tw - pillHPad,
-                        textY - labelTextSizePx - pillVPad,
+                        textVisualTop - pillVPad,
                         w - labelPaddingPx + pillHPad,
-                        textY + pillVPad
+                        textVisualBottom + pillVPad
                 )
                 drawLabelPill(canvas, pillRect, pillR)
             }
@@ -835,5 +844,7 @@ class WaveformSeekbar @JvmOverloads constructor(
          * Value range: [0.0, 1.0].
          */
         private const val HIGHLIGHT_MIN_ALPHA = 0.35f
+
+        private const val TRANSITION_ZONE = 3f  // in bar widths; distance from center where color transition occurs
     }
 }
