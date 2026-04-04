@@ -26,9 +26,8 @@ import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.repository.models.YearGroup
 import app.simple.felicity.shared.constants.PageConstants
-import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
+import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.shared.utils.ViewUtils.visible
-import app.simple.felicity.theme.managers.ThemeManager
 import com.bumptech.glide.Glide
 
 /**
@@ -480,7 +479,7 @@ class PageAdapter(
                 songs.text = item.totalSongs.toString()
                 albums.text = pageData.albums.size.toString()
                 artists.text = item.albumArtists.size.toString()
-                totalTime.text = item.totalDuration.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
+                totalTime.text = item.totalDuration.toDynamicTimeString()
 
                 // Show art flow for albums and artists
                 when (pageType) {
@@ -533,7 +532,7 @@ class PageAdapter(
                 songs.text = item.totalSongs.toString()
                 artists.text = pageData.artists.size.toString()
                 albums.text = pageData.albums.size.toString()
-                totalTime.text = item.totalDuration.toHighlightedTimeString(ThemeManager.accent.primaryAccentColor)
+                totalTime.text = item.totalDuration.toDynamicTimeString()
                 artFlow.setAdapter(SliderAdapter(ArtFlowData(R.string.songs, item.songs)))
                 artFlow.start()
 

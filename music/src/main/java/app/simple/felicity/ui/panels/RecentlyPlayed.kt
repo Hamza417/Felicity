@@ -22,8 +22,7 @@ import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.RecentlyPlayedPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioWithStat
-import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
-import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.viewmodels.panels.RecentlyPlayedViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -123,8 +122,7 @@ class RecentlyPlayed : PanelFragment() {
         }
 
         headerBinding.count.text = getString(R.string.x_songs, songs.size)
-        headerBinding.hours.text = songs.sumOf { it.audio.duration }
-            .toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+        headerBinding.hours.text = songs.sumOf { it.audio.duration }.toDynamicTimeString()
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {

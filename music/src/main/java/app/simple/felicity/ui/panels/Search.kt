@@ -27,8 +27,7 @@ import app.simple.felicity.preferences.SearchPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.sort.SearchSort.setSearchOrder
 import app.simple.felicity.repository.sort.SearchSort.setSearchSort
-import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
-import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.viewmodels.panels.SearchViewModel
 import kotlinx.coroutines.launch
 
@@ -153,8 +152,7 @@ class Search : PanelFragment() {
         )
 
         headerBinding.count.text = getString(R.string.x_songs, songs.size)
-        headerBinding.hours.text = songs.sumOf { it.duration }
-            .toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+        headerBinding.hours.text = songs.sumOf { it.duration }.toDynamicTimeString()
         headerBinding.sortStyle.setSearchSort()
         headerBinding.sortOrder.setSearchOrder()
     }

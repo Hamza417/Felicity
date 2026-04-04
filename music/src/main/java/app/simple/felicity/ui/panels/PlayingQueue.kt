@@ -19,8 +19,7 @@ import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
-import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.viewmodels.panels.PlayingQueueViewModel
 import kotlinx.coroutines.launch
 
@@ -111,9 +110,7 @@ class PlayingQueue : PanelFragment() {
 
         // Update header info
         headerBinding.count.text = getString(R.string.x_songs, songs.size)
-        headerBinding.hours.text = songs.sumOf { it.duration }
-            .toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
-
+        headerBinding.hours.text = songs.sumOf { it.duration }.toDynamicTimeString()
 
         // Check if current song is already visible; if not, scroll to it.
         // Only do this once on initial load — subsequent queue updates (drag reorder,
@@ -136,7 +133,6 @@ class PlayingQueue : PanelFragment() {
             }
         }
     }
-
 
     companion object {
         const val TAG = "PlayingQueue"

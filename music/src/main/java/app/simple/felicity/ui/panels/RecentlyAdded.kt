@@ -21,8 +21,7 @@ import app.simple.felicity.dialogs.recentlyadded.RecentlyAddedMenu.Companion.sho
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.RecentlyAddedPreferences
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.shared.utils.TimeUtils.toHighlightedTimeString
-import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.viewmodels.panels.RecentlyAddedViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -115,7 +114,7 @@ class RecentlyAdded : PanelFragment() {
 
         headerBinding.count.text = getString(R.string.x_songs, songs.size)
         headerBinding.hours.text = songs.sumOf { it.duration }
-            .toHighlightedTimeString(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+            .toDynamicTimeString()
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
