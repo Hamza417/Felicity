@@ -198,7 +198,6 @@ class DefaultPlayer : MediaFragment() {
 
         // Observe waveform amplitude data from the ViewModel
         waveformViewModel.getWaveformData().observe(viewLifecycleOwner) { amplitudes ->
-            binding.seekbar.isFullWaveform = true
             binding.seekbar.setAmplitudes(amplitudes)
         }
 

@@ -58,6 +58,6 @@ object PlayerPreferences {
      * Defaults to `false` (half waveform) if the preference has not been set yet.
      */
     fun isWaveformModeFull(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(WAVEFORM_MODE_FULL, false)
+        return SharedPreferences.getSharedPreferences().getBoolean(WAVEFORM_MODE_FULL, true)
     }
 }

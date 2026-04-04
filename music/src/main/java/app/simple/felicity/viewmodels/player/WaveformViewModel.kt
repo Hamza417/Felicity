@@ -4,12 +4,18 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.models.Audio
 import com.linc.amplituda.Amplituda
+import com.linc.amplituda.Cache
 import com.linc.amplituda.Compress
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 /**
@@ -37,85 +43,86 @@ class WaveformViewModel @Inject constructor(
      */
     fun getWaveformData(): LiveData<FloatArray> = waveformData
 
+    // The Bouncer: Ensures only one native extraction runs at a time
+    private val amplitudaMutex = Mutex()
+
     fun loadWaveform(audio: Audio) {
         // Prevent redundant loading
         if (audio.path == currentPath && waveformData.value?.isNotEmpty() == true) return
 
-        // Track the current request to handle "cancellation" manually
+        // Track the current request to handle stale extractions
         currentPath = audio.path
 
-        try {
-            Amplituda(getApplication())
-                .processAudio(
-                        audio.path,
-                        // We keep native compression to save memory crossing the JNI bridge,
-                        // but we no longer rely on it for the final UI bar count.
-                        Compress.withParams(Compress.PEAK, 1)
-                )
-                .get(
-                        { result ->
-                            // Stale Data Check
-                            if (currentPath != audio.path) return@get
+        // Immediately leave the Main Thread so the UI never drops a frame
+        viewModelScope.launch(Dispatchers.IO) {
 
-                            val rawAmplitudes = result.amplitudesAsList()
+            // Wait in line. If another song is currently decoding, this suspends
+            // without blocking any Kotlin threads, protecting the C++ JNI bridge.
+            amplitudaMutex.withLock {
 
-                            if (rawAmplitudes.isEmpty()) {
-                                waveformData.postValue(FloatArray(0))
-                                return@get
-                            }
+                // Stale Request Check 1: Did the user skip while we waited for the lock?
+                if (currentPath != audio.path) return@withLock
 
-                            // --- THE FIX: Deterministic Time-Based Downsampling ---
+                try {
+                    // Synchronous, blocking native extraction (Safe because we are on IO + Locked)
+                    val rawAmplitudes = Amplituda(getApplication())
+                        .processAudio(
+                                audio.path,
+                                Compress.withParams(Compress.PEAK, 1),
+                                Cache.withParams(Cache.REUSE, audio.hash.toString())
+                        )
+                        .get() // Blocking call
+                        .amplitudesAsList()
 
-                            // Define exactly how dense you want the waveform to look.
-                            // 4 to 6 bars per second usually looks great for a horizontally scrolling seekbar.
-                            val barsPerSecond = 5
+                    // Stale Request Check 2: Did the user skip while C++ was grinding?
+                    if (currentPath != audio.path) return@withLock
 
-                            // Calculate the exact number of bars this specific song should have
-                            val expectedBars = ((audio.duration / 1000f) * barsPerSecond).toInt().coerceAtLeast(1)
+                    if (rawAmplitudes.isEmpty()) {
+                        waveformData.postValue(FloatArray(0))
+                        return@withLock
+                    }
 
-                            val chunkedAmplitudes = FloatArray(expectedBars)
-                            val chunkSize = rawAmplitudes.size.toFloat() / expectedBars
+                    // --- Deterministic Time-Based Downsampling ---
 
-                            // Group the unpredictable Amplituda data into our fixed time chunks
-                            for (i in 0 until expectedBars) {
-                                val start = (i * chunkSize).toInt()
-                                val end = ((i + 1) * chunkSize).toInt().coerceAtMost(rawAmplitudes.size)
+                    val barsPerSecond = 5
+                    val expectedBars = ((audio.duration / 1000f) * barsPerSecond).toInt().coerceAtLeast(1)
 
-                                var peakInChunk = 0
-                                // Find the loudest peak in this specific time window
-                                for (j in start until end) {
-                                    if (rawAmplitudes[j] > peakInChunk) {
-                                        peakInChunk = rawAmplitudes[j]
-                                    }
-                                }
-                                chunkedAmplitudes[i] = peakInChunk.toFloat()
-                            }
+                    val chunkedAmplitudes = FloatArray(expectedBars)
+                    val chunkSize = rawAmplitudes.size.toFloat() / expectedBars
 
-                            // --- Final Normalization ---
+                    for (i in 0 until expectedBars) {
+                        val start = (i * chunkSize).toInt()
+                        val end = ((i + 1) * chunkSize).toInt().coerceAtMost(rawAmplitudes.size)
 
-                            val maxPeak = chunkedAmplitudes.maxOrNull() ?: 1f
-                            val sampled = if (maxPeak > 0f) {
-                                FloatArray(expectedBars) { i ->
-                                    chunkedAmplitudes[i] / maxPeak
-                                }
-                            } else {
-                                FloatArray(0)
-                            }
-
-                            // Push the perfectly scaled array to the UI
-                            waveformData.postValue(sampled)
-                        },
-                        { exception ->
-                            Log.w(TAG, "Amplituda decode warning for ${audio.path}: ${exception.message}")
-                            if (currentPath == audio.path) {
-                                waveformData.postValue(FloatArray(0))
+                        var peakInChunk = 0
+                        for (j in start until end) {
+                            if (rawAmplitudes[j] > peakInChunk) {
+                                peakInChunk = rawAmplitudes[j]
                             }
                         }
-                )
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start Amplituda for ${audio.title}", e)
-            if (currentPath == audio.path) {
-                waveformData.postValue(FloatArray(0))
+                        chunkedAmplitudes[i] = peakInChunk.toFloat()
+                    }
+
+                    // --- Final Normalization ---
+
+                    val maxPeak = chunkedAmplitudes.maxOrNull() ?: 1f
+                    val sampled = if (maxPeak > 0f) {
+                        FloatArray(expectedBars) { i ->
+                            chunkedAmplitudes[i] / maxPeak
+                        }
+                    } else {
+                        FloatArray(0)
+                    }
+
+                    // Push the perfectly scaled array safely to the UI thread
+                    waveformData.postValue(sampled)
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "Amplituda extraction failed on IO thread for ${audio.title}", e)
+                    if (currentPath == audio.path) {
+                        waveformData.postValue(FloatArray(0))
+                    }
+                }
             }
         }
     }

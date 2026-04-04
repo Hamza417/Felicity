@@ -11,7 +11,9 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.Typeface
 import android.util.AttributeSet
+import android.util.Log
 import android.view.MotionEvent
 import android.view.VelocityTracker
 import android.view.View
@@ -23,6 +25,7 @@ import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.HIGHLI
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_GRAVITY_BOTTOM
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_GRAVITY_CENTER
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_GRAVITY_TOP
+import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
@@ -139,6 +142,7 @@ class WaveformSeekbar @JvmOverloads constructor(
 
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
+        typeface = if (isInEditMode) Typeface.DEFAULT else TypeFace.getBoldTypeFace(context)
     }
 
     private val barRect = RectF()
@@ -200,6 +204,8 @@ class WaveformSeekbar @JvmOverloads constructor(
 
         // Read XML attributes when they are provided
         if (attrs != null) {
+            Log.w("WaveformSeekbar", "XML attributes are not supported for WaveformSeekbar; " +
+                    "please set properties programmatically after initialization.")
             val ta = context.obtainStyledAttributes(attrs, R.styleable.WaveformSeekbar, defStyleAttr, 0)
             try {
                 isFullWaveform = ta.getBoolean(R.styleable.WaveformSeekbar_wsbFullWaveform, false)
