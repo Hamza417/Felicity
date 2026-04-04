@@ -209,6 +209,12 @@ class FelicitySlider @JvmOverloads constructor(
         xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
     }
 
+    /**
+     * Number of discrete color stops used to approximate the cubic Bézier alpha curve.
+     * Higher values produce a smoother gradient at the cost of a slightly larger shader object.
+     */
+    private val GRADIENT_STEPS = 16
+
     private var isRunning = false
 
     // ── Initialisation ───────────────────────────────────────────────────────────
@@ -356,8 +362,11 @@ class FelicitySlider @JvmOverloads constructor(
      * Rebuilds the [LinearGradient] shader on [fadePaint] based on the current [fadeDirection],
      * [fadeStartFraction], and view dimensions.
      *
-     * The gradient runs from opaque black (used as the DST_IN alpha source) to transparent,
-     * starting at the fractional offset defined by [fadeStartFraction] along the fade axis.
+     * Rather than a two-stop linear gradient (which can appear harsh), the alpha values across
+     * [GRADIENT_STEPS] evenly-spaced stops are sampled from a cubic ease-in Bézier curve via
+     * [bezierFadeAlpha]. This produces a softer, more natural-looking fade where the content
+     * stays fully visible longest before accelerating toward full transparency.
+     *
      * Areas before the start offset are clamped to fully opaque; areas beyond the far edge
      * are clamped to fully transparent.
      *
@@ -394,11 +403,35 @@ class FelicitySlider @JvmOverloads constructor(
             }
         }
 
+        // Sample the cubic Bézier easing curve at GRADIENT_STEPS evenly-spaced positions
+        // to build a smooth multi-stop gradient instead of a harsh two-stop linear one.
+        val positions = FloatArray(GRADIENT_STEPS) { i -> i.toFloat() / (GRADIENT_STEPS - 1) }
+        val colors = IntArray(GRADIENT_STEPS) { i ->
+            val t = i.toFloat() / (GRADIENT_STEPS - 1)
+            val alpha = (bezierFadeAlpha(t) * 255f).toInt().coerceIn(0, 255)
+            Color.argb(alpha, 0, 0, 0)
+        }
+
         fadePaint.shader = LinearGradient(
                 x0, y0, x1, y1,
-                Color.BLACK, Color.TRANSPARENT,
+                colors, positions,
                 Shader.TileMode.CLAMP
         )
+    }
+
+    /**
+     * Evaluates a cubic ease-out Bézier alpha for a given normalized position along the gradient.
+     *
+     * The curve drops opacity quickly at the start, and then gently trails off as it approaches
+     * full transparency — `alpha = (1 - t)³`. This prevents the eye from perceiving a hard edge
+     * at the bottom of the fade.
+     *
+     * @param t Normalized position in [0..1] where 0 is the opaque end and 1 is transparent.
+     * @return Eased alpha value in [0..1].
+     */
+    private fun bezierFadeAlpha(t: Float): Float {
+        val invT = 1f - t
+        return invT * invT * invT
     }
 
     private fun dpToPx(dp: Float): Float =
