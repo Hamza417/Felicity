@@ -48,12 +48,13 @@ class WaveformViewModel @Inject constructor(
             Amplituda(getApplication())
                 .processAudio(
                         audio.path,
-                        Compress.withParams(Compress.PEAK, 1) // Native downsampling
+                        // We keep native compression to save memory crossing the JNI bridge,
+                        // but we no longer rely on it for the final UI bar count.
+                        Compress.withParams(Compress.PEAK, 1)
                 )
                 .get(
                         { result ->
-                            // Stale Data Check: If the user skipped the track while Amplituda
-                            // was decoding in the background, discard this result.
+                            // Stale Data Check
                             if (currentPath != audio.path) return@get
 
                             val rawAmplitudes = result.amplitudesAsList()
@@ -63,18 +64,45 @@ class WaveformViewModel @Inject constructor(
                                 return@get
                             }
 
-                            // Normalize the data
-                            val peak = rawAmplitudes.maxOrNull()?.toFloat() ?: 1f
-                            val sampled = if (peak > 0f) {
-                                FloatArray(rawAmplitudes.size) { i ->
-                                    rawAmplitudes[i] / peak
+                            // --- THE FIX: Deterministic Time-Based Downsampling ---
+
+                            // Define exactly how dense you want the waveform to look.
+                            // 4 to 6 bars per second usually looks great for a horizontally scrolling seekbar.
+                            val barsPerSecond = 5
+
+                            // Calculate the exact number of bars this specific song should have
+                            val expectedBars = ((audio.duration / 1000f) * barsPerSecond).toInt().coerceAtLeast(1)
+
+                            val chunkedAmplitudes = FloatArray(expectedBars)
+                            val chunkSize = rawAmplitudes.size.toFloat() / expectedBars
+
+                            // Group the unpredictable Amplituda data into our fixed time chunks
+                            for (i in 0 until expectedBars) {
+                                val start = (i * chunkSize).toInt()
+                                val end = ((i + 1) * chunkSize).toInt().coerceAtMost(rawAmplitudes.size)
+
+                                var peakInChunk = 0
+                                // Find the loudest peak in this specific time window
+                                for (j in start until end) {
+                                    if (rawAmplitudes[j] > peakInChunk) {
+                                        peakInChunk = rawAmplitudes[j]
+                                    }
+                                }
+                                chunkedAmplitudes[i] = peakInChunk.toFloat()
+                            }
+
+                            // --- Final Normalization ---
+
+                            val maxPeak = chunkedAmplitudes.maxOrNull() ?: 1f
+                            val sampled = if (maxPeak > 0f) {
+                                FloatArray(expectedBars) { i ->
+                                    chunkedAmplitudes[i] / maxPeak
                                 }
                             } else {
                                 FloatArray(0)
                             }
 
-                            // postValue is thread-safe and will safely jump from
-                            // Amplituda's background thread back to your Main UI thread.
+                            // Push the perfectly scaled array to the UI
                             waveformData.postValue(sampled)
                         },
                         { exception ->
@@ -85,7 +113,6 @@ class WaveformViewModel @Inject constructor(
                         }
                 )
         } catch (e: Exception) {
-            // Catch synchronous failures (e.g., JNI initialization crash)
             Log.e(TAG, "Failed to start Amplituda for ${audio.title}", e)
             if (currentPath == audio.path) {
                 waveformData.postValue(FloatArray(0))

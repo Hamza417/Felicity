@@ -266,15 +266,24 @@
         wsbFullWaveform   – when true bars are drawn symmetrically above and below the center
                             axis (full/symmetric mode). When false bars grow upward from center
                             only (half mode). Default: false.
-        wsbBarWidth       – pixel width of each amplitude bar. Default: 3dp.
-        wsbBarSpacing     – pixel gap between adjacent bars. Default: 2dp.
-        wsbFadeEdgeLength – horizontal length of the blur fading edge on each side. Default: 72dp.
+        wsbBarWidth       – pixel width of each amplitude bar. Default: 6dp.
+        wsbBarSpacing     – pixel gap between adjacent bars. Default: 3dp.
+        wsbFadeEdgeLength – horizontal length of the DST_OUT fading edge on each side. Default: 72dp.
+        wsbLabelGravity   – vertical position of the elapsed/total time labels.
+                            top    (0) – labels sit at the top edge of the view.
+                            center (1) – labels sit at the vertical midpoint.
+                            bottom (2) – labels sit at the bottom edge (default).
     -->
     <declare-styleable name="WaveformSeekbar">
         <attr name="wsbFullWaveform" format="boolean" />
         <attr name="wsbBarWidth" format="dimension" />
         <attr name="wsbBarSpacing" format="dimension" />
         <attr name="wsbFadeEdgeLength" format="dimension" />
+        <attr name="wsbLabelGravity" format="enum">
+            <enum name="top" value="0" />
+            <enum name="center" value="1" />
+            <enum name="bottom" value="2" />
+        </attr>
     </declare-styleable>
 
     <!--

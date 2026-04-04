@@ -219,7 +219,7 @@
         android:layout_width="match_parent"
         android:layout_height="100dp"
         android:layout_gravity="center_vertical"
-        app:wsbBarWidth="@dimen/padding_15"
+        app:wsbBarWidth="@dimen/padding_5"
         app:wsbFullWaveform="true" />
 
 
