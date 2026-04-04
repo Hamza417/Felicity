@@ -508,7 +508,20 @@ class MiniPlayer @JvmOverloads constructor(
             performPlayPauseClick()
         } else {
             val w = width.takeIf { it > 0 } ?: return true
-            if (e.x < w - btnZoneWidth) callbacks?.onItemClick(scrollEngine.currentPage.coerceAtLeast(0))
+            if (e.x < w - btnZoneWidth) {
+                // If the scroll is at an intermediate position from a cancelled drag
+                // (e.g., the user swiped halfway then tapped quickly to open the player),
+                // snap to the nearest page so the miniplayer is not left visually stuck
+                // between two pages when the user returns from the player screen.
+                val vw = scrollEngine.viewWidth.takeIf { it > 0 }
+                if (vw != null) {
+                    val nearestPage = scrollEngine.scrollPageIndex()
+                    if (abs(scrollEngine.scrollPx - nearestPage * vw.toFloat()) > 0.5f) {
+                        scrollEngine.jumpToPage(nearestPage)
+                    }
+                }
+                callbacks?.onItemClick(scrollEngine.currentPage.coerceAtLeast(0))
+            }
         }
         return true
     }
