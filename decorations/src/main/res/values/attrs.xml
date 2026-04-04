@@ -260,6 +260,24 @@
     </declare-styleable>
 
     <!--
+        WaveformSeekbar: horizontally scrolling per-second amplitude waveform seekbar.
+        The current playhead is always fixed at the horizontal center while the waveform scrolls.
+
+        wsbFullWaveform   – when true bars are drawn symmetrically above and below the center
+                            axis (full/symmetric mode). When false bars grow upward from center
+                            only (half mode). Default: false.
+        wsbBarWidth       – pixel width of each amplitude bar. Default: 3dp.
+        wsbBarSpacing     – pixel gap between adjacent bars. Default: 2dp.
+        wsbFadeEdgeLength – horizontal length of the blur fading edge on each side. Default: 72dp.
+    -->
+    <declare-styleable name="WaveformSeekbar">
+        <attr name="wsbFullWaveform" format="boolean" />
+        <attr name="wsbBarWidth" format="dimension" />
+        <attr name="wsbBarSpacing" format="dimension" />
+        <attr name="wsbFadeEdgeLength" format="dimension" />
+    </declare-styleable>
+
+    <!--
         HighlightTextView: pill-shaped, tappable label-button with configurable highlight style.
         highlightMode    – flat (filled, default), outline (stroke only), or both.
         highlightCustomColor – pins the fill/stroke color to a fixed value, bypassing any theme or

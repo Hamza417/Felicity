@@ -8,13 +8,14 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
 import app.simple.felicity.decorations.helpers.SwipeDownToCloseListener
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.pager.ImagePageAdapter
-import app.simple.felicity.decorations.seekbars.FelicitySeekbar
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.dialogs.app.AudioPipelineDialog.Companion.showAudioPipeline
 import app.simple.felicity.dialogs.player.VisualizerConfig.Companion.showVisualizerConfig
@@ -33,14 +34,20 @@ import app.simple.felicity.ui.panels.Lyrics
 import app.simple.felicity.ui.panels.Milkdrop
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Search
+import app.simple.felicity.viewmodels.player.WaveformViewModel
 import com.bumptech.glide.Glide
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class DefaultPlayer : MediaFragment() {
 
     private lateinit var binding: FragmentDefaultPlayerBinding
     private var imagePageAdapter: ImagePageAdapter? = null
     private var swipeDownListener: SwipeDownToCloseListener? = null
+
+    /** ViewModel that decodes and exposes the per-second waveform amplitude data. */
+    private val waveformViewModel: WaveformViewModel by viewModels()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentDefaultPlayerBinding.inflate(inflater, container, false)
@@ -172,20 +179,27 @@ class DefaultPlayer : MediaFragment() {
         // Set initial icon based on saved preference
         updateRepeatButtonIcon(PlayerPreferences.getRepeatMode())
 
-        binding.seekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
-            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
-                if (fromUser) {
-                    MediaManager.seekTo(progress.toLong())
-                }
+        binding.seekbar.setOnSeekListener(object : WaveformSeekbar.OnSeekListener {
+            override fun onSeekTo(positionMs: Long) {
+                MediaManager.seekTo(positionMs)
             }
         })
 
         binding.seekbar.setLeftLabelProvider { progress, _, _ ->
-            DateUtils.formatElapsedTime(progress.toLong().div(1000))
+            DateUtils.formatElapsedTime(progress / 1000L)
         }
 
         binding.seekbar.setRightLabelProvider { _, _, max ->
-            DateUtils.formatElapsedTime(max.toLong().div(1000))
+            DateUtils.formatElapsedTime(max / 1000L)
+        }
+
+        // Apply the saved waveform display mode preference
+        binding.seekbar.isFullWaveform = PlayerPreferences.isWaveformModeFull()
+
+        // Observe waveform amplitude data from the ViewModel
+        waveformViewModel.getWaveformData().observe(viewLifecycleOwner) { amplitudes ->
+            binding.seekbar.isFullWaveform = true
+            binding.seekbar.setAmplitudes(amplitudes)
         }
 
         binding.lyrics.setOnClickListener {
@@ -236,10 +250,13 @@ class DefaultPlayer : MediaFragment() {
         binding.artist.text = audio.getArtists()
         binding.album.text = audio.album ?: getString(R.string.unknown)
         binding.pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
-        binding.seekbar.setMax(audio.duration.toFloat())
-        binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
+        binding.seekbar.setDuration(audio.duration)
+        binding.seekbar.setProgress(MediaManager.getSeekPosition(), animate = false)
         updatePlayButtonState(MediaManager.isPlaying())
         updateFavoriteIcon(audio)
+
+        // Kick off waveform decoding for the current track
+        waveformViewModel.loadWaveform(audio)
     }
 
     private fun updatePlayButtonState(isPlaying: Boolean) {
@@ -313,14 +330,17 @@ class DefaultPlayer : MediaFragment() {
         binding.artist.setTextWithEffect(audio.getArtists(), forward, 50L)
         binding.album.setTextWithEffect(audio.album ?: getString(R.string.unknown), forward, 100L)
         binding.pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
-        binding.seekbar.setMaxWithReset(audio.duration.toFloat())
-        binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
+        binding.seekbar.setDuration(audio.duration)
+        binding.seekbar.setProgress(MediaManager.getSeekPosition(), animate = false)
         updateFavoriteIcon(audio)
+
+        // Load waveform for the newly playing track
+        waveformViewModel.loadWaveform(audio)
     }
 
     override fun onSeekChanged(seek: Long) {
         super.onSeekChanged(seek)
-        binding.seekbar.setProgress(seek.toFloat(), false, animate = true)
+        binding.seekbar.setProgress(seek, animate = true)
     }
 
     override fun onPlaybackStateChanged(state: Int) {
@@ -351,6 +371,9 @@ class DefaultPlayer : MediaFragment() {
         when (key) {
             PlayerPreferences.VISUALIZER_ENABLED -> {
                 setVisualizerState()
+            }
+            PlayerPreferences.WAVEFORM_MODE_FULL -> {
+                binding.seekbar.isFullWaveform = PlayerPreferences.isWaveformModeFull()
             }
         }
     }

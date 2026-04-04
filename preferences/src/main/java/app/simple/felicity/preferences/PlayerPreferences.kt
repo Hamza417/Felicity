@@ -16,6 +16,9 @@ object PlayerPreferences {
     /** SharedPreferences key for the visualizer enabled/disabled toggle. */
     const val VISUALIZER_ENABLED = "visualizer_enabled"
 
+    /** SharedPreferences key for the waveform seekbar display mode (full vs half). */
+    const val WAVEFORM_MODE_FULL = "waveform_mode_full"
+
     fun setRepeatMode(value: Int) {
         SharedPreferences.getSharedPreferences().edit { putInt(REPEAT_MODE, value) }
     }
@@ -39,5 +42,22 @@ object PlayerPreferences {
      */
     fun isVisualizerEnabled(): Boolean {
         return SharedPreferences.getSharedPreferences().getBoolean(VISUALIZER_ENABLED, true)
+    }
+
+    /**
+     * Persists whether the waveform seekbar should render in full (symmetric) mode.
+     *
+     * @param value `true` for full (symmetric) waveform, `false` for half waveform
+     */
+    fun setWaveformModeFull(value: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(WAVEFORM_MODE_FULL, value) }
+    }
+
+    /**
+     * Returns whether the waveform seekbar should render in full (symmetric) mode.
+     * Defaults to `false` (half waveform) if the preference has not been set yet.
+     */
+    fun isWaveformModeFull(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(WAVEFORM_MODE_FULL, false)
     }
 }
