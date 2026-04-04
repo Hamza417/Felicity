@@ -1,5 +1,7 @@
 package app.simple.felicity.decorations.seekbars
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
 import android.content.SharedPreferences
@@ -13,7 +15,6 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
-import android.util.Log
 import android.view.MotionEvent
 import android.view.VelocityTracker
 import android.view.View
@@ -25,6 +26,10 @@ import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.HIGHLI
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_GRAVITY_BOTTOM
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_GRAVITY_CENTER
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_GRAVITY_TOP
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_BOTH
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_FLAT
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_NONE
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_OUTLINE
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
@@ -124,6 +129,21 @@ class WaveformSeekbar @JvmOverloads constructor(
     private var unplayedColor: Int = Color.GRAY
     private var labelTextColor: Int = Color.GRAY
 
+    /**
+     * Vertical placement of the time label pill backgrounds.
+     * Use [LABEL_HIGHLIGHT_NONE], [LABEL_HIGHLIGHT_FLAT], [LABEL_HIGHLIGHT_OUTLINE],
+     * or [LABEL_HIGHLIGHT_BOTH].
+     */
+    var labelHighlightMode: Int = LABEL_HIGHLIGHT_NONE
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    // Resolved fill and stroke colors for the label pills; updated in applyThemeColors()
+    private var labelHighlightFillColor: Int = Color.TRANSPARENT
+    private var labelHighlightStrokeColor: Int = Color.WHITE
+
     private var barWidthPx: Float
     private var barSpacingPx: Float
     private var barCornerRadiusPx: Float = 0f
@@ -146,6 +166,17 @@ class WaveformSeekbar @JvmOverloads constructor(
     }
 
     private val barRect = RectF()
+    private val pillRect = RectF()
+
+    // Pill background paint for label highlights (fill mode)
+    private val labelBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+
+    // Pill stroke paint for label highlights (outline / both modes)
+    private val labelBgStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
 
     // Pre-allocated gradient shader objects; rebuilt only when the view width changes
     private var leftGradient: LinearGradient? = null
@@ -161,6 +192,16 @@ class WaveformSeekbar @JvmOverloads constructor(
     // Smooth scroll animation for programmatic progress updates
     private var progressAnimator: ValueAnimator? = null
     private var animatedProgressMs: Long = 0L
+
+    // Bar height animation — interpolates from previous heights to the new amplitude data.
+    // [drawnAmplitudes] is what onDraw actually renders; [animStartAmplitudes] holds the
+    // values captured at the moment setAmplitudes() was called so the animator can lerp from them.
+    private var drawnAmplitudes: FloatArray = FloatArray(0)
+    private var animStartAmplitudes: FloatArray = FloatArray(0)
+    private var barAnimator: ValueAnimator? = null
+
+    // Color crossfade animation — transitions played/unplayed/label colors on theme or accent change
+    private var colorTransitionAnimator: ValueAnimator? = null
 
     // Fling infrastructure — momentum scroll after a drag gesture
     private val overScroller = OverScroller(context)
@@ -201,11 +242,10 @@ class WaveformSeekbar @JvmOverloads constructor(
         labelTextSizePx = 11f * d
         labelPaddingPx = 10f * d
         minBarHeightPx = 2f * d
+        labelBgStrokePaint.strokeWidth = 1.5f * d
 
         // Read XML attributes when they are provided
         if (attrs != null) {
-            Log.w("WaveformSeekbar", "XML attributes are not supported for WaveformSeekbar; " +
-                    "please set properties programmatically after initialization.")
             val ta = context.obtainStyledAttributes(attrs, R.styleable.WaveformSeekbar, defStyleAttr, 0)
             try {
                 isFullWaveform = ta.getBoolean(R.styleable.WaveformSeekbar_wsbFullWaveform, false)
@@ -213,6 +253,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                 barSpacingPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbBarSpacing, barSpacingPx)
                 fadeEdgeLengthPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbFadeEdgeLength, fadeEdgeLengthPx)
                 labelGravity = ta.getInt(R.styleable.WaveformSeekbar_wsbLabelGravity, LABEL_GRAVITY_BOTTOM)
+                labelHighlightMode = ta.getInt(R.styleable.WaveformSeekbar_wsbLabelHighlightMode, LABEL_HIGHLIGHT_NONE)
             } finally {
                 ta.recycle()
             }
@@ -243,12 +284,46 @@ class WaveformSeekbar @JvmOverloads constructor(
     }
 
     private fun applyThemeColors() {
-        playedColor = ThemeManager.accent.primaryAccentColor
-        unplayedColor = ThemeManager.accent.secondaryAccentColor
-        labelTextColor = ThemeManager.theme.textViewTheme.secondaryTextColor
-        labelPaint.color = labelTextColor
-        labelPaint.textSize = labelTextSizePx
-        invalidate()
+        val newPlayed = ThemeManager.accent.primaryAccentColor
+        val newUnplayed = ThemeManager.accent.secondaryAccentColor
+        val newLabel = ThemeManager.theme.textViewTheme.secondaryTextColor
+
+        // Label pill colors match HighlightTextView: fill = theme highlight, stroke = accent
+        labelHighlightFillColor = ThemeManager.theme.viewGroupTheme.highlightColor
+        labelHighlightStrokeColor = newPlayed
+        labelBgPaint.color = labelHighlightFillColor
+        labelBgStrokePaint.color = labelHighlightStrokeColor
+
+        // On first init (not yet attached) or when colors are unchanged, skip the animation
+        if (!isAttachedToWindow
+                || (playedColor == newPlayed && unplayedColor == newUnplayed && labelTextColor == newLabel)) {
+            playedColor = newPlayed
+            unplayedColor = newUnplayed
+            labelTextColor = newLabel
+            labelPaint.color = newLabel
+            labelPaint.textSize = labelTextSizePx
+            invalidate()
+            return
+        }
+
+        val fromPlayed = playedColor
+        val fromUnplayed = unplayedColor
+        val fromLabel = labelTextColor
+
+        colorTransitionAnimator?.cancel()
+        colorTransitionAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 300L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                val t = anim.animatedValue as Float
+                playedColor = blendArgb(fromPlayed, newPlayed, t)
+                unplayedColor = blendArgb(fromUnplayed, newUnplayed, t)
+                labelTextColor = blendArgb(fromLabel, newLabel, t)
+                labelPaint.color = labelTextColor
+                invalidate()
+            }
+            start()
+        }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -261,7 +336,7 @@ class WaveformSeekbar @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (amplitudes.isEmpty() || durationMs <= 0L) return
+        if (amplitudes.isEmpty() || drawnAmplitudes.isEmpty() || durationMs <= 0L) return
 
         val w = width.toFloat()
         val h = height.toFloat()
@@ -285,12 +360,12 @@ class WaveformSeekbar @JvmOverloads constructor(
         val labelAreaH = labelTextSizePx + labelPaddingPx * 1.5f
         val maxBarArea = h - labelAreaH - paddingTop - paddingBottom
 
-        for (i in amplitudes.indices) {
+        for (i in drawnAmplitudes.indices) {
             val barCenterX = i * barStep - scrollOffset + centerX
             // Cull bars that are fully outside the visible area
             if (barCenterX + barWidthPx / 2f < 0f || barCenterX - barWidthPx / 2f > w) continue
 
-            val amp = amplitudes[i].coerceIn(0f, 1f)
+            val amp = drawnAmplitudes[i].coerceIn(0f, 1f)
             val isPast = barCenterX <= centerX
             barPaint.color = if (isPast) playedColor else unplayedColor
 
@@ -364,10 +439,14 @@ class WaveformSeekbar @JvmOverloads constructor(
 
     /**
      * Draws the elapsed and total/remaining time labels at the position determined by [labelGravity].
+     * When [labelHighlightMode] is not [LABEL_HIGHLIGHT_NONE] a pill-shaped background matching
+     * the [HighlightTextView][app.simple.felicity.decorations.highlight.HighlightTextView] color
+     * model is drawn behind each label first.
      */
     private fun drawLabels(canvas: Canvas, currentProgressMs: Long, w: Float, h: Float) {
         val leftLabel = leftLabelProvider?.getLabel(currentProgressMs, 0L, durationMs)
         val rightLabel = rightLabelProvider?.getLabel(currentProgressMs, 0L, durationMs)
+        if (leftLabel.isNullOrEmpty() && rightLabel.isNullOrEmpty()) return
 
         labelPaint.textSize = labelTextSizePx
         labelPaint.color = labelTextColor
@@ -378,6 +457,39 @@ class WaveformSeekbar @JvmOverloads constructor(
             else -> h - labelPaddingPx / 2f  // LABEL_GRAVITY_BOTTOM (default)
         }
 
+        // Draw pill backgrounds behind each label when a highlight mode is active
+        if (labelHighlightMode != LABEL_HIGHLIGHT_NONE) {
+            // Horizontal and vertical padding inside the pill, plus corner radius
+            val pillHPad = labelPaddingPx * 0.55f
+            val pillVPad = labelPaddingPx * 0.22f
+            val pillR = (labelTextSizePx + pillVPad * 2f) / 2f
+
+            labelBgPaint.color = labelHighlightFillColor
+            labelBgStrokePaint.color = labelHighlightStrokeColor
+
+            if (!leftLabel.isNullOrEmpty()) {
+                val tw = labelPaint.measureText(leftLabel)
+                pillRect.set(
+                        labelPaddingPx - pillHPad,
+                        textY - labelTextSizePx - pillVPad,
+                        labelPaddingPx + tw + pillHPad,
+                        textY + pillVPad
+                )
+                drawLabelPill(canvas, pillRect, pillR)
+            }
+
+            if (!rightLabel.isNullOrEmpty()) {
+                val tw = labelPaint.measureText(rightLabel)
+                pillRect.set(
+                        w - labelPaddingPx - tw - pillHPad,
+                        textY - labelTextSizePx - pillVPad,
+                        w - labelPaddingPx + pillHPad,
+                        textY + pillVPad
+                )
+                drawLabelPill(canvas, pillRect, pillR)
+            }
+        }
+
         if (!leftLabel.isNullOrEmpty()) {
             labelPaint.textAlign = Paint.Align.LEFT
             canvas.drawText(leftLabel, labelPaddingPx, textY, labelPaint)
@@ -386,6 +498,24 @@ class WaveformSeekbar @JvmOverloads constructor(
         if (!rightLabel.isNullOrEmpty()) {
             labelPaint.textAlign = Paint.Align.RIGHT
             canvas.drawText(rightLabel, w - labelPaddingPx, textY, labelPaint)
+        }
+    }
+
+    /**
+     * Draws the fill and/or stroke of a single label pill according to [labelHighlightMode].
+     *
+     * @param canvas target canvas
+     * @param rect   bounding rectangle of the pill
+     * @param r      corner radius
+     */
+    private fun drawLabelPill(canvas: Canvas, rect: RectF, r: Float) {
+        when (labelHighlightMode) {
+            LABEL_HIGHLIGHT_FLAT -> canvas.drawRoundRect(rect, r, r, labelBgPaint)
+            LABEL_HIGHLIGHT_OUTLINE -> canvas.drawRoundRect(rect, r, r, labelBgStrokePaint)
+            LABEL_HIGHLIGHT_BOTH -> {
+                canvas.drawRoundRect(rect, r, r, labelBgPaint)
+                canvas.drawRoundRect(rect, r, r, labelBgStrokePaint)
+            }
         }
     }
 
@@ -436,7 +566,7 @@ class WaveformSeekbar @JvmOverloads constructor(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (isDragging) {
                     velocityTracker?.addMovement(event)
-                    velocityTracker?.computeCurrentVelocity(1000) // pixels per second
+                    velocityTracker?.computeCurrentVelocity(500) // pixels per second
                     val xVelocity = velocityTracker?.xVelocity ?: 0f
                     velocityTracker?.recycle()
                     velocityTracker = null
@@ -482,11 +612,49 @@ class WaveformSeekbar @JvmOverloads constructor(
      * Supplies the normalized amplitude data for the currently loaded track.
      * Each entry represents a single second of audio; values must be in [0.0, 1.0].
      *
+     * Bar heights always animate from wherever they currently are (zero on first load,
+     * previous values on subsequent loads) to the new target, so the transition is
+     * never abrupt.
+     *
      * @param data normalized amplitude array, one value per second
      */
     fun setAmplitudes(data: FloatArray) {
+        // Cancel BEFORE touching any arrays. The old onAnimationEnd closure captures the
+        // previous data reference; if we resize drawnAmplitudes first its size would no
+        // longer match that closure, causing an ArrayIndexOutOfBoundsException.
+        barAnimator?.cancel()
+        barAnimator = null
+
         amplitudes = data
-        invalidate()
+
+        // Align start array to new data length, padding with zeros when growing
+        if (animStartAmplitudes.size != data.size) {
+            animStartAmplitudes = FloatArray(data.size) { i ->
+                if (i < drawnAmplitudes.size) drawnAmplitudes[i] else 0f
+            }
+            drawnAmplitudes = animStartAmplitudes.copyOf()
+        } else {
+            for (i in data.indices) animStartAmplitudes[i] = drawnAmplitudes[i]
+        }
+
+        barAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 400L
+            interpolator = DecelerateInterpolator(3F)
+            addUpdateListener { anim ->
+                val t = anim.animatedValue as Float
+                for (i in data.indices) {
+                    drawnAmplitudes[i] = animStartAmplitudes[i] + (data[i] - animStartAmplitudes[i]) * t
+                }
+                invalidate()
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    // Snap to exact target values to eliminate any floating-point drift
+                    for (i in data.indices) drawnAmplitudes[i] = data[i]
+                }
+            })
+            start()
+        }
     }
 
     /**
@@ -515,7 +683,7 @@ class WaveformSeekbar @JvmOverloads constructor(
             }
             progressAnimator?.cancel()
             progressAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = 220L
+                duration = 520L
                 interpolator = DecelerateInterpolator()
                 addUpdateListener { anim ->
                     val t = anim.animatedValue as Float
@@ -542,9 +710,13 @@ class WaveformSeekbar @JvmOverloads constructor(
      */
     fun reset() {
         progressAnimator?.cancel()
+        barAnimator?.cancel()
+        colorTransitionAnimator?.cancel()
         overScroller.abortAnimation()
         isFling = false
         amplitudes = FloatArray(0)
+        drawnAmplitudes = FloatArray(0)
+        animStartAmplitudes = FloatArray(0)
         progressMs = 0L
         animatedProgressMs = 0L
         durationMs = 0L
@@ -592,6 +764,8 @@ class WaveformSeekbar @JvmOverloads constructor(
             ThemeManager.removeListener(this)
         }
         progressAnimator?.cancel()
+        barAnimator?.cancel()
+        colorTransitionAnimator?.cancel()
         overScroller.abortAnimation()
         isFling = false
         velocityTracker?.recycle()
@@ -617,6 +791,21 @@ class WaveformSeekbar @JvmOverloads constructor(
         applyThemeColors()
     }
 
+    /**
+     * Linearly interpolates each ARGB channel of [colorA] toward [colorB] by [fraction].
+     *
+     * @param colorA start color (ARGB)
+     * @param colorB end color (ARGB)
+     * @param fraction blend factor in [0.0, 1.0]; 0 = full [colorA], 1 = full [colorB]
+     * @return the blended ARGB color
+     */
+    private fun blendArgb(colorA: Int, colorB: Int, fraction: Float): Int = Color.argb(
+            (Color.alpha(colorA) + (Color.alpha(colorB) - Color.alpha(colorA)) * fraction).toInt(),
+            (Color.red(colorA) + (Color.red(colorB) - Color.red(colorA)) * fraction).toInt(),
+            (Color.green(colorA) + (Color.green(colorB) - Color.green(colorA)) * fraction).toInt(),
+            (Color.blue(colorA) + (Color.blue(colorB) - Color.blue(colorA)) * fraction).toInt()
+    )
+
     companion object {
 
         /** Labels are positioned at the top edge of the view. */
@@ -627,6 +816,18 @@ class WaveformSeekbar @JvmOverloads constructor(
 
         /** Labels are positioned at the bottom edge of the view (default). */
         const val LABEL_GRAVITY_BOTTOM = 2
+
+        /** No pill background is drawn behind the labels (default). */
+        const val LABEL_HIGHLIGHT_NONE = -1
+
+        /** Filled pill background using the theme highlight color, matching [HighlightTextView][app.simple.felicity.decorations.highlight.HighlightTextView] flat mode. */
+        const val LABEL_HIGHLIGHT_FLAT = 0
+
+        /** Stroke-only pill using the accent color, matching [HighlightTextView][app.simple.felicity.decorations.highlight.HighlightTextView] outline mode. */
+        const val LABEL_HIGHLIGHT_OUTLINE = 1
+
+        /** Filled pill plus an accent-colored stroke, matching [HighlightTextView][app.simple.felicity.decorations.highlight.HighlightTextView] both mode. */
+        const val LABEL_HIGHLIGHT_BOTH = 2
 
         /**
          * Minimum alpha applied to bars at the far edges of the view.

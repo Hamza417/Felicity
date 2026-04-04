@@ -284,6 +284,19 @@
             <enum name="center" value="1" />
             <enum name="bottom" value="2" />
         </attr>
+        <!--
+            Visual style of the pill-shaped background drawn behind each time label.
+            none    (-1) – plain text, no background (default).
+            flat    ( 0) – filled pill using the theme highlight color.
+            outline ( 1) – stroke-only pill using the accent color.
+            both    ( 2) – filled pill plus an accent-colored stroke.
+        -->
+        <attr name="wsbLabelHighlightMode" format="enum">
+            <enum name="none" value="-1" />
+            <enum name="flat" value="0" />
+            <enum name="outline" value="1" />
+            <enum name="both" value="2" />
+        </attr>
     </declare-styleable>
 
     <!--

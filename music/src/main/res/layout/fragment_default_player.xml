@@ -220,7 +220,8 @@
         android:layout_height="100dp"
         android:layout_gravity="center_vertical"
         app:wsbBarWidth="7dp"
-        app:wsbFullWaveform="true" />
+        app:wsbFullWaveform="true"
+        app:wsbLabelGravity="center" />
 
 
     <app.simple.felicity.decorations.theme.ThemeDivider
