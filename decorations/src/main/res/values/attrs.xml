@@ -225,6 +225,28 @@
         <attr name="springDamping" format="float" />
         <!-- Whether to show the bottom dot indicator. Default: true. -->
         <attr name="showIndicator" format="boolean" />
+        <!-- Whether to apply a directional edge fade-out effect. Default: false. -->
+        <attr name="fadeEnabled" format="boolean" />
+        <!--
+            Normalized position in [0..1] along the fade direction where the fade begins.
+            0.0 = fade starts immediately at the opaque edge (full gradient across the view).
+            0.5 = the first half of the view is fully opaque, the second half fades out (default).
+            1.0 = no visible fade (the entire view stays opaque).
+        -->
+        <attr name="fadeStartFraction" format="float" />
+        <!--
+            Direction of the fade-out gradient.
+            top_to_bottom : top stays opaque, bottom fades to transparent (default).
+            bottom_to_top : bottom stays opaque, top fades to transparent.
+            left_to_right : left stays opaque, right fades to transparent.
+            right_to_left : right stays opaque, left fades to transparent.
+        -->
+        <attr name="fadeDirection" format="enum">
+            <enum name="top_to_bottom" value="0" />
+            <enum name="bottom_to_top" value="1" />
+            <enum name="left_to_right" value="2" />
+            <enum name="right_to_left" value="3" />
+        </attr>
     </declare-styleable>
 
     <!-- WaveformSeekView: scrollable equalizer-bar waveform with seek overlay -->
