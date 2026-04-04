@@ -17,6 +17,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
+import kotlin.math.PI
+import kotlin.math.sin
+import kotlin.random.Random.Default.nextFloat
 
 /**
  * ViewModel responsible for loading and exposing per-second amplitude data
@@ -81,14 +84,13 @@ class WaveformViewModel @Inject constructor(
                     if (currentPath != audio.path) return@withLock
 
                     if (rawAmplitudes.isEmpty()) {
-                        waveformData.postValue(FloatArray(0))
+                        waveformData.postValue(getRandomGhostData(audio.duration)) // Fallback to ghost data if extraction yields nothing
                         return@withLock
                     }
 
                     // --- Deterministic Time-Based Downsampling ---
 
-                    val barsPerSecond = 1
-                    val expectedBars = ((audio.duration / 1000f) * barsPerSecond).toInt().coerceAtLeast(1)
+                    val expectedBars = ((audio.duration / 1000f) * BARS_PER_SECOND).toInt().coerceAtLeast(1)
 
                     val chunkedAmplitudes = FloatArray(expectedBars)
                     val chunkSize = rawAmplitudes.size.toFloat() / expectedBars
@@ -114,7 +116,7 @@ class WaveformViewModel @Inject constructor(
                             chunkedAmplitudes[i] / maxPeak
                         }
                     } else {
-                        FloatArray(0)
+                        getRandomGhostData(audio.duration) // If all peaks are zero, return random ghost data to avoid a flatline
                     }
 
                     // Push the perfectly scaled array safely to the UI thread
@@ -141,14 +143,40 @@ class WaveformViewModel @Inject constructor(
     }
 
     private fun postFlatData(audio: Audio) {
-        // create a random waveform to show while loading, to prevent empty space and give feedback
-        val audioDurationSeconds = (audio.duration / 1000).toInt().coerceAtLeast(1)
-        val ghost = FloatArray(audioDurationSeconds) { 0.05f }
-        waveformData.postValue(ghost)
+        waveformData.postValue(getGhostData(audio.duration))
+    }
+
+    private fun getGhostData(durationMs: Long): FloatArray {
+        val seconds = (durationMs / 1000).toInt().coerceAtLeast(1)
+        return FloatArray(seconds) { 0.05f }
+    }
+
+    private fun getRandomGhostData(durationMs: Long): FloatArray {
+        // MUST MATCH the density of your actual extraction function
+        val expectedBars = ((durationMs / 1000f) * BARS_PER_SECOND).toInt().coerceAtLeast(1)
+
+        return FloatArray(expectedBars) { i ->
+            // Calculate normalized progress through the song (0.0 to 1.0)
+            val progress = i.toFloat() / expectedBars
+
+            // Create the "Song Shape" envelope using a Sine wave
+            // sin(0) = 0.0 (Intro) -> sin(PI/2) = 1.0 (Middle) -> sin(PI) = 0.0 (Outro)
+            val envelope = sin(progress * PI).toFloat()
+
+            // Generate the random spikes (Noise)
+            // We use a floor of 0.2f so the middle doesn't randomly have dead-silent spikes
+            val noise = (nextFloat() * 0.8f) + 0.2f
+
+            // Multiply the noise by the envelope
+            // To keep it looking "ghostly" and subtle, we cap the absolute max height at 0.4f (40%)
+            (envelope * noise) * 0.4f
+        }
     }
 
     companion object {
         private const val TAG = "WaveformViewModel"
+
+        private const val BARS_PER_SECOND = 1
     }
 }
 
