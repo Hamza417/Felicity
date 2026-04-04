@@ -76,8 +76,14 @@ class WaveformSeekbar @JvmOverloads constructor(
      * Callback interface notified when the user interacts with the seekbar.
      */
     interface OnSeekListener {
-        /** Called each time the user's seek position changes during a drag or fling. */
-        fun onSeekTo(positionMs: Long)
+        /**
+         * Called each time the seek position changes during a drag or fling.
+         *
+         * @param positionMs the new playback position in milliseconds
+         * @param fromUser   `true` when the change originates from a direct touch gesture
+         *                   (drag or fling); `false` for programmatic updates
+         */
+        fun onSeekTo(positionMs: Long, fromUser: Boolean)
 
         /** Called when the user first touches the seekbar to begin dragging. */
         fun onSeekStart() {}
@@ -240,7 +246,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                         .toLong().coerceIn(0L, durationMs)
                     animatedProgressMs = newProgress
                     progressMs = newProgress
-                    seekListener?.onSeekTo(newProgress)
+                    seekListener?.onSeekTo(newProgress, fromUser = true)
                 }
                 invalidate()
                 postOnAnimation(this)
@@ -592,7 +598,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                         0L
                     }
                     dragCurrentProgressMs = (dragStartProgressMs + deltaMs).coerceIn(0L, durationMs)
-                    seekListener?.onSeekTo(dragCurrentProgressMs)
+                    seekListener?.onSeekTo(dragCurrentProgressMs, fromUser = true)
                     invalidate()
                     return true
                 }

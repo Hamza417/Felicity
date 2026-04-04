@@ -49,6 +49,13 @@ class DefaultPlayer : MediaFragment() {
     /** ViewModel that decodes and exposes the per-second waveform amplitude data. */
     private val waveformViewModel: WaveformViewModel by viewModels()
 
+    /**
+     * Holds an [Audio] track whose waveform has been requested but whose load has been
+     * intentionally deferred because ExoPlayer has not yet reached the playing state.
+     * Cleared to `null` as soon as [loadWaveformWhenReady] actually kicks off the decode.
+     */
+    private var pendingWaveformAudio: Audio? = null
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentDefaultPlayerBinding.inflate(inflater, container, false)
         return binding.root
@@ -180,8 +187,10 @@ class DefaultPlayer : MediaFragment() {
         updateRepeatButtonIcon(PlayerPreferences.getRepeatMode())
 
         binding.seekbar.setOnSeekListener(object : WaveformSeekbar.OnSeekListener {
-            override fun onSeekTo(positionMs: Long) {
-                MediaManager.seekTo(positionMs)
+            override fun onSeekTo(positionMs: Long, fromUser: Boolean) {
+                if (fromUser) {
+                    MediaManager.seekTo(positionMs)
+                }
             }
         })
 
@@ -254,8 +263,9 @@ class DefaultPlayer : MediaFragment() {
         updatePlayButtonState(MediaManager.isPlaying())
         updateFavoriteIcon(audio)
 
-        // Kick off waveform decoding for the current track
-        waveformViewModel.loadWaveform(audio)
+        // Defer waveform decoding until ExoPlayer is actually playing to avoid
+        // Amplituda and ExoPlayer fighting over the same file I/O resources.
+        loadWaveformWhenReady(audio)
     }
 
     private fun updatePlayButtonState(isPlaying: Boolean) {
@@ -280,6 +290,26 @@ class DefaultPlayer : MediaFragment() {
                 binding.repeat.setImageResource(R.drawable.ic_repeat)
                 binding.repeat.alpha = 0.4f
             }
+        }
+    }
+
+    /**
+     * Schedules waveform decoding for [audio], but only starts the Amplituda extraction
+     * immediately when ExoPlayer is already in the playing state. If playback has not yet
+     * started, [audio] is stored in [pendingWaveformAudio] and the decode is deferred until
+     * [onPlaybackStateChanged] receives [MediaConstants.PLAYBACK_PLAYING].
+     *
+     * This prevents Amplituda and ExoPlayer from opening the same file at the same time
+     * and competing for the same I/O resources during the initial buffering phase.
+     *
+     * @param audio the track whose waveform should be decoded
+     */
+    private fun loadWaveformWhenReady(audio: Audio) {
+        if (MediaManager.isPlaying()) {
+            waveformViewModel.loadWaveform(audio)
+            pendingWaveformAudio = null
+        } else {
+            pendingWaveformAudio = audio
         }
     }
 
@@ -333,8 +363,9 @@ class DefaultPlayer : MediaFragment() {
         binding.seekbar.setProgress(MediaManager.getSeekPosition(), animate = false)
         updateFavoriteIcon(audio)
 
-        // Load waveform for the newly playing track
-        waveformViewModel.loadWaveform(audio)
+        // Defer waveform decoding until ExoPlayer is actually playing to avoid
+        // Amplituda and ExoPlayer fighting over the same file I/O resources.
+        loadWaveformWhenReady(audio)
     }
 
     override fun onSeekChanged(seek: Long) {
@@ -347,6 +378,12 @@ class DefaultPlayer : MediaFragment() {
         when (state) {
             MediaConstants.PLAYBACK_PLAYING -> {
                 updatePlayButtonState(true)
+                // ExoPlayer has started playing; it is now safe to let Amplituda open the
+                // same file without fighting over the same I/O resources.
+                pendingWaveformAudio?.let { audio ->
+                    waveformViewModel.loadWaveform(audio)
+                    pendingWaveformAudio = null
+                }
             }
             MediaConstants.PLAYBACK_PAUSED -> {
                 updatePlayButtonState(false)
