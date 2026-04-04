@@ -36,6 +36,7 @@ class WaveformViewModel @Inject constructor(
     private val waveformData: MutableLiveData<FloatArray> = MutableLiveData()
     private var currentPath: String? = null
     private var loadJob: Job? = null
+    private var amplitudaInstance: Amplituda? = null
 
     /**
      * Returns a [LiveData] stream of normalized amplitude arrays.
@@ -49,6 +50,8 @@ class WaveformViewModel @Inject constructor(
     fun loadWaveform(audio: Audio) {
         // Prevent redundant loading
         if (audio.path == currentPath && waveformData.value?.isNotEmpty() == true) return
+
+        postFlatData(audio)
 
         // Track the current request to handle stale extractions
         currentPath = audio.path
@@ -68,7 +71,7 @@ class WaveformViewModel @Inject constructor(
                     val rawAmplitudes = Amplituda(getApplication())
                         .processAudio(
                                 audio.path,
-                                Compress.withParams(Compress.PEAK, 1),
+                                Compress.withParams(Compress.AVERAGE, 1),
                                 Cache.withParams(Cache.REUSE, audio.hash.toString())
                         )
                         .get() // Blocking call
@@ -84,7 +87,7 @@ class WaveformViewModel @Inject constructor(
 
                     // --- Deterministic Time-Based Downsampling ---
 
-                    val barsPerSecond = 5
+                    val barsPerSecond = 1
                     val expectedBars = ((audio.duration / 1000f) * barsPerSecond).toInt().coerceAtLeast(1)
 
                     val chunkedAmplitudes = FloatArray(expectedBars)
@@ -137,10 +140,11 @@ class WaveformViewModel @Inject constructor(
         waveformData.postValue(FloatArray(0))
     }
 
-    private fun postGhostData() {
-        // Post a default array to trigger the UI to show the ghost waveform
-        // should be the
-        waveformData.postValue(FloatArray(1) { 0f })
+    private fun postFlatData(audio: Audio) {
+        // create a random waveform to show while loading, to prevent empty space and give feedback
+        val audioDurationSeconds = (audio.duration / 1000).toInt().coerceAtLeast(1)
+        val ghost = FloatArray(audioDurationSeconds) { 0.05f }
+        waveformData.postValue(ghost)
     }
 
     companion object {
