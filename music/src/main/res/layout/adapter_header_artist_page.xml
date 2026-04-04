@@ -14,10 +14,10 @@
         android:layout_height="400dp"
         app:fadeDirection="top_to_bottom"
         app:fadeEnabled="true"
-        app:fadeStartFraction="0.5"
+        app:fadeStartFraction="0.3"
         app:showIndicator="true"
         app:slideIntervalMs="5000"
-        app:slideSwiftness="0.35"
+        app:slideSwiftness="0.25"
         app:springDamping="0.60"
         app:springStiffness="220" />
 
@@ -30,7 +30,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingHorizontal="@dimen/padding_20"
+            android:paddingHorizontal="@dimen/padding_10"
             android:paddingVertical="@dimen/padding_10"
             android:layout_gravity="bottom"
             android:orientation="vertical">
@@ -42,10 +42,12 @@
                 android:text="Sample"
                 android:layout_gravity="center_vertical"
                 android:textSize="@dimen/text_size_36"
-                android:maxLines="1"
-                android:ellipsize="marquee"
-                android:singleLine="true"
-                android:marqueeRepeatLimit="marquee_forever"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:shadowColor="#7E000000"
+                android:shadowDx="0"
+                android:shadowDy="0"
+                android:shadowRadius="16"
                 app:appFontStyle="black"
                 app:layout_constraintBottom_toBottomOf="@+id/poster"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -64,7 +66,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="24"
-                    android:textSize="@dimen/text_size_12"
+                    android:textSize="@dimen/text_size_14"
                     android:gravity="center_vertical"
                     android:paddingVertical="@dimen/padding_5"
                     android:paddingHorizontal="@dimen/padding_10"
@@ -73,6 +75,7 @@
                     android:layout_marginEnd="@dimen/padding_10"
                     app:appFontStyle="bold"
                     app:drawableTintStyle="secondary"
+                    app:highlightMode="both"
                     app:textColorStyle="primary"
                     tools:ignore="HardcodedText" />
 
@@ -81,7 +84,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="24"
-                    android:textSize="@dimen/text_size_12"
+                    android:textSize="@dimen/text_size_14"
                     android:paddingVertical="@dimen/padding_5"
                     android:paddingHorizontal="@dimen/padding_10"
                     android:gravity="center_vertical"
@@ -90,6 +93,7 @@
                     android:layout_marginEnd="@dimen/padding_10"
                     app:appFontStyle="bold"
                     app:drawableTintStyle="secondary"
+                    app:highlightMode="both"
                     app:textColorStyle="primary"
                     tools:ignore="HardcodedText" />
 
@@ -98,7 +102,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="24"
-                    android:textSize="@dimen/text_size_12"
+                    android:textSize="@dimen/text_size_14"
                     android:gravity="center_vertical"
                     android:paddingVertical="@dimen/padding_5"
                     android:paddingHorizontal="@dimen/padding_10"
@@ -107,6 +111,7 @@
                     android:layout_marginEnd="@dimen/padding_10"
                     app:appFontStyle="bold"
                     app:drawableTintStyle="secondary"
+                    app:highlightMode="both"
                     app:textColorStyle="primary"
                     tools:ignore="HardcodedText" />
 
@@ -115,7 +120,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="00:00:00"
-                    android:textSize="@dimen/text_size_12"
+                    android:textSize="@dimen/text_size_14"
                     android:paddingVertical="@dimen/padding_5"
                     android:paddingHorizontal="@dimen/padding_10"
                     android:gravity="center_vertical"
@@ -123,6 +128,7 @@
                     android:drawablePadding="@dimen/padding_5"
                     app:appFontStyle="bold"
                     app:drawableTintStyle="secondary"
+                    app:highlightMode="both"
                     app:textColorStyle="primary"
                     tools:ignore="HardcodedText" />
 
@@ -139,7 +145,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:paddingVertical="@dimen/padding_5"
-            android:paddingHorizontal="@dimen/padding_10"
+            android:paddingHorizontal="@dimen/padding_5"
             android:clipChildren="false"
             android:clipToPadding="false"
             app:layout_constraintBottom_toBottomOf="parent"
