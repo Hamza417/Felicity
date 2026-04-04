@@ -482,8 +482,16 @@ class MiniPlayer @JvmOverloads constructor(
                     animateSeekFlat(flat = false)
                 } else if (isBeingDragged) {
                     scrollEngine.finishDrag(vx, dragStartScrollPx)
-                } else if (event.actionMasked == MotionEvent.ACTION_UP) {
-                    performClick()
+                } else {
+                    // No drag occurred. A settling animation may have been canceled by
+                    // ACTION_DOWN before it could complete, leaving scrollPx frozen at an
+                    // intermediate position. Snap to the nearest page so the mini player
+                    // never stays stuck mid-swipe, and notify listeners exactly as a normal
+                    // swipe completion would.
+                    snapToNearestPageIfNeeded()
+                    if (event.actionMasked == MotionEvent.ACTION_UP) {
+                        performClick()
+                    }
                 }
                 velocityTracker?.recycle()
                 velocityTracker = null
@@ -546,6 +554,31 @@ class MiniPlayer @JvmOverloads constructor(
     }
 
     private fun isInPlayPauseZone(x: Float): Boolean = x >= width - btnZoneWidth
+
+    /**
+     * Snaps the scroll engine to the nearest page boundary when
+     * [MiniPlayerScrollEngine.scrollPx] is not aligned to a whole-page position.
+     *
+     * This is called on [MotionEvent.ACTION_UP] and [MotionEvent.ACTION_CANCEL] when no
+     * drag occurred. A settling animation that was in progress at the time of the last
+     * [MotionEvent.ACTION_DOWN] will have been canceled by [MiniPlayerScrollEngine.cancelAnimation],
+     * leaving [MiniPlayerScrollEngine.scrollPx] frozen at an intermediate offset. Without
+     * this safeguard the mini player would remain stuck mid-swipe indefinitely.
+     *
+     * A zero-velocity [MiniPlayerScrollEngine.finishDrag] is used so that the same
+     * rounding logic that governs normal swipe releases determines the target page.
+     * Listeners ([Callbacks.onPageSelected], [OnPageChangeListener]) are notified
+     * normally when the snap settles on a new page, ensuring playback state stays
+     * in sync even when the swipe completion was triggered by an interrupting tap.
+     *
+     * @author Hamza417
+     */
+    private fun snapToNearestPageIfNeeded() {
+        val w = width.takeIf { it > 0 } ?: return
+        if (abs(scrollEngine.scrollPx - scrollEngine.currentPage * w.toFloat()) > 0.5f) {
+            scrollEngine.finishDrag(0f, scrollEngine.scrollPx)
+        }
+    }
 
     // -------------------------------------------------------------------------
     // Geometry — recomputed in applyConfig() on every size change
