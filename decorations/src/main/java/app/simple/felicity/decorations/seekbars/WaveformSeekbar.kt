@@ -152,6 +152,17 @@ class WaveformSeekbar @JvmOverloads constructor(
     private var labelPaddingPx: Float
     private var minBarHeightPx: Float
 
+    /**
+     * Horizontal distance in pixels between each time label and its nearest horizontal view edge.
+     * Increase this value to move the labels inward away from the edges.
+     * Can also be set via the [R.styleable.WaveformSeekbar_wsbLabelEdgeMargin] XML attribute.
+     */
+    var labelEdgeMarginPx: Float = 0f
+        set(value) {
+            field = value
+            invalidate()
+        }
+
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
@@ -203,6 +214,11 @@ class WaveformSeekbar @JvmOverloads constructor(
     // Color crossfade animation — transitions played/unplayed/label colors on theme or accent change
     private var colorTransitionAnimator: ValueAnimator? = null
 
+    // Label visibility animation — fades and scales time labels when a drag or fling begins/ends
+    private var labelAlpha: Float = 1f
+    private var labelScale: Float = 1f
+    private var labelAnimator: ValueAnimator? = null
+
     // Fling infrastructure — momentum scroll after a drag gesture
     private val overScroller = OverScroller(context)
     private var velocityTracker: VelocityTracker? = null
@@ -236,13 +252,14 @@ class WaveformSeekbar @JvmOverloads constructor(
 
     init {
         val d = resources.displayMetrics.density
-        barWidthPx = 6f * d
-        barSpacingPx = 3f * d
-        fadeEdgeLengthPx = 72f * d
-        labelTextSizePx = 11f * d
-        labelPaddingPx = 10f * d
-        minBarHeightPx = 2f * d
-        labelBgStrokePaint.strokeWidth = 1.5f * d
+        barWidthPx = DEFAULT_BAR_WIDTH_DP * d
+        barSpacingPx = DEFAULT_BAR_SPACING_DP * d
+        fadeEdgeLengthPx = DEFAULT_FADE_EDGE_LENGTH_DP * d
+        labelTextSizePx = DEFAULT_LABEL_TEXT_SIZE_DP * d
+        labelPaddingPx = DEFAULT_LABEL_PADDING_DP * d
+        labelEdgeMarginPx = DEFAULT_LABEL_EDGE_MARGIN_DP * d
+        minBarHeightPx = DEFAULT_MIN_BAR_HEIGHT_DP * d
+        labelBgStrokePaint.strokeWidth = DEFAULT_LABEL_STROKE_WIDTH_DP * d
 
         // Read XML attributes when they are provided
         if (attrs != null) {
@@ -252,6 +269,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                 barWidthPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbBarWidth, barWidthPx)
                 barSpacingPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbBarSpacing, barSpacingPx)
                 fadeEdgeLengthPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbFadeEdgeLength, fadeEdgeLengthPx)
+                labelEdgeMarginPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbLabelEdgeMargin, labelEdgeMarginPx)
                 labelGravity = ta.getInt(R.styleable.WaveformSeekbar_wsbLabelGravity, LABEL_GRAVITY_BOTTOM)
                 labelHighlightMode = ta.getInt(R.styleable.WaveformSeekbar_wsbLabelHighlightMode, LABEL_HIGHLIGHT_NONE)
             } finally {
@@ -312,7 +330,7 @@ class WaveformSeekbar @JvmOverloads constructor(
 
         colorTransitionAnimator?.cancel()
         colorTransitionAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 300L
+            duration = COLOR_TRANSITION_DURATION_MS
             interpolator = DecelerateInterpolator()
             addUpdateListener { anim ->
                 val t = anim.animatedValue as Float
@@ -328,7 +346,7 @@ class WaveformSeekbar @JvmOverloads constructor(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val d = resources.displayMetrics.density
-        val minH = (64f * d).toInt() + paddingTop + paddingBottom
+        val minH = (MIN_VIEW_HEIGHT_DP * d).toInt() + paddingTop + paddingBottom
         val resolvedH = resolveSize(minH, heightMeasureSpec)
         val resolvedW = resolveSize(suggestedMinimumWidth + paddingLeft + paddingRight, widthMeasureSpec)
         setMeasuredDimension(resolvedW, resolvedH)
@@ -452,13 +470,17 @@ class WaveformSeekbar @JvmOverloads constructor(
         val leftLabel = leftLabelProvider?.getLabel(currentProgressMs, 0L, durationMs)
         val rightLabel = rightLabelProvider?.getLabel(currentProgressMs, 0L, durationMs)
         if (leftLabel.isNullOrEmpty() && rightLabel.isNullOrEmpty()) return
+        if (labelAlpha <= 0f) return
 
-        labelPaint.textSize = labelTextSizePx
+        // Scale text size and apply seek-driven alpha to both paint and pill backgrounds
+        val effectiveTextSize = labelTextSizePx * labelScale
+        labelPaint.textSize = effectiveTextSize
         labelPaint.color = labelTextColor
+        labelPaint.alpha = (255 * labelAlpha).toInt()
 
         val textY = when (labelGravity) {
-            LABEL_GRAVITY_TOP -> paddingTop.toFloat() + labelTextSizePx + labelPaddingPx / 2f
-            LABEL_GRAVITY_CENTER -> h / 2f + labelTextSizePx / 3f
+            LABEL_GRAVITY_TOP -> paddingTop.toFloat() + effectiveTextSize + labelPaddingPx / 2f
+            LABEL_GRAVITY_CENTER -> h / 2f + effectiveTextSize / 3f
             else -> h - labelPaddingPx / 2f  // LABEL_GRAVITY_BOTTOM (default)
         }
 
@@ -467,21 +489,24 @@ class WaveformSeekbar @JvmOverloads constructor(
             // Use actual font metrics so the pill precisely hugs the visible text glyphs,
             // ensuring the text is perfectly centered inside the pill vertically.
             val fm = labelPaint.fontMetrics
-            val pillHPad = labelPaddingPx * 0.55f
-            val pillVPad = labelPaddingPx * 0.22f
+            val pillHPad = labelPaddingPx * PILL_H_PAD_FACTOR
+            val pillVPad = labelPaddingPx * PILL_V_PAD_FACTOR
             val textVisualTop = textY + fm.ascent
             val textVisualBottom = textY + fm.descent
             val pillR = (textVisualBottom - textVisualTop + pillVPad * 2f) / 2f
+            val pillAlpha = (255 * labelAlpha).toInt()
 
             labelBgPaint.color = labelHighlightFillColor
+            labelBgPaint.alpha = pillAlpha
             labelBgStrokePaint.color = labelHighlightStrokeColor
+            labelBgStrokePaint.alpha = pillAlpha
 
             if (!leftLabel.isNullOrEmpty()) {
                 val tw = labelPaint.measureText(leftLabel)
                 pillRect.set(
-                        labelPaddingPx - pillHPad,
+                        labelEdgeMarginPx - pillHPad,
                         textVisualTop - pillVPad,
-                        labelPaddingPx + tw + pillHPad,
+                        labelEdgeMarginPx + tw + pillHPad,
                         textVisualBottom + pillVPad
                 )
                 drawLabelPill(canvas, pillRect, pillR)
@@ -490,9 +515,9 @@ class WaveformSeekbar @JvmOverloads constructor(
             if (!rightLabel.isNullOrEmpty()) {
                 val tw = labelPaint.measureText(rightLabel)
                 pillRect.set(
-                        w - labelPaddingPx - tw - pillHPad,
+                        w - labelEdgeMarginPx - tw - pillHPad,
                         textVisualTop - pillVPad,
-                        w - labelPaddingPx + pillHPad,
+                        w - labelEdgeMarginPx + pillHPad,
                         textVisualBottom + pillVPad
                 )
                 drawLabelPill(canvas, pillRect, pillR)
@@ -501,12 +526,12 @@ class WaveformSeekbar @JvmOverloads constructor(
 
         if (!leftLabel.isNullOrEmpty()) {
             labelPaint.textAlign = Paint.Align.LEFT
-            canvas.drawText(leftLabel, labelPaddingPx, textY, labelPaint)
+            canvas.drawText(leftLabel, labelEdgeMarginPx, textY, labelPaint)
         }
 
         if (!rightLabel.isNullOrEmpty()) {
             labelPaint.textAlign = Paint.Align.RIGHT
-            canvas.drawText(rightLabel, w - labelPaddingPx, textY, labelPaint)
+            canvas.drawText(rightLabel, w - labelEdgeMarginPx, textY, labelPaint)
         }
     }
 
@@ -548,6 +573,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                 velocityTracker!!.clear()
                 velocityTracker!!.addMovement(event)
 
+                animateLabelVisibility(false)
                 seekListener?.onSeekStart()
                 invalidate()
                 return true
@@ -575,13 +601,14 @@ class WaveformSeekbar @JvmOverloads constructor(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (isDragging) {
                     velocityTracker?.addMovement(event)
-                    velocityTracker?.computeCurrentVelocity(500) // pixels per second
+                    velocityTracker?.computeCurrentVelocity(FLING_VELOCITY_UNITS)
                     val xVelocity = velocityTracker?.xVelocity ?: 0f
                     velocityTracker?.recycle()
                     velocityTracker = null
 
                     isDragging = false
                     parent?.requestDisallowInterceptTouchEvent(false)
+                    animateLabelVisibility(true)
                     seekListener?.onSeekEnd(dragCurrentProgressMs)
 
                     progressMs = dragCurrentProgressMs
@@ -618,6 +645,31 @@ class WaveformSeekbar @JvmOverloads constructor(
     }
 
     /**
+     * Animates the label alpha and scale toward the visible or hidden state.
+     * Called automatically when a drag gesture starts ([visible] = `false`) or ends ([visible] = `true`).
+     *
+     * @param visible `true` to fade labels back in at full size; `false` to fade them out and shrink.
+     */
+    private fun animateLabelVisibility(visible: Boolean) {
+        labelAnimator?.cancel()
+        val fromAlpha = labelAlpha
+        val fromScale = labelScale
+        val toAlpha = if (visible) 1f else 0f
+        val toScale = if (visible) 1f else LABEL_SEEK_MIN_SCALE
+        labelAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = LABEL_ANIM_DURATION_MS
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                val t = anim.animatedValue as Float
+                labelAlpha = fromAlpha + (toAlpha - fromAlpha) * t
+                labelScale = fromScale + (toScale - fromScale) * t
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    /**
      * Supplies the normalized amplitude data for the currently loaded track.
      * Each entry represents a single second of audio; values must be in [0.0, 1.0].
      *
@@ -647,8 +699,8 @@ class WaveformSeekbar @JvmOverloads constructor(
         }
 
         barAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 400L
-            interpolator = DecelerateInterpolator(3F)
+            duration = BAR_ANIM_DURATION_MS
+            interpolator = DecelerateInterpolator(BAR_ANIM_DECELERATE)
             addUpdateListener { anim ->
                 val t = anim.animatedValue as Float
                 for (i in data.indices) {
@@ -684,7 +736,7 @@ class WaveformSeekbar @JvmOverloads constructor(
             invalidate()
         } else {
             val start = animatedProgressMs
-            if (abs(start - target) < 80L) {
+            if (abs(start - target) < PROGRESS_SNAP_THRESHOLD_MS) {
                 progressAnimator?.cancel()
                 animatedProgressMs = target
                 invalidate()
@@ -692,7 +744,7 @@ class WaveformSeekbar @JvmOverloads constructor(
             }
             progressAnimator?.cancel()
             progressAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = 520L
+                duration = PROGRESS_ANIM_DURATION_MS
                 interpolator = DecelerateInterpolator()
                 addUpdateListener { anim ->
                     val t = anim.animatedValue as Float
@@ -775,6 +827,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         progressAnimator?.cancel()
         barAnimator?.cancel()
         colorTransitionAnimator?.cancel()
+        labelAnimator?.cancel()
         overScroller.abortAnimation()
         isFling = false
         velocityTracker?.recycle()
@@ -845,6 +898,48 @@ class WaveformSeekbar @JvmOverloads constructor(
          */
         private const val HIGHLIGHT_MIN_ALPHA = 0.35f
 
-        private const val TRANSITION_ZONE = 3f  // in bar widths; distance from center where color transition occurs
+        /** Number of bar-widths on each side of the playhead over which the played/unplayed color crossfades. */
+        private const val TRANSITION_ZONE = 3f
+
+        // Default dimension values in dp
+        private const val DEFAULT_BAR_WIDTH_DP = 6f
+        private const val DEFAULT_BAR_SPACING_DP = 3f
+        private const val DEFAULT_FADE_EDGE_LENGTH_DP = 72f
+        private const val DEFAULT_LABEL_TEXT_SIZE_DP = 12f
+        private const val DEFAULT_LABEL_PADDING_DP = 12f
+
+        /** Default horizontal inset of labels from the left and right view edges, in dp. */
+        private const val DEFAULT_LABEL_EDGE_MARGIN_DP = 16f
+        private const val DEFAULT_MIN_BAR_HEIGHT_DP = 2f
+        private const val DEFAULT_LABEL_STROKE_WIDTH_DP = 0.5f
+
+        /** Minimum view height reserved for the waveform area, in dp. */
+        private const val MIN_VIEW_HEIGHT_DP = 64f
+
+        // Animation durations in milliseconds
+        private const val COLOR_TRANSITION_DURATION_MS = 300L
+        private const val BAR_ANIM_DURATION_MS = 400L
+        private const val PROGRESS_ANIM_DURATION_MS = 520L
+
+        /** Duration of the label fade/scale animation triggered by drag start and drag end. */
+        private const val LABEL_ANIM_DURATION_MS = 180L
+
+        // Thresholds and interpolation factors
+        private const val PROGRESS_SNAP_THRESHOLD_MS = 80L
+
+        /** Units (pixels per interval) used when computing fling velocity from the tracker. */
+        private const val FLING_VELOCITY_UNITS = 500
+
+        /** Deceleration exponent passed to [DecelerateInterpolator] for bar height animation. */
+        private const val BAR_ANIM_DECELERATE = 3f
+
+        /** Horizontal padding factor applied to [labelPaddingPx] to compute pill side inset. */
+        private const val PILL_H_PAD_FACTOR = 0.55f
+
+        /** Vertical padding factor applied to [labelPaddingPx] to compute pill top/bottom inset. */
+        private const val PILL_V_PAD_FACTOR = 0.22f
+
+        /** Minimum scale applied to label text and pill while the user is dragging. */
+        private const val LABEL_SEEK_MIN_SCALE = 0.85f
     }
 }
