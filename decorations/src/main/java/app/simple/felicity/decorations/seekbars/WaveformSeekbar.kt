@@ -966,7 +966,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         private const val PROGRESS_SNAP_THRESHOLD_MS = 80L
 
         /** Units (pixels per interval) used when computing fling velocity from the tracker. */
-        private const val FLING_VELOCITY_UNITS = 500
+        private const val FLING_VELOCITY_UNITS = 1000
 
         /** Deceleration exponent passed to [DecelerateInterpolator] for bar height animation. */
         private const val BAR_ANIM_DECELERATE = 3f
