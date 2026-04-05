@@ -54,12 +54,6 @@ class WaveformViewModel @Inject constructor(
         // Prevent redundant loading
         if (audio.path == currentPath && waveformData.value?.isNotEmpty() == true) return
 
-        if (isM4A(audio)) {
-            // Amplituda has known issues with M4A files, so we skip straight to the ghost data for a better UX
-            postFlatData(audio)
-            return
-        }
-
         postFlatData(audio)
 
         // Track the current request to handle stale extractions
@@ -177,10 +171,6 @@ class WaveformViewModel @Inject constructor(
             // To keep it looking "ghostly" and subtle, we cap the absolute max height at 0.4f (40%)
             (envelope * noise) * 0.4f
         }
-    }
-
-    private fun isM4A(audio: Audio): Boolean {
-        return audio.path.endsWith(".m4a", ignoreCase = true)
     }
 
     companion object {
