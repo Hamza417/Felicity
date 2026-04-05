@@ -11,10 +11,10 @@
     <app.simple.felicity.decorations.pager.FelicitySlider
         android:id="@+id/art_flow"
         android:layout_width="match_parent"
-        android:layout_height="400dp"
+        android:layout_height="250dp"
         app:fadeDirection="top_to_bottom"
         app:fadeEnabled="true"
-        app:fadeStartFraction="0.4"
+        app:fadeStartFraction="0.2"
         app:showIndicator="true"
         app:slideIntervalMs="5000"
         app:slideSwiftness="0.25"

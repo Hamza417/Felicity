@@ -341,7 +341,10 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             }
 
             val isCurrentlyPlaying = MediaPlaybackManager.getCurrentSong()?.id == audio.id
+
             if (isCurrentlyPlaying) {
+                binding.play.gone(animate = false)
+                binding.insertAndPlay.gone(animate = false)
                 binding.addToQueue.gone(animate = false)
                 binding.playNext.gone(animate = false)
             }
