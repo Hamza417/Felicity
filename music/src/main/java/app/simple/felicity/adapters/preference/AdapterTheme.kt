@@ -23,11 +23,13 @@ class AdapterTheme : RecyclerView.Adapter<VerticalListViewHolder>() {
         arrayListOf(
                 -1, // Light
                 ThemeConstants.LIGHT_THEME,
+                ThemeConstants.ALBUM_ART_LIGHT,
                 ThemeConstants.SOAPSTONE,
                 ThemeConstants.MATERIAL_YOU_LIGHT,
                 ThemeConstants.HIGH_CONTRAST_LIGHT,
                 -1, // Dark
                 ThemeConstants.DARK_THEME,
+                ThemeConstants.ALBUM_ART_DARK,
                 ThemeConstants.MATERIAL_YOU_DARK,
                 ThemeConstants.AMOLED,
                 ThemeConstants.SLATE,
@@ -41,10 +43,12 @@ class AdapterTheme : RecyclerView.Adapter<VerticalListViewHolder>() {
         arrayListOf(
                 -1, // Light
                 ThemeConstants.LIGHT_THEME,
+                ThemeConstants.ALBUM_ART_LIGHT,
                 ThemeConstants.SOAPSTONE,
                 ThemeConstants.HIGH_CONTRAST_LIGHT,
                 -1, // Dark
                 ThemeConstants.DARK_THEME,
+                ThemeConstants.ALBUM_ART_DARK,
                 ThemeConstants.AMOLED,
                 ThemeConstants.SLATE,
                 ThemeConstants.OIL,
@@ -95,12 +99,14 @@ class AdapterTheme : RecyclerView.Adapter<VerticalListViewHolder>() {
                 if (AppearancePreferences.setTheme(list[position])) {
                     when (list[position]) {
                         ThemeConstants.LIGHT_THEME,
+                        ThemeConstants.ALBUM_ART_LIGHT,
                         ThemeConstants.SOAPSTONE,
                         ThemeConstants.HIGH_CONTRAST_LIGHT,
                         ThemeConstants.MATERIAL_YOU_LIGHT -> {
                             AppearancePreferences.setLastLightTheme(list[position])
                         }
                         ThemeConstants.HIGH_CONTRAST_DARK,
+                        ThemeConstants.ALBUM_ART_DARK,
                         ThemeConstants.DARK_THEME,
                         ThemeConstants.SLATE,
                         ThemeConstants.AMOLED,
@@ -146,9 +152,11 @@ class AdapterTheme : RecyclerView.Adapter<VerticalListViewHolder>() {
     private fun Context.getThemeName(theme: Int): String {
         return when (theme) {
             ThemeConstants.LIGHT_THEME -> getString(R.string.light)
+            ThemeConstants.ALBUM_ART_LIGHT -> getString(R.string.album_art_light)
             ThemeConstants.SOAPSTONE -> getString(R.string.soapstone)
             ThemeConstants.HIGH_CONTRAST_LIGHT -> getString(R.string.high_contrast)
             ThemeConstants.DARK_THEME -> getString(R.string.dark)
+            ThemeConstants.ALBUM_ART_DARK -> getString(R.string.album_art_dark)
             ThemeConstants.AMOLED -> getString(R.string.amoled)
             ThemeConstants.SLATE -> getString(R.string.slate)
             ThemeConstants.OIL -> getString(R.string.oil)

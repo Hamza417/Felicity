@@ -10,11 +10,13 @@ import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.shared.utils.CalendarUtils
 import app.simple.felicity.theme.constants.ThemeConstants
 import app.simple.felicity.theme.themes.dark.AMOLED
+import app.simple.felicity.theme.themes.dark.AlbumArtDark
 import app.simple.felicity.theme.themes.dark.DarkTheme
 import app.simple.felicity.theme.themes.dark.HighContrastDark
 import app.simple.felicity.theme.themes.dark.MaterialYouDark
 import app.simple.felicity.theme.themes.dark.Oil
 import app.simple.felicity.theme.themes.dark.Slate
+import app.simple.felicity.theme.themes.light.AlbumArtLight
 import app.simple.felicity.theme.themes.light.HighContrastLight
 import app.simple.felicity.theme.themes.light.LightTheme
 import app.simple.felicity.theme.themes.light.MaterialYouLight
@@ -112,6 +114,9 @@ object ThemeUtils {
                             ThemeConstants.MATERIAL_YOU_DARK -> {
                                 ThemeManager.theme = MaterialYouDark()
                             }
+                            ThemeConstants.ALBUM_ART_DARK -> {
+                                ThemeManager.theme = AlbumArtDark()
+                            }
                         }
                     }
                     Configuration.UI_MODE_NIGHT_NO -> {
@@ -127,6 +132,9 @@ object ThemeUtils {
                             }
                             ThemeConstants.MATERIAL_YOU_LIGHT -> {
                                 ThemeManager.theme = MaterialYouLight()
+                            }
+                            ThemeConstants.ALBUM_ART_LIGHT -> {
+                                ThemeManager.theme = AlbumArtLight()
                             }
                         }
                     }
@@ -150,6 +158,9 @@ object ThemeUtils {
                         ThemeConstants.MATERIAL_YOU_LIGHT -> {
                             ThemeManager.theme = MaterialYouLight()
                         }
+                        ThemeConstants.ALBUM_ART_LIGHT -> {
+                            ThemeManager.theme = AlbumArtLight()
+                        }
                     }
                 } else {
                     when (AppearancePreferences.getLastDarkTheme()) {
@@ -171,6 +182,9 @@ object ThemeUtils {
                         ThemeConstants.OIL -> {
                             ThemeManager.theme = Oil()
                         }
+                        ThemeConstants.ALBUM_ART_DARK -> {
+                            ThemeManager.theme = AlbumArtDark()
+                        }
                     }
                 }
             }
@@ -180,6 +194,12 @@ object ThemeUtils {
             ThemeConstants.MATERIAL_YOU_DARK -> {
                 ThemeManager.theme = MaterialYouDark()
             }
+            ThemeConstants.ALBUM_ART_LIGHT -> {
+                ThemeManager.theme = AlbumArtLight()
+            }
+            ThemeConstants.ALBUM_ART_DARK -> {
+                ThemeManager.theme = AlbumArtDark()
+            }
         }
     }
 
@@ -188,7 +208,8 @@ object ThemeUtils {
             ThemeConstants.LIGHT_THEME,
             ThemeConstants.SOAPSTONE,
             ThemeConstants.MATERIAL_YOU_LIGHT,
-            ThemeConstants.HIGH_CONTRAST_LIGHT -> {
+            ThemeConstants.HIGH_CONTRAST_LIGHT,
+            ThemeConstants.ALBUM_ART_LIGHT -> {
                 return false
             }
 
@@ -197,7 +218,8 @@ object ThemeUtils {
             ThemeConstants.HIGH_CONTRAST_DARK,
             ThemeConstants.SLATE,
             ThemeConstants.OIL,
-            ThemeConstants.MATERIAL_YOU_DARK -> {
+            ThemeConstants.MATERIAL_YOU_DARK,
+            ThemeConstants.ALBUM_ART_DARK -> {
                 return true
             }
 
@@ -243,7 +265,8 @@ object ThemeUtils {
             ThemeConstants.LIGHT_THEME,
             ThemeConstants.SOAPSTONE,
             ThemeConstants.MATERIAL_YOU_LIGHT,
-            ThemeConstants.HIGH_CONTRAST_LIGHT -> {
+            ThemeConstants.HIGH_CONTRAST_LIGHT,
+            ThemeConstants.ALBUM_ART_LIGHT -> {
                 lightBars(window)
             }
             ThemeConstants.DARK_THEME,
@@ -251,7 +274,8 @@ object ThemeUtils {
             ThemeConstants.HIGH_CONTRAST_DARK,
             ThemeConstants.SLATE,
             ThemeConstants.OIL,
-            ThemeConstants.MATERIAL_YOU_DARK -> {
+            ThemeConstants.MATERIAL_YOU_DARK,
+            ThemeConstants.ALBUM_ART_DARK -> {
                 darkBars(window)
             }
             ThemeConstants.FOLLOW_SYSTEM -> {

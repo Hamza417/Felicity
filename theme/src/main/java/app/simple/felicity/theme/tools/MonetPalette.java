@@ -10,41 +10,67 @@ import androidx.annotation.NonNull;
 import androidx.core.graphics.ColorUtils;
 
 /**
- * Generates Material You-inspired accent colors from a seed extracted
- * from a provided Bitmap. Approximates system_accent1 family tones.
+ * Generates a full Material 3 tonal palette from a seed color extracted from a provided
+ * {@link Bitmap}. Approximates the system_accent1, neutral, and neutral-variant palette
+ * families used in Material You dynamic color.
  * <p>
  * Derivation strategy:
- * - Extract a seed color by estimating the dominant color via quantized sampling.
- * - Convert to CAM16-based HCT (Hue, Chroma, Tone) color space.
- * - Generate tones using MD3 spec: tone values represent perceptual lightness (0-100).
- * - Apply chroma limits to prevent oversaturated/eye-straining colors.
+ * <ul>
+ *   <li>Extract a seed color by estimating the dominant color via quantized histogram sampling.</li>
+ *   <li>Convert to a CAM16-based HCT (Hue, Chroma, Tone) color space via LAB.</li>
+ *   <li>Generate tones using the MD3 spec: tone values represent perceptual lightness (0–100).</li>
+ *   <li>Apply chroma limits to prevent oversaturated or eye-straining colors.</li>
+ *   <li>Neutral and neutral-variant palettes use the same hue but with strongly reduced chroma.</li>
+ * </ul>
+ *
+ * @author Hamza417
  */
 public class MonetPalette {
     
-    // MD3 chroma constraints for pleasant, eye-friendly colors
-    private static final double MIN_CHROMA = 16.0; // Keep some color presence
-    private static final double MAX_CHROMA = 48.0; // Prevent oversaturation (MD3 uses ~48 max)
+    /**
+     * MD3 minimum chroma to keep some color presence in the primary palette.
+     */
+    private static final double MIN_CHROMA = 16.0;
+    /**
+     * MD3 maximum chroma to prevent oversaturation (MD3 spec caps at ~48).
+     */
+    private static final double MAX_CHROMA = 48.0;
+    /**
+     * Chroma used for the neutral palette (near-grey, hue-tinted).
+     */
+    private static final double NEUTRAL_CHROMA = 4.0;
+    /**
+     * Chroma used for the neutral-variant palette (slightly more colorful than neutral).
+     */
+    private static final double NEUTRAL_VARIANT_CHROMA = 8.0;
     
     @ColorInt
     private final int seedColor;
     
     @ColorInt
-    private final int accent1_500; // MD3 tone 40 (medium)
+    private final int accent1_500; // MD3 tone 40 (primary, light theme)
     
     @ColorInt
-    private final int accent1_300; // MD3 tone 80 (light)
+    private final int accent1_300; // MD3 tone 80 (primary, dark theme)
+    
+    /**
+     * Hue angle of the seed color in degrees (0–360).
+     */
+    private final double hue;
+    /** Clamped chroma of the primary tonal palette. */
+    private final double chroma;
     
     public MonetPalette(@NonNull Bitmap bitmap) {
         this.seedColor = extractSeed(bitmap);
         
         // Convert to HCT color space via LAB
         double[] hct = rgbToHct(seedColor);
-        double hue = hct[0];
-        double chroma = clamp(hct[1], MIN_CHROMA, MAX_CHROMA);
+        this.hue = hct[0];
+        this.chroma = clamp(hct[1], MIN_CHROMA, MAX_CHROMA);
         
         // Generate MD3-compliant tones
-        // Tone 40: medium contrast for primary surfaces
-        // Tone 80: light, suitable for backgrounds in light theme
+        // Tone 40: medium contrast for primary surfaces (light-theme primary)
+        // Tone 80: light, suitable for primary in dark theme
         this.accent1_500 = hctToRgb(hue, chroma, 40.0);
         this.accent1_300 = hctToRgb(hue, chroma * 0.8, 80.0); // Reduce chroma for lighter tone
     }
@@ -198,7 +224,7 @@ public class MonetPalette {
     }
     
     /**
-     * Approximation of system_accent1_500 (MD3 tone 40 - medium contrast)
+     * Approximation of system_accent1_500 (MD3 tone 40 — medium contrast, primary in light theme).
      */
     @ColorInt
     public int getAccent1_500() {
@@ -206,10 +232,48 @@ public class MonetPalette {
     }
     
     /**
-     * Approximation of system_accent1_300 (MD3 tone 80 - light)
+     * Approximation of system_accent1_300 (MD3 tone 80 — primary in dark theme).
      */
     @ColorInt
     public int getAccent1_300() {
         return accent1_300;
+    }
+    
+    /**
+     * Returns a color from the primary tonal palette at the requested MD3 tone.
+     * The palette is derived from the album art seed color with full chroma.
+     *
+     * @param tone perceptual lightness value in the range [0, 100]
+     * @return an opaque ARGB color at the given tone
+     */
+    @ColorInt
+    public int getPrimaryTone(double tone) {
+        return hctToRgb(hue, chroma, tone);
+    }
+    
+    /**
+     * Returns a color from the neutral tonal palette at the requested MD3 tone.
+     * Uses the same hue as the seed but with very low chroma (~4), producing near-grey
+     * tones that are suitable for backgrounds, text, and icon colors.
+     *
+     * @param tone perceptual lightness value in the range [0, 100]
+     * @return an opaque ARGB color at the given tone
+     */
+    @ColorInt
+    public int getNeutralTone(double tone) {
+        return hctToRgb(hue, NEUTRAL_CHROMA, tone);
+    }
+    
+    /**
+     * Returns a color from the neutral-variant tonal palette at the requested MD3 tone.
+     * Uses slightly higher chroma than the neutral palette (~8), suited for surface variants,
+     * outlines, dividers, and switch tracks.
+     *
+     * @param tone perceptual lightness value in the range [0, 100]
+     * @return an opaque ARGB color at the given tone
+     */
+    @ColorInt
+    public int getNeutralVariantTone(double tone) {
+        return hctToRgb(hue, NEUTRAL_VARIANT_CHROMA, tone);
     }
 }

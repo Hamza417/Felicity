@@ -9,11 +9,14 @@ import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.themes.Theme
 import app.simple.felicity.theme.themes.dark.AMOLED
+
+import app.simple.felicity.theme.themes.dark.AlbumArtDark
 import app.simple.felicity.theme.themes.dark.DarkTheme
 import app.simple.felicity.theme.themes.dark.HighContrastDark
 import app.simple.felicity.theme.themes.dark.MaterialYouDark
 import app.simple.felicity.theme.themes.dark.Oil
 import app.simple.felicity.theme.themes.dark.Slate
+import app.simple.felicity.theme.themes.light.AlbumArtLight
 import app.simple.felicity.theme.themes.light.HighContrastLight
 import app.simple.felicity.theme.themes.light.LightTheme
 import app.simple.felicity.theme.themes.light.MaterialYouLight
@@ -81,6 +84,7 @@ object ThemeManager {
         return listOf(
                 LightTheme(),
                 SoapStone(),
+                AlbumArtLight(),
                 MaterialYouLight(),
                 HighContrastLight()
         )
@@ -92,6 +96,7 @@ object ThemeManager {
                 AMOLED(),
                 Oil(),
                 Slate(),
+                AlbumArtDark(),
                 MaterialYouDark(),
                 HighContrastDark()
         )

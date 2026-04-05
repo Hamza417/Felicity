@@ -21,4 +21,10 @@ object ThemeConstants {
 
     @RequiresApi(Build.VERSION_CODES.S)
     const val MATERIAL_YOU_DARK = 12
+
+    /** Light theme that adapts its colors to the current album art's dominant hue. */
+    const val ALBUM_ART_LIGHT = 13
+
+    /** Dark theme that adapts its colors to the current album art's dominant hue. */
+    const val ALBUM_ART_DARK = 14
 }

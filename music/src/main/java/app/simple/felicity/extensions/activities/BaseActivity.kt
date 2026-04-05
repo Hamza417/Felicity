@@ -38,11 +38,14 @@ import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.theme.accents.AlbumArt
 import app.simple.felicity.theme.accents.Felicity
+import app.simple.felicity.theme.data.AlbumArtData
 import app.simple.felicity.theme.data.MaterialYou.presetMaterialYouDynamicColors
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.managers.ThemeUtils
 import app.simple.felicity.theme.themes.Theme
+import app.simple.felicity.theme.themes.dark.AlbumArtDark
+import app.simple.felicity.theme.themes.light.AlbumArtLight
 import app.simple.felicity.theme.tools.MonetPalette
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
@@ -101,8 +104,11 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     private fun observeSongChangesForPalette() {
         lifecycleScope.launch {
             MediaManager.songPositionFlow.collect {
-                // Only regenerate when the AlbumArt accent is actually active.
-                if (AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER) {
+                val isAlbumArtAccent = AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER
+                val currentTheme = AppearancePreferences.getTheme()
+                val isAlbumArtTheme = currentTheme == ThemeConstants.ALBUM_ART_LIGHT ||
+                        currentTheme == ThemeConstants.ALBUM_ART_DARK
+                if (isAlbumArtAccent || isAlbumArtTheme) {
                     generateAlbumArtPalette()
                 }
             }
@@ -239,7 +245,12 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     protected open fun onStateReady() = Unit
 
     protected fun generateAlbumArtPalette() {
-        if (AppearancePreferences.getAccentColorName() != AlbumArt.IDENTIFIER) return
+        val isAlbumArtAccent = AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER
+        val currentTheme = AppearancePreferences.getTheme()
+        val isAlbumArtTheme = currentTheme == ThemeConstants.ALBUM_ART_LIGHT ||
+                currentTheme == ThemeConstants.ALBUM_ART_DARK
+
+        if (!isAlbumArtAccent && !isAlbumArtTheme) return
 
         val audio = MediaManager.getCurrentSong() ?: return
 
@@ -252,10 +263,10 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         paletteJob = lifecycleScope.launch(Dispatchers.IO) {
             try {
                 // Load raw bitmap on the IO dispatcher (file / MediaMetadataRetriever).
-                val rawBitmap: Bitmap = AudioCover.load(this@BaseActivity, audio) ?: return@launch // TODO: add a fallback bitmap?
+                val rawBitmap: Bitmap = AudioCover.load(this@BaseActivity, audio) ?: return@launch
 
                 // Downscale to a small thumbnail before palette math to keep CPU cost low.
-                // 128×128 gives MonetPalette's 64-sample grid more than enough data.
+                // 128x128 gives MonetPalette's 64-sample grid more than enough data.
                 val thumb: Bitmap = withContext(Dispatchers.Default) {
                     val size = 128
                     if (rawBitmap.width > size || rawBitmap.height > size) {
@@ -268,22 +279,47 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                 }
 
                 // Run palette extraction on the Default (CPU) dispatcher.
-                val (primary, secondary) = withContext(Dispatchers.Default) {
-                    val palette = MonetPalette(thumb)
+                val palette: MonetPalette = withContext(Dispatchers.Default) {
+                    val p = MonetPalette(thumb)
                     thumb.recycle()
-                    Pair(palette.accent1_500, palette.accent1_300)
+                    p
                 }
 
                 withContext(Dispatchers.Main) {
-                    // Guard: accent may have been changed while we were running.
-                    if (AppearancePreferences.getAccentColorName() != AlbumArt.IDENTIFIER) return@withContext
-                    val albumArtAccent = AlbumArt().apply {
-                        primaryAccentColor = primary
-                        secondaryAccentColor = secondary
-                    }
+                    // Guard: settings may have changed while the coroutine was running.
+                    val stillAlbumArtAccent = AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER
+                    val stillTheme = AppearancePreferences.getTheme()
+                    val stillAlbumArtTheme = stillTheme == ThemeConstants.ALBUM_ART_LIGHT ||
+                            stillTheme == ThemeConstants.ALBUM_ART_DARK
+
+                    if (!stillAlbumArtAccent && !stillAlbumArtTheme) return@withContext
+
                     lastPaletteSongId = audio.id
-                    ThemeManager.accent = albumArtAccent
-                    Log.d(TAG, "Album art palette applied for song ${audio.id}: ${albumArtAccent.hexes}")
+
+                    // Apply album art theme — independently of the accent.
+                    // Populate AlbumArtData then push a brand-new Theme object into ThemeManager
+                    // so that every registered ThemeChangedListener is notified automatically.
+                    if (stillAlbumArtTheme) {
+                        AlbumArtData.populate(palette)
+                        ThemeManager.theme = if (stillTheme == ThemeConstants.ALBUM_ART_DARK) {
+                            AlbumArtDark()
+                        } else {
+                            AlbumArtLight()
+                        }
+                        Log.d(TAG, "Album art theme applied for song ${audio.id}")
+                    }
+
+                    // Apply album art accent — independently of the theme.
+                    // Creating a new AlbumArt accent and setting it on ThemeManager notifies
+                    // every registered ThemeChangedListener via onAccentChanged.
+                    if (stillAlbumArtAccent) {
+                        val albumArtAccent = AlbumArt().apply {
+                            primaryAccentColor = palette.accent1_500
+                            secondaryAccentColor = palette.accent1_300
+                        }
+                        ThemeManager.accent = albumArtAccent
+                        Log.d(TAG, "Album art accent applied for song ${audio.id}: ${albumArtAccent.hexes}")
+                    }
                 }
             } catch (e: FileNotFoundException) {
                 Log.w(TAG, "Album art not found for song ${audio.id}", e)
@@ -297,17 +333,26 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         ThemeUtils.setAppTheme(resources)
         ThemeUtils.updateNavAndStatusColors(resources, window)
 
-        if (AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER) {
-            generateAlbumArtPalette()
-        } else {
+        val isAlbumArtAccent = AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER
+        val currentTheme = AppearancePreferences.getTheme()
+        val isAlbumArtTheme = currentTheme == ThemeConstants.ALBUM_ART_LIGHT ||
+                currentTheme == ThemeConstants.ALBUM_ART_DARK
+
+        // Set a regular accent immediately. Album art accent is applied asynchronously via
+        // generateAlbumArtPalette once the bitmap is loaded and must not be pre-empted here.
+        if (!isAlbumArtAccent) {
             ThemeManager.accent = when (val accentName = AppearancePreferences.getAccentColorName()) {
                 null -> Felicity().also {
                     AppearancePreferences.setAccentColorName(it.identifier)
                 }
-                else -> {
-                    ThemeManager.getAccentByName(accentName)
-                }
+                else -> ThemeManager.getAccentByName(accentName)
             }
+        }
+
+        // Trigger palette extraction whenever either album art mode is active.
+        // The extraction method handles both cases independently on the main thread.
+        if (isAlbumArtAccent || isAlbumArtTheme) {
+            generateAlbumArtPalette()
         }
     }
 
@@ -402,6 +447,12 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
             AppearancePreferences.ACCENT_COLOR -> {
+                initTheme()
+            }
+            AppearancePreferences.THEME -> {
+                // Reset the cached song ID so the palette is always regenerated when switching
+                // to or from an album art theme, ensuring fresh colors are applied immediately.
+                lastPaletteSongId = -1L
                 initTheme()
             }
             BehaviourPreferences.PREDICTIVE_BACK -> {
