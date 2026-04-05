@@ -16,6 +16,7 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentPlayingQueueBinding
 import app.simple.felicity.databinding.HeaderPlayingQueueBinding
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.repository.models.Audio
@@ -111,6 +112,13 @@ class PlayingQueue : PanelFragment() {
         // Update header info
         headerBinding.count.text = getString(R.string.x_songs, songs.size)
         headerBinding.hours.text = songs.sumOf { it.duration }.toDynamicTimeString()
+
+        headerBinding.hours.setOnClickListener {
+            childFragmentManager.showTotalTime(
+                    totalTime = songs.sumOf { it.duration },
+                    count = songs.size
+            )
+        }
 
         // Check if current song is already visible; if not, scroll to it.
         // Only do this once on initial load — subsequent queue updates (drag reorder,

@@ -19,6 +19,7 @@ import app.simple.felicity.databinding.FragmentFavoritesBinding
 import app.simple.felicity.databinding.HeaderFavoritesBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.dialogs.favorites.FavoritesMenu.Companion.showFavoritesMenu
 import app.simple.felicity.dialogs.favorites.FavoritesSort.Companion.showFavoritesSort
 import app.simple.felicity.dialogs.songs.ShuffleAlgorithmDialog.Companion.showShuffleAlgorithmDialog
@@ -155,6 +156,13 @@ class Favorites : PanelFragment() {
         headerBinding.hours.text = songs.sumOf { it.duration }.toDynamicTimeString()
         headerBinding.sortStyle.setFavoritesSort()
         headerBinding.sortOrder.setFavoritesOrder()
+
+        headerBinding.hours.setOnClickListener {
+            childFragmentManager.showTotalTime(
+                    totalTime = songs.sumOf { it.duration },
+                    count = songs.size
+            )
+        }
     }
 
     private fun provideScrollPositionDataBasedOnSortStyle(songs: List<Audio>): List<SectionedFastScroller.Position> {

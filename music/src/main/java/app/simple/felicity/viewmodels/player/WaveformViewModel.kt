@@ -73,7 +73,7 @@ class WaveformViewModel @Inject constructor(
                     val rawAmplitudes = Amplituda(getApplication())
                         .processAudio(
                                 audio.path,
-                                Compress.withParams(Compress.AVERAGE, 1),
+                                Compress.withParams(Compress.AVERAGE, BARS_PER_SECOND),
                                 Cache.withParams(Cache.REUSE, audio.hash.toString())
                         )
                         .get() // Blocking call

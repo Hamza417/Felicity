@@ -17,6 +17,7 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentRecentlyPlayedBinding
 import app.simple.felicity.databinding.HeaderRecentlyPlayedBinding
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.dialogs.recentlyplayed.RecentlyPlayedMenu.Companion.showRecentlyPlayedMenu
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.RecentlyPlayedPreferences
@@ -123,6 +124,13 @@ class RecentlyPlayed : PanelFragment() {
 
         headerBinding.count.text = getString(R.string.x_songs, songs.size)
         headerBinding.hours.text = songs.sumOf { it.audio.duration }.toDynamicTimeString()
+
+        headerBinding.hours.setOnClickListener {
+            childFragmentManager.showTotalTime(
+                    totalTime = songs.sumOf { it.audio.duration },
+                    count = songs.size
+            )
+        }
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {

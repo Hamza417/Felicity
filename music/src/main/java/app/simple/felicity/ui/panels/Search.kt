@@ -20,6 +20,7 @@ import app.simple.felicity.databinding.FragmentSearchBinding
 import app.simple.felicity.databinding.HeaderSearchBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.dialogs.search.SearchMenu.Companion.showSearchMenu
 import app.simple.felicity.dialogs.search.SearchSort.Companion.showSearchSort
 import app.simple.felicity.extensions.fragments.PanelFragment
@@ -155,6 +156,13 @@ class Search : PanelFragment() {
         headerBinding.hours.text = songs.sumOf { it.duration }.toDynamicTimeString()
         headerBinding.sortStyle.setSearchSort()
         headerBinding.sortOrder.setSearchOrder()
+
+        headerBinding.hours.setOnClickListener {
+            childFragmentManager.showTotalTime(
+                    totalTime = songs.sumOf { it.duration },
+                    count = songs.size
+            )
+        }
     }
 
     private fun provideScrollPositions(songs: List<Audio>): List<SectionedFastScroller.Position> {

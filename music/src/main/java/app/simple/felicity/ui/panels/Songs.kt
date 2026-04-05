@@ -20,6 +20,7 @@ import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.databinding.HeaderSongsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.dialogs.songs.ShuffleAlgorithmDialog.Companion.showShuffleAlgorithmDialog
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
@@ -160,6 +161,13 @@ class Songs : PanelFragment() {
         headerBinding.hours.text = songs.sumOf { it.duration }.toDynamicTimeString()
         headerBinding.sortStyle.setSongSort()
         headerBinding.sortOrder.setSongOrder()
+
+        headerBinding.hours.setOnClickListener {
+            childFragmentManager.showTotalTime(
+                    totalTime = songs.sumOf { it.duration },
+                    count = songs.size
+            )
+        }
     }
 
     private fun provideScrollPositionDataBasedOnSortStyle(songs: List<Audio>): List<SectionedFastScroller.Position> {

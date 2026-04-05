@@ -11,4 +11,7 @@ object BundleConstants {
     const val PLAYLIST_ID = "playlist_id"
     const val FOLDER = "folder"
     const val YEAR_GROUP = "year_group"
+
+    const val TOTAL_TIME = "total_time"
+    const val COUNT = "count"
 }
