@@ -39,7 +39,6 @@ class WaveformViewModel @Inject constructor(
     private val waveformData: MutableLiveData<FloatArray> = MutableLiveData()
     private var currentPath: String? = null
     private var loadJob: Job? = null
-    private var amplitudaInstance: Amplituda? = null
 
     /**
      * Returns a [LiveData] stream of normalized amplitude arrays.
