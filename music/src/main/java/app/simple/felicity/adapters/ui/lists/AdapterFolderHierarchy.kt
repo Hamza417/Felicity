@@ -6,7 +6,6 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
-import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterFolderHierarchyFolderBinding
 import app.simple.felicity.databinding.AdapterFolderHierarchyFolderGridBinding
 import app.simple.felicity.databinding.AdapterStyleGridBinding
@@ -54,13 +53,10 @@ class AdapterFolderHierarchy(contents: FolderHierarchyContents) : RecyclerView.A
 
     override fun getItemViewType(position: Int): Int {
         val isSong = position >= folderCount
-        return when (FolderHierarchyPreferences.getGridType()) {
-            CommonPreferencesConstants.GRID_TYPE_GRID -> {
-                if (isSong) VIEW_TYPE_SONG_GRID else VIEW_TYPE_FOLDER_GRID
-            }
-            else -> {
-                if (isSong) VIEW_TYPE_SONG_LIST else VIEW_TYPE_FOLDER_LIST
-            }
+        return if (FolderHierarchyPreferences.getLayoutMode().isGrid) {
+            if (isSong) VIEW_TYPE_SONG_GRID else VIEW_TYPE_FOLDER_GRID
+        } else {
+            if (isSong) VIEW_TYPE_SONG_LIST else VIEW_TYPE_FOLDER_LIST
         }
     }
 
@@ -136,7 +132,7 @@ class AdapterFolderHierarchy(contents: FolderHierarchyContents) : RecyclerView.A
                     folder.songCount,
                     folder.songCount
             )
-            binding.cover.loadArtCoverWithPayload(folder)
+            // binding.cover.loadArtCoverWithPayload(folder)
             binding.container.setOnClickListener {
                 callbacks?.onFolderClicked(folder, it)
             }
@@ -152,7 +148,7 @@ class AdapterFolderHierarchy(contents: FolderHierarchyContents) : RecyclerView.A
                     folder.songCount,
                     folder.songCount
             )
-            binding.albumArt.loadArtCoverWithPayload(folder)
+            // binding.albumArt.loadArtCoverWithPayload(folder)
             binding.container.setOnClickListener {
                 callbacks?.onFolderClicked(folder, it)
             }

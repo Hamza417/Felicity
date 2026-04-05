@@ -12,7 +12,6 @@ import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.fastscroll.SlideFastScroller
 import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.decorations.views.SpacingRecyclerView
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.MainPreferences
 import app.simple.felicity.shared.utils.BarHeight
@@ -127,26 +126,6 @@ open class PanelFragment : MediaFragment() {
             else -> {
                 text = getString(R.string.list) // Default to list
                 setStartDrawable(R.drawable.ic_list_16dp)
-            }
-        }
-    }
-
-    fun SpacingRecyclerView.setGridType(gridType: Int) {
-        val gridLayoutManager = this.layoutManager as? GridLayoutManager
-        when (gridType) {
-            CommonPreferencesConstants.GRID_TYPE_LIST -> {
-                gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                    override fun getSpanSize(position: Int): Int = 1
-                }
-
-                applySpacing()
-            }
-            CommonPreferencesConstants.GRID_TYPE_GRID -> {
-                gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                    override fun getSpanSize(position: Int): Int = 1
-                }
-
-                applySpacing()
             }
         }
     }

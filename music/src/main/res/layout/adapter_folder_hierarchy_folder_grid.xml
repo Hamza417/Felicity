@@ -10,6 +10,7 @@
     <app.simple.felicity.decorations.views.SquareImageView
         android:id="@+id/album_art"
         android:layout_width="match_parent"
+        android:src="@drawable/ic_folder"
         android:layout_height="wrap_content"
         tools:ignore="ContentDescription" />
 

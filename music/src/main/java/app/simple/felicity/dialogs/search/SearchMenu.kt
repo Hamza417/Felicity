@@ -1,96 +1,30 @@
 package app.simple.felicity.dialogs.search
 
-import android.content.SharedPreferences
 import android.os.Bundle
-import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
-import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.core.singletons.AppOrientation
-import app.simple.felicity.databinding.DialogSearchMenuBinding
-import app.simple.felicity.decorations.seekbars.FelicitySeekbar
-import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
+import app.simple.felicity.constants.CommonPreferencesConstants.LayoutMode
+import app.simple.felicity.extensions.dialogs.BaseLayoutMenuDialog
 import app.simple.felicity.preferences.SearchPreferences
 
-class SearchMenu : ScopedBottomSheetFragment() {
+/**
+ * Bottom-sheet menu dialog for the Search panel containing the list style selector.
+ *
+ * @author Hamza417
+ */
+class SearchMenu : BaseLayoutMenuDialog() {
 
-    private lateinit var binding: DialogSearchMenuBinding
+    override fun getLayoutMode(): LayoutMode = SearchPreferences.getGridSize()
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        binding = DialogSearchMenuBinding.inflate(inflater, container, false)
-        return binding.root
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        val isLandscape = AppOrientation.isLandscape()
-        val list: List<CommonPreferencesConstants.LayoutMode> = if (isLandscape) {
-            listOf(
-                    CommonPreferencesConstants.LayoutMode.LABEL_ONE,
-                    CommonPreferencesConstants.LayoutMode.LABEL_TWO,
-                    CommonPreferencesConstants.LayoutMode.LIST_ONE,
-                    CommonPreferencesConstants.LayoutMode.LIST_TWO,
-                    CommonPreferencesConstants.LayoutMode.LIST_THREE,
-                    CommonPreferencesConstants.LayoutMode.GRID_TWO,
-                    CommonPreferencesConstants.LayoutMode.GRID_THREE,
-                    CommonPreferencesConstants.LayoutMode.GRID_FOUR,
-                    CommonPreferencesConstants.LayoutMode.GRID_FIVE,
-                    CommonPreferencesConstants.LayoutMode.GRID_SIX,
-            )
-        } else {
-            listOf(
-                    CommonPreferencesConstants.LayoutMode.LABEL_ONE,
-                    CommonPreferencesConstants.LayoutMode.LABEL_TWO,
-                    CommonPreferencesConstants.LayoutMode.LIST_ONE,
-                    CommonPreferencesConstants.LayoutMode.LIST_TWO,
-                    CommonPreferencesConstants.LayoutMode.GRID_TWO,
-                    CommonPreferencesConstants.LayoutMode.GRID_THREE,
-                    CommonPreferencesConstants.LayoutMode.GRID_FOUR,
-            )
-        }
-
-        Log.d(TAG, "onViewCreated: list: ${list.size}")
-        binding.listStyleSeekbar.setStepMode(true)
-        binding.listStyleSeekbar.setMin(1f)
-        binding.listStyleSeekbar.setMax(list.size.toFloat())
-        binding.listStyleSeekbar.setStepSize(1)
-        binding.listStyleSeekbar.setStep(list.indexOf(SearchPreferences.getGridSize()))
-
-        binding.listStyleSeekbar.setOnStepSeekChangeListener(object : FelicitySeekbar.OnStepSeekChangeListener {
-            override fun onStepChanged(seekbar: FelicitySeekbar, step: Int, fromUser: Boolean) {
-
-            }
-
-            override fun onStopTrackingTouch(seekbar: FelicitySeekbar) {
-                val mode = list.getOrNull(seekbar.getCurrentStep()) ?: return
-                SearchPreferences.setGridSize(mode)
-            }
-        })
-
-        binding.openAppSettings.setOnClickListener {
-            openAppSettings()
-        }
-    }
-
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
-        super.onSharedPreferenceChanged(sharedPreferences, key)
-        when (key) {
-
-        }
+    override fun setLayoutMode(mode: LayoutMode) {
+        SearchPreferences.setGridSize(mode)
     }
 
     companion object {
-        fun newInstance(): SearchMenu {
-            val args = Bundle()
-            val fragment = SearchMenu()
-            fragment.arguments = args
-            return fragment
-        }
+        private const val TAG = "SearchMenu"
 
-        private const val TAG = "SongsMenu"
+        fun newInstance(): SearchMenu {
+            return SearchMenu().apply { arguments = Bundle() }
+        }
 
         fun FragmentManager.showSearchMenu(): SearchMenu {
             val dialog = newInstance()

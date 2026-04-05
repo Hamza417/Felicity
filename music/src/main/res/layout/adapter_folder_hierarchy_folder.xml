@@ -10,6 +10,7 @@
 
     <ImageView
         android:id="@+id/cover"
+        android:src="@drawable/ic_folder"
         android:layout_width="@dimen/album_art_dimen"
         android:layout_height="@dimen/album_art_dimen"
         app:layout_constraintBottom_toBottomOf="parent"

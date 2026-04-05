@@ -17,9 +17,10 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentFoldersHierarchyBinding
 import app.simple.felicity.databinding.HeaderFoldersHierarchyBinding
+import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.folders.DialogFolderHierarchySort.Companion.showFolderHierarchySortDialog
+import app.simple.felicity.dialogs.folders.FolderHierarchyMenu.Companion.showFolderHierarchyMenu
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.FolderHierarchyPreferences
 import app.simple.felicity.repository.models.Audio
@@ -73,11 +74,11 @@ class FoldersHierarchy : PanelFragment() {
         binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
 
-        gridLayoutManager = GridLayoutManager(requireContext(), FolderHierarchyPreferences.getGridSize())
+        val mode = FolderHierarchyPreferences.getLayoutMode()
+        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
         binding.recyclerView.layoutManager = gridLayoutManager
-        binding.recyclerView.setGridType(FolderHierarchyPreferences.getGridType())
+        updateGridLayoutSpanSizeLookup()
 
-        setupSpanSizeLookup()
         setupClickListeners()
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -95,11 +96,11 @@ class FoldersHierarchy : PanelFragment() {
         super.onDestroyView()
     }
 
-    private fun setupSpanSizeLookup() {
+    private fun updateGridLayoutSpanSizeLookup() {
         gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int {
                 val viewType = adapter?.getItemViewType(position) ?: return 1
-                // Folder rows always span the full width so they are never partial tiles
+                // Folder rows always span the full width so they are never partial tiles.
                 return if (viewType in AdapterFolderHierarchy.FOLDER_VIEW_TYPES) {
                     gridLayoutManager?.spanCount ?: 1
                 } else {
@@ -111,7 +112,7 @@ class FoldersHierarchy : PanelFragment() {
 
     private fun setupClickListeners() {
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showFolderHierarchySortDialog()
+            childFragmentManager.showFolderHierarchyMenu()
         }
         headerBinding.sortOrder.setOnClickListener {
             childFragmentManager.showFolderHierarchySortDialog()
@@ -122,51 +123,12 @@ class FoldersHierarchy : PanelFragment() {
         headerBinding.search.setOnClickListener {
             openSearch()
         }
-
-        headerBinding.gridSize.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(
-                            R.string.one, R.string.two, R.string.three,
-                            R.string.four, R.string.five, R.string.six
-                    ),
-                    menuIcons = listOf(
-                            R.drawable.ic_one_16,
-                            R.drawable.ic_two_16dp,
-                            R.drawable.ic_three_16dp,
-                            R.drawable.ic_four_16dp,
-                            R.drawable.ic_five_16dp,
-                            R.drawable.ic_six_16dp
-                    ),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.one -> FolderHierarchyPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_ONE)
-                            R.string.two -> FolderHierarchyPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_TWO)
-                            R.string.three -> FolderHierarchyPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_THREE)
-                            R.string.four -> FolderHierarchyPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FOUR)
-                            R.string.five -> FolderHierarchyPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_FIVE)
-                            R.string.six -> FolderHierarchyPreferences.setGridSize(CommonPreferencesConstants.GRID_SIZE_SIX)
-                        }
-                    },
-                    onDismiss = {}
-            ).show()
+        // Redirect grid chips to the unified menu dialog.
+        headerBinding.gridSize.setOnClickListener {
+            childFragmentManager.showFolderHierarchyMenu()
         }
-
-        headerBinding.gridType.setOnClickListener { button ->
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = button,
-                    menuItems = listOf(R.string.list, R.string.grid),
-                    menuIcons = listOf(R.drawable.ic_list_16dp, R.drawable.ic_grid_16dp),
-                    onMenuItemClick = {
-                        when (it) {
-                            R.string.list -> FolderHierarchyPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_LIST)
-                            R.string.grid -> FolderHierarchyPreferences.setGridType(CommonPreferencesConstants.GRID_TYPE_GRID)
-                        }
-                    },
-                    onDismiss = {}
-            ).show()
+        headerBinding.gridType.setOnClickListener {
+            childFragmentManager.showFolderHierarchyMenu()
         }
     }
 
@@ -175,8 +137,6 @@ class FoldersHierarchy : PanelFragment() {
             adapter = AdapterFolderHierarchy(contents)
             adapter?.setCallbacks(object : GeneralAdapterCallbacks {
                 override fun onFolderClicked(folder: Folder, view: View) {
-                    // Open a new instance of this same fragment for the sub-folder.
-                    // The back stack manages going back — no manual navigation stack needed.
                     openFragment(newInstance(folder.path), TAG)
                 }
 
@@ -214,24 +174,33 @@ class FoldersHierarchy : PanelFragment() {
                 sorts = listOf(CommonPreferencesConstants.BY_NAME, CommonPreferencesConstants.BY_PATH),
                 preference = FolderHierarchyPreferences.getSortStyle()
         )
-        headerBinding.gridSize.setGridSizeValue(FolderHierarchyPreferences.getGridSize())
-        headerBinding.gridType.setGridTypeValue(FolderHierarchyPreferences.getGridType())
+
+        val currentMode = FolderHierarchyPreferences.getLayoutMode()
+        headerBinding.gridSize.text = currentMode.spanCount.toString()
+        if (currentMode.isGrid) {
+            headerBinding.gridType.text = getString(R.string.grid)
+            headerBinding.gridType.setStartDrawable(R.drawable.ic_grid_16dp)
+        } else {
+            headerBinding.gridType.text = getString(R.string.list)
+            headerBinding.gridType.setStartDrawable(R.drawable.ic_list_16dp)
+        }
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
-            FolderHierarchyPreferences.GRID_SIZE_PORTRAIT,
-            FolderHierarchyPreferences.GRID_SIZE_LANDSCAPE -> {
-                headerBinding.gridSize.setGridSizeValue(FolderHierarchyPreferences.getGridSize())
-                binding.recyclerView.beginDelayedTransition()
-                gridLayoutManager?.spanCount = FolderHierarchyPreferences.getGridSize()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
-            }
-            FolderHierarchyPreferences.GRID_TYPE_PORTRAIT,
-            FolderHierarchyPreferences.GRID_TYPE_LANDSCAPE -> {
-                binding.recyclerView.setGridType(FolderHierarchyPreferences.getGridType())
-                headerBinding.gridType.setGridTypeValue(FolderHierarchyPreferences.getGridType())
+            FolderHierarchyPreferences.LAYOUT_MODE_PORTRAIT,
+            FolderHierarchyPreferences.LAYOUT_MODE_LANDSCAPE -> {
+                val newMode = FolderHierarchyPreferences.getLayoutMode()
+                gridLayoutManager?.spanCount = newMode.spanCount
+                headerBinding.gridSize.text = newMode.spanCount.toString()
+                if (newMode.isGrid) {
+                    headerBinding.gridType.text = getString(R.string.grid)
+                    headerBinding.gridType.setStartDrawable(R.drawable.ic_grid_16dp)
+                } else {
+                    headerBinding.gridType.text = getString(R.string.list)
+                    headerBinding.gridType.setStartDrawable(R.drawable.ic_list_16dp)
+                }
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }

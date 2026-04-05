@@ -1,58 +1,42 @@
 package app.simple.felicity.preferences
 
 import androidx.core.content.edit
-import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.constants.CommonPreferencesConstants.ASCENDING
 import app.simple.felicity.constants.CommonPreferencesConstants.BY_NAME
+import app.simple.felicity.constants.CommonPreferencesConstants.LayoutMode
+import app.simple.felicity.constants.CommonPreferencesConstants.toLayoutMode
 import app.simple.felicity.core.singletons.AppOrientation
 import app.simple.felicity.manager.SharedPreferences
 
+/**
+ * Shared preference accessors for the Folders Hierarchy panel.
+ *
+ * @author Hamza417
+ */
 object FolderHierarchyPreferences {
 
-    const val GRID_SIZE_PORTRAIT = "folder_hierarchy_grid_size_portrait"
-    const val GRID_SIZE_LANDSCAPE = "folder_hierarchy_grid_size_landscape"
-    const val GRID_TYPE_PORTRAIT = "folder_hierarchy_grid_type_portrait"
-    const val GRID_TYPE_LANDSCAPE = "folder_hierarchy_grid_type_landscape"
+    const val LAYOUT_MODE_PORTRAIT = "folder_hierarchy_layout_mode_portrait"
+    const val LAYOUT_MODE_LANDSCAPE = "folder_hierarchy_layout_mode_landscape"
     const val SORT_STYLE = "folder_hierarchy_sort_style"
     const val SORT_ORDER = "folder_hierarchy_sort_order"
 
-    // -------------------------------------------------------------------------------------------- //
-
-    fun getGridSize(): Int {
+    fun getLayoutMode(): LayoutMode {
         return if (AppOrientation.isLandscape()) {
-            SharedPreferences.getSharedPreferences().getInt(GRID_SIZE_LANDSCAPE, CommonPreferencesConstants.GRID_SIZE_TWO)
+            SharedPreferences.getSharedPreferences()
+                .getString(LAYOUT_MODE_LANDSCAPE, LayoutMode.LIST_TWO.name)!!.toLayoutMode()
         } else {
-            SharedPreferences.getSharedPreferences().getInt(GRID_SIZE_PORTRAIT, CommonPreferencesConstants.GRID_SIZE_ONE)
+            SharedPreferences.getSharedPreferences()
+                .getString(LAYOUT_MODE_PORTRAIT, LayoutMode.LIST_ONE.name)!!.toLayoutMode()
         }
     }
 
-    fun setGridSize(size: Int) {
+    fun setLayoutMode(mode: LayoutMode) {
         if (AppOrientation.isLandscape()) {
-            SharedPreferences.getSharedPreferences().edit { putInt(GRID_SIZE_LANDSCAPE, size) }
+            SharedPreferences.getSharedPreferences().edit { putString(LAYOUT_MODE_LANDSCAPE, mode.name) }
         } else {
-            SharedPreferences.getSharedPreferences().edit { putInt(GRID_SIZE_PORTRAIT, size) }
+            SharedPreferences.getSharedPreferences().edit { putString(LAYOUT_MODE_PORTRAIT, mode.name) }
         }
     }
-
-    // -------------------------------------------------------------------------------------------- //
-
-    fun getGridType(): Int {
-        return if (AppOrientation.isLandscape()) {
-            SharedPreferences.getSharedPreferences().getInt(GRID_TYPE_LANDSCAPE, CommonPreferencesConstants.GRID_TYPE_LIST)
-        } else {
-            SharedPreferences.getSharedPreferences().getInt(GRID_TYPE_PORTRAIT, CommonPreferencesConstants.GRID_TYPE_LIST)
-        }
-    }
-
-    fun setGridType(type: Int) {
-        if (AppOrientation.isLandscape()) {
-            SharedPreferences.getSharedPreferences().edit { putInt(GRID_TYPE_LANDSCAPE, type) }
-        } else {
-            SharedPreferences.getSharedPreferences().edit { putInt(GRID_TYPE_PORTRAIT, type) }
-        }
-    }
-
-    // -------------------------------------------------------------------------------------------- //
 
     fun getSortStyle(): Int {
         return SharedPreferences.getSharedPreferences().getInt(SORT_STYLE, BY_NAME)
@@ -61,8 +45,6 @@ object FolderHierarchyPreferences {
     fun setSortStyle(sort: Int) {
         SharedPreferences.getSharedPreferences().edit { putInt(SORT_STYLE, sort) }
     }
-
-    // -------------------------------------------------------------------------------------------- //
 
     fun getSortOrder(): Int {
         return SharedPreferences.getSharedPreferences().getInt(SORT_ORDER, ASCENDING)
