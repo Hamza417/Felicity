@@ -1,5 +1,6 @@
 package app.simple.felicity.extensions.fragments
 
+import android.annotation.SuppressLint
 import android.graphics.Typeface
 import android.os.Bundle
 import android.text.Spannable
@@ -7,7 +8,10 @@ import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
 import android.util.Log
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
+import android.widget.ImageButton
 import android.widget.ImageView
 import androidx.core.app.ShareCompat
 import androidx.core.content.FileProvider
@@ -20,6 +24,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
+import app.simple.felicity.core.maths.Number.toNegative
 import app.simple.felicity.databinding.DialogDeleteSongBinding
 import app.simple.felicity.databinding.DialogSongMenuBinding
 import app.simple.felicity.databinding.DialogSureBinding
@@ -40,6 +45,7 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.shuffle.Shuffle.shuffle
 import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
+import app.simple.felicity.shared.utils.ViewUtils.cancelTouch
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.pages.AlbumPage
@@ -177,7 +183,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
     private fun createSongHistoryDatabase(songs: List<Audio>) {
         val seek = MediaPlaybackManager.getSeekPosition()
-        val idx = MediaPlaybackManager.getCurrentPosition()
+        val idx = MediaPlaybackManager.getCurrentSongPosition()
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val audioDatabase = AudioDatabase.getInstance(requireContext())
@@ -225,6 +231,119 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
             if (wantsMiniPlayerVisible.not()) {
                 hideMiniPlayer()
+            }
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    protected fun ImageButton.setupFastForwardButton() {
+        var isPulsing = false
+
+        val pulseRunnable = object : Runnable {
+            override fun run() {
+                val currentPosition = MediaPlaybackManager.getSeekPosition()
+                val totalDuration = MediaPlaybackManager.getDuration()
+
+                // Check if the next pulse will push us past the end of the song
+                if (currentPosition + SEEK_PER_PULSE_MS >= totalDuration) {
+                    // Stop the pulse
+                    isPulsing = false
+                    handler.removeCallbacks(this)
+                    cancelTouch()
+                    return
+                }
+
+                // Otherwise, continue pulsing as normal
+                isPulsing = true
+                MediaPlaybackManager.seekRelative(SEEK_PER_PULSE_MS)
+                handler.postDelayed(this, SEEK_INTERVAL_MS)
+            }
+        }
+
+        setOnTouchListener { view, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    isPulsing = false
+                    // Wait for the standard long-press timeout before starting the pulses
+                    handler.postDelayed(pulseRunnable, ViewConfiguration.getLongPressTimeout().toLong())
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    handler.removeCallbacks(pulseRunnable)
+
+                    // If the user lifted their finger before it started pulsing,
+                    // treat it as a standard click.
+                    if (!isPulsing) {
+                        view.performClick() // Good practice for accessibility/click sounds
+                        MediaPlaybackManager.next()
+                    }
+
+                    isPulsing = false
+                    true
+                }
+                MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_MOVE -> {
+                    // Catches cases where the finger slides off the button
+                    handler.removeCallbacks(pulseRunnable)
+                    isPulsing = true
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    protected fun ImageButton.setupFastRewindButton() {
+        var isPulsing = false
+
+        val pulseRunnable = object : Runnable {
+            override fun run() {
+                val currentPosition = MediaPlaybackManager.getSeekPosition()
+
+                // Check if the next pulse will push us before the start of the song
+                if (currentPosition + SEEK_PER_PULSE_MS.toNegative() <= 0) {
+                    // Stop the pulse
+                    isPulsing = false
+                    handler.removeCallbacks(this)
+                    cancelTouch()
+                    return
+                }
+
+                // Otherwise, continue pulsing as normal
+                isPulsing = true
+                MediaPlaybackManager.seekRelative(SEEK_PER_PULSE_MS.toNegative())
+                handler.postDelayed(this, SEEK_INTERVAL_MS)
+            }
+        }
+
+        setOnTouchListener { view, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    isPulsing = false
+                    // Wait for the standard long-press timeout before starting the pulses
+                    handler.postDelayed(pulseRunnable, ViewConfiguration.getLongPressTimeout().toLong())
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    handler.removeCallbacks(pulseRunnable)
+
+                    // If the user lifted their finger before it started pulsing,
+                    // treat it as a standard click.
+                    if (!isPulsing) {
+                        view.performClick() // Good practice for accessibility/click sounds
+                        MediaPlaybackManager.next()
+                    }
+
+                    isPulsing = false
+                    true
+                }
+                MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_MOVE -> {
+                    // Catches cases where the finger slides off the button
+                    handler.removeCallbacks(pulseRunnable)
+                    isPulsing = true
+                    true
+                }
+                else -> false
             }
         }
     }
@@ -660,7 +779,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
     /**
      * Re-asserts the correct mini player visibility for this fragment when a predictive back
-     * gesture is cancelled. This is necessary because the previous fragment's lifecycle may
+     * gesture is canceled. This is necessary because the previous fragment's lifecycle may
      * partially advance while the gesture is in progress (for example, via
      * {@code repeatOnLifecycle(STARTED)}), which can imperatively call {@code showMiniPlayer()}
      * and leave the shared mini player in a leaked state. Calling this on cancel ensures the
@@ -678,5 +797,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
     companion object {
         private const val TAG = "MediaFragment"
+
+        private const val SEEK_PER_PULSE_MS = 2500L
+        private const val SEEK_INTERVAL_MS = 500L
     }
 }

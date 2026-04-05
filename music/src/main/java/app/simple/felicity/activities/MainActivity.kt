@@ -156,7 +156,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                     )
                 }
                 binding.miniPlayer.setItems(items)
-                val songPosition = MediaPlaybackManager.getCurrentPosition()
+                val songPosition = MediaPlaybackManager.getCurrentSongPosition()
                 binding.miniPlayer.setCurrentItem(
                         if (songPosition < songs.size) songPosition else 0,
                         smoothScroll = false

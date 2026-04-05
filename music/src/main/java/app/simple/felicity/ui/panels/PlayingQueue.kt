@@ -128,7 +128,7 @@ class PlayingQueue : PanelFragment() {
         if (!hasScrolledToInitialPosition && binding.recyclerView.layoutManager is GridLayoutManager) {
             hasScrolledToInitialPosition = true
             val layoutManager = binding.recyclerView.layoutManager as GridLayoutManager
-            val currentPosition = MediaPlaybackManager.getCurrentPosition()
+            val currentPosition = MediaPlaybackManager.getCurrentSongPosition()
             binding.recyclerView.post {
                 // Post so the layout has had a chance to measure before we read visible range
                 val firstVisible = layoutManager.findFirstVisibleItemPosition()

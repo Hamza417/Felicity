@@ -1,5 +1,7 @@
 package app.simple.felicity.core.maths
 
+import kotlin.math.abs
+
 object Number {
     fun Int.absolute(): Int {
         return if (this < 0) -this else this
@@ -31,4 +33,9 @@ object Number {
         if (wrapped < 0) wrapped += range
         return wrapped + min
     }
+
+    fun Int.toNegative(): Int = -abs(this)
+    fun Long.toNegative(): Long = -abs(this)
+    fun Float.toNegative(): Float = -abs(this)
+    fun Double.toNegative(): Double = -abs(this)
 }

@@ -487,7 +487,12 @@ object MediaPlaybackManager {
         scope.launch { _songSeekPositionFlow.emit(clamped) }
     }
 
-    fun getCurrentPosition(): Int {
+    fun seekRelative(offsetMs: Long) {
+        val current = getSeekPosition()
+        seekTo(current + offsetMs)
+    }
+
+    fun getCurrentSongPosition(): Int {
         return currentSongPosition
     }
 

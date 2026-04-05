@@ -85,7 +85,7 @@ abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
             PlaybackStateManager.savePlaybackState(
                     db = audioDatabase,
                     queueHash = songs.map { it.hash },
-                    index = MediaPlaybackManager.getCurrentPosition(),
+                    index = MediaPlaybackManager.getCurrentSongPosition(),
                     position = MediaPlaybackManager.getSeekPosition(),
                     shuffle = false,
                     repeat = 0

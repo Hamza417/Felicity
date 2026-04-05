@@ -112,7 +112,7 @@ class DefaultPlayer : MediaFragment() {
         // Jump to the currently playing song immediately after the adapter is set.
         // Using smoothScroll=false so the correct page (and its cover art) is shown
         // from the very first frame, even when position == 0.
-        val initialPosition = MediaPlaybackManager.getCurrentPosition()
+        val initialPosition = MediaPlaybackManager.getCurrentSongPosition()
         binding.pager.setCurrentItem(initialPosition, smoothScroll = false)
         binding.count.text = buildString {
             append(initialPosition + 1)
@@ -129,13 +129,8 @@ class DefaultPlayer : MediaFragment() {
             }
         })
 
-        binding.next.setOnClickListener {
-            MediaPlaybackManager.next()
-        }
-
-        binding.previous.setOnClickListener {
-            MediaPlaybackManager.previous()
-        }
+        binding.next.setupFastForwardButton()
+        binding.previous.setupFastRewindButton()
 
         binding.play.setOnClickListener {
             MediaPlaybackManager.flipState()
@@ -156,7 +151,7 @@ class DefaultPlayer : MediaFragment() {
         binding.menu.setOnClickListener {
             openSongsMenu(
                     audios = MediaPlaybackManager.getSongs(),
-                    position = MediaPlaybackManager.getCurrentPosition(),
+                    position = MediaPlaybackManager.getCurrentSongPosition(),
                     imageView = binding.pager.getCurrentImageView()
             )
         }
@@ -324,7 +319,7 @@ class DefaultPlayer : MediaFragment() {
     override fun onSongListChanged(songs: List<Audio>) {
         super.onSongListChanged(songs)
         val adapter = imagePageAdapter ?: return
-        val currentPos = MediaPlaybackManager.getCurrentPosition()
+        val currentPos = MediaPlaybackManager.getCurrentSongPosition()
         adapter.updateCount(songs.size)
         binding.pager.notifyDataSetChanged()
         // Keep the pager on the correct page after the list shrinks or reorders.

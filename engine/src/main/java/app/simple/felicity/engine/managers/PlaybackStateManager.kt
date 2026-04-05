@@ -44,7 +44,7 @@ object PlaybackStateManager {
 
         withContext(Dispatchers.Main) {
             seek = MediaPlaybackManager.getSeekPosition()
-            position = MediaPlaybackManager.getCurrentPosition()
+            position = MediaPlaybackManager.getCurrentSongPosition()
         }
 
         if (seek == 0L) {

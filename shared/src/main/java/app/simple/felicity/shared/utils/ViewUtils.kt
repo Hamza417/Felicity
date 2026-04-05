@@ -7,6 +7,7 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
+import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -380,5 +381,12 @@ object ViewUtils {
             shape = GradientDrawable.RECTANGLE
             setColor(color)
         }
+    }
+
+    fun View.cancelTouch() {
+        val now = SystemClock.uptimeMillis()
+        val cancelEvent = MotionEvent.obtain(now, now, MotionEvent.ACTION_CANCEL, 0f, 0f, 0)
+        dispatchTouchEvent(cancelEvent)
+        cancelEvent.recycle()
     }
 }

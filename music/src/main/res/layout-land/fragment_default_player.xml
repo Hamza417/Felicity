@@ -242,7 +242,7 @@
             app:wsbFullWaveform="true"
             app:wsbLabelEdgeMargin="@dimen/padding_20"
             app:wsbLabelGravity="center"
-            app:wsbLabelHighlightMode="flat" />
+            app:wsbLabelHighlightMode="both" />
 
 
         <app.simple.felicity.decorations.theme.ThemeDivider
@@ -284,7 +284,7 @@
                 android:id="@+id/previous"
                 android:layout_width="@dimen/button_size"
                 android:layout_height="@dimen/button_size"
-                android:src="@drawable/ic_skip_previous"
+                android:src="@drawable/ic_fast_rewind"
                 android:layout_gravity="center_vertical"
                 android:scaleType="fitCenter"
                 app:buttonTintType="regular" />
@@ -302,7 +302,7 @@
                 android:layout_width="@dimen/button_size"
                 android:layout_height="@dimen/button_size"
                 android:layout_gravity="center_vertical"
-                android:src="@drawable/ic_skip_next"
+                android:src="@drawable/ic_fast_forward"
                 android:scaleType="fitCenter"
                 app:buttonTintType="regular" />
 
