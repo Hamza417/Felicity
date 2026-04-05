@@ -553,12 +553,26 @@ class FelicityPager @JvmOverloads constructor(
                 initialMotionX = ev.x
                 initialMotionY = ev.y
                 lastMotionX = ev.x
+                isBeingDragged = false
+                isVerticalDrag = false
+
+                // Capture the scroll position and start velocity tracking here so that
+                // finishDrag() computes the snap-to-page target correctly even when a
+                // child view (e.g. an ImageView with a click listener) consumes this
+                // ACTION_DOWN, causing onTouchEvent(DOWN) to never be called.
+                // Without this, dragStartScrollPx remains stale from the previous touch
+                // session and the snap logic picks the wrong destination page.
+                dragStartScrollPx = scrollPx
+                velocityTracker?.recycle()
+                velocityTracker = VelocityTracker.obtain().apply { addMovement(ev) }
+
                 // Lock parent intercept immediately on DOWN so a vertical RecyclerView
                 // ancestor cannot steal horizontal swipes before direction is confirmed.
                 // The lock is re-opened below if the gesture turns out to be vertical.
                 parent?.requestDisallowInterceptTouchEvent(true)
             }
             MotionEvent.ACTION_MOVE -> {
+                velocityTracker?.addMovement(ev)
                 val dx = abs(ev.x - initialMotionX)
                 val dy = abs(ev.y - initialMotionY)
                 // If the gesture is clearly vertical, re-allow the parent (e.g., a vertical
@@ -570,6 +584,14 @@ class FelicityPager @JvmOverloads constructor(
                 // Only intercept when the gesture is clearly horizontal, so that a
                 // primarily-vertical swipe is never stolen from a parent swipe-to-close handler.
                 if (dx > touchSlop * 0.6f && dx > dy) return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                // If the child handled the full touch sequence (pager never intercepted),
+                // clean up the velocity tracker that was allocated in ACTION_DOWN above.
+                velocityTracker?.recycle()
+                velocityTracker = null
+                isBeingDragged = false
+                isVerticalDrag = false
             }
         }
         return false
@@ -585,6 +607,9 @@ class FelicityPager @JvmOverloads constructor(
                 lastMotionX = event.x
                 dragStartScrollPx = scrollPx
                 isVerticalDrag = false
+                // onInterceptTouchEvent(DOWN) may have already allocated the tracker for
+                // the same event; recycle it and start fresh so each drag session has a
+                // clean baseline (adding the same DOWN event once is sufficient).
                 velocityTracker?.recycle()
                 velocityTracker = VelocityTracker.obtain().apply { addMovement(event) }
                 // Lock parent intercept immediately so a vertical ancestor (e.g., RecyclerView)
