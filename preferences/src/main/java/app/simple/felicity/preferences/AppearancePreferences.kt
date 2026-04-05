@@ -98,6 +98,12 @@ object AppearancePreferences {
         return getSharedPreferences().getInt(LAST_LIGHT_THEME, ThemeConstants.LIGHT_THEME)
     }
 
+    fun isLastThemeAlbumArtBased(): Boolean {
+        val lastDark = getLastDarkTheme()
+        val lastLight = getLastLightTheme()
+        return (lastDark == ThemeConstants.ALBUM_ART_DARK || lastLight == ThemeConstants.ALBUM_ART_LIGHT)
+    }
+
     // ---------------------------------------------------------------------------------------------------------- //
 
     @SuppressLint("UseKtx")

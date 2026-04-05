@@ -100,14 +100,15 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     /**
      * Observes [MediaManager.songPositionFlow] so the album-art accent palette is refreshed
      * every time the track changes, without blocking the main thread or the media controller.
+     *
+     * Uses [ThemeUtils.isEffectiveAlbumArtTheme] to correctly detect album-art mode even when
+     * the active theme is resolved through Follow System or Day/Night sub-theme settings.
      */
     private fun observeSongChangesForPalette() {
         lifecycleScope.launch {
             MediaManager.songPositionFlow.collect {
                 val isAlbumArtAccent = AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER
-                val currentTheme = AppearancePreferences.getTheme()
-                val isAlbumArtTheme = currentTheme == ThemeConstants.ALBUM_ART_LIGHT ||
-                        currentTheme == ThemeConstants.ALBUM_ART_DARK
+                val isAlbumArtTheme = ThemeUtils.isEffectiveAlbumArtTheme(resources)
                 if (isAlbumArtAccent || isAlbumArtTheme) {
                     generateAlbumArtPalette()
                 }
@@ -246,9 +247,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
     protected fun generateAlbumArtPalette() {
         val isAlbumArtAccent = AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER
-        val currentTheme = AppearancePreferences.getTheme()
-        val isAlbumArtTheme = currentTheme == ThemeConstants.ALBUM_ART_LIGHT ||
-                currentTheme == ThemeConstants.ALBUM_ART_DARK
+        val isAlbumArtTheme = ThemeUtils.isEffectiveAlbumArtTheme(resources)
 
         if (!isAlbumArtAccent && !isAlbumArtTheme) return
 
@@ -286,22 +285,22 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                 }
 
                 withContext(Dispatchers.Main) {
-                    // Guard: settings may have changed while the coroutine was running.
+                    // Guard: the accent setting may have changed while the coroutine was running.
                     val stillAlbumArtAccent = AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER
-                    val stillTheme = AppearancePreferences.getTheme()
-                    val stillAlbumArtTheme = stillTheme == ThemeConstants.ALBUM_ART_LIGHT ||
-                            stillTheme == ThemeConstants.ALBUM_ART_DARK
+                    // Re-evaluate using the full effective-theme check (covers Follow System /
+                    // Day-Night sub-theme selections, not just direct ALBUM_ART_* constants).
+                    val albumArtThemeActive = ThemeUtils.isEffectiveAlbumArtTheme(resources)
 
-                    if (!stillAlbumArtAccent && !stillAlbumArtTheme) return@withContext
+                    if (!stillAlbumArtAccent && !albumArtThemeActive) return@withContext
 
                     lastPaletteSongId = audio.id
 
                     // Apply album art theme — independently of the accent.
                     // Populate AlbumArtData then push a brand-new Theme object into ThemeManager
                     // so that every registered ThemeChangedListener is notified automatically.
-                    if (stillAlbumArtTheme) {
+                    if (albumArtThemeActive) {
                         AlbumArtData.populate(palette)
-                        ThemeManager.theme = if (stillTheme == ThemeConstants.ALBUM_ART_DARK) {
+                        ThemeManager.theme = if (ThemeUtils.isEffectiveAlbumArtDark(resources)) {
                             AlbumArtDark()
                         } else {
                             AlbumArtLight()
@@ -334,9 +333,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         ThemeUtils.updateNavAndStatusColors(resources, window)
 
         val isAlbumArtAccent = AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER
-        val currentTheme = AppearancePreferences.getTheme()
-        val isAlbumArtTheme = currentTheme == ThemeConstants.ALBUM_ART_LIGHT ||
-                currentTheme == ThemeConstants.ALBUM_ART_DARK
+        val isAlbumArtTheme = ThemeUtils.isEffectiveAlbumArtTheme(resources)
 
         // Set a regular accent immediately. Album art accent is applied asynchronously via
         // generateAlbumArtPalette once the bitmap is loaded and must not be pre-empted here.

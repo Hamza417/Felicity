@@ -9,6 +9,7 @@ import androidx.lifecycle.LifecycleOwner
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.shared.utils.CalendarUtils
 import app.simple.felicity.theme.constants.ThemeConstants
+import app.simple.felicity.theme.managers.ThemeUtils.isEffectiveAlbumArtTheme
 import app.simple.felicity.theme.themes.dark.AMOLED
 import app.simple.felicity.theme.themes.dark.AlbumArtDark
 import app.simple.felicity.theme.themes.dark.DarkTheme
@@ -250,6 +251,75 @@ object ThemeUtils {
 
     fun isFollowSystem(): Boolean {
         return AppearancePreferences.getTheme() == ThemeConstants.FOLLOW_SYSTEM
+    }
+
+    /**
+     * Returns true if the album-art theme is the currently effective active theme.
+     *
+     * Handles direct [ThemeConstants.ALBUM_ART_LIGHT] or [ThemeConstants.ALBUM_ART_DARK]
+     * selection, as well as [ThemeConstants.FOLLOW_SYSTEM] and [ThemeConstants.DAY_NIGHT]
+     * modes where the user's chosen light or dark sub-theme may be an album-art variant.
+     *
+     * @param resources The current [Resources] instance used to resolve the system night-mode
+     *                  flag when the theme is [ThemeConstants.FOLLOW_SYSTEM].
+     * @return true if album-art colors should be applied.
+     * @author Hamza417
+     */
+    fun isEffectiveAlbumArtTheme(resources: Resources): Boolean {
+        return when (AppearancePreferences.getTheme()) {
+            ThemeConstants.ALBUM_ART_LIGHT,
+            ThemeConstants.ALBUM_ART_DARK -> true
+
+            ThemeConstants.FOLLOW_SYSTEM -> {
+                when (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) {
+                    Configuration.UI_MODE_NIGHT_YES ->
+                        AppearancePreferences.getLastDarkTheme() == ThemeConstants.ALBUM_ART_DARK
+                    Configuration.UI_MODE_NIGHT_NO ->
+                        AppearancePreferences.getLastLightTheme() == ThemeConstants.ALBUM_ART_LIGHT
+                    else -> false
+                }
+            }
+
+            ThemeConstants.DAY_NIGHT -> {
+                if (CalendarUtils.isDayOrNight()) {
+                    AppearancePreferences.getLastLightTheme() == ThemeConstants.ALBUM_ART_LIGHT
+                } else {
+                    AppearancePreferences.getLastDarkTheme() == ThemeConstants.ALBUM_ART_DARK
+                }
+            }
+
+            else -> false
+        }
+    }
+
+    /**
+     * Returns true if the currently active album-art theme variant is the dark one.
+     *
+     * This is only meaningful when [isEffectiveAlbumArtTheme] returns true. The result
+     * determines whether [app.simple.felicity.theme.themes.dark.AlbumArtDark] or
+     * [app.simple.felicity.theme.themes.light.AlbumArtLight] is pushed into [ThemeManager].
+     *
+     * @param resources The current [Resources] instance.
+     * @return true for the dark variant, false for the light variant.
+     * @author Hamza417
+     */
+    fun isEffectiveAlbumArtDark(resources: Resources): Boolean {
+        return when (AppearancePreferences.getTheme()) {
+            ThemeConstants.ALBUM_ART_DARK -> true
+
+            ThemeConstants.FOLLOW_SYSTEM -> {
+                resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+                        Configuration.UI_MODE_NIGHT_YES &&
+                        AppearancePreferences.getLastDarkTheme() == ThemeConstants.ALBUM_ART_DARK
+            }
+
+            ThemeConstants.DAY_NIGHT -> {
+                !CalendarUtils.isDayOrNight() &&
+                        AppearancePreferences.getLastDarkTheme() == ThemeConstants.ALBUM_ART_DARK
+            }
+
+            else -> false
+        }
     }
 
     fun updateNavAndStatusColors(resources: Resources, window: Window) {
