@@ -17,7 +17,6 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentFoldersHierarchyBinding
 import app.simple.felicity.databinding.HeaderFoldersHierarchyBinding
-import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.folders.DialogFolderHierarchySort.Companion.showFolderHierarchySortDialog
 import app.simple.felicity.dialogs.folders.FolderHierarchyMenu.Companion.showFolderHierarchyMenu
@@ -123,13 +122,6 @@ class FoldersHierarchy : PanelFragment() {
         headerBinding.search.setOnClickListener {
             openSearch()
         }
-        // Redirect grid chips to the unified menu dialog.
-        headerBinding.gridSize.setOnClickListener {
-            childFragmentManager.showFolderHierarchyMenu()
-        }
-        headerBinding.gridType.setOnClickListener {
-            childFragmentManager.showFolderHierarchyMenu()
-        }
     }
 
     private fun updateContents(contents: FolderHierarchyViewModel.FolderHierarchyContents) {
@@ -174,16 +166,6 @@ class FoldersHierarchy : PanelFragment() {
                 sorts = listOf(CommonPreferencesConstants.BY_NAME, CommonPreferencesConstants.BY_PATH),
                 preference = FolderHierarchyPreferences.getSortStyle()
         )
-
-        val currentMode = FolderHierarchyPreferences.getLayoutMode()
-        headerBinding.gridSize.text = currentMode.spanCount.toString()
-        if (currentMode.isGrid) {
-            headerBinding.gridType.text = getString(R.string.grid)
-            headerBinding.gridType.setStartDrawable(R.drawable.ic_grid_16dp)
-        } else {
-            headerBinding.gridType.text = getString(R.string.list)
-            headerBinding.gridType.setStartDrawable(R.drawable.ic_list_16dp)
-        }
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
@@ -193,14 +175,6 @@ class FoldersHierarchy : PanelFragment() {
             FolderHierarchyPreferences.LAYOUT_MODE_LANDSCAPE -> {
                 val newMode = FolderHierarchyPreferences.getLayoutMode()
                 gridLayoutManager?.spanCount = newMode.spanCount
-                headerBinding.gridSize.text = newMode.spanCount.toString()
-                if (newMode.isGrid) {
-                    headerBinding.gridType.text = getString(R.string.grid)
-                    headerBinding.gridType.setStartDrawable(R.drawable.ic_grid_16dp)
-                } else {
-                    headerBinding.gridType.text = getString(R.string.list)
-                    headerBinding.gridType.setStartDrawable(R.drawable.ic_list_16dp)
-                }
                 binding.recyclerView.beginDelayedTransition()
                 binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
