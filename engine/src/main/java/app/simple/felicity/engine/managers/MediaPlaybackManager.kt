@@ -15,6 +15,7 @@ import app.simple.felicity.engine.managers.MediaPlaybackManager.mediaController
 import app.simple.felicity.engine.managers.MediaPlaybackManager.moveQueueItemSilently
 import app.simple.felicity.engine.managers.MediaPlaybackManager.next
 import app.simple.felicity.engine.managers.MediaPlaybackManager.notifyCurrentPosition
+import app.simple.felicity.engine.managers.MediaPlaybackManager.notifyPlaybackState
 import app.simple.felicity.engine.managers.MediaPlaybackManager.pendingSeekPositions
 import app.simple.felicity.engine.managers.MediaPlaybackManager.previous
 import app.simple.felicity.engine.managers.MediaPlaybackManager.removeQueueItemSilently
@@ -91,6 +92,25 @@ object MediaPlaybackManager {
      * @author Hamza417
      */
     private var isQueueBeingReplaced: Boolean = false
+
+    /**
+     * The most recently emitted playback state constant from [notifyPlaybackState].
+     * Initialized to [MediaConstants.PLAYBACK_STOPPED] so callers can safely query it
+     * before the service has started.
+     */
+    private var lastKnownPlaybackState: Int = MediaConstants.PLAYBACK_STOPPED
+
+    /**
+     * Returns `true` when the player has reached [MediaConstants.PLAYBACK_READY],
+     * [MediaConstants.PLAYBACK_PLAYING], or [MediaConstants.PLAYBACK_PAUSED] — i.e., whenever
+     * the decoder has finished its initial buffering phase and it is safe to open the audio
+     * file concurrently (for example for waveform extraction).
+     */
+    fun isPlayerReady(): Boolean {
+        return lastKnownPlaybackState == MediaConstants.PLAYBACK_READY
+                || lastKnownPlaybackState == MediaConstants.PLAYBACK_PLAYING
+                || lastKnownPlaybackState == MediaConstants.PLAYBACK_PAUSED
+    }
 
     private val listeners = mutableSetOf<MediaStateListener>()
 
@@ -607,6 +627,7 @@ object MediaPlaybackManager {
      * Service can push controller state here; we also drive seek updates based on it.
      */
     fun notifyPlaybackState(state: Int) {
+        lastKnownPlaybackState = state
         scope.launch {
             _playbackStateFlow.emit(state)
         }

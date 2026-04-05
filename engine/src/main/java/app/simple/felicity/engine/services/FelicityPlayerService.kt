@@ -721,6 +721,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             when (playbackState) {
                 Player.STATE_BUFFERING -> MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_BUFFERING)
                 Player.STATE_READY -> {
+                    // Emit the dedicated ready event first so observers (e.g. waveform loading)
+                    // can react the moment the decoder is ready, regardless of whether the player
+                    // will immediately start playing or remain paused.
+                    MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_READY)
                     if (player.playWhenReady) MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
                     else MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
                     buildAndPushSnapshot()

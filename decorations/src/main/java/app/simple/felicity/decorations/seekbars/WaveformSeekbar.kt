@@ -30,6 +30,7 @@ import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_FLAT
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_NONE
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_OUTLINE
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LEFT_FADE_DURATION_MS
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
@@ -220,10 +221,34 @@ class WaveformSeekbar @JvmOverloads constructor(
     // Color crossfade animation — transitions played/unplayed/label colors on theme or accent change
     private var colorTransitionAnimator: ValueAnimator? = null
 
-    // Label visibility animation — fades and scales time labels when a drag or fling begins/ends
+    // Label visibility animation — scales time labels when a drag or fling begins/ends
     private var labelAlpha: Float = 1f
     private var labelScale: Float = 1f
     private var labelAnimator: ValueAnimator? = null
+
+    // Seek line animation — fades the center playhead indicator line in on drag start and out on drag end
+    private var seekLineAlpha: Float = 0f
+    private var seekLineAnimator: ValueAnimator? = null
+    private var seekLineVerticalPaddingPx: Float = 0f
+    private val seekLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
+    // Left-bar fade — fades out already-played bars when setDurationWithReset is called.
+    // Only bars with index < leftFadePivotIndex are affected; right-side bars stay in place.
+    // leftFadeProgress is -1 when inactive, [0,1] while the animation is running.
+    private var leftFadeAnimator: ValueAnimator? = null
+    private var leftFadeProgress: Float = -1f
+    private var leftFadePivotIndex: Int = 0
+
+    /**
+     * Amplitude data deferred while a left-bar-fade transition is in progress.
+     * [setAmplitudes] stores the already-normalized array here instead of starting a bar
+     * animator mid-fade (which would race with the fade restructuring the arrays).
+     * [leftFadeAnimator]'s [AnimatorListenerAdapter.onAnimationEnd] consumes and nulls this.
+     */
+    private var pendingAmplitudesData: FloatArray? = null
 
     // Fling infrastructure — momentum scroll after a drag gesture
     private val overScroller = OverScroller(context)
@@ -266,6 +291,8 @@ class WaveformSeekbar @JvmOverloads constructor(
         labelEdgeMarginPx = DEFAULT_LABEL_EDGE_MARGIN_DP * d
         minBarHeightPx = DEFAULT_MIN_BAR_HEIGHT_DP * d
         labelBgStrokePaint.strokeWidth = DEFAULT_LABEL_STROKE_WIDTH_DP * d
+        seekLinePaint.strokeWidth = SEEK_LINE_WIDTH_DP * d
+        seekLineVerticalPaddingPx = SEEK_LINE_VERTICAL_PADDING_DP * d
 
         // Read XML attributes when they are provided
         if (attrs != null) {
@@ -400,8 +427,15 @@ class WaveformSeekbar @JvmOverloads constructor(
 
             // Bars closest to the center playhead render at full opacity; bars toward the outer
             // edges fade toward HIGHLIGHT_MIN_ALPHA, creating a spotlight effect.
+            // During a left-fade transition, bars before the pivot additionally fade out to zero.
             val distFraction = (abs(barCenterX - centerX) / (w / 2f)).coerceIn(0f, 1f)
-            barPaint.alpha = (255 * (HIGHLIGHT_MIN_ALPHA + (1f - HIGHLIGHT_MIN_ALPHA) * (1f - distFraction))).toInt()
+            val spotlightAlpha = HIGHLIGHT_MIN_ALPHA + (1f - HIGHLIGHT_MIN_ALPHA) * (1f - distFraction)
+            val leftFadeAlpha = if (leftFadeProgress >= 0f && i < leftFadePivotIndex) {
+                1f - leftFadeProgress
+            } else {
+                1f
+            }
+            barPaint.alpha = (255 * spotlightAlpha * leftFadeAlpha).toInt()
 
             if (isFullWaveform) {
                 // Symmetric: bar grows from center upward AND downward
@@ -438,6 +472,21 @@ class WaveformSeekbar @JvmOverloads constructor(
         canvas.drawRect(w - fadeEdgeLengthPx, 0f, w, h, fadePaint)
 
         canvas.restoreToCount(layerId)
+
+        // Draw the seek line at the center playhead position while the user is dragging;
+        // rendered outside the compositing layer so fade edges never clip it.
+        // Alpha is capped at SEEK_LINE_MAX_ALPHA to keep it visually translucent.
+        if (seekLineAlpha > 0f) {
+            seekLinePaint.color = playedColor
+            seekLinePaint.alpha = (255 * seekLineAlpha * SEEK_LINE_MAX_ALPHA).toInt()
+            canvas.drawLine(
+                    centerX,
+                    seekLineVerticalPaddingPx,
+                    centerX,
+                    h - seekLineVerticalPaddingPx,
+                    seekLinePaint
+            )
+        }
 
         // Draw time labels outside the compositing layer so they are never erased
         drawLabels(canvas, displayProgress, w, h)
@@ -580,6 +629,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                 velocityTracker!!.addMovement(event)
 
                 animateLabelVisibility(false)
+                animateSeekLine(true)
                 seekListener?.onSeekStart()
                 invalidate()
                 return true
@@ -615,6 +665,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                     isDragging = false
                     parent?.requestDisallowInterceptTouchEvent(false)
                     animateLabelVisibility(true)
+                    animateSeekLine(false)
                     seekListener?.onSeekEnd(dragCurrentProgressMs)
 
                     progressMs = dragCurrentProgressMs
@@ -651,17 +702,19 @@ class WaveformSeekbar @JvmOverloads constructor(
     }
 
     /**
-     * Animates the label alpha and scale toward the visible or hidden state.
+     * Animates the label scale toward the seek-active or idle state.
      * Called automatically when a drag gesture starts ([visible] = `false`) or ends ([visible] = `true`).
+     * Labels remain fully opaque at all times; they are enlarged slightly to 1.1× while seeking
+     * so the user can read the time easily during a drag.
      *
-     * @param visible `true` to fade labels back in at full size; `false` to fade them out and shrink.
+     * @param visible `true` to restore labels to their default 1× scale; `false` to scale up for seek mode.
      */
     private fun animateLabelVisibility(visible: Boolean) {
         labelAnimator?.cancel()
         val fromAlpha = labelAlpha
         val fromScale = labelScale
-        val toAlpha = if (visible) 1f else 0f
-        val toScale = if (visible) 1f else LABEL_SEEK_MIN_SCALE
+        val toAlpha = 1f
+        val toScale = if (visible) 1f else LABEL_SEEK_ACTIVE_SCALE
         labelAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = LABEL_ANIM_DURATION_MS
             interpolator = DecelerateInterpolator()
@@ -669,6 +722,26 @@ class WaveformSeekbar @JvmOverloads constructor(
                 val t = anim.animatedValue as Float
                 labelAlpha = fromAlpha + (toAlpha - fromAlpha) * t
                 labelScale = fromScale + (toScale - fromScale) * t
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    /**
+     * Animates the center playhead seek line alpha toward fully visible or fully hidden.
+     *
+     * @param show `true` to fade the line in when a drag starts; `false` to fade it out on release.
+     */
+    private fun animateSeekLine(show: Boolean) {
+        seekLineAnimator?.cancel()
+        val from = seekLineAlpha
+        val to = if (show) 1f else 0f
+        seekLineAnimator = ValueAnimator.ofFloat(from, to).apply {
+            duration = SEEK_LINE_ANIM_DURATION_MS
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                seekLineAlpha = anim.animatedValue as Float
                 invalidate()
             }
             start()
@@ -691,9 +764,28 @@ class WaveformSeekbar @JvmOverloads constructor(
      * @param data raw amplitude array, one value per second (any non-negative range)
      */
     fun setAmplitudes(data: FloatArray) {
-        // Rescale so every track always uses the full visual height range.
         val normalizedData = normalizeAmplitudes(data)
 
+        // If a left-bar-fade transition is currently running, deferring is mandatory.
+        // Starting a barAnimator now would race with the fade's onAnimationEnd, which
+        // restructures (shrinks) drawnAmplitudes, causing an ArrayIndexOutOfBoundsException
+        // when the barAnimator tries to write past the new array boundary.
+        if (leftFadeProgress >= 0f) {
+            pendingAmplitudesData = normalizedData
+            return
+        }
+
+        applyNormalizedAmplitudes(normalizedData)
+    }
+
+    /**
+     * Wires up the bar-height animator from [drawnAmplitudes] to [normalizedData].
+     * Must only be called when no left-bar-fade is in progress, as it mutates
+     * [drawnAmplitudes] and [animStartAmplitudes] directly.
+     *
+     * @param normalizedData amplitude array already rescaled to [0.0, 1.0]
+     */
+    private fun applyNormalizedAmplitudes(normalizedData: FloatArray) {
         // Cancel BEFORE touching any arrays. The old onAnimationEnd closure captures the
         // previous data reference; if we resize drawnAmplitudes first its size would no
         // longer match that closure, causing an ArrayIndexOutOfBoundsException.
@@ -764,7 +856,9 @@ class WaveformSeekbar @JvmOverloads constructor(
      * @param animate    whether to animate the transition from the current position
      */
     fun setProgress(positionMs: Long, fromUser: Boolean = false, animate: Boolean = false) {
-        if (isDragging || isFling) return
+        // Ignore external progress updates while the left-bar fade is running; the waveform
+        // position is intentionally locked during that transition.
+        if (isDragging || isFling || leftFadeProgress >= 0f) return
         val target = positionMs.coerceIn(0L, durationMs)
         progressMs = target
 
@@ -805,20 +899,147 @@ class WaveformSeekbar @JvmOverloads constructor(
     }
 
     /**
+     * Updates the total duration and triggers a seamless track-change transition with zero
+     * horizontal scroll movement.
+     *
+     * How it works:
+     *  1. The bars to the **left** of the current playhead (already-played bars) are faded out
+     *     in alpha over [LEFT_FADE_DURATION_MS].  The waveform's scroll position is **not**
+     *     touched during this time, so there is no visible movement.
+     *  2. When the fade completes the played bars are discarded.  The bars to the **right** of
+     *     the playhead are retained at their current heights — they are not zeroed out.  A
+     *     sub-bar fractional residual is carried into a tiny `residualProgressMs` offset so the
+     *     first post-transition frame lands at exactly the same pixel position as the last frame
+     *     of the fade, eliminating any micro-jitter.
+     *  3. When [setAmplitudes] is called next, the retained bars animate from their current
+     *     heights to the new song's heights organically.
+     *  4. Progress and duration are updated to the new values.
+     *
+     * If there are no bars to fade (empty waveform) the function fast-paths to a direct update.
+     *
+     * @param newDurationMs new total duration in milliseconds
+     */
+    fun setDurationWithReset(newDurationMs: Long) {
+        progressAnimator?.cancel()
+        barAnimator?.cancel()
+        barAnimator = null
+        leftFadeAnimator?.cancel()
+        seekLineAnimator?.cancel()
+        overScroller.abortAnimation()
+        isFling = false
+        isDragging = false
+        seekLineAlpha = 0f
+        pendingAmplitudesData = null
+
+        if (drawnAmplitudes.isEmpty() || durationMs <= 0L) {
+            amplitudes = FloatArray(0)
+            drawnAmplitudes = FloatArray(0)
+            animStartAmplitudes = FloatArray(0)
+            progressMs = 0L
+            animatedProgressMs = 0L
+            durationMs = newDurationMs
+            invalidate()
+            return
+        }
+
+        // Snapshot the current pivot index so the closure is self-contained even if the
+        // outer state changes before the animation ends.
+        val pivotFraction = progressMs.toFloat() / durationMs.toFloat()
+        val pivot = (pivotFraction * drawnAmplitudes.size).toInt().coerceIn(0, drawnAmplitudes.size)
+
+        leftFadePivotIndex = pivot
+        leftFadeProgress = 0f
+
+        leftFadeAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = LEFT_FADE_DURATION_MS
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                leftFadeProgress = anim.animatedValue as Float
+                invalidate()
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    // Cancel any barAnimator that may have been started by a setAmplitudes
+                    // call that slipped in before the fade guard was active. This MUST happen
+                    // before drawnAmplitudes is reassigned; otherwise the running animator
+                    // will try to index the old-size array on the next frame and crash.
+                    barAnimator?.cancel()
+                    barAnimator = null
+
+                    // Compute the exact fractional scroll position from the animated progress
+                    // so the remaining bars land on the same pixel coordinates after the
+                    // restructure. This eliminates the sub-bar micro-jitter that would occur
+                    // if the pivot index (integer) does not perfectly align with the floating-
+                    // point animated scroll offset.
+                    val exactScrollBars = if (durationMs > 0L) {
+                        animatedProgressMs.toFloat() / durationMs.toFloat() * drawnAmplitudes.size
+                    } else 0f
+                    val pivot = exactScrollBars.toInt().coerceIn(0, drawnAmplitudes.size)
+                    val residualFrac = (exactScrollBars - pivot).coerceAtLeast(0f)
+
+                    // Retain the bars to the right of the playhead without zeroing them.
+                    // The next setAmplitudes call will animate them from their current heights
+                    // to the new song's amplitudes, so pre-flattening here is unnecessary.
+                    val remaining = if (pivot < drawnAmplitudes.size) {
+                        drawnAmplitudes.copyOfRange(pivot, drawnAmplitudes.size)
+                    } else FloatArray(1) { 0f }
+
+                    val newSize = remaining.size
+
+                    // Map the fractional offset into the new duration space so that the very
+                    // first onDraw call after the transition produces an identical pixel
+                    // position to the last frame of the fade animation — zero visual snap.
+                    val residualProgressMs = if (newSize > 0 && newDurationMs > 0L) {
+                        (residualFrac / newSize * newDurationMs).toLong()
+                    } else 0L
+
+                    amplitudes = remaining.copyOf()
+                    drawnAmplitudes = remaining
+                    animStartAmplitudes = remaining.copyOf()
+
+                    progressMs = residualProgressMs
+                    animatedProgressMs = residualProgressMs
+                    durationMs = newDurationMs
+
+                    // Mark the fade as inactive BEFORE applying pending amplitudes so that
+                    // applyNormalizedAmplitudes is not blocked by the leftFadeProgress guard.
+                    leftFadeProgress = -1f
+
+                    // If setAmplitudes was called while the fade was running, apply that data
+                    // now. applyNormalizedAmplitudes will start a smooth bar animation from
+                    // the restructured remaining bars to the new track's target heights.
+                    pendingAmplitudesData?.let { pending ->
+                        pendingAmplitudesData = null
+                        applyNormalizedAmplitudes(pending)
+                    }
+
+                    invalidate()
+                }
+            })
+            start()
+        }
+    }
+
+    /**
      * Resets the seekbar to its initial state, clearing amplitude data and progress.
      */
     fun reset() {
         progressAnimator?.cancel()
         barAnimator?.cancel()
         colorTransitionAnimator?.cancel()
+        leftFadeAnimator?.cancel()
+        seekLineAnimator?.cancel()
         overScroller.abortAnimation()
         isFling = false
         amplitudes = FloatArray(0)
         drawnAmplitudes = FloatArray(0)
         animStartAmplitudes = FloatArray(0)
+        pendingAmplitudesData = null
         progressMs = 0L
         animatedProgressMs = 0L
         durationMs = 0L
+        leftFadeProgress = -1f
+        seekLineAlpha = 0f
         isDragging = false
         invalidate()
     }
@@ -866,6 +1087,8 @@ class WaveformSeekbar @JvmOverloads constructor(
         barAnimator?.cancel()
         colorTransitionAnimator?.cancel()
         labelAnimator?.cancel()
+        leftFadeAnimator?.cancel()
+        seekLineAnimator?.cancel()
         overScroller.abortAnimation()
         isFling = false
         velocityTracker?.recycle()
@@ -956,11 +1179,21 @@ class WaveformSeekbar @JvmOverloads constructor(
 
         // Animation durations in milliseconds
         private const val COLOR_TRANSITION_DURATION_MS = 300L
-        private const val BAR_ANIM_DURATION_MS = 400L
+        private const val BAR_ANIM_DURATION_MS = 700L
         private const val PROGRESS_ANIM_DURATION_MS = 520L
 
-        /** Duration of the label fade/scale animation triggered by drag start and drag end. */
-        private const val LABEL_ANIM_DURATION_MS = 180L
+        /** Duration of the label scale animation triggered by drag start and drag end. */
+        private const val LABEL_ANIM_DURATION_MS = 280L
+
+        /** Duration of the seek line fade-in / fade-out animation, in milliseconds. */
+        private const val SEEK_LINE_ANIM_DURATION_MS = 280L
+
+        /**
+         * Duration of the left-bar fade-out animation triggered by [setDurationWithReset].
+         * Played bars fade away over this period while the waveform stays visually still.
+         */
+        private const val LEFT_FADE_DURATION_MS = 250L
+
 
         // Thresholds and interpolation factors
         private const val PROGRESS_SNAP_THRESHOLD_MS = 80L
@@ -972,12 +1205,28 @@ class WaveformSeekbar @JvmOverloads constructor(
         private const val BAR_ANIM_DECELERATE = 3f
 
         /** Horizontal padding factor applied to [labelPaddingPx] to compute pill side inset. */
-        private const val PILL_H_PAD_FACTOR = 0.55f
+        private const val PILL_H_PAD_FACTOR = 0.72f
 
         /** Vertical padding factor applied to [labelPaddingPx] to compute pill top/bottom inset. */
         private const val PILL_V_PAD_FACTOR = 0.22f
 
-        /** Minimum scale applied to label text and pill while the user is dragging. */
-        private const val LABEL_SEEK_MIN_SCALE = 0.85f
+        /**
+         * Scale applied to label text and pill while the user is seeking.
+         * Labels grow slightly beyond their normal size so they are easy to read during a drag.
+         */
+        private const val LABEL_SEEK_ACTIVE_SCALE = 1.1f
+
+        /** Stroke width of the seek line drawn at the center playhead position, in dp. */
+        private const val SEEK_LINE_WIDTH_DP = 2f
+
+        /**
+         * Maximum alpha of the seek line as a fraction of 255.
+         * Keeping this below 1.0 ensures the line remains translucent so bars behind it are visible.
+         */
+        private const val SEEK_LINE_MAX_ALPHA = 0.70f
+
+        /** Vertical inset applied to both ends of the seek line so it does not touch the view boundaries, in dp. */
+        private const val SEEK_LINE_VERTICAL_PADDING_DP = 12f
     }
 }
+

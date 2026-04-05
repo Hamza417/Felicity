@@ -289,18 +289,20 @@ class DefaultPlayer : MediaFragment() {
     }
 
     /**
-     * Schedules waveform decoding for [audio], but only starts the Amplituda extraction
-     * immediately when ExoPlayer is already in the playing state. If playback has not yet
-     * started, [audio] is stored in [pendingWaveformAudio] and the decode is deferred until
-     * [onPlaybackStateChanged] receives [MediaConstants.PLAYBACK_PLAYING].
+     * Schedules waveform decoding for [audio].
      *
-     * This prevents Amplituda and ExoPlayer from opening the same file at the same time
-     * and competing for the same I/O resources during the initial buffering phase.
+     * The decode starts immediately when the player is already playing or in a ready state
+     * (paused or playing). If the player is still buffering or idle, [audio] is stored in
+     * [pendingWaveformAudio] and the decode is deferred until [onPlaybackStateChanged]
+     * receives [MediaConstants.PLAYBACK_READY] or [MediaConstants.PLAYBACK_PLAYING].
+     *
+     * This prevents Amplituda and ExoPlayer from contending over the same file I/O
+     * resources during the initial buffering phase.
      *
      * @param audio the track whose waveform should be decoded
      */
     private fun loadWaveformWhenReady(audio: Audio) {
-        if (MediaPlaybackManager.isPlaying()) {
+        if (MediaPlaybackManager.isPlaying() || MediaPlaybackManager.isPlayerReady()) {
             waveformViewModel.loadWaveform(audio)
             pendingWaveformAudio = null
         } else {
@@ -354,7 +356,7 @@ class DefaultPlayer : MediaFragment() {
         binding.artist.setTextWithEffect(audio.getArtists(), forward, 50L)
         binding.album.setTextWithEffect(audio.album ?: getString(R.string.unknown), forward, 100L)
         binding.pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
-        binding.seekbar.setDuration(audio.duration)
+        binding.seekbar.setDurationWithReset(audio.duration)
         binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = false)
         updateFavoriteIcon(audio)
 
@@ -371,10 +373,19 @@ class DefaultPlayer : MediaFragment() {
     override fun onPlaybackStateChanged(state: Int) {
         super.onPlaybackStateChanged(state)
         when (state) {
+            MediaConstants.PLAYBACK_READY -> {
+                // ExoPlayer has finished buffering and the decoder is ready. This is the
+                // earliest safe moment to run Amplituda's extraction in parallel, regardless
+                // of whether playback will start immediately or stay paused.
+                pendingWaveformAudio?.let { audio ->
+                    waveformViewModel.loadWaveform(audio)
+                    pendingWaveformAudio = null
+                }
+            }
             MediaConstants.PLAYBACK_PLAYING -> {
                 updatePlayButtonState(true)
-                // ExoPlayer has started playing; it is now safe to let Amplituda open the
-                // same file without fighting over the same I/O resources.
+                // Also drain any pending waveform that was queued before the ready event arrived
+                // (e.g., when the service emits PLAYING without a preceding READY being observed).
                 pendingWaveformAudio?.let { audio ->
                     waveformViewModel.loadWaveform(audio)
                     pendingWaveformAudio = null
