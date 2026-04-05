@@ -56,19 +56,23 @@ class WaveformViewModel @Inject constructor(
      * @param audio The [Audio] whose waveform should be extracted.
      */
     fun loadWaveform(audio: Audio) {
-        // Prevent redundant loading
         if (audio.path == currentPath && waveformData.value?.isNotEmpty() == true) return
 
         postFlatData(audio)
-
-        // Track the current request to handle stale extractions
         currentPath = audio.path
 
-        // Immediately leave the Main Thread so the UI never drops a frame
-        viewModelScope.launch(Dispatchers.IO) {
+        loadJob = viewModelScope.launch(Dispatchers.IO) {
 
-            // Push the perfectly scaled array safely to the UI thread
-            waveformData.postValue(extractWaveformOptimized(audio.path, audio.duration) ?: getRandomGhostData(audio.duration))
+            val result = extractWaveformOptimized(audio.path, audio.duration) { progressiveArray ->
+                // This block fires hundreds of times as the song is scanned.
+                // Because we pass a clone(), it's completely safe for the UI to consume.
+                waveformData.postValue(progressiveArray)
+            }
+
+            // If extraction failed entirely, fallback to the ghost data
+            if (result == null) {
+                waveformData.postValue(getRandomGhostData(audio.duration))
+            }
         }
     }
 
@@ -124,14 +128,21 @@ class WaveformViewModel @Inject constructor(
      * @param durationMs Total track duration in milliseconds.
      * @return Normalized amplitude array ([0.0, 1.0] per bar), or null on error.
      */
-    suspend fun extractWaveformOptimized(audioPath: String, durationMs: Long): FloatArray? = withContext(Dispatchers.IO) {
+    /**
+     * Extracts waveform amplitude data using a seek-per-bar strategy.
+     * Progressively emits the partially filled waveform array to the caller.
+     */
+    suspend fun extractWaveformOptimized(
+            audioPath: String,
+            durationMs: Long,
+            onProgressUpdate: (FloatArray) -> Unit
+    ): FloatArray? = withContext(Dispatchers.IO) {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
 
         try {
             extractor.setDataSource(audioPath)
 
-            // Locate the first audio track in the container.
             var audioTrackIndex = -1
             var format: MediaFormat? = null
             for (i in 0 until extractor.trackCount) {
@@ -148,9 +159,10 @@ class WaveformViewModel @Inject constructor(
             extractor.selectTrack(audioTrackIndex)
 
             val expectedBars = ((durationMs / 1000f) * BARS_PER_SECOND).toInt().coerceAtLeast(1)
+
+            // 1. Create the full-sized array upfront. It defaults to 0.0f.
             val finalAmplitudes = FloatArray(expectedBars)
 
-            // Duration in microseconds, and how long each bar window spans.
             val durationUs = durationMs * 1_000L
             val barDurationUs = durationUs / expectedBars.toLong()
 
@@ -160,18 +172,15 @@ class WaveformViewModel @Inject constructor(
             codec.start()
 
             val bufferInfo = MediaCodec.BufferInfo()
-
-            // Reusable PCM buffer; grown lazily if the codec hands us a larger output.
             var chunkArray = ShortArray(8192)
-
-            // True once EOS is signaled by the codec; remaining bars are pre-filled and we stop.
             var eos = false
+
+            // Track the local maximum peak for progressive normalization
+            var runningMaxPeak = 0f
 
             for (barIndex in 0 until expectedBars) {
                 if (!isActive || eos) break
 
-                // Seek the extractor to the start of this bar's time window, then flush the
-                // codec so no stale PCM from the previous bar bleeds through.
                 val seekTimeUs = barIndex.toLong() * barDurationUs
                 extractor.seekTo(seekTimeUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
                 codec.flush()
@@ -181,11 +190,9 @@ class WaveformViewModel @Inject constructor(
                 var inputEOS = false
                 var iterations = 0
 
-                // Inner feed-and-drain loop: stop once we have enough sampled PCM output.
                 while (isActive && outputsReceived < PCM_BUFFERS_PER_BAR) {
                     if (++iterations > MAX_ITERATIONS_PER_BAR) break
 
-                    // Submit one compressed frame to the decoder.
                     if (!inputEOS) {
                         val inputIndex = codec.dequeueInputBuffer(5_000L)
                         if (inputIndex >= 0) {
@@ -201,7 +208,6 @@ class WaveformViewModel @Inject constructor(
                         }
                     }
 
-                    // Drain one PCM output buffer.
                     val outputIndex = codec.dequeueOutputBuffer(bufferInfo, 5_000L)
                     if (outputIndex >= 0) {
                         val outputBuffer = codec.getOutputBuffer(outputIndex)!!
@@ -211,8 +217,6 @@ class WaveformViewModel @Inject constructor(
                         if (chunkArray.size < limit) chunkArray = ShortArray(limit)
                         shortBuffer.get(chunkArray, 0, limit)
 
-                        // Skip the very first output buffer per bar: after a flush + seek, the
-                        // decoder needs one warm-up frame before producing stable PCM data.
                         if (outputsReceived > 0) {
                             for (i in 0 until limit step SAMPLE_STRIDE) {
                                 val sample = chunkArray[i]
@@ -226,7 +230,6 @@ class WaveformViewModel @Inject constructor(
                         outputsReceived++
 
                         if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
-                            // Pre-fill any remaining bars with this last peak and exit.
                             for (remaining in barIndex until expectedBars) {
                                 finalAmplitudes[remaining] = peak
                             }
@@ -236,16 +239,31 @@ class WaveformViewModel @Inject constructor(
                     }
                 }
 
-                if (!eos) finalAmplitudes[barIndex] = peak
-            }
+                if (!eos) {
+                    // Update the array with the new peak
+                    finalAmplitudes[barIndex] = peak
 
-            // Normalize the full array to [0.0, 1.0].
-            val maxPeak = finalAmplitudes.maxOrNull() ?: 1f
-            if (maxPeak > 0f) {
-                for (i in finalAmplitudes.indices) {
-                    finalAmplitudes[i] /= maxPeak
+                    if (peak > runningMaxPeak) {
+                        runningMaxPeak = peak
+                    }
+
+                    // Post a clone of the array to the UI.
+                    // Cloning prevents ConcurrentModificationExceptions if the UI thread reads it while we write to it.
+                    // We post the raw un-normalized array here (values are naturally capped at 1.0 by Short.MAX_VALUE).
+                    onProgressUpdate(finalAmplitudes.clone())
                 }
             }
+
+            // 2. Final global normalization pass once the entire file is read
+            val finalMaxPeak = finalAmplitudes.maxOrNull() ?: 1f
+            if (finalMaxPeak > 0f) {
+                for (i in finalAmplitudes.indices) {
+                    finalAmplitudes[i] /= finalMaxPeak
+                }
+            }
+
+            // Post the final, perfectly normalized array
+            onProgressUpdate(finalAmplitudes.clone())
 
             return@withContext finalAmplitudes
 
