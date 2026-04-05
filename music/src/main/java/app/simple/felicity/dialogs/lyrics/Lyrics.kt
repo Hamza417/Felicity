@@ -9,10 +9,10 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.databinding.DialogLyricsBinding
 import app.simple.felicity.decorations.lrc.view.ModernLrcView
 import app.simple.felicity.dialogs.lyrics.AddLyrics.Companion.showAddLyrics
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
 import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.constants.BundleConstants
-import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
@@ -83,7 +83,7 @@ class Lyrics : MediaBottomDialogFragment(), AddLyrics.Companion.OnLyricsCreatedL
     override fun onSeekChanged(seek: Long) {
         super.onSeekChanged(seek)
         // Only highlight if the dialog is showing lyrics for the currently playing song
-        val currentSong = MediaManager.getCurrentSong()
+        val currentSong = MediaPlaybackManager.getCurrentSong()
         if (currentSong != null && audio != null && currentSong.id == audio!!.id) {
             binding.lrcView.updateTime(seek + lyricsViewModel.syncOffset)
         }
@@ -95,7 +95,7 @@ class Lyrics : MediaBottomDialogFragment(), AddLyrics.Companion.OnLyricsCreatedL
         // (updateTime will simply not be called when ids don't match, no action needed)
         // so unhighlight the lyrics
         if (this.audio != null && audio.id == this.audio!!.id) {
-            binding.lrcView.updateTime(MediaManager.getSeekPosition() + lyricsViewModel.syncOffset)
+            binding.lrcView.updateTime(MediaPlaybackManager.getSeekPosition() + lyricsViewModel.syncOffset)
         } else {
             binding.lrcView.updateTime(-1)
         }

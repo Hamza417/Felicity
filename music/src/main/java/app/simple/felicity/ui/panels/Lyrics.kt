@@ -17,10 +17,10 @@ import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.dialogs.lyrics.LyricsMenu
 import app.simple.felicity.dialogs.lyrics.LyricsMenu.Companion.showLyricsMenu
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.constants.MediaConstants
-import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.ui.panels.Lyrics.Companion.TEXT_SIZE_DEBOUNCE_MS
@@ -36,7 +36,7 @@ class Lyrics : MediaFragment() {
     /**
      * Path of the song whose lyrics are currently rendered in the lrc view.
      * Compared in [onAudio] to distinguish a genuine song change from a
-     * predictive-back resume that replays [MediaManager.songPositionFlow] for
+     * predictive-back resume that replays [MediaPlaybackManager.songPositionFlow] for
      * the same song — the latter must NOT reset the view.
      *
      * @author Hamza417
@@ -69,7 +69,7 @@ class Lyrics : MediaFragment() {
         binding.lrc.setEmptyText(getString(R.string.no_lyrics_found))
 
         binding.lrc.setOnLrcClickListener { timeInMillis, _ ->
-            MediaManager.seekTo(timeInMillis)
+            MediaPlaybackManager.seekTo(timeInMillis)
         }
 
         binding.settings.setOnClickListener {
@@ -98,15 +98,15 @@ class Lyrics : MediaFragment() {
         }
 
         binding.next.setOnClickListener {
-            MediaManager.next()
+            MediaPlaybackManager.next()
         }
 
         binding.previous.setOnClickListener {
-            MediaManager.previous()
+            MediaPlaybackManager.previous()
         }
 
         binding.play.setOnClickListener {
-            MediaManager.flipState()
+            MediaPlaybackManager.flipState()
         }
 
         lyricsViewModel.getLrcData().observe(viewLifecycleOwner) { lrcData ->
@@ -115,7 +115,7 @@ class Lyrics : MediaFragment() {
             } else {
                 Log.d(TAG, "Loaded lyrics with ${lrcData.size()} lines.")
                 binding.lrc.updateLrcDataInPlace(
-                        lrcData, MediaManager.getSeekPosition() + lyricsViewModel.syncOffset)
+                        lrcData, MediaPlaybackManager.getSeekPosition() + lyricsViewModel.syncOffset)
             }
         }
 
@@ -135,7 +135,7 @@ class Lyrics : MediaFragment() {
         binding.seekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
             override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
                 if (fromUser) {
-                    MediaManager.seekTo(progress.toLong())
+                    MediaPlaybackManager.seekTo(progress.toLong())
                 }
             }
         })
@@ -174,13 +174,13 @@ class Lyrics : MediaFragment() {
     }
 
     private fun updateState() {
-        val audio = MediaManager.getCurrentSong() ?: return
+        val audio = MediaPlaybackManager.getCurrentSong() ?: return
         binding.name.text = audio.title
         binding.artist.text = audio.getArtists()
         binding.lrc.setDuration(audio.duration)
         binding.seekbar.setMax(audio.duration.toFloat())
-        binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
-        updatePlayButtonState(MediaManager.isPlaying())
+        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
+        updatePlayButtonState(MediaPlaybackManager.isPlaying())
     }
 
     override val wantsMiniPlayerVisible: Boolean
@@ -224,7 +224,7 @@ class Lyrics : MediaFragment() {
             // Real song change — reset the view and kick off a fresh lyrics load.
             binding.lrc.reset()
             lyricsViewModel.loadLrcData()
-            val forward = MediaManager.lastNavigationDirection
+            val forward = MediaPlaybackManager.lastNavigationDirection
             binding.name.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
             binding.artist.setTextWithEffect(audio.getArtists(), forward, 50L)
             binding.lrc.setDuration(audio.duration)
@@ -232,7 +232,7 @@ class Lyrics : MediaFragment() {
         }
 
         // Always refresh the seek position (covers predictive-back resume and actual changes).
-        binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
+        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
     }
 
     override fun onPlaybackStateChanged(state: Int) {

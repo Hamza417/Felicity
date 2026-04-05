@@ -8,9 +8,9 @@ import app.simple.felicity.databinding.AdapterAccentColorsBinding
 import app.simple.felicity.databinding.AdapterPreferenceHeaderBinding
 import app.simple.felicity.decorations.overscroll.RecyclerViewUtils
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.glide.util.AudioCoverUtils.loadPlainArtCover
 import app.simple.felicity.preferences.AppearancePreferences
-import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ViewUtils
 import app.simple.felicity.shared.utils.ViewUtils.gone
@@ -48,7 +48,7 @@ class AdapterAccentColors : RecyclerView.Adapter<VerticalListViewHolder>() {
 
                 if (accent.identifier == AlbumArt.IDENTIFIER) {
                     holder.binding.secondaryColor.gone()
-                    holder.binding.primaryColor.loadPlainArtCover(MediaManager.getCurrentSong() ?: Audio())
+                    holder.binding.primaryColor.loadPlainArtCover(MediaPlaybackManager.getCurrentSong() ?: Audio())
                 } else {
                     holder.binding.primaryColor.setBackgroundColor(accent.primaryAccentColor)
                     holder.binding.secondaryColor.setBackgroundColor(accent.secondaryAccentColor)

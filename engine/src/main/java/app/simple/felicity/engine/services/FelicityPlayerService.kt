@@ -47,6 +47,8 @@ import app.simple.felicity.engine.audio.AaudioAudioSink
 import app.simple.felicity.engine.managers.AudioPipelineManager
 import app.simple.felicity.engine.managers.AudioProcessorManager
 import app.simple.felicity.engine.managers.EqualizerManager
+import app.simple.felicity.engine.managers.MediaPlaybackManager
+import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.engine.model.AudioPipelineSnapshot
 import app.simple.felicity.engine.notifications.PlaybackErrorNotifier
@@ -56,8 +58,6 @@ import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
-import app.simple.felicity.repository.managers.MediaManager
-import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.SongStatRepository
 import com.google.common.collect.ImmutableList
@@ -467,7 +467,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 player.repeatMode = Player.REPEAT_MODE_OFF
             }
         }
-        MediaManager.notifyRepeatMode(repeatMode)
+        MediaPlaybackManager.notifyRepeatMode(repeatMode)
         // Push the updated repeat button to the media notification
         mediaSession?.setCustomLayout(listOf(buildRepeatCommandButton(repeatMode)))
         Log.d(TAG, "Repeat mode applied: $repeatMode")
@@ -689,12 +689,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             }
 
             if (isPlaying) {
-                MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
+                MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
                 startPeriodicStateSaving()
                 startSnapshotPulse()
                 buildAndPushSnapshot()
             } else if (player.playbackState == Player.STATE_READY) {
-                MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
+                MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
                 stopPeriodicStateSaving()
                 stopSnapshotPulse()
                 savePlaybackStateToDatabase() // Save immediately when paused
@@ -719,10 +719,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
         override fun onPlaybackStateChanged(playbackState: Int) {
             when (playbackState) {
-                Player.STATE_BUFFERING -> MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_BUFFERING)
+                Player.STATE_BUFFERING -> MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_BUFFERING)
                 Player.STATE_READY -> {
-                    if (player.playWhenReady) MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
-                    else MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
+                    if (player.playWhenReady) MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
+                    else MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
                     buildAndPushSnapshot()
                 }
                 Player.STATE_ENDED -> {
@@ -730,14 +730,14 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     // For REPEAT_ONE / REPEAT_QUEUE, ExoPlayer loops automatically and
                     // STATE_ENDED is never actually reached.
                     if (PlayerPreferences.getRepeatMode() == MediaConstants.REPEAT_OFF) {
-                        MediaManager.handleQueueEnded()
+                        MediaPlaybackManager.handleQueueEnded()
                     }
                     stopPeriodicStateSaving()
                     stopSnapshotPulse()
                     savePlaybackStateToDatabase()
                 }
                 Player.STATE_IDLE -> {
-                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_STOPPED)
+                    MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_STOPPED)
                     stopPeriodicStateSaving()
                     stopSnapshotPulse()
                 }
@@ -804,7 +804,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                             player.currentMediaItem?.mediaMetadata?.title?.toString(),
                             error
                     )
-                    MediaManager.notifyPlaybackState(MediaConstants.PLAYBACK_ERROR)
+                    MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_ERROR)
                     stopPeriodicStateSaving()
                 }
             }
@@ -844,7 +844,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 }
             } ?: run { previousItemMediaId = null }
 
-            MediaManager.notifyCurrentPosition(player.currentMediaItemIndex)
+            MediaPlaybackManager.notifyCurrentPosition(player.currentMediaItemIndex)
             savePlaybackStateToDatabase() // Save when track changes
             buildAndPushSnapshot()
         }

@@ -1,4 +1,4 @@
-package app.simple.felicity.repository.managers
+package app.simple.felicity.engine.managers
 
 import android.content.Context
 import android.util.Log
@@ -26,14 +26,14 @@ object PlaybackStateManager {
     private const val TAG = "PlaybackStateManager"
 
     /**
-     * Saves the current playback state from [MediaManager] to the database.
+     * Saves the current playback state from [MediaPlaybackManager] to the database.
      *
      * @param context  The application context.
      * @param logTag   Optional tag for logging (defaults to TAG).
      * @return {@code true} if state was saved successfully, {@code false} otherwise.
      */
     suspend fun saveCurrentPlaybackState(context: Context, logTag: String = TAG): Boolean {
-        val songs = MediaManager.getSongs()
+        val songs = MediaPlaybackManager.getSongs()
         if (songs.isEmpty()) {
             Log.w(logTag, "Songs list is empty, skipping state save")
             return false
@@ -43,8 +43,8 @@ object PlaybackStateManager {
         var position = 0
 
         withContext(Dispatchers.Main) {
-            seek = MediaManager.getSeekPosition()
-            position = MediaManager.getCurrentPosition()
+            seek = MediaPlaybackManager.getSeekPosition()
+            position = MediaPlaybackManager.getCurrentPosition()
         }
 
         if (seek == 0L) {

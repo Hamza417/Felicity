@@ -5,13 +5,13 @@ import android.util.AttributeSet
 import android.view.View
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.repository.listeners.MediaStateListener
-import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 
 /**
  * A [DynamicRippleConstraintLayout] that automatically registers itself with
- * [MediaManager] to reflect the currently playing song state. When the playing
+ * [MediaPlaybackManager] to reflect the currently playing song state. When the playing
  * song changes, the selection highlight transitions smoothly via a color animation.
  *
  * Call [setAudioID] once per bind cycle to associate a song ID with this view.
@@ -36,11 +36,11 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
             return
         }
         this.audioID = audioID
-        isSelected = audioID == MediaManager.getCurrentSongId()
+        isSelected = audioID == MediaPlaybackManager.getCurrentSongId()
     }
 
     /**
-     * Called by [MediaManager] on the main thread whenever the playing song changes.
+     * Called by [MediaPlaybackManager] on the main thread whenever the playing song changes.
      * Smoothly animates the background tint between the transparent and selected states.
      *
      * @param audio the newly playing [Audio], or null if playback stopped.
@@ -56,12 +56,12 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        MediaManager.registerListener(this)
+        MediaPlaybackManager.registerListener(this)
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        MediaManager.unregisterListener(this)
+        MediaPlaybackManager.unregisterListener(this)
     }
 
     private fun requestRecyclerViewToScrollToSelf() {

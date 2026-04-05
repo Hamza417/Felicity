@@ -6,12 +6,13 @@ import android.view.View
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import app.simple.felicity.engine.managers.MediaPlaybackManager
+import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.repository.database.instances.AudioDatabase
-import app.simple.felicity.repository.managers.MediaManager
-import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.models.Audio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
 
@@ -21,14 +22,14 @@ abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         viewLifecycleOwner.lifecycleScope.launch {
-            MediaManager.songSeekPositionFlow.collect { position ->
+            MediaPlaybackManager.songSeekPositionFlow.collect { position ->
                 onSeekChanged(position)
 
                 // Save to database every 5 seconds or 5% of duration, whichever is larger
-                val song = MediaManager.getCurrentSong()
+                val song = MediaPlaybackManager.getCurrentSong()
                 if (song != null) {
                     val threshold = maxOf(5000L, song.duration / 20) // 5 seconds or 5% of duration
-                    if (kotlin.math.abs(position - lastSavedSeekPosition) > threshold) {
+                    if (abs(position - lastSavedSeekPosition) > threshold) {
                         lastSavedSeekPosition = position
                         saveCurrentPlaybackState()
                     }
@@ -41,9 +42,9 @@ abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
             // emitted position every time the fragment comes back to the foreground.
             // This guarantees onAudio() fires on resume, clearing any stale highlights.
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                MediaManager.songPositionFlow.collect { position ->
+                MediaPlaybackManager.songPositionFlow.collect { position ->
                     Log.d(TAG, "Song position: $position")
-                    MediaManager.getCurrentSong()?.let { song ->
+                    MediaPlaybackManager.getCurrentSong()?.let { song ->
                         onAudio(song)
                     }
                     onPositionChanged(position)
@@ -54,13 +55,13 @@ abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            MediaManager.songListFlow.collect { songs ->
+            MediaPlaybackManager.songListFlow.collect { songs ->
                 Log.d(TAG, "Song list updated: ${songs.size} songs")
             }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            MediaManager.playbackStateFlow.collect { state ->
+            MediaPlaybackManager.playbackStateFlow.collect { state ->
                 onPlaybackStateChanged(state)
             }
         }
@@ -73,8 +74,8 @@ abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
     }
 
     protected fun setMediaItems(songs: List<Audio>, position: Int = 0) {
-        // MediaManager.setSongs(songs, position)
-        MediaManager.play()
+        // MediaPlaybackManager.setSongs(songs, position)
+        MediaPlaybackManager.play()
         createSongHistoryDatabase(songs)
     }
 
@@ -84,8 +85,8 @@ abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
             PlaybackStateManager.savePlaybackState(
                     db = audioDatabase,
                     queueHash = songs.map { it.hash },
-                    index = MediaManager.getCurrentPosition(),
-                    position = MediaManager.getSeekPosition(),
+                    index = MediaPlaybackManager.getCurrentPosition(),
+                    position = MediaPlaybackManager.getSeekPosition(),
                     shuffle = false,
                     repeat = 0
             )

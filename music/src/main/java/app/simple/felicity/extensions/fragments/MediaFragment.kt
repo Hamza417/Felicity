@@ -28,12 +28,12 @@ import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.dialogs.app.AudioInformation.Companion.showAudioInfo
 import app.simple.felicity.dialogs.lyrics.Lyrics.Companion.showLyrics
+import app.simple.felicity.engine.managers.MediaPlaybackManager
+import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
-import app.simple.felicity.repository.managers.MediaManager
-import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
@@ -66,11 +66,11 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         super.onViewCreated(view, savedInstanceState)
 
         viewLifecycleOwner.lifecycleScope.launch {
-            MediaManager.songSeekPositionFlow.collect { position ->
+            MediaPlaybackManager.songSeekPositionFlow.collect { position ->
                 onSeekChanged(position)
 
                 // Save to database every 5 seconds or 5% of duration, whichever is larger
-                val song = MediaManager.getCurrentSong()
+                val song = MediaPlaybackManager.getCurrentSong()
                 if (song != null) {
                     val threshold = maxOf(5000L, song.duration / 20) // 5 seconds or 5% of duration
                     if (abs(position - lastSavedSeekPosition) > threshold) {
@@ -86,9 +86,9 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             // emitted position every time the fragment comes back to the foreground.
             // This guarantees onAudio() fires on resume, clearing any stale highlights.
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                MediaManager.songPositionFlow.collect { position ->
+                MediaPlaybackManager.songPositionFlow.collect { position ->
                     Log.d(TAG, "Song position: $position")
-                    MediaManager.getCurrentSong()?.let { song ->
+                    MediaPlaybackManager.getCurrentSong()?.let { song ->
                         onAudio(song)
                     }
                     onPositionChanged(position)
@@ -99,23 +99,23 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            MediaManager.songListFlow.collect { songs ->
+            MediaPlaybackManager.songListFlow.collect { songs ->
                 Log.d(TAG, "Song list updated: ${songs.size} songs")
                 onSongListChanged(songs)
             }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            MediaManager.playbackStateFlow.collect { state ->
+            MediaPlaybackManager.playbackStateFlow.collect { state ->
                 onPlaybackStateChanged(state)
             }
         }
     }
 
     protected fun setMediaItems(songs: List<Audio>, position: Int = 0) {
-        val currentSong = MediaManager.getCurrentSong()
+        val currentSong = MediaPlaybackManager.getCurrentSong()
         val requestedSong = songs.getOrNull(position)
-        val isSameQueue = MediaManager.isSameQueue(songs)
+        val isSameQueue = MediaPlaybackManager.isSameQueue(songs)
         val isSameSong = currentSong != null && requestedSong != null && currentSong.id == requestedSong.id
 
         when {
@@ -127,12 +127,12 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                      * Open the player without changing anything, but if the song was paused,
                      * resume playback since the user explicitly tapped it.
                      */
-                    MediaManager.startPlayingIfPaused()
+                    MediaPlaybackManager.startPlayingIfPaused()
                 }
             }
             isSameQueue && !isSameSong -> {
                 // Case 4: Same queue but different song — user tapped explicitly, always play.
-                MediaManager.updatePosition(position, forcePlay = true)
+                MediaPlaybackManager.updatePosition(position, forcePlay = true)
             }
             isSameSong -> {
                 // Case 2: Same song playing but queue is different — update queue silently and open player
@@ -140,7 +140,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             }
             else -> {
                 // Case 3: Different queue and different song — default behavior
-                MediaManager.setSongs(songs, position, autoPlay = true)
+                MediaPlaybackManager.setSongs(songs, position, autoPlay = true)
                 createSongHistoryDatabase(songs)
             }
         }
@@ -162,7 +162,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         val algorithm = ShufflePreferences.getShuffleAlgorithm()
         val shuffled = songs.shuffle(algorithm).toMutableList()
         // Always replace queue and start from position 0, regardless of what is currently playing.
-        MediaManager.setSongs(shuffled, 0, autoPlay = true)
+        MediaPlaybackManager.setSongs(shuffled, 0, autoPlay = true)
         createSongHistoryDatabase(shuffled)
     }
 
@@ -171,13 +171,13 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     private fun updateQueueSilently(songs: List<Audio>, position: Int) {
-        MediaManager.updateQueueSilently(songs, position)
+        MediaPlaybackManager.updateQueueSilently(songs, position)
         createSongHistoryDatabase(songs)
     }
 
     private fun createSongHistoryDatabase(songs: List<Audio>) {
-        val seek = MediaManager.getSeekPosition()
-        val idx = MediaManager.getCurrentPosition()
+        val seek = MediaPlaybackManager.getSeekPosition()
+        val idx = MediaPlaybackManager.getCurrentPosition()
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val audioDatabase = AudioDatabase.getInstance(requireContext())
@@ -312,7 +312,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     /**
-     * Called whenever the MediaManager queue list changes (songs added, removed, reordered).
+     * Called whenever the MediaPlaybackManager queue list changes (songs added, removed, reordered).
      * Subclasses that display the queue or its size should override this to refresh their UI.
      *
      * @param songs the updated, authoritative list of queued [Audio] tracks.
@@ -340,7 +340,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 binding.cover.loadArtCoverWithPayload(audio)
             }
 
-            val isCurrentlyPlaying = MediaManager.getCurrentSong()?.id == audio.id
+            val isCurrentlyPlaying = MediaPlaybackManager.getCurrentSong()?.id == audio.id
             if (isCurrentlyPlaying) {
                 binding.addToQueue.gone(animate = false)
                 binding.playNext.gone(animate = false)
@@ -360,13 +360,13 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             }
 
             binding.addToQueue.setOnClickListener {
-                MediaManager.addToQueue(audio)
+                MediaPlaybackManager.addToQueue(audio)
                 openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
                 dismiss()
             }
 
             binding.playNext.setOnClickListener {
-                MediaManager.playNext(audio)
+                MediaPlaybackManager.playNext(audio)
                 dismiss()
             }
 
@@ -404,8 +404,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     val newFav = !audio.isFavorite
                     AudioDatabase.getInstance(requireContext()).audioDao()?.setFavorite(audio.id, newFav)
                     audio.isFavorite = newFav
-                    if (MediaManager.getCurrentSong()?.id == audio.id) {
-                        withContext(Dispatchers.Main) { MediaManager.notifyCurrentSongUpdated() }
+                    if (MediaPlaybackManager.getCurrentSong()?.id == audio.id) {
+                        withContext(Dispatchers.Main) { MediaPlaybackManager.notifyCurrentSongUpdated() }
                     }
                 }
                 dismiss()
@@ -416,8 +416,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     val newSkip = !audio.isAlwaysSkip
                     AudioDatabase.getInstance(requireContext()).audioDao()?.setAlwaysSkip(audio.id, newSkip)
                     audio.setAlwaysSkip(newSkip)
-                    if (newSkip && MediaManager.getCurrentSong()?.id == audio.id) {
-                        withContext(Dispatchers.Main) { MediaManager.next() }
+                    if (newSkip && MediaPlaybackManager.getCurrentSong()?.id == audio.id) {
+                        withContext(Dispatchers.Main) { MediaPlaybackManager.next() }
                     }
                 }
                 dismiss()
@@ -493,16 +493,16 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     /**
      * Toggles the favorite state of the currently playing song.
      * Updates the [AudioDatabase] and the in-memory [Audio] object, then re-emits
-     * [MediaManager.notifyCurrentSongUpdated] so observers (e.g. [DefaultPlayer]) refresh their UI.
+     * [MediaPlaybackManager.notifyCurrentSongUpdated] so observers (e.g. [DefaultPlayer]) refresh their UI.
      */
     protected fun toggleFavorite() {
-        val audio = MediaManager.getCurrentSong() ?: return
+        val audio = MediaPlaybackManager.getCurrentSong() ?: return
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val newFavorite = !audio.isFavorite
             AudioDatabase.getInstance(requireContext()).audioDao()?.setFavorite(audio.id, newFavorite)
             audio.isFavorite = newFavorite
             withContext(Dispatchers.Main) {
-                MediaManager.notifyCurrentSongUpdated()
+                MediaPlaybackManager.notifyCurrentSongUpdated()
             }
         }
     }
@@ -513,8 +513,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 inflateBinding = DialogDeleteSongBinding::inflate)
             .onViewCreated { binding ->
                 // Duck audio if same song is playing
-                if (MediaManager.getCurrentSong()?.id == audio.id) {
-                    MediaManager.duck()
+                if (MediaPlaybackManager.getCurrentSong()?.id == audio.id) {
+                    MediaPlaybackManager.duck()
                 }
 
                 val title = audio.title
@@ -555,7 +555,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 }
             }
             .onDismiss {
-                MediaManager.unduck() // Ensure we unduck if user dismisses by tapping outside or pressing back
+                MediaPlaybackManager.unduck() // Ensure we unduck if user dismisses by tapping outside or pressing back
             }
             .build()
             .show()
@@ -591,15 +591,15 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 // Step 1: Skip to the next song (or remove from queue) BEFORE touching the
                 // file, so playback continues smoothly without ever trying to read a deleted path.
                 withContext(Dispatchers.Main) {
-                    val queueIndex = MediaManager.getSongs().indexOfFirst { it.id == audio.id }
+                    val queueIndex = MediaPlaybackManager.getSongs().indexOfFirst { it.id == audio.id }
                     when {
                         queueIndex != -1 -> {
                             // removeQueueItemSilently advances playback if this song is current.
-                            MediaManager.removeQueueItemSilently(queueIndex)
+                            MediaPlaybackManager.removeQueueItemSilently(queueIndex)
                         }
-                        MediaManager.getCurrentSong()?.id == audio.id -> {
+                        MediaPlaybackManager.getCurrentSong()?.id == audio.id -> {
                             // Song is playing but is not in the tracked queue list — just skip.
-                            MediaManager.next()
+                            MediaPlaybackManager.next()
                         }
                     }
                 }

@@ -77,7 +77,7 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
     init {
         setHasStableIds(true)
         // Seed the tracked ID so the first song-change correctly un-highlights the
-        // item that was highlighted by the initial full bind (which reads MediaManager directly).
+        // item that was highlighted by the initial full bind (which reads MediaPlaybackManager directly).
         differ.submitList(initial.toList())
     }
 

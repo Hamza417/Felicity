@@ -26,6 +26,8 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import app.simple.felicity.core.constants.ThemeConstants
 import app.simple.felicity.core.singletons.AppOrientation
+import app.simple.felicity.engine.managers.MediaPlaybackManager
+import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.engine.services.FelicityPlayerService
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
@@ -33,8 +35,6 @@ import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.repository.covers.AudioCover
 import app.simple.felicity.repository.database.instances.AudioDatabase
-import app.simple.felicity.repository.managers.MediaManager
-import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.theme.accents.AlbumArt
 import app.simple.felicity.theme.accents.Felicity
@@ -98,7 +98,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     }
 
     /**
-     * Observes [MediaManager.songPositionFlow] so the album-art accent palette is refreshed
+     * Observes [MediaPlaybackManager.songPositionFlow] so the album-art accent palette is refreshed
      * every time the track changes, without blocking the main thread or the media controller.
      *
      * Uses [ThemeUtils.isEffectiveAlbumArtTheme] to correctly detect album-art mode even when
@@ -106,7 +106,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
      */
     private fun observeSongChangesForPalette() {
         lifecycleScope.launch {
-            MediaManager.songPositionFlow.collect {
+            MediaPlaybackManager.songPositionFlow.collect {
                 val isAlbumArtAccent = AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER
                 val isAlbumArtTheme = ThemeUtils.isEffectiveAlbumArtTheme(resources)
                 if (isAlbumArtAccent || isAlbumArtTheme) {
@@ -128,7 +128,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         val listener = Runnable {
             Log.d(TAG, "MediaController created successfully")
             mediaController = controllerFuture?.get()
-            MediaManager.setMediaController(mediaController!!)
+            MediaPlaybackManager.setMediaController(mediaController!!)
             restoreLastSongStateFromDatabase()
             generateAlbumArtPalette()
         }
@@ -142,9 +142,9 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         // which causes the brief audio freeze.
         if ((mediaController?.mediaItemCount ?: 0) > 0) {
             Log.d(TAG, "MediaController already has items, skipping DB restore (likely a rotation)")
-            // Re-sync MediaManager's in-memory queue with what the service has
+            // Re-sync MediaPlaybackManager's in-memory queue with what the service has
             val currentIndex = mediaController?.currentMediaItemIndex ?: 0
-            MediaManager.notifyCurrentPosition(currentIndex)
+            MediaPlaybackManager.notifyCurrentPosition(currentIndex)
             onStateReady()
             return
         }
@@ -187,7 +187,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                                 }
                             }
                         }
-                        MediaManager.setSongs(
+                        MediaPlaybackManager.setSongs(
                                 audios = lastSongs,
                                 position = restoredIndex,
                                 startPositionMs = playbackState.position.coerceAtLeast(0L),
@@ -206,8 +206,8 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                             // first { } suspends until Room emits a non-empty list, then cancels.
                             val firstSongs = dao.getAllAudio().first { it.isNotEmpty() }
                             withContext(Dispatchers.Main) {
-                                if (MediaManager.getSongs().isEmpty()) {
-                                    MediaManager.setSongs(
+                                if (MediaPlaybackManager.getSongs().isEmpty()) {
+                                    MediaPlaybackManager.setSongs(
                                             audios = firstSongs,
                                             position = 0,
                                             startPositionMs = 0L,
@@ -251,7 +251,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
         if (!isAlbumArtAccent && !isAlbumArtTheme) return
 
-        val audio = MediaManager.getCurrentSong() ?: return
+        val audio = MediaPlaybackManager.getCurrentSong() ?: return
 
         // Skip re-extraction when the same track is already applied.
         if (audio.id == lastPaletteSongId) return
@@ -410,10 +410,10 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         // The service keeps playing; tearing down and rebuilding the controller causes
         // a brief audio freeze because setMediaItems + prepare() is called again on reconnect.
         if (!isChangingConfigurations) {
-            MediaManager.stopSeekPositionUpdates()
+            MediaPlaybackManager.stopSeekPositionUpdates()
             try {
                 mediaController?.let {
-                    MediaManager.clearMediaController()
+                    MediaPlaybackManager.clearMediaController()
                     it.release()
                 }
                 MediaController.releaseFuture(controllerFuture!!)

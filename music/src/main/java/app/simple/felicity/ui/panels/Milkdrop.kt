@@ -21,11 +21,11 @@ import app.simple.felicity.databinding.FragmentMilkdropBinding
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.dialogs.player.MilkdropPresets.Companion.showMilkdropPresets
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.AppearancePreferences.getCornerRadius
 import app.simple.felicity.repository.constants.MediaConstants
-import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.ui.panels.Milkdrop.Companion.OVERLAY_VISIBLE_MS
@@ -131,21 +131,21 @@ class Milkdrop : MediaFragment() {
         binding.seekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
             override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
                 if (fromUser) {
-                    MediaManager.seekTo(progress.toLong())
+                    MediaPlaybackManager.seekTo(progress.toLong())
                 }
             }
         })
 
         binding.next.setOnClickListener {
-            MediaManager.next()
+            MediaPlaybackManager.next()
         }
 
         binding.previous.setOnClickListener {
-            MediaManager.previous()
+            MediaPlaybackManager.previous()
         }
 
         binding.play.setOnClickListener {
-            MediaManager.flipState()
+            MediaPlaybackManager.flipState()
         }
 
         // Schedule the first auto-hide so the overlay does not linger on cold start.
@@ -272,12 +272,12 @@ class Milkdrop : MediaFragment() {
     }
 
     private fun updateState() {
-        val audio = MediaManager.getCurrentSong() ?: return
+        val audio = MediaPlaybackManager.getCurrentSong() ?: return
         binding.name.text = audio.title
         binding.artist.text = audio.getArtists()
         binding.seekbar.setMax(audio.duration.toFloat())
-        binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
-        updatePlayButtonState(MediaManager.isPlaying())
+        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
+        updatePlayButtonState(MediaPlaybackManager.isPlaying())
     }
 
     private fun updatePlayButtonState(isPlaying: Boolean) {
@@ -290,13 +290,13 @@ class Milkdrop : MediaFragment() {
 
     override fun onAudio(audio: Audio) {
         super.onAudio(audio)
-        val forward = MediaManager.lastNavigationDirection
+        val forward = MediaPlaybackManager.lastNavigationDirection
         binding.name.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
         binding.artist.setTextWithEffect(audio.getArtists(), forward, 50L)
         binding.seekbar.setMaxWithReset(audio.duration.toFloat())
 
         // Always refresh the seek position (covers predictive-back resume and actual changes).
-        binding.seekbar.setProgress(MediaManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
+        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
     }
 
     override fun onPlaybackStateChanged(state: Int) {

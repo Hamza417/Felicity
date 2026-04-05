@@ -16,8 +16,8 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentPlayingQueueBinding
 import app.simple.felicity.databinding.HeaderPlayingQueueBinding
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.PanelFragment
-import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.viewmodels.panels.PlayingQueueViewModel
@@ -87,7 +87,7 @@ class PlayingQueue : PanelFragment() {
             adapterPlayingQueue?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
                     // Explicit tap on a queue item always starts playback.
-                    MediaManager.updatePosition(position, forcePlay = true)
+                    MediaPlaybackManager.updatePosition(position, forcePlay = true)
                 }
 
                 override fun onSongLongClicked(audios: MutableList<Audio>, position: Int, imageView: ImageView?) {
@@ -97,7 +97,7 @@ class PlayingQueue : PanelFragment() {
 
 
             adapterPlayingQueue?.setOnItemSwipedCallback { position ->
-                MediaManager.removeQueueItemSilently(position)
+                MediaPlaybackManager.removeQueueItemSilently(position)
             }
 
             binding.recyclerView.adapter = adapterPlayingQueue
@@ -120,7 +120,7 @@ class PlayingQueue : PanelFragment() {
         if (!hasScrolledToInitialPosition && binding.recyclerView.layoutManager is GridLayoutManager) {
             hasScrolledToInitialPosition = true
             val layoutManager = binding.recyclerView.layoutManager as GridLayoutManager
-            val currentPosition = MediaManager.getCurrentPosition()
+            val currentPosition = MediaPlaybackManager.getCurrentPosition()
             binding.recyclerView.post {
                 // Post so the layout has had a chance to measure before we read visible range
                 val firstVisible = layoutManager.findFirstVisibleItemPosition()

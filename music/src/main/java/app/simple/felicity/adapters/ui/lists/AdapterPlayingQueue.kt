@@ -20,8 +20,8 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterPlayingQueueBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
-import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.shared.utils.ColorUtils.changeAlpha
@@ -98,7 +98,7 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
     }
 
     /**
-     * Apply a new list from outside (ViewModel / MediaManager flow).
+     * Apply a new list from outside (ViewModel / MediaPlaybackManager flow).
      * Deferred while a drag is in progress to avoid visual conflicts.
      * Uses synchronous DiffUtil — queue sizes are always small.
      */
@@ -220,8 +220,8 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
             songs.add(to, songs.removeAt(from))
             // Tell RecyclerView exactly what moved — ItemTouchHelper owns the animation.
             notifyItemMoved(from, to)
-            // Mirror the move in MediaManager silently (no songPositionFlow, no ExoPlayer call).
-            MediaManager.moveQueueItemSilently(from, to)
+            // Mirror the move in MediaPlaybackManager silently (no songPositionFlow, no ExoPlayer call).
+            MediaPlaybackManager.moveQueueItemSilently(from, to)
 
             return true
         }
@@ -246,7 +246,7 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
         override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
             super.clearView(recyclerView, viewHolder)
 
-            // MediaManager's list and ExoPlayer queue are already fully synced by the
+            // MediaPlaybackManager's list and ExoPlayer queue are already fully synced by the
             // incremental moveQueueItemSilently calls in onMove — no extra callback needed.
 
             dragFromPosition = -1

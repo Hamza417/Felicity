@@ -24,9 +24,9 @@ import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
 import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.dialogs.app.AppLabel.Companion.showAppLabel
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.MainPreferences
-import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
@@ -109,7 +109,7 @@ class Dashboard : PanelFragment() {
             dashboardViewModel.refreshRecommended()
         }
 
-        updateStates(MediaManager.getCurrentSong() ?: return)
+        updateStates(MediaPlaybackManager.getCurrentSong() ?: return)
     }
 
     private fun setupHeader() {
@@ -367,7 +367,7 @@ class Dashboard : PanelFragment() {
     private fun updateStates(audio: Audio) {
         binding.currentlyPlaying.setTextWithEffect(
                 getString(R.string.now_playing, audio.title),
-                isForward = MediaManager.lastNavigationDirection
+                isForward = MediaPlaybackManager.lastNavigationDirection
         )
     }
 

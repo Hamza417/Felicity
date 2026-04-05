@@ -3,8 +3,8 @@ package app.simple.felicity.viewmodels.panels
 import android.app.Application
 import android.util.Log
 import androidx.lifecycle.viewModelScope
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
-import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,7 +30,7 @@ class PlayingQueueViewModel @Inject constructor(
 
     private fun observeQueue() {
         viewModelScope.launch {
-            MediaManager.songListFlow.collect { audioList ->
+            MediaPlaybackManager.songListFlow.collect { audioList ->
                 Log.d(TAG, "Queue updated: ${audioList.size} songs")
                 _songs.value = audioList
             }
@@ -39,7 +39,7 @@ class PlayingQueueViewModel @Inject constructor(
 
     private fun observePosition() {
         viewModelScope.launch {
-            MediaManager.songPositionFlow.collect { position ->
+            MediaPlaybackManager.songPositionFlow.collect { position ->
                 Log.d(TAG, "Queue position updated: $position")
                 _currentPosition.value = position
             }

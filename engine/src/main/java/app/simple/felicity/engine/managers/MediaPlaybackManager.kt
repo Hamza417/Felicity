@@ -1,4 +1,4 @@
-package app.simple.felicity.repository.managers
+package app.simple.felicity.engine.managers
 
 import android.animation.ValueAnimator
 import android.util.Log
@@ -9,19 +9,19 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
+import app.simple.felicity.engine.managers.MediaPlaybackManager._songPositionFlow
+import app.simple.felicity.engine.managers.MediaPlaybackManager.currentSongPosition
+import app.simple.felicity.engine.managers.MediaPlaybackManager.mediaController
+import app.simple.felicity.engine.managers.MediaPlaybackManager.moveQueueItemSilently
+import app.simple.felicity.engine.managers.MediaPlaybackManager.next
+import app.simple.felicity.engine.managers.MediaPlaybackManager.notifyCurrentPosition
+import app.simple.felicity.engine.managers.MediaPlaybackManager.pendingSeekPositions
+import app.simple.felicity.engine.managers.MediaPlaybackManager.previous
+import app.simple.felicity.engine.managers.MediaPlaybackManager.removeQueueItemSilently
+import app.simple.felicity.engine.managers.MediaPlaybackManager.setSongs
+import app.simple.felicity.engine.managers.MediaPlaybackManager.updatePosition
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.listeners.MediaStateListener
-import app.simple.felicity.repository.managers.MediaManager._songPositionFlow
-import app.simple.felicity.repository.managers.MediaManager.currentSongPosition
-import app.simple.felicity.repository.managers.MediaManager.mediaController
-import app.simple.felicity.repository.managers.MediaManager.moveQueueItemSilently
-import app.simple.felicity.repository.managers.MediaManager.next
-import app.simple.felicity.repository.managers.MediaManager.notifyCurrentPosition
-import app.simple.felicity.repository.managers.MediaManager.pendingSeekPositions
-import app.simple.felicity.repository.managers.MediaManager.previous
-import app.simple.felicity.repository.managers.MediaManager.removeQueueItemSilently
-import app.simple.felicity.repository.managers.MediaManager.setSongs
-import app.simple.felicity.repository.managers.MediaManager.updatePosition
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ProcessUtils.ensureOnMainThread
 import kotlinx.coroutines.CoroutineScope
@@ -39,9 +39,9 @@ import java.io.File
 import kotlin.math.max
 
 // TODO - move to engine module
-object MediaManager {
+object MediaPlaybackManager {
 
-    private const val TAG = "MediaManager"
+    private const val TAG = "MediaPlaybackManager"
 
     // Single app-scoped Main dispatcher scope to avoid leaking ad-hoc scopes
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -245,7 +245,7 @@ object MediaManager {
         }
 
         scope.launch {
-            _songListFlow.emit(this@MediaManager.songs)
+            _songListFlow.emit(this@MediaPlaybackManager.songs)
         }
     }
 
@@ -272,7 +272,7 @@ object MediaManager {
         val clampedPosition = if (audios.isEmpty()) 0 else newPosition.coerceIn(0, audios.size - 1)
         currentSongPosition = clampedPosition
         scope.launch {
-            _songListFlow.emit(this@MediaManager.songs)
+            _songListFlow.emit(this@MediaPlaybackManager.songs)
         }
     }
 
@@ -314,7 +314,7 @@ object MediaManager {
         mediaController?.moveMediaItem(fromIndex, toIndex)
 
         scope.launch {
-            _songListFlow.emit(this@MediaManager.songs)
+            _songListFlow.emit(this@MediaPlaybackManager.songs)
         }
     }
 
@@ -371,7 +371,7 @@ object MediaManager {
         }
 
         scope.launch {
-            _songListFlow.emit(this@MediaManager.songs)
+            _songListFlow.emit(this@MediaPlaybackManager.songs)
         }
     }
 

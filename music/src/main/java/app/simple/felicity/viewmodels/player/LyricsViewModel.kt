@@ -11,8 +11,8 @@ import app.simple.felicity.decorations.lrc.model.LrcData
 import app.simple.felicity.decorations.lrc.parser.LrcParser
 import app.simple.felicity.decorations.lrc.parser.LyricsParseException
 import app.simple.felicity.decorations.lrc.parser.TxtParser
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
-import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.viewmodels.player.LyricsViewModel.Companion.SYNC_SAVE_DEBOUNCE_MS
@@ -91,7 +91,7 @@ class LyricsViewModel @AssistedInject constructor(
     fun getSyncOffsetMs(): LiveData<Long> = syncOffsetMs
 
     fun loadLrcData() {
-        val currentSongPath = (audio ?: MediaManager.getCurrentSong())?.path
+        val currentSongPath = (audio ?: MediaPlaybackManager.getCurrentSong())?.path
 
         if (currentSongPath != null && currentSongPath == lastLoadedPath) {
             if (loadingJob?.isActive == true) {
@@ -119,7 +119,7 @@ class LyricsViewModel @AssistedInject constructor(
 
         loadingJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                val currentSong = audio ?: MediaManager.getCurrentSong()
+                val currentSong = audio ?: MediaPlaybackManager.getCurrentSong()
                 if (currentSong == null) {
                     lrcData.postValue(LrcData())
                     return@launch
@@ -246,7 +246,7 @@ class LyricsViewModel @AssistedInject constructor(
         // Always shift from what is currently on disk, not the original loaded data.
         // This prevents each persist from overwriting previous adjustments.
         val base = bakedLrcData ?: lrcData.value ?: return
-        val currentSong = audio ?: MediaManager.getCurrentSong() ?: return
+        val currentSong = audio ?: MediaPlaybackManager.getCurrentSong() ?: return
 
         // The offset is added to the playback clock in the view (seek + offset), so
         // to bake the same correction into the timestamps we must subtract it:
@@ -279,7 +279,7 @@ class LyricsViewModel @AssistedInject constructor(
     }
 
     fun deleteLrc(onSuccess: (() -> Unit)? = null) {
-        val currentSong = audio ?: MediaManager.getCurrentSong() ?: return
+        val currentSong = audio ?: MediaPlaybackManager.getCurrentSong() ?: return
 
         viewModelScope.launch(Dispatchers.IO) {
             lrcRepository.deleteLrcFile(currentSong.path)

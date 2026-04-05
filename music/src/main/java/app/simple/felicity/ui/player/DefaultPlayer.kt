@@ -19,6 +19,7 @@ import app.simple.felicity.decorations.seekbars.WaveformSeekbar
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.dialogs.app.AudioPipelineDialog.Companion.showAudioPipeline
 import app.simple.felicity.dialogs.player.VisualizerConfig.Companion.showVisualizerConfig
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.engine.utils.PcmInfoFormatter
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -26,7 +27,6 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
-import app.simple.felicity.repository.managers.MediaManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.ui.panels.Equalizer
@@ -92,9 +92,9 @@ class DefaultPlayer : MediaFragment() {
 
         binding.pager.setAdapter(
                 ImagePageAdapter(
-                        count = MediaManager.getSongs().size,
+                        count = MediaPlaybackManager.getSongs().size,
                         provider = { pos, iv ->
-                            val audio = MediaManager.getSongs()[pos]
+                            val audio = MediaPlaybackManager.getSongs()[pos]
                             iv.loadArtCover(audio,
                                             shadow = false,
                                             crop = true,
@@ -112,33 +112,33 @@ class DefaultPlayer : MediaFragment() {
         // Jump to the currently playing song immediately after the adapter is set.
         // Using smoothScroll=false so the correct page (and its cover art) is shown
         // from the very first frame, even when position == 0.
-        val initialPosition = MediaManager.getCurrentPosition()
+        val initialPosition = MediaPlaybackManager.getCurrentPosition()
         binding.pager.setCurrentItem(initialPosition, smoothScroll = false)
         binding.count.text = buildString {
             append(initialPosition + 1)
             append("/")
-            append(MediaManager.getSongs().size)
+            append(MediaPlaybackManager.getSongs().size)
         }
 
         binding.pager.addOnPageChangeListener(object : FelicityPager.OnPageChangeListener {
             override fun onPageSelected(position: Int, fromUser: Boolean) {
                 super.onPageSelected(position, fromUser)
                 if (fromUser) {
-                    MediaManager.updatePosition(position)
+                    MediaPlaybackManager.updatePosition(position)
                 }
             }
         })
 
         binding.next.setOnClickListener {
-            MediaManager.next()
+            MediaPlaybackManager.next()
         }
 
         binding.previous.setOnClickListener {
-            MediaManager.previous()
+            MediaPlaybackManager.previous()
         }
 
         binding.play.setOnClickListener {
-            MediaManager.flipState()
+            MediaPlaybackManager.flipState()
         }
 
         binding.queue.setOnClickListener {
@@ -155,8 +155,8 @@ class DefaultPlayer : MediaFragment() {
 
         binding.menu.setOnClickListener {
             openSongsMenu(
-                    audios = MediaManager.getSongs(),
-                    position = MediaManager.getCurrentPosition(),
+                    audios = MediaPlaybackManager.getSongs(),
+                    position = MediaPlaybackManager.getCurrentPosition(),
                     imageView = binding.pager.getCurrentImageView()
             )
         }
@@ -178,7 +178,7 @@ class DefaultPlayer : MediaFragment() {
 
         // Observe repeat mode changes from the service (e.g. on startup)
         viewLifecycleOwner.lifecycleScope.launch {
-            MediaManager.repeatModeFlow.collect { repeatMode ->
+            MediaPlaybackManager.repeatModeFlow.collect { repeatMode ->
                 updateRepeatButtonIcon(repeatMode)
             }
         }
@@ -189,7 +189,7 @@ class DefaultPlayer : MediaFragment() {
         binding.seekbar.setOnSeekListener(object : WaveformSeekbar.OnSeekListener {
             override fun onSeekTo(positionMs: Long, fromUser: Boolean) {
                 if (fromUser) {
-                    MediaManager.seekTo(positionMs)
+                    MediaPlaybackManager.seekTo(positionMs)
                 }
             }
         })
@@ -253,14 +253,14 @@ class DefaultPlayer : MediaFragment() {
     }
 
     private fun updateState() {
-        val audio = MediaManager.getCurrentSong() ?: return
+        val audio = MediaPlaybackManager.getCurrentSong() ?: return
         binding.title.text = audio.title ?: getString(R.string.unknown)
         binding.artist.text = audio.getArtists()
         binding.album.text = audio.album ?: getString(R.string.unknown)
         binding.pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
         binding.seekbar.setDuration(audio.duration)
-        binding.seekbar.setProgress(MediaManager.getSeekPosition(), animate = false)
-        updatePlayButtonState(MediaManager.isPlaying())
+        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = false)
+        updatePlayButtonState(MediaPlaybackManager.isPlaying())
         updateFavoriteIcon(audio)
 
         // Defer waveform decoding until ExoPlayer is actually playing to avoid
@@ -305,7 +305,7 @@ class DefaultPlayer : MediaFragment() {
      * @param audio the track whose waveform should be decoded
      */
     private fun loadWaveformWhenReady(audio: Audio) {
-        if (MediaManager.isPlaying()) {
+        if (MediaPlaybackManager.isPlaying()) {
             waveformViewModel.loadWaveform(audio)
             pendingWaveformAudio = null
         } else {
@@ -324,7 +324,7 @@ class DefaultPlayer : MediaFragment() {
     override fun onSongListChanged(songs: List<Audio>) {
         super.onSongListChanged(songs)
         val adapter = imagePageAdapter ?: return
-        val currentPos = MediaManager.getCurrentPosition()
+        val currentPos = MediaPlaybackManager.getCurrentPosition()
         adapter.updateCount(songs.size)
         binding.pager.notifyDataSetChanged()
         // Keep the pager on the correct page after the list shrinks or reorders.
@@ -348,19 +348,19 @@ class DefaultPlayer : MediaFragment() {
         binding.count.text = buildString {
             append(position + 1)
             append("/")
-            append(MediaManager.getSongs().size)
+            append(MediaPlaybackManager.getSongs().size)
         }
     }
 
     override fun onAudio(audio: Audio) {
         super.onAudio(audio)
-        val forward = MediaManager.lastNavigationDirection
+        val forward = MediaPlaybackManager.lastNavigationDirection
         binding.title.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
         binding.artist.setTextWithEffect(audio.getArtists(), forward, 50L)
         binding.album.setTextWithEffect(audio.album ?: getString(R.string.unknown), forward, 100L)
         binding.pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
         binding.seekbar.setDuration(audio.duration)
-        binding.seekbar.setProgress(MediaManager.getSeekPosition(), animate = false)
+        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = false)
         updateFavoriteIcon(audio)
 
         // Defer waveform decoding until ExoPlayer is actually playing to avoid

@@ -23,6 +23,8 @@ import app.simple.felicity.decorations.miniplayer.MiniPlayerItem
 import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
+import app.simple.felicity.engine.managers.MediaPlaybackManager
+import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.extensions.fragments.ScopedFragment
@@ -30,8 +32,6 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtIntoBitmap
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
-import app.simple.felicity.repository.managers.MediaManager
-import app.simple.felicity.repository.managers.PlaybackStateManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
@@ -71,12 +71,12 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
         binding.miniPlayer.callbacks = object : MiniPlayer.Callbacks {
             override fun onPageSelected(position: Int, fromUser: Boolean) {
-                // Only forward to MediaManager when the swipe originated from the
+                // Only forward to MediaPlaybackManager when the swipe originated from the
                 // user.  Programmatic setCurrentItem calls (fromUser = false) must
                 // be ignored; otherwise the position feedback loop causes the wrong
                 // song to be played.
                 if (fromUser) {
-                    MediaManager.updatePosition(position)
+                    MediaPlaybackManager.updatePosition(position)
                 }
             }
 
@@ -87,7 +87,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             }
 
             override fun onPlayPauseClick() {
-                MediaManager.flipState()
+                MediaPlaybackManager.flipState()
             }
 
             override fun onItemClick(position: Int) {
@@ -100,9 +100,9 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
         // Seek via long-press drag on the miniplayer
         binding.miniPlayer.seekListener = { fraction ->
-            val duration = MediaManager.getDuration()
+            val duration = MediaPlaybackManager.getDuration()
             if (duration > 0L) {
-                MediaManager.seekTo((fraction * duration).toLong())
+                MediaPlaybackManager.seekTo((fraction * duration).toLong())
             }
         }
 
@@ -118,11 +118,11 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         }
 
         lifecycleScope.launch {
-            MediaManager.songSeekPositionFlow.collect { position ->
+            MediaPlaybackManager.songSeekPositionFlow.collect { position ->
                 // Skip external updates while the user is scrubbing to avoid
                 // the flow fighting the touch handler and causing jitter.
                 if (binding.miniPlayer.isSeeking) return@collect
-                val duration = MediaManager.getDuration()
+                val duration = MediaPlaybackManager.getDuration()
                 if (duration > 0L) {
                     // animate = false: snap directly for real-time ticks; no tween lag.
                     binding.miniPlayer.setProgress(
@@ -134,7 +134,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         }
 
         lifecycleScope.launch {
-            MediaManager.songPositionFlow.collect { position ->
+            MediaPlaybackManager.songPositionFlow.collect { position ->
                 val currentPagerItem = binding.miniPlayer.currentItem
                 if (currentPagerItem != position) {
                     binding.miniPlayer.setCurrentItem(
@@ -146,7 +146,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         }
 
         lifecycleScope.launch {
-            MediaManager.songListFlow.collect { songs ->
+            MediaPlaybackManager.songListFlow.collect { songs ->
                 Log.d("MainActivity", "songListFlow: ${songs.size}")
                 val items = songs.map { audio ->
                     MiniPlayerItem(
@@ -156,7 +156,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                     )
                 }
                 binding.miniPlayer.setItems(items)
-                val songPosition = MediaManager.getCurrentPosition()
+                val songPosition = MediaPlaybackManager.getCurrentPosition()
                 binding.miniPlayer.setCurrentItem(
                         if (songPosition < songs.size) songPosition else 0,
                         smoothScroll = false
@@ -167,7 +167,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         }
 
         lifecycleScope.launch {
-            MediaManager.playbackStateFlow.collect { state ->
+            MediaPlaybackManager.playbackStateFlow.collect { state ->
                 when (state) {
                     MediaConstants.PLAYBACK_PLAYING -> binding.miniPlayer.setPlaying(true)
                     MediaConstants.PLAYBACK_PAUSED -> binding.miniPlayer.setPlaying(false)
@@ -278,7 +278,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
      * @author Hamza417
      */
     override fun onStateReady() {
-        if (MediaManager.getSongs().isEmpty()) return
+        if (MediaPlaybackManager.getSongs().isEmpty()) return
         val fragment = supportFragmentManager.fragments.lastOrNull { it.isVisible }
         val wantsVisible = (fragment as? MiniPlayerPolicy)?.wantsMiniPlayerVisible ?: true
         if (wantsVisible) {
