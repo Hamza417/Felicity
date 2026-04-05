@@ -119,6 +119,7 @@ dependencies {
     implementation 'com.google.android.flexbox:flexbox:3.0.0'
 
     // Third party
+    implementation 'com.github.MSOB7YY:Amplituda:2.3.2'
 
     // Toolkit
     implementation 'com.github.Hamza417:renderscript-intrinsics-replacement-toolkit:4ae2409809'
