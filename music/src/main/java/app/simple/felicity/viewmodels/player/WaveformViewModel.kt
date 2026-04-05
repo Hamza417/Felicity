@@ -1,21 +1,21 @@
 package app.simple.felicity.viewmodels.player
 
 import android.app.Application
-import android.media.MediaCodec
-import android.media.MediaExtractor
-import android.media.MediaFormat
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.viewmodels.player.WaveformViewModel.Companion.PCM_BUFFERS_PER_BAR
+import com.linc.amplituda.Amplituda
+import com.linc.amplituda.Cache
+import com.linc.amplituda.Compress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import kotlin.math.PI
 import kotlin.math.sin
@@ -25,10 +25,9 @@ import kotlin.random.Random.Default.nextFloat
  * ViewModel responsible for loading and exposing per-second amplitude data
  * for the currently playing audio track.
  *
- * Decodes the audio using [android.media.MediaCodec] with a seek-per-bar strategy:
- * for each visual bar the extractor is repositioned to the bar's start timestamp and
- * the codec pipeline is flushed, so only a small number of PCM output buffers are
- * decoded per bar instead of the entire file. Values are normalized to [0.0, 1.0].
+ * Uses [Amplituda] to decode the raw PCM waveform and then downsamples the
+ * result so that each element of the output array represents the peak amplitude
+ * within a single one-second window. Values are normalized to [0.0, 1.0].
  *
  * @author Hamza417
  */
@@ -47,14 +46,9 @@ class WaveformViewModel @Inject constructor(
      */
     fun getWaveformData(): LiveData<FloatArray> = waveformData
 
-    /**
-     * Loads waveform data for the given [audio] track.
-     * If the same path is already loaded and non-empty, the call is a no-op.
-     * A flat ghost array is posted immediately so the UI has something to display
-     * while the background extraction runs.
-     *
-     * @param audio The [Audio] whose waveform should be extracted.
-     */
+    // The Bouncer: Ensures only one native extraction runs at a time
+    private val amplitudaMutex = Mutex()
+
     fun loadWaveform(audio: Audio) {
         // Prevent redundant loading
         if (audio.path == currentPath && waveformData.value?.isNotEmpty() == true) return
@@ -67,8 +61,73 @@ class WaveformViewModel @Inject constructor(
         // Immediately leave the Main Thread so the UI never drops a frame
         viewModelScope.launch(Dispatchers.IO) {
 
-            // Push the perfectly scaled array safely to the UI thread
-            waveformData.postValue(extractWaveformOptimized(audio.path, audio.duration) ?: getRandomGhostData(audio.duration))
+            // Wait in line. If another song is currently decoding, this suspends
+            // without blocking any Kotlin threads, protecting the C++ JNI bridge.
+            amplitudaMutex.withLock {
+
+                // Stale Request Check 1: Did the user skip while we waited for the lock?
+                if (currentPath != audio.path) return@withLock
+
+                try {
+                    // Synchronous, blocking native extraction (Safe because we are on IO + Locked)
+                    val rawAmplitudes = Amplituda(getApplication())
+                        .processAudio(
+                                audio.path,
+                                Compress.withParams(Compress.AVERAGE, 1),
+                                Cache.withParams(Cache.REUSE, audio.hash.toString())
+                        )
+                        .get() // Blocking call
+                        .amplitudesAsList()
+
+                    // Stale Request Check 2: Did the user skip while C++ was grinding?
+                    if (currentPath != audio.path) return@withLock
+
+                    if (rawAmplitudes.isEmpty()) {
+                        waveformData.postValue(getRandomGhostData(audio.duration)) // Fallback to ghost data if extraction yields nothing
+                        return@withLock
+                    }
+
+                    // --- Deterministic Time-Based Downsampling ---
+
+                    val expectedBars = ((audio.duration / 1000f) * BARS_PER_SECOND).toInt().coerceAtLeast(1)
+
+                    val chunkedAmplitudes = FloatArray(expectedBars)
+                    val chunkSize = rawAmplitudes.size.toFloat() / expectedBars
+
+                    for (i in 0 until expectedBars) {
+                        val start = (i * chunkSize).toInt()
+                        val end = ((i + 1) * chunkSize).toInt().coerceAtMost(rawAmplitudes.size)
+
+                        var peakInChunk = 0
+                        for (j in start until end) {
+                            if (rawAmplitudes[j] > peakInChunk) {
+                                peakInChunk = rawAmplitudes[j]
+                            }
+                        }
+                        chunkedAmplitudes[i] = peakInChunk.toFloat()
+                    }
+
+                    // --- Final Normalization ---
+
+                    val maxPeak = chunkedAmplitudes.maxOrNull() ?: 1f
+                    val sampled = if (maxPeak > 0f) {
+                        FloatArray(expectedBars) { i ->
+                            chunkedAmplitudes[i] / maxPeak
+                        }
+                    } else {
+                        getRandomGhostData(audio.duration) // If all peaks are zero, return random ghost data to avoid a flatline
+                    }
+
+                    // Push the perfectly scaled array safely to the UI thread
+                    waveformData.postValue(sampled)
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "Amplituda extraction failed on IO thread for ${audio.title}", e)
+                    if (currentPath == audio.path) {
+                        postFlatData(audio) // Show the ghost waveform if extraction fails
+                    }
+                }
+            }
         }
     }
 
@@ -113,175 +172,10 @@ class WaveformViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Extracts waveform amplitude data from the audio file at [audioPath] using a seek-per-bar
-     * strategy: for each visual bar the extractor is repositioned to the bar's start time and
-     * the codec is flushed, so only [PCM_BUFFERS_PER_BAR] output buffers (≈ 20–50 ms each) are
-     * decoded per bar instead of the entire file duration. This yields roughly a 10–20× speedup
-     * over full linear decoding for typical song lengths.
-     *
-     * @param audioPath  Absolute path to the audio file.
-     * @param durationMs Total track duration in milliseconds.
-     * @return Normalized amplitude array ([0.0, 1.0] per bar), or null on error.
-     */
-    suspend fun extractWaveformOptimized(audioPath: String, durationMs: Long): FloatArray? = withContext(Dispatchers.IO) {
-        val extractor = MediaExtractor()
-        var codec: MediaCodec? = null
-
-        try {
-            extractor.setDataSource(audioPath)
-
-            // Locate the first audio track in the container.
-            var audioTrackIndex = -1
-            var format: MediaFormat? = null
-            for (i in 0 until extractor.trackCount) {
-                val trackFormat = extractor.getTrackFormat(i)
-                val mime = trackFormat.getString(MediaFormat.KEY_MIME) ?: continue
-                if (mime.startsWith("audio/")) {
-                    audioTrackIndex = i
-                    format = trackFormat
-                    break
-                }
-            }
-
-            if (audioTrackIndex < 0 || format == null) return@withContext null
-            extractor.selectTrack(audioTrackIndex)
-
-            val expectedBars = ((durationMs / 1000f) * BARS_PER_SECOND).toInt().coerceAtLeast(1)
-            val finalAmplitudes = FloatArray(expectedBars)
-
-            // Duration in microseconds, and how long each bar window spans.
-            val durationUs = durationMs * 1_000L
-            val barDurationUs = durationUs / expectedBars.toLong()
-
-            val mime = format.getString(MediaFormat.KEY_MIME)!!
-            codec = MediaCodec.createDecoderByType(mime)
-            codec.configure(format, null, null, 0)
-            codec.start()
-
-            val bufferInfo = MediaCodec.BufferInfo()
-
-            // Reusable PCM buffer; grown lazily if the codec hands us a larger output.
-            var chunkArray = ShortArray(8192)
-
-            // True once EOS is signaled by the codec; remaining bars are pre-filled and we stop.
-            var eos = false
-
-            for (barIndex in 0 until expectedBars) {
-                if (!isActive || eos) break
-
-                // Seek the extractor to the start of this bar's time window, then flush the
-                // codec so no stale PCM from the previous bar bleeds through.
-                val seekTimeUs = barIndex.toLong() * barDurationUs
-                extractor.seekTo(seekTimeUs, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
-                codec.flush()
-
-                var peak = 0f
-                var outputsReceived = 0
-                var inputEOS = false
-                var iterations = 0
-
-                // Inner feed-and-drain loop: stop once we have enough sampled PCM output.
-                while (isActive && outputsReceived < PCM_BUFFERS_PER_BAR) {
-                    if (++iterations > MAX_ITERATIONS_PER_BAR) break
-
-                    // Submit one compressed frame to the decoder.
-                    if (!inputEOS) {
-                        val inputIndex = codec.dequeueInputBuffer(5_000L)
-                        if (inputIndex >= 0) {
-                            val inputBuffer = codec.getInputBuffer(inputIndex)!!
-                            val sampleSize = extractor.readSampleData(inputBuffer, 0)
-                            if (sampleSize < 0) {
-                                codec.queueInputBuffer(inputIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                                inputEOS = true
-                            } else {
-                                codec.queueInputBuffer(inputIndex, 0, sampleSize, extractor.sampleTime, 0)
-                                extractor.advance()
-                            }
-                        }
-                    }
-
-                    // Drain one PCM output buffer.
-                    val outputIndex = codec.dequeueOutputBuffer(bufferInfo, 5_000L)
-                    if (outputIndex >= 0) {
-                        val outputBuffer = codec.getOutputBuffer(outputIndex)!!
-                        val shortBuffer = outputBuffer.asShortBuffer()
-                        val limit = shortBuffer.limit()
-
-                        if (chunkArray.size < limit) chunkArray = ShortArray(limit)
-                        shortBuffer.get(chunkArray, 0, limit)
-
-                        // Skip the very first output buffer per bar: after a flush + seek, the
-                        // decoder needs one warm-up frame before producing stable PCM data.
-                        if (outputsReceived > 0) {
-                            for (i in 0 until limit step SAMPLE_STRIDE) {
-                                val sample = chunkArray[i]
-                                val abs = if (sample < 0) -sample.toInt() else sample.toInt()
-                                val normalized = abs.toFloat() / Short.MAX_VALUE
-                                if (normalized > peak) peak = normalized
-                            }
-                        }
-
-                        codec.releaseOutputBuffer(outputIndex, false)
-                        outputsReceived++
-
-                        if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
-                            // Pre-fill any remaining bars with this last peak and exit.
-                            for (remaining in barIndex until expectedBars) {
-                                finalAmplitudes[remaining] = peak
-                            }
-                            eos = true
-                            break
-                        }
-                    }
-                }
-
-                if (!eos) finalAmplitudes[barIndex] = peak
-            }
-
-            // Normalize the full array to [0.0, 1.0].
-            val maxPeak = finalAmplitudes.maxOrNull() ?: 1f
-            if (maxPeak > 0f) {
-                for (i in finalAmplitudes.indices) {
-                    finalAmplitudes[i] /= maxPeak
-                }
-            }
-
-            return@withContext finalAmplitudes
-
-        } catch (e: Exception) {
-            return@withContext null
-        } finally {
-            codec?.stop()
-            codec?.release()
-            extractor.release()
-        }
-    }
-
     companion object {
         private const val TAG = "WaveformViewModel"
 
         private const val BARS_PER_SECOND = 1
-
-        /**
-         * Number of decoded PCM output buffers sampled per bar window.
-         * The first buffer is a warm-up frame (skipped); the remaining ones are peak-scanned.
-         * One output buffer ≈ 20–50 ms of audio, so four buffers cover ≈ 60–150 ms per bar.
-         */
-        private const val PCM_BUFFERS_PER_BAR = 4
-
-        /**
-         * Step size when iterating over PCM samples inside a decoded output buffer.
-         * A value of 8 means every 8th sample is inspected, which is sufficient for peak
-         * detection since musical transients span many consecutive samples.
-         */
-        private const val SAMPLE_STRIDE = 8
-
-        /**
-         * Hard cap on the feed-drain iterations per bar to prevent an infinite loop if
-         * the codec stalls (e.g., buffers unavailable under load).
-         */
-        private const val MAX_ITERATIONS_PER_BAR = 60
     }
 }
 
