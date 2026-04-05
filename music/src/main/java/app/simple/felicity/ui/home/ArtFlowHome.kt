@@ -103,6 +103,7 @@ class ArtFlowHome : MediaFragment() {
                     SharedScrollViewPopup(
                             container = requireActivity().findViewById(R.id.app_container),
                             anchorView = anchorView,
+                            backProgression = false,
                             menuItems = listOf(
                                     R.string.genres,
                                     R.string.year,
@@ -126,19 +127,17 @@ class ArtFlowHome : MediaFragment() {
                                     R.drawable.ic_equalizer
                             ),
                             onMenuItemClick = { itemResId ->
-                                postDelayed { // TODO - find better way
-                                    when (itemResId) {
-                                        R.string.genres -> openFragment(Genres.newInstance(), Genres.TAG)
-                                        R.string.year -> openFragment(Year.newInstance(), Year.TAG)
-                                        R.string.folders -> openFragment(Folders.newInstance(), Folders.TAG)
-                                        R.string.folders_hierarchy -> openFragment(FoldersHierarchy.newInstance(), FoldersHierarchy.TAG)
-                                        R.string.playing_queue -> openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
-                                        R.string.favorites -> openFragment(Favorites.newInstance(), Favorites.TAG)
-                                        R.string.recently_added -> openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
-                                        R.string.recently_played -> openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
-                                        R.string.most_played -> openFragment(MostPlayed.newInstance(), MostPlayed.TAG)
-                                        else -> Log.w(TAG, "Unknown popup item clicked: $itemResId")
-                                    }
+                                when (itemResId) {
+                                    R.string.genres -> openFragment(Genres.newInstance(), Genres.TAG)
+                                    R.string.year -> openFragment(Year.newInstance(), Year.TAG)
+                                    R.string.folders -> openFragment(Folders.newInstance(), Folders.TAG)
+                                    R.string.folders_hierarchy -> openFragment(FoldersHierarchy.newInstance(), FoldersHierarchy.TAG)
+                                    R.string.playing_queue -> openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
+                                    R.string.favorites -> openFragment(Favorites.newInstance(), Favorites.TAG)
+                                    R.string.recently_added -> openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
+                                    R.string.recently_played -> openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
+                                    R.string.most_played -> openFragment(MostPlayed.newInstance(), MostPlayed.TAG)
+                                    else -> Log.w(TAG, "Unknown popup item clicked: $itemResId")
                                 }
                             },
                             onDismiss = {}

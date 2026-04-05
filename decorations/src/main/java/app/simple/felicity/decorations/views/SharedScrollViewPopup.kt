@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.doOnLayout
 import androidx.core.view.setPadding
 import androidx.core.widget.NestedScrollView
 import androidx.dynamicanimation.animation.FloatPropertyCompat
@@ -38,13 +39,31 @@ import kotlin.math.pow
 import kotlin.math.roundToLong
 import kotlin.math.sign
 
+/**
+ * A popup menu that morphs from an anchor view using a shared-element container
+ * transform animation. All layout positions and sizes are pre-calculated before
+ * the animation begins, so the transform always travels from the anchor's exact
+ * source rect to the popup's exact target rect with no midair resizing.
+ *
+ * @param container The root [ViewGroup] that hosts both the scrim and the popup.
+ * @param anchorView The view the popup expands from and collapses back to.
+ * @param menuItems String resource IDs for each menu entry.
+ * @param menuIcons Optional drawable resource IDs aligned by index with [menuItems].
+ * @param onMenuItemClick Invoked with the resource ID of the tapped item.
+ * @param onDismiss Optional callback fired after the popup has fully collapsed.
+ * @param backProgression When true (default), a back press or a scrim tap dismisses
+ *   the popup. Set to false for dialogs that require an explicit action to close.
+ *
+ * @author Hamza417
+ */
 open class SharedScrollViewPopup @JvmOverloads constructor(
         private val container: ViewGroup,
         private val anchorView: View,
-        private val menuItems: List<Int>, // String resource IDs
-        private val menuIcons: List<Int>? = null, // Optional icons
-        private val onMenuItemClick: (itemResId: Int) -> Unit, // Callback
-        private val onDismiss: (() -> Unit)? = null
+        private val menuItems: List<Int>,
+        private val menuIcons: List<Int>? = null,
+        private val onMenuItemClick: (itemResId: Int) -> Unit,
+        private val onDismiss: (() -> Unit)? = null,
+        private val backProgression: Boolean = true
 ) {
 
     private lateinit var scrimView: View
@@ -191,7 +210,12 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
                 isFocusable = true
                 setOnClickListener {
                     onMenuItemClick(resId)
-                    dismiss()
+                    if (backProgression) {
+                        dismiss()
+                    } else {
+                        // Simply removed the dialog without the transition
+                        simplyDismiss()
+                    }
                 }
 
                 val textSizePx = textSize.times(1.3F)
@@ -211,7 +235,7 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
 
         popupScrollView.addView(linearLayout)
 
-        // Transparent scrim
+        // Transparent scrim — only dismisses when backProgression is enabled
         scrimView = View(container.context).apply {
             setBackgroundColor("#80000000".toColorInt())
             layoutParams = ViewGroup.LayoutParams(
@@ -256,21 +280,19 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
         // Define max height as container height * 2/3 (or full container height if you want)
         val maxHeight = (container.height * 2f / 3f).toInt()
 
-        val finalHeight = if (popupHeight > maxHeight) {
-            maxHeight
-        } else {
-            CoordinatorLayout.LayoutParams.WRAP_CONTENT
-        }
+        // Use the exact measured pixel height so the target rect is fully resolved
+        // before the animation starts, ensuring consistent source-to-target morphing.
+        val finalHeight = if (popupHeight > maxHeight) maxHeight else popupHeight
 
         var leftMargin = anchorX + anchorWidth / 2 - popupWidth / 2
-        var topMargin = anchorY + anchorHeight / 2 - min(popupHeight, maxHeight) / 2
+        var topMargin = anchorY + anchorHeight / 2 - finalHeight / 2
 
         leftMargin = max(marginPx, min(leftMargin, container.width - popupWidth - marginPx))
 
         // Include status bar height for top margin and navigation bar height for bottom margin
         val topMarginMin = marginPx + statusBarHeight
         val bottomMarginMin = marginPx + navigationBarHeight
-        topMargin = max(topMarginMin, min(topMargin, container.height - min(popupHeight, maxHeight) - bottomMarginMin))
+        topMargin = max(topMarginMin, min(topMargin, container.height - finalHeight - bottomMarginMin))
 
         val params = CoordinatorLayout.LayoutParams(
                 popupWidth,
@@ -288,28 +310,46 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
         container.addView(popupContainer)
 
         ViewCompat.setTransitionName(anchorView, TRANSITION_NAME)
-        anchorView.visibility = View.INVISIBLE
 
-        val transform = MaterialContainerTransform().apply {
-            startView = anchorView
-            endView = popupContainer
-            addTarget(popupContainer)
-            duration = DURATION
-            scrimColor = Color.TRANSPARENT
-            containerColor = Color.TRANSPARENT
-            fadeMode = MaterialContainerTransform.FADE_MODE_CROSS
-            startElevation = END_ELEVATION
-            endElevation = END_ELEVATION
-            interpolator = INTERPOLATOR
-        }
+        // Wait until the popup is fully laid out at its final position before
+        // beginning the transition. This guarantees the framework reads the
+        // correct source rect (anchor) and target rect (popup) with no
+        // intermediate sizes — producing a clean origin-to-target morph.
+        popupContainer.doOnLayout {
+            val transform = MaterialContainerTransform().apply {
+                startView = anchorView
+                endView = popupContainer
+                addTarget(popupContainer)
+                duration = DURATION
+                scrimColor = Color.TRANSPARENT
+                containerColor = Color.TRANSPARENT
+                fadeMode = MaterialContainerTransform.FADE_MODE_CROSS
+                startElevation = END_ELEVATION
+                endElevation = END_ELEVATION
+                interpolator = INTERPOLATOR
+            }
 
-        popupContainer.post {
-            popupContainer.visibility = View.VISIBLE
+            // beginDelayedTransition must be called first so it captures the
+            // before-state (anchor visible, popup invisible). The visibility
+            // changes below are the scene change that drives the animation.
             TransitionManager.beginDelayedTransition(container, transform)
+            anchorView.visibility = View.INVISIBLE
+            popupContainer.visibility = View.VISIBLE
         }
 
         onPopupCreated(popupScrollView, linearLayout)
         setupBackPressListener()
+    }
+
+    fun simplyDismiss() {
+        isDismissing = false
+        container.removeView(popupContainer)
+        scrimView.clearAnimation()
+        anchorView.visibility = View.VISIBLE
+        container.removeView(scrimView)
+        backCallback?.remove()
+        backCallback = null
+        onDismiss?.invoke()
     }
 
     fun dismiss() {
@@ -333,7 +373,8 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
 
         reverseTransform.addListener(object : Transition.TransitionListener {
             override fun onTransitionEnd(transition: Transition) {
-                anchorView.visibility = View.VISIBLE
+                // The anchor is already visible from the scene change below;
+                // just clean up the popup and scrim overlay.
                 container.removeView(popupContainer)
                 scrimView.clearAnimation()
                 container.removeView(scrimView)
@@ -364,8 +405,12 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
             override fun onTransitionResume(t: Transition) {}
         })
 
+        // Capture the before-state (popup visible, anchor invisible) first,
+        // then apply scene changes so the framework has a concrete target rect
+        // to morph back to — the anchor's exact bounds.
         TransitionManager.beginDelayedTransition(container, reverseTransform)
         popupContainer.visibility = View.INVISIBLE
+        anchorView.visibility = View.VISIBLE
     }
 
     private fun setupBackPressListener() {
@@ -400,7 +445,7 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
         return 1f - (1f - normalized).pow(5)
     }
 
-    // Optional hook
+    /** Optional hook called after the popup view tree is fully constructed. */
     open fun onPopupCreated(scrollView: NestedScrollView, contentLayout: LinearLayout) {
 
     }
