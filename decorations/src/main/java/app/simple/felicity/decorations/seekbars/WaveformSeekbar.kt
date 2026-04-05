@@ -679,29 +679,37 @@ class WaveformSeekbar @JvmOverloads constructor(
      * Supplies the normalized amplitude data for the currently loaded track.
      * Each entry represents a single second of audio; values must be in [0.0, 1.0].
      *
+     * Before animating, the raw values are rescaled via min-max normalization so
+     * that the quietest bar maps to 0.0 and the loudest maps to 1.0. This ensures
+     * the waveform always uses the full available vertical space regardless of
+     * whether the track is uniformly loud or uniformly quiet.
+     *
      * Bar heights always animate from wherever they currently are (zero on first load,
      * previous values on subsequent loads) to the new target, so the transition is
      * never abrupt.
      *
-     * @param data normalized amplitude array, one value per second
+     * @param data raw amplitude array, one value per second (any non-negative range)
      */
     fun setAmplitudes(data: FloatArray) {
+        // Rescale so every track always uses the full visual height range.
+        val normalizedData = normalizeAmplitudes(data)
+
         // Cancel BEFORE touching any arrays. The old onAnimationEnd closure captures the
         // previous data reference; if we resize drawnAmplitudes first its size would no
         // longer match that closure, causing an ArrayIndexOutOfBoundsException.
         barAnimator?.cancel()
         barAnimator = null
 
-        amplitudes = data
+        amplitudes = normalizedData
 
         // Align start array to new data length, padding with zeros when growing
-        if (animStartAmplitudes.size != data.size) {
-            animStartAmplitudes = FloatArray(data.size) { i ->
+        if (animStartAmplitudes.size != normalizedData.size) {
+            animStartAmplitudes = FloatArray(normalizedData.size) { i ->
                 if (i < drawnAmplitudes.size) drawnAmplitudes[i] else 0f
             }
             drawnAmplitudes = animStartAmplitudes.copyOf()
         } else {
-            for (i in data.indices) animStartAmplitudes[i] = drawnAmplitudes[i]
+            for (i in normalizedData.indices) animStartAmplitudes[i] = drawnAmplitudes[i]
         }
 
         barAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -709,18 +717,42 @@ class WaveformSeekbar @JvmOverloads constructor(
             interpolator = DecelerateInterpolator(BAR_ANIM_DECELERATE)
             addUpdateListener { anim ->
                 val t = anim.animatedValue as Float
-                for (i in data.indices) {
-                    drawnAmplitudes[i] = animStartAmplitudes[i] + (data[i] - animStartAmplitudes[i]) * t
+                for (i in normalizedData.indices) {
+                    drawnAmplitudes[i] = animStartAmplitudes[i] + (normalizedData[i] - animStartAmplitudes[i]) * t
                 }
                 invalidate()
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
                     // Snap to exact target values to eliminate any floating-point drift
-                    for (i in data.indices) drawnAmplitudes[i] = data[i]
+                    for (i in normalizedData.indices) drawnAmplitudes[i] = normalizedData[i]
                 }
             })
             start()
+        }
+    }
+
+    /**
+     * Applies min-max normalization to [data] so the minimum value maps to 0.0 and
+     * the maximum value maps to 1.0, spreading the full dynamic range across the
+     * available visual height regardless of the absolute loudness of the track.
+     *
+     * Returns a copy of [data] unchanged when:
+     * - [data] is empty or has a single element (no range to compute), or
+     * - all values are identical (range is zero, which would cause a division by zero).
+     *
+     * @param data raw amplitude array in any non-negative range
+     * @return a new [FloatArray] with values in [0.0, 1.0]
+     */
+    private fun normalizeAmplitudes(data: FloatArray): FloatArray {
+        if (data.size < 2) return data.copyOf()
+        val minVal = data.min()
+        val maxVal = data.max()
+        val range = maxVal - minVal
+        return if (range > 0f) {
+            FloatArray(data.size) { i -> (data[i] - minVal) / range }
+        } else {
+            data.copyOf()
         }
     }
 
