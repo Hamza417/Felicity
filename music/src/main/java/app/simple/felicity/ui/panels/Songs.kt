@@ -12,7 +12,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
-import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterSongs
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
@@ -118,6 +117,10 @@ class Songs : PanelFragment() {
         headerBinding.search.setOnClickListener {
             openSearch()
         }
+
+        headerBinding.artflow.setOnClickListener {
+            openFragment(ArtFlow.newInstance(), ArtFlow.TAG)
+        }
     }
 
     /**
@@ -157,7 +160,7 @@ class Songs : PanelFragment() {
         )
 
         // Update header counts
-        headerBinding.count.text = getString(R.string.x_songs, songs.size)
+        headerBinding.count.text = songs.size.toString()
         headerBinding.hours.text = songs.sumOf { it.duration }.toDynamicTimeString()
         headerBinding.sortStyle.setSongSort()
         headerBinding.sortOrder.setSongOrder()
