@@ -6,7 +6,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -334,7 +333,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
      * Called when the predictive back gesture starts and this fragment begins transitioning
      * away. Override to snapshot or pre-adjust any UI state that needs to change during the
      * gesture. The fragment's lifecycle remains in the RESUMED state until the gesture is
-     * either committed or cancelled, so this is the right place for pre-gesture setup.
+     * either committed or canceled, so this is the right place for pre-gesture setup.
      */
     open fun onStartPredictiveBack() {
 
@@ -348,7 +347,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
      *                 changes such as dimming overlays or secondary animations.
      */
     open fun onProgressPredictiveBack(progress: Float) {
-        Log.d(TAG, "Predictive back progress: $progress")
+
     }
 
     /**

@@ -53,8 +53,6 @@ class WaveformViewModel @Inject constructor(
         // Prevent redundant loading
         if (audio.path == currentPath && waveformData.value?.isNotEmpty() == true) return
 
-        postFlatData(audio)
-
         // Track the current request to handle stale extractions
         currentPath = audio.path
 

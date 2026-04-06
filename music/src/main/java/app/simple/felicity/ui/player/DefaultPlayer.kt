@@ -56,6 +56,14 @@ class DefaultPlayer : MediaFragment() {
      */
     private var pendingWaveformAudio: Audio? = null
 
+    /**
+     * Tracks the ID of the last song for which [onAudio] performed a full seekbar reset.
+     * Used to distinguish a genuine song change from a lifecycle re-emission (e.g., a
+     * predictive back gesture that is cancelled), so that [setDurationWithReset] is not
+     * called again for the same song and the seekbar does not reanimate from position 0.
+     */
+    private var lastLoadedAudioId: Long = -1L
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentDefaultPlayerBinding.inflate(inflater, container, false)
         return binding.root
@@ -249,6 +257,7 @@ class DefaultPlayer : MediaFragment() {
 
     private fun updateState() {
         val audio = MediaPlaybackManager.getCurrentSong() ?: return
+        lastLoadedAudioId = audio.id
         binding.title.text = audio.title ?: getString(R.string.unknown)
         binding.artist.text = audio.getArtists()
         binding.album.text = audio.album ?: getString(R.string.unknown)
@@ -352,12 +361,23 @@ class DefaultPlayer : MediaFragment() {
     override fun onAudio(audio: Audio) {
         super.onAudio(audio)
         val forward = MediaPlaybackManager.lastNavigationDirection
-        binding.title.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
-        binding.artist.setTextWithEffect(audio.getArtists(), forward, 50L)
-        binding.album.setTextWithEffect(audio.album ?: getString(R.string.unknown), forward, 100L)
-        binding.pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
-        binding.seekbar.setDurationWithReset(audio.duration)
-        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = false)
+
+        val isSameSong = audio.id == lastLoadedAudioId
+
+        if (!isSameSong) {
+            // Genuine song change: update text with the directional transition effect and
+            // trigger the seekbar left-bar fade before the new waveform data arrives.
+            lastLoadedAudioId = audio.id
+            binding.title.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
+            binding.artist.setTextWithEffect(audio.getArtists(), forward, 50L)
+            binding.album.setTextWithEffect(audio.album ?: getString(R.string.unknown), forward, 100L)
+            binding.pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
+            binding.seekbar.setDurationWithReset(audio.duration)
+        }
+
+        // Always sync seek position. For a same-song re-emission (e.g., predictive back
+        // cancel) this is the only seekbar call needed — no reset, no animation from zero.
+        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = true)
         updateFavoriteIcon(audio)
 
         // Defer waveform decoding until ExoPlayer is actually playing to avoid
