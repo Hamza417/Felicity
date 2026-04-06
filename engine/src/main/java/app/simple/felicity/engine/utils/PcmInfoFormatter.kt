@@ -1,5 +1,6 @@
 package app.simple.felicity.engine.utils
 
+import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.models.Audio
 
 /**
@@ -29,24 +30,48 @@ object PcmInfoFormatter {
      */
     fun formatPcmInfo(audio: Audio): String {
         return buildString {
-            if (audio.bitPerSample > 0) {
-                append("${audio.bitPerSample}bit")
+            if (PlayerPreferences.getPcmInfoMode() == PlayerPreferences.PCM_INFO_MODE_SAMPLING_RATE) {
+                if (audio.bitPerSample > 0) {
+                    append("${audio.bitPerSample}bit")
+                }
+
+                if (audio.samplingRate > 0) {
+                    if (isNotEmpty()) append(" ")
+                    append(audio.samplingRate.toKhzString())
+                }
             }
 
-            if (audio.samplingRate > 0) {
-                if (isNotEmpty()) append(" ")
-                append(audio.samplingRate.toKhzString())
+            if (PlayerPreferences.getPcmInfoMode() == PlayerPreferences.PCM_INFO_MODE_BITRATE) {
+                if (audio.bitrate > 0) {
+                    if (isNotEmpty()) append(" ")
+                    append("${audio.bitrate} kbit/s")
+                }
+
+                val ext = audio.path?.substringAfterLast('.', "")?.uppercase()
+                if (!ext.isNullOrEmpty()) {
+                    if (isNotEmpty()) append(" ")
+                    append(ext)
+                }
             }
 
-            if (audio.bitrate > 0) {
-                if (isNotEmpty()) append(" ")
-                append("${audio.bitrate} kbps")
-            }
+            if (PlayerPreferences.getPcmInfoMode() == PlayerPreferences.PCM_INFO_MODE_QUALITY) {
+                when (audio.audioQuality) {
+                    Audio.AUDIO_QUALITY_LQ -> {
+                        append("LQ")
+                    }
+                    Audio.AUDIO_QUALITY_HQ -> {
+                        append("HQ")
+                    }
+                    Audio.AUDIO_QUALITY_LOSSLESS -> {
+                        append("Lossless")
+                    }
+                    Audio.AUDIO_QUALITY_HI_RES -> {
+                        append("Hi-Res")
+                    }
+                    else -> {
 
-            val ext = audio.path?.substringAfterLast('.', "")?.uppercase()
-            if (!ext.isNullOrEmpty()) {
-                if (isNotEmpty()) append(" ")
-                append(ext)
+                    }
+                }
             }
         }
     }

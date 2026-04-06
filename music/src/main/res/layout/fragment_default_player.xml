@@ -122,10 +122,10 @@
 
         <app.simple.felicity.decorations.highlight.HighlightTextView
             android:id="@+id/pcm_info"
-            android:layout_width="0dp"
-            android:layout_weight="1"
+            android:layout_width="wrap_content"
             android:textSize="@dimen/text_size_12"
             android:maxWidth="100dp"
+            android:gravity="center"
             android:maxLines="1"
             android:singleLine="true"
             android:ellipsize="marquee"
@@ -219,10 +219,10 @@
         android:layout_height="100dp"
         android:layout_gravity="center_vertical"
         app:wsbBarWidth="7dp"
-        app:wsbWaveformMode="full"
         app:wsbLabelEdgeMargin="@dimen/padding_20"
         app:wsbLabelGravity="center"
-        app:wsbLabelHighlightMode="both" />
+        app:wsbLabelHighlightMode="both"
+        app:wsbWaveformMode="full" />
 
     <app.simple.felicity.decorations.theme.ThemeDivider
         android:layout_width="match_parent"

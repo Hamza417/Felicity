@@ -78,12 +78,12 @@
 
                     <app.simple.felicity.decorations.highlight.HighlightTextView
                         android:id="@+id/pcm_info"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
+                        android:layout_width="wrap_content"
                         android:textSize="@dimen/text_size_12"
                         android:maxWidth="100dp"
                         android:maxLines="1"
                         android:singleLine="true"
+                        android:gravity="center"
                         android:ellipsize="marquee"
                         android:marqueeRepeatLimit="marquee_forever"
                         android:layout_gravity="center_vertical"

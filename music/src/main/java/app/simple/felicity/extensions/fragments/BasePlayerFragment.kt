@@ -17,6 +17,7 @@ import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.pager.ImagePageAdapter
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
+import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
 import app.simple.felicity.decorations.views.FavoriteButton
 import app.simple.felicity.decorations.views.FelicityVisualizer
 import app.simple.felicity.decorations.views.FlipPlayPauseView
@@ -240,7 +241,12 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         pcmInfo.setOnClickListener {
+            PlayerPreferences.setPcmInfoMode((PlayerPreferences.getPcmInfoMode() + 1) % 3)
+        }
+
+        pcmInfo.setOnLongClickListener {
             childFragmentManager.showAudioPipeline()
+            true
         }
 
         // Observe repeat mode changes from the service (e.g. on startup).
@@ -496,6 +502,10 @@ abstract class BasePlayerFragment : MediaFragment() {
             }
             PlayerPreferences.WAVEFORM_MODE -> {
                 seekbar.waveformMode = PlayerPreferences.getWaveformMode()
+            }
+            PlayerPreferences.PCM_INFO_MODE -> {
+                val audio = MediaPlaybackManager.getCurrentSong() ?: return
+                pcmInfo.setTextWithFade(PcmInfoFormatter.formatPcmInfo(audio))
             }
         }
     }

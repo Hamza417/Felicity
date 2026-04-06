@@ -333,6 +333,10 @@ object TextViewUtils {
         }
     }
 
+    fun TextView.setTextWithFade(text: String, fadeDuration: Long = 150L) {
+        setFade(text, fadeDuration)
+    }
+
     /** @see setTextWithEffect */
     const val TEXT_EFFECT_NONE = 0
 

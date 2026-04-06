@@ -19,6 +19,12 @@ object PlayerPreferences {
     /** SharedPreferences key for the waveform seekbar display mode (int, maps to WaveformSeekbar mode constants). */
     const val WAVEFORM_MODE = "waveform_mode_int"
 
+    const val PCM_INFO_MODE = "pcm_info_mode"
+
+    const val PCM_INFO_MODE_SAMPLING_RATE = 0
+    const val PCM_INFO_MODE_BITRATE = 1
+    const val PCM_INFO_MODE_QUALITY = 2
+
     fun setRepeatMode(value: Int) {
         SharedPreferences.getSharedPreferences().edit { putInt(REPEAT_MODE, value) }
     }
@@ -60,5 +66,13 @@ object PlayerPreferences {
      */
     fun getWaveformMode(): Int {
         return SharedPreferences.getSharedPreferences().getInt(WAVEFORM_MODE, 0)
+    }
+
+    fun setPcmInfoMode(value: Int) {
+        SharedPreferences.getSharedPreferences().edit { putInt(PCM_INFO_MODE, value) }
+    }
+
+    fun getPcmInfoMode(): Int {
+        return SharedPreferences.getSharedPreferences().getInt(PCM_INFO_MODE, PCM_INFO_MODE_QUALITY)
     }
 }

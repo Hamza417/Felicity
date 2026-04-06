@@ -280,7 +280,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     // If the user lifted their finger before it started pulsing,
                     // treat it as a standard click.
                     if (!isPulsing) {
-                        view.performClick() // Good practice for accessibility/click sounds
+                        view.performClick()
                         MediaPlaybackManager.next()
                     }
 
@@ -336,8 +336,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     // If the user lifted their finger before it started pulsing,
                     // treat it as a standard click.
                     if (!isPulsing) {
-                        view.performClick() // Good practice for accessibility/click sounds
-                        MediaPlaybackManager.next()
+                        view.performClick()
+                        MediaPlaybackManager.previous()
                     }
 
                     isPulsing = false
