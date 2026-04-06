@@ -95,7 +95,7 @@ class PipelineArrowView @JvmOverloads constructor(
 
     init {
         if (!isInEditMode) {
-            accentColor = ThemeManager.accent.primaryAccentColor
+            accentColor = ThemeManager.theme.viewGroupTheme.highlightColor
         }
 
         val a = context.theme.obtainStyledAttributes(attrs, R.styleable.PipelineArrowView, 0, 0)
@@ -124,7 +124,7 @@ class PipelineArrowView @JvmOverloads constructor(
     }
 
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
-        accentColor = ThemeManager.accent.primaryAccentColor
+        accentColor = ThemeManager.theme.viewGroupTheme.highlightColor
     }
 
     /**
