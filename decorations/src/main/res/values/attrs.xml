@@ -249,6 +249,23 @@
         </attr>
     </declare-styleable>
 
+    <!--
+        FelicityPager: raw horizontal pager with built-in optional directional edge-fade.
+        Fade attrs are shared with FelicitySlider; configure them here when using the pager
+        standalone or in a custom subclass.
+    -->
+    <declare-styleable name="FelicityPager">
+        <!-- Whether to apply a directional edge fade-out effect. Default: false. -->
+        <attr name="fadeEnabled" />
+        <!--
+            Normalized start position [0..1] of the fade along the chosen direction.
+            0.0 = full-view fade; 0.5 = second half fades (default); 1.0 = no fade.
+        -->
+        <attr name="fadeStartFraction" />
+        <!-- Direction the fade gradient travels (same values as FelicitySlider). -->
+        <attr name="fadeDirection" />
+    </declare-styleable>
+
     <!-- WaveformSeekView: scrollable equalizer-bar waveform with seek overlay -->
     <declare-styleable name="WaveformSeekView">
         <!--

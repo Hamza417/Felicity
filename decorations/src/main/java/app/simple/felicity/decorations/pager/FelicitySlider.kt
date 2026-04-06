@@ -1,13 +1,6 @@
 package app.simple.felicity.decorations.pager
 
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.LinearGradient
-import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import android.graphics.Shader
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.View
@@ -16,35 +9,6 @@ import android.widget.FrameLayout
 import androidx.core.content.withStyledAttributes
 import app.simple.felicity.decoration.R
 
-/**
- * The direction in which the [FelicitySlider] edge-fade gradient travels.
- *
- * The "transparent" end is the edge described by the name. For example, [TOP_TO_BOTTOM]
- * leaves the top fully opaque and fades the bottom toward 0 % alpha.
- */
-enum class FadeDirection {
-    /** Fade from opaque at the top toward transparent at the bottom. */
-    TOP_TO_BOTTOM,
-
-    /** Fade from opaque at the bottom toward transparent at the top. */
-    BOTTOM_TO_TOP,
-
-    /** Fade from opaque on the left toward transparent on the right. */
-    LEFT_TO_RIGHT,
-
-    /** Fade from opaque on the right toward transparent on the left. */
-    RIGHT_TO_LEFT;
-
-    companion object {
-        /**
-         * Returns the [FadeDirection] whose ordinal matches [value],
-         * or [TOP_TO_BOTTOM] when [value] is out of range.
-         *
-         * @param value Integer ordinal sourced from a typed-array attribute.
-         */
-        fun fromInt(value: Int): FadeDirection = entries.getOrElse(value) { TOP_TO_BOTTOM }
-    }
-}
 
 /**
  * A self-contained image-slider compound widget built on top of [FelicityPager].
@@ -161,59 +125,42 @@ class FelicitySlider @JvmOverloads constructor(
     /**
      * Whether the directional edge-fade effect is active. Default: false.
      *
-     * When `true`, a [LinearGradient] mask is applied during [dispatchDraw] that grades
-     * the rendered content from full alpha down to 0 % in the direction set by [fadeDirection],
+     * Delegates directly to the underlying [FelicityPager]. When `true`, a gradient
+     * mask is applied over the pager content in the direction set by [fadeDirection],
      * starting at the normalized position set by [fadeStartFraction].
      */
     var fadeEnabled: Boolean = false
         set(v) {
             field = v
-            updateFadeShader()
-            invalidate()
+            pager.fadeEnabled = v
         }
 
     /**
      * Normalized position in [0..1] along the [fadeDirection] axis at which the fade begins.
      *
-     * - `0.0` — the gradient covers the entire view from the opaque edge to the transparent edge.
-     * - `0.5` — the first half of the view (from the opaque edge) is fully visible; the second
+     * - `0.0` — the gradient covers the entire pager from the opaque edge to the transparent edge.
+     * - `0.5` — the first half of the pager (from the opaque edge) is fully visible; the second
      *           half fades from full alpha to 0 % (default).
-     * - `1.0` — no visible fade; the entire view remains fully opaque.
+     * - `1.0` — no visible fade; the entire pager remains fully opaque.
      *
-     * Values outside [0..1] are coerced to the nearest boundary.
+     * Delegates directly to the underlying [FelicityPager].
      */
     var fadeStartFraction: Float = 0.5f
         set(v) {
             field = v.coerceIn(0f, 1f)
-            updateFadeShader()
-            invalidate()
+            pager.fadeStartFraction = field
         }
 
     /**
      * The direction the edge-fade gradient travels. Default: [FadeDirection.TOP_TO_BOTTOM].
      *
-     * The "transparent" end is always the edge named by the chosen [FadeDirection] value.
+     * Delegates directly to the underlying [FelicityPager].
      */
     var fadeDirection: FadeDirection = FadeDirection.TOP_TO_BOTTOM
         set(v) {
             field = v
-            updateFadeShader()
-            invalidate()
+            pager.fadeDirection = v
         }
-
-    /**
-     * Paint used exclusively for the edge-fade DST_IN mask in [dispatchDraw].
-     * Its [Paint.shader] is rebuilt whenever relevant properties or the view size change.
-     */
-    private val fadePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
-    }
-
-    /**
-     * Number of discrete color stops used to approximate the cubic Bézier alpha curve.
-     * Higher values produce a smoother gradient at the cost of a slightly larger shader object.
-     */
-    private val GRADIENT_STEPS = 16
 
     private var isRunning = false
 
@@ -342,97 +289,6 @@ class FelicitySlider @JvmOverloads constructor(
         return ms.toLong().coerceIn(100L, 1200L)
     }
 
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        updateFadeShader()
-    }
-
-    override fun dispatchDraw(canvas: Canvas) {
-        if (!fadeEnabled || fadePaint.shader == null) {
-            super.dispatchDraw(canvas)
-            return
-        }
-        val saveCount = canvas.saveLayer(0f, 0f, width.toFloat(), height.toFloat(), null)
-        super.dispatchDraw(canvas)
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), fadePaint)
-        canvas.restoreToCount(saveCount)
-    }
-
-    /**
-     * Rebuilds the [LinearGradient] shader on [fadePaint] based on the current [fadeDirection],
-     * [fadeStartFraction], and view dimensions.
-     *
-     * Rather than a two-stop linear gradient (which can appear harsh), the alpha values across
-     * [GRADIENT_STEPS] evenly-spaced stops are sampled from a cubic ease-in Bézier curve via
-     * [bezierFadeAlpha]. This produces a softer, more natural-looking fade where the content
-     * stays fully visible longest before accelerating toward full transparency.
-     *
-     * Areas before the start offset are clamped to fully opaque; areas beyond the far edge
-     * are clamped to fully transparent.
-     *
-     * No-ops when the view has not yet been measured (width or height == 0).
-     */
-    private fun updateFadeShader() {
-        if (width == 0 || height == 0) return
-
-        val x0: Float
-        val y0: Float
-        val x1: Float
-        val y1: Float
-
-        when (fadeDirection) {
-            FadeDirection.TOP_TO_BOTTOM -> {
-                // Top stays opaque; fade begins at fadeStartFraction down and ends at the bottom.
-                x0 = 0f; y0 = height * fadeStartFraction
-                x1 = 0f; y1 = height.toFloat()
-            }
-            FadeDirection.BOTTOM_TO_TOP -> {
-                // Bottom stays opaque; fade begins at (1 - fadeStartFraction) and ends at the top.
-                x0 = 0f; y0 = height * (1f - fadeStartFraction)
-                x1 = 0f; y1 = 0f
-            }
-            FadeDirection.LEFT_TO_RIGHT -> {
-                // Left stays opaque; fade begins at fadeStartFraction across and ends at the right.
-                x0 = width * fadeStartFraction; y0 = 0f
-                x1 = width.toFloat(); y1 = 0f
-            }
-            FadeDirection.RIGHT_TO_LEFT -> {
-                // Right stays opaque; fade begins at (1 - fadeStartFraction) across and ends at the left.
-                x0 = width * (1f - fadeStartFraction); y0 = 0f
-                x1 = 0f; y1 = 0f
-            }
-        }
-
-        // Sample the cubic Bézier easing curve at GRADIENT_STEPS evenly-spaced positions
-        // to build a smooth multi-stop gradient instead of a harsh two-stop linear one.
-        val positions = FloatArray(GRADIENT_STEPS) { i -> i.toFloat() / (GRADIENT_STEPS - 1) }
-        val colors = IntArray(GRADIENT_STEPS) { i ->
-            val t = i.toFloat() / (GRADIENT_STEPS - 1)
-            val alpha = (bezierFadeAlpha(t) * 255f).toInt().coerceIn(0, 255)
-            Color.argb(alpha, 0, 0, 0)
-        }
-
-        fadePaint.shader = LinearGradient(
-                x0, y0, x1, y1,
-                colors, positions,
-                Shader.TileMode.CLAMP
-        )
-    }
-
-    /**
-     * Evaluates a cubic ease-out Bézier alpha for a given normalized position along the gradient.
-     *
-     * The curve drops opacity quickly at the start, and then gently trails off as it approaches
-     * full transparency — `alpha = (1 - t)³`. This prevents the eye from perceiving a hard edge
-     * at the bottom of the fade.
-     *
-     * @param t Normalized position in [0..1] where 0 is the opaque end and 1 is transparent.
-     * @return Eased alpha value in [0..1].
-     */
-    private fun bezierFadeAlpha(t: Float): Float {
-        val invT = 1f - t
-        return invT * invT * invT
-    }
 
     private fun dpToPx(dp: Float): Float =
         dp * resources.displayMetrics.density
