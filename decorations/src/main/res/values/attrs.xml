@@ -361,9 +361,10 @@
     <!-- FelicityVisualizer: real-time audio spectrum bar and wave visualizer -->
     <declare-styleable name="FelicityVisualizer">
         <!--
-            Maximum bar/wave render height as a fraction of the view height [0.0..1.0].
-            Bars always grow from the physical bottom of the view upward; this value caps
-            how tall they can become. 1.0 = full view height (default). 0.5 = bottom half only.
+            Maximum bar/wave render height as a fraction of the view's primary growth
+            dimension [0.0..1.0]. For bottom-to-top and top-to-bottom directions this is
+            the view height; for left-to-right and right-to-left it is the view width.
+            1.0 = full dimension (default). 0.5 = half the available length.
         -->
         <attr name="vizMaxRenderHeight" format="float" />
         <!-- Whether the ash/snow particle emitter is enabled. Default: false. -->
@@ -372,6 +373,19 @@
         <attr name="vizMode" format="enum">
             <enum name="bars" value="0" />
             <enum name="wave" value="1" />
+        </attr>
+        <!--
+            Controls the direction from which bars and waves emerge.
+            bottom_to_top (0) – bars grow upward from the bottom (default).
+            top_to_bottom (1) – bars grow downward from the top.
+            left_to_right (2) – bars grow rightward from the left edge.
+            right_to_left (3) – bars grow leftward from the right edge.
+        -->
+        <attr name="vizDirection" format="enum">
+            <enum name="bottom_to_top" value="0" />
+            <enum name="top_to_bottom" value="1" />
+            <enum name="left_to_right" value="2" />
+            <enum name="right_to_left" value="3" />
         </attr>
     </declare-styleable>
 
