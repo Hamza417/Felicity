@@ -54,7 +54,7 @@ import kotlin.math.roundToLong
  * Supports three display modes controlled by [waveformMode]:
  *  - **Half** ([WAVEFORM_MODE_HALF], default): bars grow from the center axis upward only.
  *  - **Full** ([WAVEFORM_MODE_FULL]): bars grow symmetrically above *and* below the center axis.
- *  - **Reflection** ([WAVEFORM_MODE_REFLECTION]): half spectrum at the top with a faded,
+ *  - **Reflection** ([WAVEFORM_MODE_REFLECTION]): half spectrum at the top with an alpha-blended,
  *    inverted mirror image below, separated by a thin line and a small gap.
  *
  * Bars nearest the center playhead are rendered at full opacity and fade toward
@@ -83,19 +83,46 @@ class WaveformSeekbar @JvmOverloads constructor(
      */
     interface OnSeekListener {
         /**
-         * Called each time the seek position changes during a drag or fling.
+         * Called each time the seek position changes during a drag gesture.
          *
          * @param positionMs the new playback position in milliseconds
          * @param fromUser   `true` when the change originates from a direct touch gesture
-         *                   (drag or fling); `false` for programmatic updates
+         *                   (drag); `false` for programmatic updates
          */
-        fun onSeekTo(positionMs: Long, fromUser: Boolean)
+        fun onSeekTo(positionMs: Long, fromUser: Boolean) {}
 
         /** Called when the user first touches the seekbar to begin dragging. */
         fun onSeekStart() {}
 
-        /** Called when the user lifts their finger; [positionMs] is the final position. */
+        /** Called when the user lifts their finger; [positionMs] is the final drag position. */
         fun onSeekEnd(positionMs: Long) {}
+    }
+
+    /**
+     * Notified on each animation frame while a fling gesture is actively scrolling the waveform.
+     * While any registered [OnFlingRunningListener] is active, [setProgress] will not accept
+     * external updates to prevent the song position from snapping back mid-fling.
+     */
+    fun interface OnFlingRunningListener {
+        /**
+         * Called continuously, once per animation frame, while the fling is in progress.
+         *
+         * @param positionMs current estimated playback position in milliseconds
+         */
+        fun onFlingRunning(positionMs: Long)
+    }
+
+    /**
+     * Notified once when a fling gesture has fully decelerated to a stop.
+     * After this callback, [setProgress] resumes accepting external updates.
+     */
+    fun interface OnFlingEndListener {
+        /**
+         * Called when the fling animation has fully settled at its resting position.
+         *
+         * @param positionMs the final settled position in milliseconds
+         */
+        fun onFlingEnd(positionMs: Long)
     }
 
     /** Provides the formatted string for the left-side elapsed time label. */
@@ -135,6 +162,8 @@ class WaveformSeekbar @JvmOverloads constructor(
         }
 
     private var seekListener: OnSeekListener? = null
+    private var flingRunningListener: OnFlingRunningListener? = null
+    private var flingEndListener: OnFlingEndListener? = null
     private var leftLabelProvider: LeftLabelProvider? = null
     private var rightLabelProvider: RightLabelProvider? = null
 
@@ -207,11 +236,8 @@ class WaveformSeekbar @JvmOverloads constructor(
     private var rightGradient: LinearGradient? = null
     private var lastWidth = 0f
 
-    // Reflection mode — gradient rebuilt when view height changes; paint uses DST_OUT to fade out
-    // the reflected bars toward the bottom, and the line paint draws the thin separator.
+    // Reflection mode — the line paint draws the thin horizontal separator.
     private var reflectionLineHeightPx: Float = 0f
-    private var reflectionGradient: LinearGradient? = null
-    private var lastHeight = 0f
 
     /**
      * Vertical gap in pixels between the main waveform's bottom edge and the center separator line.
@@ -220,7 +246,6 @@ class WaveformSeekbar @JvmOverloads constructor(
     var reflectionTopGapPx: Float = 0f
         set(value) {
             field = value
-            reflectionGradient = null
             invalidate()
         }
 
@@ -231,27 +256,22 @@ class WaveformSeekbar @JvmOverloads constructor(
     var reflectionBottomGapPx: Float = 0f
         set(value) {
             field = value
-            reflectionGradient = null
             invalidate()
         }
 
     /**
-     * Fraction [0.0, 1.0] of the reflection area height that remains fully visible before the
-     * quadratic bezier fade begins. A value of 0.0 starts fading immediately from the separator
-     * line; 0.3 (default) keeps the top 30% fully opaque for a crisp mirror zone; 1.0 disables
-     * the fade entirely.
-     * Can be set via the [R.styleable.WaveformSeekbar_wsbReflectionFadeStartFraction] XML attribute.
+     * Alpha [0.0, 1.0] applied uniformly to all reflected bars in [WAVEFORM_MODE_REFLECTION].
+     * Lower values produce a subtler, more transparent reflection. Bars already carry a spotlight
+     * alpha based on distance from the playhead; this value multiplies on top of that, so the
+     * effective per-bar alpha is `spotlightAlpha × reflectionAlpha`.
+     * Can be set via the [R.styleable.WaveformSeekbar_wsbReflectionAlpha] XML attribute.
      */
-    var reflectionFadeStartFraction: Float = DEFAULT_REFLECTION_FADE_START_FRACTION
+    var reflectionAlpha: Float = DEFAULT_REFLECTION_ALPHA
         set(value) {
             field = value.coerceIn(0f, 1f)
-            reflectionGradient = null
             invalidate()
         }
 
-    private val reflectionFadePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT)
-    }
 
     private val reflectionLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -315,6 +335,9 @@ class WaveformSeekbar @JvmOverloads constructor(
     /**
      * Runnable posted via [postOnAnimation] to advance the fling animation one frame at a time.
      * Reads the current position from [overScroller] and converts it back to milliseconds.
+     * Fires [OnFlingRunningListener] each frame and [OnFlingEndListener] when the scroller settles.
+     * While [isFling] is `true`, [setProgress] is completely blocked so external position updates
+     * cannot snap the waveform back to the pre-fling playback position.
      */
     private val flingRunnable = object : Runnable {
         override fun run() {
@@ -327,12 +350,13 @@ class WaveformSeekbar @JvmOverloads constructor(
                         .toLong().coerceIn(0L, durationMs)
                     animatedProgressMs = newProgress
                     progressMs = newProgress
-                    seekListener?.onSeekTo(newProgress, fromUser = true)
+                    flingRunningListener?.onFlingRunning(newProgress)
                 }
                 invalidate()
                 postOnAnimation(this)
             } else {
                 isFling = false
+                flingEndListener?.onFlingEnd(progressMs)
             }
         }
     }
@@ -366,7 +390,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                 labelHighlightMode = ta.getInt(R.styleable.WaveformSeekbar_wsbLabelHighlightMode, LABEL_HIGHLIGHT_NONE)
                 reflectionTopGapPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbReflectionTopGap, reflectionTopGapPx)
                 reflectionBottomGapPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbReflectionBottomGap, reflectionBottomGapPx)
-                reflectionFadeStartFraction = ta.getFloat(R.styleable.WaveformSeekbar_wsbReflectionFadeStartFraction, DEFAULT_REFLECTION_FADE_START_FRACTION)
+                reflectionAlpha = ta.getFloat(R.styleable.WaveformSeekbar_wsbReflectionAlpha, DEFAULT_REFLECTION_ALPHA)
             } finally {
                 ta.recycle()
             }
@@ -557,11 +581,10 @@ class WaveformSeekbar @JvmOverloads constructor(
             canvas.drawRoundRect(barRect, barCornerRadiusPx, barCornerRadiusPx, barPaint)
         }
 
-        // Draw the reflected (inverted, faded) waveform and its separator line in reflection mode
+        // Draw the reflected (inverted, alpha-blended) waveform and its separator line in reflection mode.
+        // Reflected bars are drawn directly without a sub-layer; [reflectionAlpha] is multiplied into
+        // each bar's paint alpha so no extra compositing pass or gradient texture is needed.
         if (waveformMode == WAVEFORM_MODE_REFLECTION && maxReflBarArea > 0f) {
-            // Reflected bars are drawn into their own compositing sub-layer so the DST_OUT
-            // vertical gradient mask only affects them and not the main waveform above.
-            val reflLayerId = canvas.saveLayer(0f, reflectionTop, w, h, null)
 
             for (i in drawnAmplitudes.indices) {
                 val barCenterX = i * barStep - scrollOffset + centerX
@@ -580,7 +603,8 @@ class WaveformSeekbar @JvmOverloads constructor(
                 } else {
                     1f
                 }
-                barPaint.alpha = (255 * spotlightAlpha * leftFadeAlpha).toInt()
+                // Multiply reflectionAlpha on top of the existing spotlight and left-fade factors
+                barPaint.alpha = (255 * spotlightAlpha * leftFadeAlpha * reflectionAlpha).toInt()
 
                 // Reflected bar grows downward from the top of the reflection area
                 val reflBarH = max(minBarHeightPx, amp * maxReflBarArea)
@@ -593,13 +617,6 @@ class WaveformSeekbar @JvmOverloads constructor(
                 canvas.drawRoundRect(barRect, barCornerRadiusPx, barCornerRadiusPx, barPaint)
             }
 
-            // Apply DST_OUT vertical gradient: transparent at the separator line → opaque at the
-            // bottom of the view, progressively erasing reflected bars to produce the fade-out effect.
-            if (h != lastHeight || reflectionGradient == null) rebuildReflectionGradient(h, reflectionTop)
-            reflectionGradient?.let { reflectionFadePaint.shader = it }
-            canvas.drawRect(0f, reflectionTop, w, h, reflectionFadePaint)
-
-            canvas.restoreToCount(reflLayerId)
 
             // Draw the thin horizontal separator line inside the outer compositing layer so the
             // horizontal edge fades clip it naturally at both sides.
@@ -649,7 +666,6 @@ class WaveformSeekbar @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         rebuildGradients(w.toFloat())
-        rebuildReflectionGradient(h.toFloat(), h / 2f + reflectionBottomGapPx)
     }
 
     /** Rebuilds the cached [LinearGradient] shaders whenever the view width changes. */
@@ -666,64 +682,6 @@ class WaveformSeekbar @JvmOverloads constructor(
                 w - fadeEdgeLengthPx, 0f, w, 0f,
                 intArrayOf(0x00000000, 0xFF000000.toInt()),
                 null,
-                Shader.TileMode.CLAMP
-        )
-    }
-
-    /**
-     * Rebuilds the vertical [LinearGradient] used to fade reflected bars toward the bottom in
-     * [WAVEFORM_MODE_REFLECTION]. The first [reflectionFadeStartFraction] of the gradient is kept
-     * fully transparent so bars near the separator remain crisp, after which a quadratic ease-in
-     * (t² sampled at 9 evenly-spaced points) ramps the DST_OUT mask up to fully opaque,
-     * producing a smooth, natural-looking mirror fade that is clearly perceptible.
-     *
-     * Compared to a linear gradient, the t² curve starts gently near the separator and
-     * accelerates toward the bottom, matching the natural fall-off of a surface reflection.
-     *
-     * @param h             current view height in pixels
-     * @param reflectionTop y-coordinate where the reflected waveform starts
-     */
-    private fun rebuildReflectionGradient(h: Float, reflectionTop: Float) {
-        if (h <= 0f) return
-        lastHeight = h
-
-        // Sample t² (quadratic ease-in) at 9 evenly-spaced t values.
-        // t² gives a visually clear fade: at t=0.5 it erases 25%, at t=0.75 it erases 56%,
-        // and at t=1.0 it erases 100% — far more perceptible than the former cubic t³ curve.
-        val bezierSamples = 9
-        val bezierColors = IntArray(bezierSamples) { i ->
-            val t = i.toFloat() / (bezierSamples - 1).toFloat()
-            Color.argb((t * t * 255f).toInt().coerceIn(0, 255), 0, 0, 0)
-        }
-        val bezierPositions = FloatArray(bezierSamples) { i ->
-            i.toFloat() / (bezierSamples - 1).toFloat()
-        }
-
-        val fadeStart = reflectionFadeStartFraction.coerceIn(0f, 0.99f)
-
-        // When a non-zero fade start is requested, prepend two transparent anchor stops so the
-        // top portion of the reflection stays fully visible before the bezier ramp begins.
-        val colors: IntArray
-        val positions: FloatArray
-        if (fadeStart > 0f) {
-            colors = IntArray(bezierSamples + 2)
-            positions = FloatArray(bezierSamples + 2)
-            colors[0] = 0x00000000
-            positions[0] = 0f
-            colors[1] = 0x00000000
-            positions[1] = fadeStart
-            for (i in 0 until bezierSamples) {
-                colors[i + 2] = bezierColors[i]
-                positions[i + 2] = fadeStart + bezierPositions[i] * (1f - fadeStart)
-            }
-        } else {
-            colors = bezierColors
-            positions = bezierPositions
-        }
-
-        reflectionGradient = LinearGradient(
-                0f, reflectionTop, 0f, h,
-                colors, positions,
                 Shader.TileMode.CLAMP
         )
     }
@@ -879,14 +837,23 @@ class WaveformSeekbar @JvmOverloads constructor(
                     parent?.requestDisallowInterceptTouchEvent(false)
                     animateLabelVisibility(true)
                     animateSeekLine(false)
-                    seekListener?.onSeekEnd(dragCurrentProgressMs)
 
                     progressMs = dragCurrentProgressMs
                     animatedProgressMs = dragCurrentProgressMs
 
-                    // Launch a fling if the release velocity exceeds the system threshold
+                    // Decide whether a fling will launch BEFORE firing any callbacks.
+                    // Setting isFling = true here ensures setProgress is blocked during the window
+                    // between seekListener.onSeekEnd and the first flingRunnable frame, preventing
+                    // the song's playback position from snapping the waveform back mid-fling.
                     val barStep = barWidthPx + barSpacingPx
-                    if (amplitudes.isNotEmpty() && barStep > 0f && abs(xVelocity) > minFlingVelocity) {
+                    val willFling = amplitudes.isNotEmpty()
+                            && barStep > 0f
+                            && abs(xVelocity) > minFlingVelocity
+                    if (willFling) isFling = true
+
+                    seekListener?.onSeekEnd(dragCurrentProgressMs)
+
+                    if (willFling) {
                         val totalScrollPx = amplitudes.size * barStep
                         val scrollPx = (animatedProgressMs.toFloat() / durationMs.toFloat() * totalScrollPx).toInt()
                         // Negate xVelocity: finger moving left (negative) → fling forward (positive scroll)
@@ -896,7 +863,6 @@ class WaveformSeekbar @JvmOverloads constructor(
                                 0, totalScrollPx.toInt(),
                                 0, 0
                         )
-                        isFling = true
                         postOnAnimation(flingRunnable)
                     }
 
@@ -1063,6 +1029,10 @@ class WaveformSeekbar @JvmOverloads constructor(
 
     /**
      * Updates the current playback position, optionally animating the waveform scroll.
+     * This call is silently ignored while any of the following are active:
+     *  - A drag gesture ([isDragging])
+     *  - A fling animation ([isFling]) — use [OnFlingRunningListener] / [OnFlingEndListener] instead
+     *  - A left-bar fade transition ([leftFadeProgress] ≥ 0)
      *
      * @param positionMs playback position in milliseconds
      * @param fromUser   `true` when the change originates from user interaction
@@ -1072,6 +1042,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         // Ignore external progress updates while the left-bar fade is running; the waveform
         // position is intentionally locked during that transition.
         if (isDragging || isFling || leftFadeProgress >= 0f) return
+
         val target = positionMs.coerceIn(0L, durationMs)
         progressMs = target
 
@@ -1263,6 +1234,27 @@ class WaveformSeekbar @JvmOverloads constructor(
     }
 
     /**
+     * Registers a listener that receives position updates on every animation frame during a fling.
+     * While the fling is running, [setProgress] ignores all external calls to prevent the playback
+     * position from overwriting the fling trajectory.
+     *
+     * @param listener the [OnFlingRunningListener] to register, or `null` to unregister
+     */
+    fun setOnFlingRunningListener(listener: OnFlingRunningListener?) {
+        flingRunningListener = listener
+    }
+
+    /**
+     * Registers a listener notified once when a fling gesture has fully settled.
+     * After this callback fires, [setProgress] resumes accepting external updates.
+     *
+     * @param listener the [OnFlingEndListener] to register, or `null` to unregister
+     */
+    fun setOnFlingEndListener(listener: OnFlingEndListener?) {
+        flingEndListener = listener
+    }
+
+    /**
      * Sets the provider for the left-side (elapsed) time label.
      *
      * @param provider label string provider, or `null` to hide the label
@@ -1439,7 +1431,7 @@ class WaveformSeekbar @JvmOverloads constructor(
          * Scale applied to label text and pill while the user is seeking.
          * Labels grow slightly beyond their normal size so they are easy to read during a drag.
          */
-        private const val LABEL_SEEK_ACTIVE_SCALE = 1.1f
+        private const val LABEL_SEEK_ACTIVE_SCALE = 1.0f
 
         /** Stroke width of the seek line drawn at the center playhead position, in dp. */
         private const val SEEK_LINE_WIDTH_DP = 2f
@@ -1463,12 +1455,11 @@ class WaveformSeekbar @JvmOverloads constructor(
         private const val REFLECTION_LINE_HEIGHT_DP = 1f
 
         /**
-         * Default [reflectionFadeStartFraction]: fraction of the reflection area that stays
-         * fully visible before the quadratic bezier fade begins. 0.3 = the top 30% of the
-         * reflection is fully opaque, giving a crisp mirror zone near the separator line
-         * before the bars gradually fade to transparent toward the bottom.
+         * Default [reflectionAlpha]: uniform alpha applied to all reflected bars in
+         * [WAVEFORM_MODE_REFLECTION]. 0.4 gives a noticeable but clearly secondary mirror image
+         * that does not compete with the main waveform above.
          */
-        const val DEFAULT_REFLECTION_FADE_START_FRACTION = 0.3f
+        const val DEFAULT_REFLECTION_ALPHA = 0.4f
 
         /**
          * Alpha fraction [0.0, 1.0] for the separator line in reflection mode.
@@ -1477,4 +1468,3 @@ class WaveformSeekbar @JvmOverloads constructor(
         private const val REFLECTION_LINE_ALPHA = 0.45f
     }
 }
-
