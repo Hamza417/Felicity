@@ -696,6 +696,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(fallbackToSWToggle)
         preferences.add(outputHeader)
         preferences.add(aaudioToggle)
+        preferences.add(aaudioWarning)
         preferences.add(playbackHeader)
         preferences.add(hiresToggle)
         preferences.add(hiresWarning)

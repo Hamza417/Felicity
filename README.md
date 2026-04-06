@@ -109,7 +109,7 @@ F-Droid release is currently not sure, the Glide library is breaking the reprodu
 
 ## Screenshots
 
-Last Updated: 25 March 2026
+Last Updated: 6 April 2026
 
 |                                                                      |                                                                      |                                                                      |
 |----------------------------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------|
@@ -119,7 +119,7 @@ Last Updated: 25 March 2026
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/12.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/13.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/14.png) |
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/15.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/16.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/17.png) |
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/18.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/19.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/20.png) |
-| ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/21.png) |                                                                      |                                                                      |
+| ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/21.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/22.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/23.png) |
 
 |                                                                      |
 |----------------------------------------------------------------------|
