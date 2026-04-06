@@ -1157,7 +1157,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // visualizer pre-delays its input by exactly this amount. This call covers all
         // trigger paths — playback start, track transition, format change, and device
         // change — because every one of them routes through buildAndPushSnapshot().
-        audioProcessorManager.applyOutputLatency(latencyEstimateMs.plus(50)) // add 50ms of headroom to be safe
+        audioProcessorManager.applyOutputLatency(latencyEstimateMs)
 
         // Hardware output device info
         val deviceName = outputDevice?.productName?.toString() ?: "Unknown"
@@ -1222,7 +1222,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 stereoExpandPercent = stereoExpandPercent,
                 buffers = buffersStr,
                 latencyMs = latencyEstimateMs,
-                visualizerLatencyMs = latencyEstimateMs.plus(50), // match the pre-delay applied to the visualizer
+                visualizerLatencyMs = latencyEstimateMs,
                 audioOutputMode = audioOutputMode,
                 deviceName = deviceName,
                 deviceBitDepthIn = deviceBitDepthIn,

@@ -158,12 +158,19 @@ class AudioProcessorManager {
     }
 
     /**
-     * Forwards the current hardware output latency to [nativeDspProcessor] so the FFT
-     * visualizer input is pre-delayed by exactly this duration.
+     * Forwards the current hardware output latency to [nativeDspProcessor] AND
+     * [visualizerProcessor] so the FFT visualizer input is pre-delayed by exactly this
+     * duration in both processing paths.
      *
      * This makes the spectrum bands respond at the moment the listener actually hears
      * the audio rather than when it is written to the hardware queue, eliminating the
      * visible-before-audible artifact on sharp bass transients.
+     *
+     * [nativeDspProcessor] pre-delays the internal FFT accumulator inside the native DSP
+     * engine (the [feedVisualizer] path in dsp-engine.cpp).
+     * [visualizerProcessor] pre-delays the separate mono accumulator that drives the UI
+     * via the lock-free direct-output twin-buffer mechanism, which is the path actually
+     * rendered on screen.
      *
      * Call this whenever the pipeline latency changes: on playback start, on audio format
      * changes, and on audio output device changes (especially Bluetooth connect/disconnect).
@@ -172,6 +179,7 @@ class AudioProcessorManager {
      */
     fun applyOutputLatency(latencyMs: Int) {
         nativeDspProcessor.setOutputLatency(latencyMs)
+        visualizerProcessor.setOutputLatency(latencyMs)
     }
 
     /**

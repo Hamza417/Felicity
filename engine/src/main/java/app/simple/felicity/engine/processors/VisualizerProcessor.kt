@@ -29,6 +29,16 @@ import kotlin.math.pow
  * called). In that case one [FloatArray] is allocated per FFT window to preserve the
  * existing listener contract.
  *
+ * Output-latency compensation for the visualizer:
+ *   Each mono downmix sample is written into a circular pre-delay ring buffer
+ *   ([vizDelayBuf]) before it is accumulated in [sampleBuffer]. The read cursor lags the
+ *   write cursor by [outputLatencySamples], a value derived from the hardware audio output
+ *   latency set via [setOutputLatency]. This ensures that each FFT frame fed to
+ *   [nativeProcessInto] corresponds to the audio the listener is actually hearing at that
+ *   instant, eliminating the visible-before-audible artifact on sharp transients such as
+ *   kick-drum bass impacts that would otherwise appear when the hardware buffer is large
+ *   (e.g., Bluetooth A2DP at 175 ms).
+ *
  * @author Hamza417
  */
 @OptIn(UnstableApi::class)
@@ -55,6 +65,48 @@ class VisualizerProcessor : BaseAudioProcessor() {
 
     /** Logarithmically-spaced bin boundaries: `bandEdges[k]..bandEdges[k+1]` is the range for band k. */
     private val bandEdges = IntArray(BAND_COUNT + 1)
+
+    /**
+     * Capacity of the pre-delay ring buffer in samples (power of two).
+     * At 48 kHz this covers approximately 1.37 seconds, comfortably exceeding
+     * the worst-case Bluetooth A2DP output latency on any shipping Android device.
+     */
+    private val kDelayBufSize = 65536
+
+    /** Bitmask equivalent to (kDelayBufSize - 1) for fast power-of-two modulo. */
+    private val kDelayBufMask = kDelayBufSize - 1
+
+    /**
+     * Circular pre-delay ring buffer used for output-latency compensation.
+     * Mono-downmixed samples are written at [vizDelayWritePos] and read back from a
+     * position [outputLatencySamples] frames behind the write cursor before being fed
+     * into [sampleBuffer]. Initialized to zeros so the first [outputLatencySamples]
+     * samples fed to the FFT are silence, correctly representing the hardware latency
+     * ramp-up at playback start.
+     */
+    private val vizDelayBuf = FloatArray(kDelayBufSize)
+
+    /** Current write position within [vizDelayBuf], always in [0, kDelayBufSize). */
+    private var vizDelayWritePos = 0
+
+    /**
+     * Number of samples by which the FFT accumulator input is delayed.
+     * Derived from [outputLatencyMs] and [currentSampleRate].
+     * 0 = no delay (default, disables the pre-delay path entirely).
+     */
+    @Volatile
+    private var outputLatencySamples = 0
+
+    /**
+     * Cached output latency in milliseconds supplied by the service layer.
+     * Stored so that [onConfigure] can recompute [outputLatencySamples] correctly
+     * when the sample rate changes without requiring a redundant [setOutputLatency] call.
+     */
+    @Volatile
+    private var outputLatencyMs = 0
+
+    /** Most recently configured sample rate; used to convert milliseconds to sample counts. */
+    private var currentSampleRate = DEFAULT_SAMPLE_RATE
 
     /**
      * When true, PFFFT computes peak magnitude plus a treble boost for visual impact.
@@ -183,13 +235,60 @@ class VisualizerProcessor : BaseAudioProcessor() {
         directOutput = null
     }
 
+    /**
+     * Updates the hardware output latency used to pre-delay the FFT accumulator input.
+     *
+     * When a non-zero value is provided, each mono downmix sample is written into the
+     * pre-delay ring buffer and read back [outputLatencySamples] frames later, so the FFT
+     * frame that triggers a UI redraw corresponds to the audio the listener is actually
+     * hearing rather than the audio just written to the hardware queue. This eliminates the
+     * visible-before-audible artifact on sharp transients such as kick-drum bass impacts.
+     *
+     * Obtain the latency from [android.media.AudioTrack.getTimestamp] or
+     * [android.media.AudioManager.getOutputLatency] and call this method again whenever
+     * the audio route changes (e.g., Bluetooth connect/disconnect, speaker/headphone switch).
+     *
+     * Passing 0 disables the compensation and restores immediate visualizer response.
+     *
+     * @param latencyMs Total audio output latency in milliseconds (>= 0). 0 = disable pre-delay.
+     */
+    fun setOutputLatency(latencyMs: Int) {
+        outputLatencyMs = latencyMs.coerceAtLeast(0)
+        outputLatencySamples = computeDelaySamples(outputLatencyMs, currentSampleRate)
+    }
+
+    /**
+     * Converts a latency in milliseconds to a sample count at [sampleRate], clamped so the
+     * read cursor can never overtake the write cursor accounting for the FFT window size:
+     *   maxDelay = kDelayBufSize - FFT_SIZE - 1
+     *
+     * @param ms         Latency in milliseconds.
+     * @param sampleRate Sample rate in Hz.
+     * @return Sample count in [0, kDelayBufSize - FFT_SIZE - 1].
+     */
+    private fun computeDelaySamples(ms: Int, sampleRate: Int): Int {
+        if (ms <= 0) return 0
+        val samples = (ms.toLong() * sampleRate / 1000L).toInt()
+        val maxDelay = kDelayBufSize - fftSize - 1
+        return samples.coerceAtMost(maxDelay).coerceAtLeast(0)
+    }
+
     // AudioProcessor overrides
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         return if (inputAudioFormat.encoding == C.ENCODING_PCM_16BIT ||
                 inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT
         ) {
+            currentSampleRate = inputAudioFormat.sampleRate
             computeBandEdges(inputAudioFormat.sampleRate)
+
+            /**
+             * Recompute the sample-count equivalent of the stored millisecond latency
+             * whenever the sample rate changes. The millisecond value stays the same;
+             * only the sample count differs between, e.g., 44100 Hz and 48000 Hz sessions.
+             */
+            outputLatencySamples = computeDelaySamples(outputLatencyMs, inputAudioFormat.sampleRate)
+
             if (nativeHandle == 0L) {
                 nativeHandle = nativeCreate(FFT_SIZE)
             }
@@ -224,8 +323,32 @@ class VisualizerProcessor : BaseAudioProcessor() {
                 rightSample = inputBuffer.float
             }
 
+            /**
+             * Mono downmix of the current stereo frame. This value is either fed directly
+             * into [sampleBuffer] (when no latency compensation is active) or written into
+             * the pre-delay ring buffer and read back [outputLatencySamples] frames later,
+             * aligning the FFT frame with the audio the listener is actually hearing.
+             */
+            val mono = (leftSample + rightSample) / 2f
+            val delaySamples = outputLatencySamples
+            val delayedMono: Float
+
+            if (delaySamples > 0) {
+                /**
+                 * Write the current mono sample at the write cursor, then read from the
+                 * position that is [delaySamples] frames behind the write cursor.
+                 * The bitmask replaces modulo to keep the loop branch-light.
+                 */
+                vizDelayBuf[vizDelayWritePos] = mono
+                val readPos = (vizDelayWritePos - delaySamples + kDelayBufSize) and kDelayBufMask
+                delayedMono = vizDelayBuf[readPos]
+                vizDelayWritePos = (vizDelayWritePos + 1) and kDelayBufMask
+            } else {
+                delayedMono = mono
+            }
+
             // Downmix stereo to mono for accurate frequency analysis.
-            sampleBuffer[bufferIndex] = (leftSample + rightSample) / 2f
+            sampleBuffer[bufferIndex] = delayedMono
             bufferIndex++
 
             if (bufferIndex >= fftSize) {
@@ -245,6 +368,16 @@ class VisualizerProcessor : BaseAudioProcessor() {
     override fun onReset() {
         super.onReset()
         bufferIndex = 0
+
+        /**
+         * Clear the pre-delay ring buffer and reset the write cursor so stale samples from
+         * the previous playback session cannot bleed into the next session's visualizer
+         * timeline. [outputLatencyMs] is intentionally preserved so the correct delay is
+         * immediately re-applied when [onConfigure] fires next.
+         */
+        vizDelayBuf.fill(0f)
+        vizDelayWritePos = 0
+
         if (nativeHandle != 0L) {
             nativeDestroy(nativeHandle)
             nativeHandle = 0L
