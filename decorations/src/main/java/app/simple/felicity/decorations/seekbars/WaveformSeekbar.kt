@@ -94,7 +94,11 @@ class WaveformSeekbar @JvmOverloads constructor(
         /** Called when the user first touches the seekbar to begin dragging. */
         fun onSeekStart() {}
 
-        /** Called when the user lifts their finger; [positionMs] is the final drag position. */
+        /**
+         * Called when the user lifts their finger; [positionMs] is the final drag position.
+         * This won't be called if a a fling happened after the drag, in which case
+         * [OnFlingEndListener.onFlingEnd] provides the final position instead.
+         */
         fun onSeekEnd(positionMs: Long) {}
     }
 
@@ -149,7 +153,6 @@ class WaveformSeekbar @JvmOverloads constructor(
             field = value
             invalidate()
         }
-
 
     /**
      * Vertical placement of the elapsed/total time labels.
@@ -271,7 +274,6 @@ class WaveformSeekbar @JvmOverloads constructor(
             field = value.coerceIn(0f, 1f)
             invalidate()
         }
-
 
     private val reflectionLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -617,7 +619,6 @@ class WaveformSeekbar @JvmOverloads constructor(
                 canvas.drawRoundRect(barRect, barCornerRadiusPx, barCornerRadiusPx, barPaint)
             }
 
-
             // Draw the thin horizontal separator line inside the outer compositing layer so the
             // horizontal edge fades clip it naturally at both sides.
             reflectionLinePaint.color = playedColor
@@ -851,7 +852,9 @@ class WaveformSeekbar @JvmOverloads constructor(
                             && abs(xVelocity) > minFlingVelocity
                     if (willFling) isFling = true
 
-                    seekListener?.onSeekEnd(dragCurrentProgressMs)
+                    if (willFling.not()) { // If a fling will start, the end callback is deferred until the fling finishes; otherwise fire it now.
+                        seekListener?.onSeekEnd(dragCurrentProgressMs)
+                    }
 
                     if (willFling) {
                         val totalScrollPx = amplitudes.size * barStep
@@ -1410,7 +1413,6 @@ class WaveformSeekbar @JvmOverloads constructor(
          * Played bars fade away over this period while the waveform stays visually still.
          */
         private const val LEFT_FADE_DURATION_MS = 450L
-
 
         // Thresholds and interpolation factors
         private const val PROGRESS_SNAP_THRESHOLD_MS = 80L
