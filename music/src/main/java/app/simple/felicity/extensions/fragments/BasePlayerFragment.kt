@@ -272,12 +272,14 @@ abstract class BasePlayerFragment : MediaFragment() {
         updateRepeatButtonIcon(PlayerPreferences.getRepeatMode())
 
         seekbar.setOnSeekListener(object : WaveformSeekbar.OnSeekListener {
-            override fun onSeekTo(positionMs: Long, fromUser: Boolean) {
-                if (fromUser) {
-                    MediaPlaybackManager.seekTo(positionMs)
-                }
+            override fun onSeekEnd(positionMs: Long) {
+                MediaPlaybackManager.seekTo(positionMs)
             }
         })
+
+        seekbar.setOnFlingEndListener { positionMs ->
+            MediaPlaybackManager.seekTo(positionMs)
+        }
 
         seekbar.setLeftLabelProvider { progress, _, _ ->
             DateUtils.formatElapsedTime(progress / 1000L)
