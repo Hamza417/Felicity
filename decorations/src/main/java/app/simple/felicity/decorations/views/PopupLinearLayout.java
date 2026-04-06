@@ -11,7 +11,7 @@ public class PopupLinearLayout extends LinearLayout {
     
     private static final String TAG = "PopupLinearLayout";
     
-    private final long DURATION = 200;
+    private final long DURATION = 150;
     
     public PopupLinearLayout(Context context) {
         super(context);

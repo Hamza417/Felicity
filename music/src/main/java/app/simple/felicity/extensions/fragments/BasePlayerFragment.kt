@@ -29,6 +29,7 @@ import app.simple.felicity.engine.utils.PcmInfoFormatter
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.PlayerPreferences
+import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
@@ -222,11 +223,22 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         menu.setOnClickListener {
-            openSongsMenu(
-                    audios = MediaPlaybackManager.getSongs(),
-                    position = MediaPlaybackManager.getCurrentSongPosition(),
-                    imageView = pager.getCurrentImageView()
-            )
+            when (UserInterfacePreferences.getPlayerInterface()) {
+                UserInterfacePreferences.PLAYER_INTERFACE_DEFAULT -> {
+                    openSongsMenu(
+                            audios = MediaPlaybackManager.getSongs(),
+                            position = MediaPlaybackManager.getCurrentSongPosition(),
+                            imageView = pager.getCurrentImageView()
+                    )
+                }
+                UserInterfacePreferences.PLAYER_INTERFACE_FADED -> {
+                    openSongsMenu(
+                            audios = MediaPlaybackManager.getSongs(),
+                            position = MediaPlaybackManager.getCurrentSongPosition(),
+                            imageView = null // No shared element transition on the faded player variant
+                    )
+                }
+            }
         }
 
         repeat.setOnClickListener {
