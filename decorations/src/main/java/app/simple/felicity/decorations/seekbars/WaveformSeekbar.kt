@@ -31,6 +31,9 @@ import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_NONE
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_OUTLINE
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LEFT_FADE_DURATION_MS
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.WAVEFORM_MODE_FULL
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.WAVEFORM_MODE_HALF
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.WAVEFORM_MODE_REFLECTION
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
@@ -48,9 +51,11 @@ import kotlin.math.roundToLong
  * into one bar (spike) per second of audio. The current playhead is always
  * pinned to the horizontal center of the view while the waveform itself scrolls.
  *
- * Supports two display modes controlled by [isFullWaveform]:
- *  - **Half** (default): bars grow from the center axis upward only.
- *  - **Full**: bars grow symmetrically above *and* below the center axis.
+ * Supports three display modes controlled by [waveformMode]:
+ *  - **Half** ([WAVEFORM_MODE_HALF], default): bars grow from the center axis upward only.
+ *  - **Full** ([WAVEFORM_MODE_FULL]): bars grow symmetrically above *and* below the center axis.
+ *  - **Reflection** ([WAVEFORM_MODE_REFLECTION]): half spectrum at the top with a faded,
+ *    inverted mirror image below, separated by a thin line and a small gap.
  *
  * Bars nearest the center playhead are rendered at full opacity and fade toward
  * [HIGHLIGHT_MIN_ALPHA] at the outer edges, creating a spotlight highlight effect.
@@ -108,15 +113,16 @@ class WaveformSeekbar @JvmOverloads constructor(
     private var durationMs: Long = 0L
 
     /**
-     * When `true` the waveform is rendered symmetrically above and below the
-     * center axis (full waveform). When `false` (default) bars grow from the
-     * center axis upward only (half waveform).
+     * Controls the visual rendering mode of the waveform.
+     * Use [WAVEFORM_MODE_HALF], [WAVEFORM_MODE_FULL], or [WAVEFORM_MODE_REFLECTION].
+     * Can also be set via the [R.styleable.WaveformSeekbar_wsbWaveformMode] XML attribute.
      */
-    var isFullWaveform: Boolean = false
+    var waveformMode: Int = WAVEFORM_MODE_HALF
         set(value) {
             field = value
             invalidate()
         }
+
 
     /**
      * Vertical placement of the elapsed/total time labels.
@@ -200,6 +206,56 @@ class WaveformSeekbar @JvmOverloads constructor(
     private var leftGradient: LinearGradient? = null
     private var rightGradient: LinearGradient? = null
     private var lastWidth = 0f
+
+    // Reflection mode — gradient rebuilt when view height changes; paint uses DST_OUT to fade out
+    // the reflected bars toward the bottom, and the line paint draws the thin separator.
+    private var reflectionLineHeightPx: Float = 0f
+    private var reflectionGradient: LinearGradient? = null
+    private var lastHeight = 0f
+
+    /**
+     * Vertical gap in pixels between the main waveform's bottom edge and the center separator line.
+     * Can be set via the [R.styleable.WaveformSeekbar_wsbReflectionTopGap] XML attribute.
+     */
+    var reflectionTopGapPx: Float = 0f
+        set(value) {
+            field = value
+            reflectionGradient = null
+            invalidate()
+        }
+
+    /**
+     * Vertical gap in pixels between the center separator line and the reflected waveform's top edge.
+     * Can be set via the [R.styleable.WaveformSeekbar_wsbReflectionBottomGap] XML attribute.
+     */
+    var reflectionBottomGapPx: Float = 0f
+        set(value) {
+            field = value
+            reflectionGradient = null
+            invalidate()
+        }
+
+    /**
+     * Fraction [0.0, 1.0] of the reflection area height that remains fully visible before the
+     * quadratic bezier fade begins. A value of 0.0 starts fading immediately from the separator
+     * line; 0.3 (default) keeps the top 30% fully opaque for a crisp mirror zone; 1.0 disables
+     * the fade entirely.
+     * Can be set via the [R.styleable.WaveformSeekbar_wsbReflectionFadeStartFraction] XML attribute.
+     */
+    var reflectionFadeStartFraction: Float = DEFAULT_REFLECTION_FADE_START_FRACTION
+        set(value) {
+            field = value.coerceIn(0f, 1f)
+            reflectionGradient = null
+            invalidate()
+        }
+
+    private val reflectionFadePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT)
+    }
+
+    private val reflectionLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
 
     // Touch drag state
     private var isDragging = false
@@ -293,18 +349,24 @@ class WaveformSeekbar @JvmOverloads constructor(
         labelBgStrokePaint.strokeWidth = DEFAULT_LABEL_STROKE_WIDTH_DP * d
         seekLinePaint.strokeWidth = SEEK_LINE_WIDTH_DP * d
         seekLineVerticalPaddingPx = SEEK_LINE_VERTICAL_PADDING_DP * d
+        reflectionTopGapPx = REFLECTION_TOP_GAP_DP * d
+        reflectionBottomGapPx = REFLECTION_BOTTOM_GAP_DP * d
+        reflectionLineHeightPx = REFLECTION_LINE_HEIGHT_DP * d
 
         // Read XML attributes when they are provided
         if (attrs != null) {
             val ta = context.obtainStyledAttributes(attrs, R.styleable.WaveformSeekbar, defStyleAttr, 0)
             try {
-                isFullWaveform = ta.getBoolean(R.styleable.WaveformSeekbar_wsbFullWaveform, false)
+                waveformMode = ta.getInt(R.styleable.WaveformSeekbar_wsbWaveformMode, WAVEFORM_MODE_HALF)
                 barWidthPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbBarWidth, barWidthPx)
                 barSpacingPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbBarSpacing, barSpacingPx)
                 fadeEdgeLengthPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbFadeEdgeLength, fadeEdgeLengthPx)
                 labelEdgeMarginPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbLabelEdgeMargin, labelEdgeMarginPx)
                 labelGravity = ta.getInt(R.styleable.WaveformSeekbar_wsbLabelGravity, LABEL_GRAVITY_BOTTOM)
                 labelHighlightMode = ta.getInt(R.styleable.WaveformSeekbar_wsbLabelHighlightMode, LABEL_HIGHLIGHT_NONE)
+                reflectionTopGapPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbReflectionTopGap, reflectionTopGapPx)
+                reflectionBottomGapPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbReflectionBottomGap, reflectionBottomGapPx)
+                reflectionFadeStartFraction = ta.getFloat(R.styleable.WaveformSeekbar_wsbReflectionFadeStartFraction, DEFAULT_REFLECTION_FADE_START_FRACTION)
             } finally {
                 ta.recycle()
             }
@@ -411,6 +473,28 @@ class WaveformSeekbar @JvmOverloads constructor(
         val labelAreaH = labelTextSizePx + labelPaddingPx * 1.5f
         val maxBarArea = h - labelAreaH - paddingTop - paddingBottom
 
+        // Geometry pre-computed for reflection mode; values are unused in half/full modes.
+        // Both halves use the smaller of the two available areas so bars are visually equal
+        // regardless of label space or asymmetric padding.
+        val mainWaveformBottom = if (waveformMode == WAVEFORM_MODE_REFLECTION) {
+            centerY - reflectionTopGapPx
+        } else {
+            centerY
+        }
+        val reflectionTop = centerY + reflectionBottomGapPx
+        val maxMainBarArea: Float
+        val maxReflBarArea: Float
+        if (waveformMode == WAVEFORM_MODE_REFLECTION) {
+            val topHalfArea = (mainWaveformBottom - paddingTop - labelAreaH).coerceAtLeast(0f)
+            val bottomHalfArea = (h - paddingBottom - reflectionTop).coerceAtLeast(0f)
+            val equalHalfArea = minOf(topHalfArea, bottomHalfArea)
+            maxMainBarArea = equalHalfArea
+            maxReflBarArea = equalHalfArea
+        } else {
+            maxMainBarArea = maxBarArea
+            maxReflBarArea = 0f
+        }
+
         for (i in drawnAmplitudes.indices) {
             val barCenterX = i * barStep - scrollOffset + centerX
             // Cull bars that are fully outside the visible area
@@ -437,27 +521,97 @@ class WaveformSeekbar @JvmOverloads constructor(
             }
             barPaint.alpha = (255 * spotlightAlpha * leftFadeAlpha).toInt()
 
-            if (isFullWaveform) {
-                // Symmetric: bar grows from center upward AND downward
-                val halfH = max(minBarHeightPx / 2f, amp * (maxBarArea / 2f))
-                barRect.set(
-                        barCenterX - barWidthPx / 2f,
-                        centerY - halfH,
-                        barCenterX + barWidthPx / 2f,
-                        centerY + halfH
-                )
-            } else {
-                // Half: bar grows upward from center only
-                val barH = max(minBarHeightPx, amp * maxBarArea)
-                barRect.set(
-                        barCenterX - barWidthPx / 2f,
-                        centerY - barH,
-                        barCenterX + barWidthPx / 2f,
-                        centerY
-                )
+            when (waveformMode) {
+                WAVEFORM_MODE_FULL -> {
+                    // Symmetric: bar grows from center upward AND downward
+                    val halfH = max(minBarHeightPx / 2f, amp * (maxBarArea / 2f))
+                    barRect.set(
+                            barCenterX - barWidthPx / 2f,
+                            centerY - halfH,
+                            barCenterX + barWidthPx / 2f,
+                            centerY + halfH
+                    )
+                }
+                WAVEFORM_MODE_REFLECTION -> {
+                    // Reflection main: bar grows upward from just above the separator gap
+                    val barH = max(minBarHeightPx, amp * maxMainBarArea)
+                    barRect.set(
+                            barCenterX - barWidthPx / 2f,
+                            mainWaveformBottom - barH,
+                            barCenterX + barWidthPx / 2f,
+                            mainWaveformBottom
+                    )
+                }
+                else -> {
+                    // Half: bar grows upward from center only
+                    val barH = max(minBarHeightPx, amp * maxBarArea)
+                    barRect.set(
+                            barCenterX - barWidthPx / 2f,
+                            centerY - barH,
+                            barCenterX + barWidthPx / 2f,
+                            centerY
+                    )
+                }
             }
 
             canvas.drawRoundRect(barRect, barCornerRadiusPx, barCornerRadiusPx, barPaint)
+        }
+
+        // Draw the reflected (inverted, faded) waveform and its separator line in reflection mode
+        if (waveformMode == WAVEFORM_MODE_REFLECTION && maxReflBarArea > 0f) {
+            // Reflected bars are drawn into their own compositing sub-layer so the DST_OUT
+            // vertical gradient mask only affects them and not the main waveform above.
+            val reflLayerId = canvas.saveLayer(0f, reflectionTop, w, h, null)
+
+            for (i in drawnAmplitudes.indices) {
+                val barCenterX = i * barStep - scrollOffset + centerX
+                if (barCenterX + barWidthPx / 2f < 0f || barCenterX - barWidthPx / 2f > w) continue
+
+                val amp = drawnAmplitudes[i].coerceIn(0f, 1f)
+                val transitionZone = barStep * TRANSITION_ZONE
+                val distFromCenter = barCenterX - centerX
+                val colorT = ((distFromCenter + transitionZone) / (2f * transitionZone)).coerceIn(0f, 1f)
+                barPaint.color = blendArgb(playedColor, unplayedColor, colorT)
+
+                val distFraction = (abs(barCenterX - centerX) / (w / 2f)).coerceIn(0f, 1f)
+                val spotlightAlpha = HIGHLIGHT_MIN_ALPHA + (1f - HIGHLIGHT_MIN_ALPHA) * (1f - distFraction)
+                val leftFadeAlpha = if (leftFadeProgress >= 0f && i < leftFadePivotIndex) {
+                    1f - leftFadeProgress
+                } else {
+                    1f
+                }
+                barPaint.alpha = (255 * spotlightAlpha * leftFadeAlpha).toInt()
+
+                // Reflected bar grows downward from the top of the reflection area
+                val reflBarH = max(minBarHeightPx, amp * maxReflBarArea)
+                barRect.set(
+                        barCenterX - barWidthPx / 2f,
+                        reflectionTop,
+                        barCenterX + barWidthPx / 2f,
+                        reflectionTop + reflBarH
+                )
+                canvas.drawRoundRect(barRect, barCornerRadiusPx, barCornerRadiusPx, barPaint)
+            }
+
+            // Apply DST_OUT vertical gradient: transparent at the separator line → opaque at the
+            // bottom of the view, progressively erasing reflected bars to produce the fade-out effect.
+            if (h != lastHeight || reflectionGradient == null) rebuildReflectionGradient(h, reflectionTop)
+            reflectionGradient?.let { reflectionFadePaint.shader = it }
+            canvas.drawRect(0f, reflectionTop, w, h, reflectionFadePaint)
+
+            canvas.restoreToCount(reflLayerId)
+
+            // Draw the thin horizontal separator line inside the outer compositing layer so the
+            // horizontal edge fades clip it naturally at both sides.
+            reflectionLinePaint.color = playedColor
+            reflectionLinePaint.alpha = (255 * REFLECTION_LINE_ALPHA).toInt()
+            canvas.drawRect(
+                    0f,
+                    centerY - reflectionLineHeightPx / 2f,
+                    w,
+                    centerY + reflectionLineHeightPx / 2f,
+                    reflectionLinePaint
+            )
         }
 
         // Rebuild gradient shaders only when the view width changes
@@ -495,6 +649,7 @@ class WaveformSeekbar @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         rebuildGradients(w.toFloat())
+        rebuildReflectionGradient(h.toFloat(), h / 2f + reflectionBottomGapPx)
     }
 
     /** Rebuilds the cached [LinearGradient] shaders whenever the view width changes. */
@@ -511,6 +666,64 @@ class WaveformSeekbar @JvmOverloads constructor(
                 w - fadeEdgeLengthPx, 0f, w, 0f,
                 intArrayOf(0x00000000, 0xFF000000.toInt()),
                 null,
+                Shader.TileMode.CLAMP
+        )
+    }
+
+    /**
+     * Rebuilds the vertical [LinearGradient] used to fade reflected bars toward the bottom in
+     * [WAVEFORM_MODE_REFLECTION]. The first [reflectionFadeStartFraction] of the gradient is kept
+     * fully transparent so bars near the separator remain crisp, after which a quadratic ease-in
+     * (t² sampled at 9 evenly-spaced points) ramps the DST_OUT mask up to fully opaque,
+     * producing a smooth, natural-looking mirror fade that is clearly perceptible.
+     *
+     * Compared to a linear gradient, the t² curve starts gently near the separator and
+     * accelerates toward the bottom, matching the natural fall-off of a surface reflection.
+     *
+     * @param h             current view height in pixels
+     * @param reflectionTop y-coordinate where the reflected waveform starts
+     */
+    private fun rebuildReflectionGradient(h: Float, reflectionTop: Float) {
+        if (h <= 0f) return
+        lastHeight = h
+
+        // Sample t² (quadratic ease-in) at 9 evenly-spaced t values.
+        // t² gives a visually clear fade: at t=0.5 it erases 25%, at t=0.75 it erases 56%,
+        // and at t=1.0 it erases 100% — far more perceptible than the former cubic t³ curve.
+        val bezierSamples = 9
+        val bezierColors = IntArray(bezierSamples) { i ->
+            val t = i.toFloat() / (bezierSamples - 1).toFloat()
+            Color.argb((t * t * 255f).toInt().coerceIn(0, 255), 0, 0, 0)
+        }
+        val bezierPositions = FloatArray(bezierSamples) { i ->
+            i.toFloat() / (bezierSamples - 1).toFloat()
+        }
+
+        val fadeStart = reflectionFadeStartFraction.coerceIn(0f, 0.99f)
+
+        // When a non-zero fade start is requested, prepend two transparent anchor stops so the
+        // top portion of the reflection stays fully visible before the bezier ramp begins.
+        val colors: IntArray
+        val positions: FloatArray
+        if (fadeStart > 0f) {
+            colors = IntArray(bezierSamples + 2)
+            positions = FloatArray(bezierSamples + 2)
+            colors[0] = 0x00000000
+            positions[0] = 0f
+            colors[1] = 0x00000000
+            positions[1] = fadeStart
+            for (i in 0 until bezierSamples) {
+                colors[i + 2] = bezierColors[i]
+                positions[i + 2] = fadeStart + bezierPositions[i] * (1f - fadeStart)
+            }
+        } else {
+            colors = bezierColors
+            positions = bezierPositions
+        }
+
+        reflectionGradient = LinearGradient(
+                0f, reflectionTop, 0f, h,
+                colors, positions,
                 Shader.TileMode.CLAMP
         )
     }
@@ -1131,6 +1344,18 @@ class WaveformSeekbar @JvmOverloads constructor(
 
     companion object {
 
+        /** Rendering mode: bars grow from the center axis upward only (default). */
+        const val WAVEFORM_MODE_HALF = 0
+
+        /** Rendering mode: bars grow symmetrically above and below the center axis. */
+        const val WAVEFORM_MODE_FULL = 1
+
+        /**
+         * Rendering mode: half spectrum at the top with a faded, inverted mirror image below,
+         * separated by a thin line and a small gap.
+         */
+        const val WAVEFORM_MODE_REFLECTION = 2
+
         /** Labels are positioned at the top edge of the view. */
         const val LABEL_GRAVITY_TOP = 0
 
@@ -1192,7 +1417,7 @@ class WaveformSeekbar @JvmOverloads constructor(
          * Duration of the left-bar fade-out animation triggered by [setDurationWithReset].
          * Played bars fade away over this period while the waveform stays visually still.
          */
-        private const val LEFT_FADE_DURATION_MS = 250L
+        private const val LEFT_FADE_DURATION_MS = 450L
 
 
         // Thresholds and interpolation factors
@@ -1227,6 +1452,29 @@ class WaveformSeekbar @JvmOverloads constructor(
 
         /** Vertical inset applied to both ends of the seek line so it does not touch the view boundaries, in dp. */
         private const val SEEK_LINE_VERTICAL_PADDING_DP = 12f
+
+        /** Default gap in dp between the main waveform's bottom edge and the center separator line. */
+        private const val REFLECTION_TOP_GAP_DP = 0f
+
+        /** Default gap in dp between the center separator line and the reflected waveform's top edge. */
+        private const val REFLECTION_BOTTOM_GAP_DP = 3f
+
+        /** Height in dp of the thin horizontal separator line drawn in reflection mode. */
+        private const val REFLECTION_LINE_HEIGHT_DP = 1f
+
+        /**
+         * Default [reflectionFadeStartFraction]: fraction of the reflection area that stays
+         * fully visible before the quadratic bezier fade begins. 0.3 = the top 30% of the
+         * reflection is fully opaque, giving a crisp mirror zone near the separator line
+         * before the bars gradually fade to transparent toward the bottom.
+         */
+        const val DEFAULT_REFLECTION_FADE_START_FRACTION = 0.3f
+
+        /**
+         * Alpha fraction [0.0, 1.0] for the separator line in reflection mode.
+         * A value below 1.0 keeps the line subtle so it does not overpower the waveform.
+         */
+        private const val REFLECTION_LINE_ALPHA = 0.45f
     }
 }
 

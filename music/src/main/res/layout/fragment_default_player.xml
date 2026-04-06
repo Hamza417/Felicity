@@ -219,7 +219,7 @@
         android:layout_height="100dp"
         android:layout_gravity="center_vertical"
         app:wsbBarWidth="7dp"
-        app:wsbFullWaveform="true"
+        app:wsbWaveformMode="full"
         app:wsbLabelEdgeMargin="@dimen/padding_20"
         app:wsbLabelGravity="center"
         app:wsbLabelHighlightMode="both" />

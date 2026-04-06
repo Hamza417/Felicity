@@ -16,8 +16,8 @@ object PlayerPreferences {
     /** SharedPreferences key for the visualizer enabled/disabled toggle. */
     const val VISUALIZER_ENABLED = "visualizer_enabled"
 
-    /** SharedPreferences key for the waveform seekbar display mode (full vs half). */
-    const val WAVEFORM_MODE_FULL = "waveform_mode_full"
+    /** SharedPreferences key for the waveform seekbar display mode (int, maps to WaveformSeekbar mode constants). */
+    const val WAVEFORM_MODE = "waveform_mode_int"
 
     fun setRepeatMode(value: Int) {
         SharedPreferences.getSharedPreferences().edit { putInt(REPEAT_MODE, value) }
@@ -45,19 +45,20 @@ object PlayerPreferences {
     }
 
     /**
-     * Persists whether the waveform seekbar should render in full (symmetric) mode.
+     * Persists the waveform seekbar display mode.
+     * Use the mode constants defined in [app.simple.felicity.decorations.seekbars.WaveformSeekbar].
      *
-     * @param value `true` for full (symmetric) waveform, `false` for half waveform
+     * @param value one of `WAVEFORM_MODE_HALF`, `WAVEFORM_MODE_FULL`, or `WAVEFORM_MODE_REFLECTION`
      */
-    fun setWaveformModeFull(value: Boolean) {
-        SharedPreferences.getSharedPreferences().edit { putBoolean(WAVEFORM_MODE_FULL, value) }
+    fun setWaveformMode(value: Int) {
+        SharedPreferences.getSharedPreferences().edit { putInt(WAVEFORM_MODE, value) }
     }
 
     /**
-     * Returns whether the waveform seekbar should render in full (symmetric) mode.
-     * Defaults to `false` (half waveform) if the preference has not been set yet.
+     * Returns the persisted waveform seekbar display mode.
+     * Defaults to `WAVEFORM_MODE_HALF` (0) if the preference has not been set yet.
      */
-    fun isWaveformModeFull(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(WAVEFORM_MODE_FULL, true)
+    fun getWaveformMode(): Int {
+        return SharedPreferences.getSharedPreferences().getInt(WAVEFORM_MODE, 0)
     }
 }

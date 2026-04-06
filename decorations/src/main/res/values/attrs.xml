@@ -263,21 +263,34 @@
         WaveformSeekbar: horizontally scrolling per-second amplitude waveform seekbar.
         The current playhead is always fixed at the horizontal center while the waveform scrolls.
 
-        wsbFullWaveform    – when true bars are drawn symmetrically above and below the center
-                             axis (full/symmetric mode). When false bars grow upward from center
-                             only (half mode). Default: false.
-        wsbBarWidth        – pixel width of each amplitude bar. Default: 6dp.
-        wsbBarSpacing      – pixel gap between adjacent bars. Default: 3dp.
-        wsbFadeEdgeLength  – horizontal length of the DST_OUT fading edge on each side. Default: 72dp.
-        wsbLabelEdgeMargin – horizontal distance between each time label and the nearest view edge.
-                             Increase this value to pull labels inward from the edges. Default: 16dp.
-        wsbLabelGravity    – vertical position of the elapsed/total time labels.
-                             top    (0) – labels sit at the top edge of the view.
-                             center (1) – labels sit at the vertical midpoint.
-                             bottom (2) – labels sit at the bottom edge (default).
+        wsbWaveformMode               – rendering mode:
+                                        half       (0) – bars grow upward from center only (default).
+                                        full       (1) – bars grow symmetrically above and below center.
+                                        reflection (2) – half spectrum at top with a faded inverted mirror
+                                                         below, separated by a thin line and a gap.
+        wsbBarWidth                   – pixel width of each amplitude bar. Default: 6dp.
+        wsbBarSpacing                 – pixel gap between adjacent bars. Default: 3dp.
+        wsbFadeEdgeLength             – horizontal DST_OUT fading edge on each side. Default: 72dp.
+        wsbLabelEdgeMargin            – horizontal inset of time labels from view edges. Default: 16dp.
+        wsbLabelGravity               – vertical position of the elapsed/total time labels.
+        wsbReflectionTopGap           – gap between main waveform bottom and separator line. Default: 3dp.
+        wsbReflectionBottomGap        – gap between separator line and reflection top. Default: 3dp.
+        wsbReflectionFadeStartFraction – fraction [0,1] of the reflection area that stays fully visible
+                                         before the bezier fade begins. Default: 0.0 (immediate fade).
     -->
     <declare-styleable name="WaveformSeekbar">
-        <attr name="wsbFullWaveform" format="boolean" />
+        <!--
+            Rendering mode for the waveform bars.
+            half       (0) – bars grow upward from the center axis only (default).
+            full       (1) – bars grow symmetrically above and below the center axis.
+            reflection (2) – half spectrum at the top with a faded, inverted mirror image below,
+                             separated by a thin line and a small gap.
+        -->
+        <attr name="wsbWaveformMode" format="enum">
+            <enum name="half" value="0" />
+            <enum name="full" value="1" />
+            <enum name="reflection" value="2" />
+        </attr>
         <attr name="wsbBarWidth" format="dimension" />
         <attr name="wsbBarSpacing" format="dimension" />
         <attr name="wsbFadeEdgeLength" format="dimension" />
@@ -300,6 +313,15 @@
             <enum name="outline" value="1" />
             <enum name="both" value="2" />
         </attr>
+        <!-- Gap between the main waveform's bottom edge and the center separator line (reflection mode). Default: 3dp. -->
+        <attr name="wsbReflectionTopGap" format="dimension" />
+        <!-- Gap between the center separator line and the reflected waveform's top edge (reflection mode). Default: 3dp. -->
+        <attr name="wsbReflectionBottomGap" format="dimension" />
+        <!--
+            Fraction [0.0, 1.0] of the reflection area that stays fully visible before the
+            cubic-bezier fade begins (reflection mode). 0.0 = fade starts at the separator line.
+        -->
+        <attr name="wsbReflectionFadeStartFraction" format="float" />
     </declare-styleable>
 
     <!--

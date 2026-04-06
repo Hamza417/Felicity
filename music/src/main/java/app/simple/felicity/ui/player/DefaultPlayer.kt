@@ -205,9 +205,6 @@ class DefaultPlayer : MediaFragment() {
             DateUtils.formatElapsedTime(max / 1000L)
         }
 
-        // Apply the saved waveform display mode preference
-        binding.seekbar.isFullWaveform = PlayerPreferences.isWaveformModeFull()
-
         // Observe waveform amplitude data from the ViewModel
         waveformViewModel.getWaveformData().observe(viewLifecycleOwner) { amplitudes ->
             binding.seekbar.setAmplitudes(amplitudes)
@@ -434,8 +431,8 @@ class DefaultPlayer : MediaFragment() {
             PlayerPreferences.VISUALIZER_ENABLED -> {
                 setVisualizerState()
             }
-            PlayerPreferences.WAVEFORM_MODE_FULL -> {
-                binding.seekbar.isFullWaveform = PlayerPreferences.isWaveformModeFull()
+            PlayerPreferences.WAVEFORM_MODE -> {
+                binding.seekbar.waveformMode = PlayerPreferences.getWaveformMode()
             }
         }
     }
