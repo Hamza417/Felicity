@@ -53,6 +53,26 @@ void            projectm_pcm_add_float(projectm_handle instance,
 #define BRIDGE_LOGI(...) __android_log_print(ANDROID_LOG_INFO,  BRIDGE_TAG, __VA_ARGS__)
 #define BRIDGE_LOGE(...) __android_log_print(ANDROID_LOG_ERROR, BRIDGE_TAG, __VA_ARGS__)
 
+/**
+ * Minimal blank Milkdrop preset used to suppress the projectM built-in idle preset
+ * (the animated "M" logo with headphones) that is loaded automatically on
+ * [projectm_create].  The preset renders a plain black frame with full decay so
+ * that no residual image lingers before the app loads its own first preset.
+ *
+ * This string is fed to [projectm_load_preset_data] immediately after instance
+ * creation with smooth_transition=false, atomically replacing the idle preset
+ * before the very first [projectm_opengl_render_frame] call.
+ */
+static const char *const BLANK_PRESET =
+        "[preset00]\n"
+        "fDecay=1.000000\n"
+        "fGammaAdj=1.000000\n"
+        "zoom=1.000000\n"
+        "warp=0.000000\n"
+        "rot=0.000000\n"
+        "dx=0.000000\n"
+        "dy=0.000000\n";
+
 extern "C" {
 
 /**
@@ -61,6 +81,11 @@ extern "C" {
  * The caller is responsible for making an OpenGL ES context current on this
  * thread before calling this function.  The returned handle must eventually
  * be passed to [nativeDestroy] to release native resources.
+ *
+ * The built-in projectM idle preset (animated "M" logo) is immediately replaced
+ * with a blank preset so the first visible frame is always black rather than the
+ * default splash animation.  The caller should load its own first preset shortly
+ * after this call via [nativeLoadPresetData].
  *
  * @param env       JNI environment pointer.
  * @param thiz      Calling Kotlin object (unused).
@@ -81,6 +106,12 @@ Java_app_simple_felicity_milkdrop_bridges_ProjectMBridge_nativeCreate(
     projectm_set_window_size(handle,
                              static_cast<size_t>(width),
                              static_cast<size_t>(height));
+
+    // Immediately displace the built-in idle preset so the first rendered frame
+    // is a blank black screen rather than the projectM "M" logo animation.
+    // smooth_transition=false ensures the switch is instantaneous.
+    projectm_load_preset_data(handle, BLANK_PRESET, false);
+    BRIDGE_LOGI("Idle preset suppressed — blank preset loaded");
 
     BRIDGE_LOGI("projectM instance created: %p  size=%dx%d",
                 handle, static_cast<int>(width), static_cast<int>(height));

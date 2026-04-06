@@ -33,6 +33,7 @@ import app.simple.felicity.viewmodels.panels.MilkdropViewModel
 import com.google.android.material.shape.CornerFamily
 import com.google.android.material.shape.MaterialShapeDrawable
 import com.google.android.material.shape.ShapeAppearanceModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -59,7 +60,9 @@ class Milkdrop : MediaFragment() {
 
     private lateinit var binding: FragmentMilkdropBinding
 
-    private val viewModel: MilkdropViewModel by viewModels()
+    private val viewModel: MilkdropViewModel by viewModels(
+            ownerProducer = { this }
+    )
 
     private var pagerAdapter: AdapterMilkdropPager? = null
 
@@ -208,7 +211,10 @@ class Milkdrop : MediaFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.presetContent.collect { content ->
-                    content?.let { loadCurrentPreset(it) }
+                    delay(250) // Small delay to ensure the GL thread is ready for new content.
+                    content?.let {
+                        loadCurrentPreset(it)
+                    }
                 }
             }
         }
