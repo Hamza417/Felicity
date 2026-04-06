@@ -346,4 +346,5 @@
     <string name="album_art_light">Album Art (Light)</string>
     <string name="album_art_dark">Album Art (Dark)</string>
     <string name="visualizer_latency">Visualizer Latency</string>
+    <string name="open_milkdrop_visualizer">Open Milkdrop Visualizer</string>
 </resources>

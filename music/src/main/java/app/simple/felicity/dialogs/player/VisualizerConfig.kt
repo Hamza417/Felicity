@@ -9,6 +9,7 @@ import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogVisualizerTuningBinding
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
+import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.VisualizerPreferences
 
@@ -56,6 +57,14 @@ class VisualizerConfig : MediaBottomDialogFragment() {
             when (index) {
                 0 -> VisualizerPreferences.setVisualizerType(VisualizerPreferences.TYPE_BARS)
                 1 -> VisualizerPreferences.setVisualizerType(VisualizerPreferences.TYPE_WAVE)
+            }
+        }
+
+        binding.openMilkdropVisualizer.setOnClickListener {
+            (parentFragment as MediaFragment).openMilkdropPanel().also {
+                // May mess with the predictive back if the dialog is left alive in the back stack
+                // so we dismiss the dialog immediately after opening the settings.
+                dismiss()
             }
         }
     }

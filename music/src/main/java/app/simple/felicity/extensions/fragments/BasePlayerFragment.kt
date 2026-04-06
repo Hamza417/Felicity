@@ -35,7 +35,6 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.panels.Lyrics
-import app.simple.felicity.ui.panels.Milkdrop
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Search
 import app.simple.felicity.viewmodels.player.WaveformViewModel
@@ -307,12 +306,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         visualizerButton.setOnClickListener {
-            openFragment(Milkdrop.newInstance(), Milkdrop.TAG)
-        }
-
-        visualizerButton.setOnLongClickListener {
             childFragmentManager.showVisualizerConfig()
-            true
         }
     }
 

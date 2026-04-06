@@ -96,6 +96,24 @@
 
         </LinearLayout>
 
+
+        <app.simple.felicity.decorations.theme.ThemeDivider
+            android:layout_width="match_parent"
+            android:layout_marginVertical="@dimen/padding_10"
+            android:layout_height="1px" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/open_milkdrop_visualizer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="@dimen/padding_15"
+            android:text="@string/open_milkdrop_visualizer"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:drawableEndCompat="@drawable/ic_for_arrow_12dp"
+            app:drawableTintStyle="accent"
+            app:textColorStyle="primary" />
+
     </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
 
 </FrameLayout>
