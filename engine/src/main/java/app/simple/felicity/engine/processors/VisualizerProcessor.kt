@@ -502,8 +502,10 @@ class VisualizerProcessor : BaseAudioProcessor() {
             System.loadLibrary("felicity_audio_engine")
         }
 
+        const val FFT_SIZE = 1024
+
         /** FFT window size — drop to 1024 if it causes stuttering on older devices. */
-        const val FFT_SIZE = 4096
+        const val FFT_SIZE_HQ = 4096
 
         /** Number of frequency bands produced per window. */
         const val BAND_COUNT = 40
