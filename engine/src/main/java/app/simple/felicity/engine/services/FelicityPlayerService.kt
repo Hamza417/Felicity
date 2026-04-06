@@ -1153,6 +1153,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // Buffer and latency estimation from actual AudioTrack minimum buffer size
         val (buffersStr, latencyEstimateMs) = computeBufferInfo(dspInputFormat)
 
+        // Forward the current pipeline latency to the native DSP engine so the FFT
+        // visualizer pre-delays its input by exactly this amount. This call covers all
+        // trigger paths — playback start, track transition, format change, and device
+        // change — because every one of them routes through buildAndPushSnapshot().
+        audioProcessorManager.applyOutputLatency(latencyEstimateMs.plus(50)) // add 50ms of headroom to be safe
+
         // Hardware output device info
         val deviceName = outputDevice?.productName?.toString() ?: "Unknown"
         val deviceBitDepthIn = if (hiresEnabled) 32 else 16
@@ -1216,6 +1222,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 stereoExpandPercent = stereoExpandPercent,
                 buffers = buffersStr,
                 latencyMs = latencyEstimateMs,
+                visualizerLatencyMs = latencyEstimateMs.plus(50), // match the pre-delay applied to the visualizer
                 audioOutputMode = audioOutputMode,
                 deviceName = deviceName,
                 deviceBitDepthIn = deviceBitDepthIn,

@@ -158,6 +158,23 @@ class AudioProcessorManager {
     }
 
     /**
+     * Forwards the current hardware output latency to [nativeDspProcessor] so the FFT
+     * visualizer input is pre-delayed by exactly this duration.
+     *
+     * This makes the spectrum bands respond at the moment the listener actually hears
+     * the audio rather than when it is written to the hardware queue, eliminating the
+     * visible-before-audible artifact on sharp bass transients.
+     *
+     * Call this whenever the pipeline latency changes: on playback start, on audio format
+     * changes, and on audio output device changes (especially Bluetooth connect/disconnect).
+     *
+     * @param latencyMs Total audio output latency in milliseconds (>= 0). 0 = no pre-delay.
+     */
+    fun applyOutputLatency(latencyMs: Int) {
+        nativeDspProcessor.setOutputLatency(latencyMs)
+    }
+
+    /**
      * Applies the persisted 10-band EQ state (all band gains, preamp, and the enabled flag)
      * plus bass and treble shelf gains to [nativeDspProcessor].
      *

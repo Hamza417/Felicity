@@ -342,4 +342,5 @@
     <string name="aaudio_warning">AAudio is highly experimental at the moment and there is no guarantee it will work on all devices and perform as expected.</string>
     <string name="album_art_light">Album Art (Light)</string>
     <string name="album_art_dark">Album Art (Dark)</string>
+    <string name="visualizer_latency">Visualizer Latency</string>
 </resources>

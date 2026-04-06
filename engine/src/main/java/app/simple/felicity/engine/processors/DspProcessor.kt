@@ -179,6 +179,28 @@ class DspProcessor(
     }
 
     /**
+     * Sets the audio output latency for visualizer synchronization.
+     *
+     * When a non-zero value is provided the DSP engine delays the audio data fed into
+     * the FFT visualizer by the same duration as the hardware output latency, so the
+     * spectrum bands pop exactly when the listener hears the corresponding audio rather
+     * than when the data was written to the hardware queue. This eliminates the
+     * visible-before-audible artifact on sharp transients such as kick-drum bass hits.
+     *
+     * Obtain the latency from [android.media.AudioTrack.getTimestamp] or
+     * [android.media.AudioManager.getOutputLatency] and call this method again whenever
+     * the audio route changes (e.g., switching between speaker and Bluetooth headset).
+     *
+     * Passing 0 disables the compensation and restores immediate visualizer response.
+     *
+     * @param latencyMs Hardware audio output latency in milliseconds (>= 0).
+     */
+    fun setOutputLatency(latencyMs: Int) {
+        if (nativeHandle == 0L) return
+        nativeDspSetOutputLatency(nativeHandle, latencyMs.coerceAtLeast(0))
+    }
+
+    /**
      * The zero-allocation audio processing hot path.
      *
      * Passes [pcmBuffer] directly into the native DSP chain where it is modified in-place.
@@ -347,6 +369,18 @@ class DspProcessor(
      * @param size   Room-size parameter in [0.0, 1.0].
      */
     private external fun nativeDspSetReverb(handle: Long, mix: Float, decay: Float, damp: Float, size: Float)
+
+    /**
+     * Stores the output latency and updates the FFT pre-delay ring-buffer read offset.
+     *
+     * The native engine converts [latencyMs] to a sample count at the current sample rate
+     * and delays the visualizer input by that many frames so the spectrum display aligns
+     * with audible output. Passing 0 disables the compensation entirely.
+     *
+     * @param handle    Opaque pointer from [nativeDspCreate].
+     * @param latencyMs Hardware audio output latency in milliseconds (>= 0).
+     */
+    private external fun nativeDspSetOutputLatency(handle: Long, latencyMs: Int)
 
     /**
      * Zero-allocation hot-path entrypoint. Applies the full DSP chain to [pcmBuffer]

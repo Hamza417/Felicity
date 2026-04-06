@@ -123,6 +123,19 @@ class NativeDspAudioProcessor(
     private var reverbSize: Float = 0.5f
 
     /**
+     * Hardware audio output latency in milliseconds last reported by the service layer.
+     *
+     * Stored here so that [pushAllParameters] can re-apply the correct delay when a new
+     * native [DspProcessor] context is created after a sample-rate change. The conversion
+     * from milliseconds to samples is done inside [DspProcessor.setOutputLatency] using
+     * the current sample rate, so this field only needs to store the raw millisecond value.
+     *
+     * Default 0 = no pre-delay (immediate visualizer response).
+     */
+    @Volatile
+    private var outputLatencyMs: Int = 0
+
+    /**
      * Returns the [AudioProcessor.AudioFormat] that this processor is currently configured for.
      *
      * Returns [AudioProcessor.AudioFormat.NOT_SET] when the processor has not yet received a
@@ -445,6 +458,22 @@ class NativeDspAudioProcessor(
         dspProcessor?.setReverb(reverbMix, reverbDecay, reverbDamp, reverbSize)
     }
 
+    /**
+     * Updates the hardware output latency used to pre-delay the FFT visualizer input.
+     *
+     * Storing the value here (in addition to forwarding it to [DspProcessor]) ensures that
+     * the correct delay is automatically re-applied via [pushAllParameters] whenever a new
+     * native context is created after a sample-rate or channel-count change. The native
+     * engine converts the millisecond value to a sample count at the current sample rate
+     * so the temporal alignment remains correct across format transitions.
+     *
+     * @param latencyMs Total audio output latency in milliseconds (>= 0). 0 = disable pre-delay.
+     */
+    fun setOutputLatency(latencyMs: Int) {
+        outputLatencyMs = latencyMs.coerceAtLeast(0)
+        dspProcessor?.setOutputLatency(outputLatencyMs)
+    }
+
     /** Pushes all stored parameter fields to the native [DspProcessor] after (re)creation. */
     private fun pushAllParameters() {
         val dsp = dspProcessor ?: return
@@ -454,6 +483,9 @@ class NativeDspAudioProcessor(
         dsp.setBalance(pan)
         dsp.setSaturation(saturationDrive)
         dsp.setReverb(reverbMix, reverbDecay, reverbDamp, reverbSize)
+        // Re-apply the output latency so the pre-delay ring buffer is seeded at the correct
+        // sample count for the new audio format. Must be last so it uses the final sample rate.
+        dsp.setOutputLatency(outputLatencyMs)
     }
 
     private fun releaseNativeContext() {

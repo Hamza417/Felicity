@@ -189,6 +189,10 @@ class AudioPipelineDialog : ScopedBottomSheetFragment() {
                 getString(R.string.latency),
                 getString(R.string.format_approx_ms, snapshot.latencyMs))
 
+        b.valueVizLatency.text = createSpannedString(
+                getString(R.string.visualizer_latency),
+                getString(R.string.format_approx_ms, snapshot.visualizerLatencyMs))
+
         b.valueAudioOutputMode.text = createSpannedString(
                 getString(R.string.audio_output_mode),
                 snapshot.audioOutputMode.ifBlank { "—" })

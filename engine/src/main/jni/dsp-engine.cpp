@@ -11,7 +11,7 @@
  *
  * The reverb stage uses a classic Freeverb topology:
  *   - 4 parallel comb filters per channel with high-frequency damping in the feedback path.
- *   - 2 series all-pass diffusors per channel (constant feedback 0.5).
+ *   - 2 series all-pass diffusers per channel (constant feedback 0.5).
  *   - Left and right channels have slightly different delay lengths (+23 samples at 44100 Hz)
  *     for natural stereo decorrelation.
  *   - Reverb is placed AFTER all tone-shaping stages so it adds pure spatial depth without
@@ -20,6 +20,16 @@
  * ARM NEON SIMD acceleration is used for the biquad EQ, stereo widening, balance, and
  * saturation stages. The reverb hot path uses a scalar loop because the feedback-dependent
  * data hazards in ring-buffer processing prevent effective SIMD vectorization.
+ *
+ * Output-latency compensation for the visualizer:
+ *   The fully-processed mono downmix is written into a circular pre-delay ring buffer
+ *   ([DspContext::vizDelayBuf]) before it is accumulated in the FFT window. The read
+ *   cursor lags the write cursor by [DspContext::outputLatencySamples], a value derived
+ *   from the hardware audio output latency reported by the Kotlin layer via
+ *   [nativeDspSetOutputLatency]. This ensures that the FFT frame emitted to the visualizer
+ *   corresponds to the audio the listener is actually hearing at that instant, eliminating
+ *   the visual-leads-audio artifact on sharp transients (e.g., kick-drum bass impact)
+ *   that is otherwise observable when the hardware buffer is large (e.g., Bluetooth A2DP).
  *
  * @author Hamza417
  */
@@ -712,16 +722,23 @@ static void applyReverbMono(float *__restrict buf, int numSamples, DspContext *c
 }
 
 /**
- * Accumulates a mono downmix of the current block into [DspContext::vizMono].
- * When the ring buffer is full ([vizBufPos] reaches [FFTContext::size]) the function
- * applies the pre-computed Hann window, runs the PFFFT forward transform, computes
- * per-band RMS magnitudes into [DspContext::bandMagnitudes], and sets
- * [DspContext::fftFrameReady] to signal a fresh spectrum frame to Kotlin.
+ * Accumulates a mono downmix of the current block into [DspContext::vizMono] via an
+ * output-latency pre-delay ring buffer, then triggers the FFT when the window is full.
+ *
+ * Each mono sample is first written into the circular [DspContext::vizDelayBuf] ring buffer.
+ * The sample that is actually forwarded to the FFT accumulator is read from the position
+ * [DspContext::outputLatencySamples] frames behind the current write cursor. When the
+ * output latency is zero the pre-delay path is bypassed entirely and the sample is fed
+ * directly, preserving the original zero-overhead behavior.
+ *
+ * Once [vizBufPos] reaches [FFTContext::size] the function applies the pre-computed Hann
+ * window, runs the PFFFT forward transform, computes per-band RMS magnitudes into
+ * [DspContext::bandMagnitudes], and sets [DspContext::fftFrameReady] to signal Kotlin.
  *
  * This runs entirely on the audio thread with zero heap allocations; all buffers are
  * pre-allocated in [nativeDspCreate].
  *
- * @param ctx       DSP context that owns the accumulation and FFT state.
+ * @param ctx       DSP context that owns the accumulation, delay, and FFT state.
  * @param buf       Current fully-processed PCM buffer (interleaved stereo or mono).
  * @param numFrames Number of audio frames in [buf].
  */
@@ -731,12 +748,32 @@ static void feedVisualizer(DspContext *ctx, const float *__restrict buf, int num
 
     const int fftSize = fft->size;
     const bool isStereo = (ctx->channelCount == 2);
+    const int delaySamples = ctx->outputLatencySamples;
+    const bool useDelay = (delaySamples > 0) && (ctx->vizDelayBuf != nullptr);
 
     for (int i = 0; i < numFrames; ++i) {
-        /** Mono downmix: average L and R (or copy the single channel for mono streams). */
-        ctx->vizMono[ctx->vizBufPos] = isStereo
-                                       ? (buf[2 * i] + buf[2 * i + 1]) * 0.5f
-                                       : buf[i];
+        /** Mono downmix: average L and R, or copy the single channel for mono streams. */
+        const float mono = isStereo
+                           ? (buf[2 * i] + buf[2 * i + 1]) * 0.5f
+                           : buf[i];
+
+        float sample;
+        if (useDelay) {
+            /**
+             * Write the current mono sample into the pre-delay ring buffer, then read
+             * back from the position that is [delaySamples] frames behind the write cursor.
+             * The bitmask replaces the modulo to keep this loop branch-light.
+             */
+            ctx->vizDelayBuf[ctx->vizDelayWritePos] = mono;
+            const int readPos = (ctx->vizDelayWritePos - delaySamples + kVizDelayBufSamples)
+                                & kVizDelayBufMask;
+            sample = ctx->vizDelayBuf[readPos];
+            ctx->vizDelayWritePos = (ctx->vizDelayWritePos + 1) & kVizDelayBufMask;
+        } else {
+            sample = mono;
+        }
+
+        ctx->vizMono[ctx->vizBufPos] = sample;
         ctx->vizBufPos++;
 
         if (ctx->vizBufPos >= fftSize) {
@@ -819,6 +856,22 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspCreate(
     ctx->bandMagnitudes = (fft->bandCount > 0)
                           ? static_cast<float *>(calloc(fft->bandCount, sizeof(float)))
                           : nullptr;
+
+    /**
+     * Pre-delay ring buffer for output-latency compensation.
+     * calloc zeroes the buffer so the first [outputLatencySamples] samples emitted
+     * to the FFT accumulator are silence, which correctly represents the fact that
+     * no audio has been heard yet during the initial hardware latency window.
+     */
+    ctx->vizDelayBuf = static_cast<float *>(calloc(kVizDelayBufSamples, sizeof(float)));
+    ctx->vizDelayWritePos = 0;
+    ctx->outputLatencySamples = 0;
+    ctx->outputLatencyMs = 0;
+
+    if (!ctx->vizDelayBuf) {
+        DSP_LOGE("nativeDspCreate: vizDelayBuf allocation failed — latency compensation disabled");
+        /** Non-fatal: the feedVisualizer guard skips the delay path when vizDelayBuf is null. */
+    }
 
     if (!ctx->vizMono) {
         DSP_LOGE("nativeDspCreate: vizMono allocation failed");
@@ -912,6 +965,25 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspConfigure(
 
     clearAllBiquadState(ctx);
     ctx->vizBufPos = 0;
+
+    /**
+     * Clear the pre-delay ring buffer and reset the write cursor so stale samples
+     * from the old sample rate cannot bleed into the new visualizer timeline.
+     * Then recompute [outputLatencySamples] in case the sample rate has changed —
+     * the latency in milliseconds stays the same but the sample count differs.
+     */
+    if (ctx->vizDelayBuf) {
+        memset(ctx->vizDelayBuf, 0, kVizDelayBufSamples * sizeof(float));
+    }
+    ctx->vizDelayWritePos = 0;
+    if (ctx->outputLatencyMs > 0) {
+        const int newDelaySamples = static_cast<int>(
+                static_cast<float>(ctx->outputLatencyMs) * static_cast<float>(ctx->sampleRate) /
+                1000.f);
+        const int maxDelay = kVizDelayBufSamples - (ctx->fftCtx ? ctx->fftCtx->size : 0) - 1;
+        ctx->outputLatencySamples = (newDelaySamples > maxDelay && maxDelay > 0)
+                                    ? maxDelay : newDelaySamples;
+    }
 
     /**
      * Recompute reverb delay-line lengths and coefficients for the new sample rate,
@@ -1303,6 +1375,7 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspDestroy(
 
     free(ctx->vizMono);
     free(ctx->bandMagnitudes);
+    free(ctx->vizDelayBuf);
 
     /** Free all reverb delay-line ring buffers. */
     for (int i = 0; i < kReverbCombCount; ++i) {
@@ -1317,6 +1390,55 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspDestroy(
     free(ctx);
 
     DSP_LOGI("DspContext destroyed");
+}
+
+/**
+ * Updates the output-latency pre-delay applied to the FFT visualizer input.
+ *
+ * The Kotlin layer should obtain the current hardware output latency from
+ * [AudioTrack.getTimestamp] or [AudioManager.getOutputLatency] and forward it here.
+ * The native engine converts the millisecond value to a sample count at the current
+ * sample rate and stores it as [DspContext::outputLatencySamples]. Subsequent calls to
+ * [feedVisualizer] will read from a position that many frames behind the write cursor in
+ * the pre-delay ring buffer, aligning the spectrum display with audible output.
+ *
+ * A value of 0 disables the pre-delay entirely, bypassing the ring buffer and restoring
+ * the original zero-latency visualizer behavior.
+ *
+ * The delay is clamped so the read cursor never overtakes the write cursor:
+ *   maxDelay = kVizDelayBufSamples - FFT_size - 1
+ *
+ * @param env       JNI environment pointer.
+ * @param thiz      Calling Java/Kotlin object (unused).
+ * @param handle    Opaque pointer returned by [nativeDspCreate].
+ * @param latencyMs Hardware audio output latency in milliseconds (>= 0).
+ */
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetOutputLatency(
+        JNIEnv * /*env*/, jobject /*thiz*/,
+        jlong handle, jint latencyMs) {
+
+    auto *ctx = reinterpret_cast<DspContext *>(handle);
+    if (!ctx) return;
+
+    const int ms = (latencyMs < 0) ? 0 : static_cast<int>(latencyMs);
+    ctx->outputLatencyMs = ms;
+
+    if (ms == 0) {
+        ctx->outputLatencySamples = 0;
+        DSP_LOGI("Output latency compensation disabled");
+        return;
+    }
+
+    const int delaySamples = static_cast<int>(
+            static_cast<float>(ms) * static_cast<float>(ctx->sampleRate) / 1000.f);
+    const int fftSize = ctx->fftCtx ? ctx->fftCtx->size : 0;
+    const int maxDelay = kVizDelayBufSamples - fftSize - 1;
+    ctx->outputLatencySamples = (delaySamples > maxDelay && maxDelay > 0)
+                                ? maxDelay : delaySamples;
+
+    DSP_LOGI("Output latency set — %d ms = %d samples at %d Hz",
+             ms, ctx->outputLatencySamples, ctx->sampleRate);
 }
 
 /**

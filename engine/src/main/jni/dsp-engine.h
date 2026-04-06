@@ -13,7 +13,15 @@
  *   5. Constant-power pan / balance
  *   6. Tape-style soft saturation via algebraic sigmoid
  *   7. Freeverb-style stereo reverb (parallel combs + series allpasses) — gated by [reverbEnabled]
- *   8. Mono downmix accumulation → visualizer FFT trigger
+ *   8. Mono downmix → output-latency pre-delay ring buffer → visualizer FFT trigger
+ *
+ * The visualizer stage (#8) routes the mono downmix through a circular pre-delay buffer
+ * before it reaches the FFT accumulator. The read cursor lags the write cursor by exactly
+ * [DspContext::outputLatencySamples] frames, which equals the hardware audio output latency
+ * converted to samples. This guarantees that each FFT frame is computed from the audio that
+ * the listener is hearing at that instant rather than audio that is still queued in the
+ * hardware buffer, eliminating the visible-before-audible artifact on bass and treble
+ * transients that would otherwise appear in the visualizer bands.
  *
  * @author Hamza417
  */
@@ -52,6 +60,16 @@ static constexpr float kDspEqCenterHz[kDspEqBandCount] = {
 
 /** Maximum number of samples in a single reverb delay line (~85 ms at 48 kHz). */
 static constexpr int kReverbMaxDelayLen = 4096;
+
+/**
+ * Capacity of the visualizer pre-delay ring buffer in samples (power of two).
+ * At 48 kHz this covers approximately 1.37 seconds, comfortably exceeding the worst-case
+ * Bluetooth A2DP output latency on any shipping Android device.
+ */
+static constexpr int kVizDelayBufSamples = 65536;
+
+/** Bitmask equivalent to (kVizDelayBufSamples - 1) for fast power-of-two modulo. */
+static constexpr int kVizDelayBufMask = kVizDelayBufSamples - 1;
 
 /** Number of parallel comb filters per reverb channel. */
 static constexpr int kReverbCombCount = 4;
@@ -254,6 +272,36 @@ struct DspContext {
 
     /** Set to true after each completed FFT frame; cleared by [nativeDspReadBandMagnitudes]. */
     bool fftFrameReady;
+
+    /**
+     * Circular pre-delay ring buffer used for output-latency compensation.
+     *
+     * Mono-downmixed audio is written at [vizDelayWritePos] and read back from a position
+     * [outputLatencySamples] frames behind the write cursor before being fed into [vizMono].
+     * This offsets the visualizer timeline by the hardware output latency so the spectrum
+     * peaks coincide with the moment the listener actually hears the corresponding audio.
+     *
+     * Allocated with capacity [kVizDelayBufSamples] in [nativeDspCreate].
+     */
+    float *vizDelayBuf;
+
+    /** Current write position within [vizDelayBuf], always in [0, kVizDelayBufSamples). */
+    int vizDelayWritePos;
+
+    /**
+     * Number of samples by which the visualizer input is delayed, derived from
+     * [outputLatencyMs] and [sampleRate]. Updated by [nativeDspSetOutputLatency] and
+     * recalculated in [nativeDspConfigure] whenever the sample rate changes.
+     * 0 = no delay (default, disables the pre-delay ring buffer entirely).
+     */
+    int outputLatencySamples;
+
+    /**
+     * Cached output latency in milliseconds supplied by the Kotlin layer.
+     * Stored so that [nativeDspConfigure] can recompute [outputLatencySamples]
+     * correctly when the sample rate changes without requiring a redundant JNI call.
+     */
+    int outputLatencyMs;
 
     /** Sample rate of the current audio format in Hz. */
     int sampleRate;

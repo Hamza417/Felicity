@@ -40,6 +40,7 @@ data class AudioPipelineSnapshot(
         val stereoExpandPercent: Int,
         val buffers: String, // e.g., "e.g. 2x (40ms, 1800 audio frames)"
         val latencyMs: Int, // Total latency from source to output in milliseconds
+        val visualizerLatencyMs: Int, // Latency of the visualizer data relative to the output signal in milliseconds
 
         /**
          * Active audio output API mode.
