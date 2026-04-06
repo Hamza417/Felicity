@@ -342,8 +342,47 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val playerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.player)
+
+        val playerInterface = Preference(
+                title = R.string.change_player_interface,
+                summary = R.string.change_player_interface_summary,
+                icon = R.drawable.ic_felicity_full,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (UserInterfacePreferences.getPlayerInterface()) {
+                        UserInterfacePreferences.PLAYER_INTERFACE_FADED -> getString(R.string.faded)
+                        UserInterfacePreferences.PLAYER_INTERFACE_DEFAULT -> getString(R.string.simple)
+                        else -> getString(R.string.simple)
+                    }
+                },
+                onPreferenceAction = { view, callback ->
+                    PopupHomeInterfaceMenu(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(R.string.simple, R.string.faded),
+                            menuIcons = listOf(R.drawable.ic_list_16dp, R.drawable.ic_dot_16dp),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.simple -> {
+                                        UserInterfacePreferences.setPlayerInterface(UserInterfacePreferences.PLAYER_INTERFACE_DEFAULT)
+                                        (view as TextView).text = getString(R.string.simple)
+                                    }
+                                    R.string.faded -> {
+                                        UserInterfacePreferences.setPlayerInterface(UserInterfacePreferences.PLAYER_INTERFACE_FADED)
+                                        (view as TextView).text = getString(R.string.faded)
+                                    }
+                                }
+                            },
+                            onDismiss = {}
+                    ).show()
+                }
+        )
+
         preferences.add(homeHeader)
         preferences.add(homeInterface)
+        preferences.add(playerHeader)
+        preferences.add(playerInterface)
         preferences.add(miniPlayerHeader)
         preferences.add(marginAroundMiniplayerToggle)
 

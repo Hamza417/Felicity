@@ -26,6 +26,7 @@ import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.extensions.activities.BaseActivity
+import app.simple.felicity.extensions.fragments.BasePlayerFragment
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtIntoBitmap
@@ -43,6 +44,7 @@ import app.simple.felicity.ui.home.SimpleHome
 import app.simple.felicity.ui.home.SpannedHome
 import app.simple.felicity.ui.launcher.Setup
 import app.simple.felicity.ui.player.DefaultPlayer
+import app.simple.felicity.ui.player.PlayerFaded
 import app.simple.felicity.viewmodels.setup.PermissionViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
@@ -93,7 +95,8 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             override fun onItemClick(position: Int) {
                 val topFragment = supportFragmentManager.fragments.lastOrNull() as? ScopedFragment
                 if (topFragment.isNotNull()) {
-                    topFragment?.openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
+                    val player = openPlayerForCurrentPreference()
+                    topFragment?.openFragment(player, BasePlayerFragment.TAG)
                 }
             }
         }
@@ -206,6 +209,19 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         } else {
             // All permissions granted, go directly to Home
             showHome()
+        }
+    }
+
+    /**
+     * Creates and returns the player fragment instance that corresponds to the
+     * currently selected player interface preference.
+     *
+     * @return a [BasePlayerFragment] subclass instance ready to be committed
+     */
+    private fun openPlayerForCurrentPreference(): BasePlayerFragment {
+        return when (UserInterfacePreferences.getPlayerInterface()) {
+            UserInterfacePreferences.PLAYER_INTERFACE_FADED -> PlayerFaded.newInstance()
+            else -> DefaultPlayer.newInstance()
         }
     }
 

@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
-import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
+import app.simple.felicity.databinding.FragmentPlayerFadedWaveformBinding
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
 import app.simple.felicity.decorations.views.FavoriteButton
@@ -17,7 +17,7 @@ import app.simple.felicity.extensions.fragments.BasePlayerFragment
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
- * Default player interface. Inflates [FragmentDefaultPlayerBinding] and wires each
+ * Faded player interface. Inflates [FragmentPlayerFadedWaveformBinding] and wires each
  * abstract view property in [BasePlayerFragment] to the corresponding binding field.
  * All playback, seekbar, visualizer, and album-art-pager logic is inherited from the
  * base class.
@@ -25,9 +25,9 @@ import dagger.hilt.android.AndroidEntryPoint
  * @author Hamza417
  */
 @AndroidEntryPoint
-class DefaultPlayer : BasePlayerFragment() {
+class PlayerFaded : BasePlayerFragment() {
 
-    private lateinit var binding: FragmentDefaultPlayerBinding
+    private lateinit var binding: FragmentPlayerFadedWaveformBinding
 
     override val pager: FelicityPager
         get() = binding.pager
@@ -87,24 +87,23 @@ class DefaultPlayer : BasePlayerFragment() {
         get() = binding.album
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        binding = FragmentDefaultPlayerBinding.inflate(inflater, container, false)
+        binding = FragmentPlayerFadedWaveformBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     companion object {
         /**
-         * Creates a new instance of [DefaultPlayer] with an empty argument bundle.
+         * Creates a new instance of [PlayerFaded] with an empty argument bundle.
          *
-         * @return a fresh [DefaultPlayer] fragment instance
+         * @return a fresh [PlayerFaded] fragment instance
          */
-        fun newInstance(): DefaultPlayer {
+        fun newInstance(): PlayerFaded {
             val args = Bundle()
-            val fragment = DefaultPlayer()
+            val fragment = PlayerFaded()
             fragment.arguments = args
             return fragment
         }
 
-
-        const val TAG = "DefaultPlayer"
+        const val TAG = "PlayerFaded"
     }
 }

@@ -48,6 +48,9 @@ class UserInterface : PreferenceFragment() {
                     requireActivity().finish()
                 }
             }
+            UserInterfacePreferences.PLAYER_INTERFACE -> {
+                // No activity restart needed — the player is opened fresh on each mini player tap.
+            }
         }
     }
 

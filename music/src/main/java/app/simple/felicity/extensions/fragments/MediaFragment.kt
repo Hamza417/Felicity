@@ -38,6 +38,7 @@ import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.ShufflePreferences
+import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
@@ -52,6 +53,7 @@ import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.player.DefaultPlayer
+import app.simple.felicity.ui.player.PlayerFaded
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -173,7 +175,11 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     private fun openDefaultPlayer() {
-        openFragment(DefaultPlayer.newInstance(), DefaultPlayer.TAG)
+        val player = when (UserInterfacePreferences.getPlayerInterface()) {
+            UserInterfacePreferences.PLAYER_INTERFACE_FADED -> PlayerFaded.newInstance()
+            else -> DefaultPlayer.newInstance()
+        }
+        openFragment(player, BasePlayerFragment.TAG)
     }
 
     private fun updateQueueSilently(songs: List<Audio>, position: Int) {

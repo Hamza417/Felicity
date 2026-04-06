@@ -96,6 +96,9 @@
     <string name="corner_radius">Corner Radius</string>
     <string name="corner_radius_summary">Change corner radius of the interface components in the app.</string>
     <string name="change_home_interface_summary">Change default home interface to a different one.</string>
+    <string name="change_player_interface">Change Player Interface</string>
+    <string name="change_player_interface_summary">Change default full-screen player interface to a different style.</string>
+    <string name="faded">Faded</string>
     <string name="home">Home</string>
     <string name="reflection_gap">Reflection Gap</string>
     <string name="scale">Scale</string>
