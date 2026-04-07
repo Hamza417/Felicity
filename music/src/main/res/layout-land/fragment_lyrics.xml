@@ -111,18 +111,16 @@
             app:appFontStyle="regular"
             app:textColorStyle="secondary" />
 
-        <app.simple.felicity.decorations.seekbars.FelicitySeekbar
+        <app.simple.felicity.decorations.seekbars.WaveformSeekbar
             android:id="@+id/seekbar"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="100dp"
             android:layout_gravity="center_vertical"
-            android:layout_marginBottom="@dimen/padding_20"
-            app:felicityLabelBackgroundEnabled="true"
-            app:felicityLabelGap="@dimen/padding_15"
-            app:felicityLabelsEnabled="true"
-            app:felicityThumbRadius="@dimen/padding_10"
-            app:felicityThumbRingWidth="@dimen/padding_10"
-            app:felicityTrackHeight="@dimen/padding_10" />
+            app:wsbBarWidth="7dp"
+            app:wsbLabelEdgeMargin="@dimen/padding_10"
+            app:wsbLabelGravity="center"
+            app:wsbLabelHighlightMode="both"
+            app:wsbWaveformMode="full" />
 
     </app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>
 

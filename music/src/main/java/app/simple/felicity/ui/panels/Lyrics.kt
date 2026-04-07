@@ -13,7 +13,7 @@ import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentLyricsBinding
 import app.simple.felicity.decorations.lrc.view.ModernLrcView
-import app.simple.felicity.decorations.seekbars.FelicitySeekbar
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.dialogs.lyrics.LyricsMenu
 import app.simple.felicity.dialogs.lyrics.LyricsMenu.Companion.showLyricsMenu
@@ -25,6 +25,7 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.ui.panels.Lyrics.Companion.TEXT_SIZE_DEBOUNCE_MS
 import app.simple.felicity.viewmodels.player.LyricsViewModel
+import app.simple.felicity.viewmodels.player.WaveformViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
 
@@ -43,10 +44,19 @@ class Lyrics : MediaFragment() {
      */
     private var currentAudioPath: String? = null
 
+    /**
+     * Holds an [Audio] track whose waveform has been requested but whose load has been
+     * intentionally deferred because ExoPlayer has not yet reached the playing state.
+     * Cleared to `null` as soon as [loadWaveformWhenReady] actually kicks off the decode.
+     */
+    private var pendingWaveformAudio: Audio? = null
+
     /** Debounce handler – coalesces rapid text-size changes from the slider. */
     private val textSizeHandler = Handler(Looper.getMainLooper())
     private val textSizeRunnable = Runnable { applyTextSize() }
 
+    /** ViewModel that decodes and exposes the per-second waveform amplitude data. */
+    private val waveformViewModel: WaveformViewModel by viewModels()
     private val lyricsViewModel: LyricsViewModel by viewModels(
             extrasProducer = {
                 defaultViewModelCreationExtras.withCreationCallback<LyricsViewModel.Factory> {
@@ -125,20 +135,26 @@ class Lyrics : MediaFragment() {
         }
 
         binding.seekbar.setLeftLabelProvider { progress, _, _ ->
-            DateUtils.formatElapsedTime(progress.toLong().div(1000))
+            DateUtils.formatElapsedTime(progress.div(1000))
         }
 
         binding.seekbar.setRightLabelProvider { _, _, max ->
-            DateUtils.formatElapsedTime(max.toLong().div(1000))
+            DateUtils.formatElapsedTime(max.div(1000))
         }
 
-        binding.seekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
-            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
-                if (fromUser) {
-                    MediaPlaybackManager.seekTo(progress.toLong())
-                }
+        binding.seekbar.setOnSeekListener(object : WaveformSeekbar.OnSeekListener {
+            override fun onSeekEnd(positionMs: Long) {
+                MediaPlaybackManager.seekTo(positionMs)
             }
         })
+
+        binding.seekbar.setOnFlingEndListener { positionMs ->
+            MediaPlaybackManager.seekTo(positionMs)
+        }
+
+        waveformViewModel.getWaveformData().observe(viewLifecycleOwner) { amplitudes ->
+            binding.seekbar.setAmplitudes(amplitudes)
+        }
     }
 
     private fun setAlignment(animate: Boolean = false) {
@@ -178,9 +194,35 @@ class Lyrics : MediaFragment() {
         binding.name.text = audio.title
         binding.artist.text = audio.getArtists()
         binding.lrc.setDuration(audio.duration)
-        binding.seekbar.setMax(audio.duration.toFloat())
-        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
+        binding.seekbar.setDuration(audio.duration)
+        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), fromUser = false, animate = false)
         updatePlayButtonState(MediaPlaybackManager.isPlaying())
+
+        // Defer waveform decoding until ExoPlayer is actually playing to avoid
+        // Amplituda and ExoPlayer fighting over the same file I/O resources.
+        loadWaveformWhenReady(audio)
+    }
+
+    /**
+     * Schedules waveform decoding for [audio].
+     *
+     * The decode starts immediately when the player is already playing or in a ready state
+     * (paused or playing). If the player is still buffering or idle, [audio] is stored in
+     * [pendingWaveformAudio] and the decode is deferred until [onPlaybackStateChanged]
+     * receives [MediaConstants.PLAYBACK_READY] or [MediaConstants.PLAYBACK_PLAYING].
+     *
+     * This prevents Amplituda and ExoPlayer from contending over the same file I/O
+     * resources during the initial buffering phase.
+     *
+     * @param audio the track whose waveform should be decoded
+     */
+    private fun loadWaveformWhenReady(audio: Audio) {
+        if (MediaPlaybackManager.isPlaying() || MediaPlaybackManager.isPlayerReady()) {
+            waveformViewModel.loadWaveform(audio)
+            pendingWaveformAudio = null
+        } else {
+            pendingWaveformAudio = audio
+        }
     }
 
     override val wantsMiniPlayerVisible: Boolean
@@ -211,7 +253,7 @@ class Lyrics : MediaFragment() {
     override fun onSeekChanged(seek: Long) {
         super.onSeekChanged(seek)
         binding.lrc.updateTime(seek + lyricsViewModel.syncOffset)
-        binding.seekbar.setProgress(seek.toFloat(), fromUser = false, animate = true)
+        binding.seekbar.setProgress(seek, animate = true)
     }
 
     override fun onAudio(audio: Audio) {
@@ -228,18 +270,37 @@ class Lyrics : MediaFragment() {
             binding.name.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
             binding.artist.setTextWithEffect(audio.getArtists(), forward, 50L)
             binding.lrc.setDuration(audio.duration)
-            binding.seekbar.setMaxWithReset(audio.duration.toFloat())
+            binding.seekbar.setDurationWithReset(audio.duration)
         }
 
         // Always refresh the seek position (covers predictive-back resume and actual changes).
-        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
+        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = true)
+
+        // Defer waveform decoding until ExoPlayer is actually playing to avoid
+        // Amplituda and ExoPlayer fighting over the same file I/O resources.
+        loadWaveformWhenReady(audio)
     }
 
     override fun onPlaybackStateChanged(state: Int) {
         super.onPlaybackStateChanged(state)
         when (state) {
+            MediaConstants.PLAYBACK_READY -> {
+                // ExoPlayer has finished buffering and the decoder is ready. This is the
+                // earliest safe moment to run Amplituda's extraction in parallel, regardless
+                // of whether playback will start immediately or stay paused.
+                pendingWaveformAudio?.let { audio ->
+                    waveformViewModel.loadWaveform(audio)
+                    pendingWaveformAudio = null
+                }
+            }
             MediaConstants.PLAYBACK_PLAYING -> {
                 updatePlayButtonState(true)
+                // Also drain any pending waveform that was queued before the ready event arrived
+                // (e.g., when the service emits PLAYING without a preceding READY being observed).
+                pendingWaveformAudio?.let { audio ->
+                    waveformViewModel.loadWaveform(audio)
+                    pendingWaveformAudio = null
+                }
             }
             MediaConstants.PLAYBACK_PAUSED -> {
                 updatePlayButtonState(false)
