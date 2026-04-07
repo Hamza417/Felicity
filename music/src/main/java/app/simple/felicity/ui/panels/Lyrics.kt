@@ -57,7 +57,14 @@ class Lyrics : MediaFragment() {
 
     /** ViewModel that decodes and exposes the per-second waveform amplitude data. */
     private val waveformViewModel: WaveformViewModel by viewModels()
+
+    /**
+     * Scoped to the activity so that [LyricsSearch] can obtain the same instance and call
+     * [LyricsViewModel.reloadLrcData] after saving a new sidecar file, causing this fragment's
+     * observer to pick up the updated lyrics without requiring a full close/reopen cycle.
+     */
     private val lyricsViewModel: LyricsViewModel by viewModels(
+            ownerProducer = { requireActivity() },
             extrasProducer = {
                 defaultViewModelCreationExtras.withCreationCallback<LyricsViewModel.Factory> {
                     it.create(audio = null)
@@ -119,6 +126,9 @@ class Lyrics : MediaFragment() {
             MediaPlaybackManager.flipState()
         }
 
+        binding.search.setOnClickListener {
+            openFragment(LyricsSearch.newInstance(), LyricsSearch.TAG)
+        }
         lyricsViewModel.getLrcData().observe(viewLifecycleOwner) { lrcData ->
             if (lrcData.isEmpty) {
                 Log.d(TAG, "No lyrics found for the current song.")
