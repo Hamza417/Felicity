@@ -39,6 +39,7 @@ class WaveformViewModel @Inject constructor(
     private val waveformData: MutableLiveData<FloatArray> = MutableLiveData()
     private var currentPath: String? = null
     private var loadJob: Job? = null
+    private var amplitudaInstance: Amplituda? = null
 
     /**
      * Returns a [LiveData] stream of normalized amplitude arrays.
@@ -50,6 +51,10 @@ class WaveformViewModel @Inject constructor(
     private val amplitudaMutex = Mutex()
 
     fun loadWaveform(audio: Audio) {
+        if (amplitudaInstance == null) {
+            amplitudaInstance = Amplituda(getApplication())
+        }
+
         // Prevent redundant loading
         if (audio.path == currentPath && waveformData.value?.isNotEmpty() == true) return
 
@@ -62,13 +67,12 @@ class WaveformViewModel @Inject constructor(
             // Wait in line. If another song is currently decoding, this suspends
             // without blocking any Kotlin threads, protecting the C++ JNI bridge.
             amplitudaMutex.withLock {
-
                 // Stale Request Check 1: Did the user skip while we waited for the lock?
                 if (currentPath != audio.path) return@withLock
 
                 try {
                     // Synchronous, blocking native extraction (Safe because we are on IO + Locked)
-                    val rawAmplitudes = Amplituda(getApplication())
+                    val rawAmplitudes = amplitudaInstance!!
                         .processAudio(
                                 audio.path,
                                 Compress.withParams(Compress.AVERAGE, BARS_PER_SECOND),
@@ -168,6 +172,11 @@ class WaveformViewModel @Inject constructor(
             // To keep it looking "ghostly" and subtle, we cap the absolute max height at 0.4f (40%)
             (envelope * noise) * 0.4f
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        amplitudaInstance?.release()
     }
 
     companion object {
