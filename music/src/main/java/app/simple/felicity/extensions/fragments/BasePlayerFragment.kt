@@ -256,7 +256,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         pcmInfo.setOnLongClickListener {
-            childFragmentManager.showAudioPipeline()
+            requireActivity().supportFragmentManager.showAudioPipeline(anchorView = pcmInfo)
             true
         }
 

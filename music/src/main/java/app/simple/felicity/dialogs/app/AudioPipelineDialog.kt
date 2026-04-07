@@ -14,14 +14,17 @@ import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogAudioStateSnapshotBinding
 import app.simple.felicity.engine.managers.AudioPipelineManager
 import app.simple.felicity.engine.model.AudioPipelineSnapshot
-import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
+import app.simple.felicity.extensions.dialogs.ScopedMorphDialogFragment
 import app.simple.felicity.theme.managers.ThemeManager
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 
 /**
- * Bottom-sheet dialog that displays a real-time [AudioPipelineSnapshot] for the
- * currently playing audio track.
+ * Morph-dialog that displays a real-time [AudioPipelineSnapshot] for the currently
+ * playing audio track. Replaces the previous bottom-sheet implementation with a
+ * centered card that morphs from the [anchorView] using
+ * [ScopedMorphDialogFragment] so the full Fragment lifecycle — including
+ * [androidx.lifecycle.ViewModel] scoping — is available.
  *
  * The dialog observes [AudioPipelineManager.snapshotFlow] and re-binds its views
  * whenever the service pushes an updated snapshot — e.g., on track change, decoder
@@ -36,7 +39,7 @@ import kotlinx.coroutines.launch
  *
  * @author Hamza417
  */
-class AudioPipelineDialog : ScopedBottomSheetFragment() {
+class AudioPipelineDialog : ScopedMorphDialogFragment() {
 
     private var binding: DialogAudioStateSnapshotBinding? = null
 
@@ -52,25 +55,26 @@ class AudioPipelineDialog : ScopedBottomSheetFragment() {
 
         /**
          * Convenience extension that shows the pipeline dialog from any [FragmentManager].
+         * Pass the activity-level [FragmentManager] so the overlay renders above all fragments.
+         *
+         * @param anchorView Optional view the dialog card morphs from. If null, the card
+         *   fades in at the center of the screen without a morph animation.
          */
-        fun FragmentManager.showAudioPipeline() {
+        fun FragmentManager.showAudioPipeline(anchorView: View? = null) {
             if (findFragmentByTag(TAG) == null) {
-                newInstance().show(this, TAG)
+                AudioPipelineDialog().apply { this.anchorView = anchorView }
+                    .show(this, TAG)
             }
         }
     }
 
-    override fun onCreateView(
-            inflater: LayoutInflater,
-            container: ViewGroup?,
-            savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateDialogContentView(inflater: LayoutInflater, container: ViewGroup): View {
         binding = DialogAudioStateSnapshotBinding.inflate(inflater, container, false)
         return binding!!.root
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+    override fun onDialogViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onDialogViewCreated(view, savedInstanceState)
 
         // Immediately show whatever the service last pushed so the dialog never
         // opens blank when a snapshot is already available.
@@ -86,7 +90,7 @@ class AudioPipelineDialog : ScopedBottomSheetFragment() {
             AudioPipelineManager.snapshotFlow
                 .filterNotNull()
                 .collect { snapshot ->
-                    Log.d("AudioPipelineDialog", "Received new snapshot: $snapshot")
+                    Log.d(TAG, "Received new snapshot: $snapshot")
                     bindSnapshot(snapshot)
                 }
         }
