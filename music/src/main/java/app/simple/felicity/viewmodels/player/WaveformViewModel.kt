@@ -64,7 +64,7 @@ class WaveformViewModel @Inject constructor(
                     .processAudio(
                             audio.path,
                             Compress.withParams(Compress.AVERAGE, BARS_PER_SECOND),
-                            Cache.withParams(Cache.REFRESH, audio.hash.toString())
+                            Cache.withParams(Cache.REUSE, audio.hash.toString())
                     )
                     .get() // Blocking call
                     .amplitudesAsList()
