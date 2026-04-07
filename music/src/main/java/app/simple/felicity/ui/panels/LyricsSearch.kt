@@ -7,7 +7,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
-import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.GridLayoutManager
@@ -153,14 +152,12 @@ class LyricsSearch : MediaFragment() {
                 // Reload the lyrics in the Lyrics panel via the shared activity-scoped ViewModel
                 // so it updates immediately when this fragment pops from the back stack.
                 lyricsViewModel.reloadLrcData()
-                Toast.makeText(requireContext(), R.string.lyrics_saved, Toast.LENGTH_SHORT).show()
                 goBack()
             }
         }
 
         viewModel.getWarning().observe(viewLifecycleOwner) { message ->
             if (!message.isNullOrBlank()) {
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
                 viewModel.warning.postValue(null)
             }
         }
