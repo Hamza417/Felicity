@@ -28,6 +28,9 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
     implementation 'androidx.databinding:viewbinding:9.1.0'
 
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.10.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0'
+
     api 'com.google.android.flexbox:flexbox:3.0.0'
     implementation 'com.github.duanhong169:drawabletoolbox:1.0.7'
 

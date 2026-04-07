@@ -1,6 +1,5 @@
 package app.simple.felicity.dialogs.app
 
-import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
@@ -8,23 +7,24 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogAudioStateSnapshotBinding
+import app.simple.felicity.decorations.views.SharedDialogPopup
 import app.simple.felicity.engine.managers.AudioPipelineManager
 import app.simple.felicity.engine.model.AudioPipelineSnapshot
-import app.simple.felicity.extensions.dialogs.ScopedMorphDialogFragment
 import app.simple.felicity.theme.managers.ThemeManager
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 
 /**
- * Morph-dialog that displays a real-time [AudioPipelineSnapshot] for the currently
- * playing audio track. Replaces the previous bottom-sheet implementation with a
- * centered card that morphs from the [anchorView] using
- * [ScopedMorphDialogFragment] so the full Fragment lifecycle — including
- * [androidx.lifecycle.ViewModel] scoping — is available.
+ * Centered morph-dialog that displays a real-time [AudioPipelineSnapshot] for the
+ * currently playing audio track.
+ *
+ * Extends [SharedDialogPopup] so the full [androidx.lifecycle.Lifecycle] and
+ * [lifecycleScope] are available for collecting [AudioPipelineManager.snapshotFlow]
+ * without requiring a Fragment or a bottom sheet.
  *
  * The dialog observes [AudioPipelineManager.snapshotFlow] and re-binds its views
  * whenever the service pushes an updated snapshot — e.g., on track change, decoder
@@ -39,43 +39,33 @@ import kotlinx.coroutines.launch
  *
  * @author Hamza417
  */
-class AudioPipelineDialog : ScopedMorphDialogFragment() {
+class AudioPipelineDialog(container: ViewGroup, anchorView: View) : SharedDialogPopup(container, anchorView) {
 
-    private var binding: DialogAudioStateSnapshotBinding? = null
+    private lateinit var binding: DialogAudioStateSnapshotBinding
 
     companion object {
         private const val TAG = "AudioPipelineDialog"
 
         /**
-         * Creates a new instance of [AudioPipelineDialog] with no arguments.
+         * Convenience extension that shows the audio pipeline dialog from any [Fragment].
+         * The dialog morphs from [anchorView] and is placed at the center of the screen.
          *
-         * @return A ready-to-show [AudioPipelineDialog] instance.
+         * @param anchorView The view this dialog card morphs from.
          */
-        fun newInstance(): AudioPipelineDialog = AudioPipelineDialog()
-
-        /**
-         * Convenience extension that shows the pipeline dialog from any [FragmentManager].
-         * Pass the activity-level [FragmentManager] so the overlay renders above all fragments.
-         *
-         * @param anchorView Optional view the dialog card morphs from. If null, the card
-         *   fades in at the center of the screen without a morph animation.
-         */
-        fun FragmentManager.showAudioPipeline(anchorView: View? = null) {
-            if (findFragmentByTag(TAG) == null) {
-                AudioPipelineDialog().apply { this.anchorView = anchorView }
-                    .show(this, TAG)
-            }
+        fun Fragment.showAudioPipeline(anchorView: View) {
+            AudioPipelineDialog(
+                    container = requireActivity().findViewById(R.id.app_container),
+                    anchorView = anchorView
+            ).show()
         }
     }
 
-    override fun onCreateDialogContentView(inflater: LayoutInflater, container: ViewGroup): View {
-        binding = DialogAudioStateSnapshotBinding.inflate(inflater, container, false)
-        return binding!!.root
+    override fun onCreateContentView(): View {
+        binding = DialogAudioStateSnapshotBinding.inflate(LayoutInflater.from(context), null, false)
+        return binding.root
     }
 
-    override fun onDialogViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onDialogViewCreated(view, savedInstanceState)
-
+    override fun onDialogCreated() {
         // Immediately show whatever the service last pushed so the dialog never
         // opens blank when a snapshot is already available.
         AudioPipelineManager.snapshotFlow.value?.let {
@@ -109,110 +99,110 @@ class AudioPipelineDialog : ScopedMorphDialogFragment() {
      * @param snapshot The latest fully-populated pipeline snapshot from [AudioPipelineManager].
      */
     private fun bindSnapshot(snapshot: AudioPipelineSnapshot) {
-        val b = binding ?: return
+        val b = binding
 
         // Track Info
         b.valueFormat.text = createSpannedString(
-                getString(R.string.format),
+                context.getString(R.string.format),
                 snapshot.trackFormat.ifBlank { "—" })
 
         b.valueBitDepth.text = createSpannedString(
-                getString(R.string.bit_depth),
-                if (snapshot.bitDepth > 0) getString(R.string.format_bit_depth, snapshot.bitDepth) else "—")
+                context.getString(R.string.bit_depth),
+                if (snapshot.bitDepth > 0) context.getString(R.string.format_bit_depth, snapshot.bitDepth) else "—")
 
         b.valueSampleRate.text = createSpannedString(
-                getString(R.string.sample_rate),
-                if (snapshot.sampleRateHz > 0) getString(R.string.format_hz, snapshot.sampleRateHz) else "—")
+                context.getString(R.string.sample_rate),
+                if (snapshot.sampleRateHz > 0) context.getString(R.string.format_hz, snapshot.sampleRateHz) else "—")
 
         b.valueBitrate.text = createSpannedString(
-                getString(R.string.bitrate),
-                if (snapshot.bitrateKbps > 0) getString(R.string.format_kbps, snapshot.bitrateKbps) else "—")
+                context.getString(R.string.bitrate),
+                if (snapshot.bitrateKbps > 0) context.getString(R.string.format_kbps, snapshot.bitrateKbps) else "—")
 
         b.valueChannels.text = createSpannedString(
-                getString(R.string.channels),
+                context.getString(R.string.channels),
                 when (snapshot.channels) {
                     0 -> "—"
-                    1 -> getString(R.string.channel_mono)
-                    2 -> getString(R.string.channel_stereo)
+                    1 -> context.getString(R.string.channel_mono)
+                    2 -> context.getString(R.string.channel_stereo)
                     else -> "${snapshot.channels}"
                 })
 
         // Decoder
         b.valueDecoderName.text = createSpannedString(
-                getString(R.string.decoder_name),
+                context.getString(R.string.decoder_name),
                 snapshot.decoderName.ifBlank { "—" })
 
         // Resampler — I/O rates are merged into one value using a format string
-        val inRateStr = if (snapshot.effectiveInputSampleRate > 0) getString(R.string.format_hz, snapshot.effectiveInputSampleRate) else "—"
-        val outRateStr = if (snapshot.effectiveOutputSampleRate > 0) getString(R.string.format_hz, snapshot.effectiveOutputSampleRate) else "—"
+        val inRateStr = if (snapshot.effectiveInputSampleRate > 0) context.getString(R.string.format_hz, snapshot.effectiveInputSampleRate) else "—"
+        val outRateStr = if (snapshot.effectiveOutputSampleRate > 0) context.getString(R.string.format_hz, snapshot.effectiveOutputSampleRate) else "—"
 
         b.valueResamplerRates.text = createSpannedString(
-                getString(R.string.io_rate),
-                getString(R.string.format_io_rate, inRateStr, outRateStr)
+                context.getString(R.string.io_rate),
+                context.getString(R.string.format_io_rate, inRateStr, outRateStr)
         )
 
         b.valueResamplerType.text = createSpannedString(
-                getString(R.string.resampler_type),
+                context.getString(R.string.resampler_type),
                 snapshot.resamplerType)
 
         b.valueResamplerCutoff.text = createSpannedString(
-                getString(R.string.resampler_cutoff),
+                context.getString(R.string.resampler_cutoff),
                 if (snapshot.resamplerCutoffHz > 0) {
                     val cutOffPercent: Int = snapshot.resamplerCutoffHz * 100 / snapshot.inputSampleRate
-                    getString(R.string.format_hz_cutoff, snapshot.resamplerCutoffHz, cutOffPercent)
+                    context.getString(R.string.format_hz_cutoff, snapshot.resamplerCutoffHz, cutOffPercent)
                 } else {
                     "—"
                 })
 
         b.valueResamplerQuality.text = createSpannedString(
-                getString(R.string.quality),
+                context.getString(R.string.quality),
                 snapshot.resamplerQuality)
 
         // DSP
         b.valueDspFormat.text = createSpannedString(
-                getString(R.string.pcm_format),
+                context.getString(R.string.pcm_format),
                 snapshot.dspFormat.ifBlank { "—" })
 
         b.valueDspSampleRate.text = createSpannedString(
-                getString(R.string.sample_rate),
-                if (snapshot.dspSampleRate > 0) getString(R.string.format_hz, snapshot.dspSampleRate) else "—")
+                context.getString(R.string.sample_rate),
+                if (snapshot.dspSampleRate > 0) context.getString(R.string.format_hz, snapshot.dspSampleRate) else "—")
 
         b.valueEqPreset.text = createSpannedString(
-                getString(R.string.eq_preset),
-                snapshot.activeEqName ?: getString(R.string.disabled))
+                context.getString(R.string.eq_preset),
+                snapshot.activeEqName ?: context.getString(R.string.disabled))
 
         b.valueStereoExpand.text = createSpannedString(
-                getString(R.string.stereo_expand),
-                getString(R.string.format_percent, snapshot.stereoExpandPercent))
+                context.getString(R.string.stereo_expand),
+                context.getString(R.string.format_percent, snapshot.stereoExpandPercent))
 
         b.valueBuffers.text = createSpannedString(
-                getString(R.string.buffers),
+                context.getString(R.string.buffers),
                 snapshot.buffers.ifBlank { "—" })
 
         b.valueLatency.text = createSpannedString(
-                getString(R.string.latency),
-                getString(R.string.format_approx_ms, snapshot.latencyMs))
+                context.getString(R.string.latency),
+                context.getString(R.string.format_approx_ms, snapshot.latencyMs))
 
         b.valueVizLatency.text = createSpannedString(
-                getString(R.string.visualizer_latency),
-                getString(R.string.format_approx_ms, snapshot.visualizerLatencyMs))
+                context.getString(R.string.visualizer_latency),
+                context.getString(R.string.format_approx_ms, snapshot.visualizerLatencyMs))
 
         b.valueAudioOutputMode.text = createSpannedString(
-                getString(R.string.audio_output_mode),
+                context.getString(R.string.audio_output_mode),
                 snapshot.audioOutputMode.ifBlank { "—" })
 
         // Output Device — bit depths are merged into one value using a format string
         b.valueDeviceName.text = createSpannedString(
-                getString(R.string.device_name),
+                context.getString(R.string.device_name),
                 snapshot.deviceName.ifBlank { "—" })
 
         b.valueDeviceBitDepth.text = createSpannedString(
-                getString(R.string.bit_depth),
-                getString(R.string.format_bit_depth_io, snapshot.deviceBitDepthIn, snapshot.deviceBitDepthOut))
+                context.getString(R.string.bit_depth),
+                context.getString(R.string.format_bit_depth_io, snapshot.deviceBitDepthIn, snapshot.deviceBitDepthOut))
 
         b.valueDeviceSampleRate.text = createSpannedString(
-                getString(R.string.sample_rate),
-                if (snapshot.deviceSampleRate > 0) getString(R.string.format_hz, snapshot.deviceSampleRate) else "—")
+                context.getString(R.string.sample_rate),
+                if (snapshot.deviceSampleRate > 0) context.getString(R.string.format_hz, snapshot.deviceSampleRate) else "—")
     }
 
     /**
@@ -249,10 +239,5 @@ class AudioPipelineDialog : ScopedMorphDialogFragment() {
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
 
         return spannable
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        binding = null
     }
 }
