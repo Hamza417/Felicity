@@ -40,7 +40,7 @@ class Lyrics : MediaFragment() {
      * predictive-back resume that replays [MediaPlaybackManager.songPositionFlow] for
      * the same song — the latter must NOT reset the view.
      *
-     * @author Hamza417
+     * Also used to re-seek seekbar and lrc view to the correct position when a predictive-back resumes
      */
     private var currentAudioPath: String? = null
 
@@ -191,11 +191,12 @@ class Lyrics : MediaFragment() {
 
     private fun updateState() {
         val audio = MediaPlaybackManager.getCurrentSong() ?: return
+        currentAudioPath = audio.path
         binding.name.text = audio.title
         binding.artist.text = audio.getArtists()
         binding.lrc.setDuration(audio.duration)
         binding.seekbar.setDuration(audio.duration)
-        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), fromUser = false, animate = false)
+        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = false)
         updatePlayButtonState(MediaPlaybackManager.isPlaying())
 
         // Defer waveform decoding until ExoPlayer is actually playing to avoid
