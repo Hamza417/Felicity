@@ -50,7 +50,6 @@ class LyricsSearch : MediaFragment() {
 
     private val viewModel: LyricsSearchViewModel by viewModels()
 
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentLyricsSearchBinding.inflate(inflater, container, false)
         headerBinding = HeaderGenericSearchBinding.inflate(inflater, container, false)
@@ -113,7 +112,6 @@ class LyricsSearch : MediaFragment() {
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
             headerBinding.progress.isVisible = isLoading
             if (isLoading) {
-                binding.emptyText.isVisible = false
                 headerBinding.count.text = getString(R.string.loading)
             }
         }
@@ -123,7 +121,10 @@ class LyricsSearch : MediaFragment() {
             adapterLrcSearch?.updateResults(results)
 
             val isLoading = viewModel.isLoading.value ?: false
-            binding.emptyText.isVisible = results.isEmpty() && !isLoading
+
+            if (results.isEmpty() && !isLoading) {
+                headerBinding.count.text = getString(R.string.no_lyrics_found)
+            }
 
             headerBinding.count.text = if (results.isNotEmpty()) {
                 getString(R.string.x_results, results.size)

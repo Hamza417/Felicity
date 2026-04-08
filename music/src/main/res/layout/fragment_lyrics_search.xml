@@ -14,17 +14,6 @@
         app:isFadingEdgeRequired="false"
         app:statusPaddingRequired="false" />
 
-    <app.simple.felicity.decorations.typeface.TypeFaceTextView
-        android:id="@+id/empty_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:text="@string/no_lyrics_found"
-        android:textSize="@dimen/text_size_14"
-        android:visibility="gone"
-        app:appFontStyle="regular"
-        app:textColorStyle="secondary" />
-
     <app.simple.felicity.decorations.views.AppHeader
         android:id="@+id/app_header"
         android:layout_width="match_parent"
