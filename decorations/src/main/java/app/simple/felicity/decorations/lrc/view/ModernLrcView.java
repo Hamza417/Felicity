@@ -839,33 +839,67 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Update lyrics data in-place for live sync adjustments.
-     * Unlike {@link #setLrcData(LrcData)}, this does NOT reset scroll position,
-     * line index, or caches – only the data reference is swapped and the current
-     * line index is re-evaluated against the supplied playback position so the
-     * highlighted line stays correct without any jarring scroll-to-top.
+     * Updates the lyrics data reference and re-evaluates the highlighted line without
+     * resetting the user's manual scroll position or blowing away existing caches.
+     * @noinspection unused
      *
-     * @param data         new LrcData with shifted timestamps (same text, same line count)
+     * <p>Unlike {@link #setLrcData(LrcData)}, caches are kept intact so that lines which
+     * have already been measured keep their correct positions.  Only the highlighted line
+     * is re-evaluated and its text-size animated accordingly.</p>
+     *
+     * <p>The scroll snap is deferred via {@link #post} so that layout heights are fully
+     * populated from the first draw pass before {@link #getLineOffset} is consulted.
+     * This prevents the highlight from landing at a wrong position when the view's cache
+     * is empty (e.g. immediately after {@link #reset()}).</p>
+     *
+     * @param data         new {@link LrcData} (typically with shifted timestamps for sync
+     *                     offset adjustments; same logical line count as the previous data)
      * @param timeInMillis current playback position in milliseconds
      */
     public void updateLrcDataInPlace(LrcData data, long timeInMillis) {
         this.lrcData = data;
-        // Re-evaluate current line without triggering auto-scroll reset
         int newLineIndex = findLineIndexByTime(timeInMillis + (data != null ? data.getOffset() : 0));
+        
         if (newLineIndex != currentLineIndex) {
+            // Animate the previous line back to normal size (same as updateTime())
+            if (previousLineIndex >= 0 && lrcData != null && previousLineIndex < lrcData.size()) {
+                animateTextSize(previousLineIndex, normalTextSize);
+                normalLayoutCache.remove(previousLineIndex);
+                currentLayoutCache.remove(previousLineIndex);
+            }
+            
             previousLineIndex = currentLineIndex;
             currentLineIndex = newLineIndex;
-        }
-        
-        // scroll to current line immediately
-        if (isAutoScrollEnabled && currentLineIndex >= 0) {
-            scrollToLine(currentLineIndex);
             
-            // snap the line to center
-            scrollY = targetScrollY;
+            // Prime the new highlight line's text size so it is correct from frame 0
+            if (currentLineIndex >= 0 && lrcData != null && currentLineIndex < lrcData.size()) {
+                LrcEntry entry = lrcData.getEntries().get(currentLineIndex);
+                String txt = entry.getText();
+                float targetSize = (txt != null && !txt.trim().isEmpty()) ? currentTextSize : normalTextSize;
+                animatedTextSizes.put(currentLineIndex, targetSize);
+                normalLayoutCache.remove(currentLineIndex);
+                currentLayoutCache.remove(currentLineIndex);
+            }
         }
         
         invalidate();
+        
+        // Defer the scroll snap until after at least one draw pass so that animatedHeights
+        // are populated and getLineOffset() returns the correct value.
+        if (isAutoScrollEnabled && currentLineIndex >= 0 && !isUserScrolling) {
+            final int lineToSnap = currentLineIndex;
+            post(() -> {
+                if (!isUserScrolling && isAutoScrollEnabled) {
+                    float targetY = getLineOffset(lineToSnap);
+                    scrollY = targetY;
+                    targetScrollY = targetY;
+                    if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
+                        scrollSpringAnimation.cancel();
+                    }
+                    invalidate();
+                }
+            });
+        }
         
         triggerRippleCurtainAnimation(currentLineIndex);
     }
