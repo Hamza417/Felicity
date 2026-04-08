@@ -17,7 +17,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import app.simple.felicity.decorations.corners.LayoutBackground;
 import app.simple.felicity.preferences.AppearancePreferences;
-import app.simple.felicity.shared.utils.ColorUtils;
 import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
@@ -143,7 +142,7 @@ public class DynamicRippleLinearLayout extends LinearLayout implements SharedPre
      * @param selected true for selected item
      */
     public void setDefaultBackground(boolean selected, boolean animate) {
-        int accentColor = ColorUtils.INSTANCE.changeAlpha(ThemeManager.INSTANCE.getAccent().getSecondaryAccentColor(), 100);
+        int accentColor = ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor();
         int transparentColor = Color.TRANSPARENT;
         int currentColor = getBackgroundTintList() != null ? getBackgroundTintList().getDefaultColor()
                 : selected ? accentColor : transparentColor;

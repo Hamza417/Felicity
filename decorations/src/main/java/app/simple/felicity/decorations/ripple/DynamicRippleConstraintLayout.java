@@ -17,7 +17,6 @@ import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import app.simple.felicity.decorations.corners.LayoutBackground;
 import app.simple.felicity.preferences.AppearancePreferences;
-import app.simple.felicity.shared.utils.ColorUtils;
 import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
@@ -56,17 +55,17 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
      * @param selected true for selected item
      */
     public void setDefaultBackground(boolean selected, boolean animate) {
-        int accentColor = ColorUtils.INSTANCE.changeAlpha(ThemeManager.INSTANCE.getAccent().getSecondaryAccentColor(), 100);
+        int backgroundColor = ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getSelectedBackgroundColor();
         int transparentColor = Color.TRANSPARENT;
         int currentColor = getBackgroundTintList() != null ? getBackgroundTintList().getDefaultColor()
-                : selected ? accentColor : transparentColor;
+                : selected ? backgroundColor : transparentColor;
         
         if (animate) {
             if (selected) {
                 if (backgroundAnimator != null && backgroundAnimator.isRunning()) {
                     backgroundAnimator.cancel();
                 }
-                backgroundAnimator = ValueAnimator.ofArgb(currentColor, accentColor);
+                backgroundAnimator = ValueAnimator.ofArgb(currentColor, backgroundColor);
                 backgroundAnimator.setDuration(RIPPLE_DURATION);
                 backgroundAnimator.setInterpolator(new DecelerateInterpolator());
                 backgroundAnimator.addUpdateListener(animation -> {
@@ -92,7 +91,7 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
         } else {
             if (selected) {
                 setBackgroundTintList(ColorStateList.valueOf(transparentColor));
-                setBackgroundTintList(ColorStateList.valueOf(accentColor));
+                setBackgroundTintList(ColorStateList.valueOf(backgroundColor));
                 LayoutBackground.setBackground(getContext(), this, null, radius);
             } else {
                 setBackground(null);
