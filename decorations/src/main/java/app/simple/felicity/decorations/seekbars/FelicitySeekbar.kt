@@ -22,6 +22,7 @@ import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
 import app.simple.felicity.decoration.R
+import app.simple.felicity.decorations.drawables.ThumbPillDrawable
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
@@ -97,23 +98,8 @@ class FelicitySeekbar @JvmOverloads constructor(
         ThemeManager.accent.primaryAccentColor
     }
 
-    @ColorInt
-    private var thumbRingColor: Int = if (isInEditMode) {
-        Color.WHITE
-    } else {
-        ThemeManager.theme.viewGroupTheme.backgroundColor
-    }
-
-    @ColorInt
-    private var thumbInnerColor: Int = if (isInEditMode) {
-        Color.TRANSPARENT
-    } else {
-        thumbRingColor
-    }
-
     private var trackHeightPx: Float
     private var thumbRadiusPx: Float
-    private var thumbRingWidthPx: Float
 
     // New: horizontal width of pill-shaped thumb (full width, not half). Default set after radius init.
     private var thumbWidthPx: Float
@@ -122,8 +108,6 @@ class FelicitySeekbar @JvmOverloads constructor(
     private var smudgeRadius = 10f
     private var smudgeColor = progressColor
     private var smudgeOffsetY = 0f
-    private var thumbShadowRadius = 0f
-    private var thumbShadowColor = progressColor
 
     /**
      * Animated smudge (bleed) radius driven by the shadow-effect preference transition.
@@ -131,29 +115,18 @@ class FelicitySeekbar @JvmOverloads constructor(
      */
     private var currentSmudgeRadius = 0f
 
-    /**
-     * Animated thumb elevation shadow radius driven by the shadow-effect preference transition.
-     * This value is what actually gets fed to the paint's shadow layer each frame.
-     */
-    private var currentThumbShadowRadius = 0f
-
     /** Drives the animated cross-fade between shadow-on and shadow-off states. */
     private var shadowEffectAnimator: ValueAnimator? = null
 
-    // Optional overrides for corner radii (rx=ry) of thumb fill only (ring follows thumb)
-    private var thumbCornerRadiusPxOverride: Float? = null
-
-    // Thumb shape selection: PILL or OVAL (circle/ellipse)
-    enum class ThumbShape { PILL, OVAL, CIRCLE }
-
-    private var thumbShape: ThumbShape = ThumbShape.PILL
+    /**
+     * Pill-shaped thumb drawable rendered in horizontal orientation to match the
+     * rotated version of the vertical pill used in the equalizer and fast scroller.
+     */
+    private val thumbPillDrawable = ThumbPillDrawable(ThumbPillDrawable.Orientation.HORIZONTAL)
 
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val thumbRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
-    private val thumbInnerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val smudgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val thumbShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
 
     // Press ring paint (MD2-style halo around thumb on press)
     private val thumbPressRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
@@ -208,12 +181,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     /** Width (px) of each step indicator tick */
     private var stepIndicatorWidthPx: Float = 0f       // set in init
 
-    // Reusable temp rects for thumb drawing to avoid allocations
-    private val thumbOuterRect = RectF()
-    private val thumbStrokeRect = RectF()
-    private val thumbInnerRect = RectF()
-
-    // Extra rect for press ring
+    // Reusable rect for the press ring drawn when the thumb is tapped
     private val thumbPressRingRect = RectF()
 
     // ----- Side label support -----
@@ -290,8 +258,6 @@ class FelicitySeekbar @JvmOverloads constructor(
     private var defaultIndicatorWidthPx: Float
 
     private var isDragging = false
-    private var thumbScale = 1f
-    private var thumbScaleAnimator: ValueAnimator? = null
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private var downX = 0f
     private var downY = 0f
@@ -368,9 +334,9 @@ class FelicitySeekbar @JvmOverloads constructor(
         val d = resources.displayMetrics.density
         trackHeightPx = 4f * d
         thumbRadiusPx = 12f * d
-        thumbRingWidthPx = 4f * d
-        // Default pill width: 3x radius (i.e., 1.5x diameter)
-        thumbWidthPx = thumbRadiusPx * 3f
+        // Default pill width matches the equalizer slider pill rotated 90°:
+        // equalizer halfHeight (24dp) × 2 = 48dp full width → halfWidth = 24dp = thumbRadiusPx * 2
+        thumbWidthPx = thumbRadiusPx * 4f
         // MD2 press ring defaults
         pressRingOutsetPx = 6f * d
         pressRingStrokePx = 2f * d
@@ -406,27 +372,14 @@ class FelicitySeekbar @JvmOverloads constructor(
 
                 trackColor = getColor(R.styleable.FelicitySeekbar_felicityTrackColor, trackColor)
                 progressColor = getColor(R.styleable.FelicitySeekbar_felicityProgressColor, progressColor)
-                thumbRingColor = getColor(R.styleable.FelicitySeekbar_felicityThumbRingColor, thumbRingColor)
-                thumbInnerColor = getColor(R.styleable.FelicitySeekbar_felicityThumbInnerColor, thumbInnerColor)
                 trackHeightPx = getDimension(R.styleable.FelicitySeekbar_felicityTrackHeight, trackHeightPx)
                 thumbRadiusPx = getDimension(R.styleable.FelicitySeekbar_felicityThumbRadius, thumbRadiusPx)
                 thumbWidthPx = getDimension(R.styleable.FelicitySeekbar_felicityThumbWidth, thumbWidthPx)
-                thumbRingWidthPx = getDimension(R.styleable.FelicitySeekbar_felicityThumbRingWidth, thumbRingWidthPx)
                 smudgeEnabled = getBoolean(R.styleable.FelicitySeekbar_felicitySmudgeEnabled, smudgeEnabled)
                 smudgeRadius = getDimension(R.styleable.FelicitySeekbar_felicitySmudgeRadius, 2f * d)
                 smudgeColor = getColor(R.styleable.FelicitySeekbar_felicitySmudgeColor, smudgeColor)
                 smudgeOffsetY = getDimension(R.styleable.FelicitySeekbar_felicitySmudgeOffsetY, 0f)
-                thumbShadowRadius = getDimension(R.styleable.FelicitySeekbar_felicityThumbShadowRadius, 6f * d)
-                thumbShadowColor = getColor(R.styleable.FelicitySeekbar_felicityThumbShadowColor, thumbShadowColor)
-                defaultIndicatorColor = getColor(R.styleable.FelicitySeekbar_felicityDefaultIndicatorColor, thumbRingColor)
-                // New: read thumb shape enum (0=pill, 1=oval, 2=circle)
-                if (hasValue(R.styleable.FelicitySeekbar_felicityThumbShape)) {
-                    thumbShape = when (getInt(R.styleable.FelicitySeekbar_felicityThumbShape, 0)) {
-                        1 -> ThumbShape.OVAL
-                        2 -> ThumbShape.CIRCLE
-                        else -> ThumbShape.PILL
-                    }
-                }
+                defaultIndicatorColor = getColor(R.styleable.FelicitySeekbar_felicityDefaultIndicatorColor, defaultIndicatorColor)
                 // Label attrs
                 val labelsEnabledXml = getBoolean(R.styleable.FelicitySeekbar_felicityLabelsEnabled, false)
                 labelTextSize = getDimension(R.styleable.FelicitySeekbar_felicityLabelTextSize, labelTextSize)
@@ -447,16 +400,15 @@ class FelicitySeekbar @JvmOverloads constructor(
             }
         }
 
-        // TODO - We are overriding thumb style, might need to change later otherwise thumbShape won't work
-        applyThumbPreferences()
-
         // If width is smaller than diameter, coerce to diameter to avoid inverted corners
         thumbWidthPx = max(thumbWidthPx, thumbRadiusPx * 2f)
 
-        // Seed animated radii from configured XML values before the first paint setup.
-        // applyThemeProps() → applyShadowEffect() will re-evaluate against the live preference.
+        // Seed animated smudge radius from the configured XML value before first paint setup.
         currentSmudgeRadius = smudgeRadius
-        currentThumbShadowRadius = thumbShadowRadius
+
+        // Configure the thumb pill drawable dimensions (dp-based values)
+        thumbPillDrawable.ringStrokePx = 3f * d
+        thumbPillDrawable.gripLineStrokePx = 1.5f * d
 
         applyPaintColors()
         setupSmudgeAndShadow()
@@ -493,9 +445,6 @@ class FelicitySeekbar @JvmOverloads constructor(
     private fun applyPaintColors() {
         trackPaint.color = trackColor
         progressPaint.color = progressColor
-        thumbRingPaint.color = thumbRingColor
-        thumbRingPaint.strokeWidth = thumbRingWidthPx
-        thumbInnerPaint.color = thumbInnerColor
         // Press ring picks accent color with dynamic alpha
         thumbPressRingPaint.color = progressColor
         thumbPressRingPaint.strokeWidth = pressRingStrokePx
@@ -503,22 +452,21 @@ class FelicitySeekbar @JvmOverloads constructor(
         defaultIndicatorPaint.color = defaultIndicatorColor
         // Step indicator paint
         stepIndicatorPaint.color = stepIndicatorColor
+        // Update pill drawable colors
+        thumbPillDrawable.fillColor = progressColor
+        thumbPillDrawable.ringColor = if (isInEditMode) Color.WHITE else ThemeManager.theme.viewGroupTheme.backgroundColor
     }
 
     private fun applyThemeProps() {
         if (isInEditMode.not()) {
             progressColor = ThemeManager.accent.primaryAccentColor
             trackColor = ThemeManager.theme.viewGroupTheme.highlightColor
-            thumbRingColor = ThemeManager.theme.viewGroupTheme.backgroundColor
-            thumbInnerColor = progressColor
             smudgeColor = progressColor
-            thumbShadowColor = progressColor
             pressRingColor = progressColor
             defaultIndicatorColor = ThemeManager.accent.secondaryAccentColor
             stepIndicatorColor = ThemeManager.theme.viewGroupTheme.backgroundColor
             labelTextColor = ThemeManager.theme.textViewTheme.secondaryTextColor
             labelBackgroundColor = ThemeManager.theme.viewGroupTheme.highlightColor
-            setThumbCornerRadius(AppearancePreferences.getCornerRadius())
             applyPaintColors()
             applyShadowEffect(AppearancePreferences.isShadowEffectOn(), animate = false)
             setupLabelPaint()
@@ -536,51 +484,38 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     private fun setupSmudgeAndShadow() {
         val smudgeActive = smudgeEnabled && currentSmudgeRadius > 0f
-        val thumbShadowActive = currentThumbShadowRadius > 0f
-        if (smudgeActive || thumbShadowActive) {
-            setLayerType(LAYER_TYPE_SOFTWARE, null)
-        } else {
-            setLayerType(LAYER_TYPE_NONE, null)
-        }
         if (smudgeActive) {
+            setLayerType(LAYER_TYPE_SOFTWARE, null)
             smudgePaint.color = smudgeColor
             smudgePaint.setShadowLayer(currentSmudgeRadius, 0f, smudgeOffsetY, smudgeColor)
         } else {
+            setLayerType(LAYER_TYPE_NONE, null)
             smudgePaint.clearShadowLayer()
-        }
-        if (thumbShadowActive) {
-            thumbShadowPaint.setShadowLayer(currentThumbShadowRadius, 0f, 0f, thumbShadowColor)
-            thumbShadowPaint.color = Color.TRANSPARENT
-        } else {
-            thumbShadowPaint.clearShadowLayer()
         }
     }
 
     /**
-     * Applies the shadow-effect preference by animating [currentSmudgeRadius] and
-     * [currentThumbShadowRadius] toward their target values (full radius when enabled,
-     * zero when disabled). When [animate] is false the change is instant.
+     * Applies the shadow-effect preference by animating [currentSmudgeRadius] toward its
+     * target value (full radius when enabled, zero when disabled). When [animate] is false
+     * the change is instant.
      *
-     * @param enabled whether the shadow/bleed effect should be active.
-     * @param animate  whether to cross-fade the radii with a [ValueAnimator].
+     * @param enabled whether the smudge/bleed effect should be active.
+     * @param animate whether to cross-fade the radius with a [ValueAnimator].
      */
     private fun applyShadowEffect(enabled: Boolean, animate: Boolean) {
         val targetSmudge = if (enabled && smudgeEnabled) smudgeRadius else 0f
-        val targetThumbShadow = thumbShadowRadius // thumb shadow is always kept active
 
         shadowEffectAnimator?.cancel()
 
         if (!animate) {
             currentSmudgeRadius = targetSmudge
-            currentThumbShadowRadius = targetThumbShadow
             setupSmudgeAndShadow()
             invalidate()
             return
         }
 
         val startSmudge = currentSmudgeRadius
-        val startThumbShadow = currentThumbShadowRadius
-        if (startSmudge == targetSmudge && startThumbShadow == targetThumbShadow) return
+        if (startSmudge == targetSmudge) return
 
         // Keep the software layer active for the full duration of the animation.
         setLayerType(LAYER_TYPE_SOFTWARE, null)
@@ -591,14 +526,12 @@ class FelicitySeekbar @JvmOverloads constructor(
             addUpdateListener { anim ->
                 val t = anim.animatedValue as Float
                 currentSmudgeRadius = startSmudge + (targetSmudge - startSmudge) * t
-                currentThumbShadowRadius = startThumbShadow + (targetThumbShadow - startThumbShadow) * t
                 setupSmudgeAndShadow()
                 invalidate()
             }
             addListener(object : android.animation.AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
                     currentSmudgeRadius = targetSmudge
-                    currentThumbShadowRadius = targetThumbShadow
                     setupSmudgeAndShadow()
                     invalidate()
                 }
@@ -1215,7 +1148,7 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val baseHeight = max(trackHeightPx, thumbRadiusPx * 2f) + (pressRingTotalOutset() * 2f)
-        val verticalBlur = max(thumbShadowRadius, if (smudgeEnabled) (smudgeRadius + abs(smudgeOffsetY)) else 0f)
+        val verticalBlur = if (smudgeEnabled) (smudgeRadius + abs(smudgeOffsetY)) else 0f
         val desiredHeight = (paddingTop + paddingBottom + baseHeight + verticalBlur * 2f).toInt()
         // Reserve = text width + mandatory clearance (thumb half + ring + extra gap)
         val leftReserve = if (leftLabelAnimatedWidth > 0f) totalLabelReserve(leftLabelAnimatedWidth).toInt() else 0
@@ -1225,7 +1158,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         setMeasuredDimension(resolvedWidth, resolvedHeight)
     }
 
-    private fun horizontalOutset(): Float = max(max(thumbShadowRadius, if (smudgeEnabled) smudgeRadius else 0f), pressRingTotalOutset())
+    private fun horizontalOutset(): Float = max(if (smudgeEnabled) smudgeRadius else 0f, pressRingTotalOutset())
 
     /**
      * The minimum gap between label text and the nearest edge of the thumb when the
@@ -1237,11 +1170,7 @@ class FelicitySeekbar @JvmOverloads constructor(
      * press-ring size changes at runtime.
      */
     private fun mandatoryLabelClearance(): Float {
-        val baseSafeInset = when (thumbShape) {
-            ThumbShape.CIRCLE -> thumbRadiusPx
-            else -> thumbWidthPx / 2f
-        }
-        return baseSafeInset + pressRingTotalOutset() + labelGapPx
+        return thumbWidthPx / 2f + pressRingTotalOutset() + labelGapPx
     }
 
     /**
@@ -1253,10 +1182,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val hOut = horizontalOutset()
-        val baseSafeInset = when (thumbShape) {
-            ThumbShape.CIRCLE -> thumbRadiusPx
-            else -> thumbWidthPx / 2f
-        }
+        val baseSafeInset = thumbWidthPx / 2f
 
         // Total space reserved per side = text width + mandatory clearance
         // The track is then inset by baseSafeInset on top of that (standard thumb-fit inset).
@@ -1347,72 +1273,23 @@ class FelicitySeekbar @JvmOverloads constructor(
             progressRight
         }
         val cy = trackRect.centerY()
-        val scaledR = thumbRadiusPx * thumbScale
-        val scaledHalfW = (thumbWidthPx / 2f) * thumbScale
+        val halfW = thumbWidthPx / 2f
+        val halfH = thumbRadiusPx
 
-        thumbOuterRect.set(thumbCx - scaledHalfW, cy - scaledR, thumbCx + scaledHalfW, cy + scaledR)
-
-        when (thumbShape) {
-            ThumbShape.OVAL -> {
-                if (currentThumbShadowRadius > 0f) canvas.drawOval(thumbOuterRect, thumbShadowPaint)
-                if (thumbInnerColor != Color.TRANSPARENT) {
-                    thumbInnerRect.set(thumbOuterRect)
-                    thumbInnerRect.inset(thumbRingWidthPx / 2f, thumbRingWidthPx / 2f)
-                    canvas.drawOval(thumbInnerRect, thumbInnerPaint)
-                }
-                thumbStrokeRect.set(thumbOuterRect)
-                thumbStrokeRect.inset(thumbRingWidthPx / 2f, thumbRingWidthPx / 2f)
-                canvas.drawOval(thumbStrokeRect, thumbRingPaint)
-                if (pressRingProgress > 0f) {
-                    val extra = pressRingOutsetPx * pressRingProgress
-                    thumbPressRingRect.set(thumbOuterRect)
-                    thumbPressRingRect.inset(-extra, -extra)
-                    val alpha = (0.35f * pressRingProgress * 255).toInt().coerceIn(0, 255)
-                    thumbPressRingPaint.color = (pressRingColor and 0x00FFFFFF) or (alpha shl 24)
-                    thumbPressRingPaint.strokeWidth = pressRingStrokePx
-                    canvas.drawOval(thumbPressRingRect, thumbPressRingPaint)
-                }
-            }
-            ThumbShape.PILL -> {
-                val baseThumbCornerR = 100f
-                if (currentThumbShadowRadius > 0f) canvas.drawRoundRect(thumbOuterRect, baseThumbCornerR, baseThumbCornerR, thumbShadowPaint)
-                if (thumbInnerColor != Color.TRANSPARENT) {
-                    thumbInnerRect.set(thumbOuterRect)
-                    val inset = thumbRingWidthPx / 2f
-                    thumbInnerRect.inset(inset, inset)
-                    canvas.drawRoundRect(thumbInnerRect, max(0f, baseThumbCornerR - inset), max(0f, baseThumbCornerR - inset), thumbInnerPaint)
-                }
-                thumbStrokeRect.set(thumbOuterRect)
-                val strokeInset = thumbRingWidthPx / 2f
-                thumbStrokeRect.inset(strokeInset, strokeInset)
-                val ringR = max(0f, baseThumbCornerR - strokeInset)
-                canvas.drawRoundRect(thumbStrokeRect, ringR, ringR, thumbRingPaint)
-                if (pressRingProgress > 0f) {
-                    val extra = pressRingOutsetPx * pressRingProgress
-                    thumbPressRingRect.set(thumbOuterRect)
-                    thumbPressRingRect.inset(-extra, -extra)
-                    val pressRingCornerR = baseThumbCornerR + extra
-                    val alpha = (0.35f * pressRingProgress * 255).toInt().coerceIn(0, 255)
-                    thumbPressRingPaint.color = (pressRingColor and 0x00FFFFFF) or (alpha shl 24)
-                    thumbPressRingPaint.strokeWidth = pressRingStrokePx
-                    canvas.drawRoundRect(thumbPressRingRect, pressRingCornerR, pressRingCornerR, thumbPressRingPaint)
-                }
-            }
-            ThumbShape.CIRCLE -> {
-                if (currentThumbShadowRadius > 0f) canvas.drawCircle(thumbCx, cy, scaledR, thumbShadowPaint)
-                if (thumbInnerColor != Color.TRANSPARENT) {
-                    canvas.drawCircle(thumbCx, cy, max(0f, scaledR - thumbRingWidthPx / 2f), thumbInnerPaint)
-                }
-                canvas.drawCircle(thumbCx, cy, max(0f, scaledR - thumbRingWidthPx / 2f), thumbRingPaint)
-                if (pressRingProgress > 0f) {
-                    val extra = pressRingOutsetPx * pressRingProgress
-                    val alpha = (0.35f * pressRingProgress * 255).toInt().coerceIn(0, 255)
-                    thumbPressRingPaint.color = (pressRingColor and 0x00FFFFFF) or (alpha shl 24)
-                    thumbPressRingPaint.strokeWidth = pressRingStrokePx
-                    canvas.drawCircle(thumbCx, cy, scaledR + extra, thumbPressRingPaint)
-                }
-            }
+        // Draw the faint press-ring outline before the thumb so the pill renders on top
+        if (pressRingProgress > 0f) {
+            val extra = pressRingOutsetPx * pressRingProgress
+            thumbPressRingRect.set(thumbCx - halfW - extra, cy - halfH - extra, thumbCx + halfW + extra, cy + halfH + extra)
+            val pressRingCornerR = 100f + extra
+            val alpha = (0.35f * pressRingProgress * 255).toInt().coerceIn(0, 255)
+            thumbPressRingPaint.color = (pressRingColor and 0x00FFFFFF) or (alpha shl 24)
+            thumbPressRingPaint.strokeWidth = pressRingStrokePx
+            canvas.drawRoundRect(thumbPressRingRect, pressRingCornerR, pressRingCornerR, thumbPressRingPaint)
         }
+
+        // Draw the unified horizontal pill thumb
+        thumbPillDrawable.setBoundsF(thumbCx - halfW, cy - halfH, thumbCx + halfW, cy + halfH)
+        thumbPillDrawable.draw(canvas)
 
         // ---- Draw side labels ----
         // Label text zone: [paddingLeft + hOut .. paddingLeft + hOut + labelAnimatedWidth]
@@ -1472,10 +1349,7 @@ class FelicitySeekbar @JvmOverloads constructor(
     @Suppress("UnnecessaryVariable")
     private fun isPointOnThumb(x: Float, y: Float): Boolean {
         val hOut = horizontalOutset()
-        val baseSafeInset = when (thumbShape) {
-            ThumbShape.CIRCLE -> thumbRadiusPx
-            else -> thumbWidthPx / 2f
-        }
+        val baseSafeInset = thumbWidthPx / 2f
         val left = if (leftLabelAnimatedWidth > 0f) {
             paddingLeft.toFloat() + hOut + totalLabelReserve(leftLabelAnimatedWidth)
         } else {
@@ -1491,28 +1365,16 @@ class FelicitySeekbar @JvmOverloads constructor(
         val cy = height / 2f + if (smudgeEnabled) smudgeOffsetY else 0f
         val dx = x - progressX
         val dy = y - cy
-        val halfH = thumbRadiusPx * thumbScale
-        val halfW = (thumbWidthPx / 2f) * thumbScale
+        val halfH = thumbRadiusPx
+        val halfW = thumbWidthPx / 2f
 
-        return when (thumbShape) {
-            ThumbShape.OVAL -> {
-                val a = halfW
-                val b = halfH
-                if (a <= 0f || b <= 0f) false else (dx * dx) / (a * a) + (dy * dy) / (b * b) <= 1f
-            }
-            ThumbShape.PILL -> {
-                val cornerR = min(thumbCornerRadiusPxOverride ?: halfH, min(halfH, halfW))
-                val bodyHalfW = max(0f, halfW - cornerR)
-                if (abs(dx) <= bodyHalfW && abs(dy) <= halfH) true else {
-                    val dlx = dx - (-bodyHalfW)
-                    val drx = dx - bodyHalfW
-                    (dlx * dlx + dy * dy <= cornerR * cornerR) || (drx * drx + dy * dy <= cornerR * cornerR)
-                }
-            }
-            ThumbShape.CIRCLE -> {
-                dx * dx + dy * dy <= halfH * halfH
-            }
-        }
+        // Always pill hit-test: rectangular center body + two semicircular end caps
+        val cornerR = min(halfH, halfW)
+        val bodyHalfW = max(0f, halfW - cornerR)
+        if (abs(dx) <= bodyHalfW && abs(dy) <= halfH) return true
+        val dlx = dx - (-bodyHalfW)
+        val drx = dx - bodyHalfW
+        return (dlx * dlx + dy * dy <= cornerR * cornerR) || (drx * drx + dy * dy <= cornerR * cornerR)
     }
 
     private fun startPressRing(show: Boolean) {
@@ -1537,8 +1399,6 @@ class FelicitySeekbar @JvmOverloads constructor(
         if (consumedDoubleTap) {
             // Avoid triggering drag/tap behaviors for this gesture
             isDragging = false
-            thumbScaleAnimator?.cancel()
-            thumbScale = 1f
             startPressRing(false)
             invalidate()
             return true
@@ -1558,10 +1418,7 @@ class FelicitySeekbar @JvmOverloads constructor(
                     if (stepMode && totalSteps() > 0) {
                         // In step mode: snap to nearest step at tap position
                         val hOut2 = horizontalOutset()
-                        val baseSafeInset2 = when (thumbShape) {
-                            ThumbShape.CIRCLE -> thumbRadiusPx
-                            else -> thumbWidthPx / 2f
-                        }
+                        val baseSafeInset2 = thumbWidthPx / 2f
                         val tapLeft = if (leftLabelAnimatedWidth > 0f) {
                             paddingLeft.toFloat() + hOut2 + totalLabelReserve(leftLabelAnimatedWidth)
                         } else {
@@ -1583,12 +1440,9 @@ class FelicitySeekbar @JvmOverloads constructor(
                         }
                         stepDragRawX = event.x.coerceIn(tapLeft, tapRight)
                     } else {
-                        // fast animate to tap position
+                        // Fast animate to tap position
                         val hOut2 = horizontalOutset()
-                        val baseSafeInset2 = when (thumbShape) {
-                            ThumbShape.CIRCLE -> thumbRadiusPx
-                            else -> thumbWidthPx / 2f
-                        }
+                        val baseSafeInset2 = thumbWidthPx / 2f
                         val tapLeft = if (leftLabelAnimatedWidth > 0f) {
                             paddingLeft.toFloat() + hOut2 + totalLabelReserve(leftLabelAnimatedWidth)
                         } else {
@@ -1647,10 +1501,7 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     private fun updateFromTouch(x: Float, fromUser: Boolean) {
         val hOut = horizontalOutset()
-        val baseSafeInset = when (thumbShape) {
-            ThumbShape.CIRCLE -> thumbRadiusPx
-            else -> thumbWidthPx / 2f
-        }
+        val baseSafeInset = thumbWidthPx / 2f
         val left = if (leftLabelAnimatedWidth > 0f) {
             paddingLeft.toFloat() + hOut + totalLabelReserve(leftLabelAnimatedWidth)
         } else {
@@ -1707,39 +1558,13 @@ class FelicitySeekbar @JvmOverloads constructor(
         }
     }
 
-    // Thumb shape public API
-    fun setThumbShape(shape: ThumbShape) {
-        if (thumbShape != shape) {
-            thumbShape = shape
-            invalidate()
-        }
-    }
-
-    fun getThumbShape(): ThumbShape = thumbShape
-
-    // configure default indicator color
+    // Configure default indicator color
     fun setDefaultIndicatorColor(@ColorInt color: Int) {
         defaultIndicatorColor = color
         defaultIndicatorPaint.color = color
         invalidate()
     }
 
-    // Public API for pill corner radius override used by theme prefs
-    fun setThumbCornerRadius(radius: Float) {
-        thumbCornerRadiusPxOverride = max(0f, radius)
-        invalidate()
-    }
-
-    private fun applyThumbPreferences() {
-        if (isInEditMode.not()) {
-            val shape = AppearancePreferences.getSeekbarThumbStyle()
-            when (shape) {
-                AppearancePreferences.SEEKBAR_THUMB_PILL -> setThumbShape(ThumbShape.PILL)
-                AppearancePreferences.SEEKBAR_THUMB_CIRCLE -> setThumbShape(ThumbShape.CIRCLE)
-                else -> setThumbShape(ThumbShape.OVAL)
-            }
-        }
-    }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -1751,12 +1576,6 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     override fun onSharedPreferenceChanged(p0: SharedPreferences?, p1: String?) {
         when (p1) {
-            AppearancePreferences.APP_CORNER_RADIUS -> {
-                setThumbCornerRadius(AppearancePreferences.getCornerRadius())
-            }
-            AppearancePreferences.SEEKBAR_THUMB_STYLE -> {
-                applyThumbPreferences()
-            }
             AppearancePreferences.APP_FONT -> {
                 setupLabelPaint()
                 invalidate()

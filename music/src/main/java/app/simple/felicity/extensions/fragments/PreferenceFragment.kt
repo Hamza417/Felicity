@@ -126,32 +126,6 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
-        val thumbShape = Preference(
-                title = R.string.thumb_shape,
-                summary = R.string.thumb_shape_summary,
-                icon = -1,
-                type = PreferenceType.BUTTON_GROUP,
-                valueProvider = {
-                    ButtonGroupState(
-                            buttons = listOf(
-                                    Button(textResId = R.string.pill),
-                                    Button(textResId = R.string.circle),
-                            ),
-                            selectedIndex = when (AppearancePreferences.getSeekbarThumbStyle()) {
-                                AppearancePreferences.SEEKBAR_THUMB_PILL -> 0
-                                else -> 1
-                            }
-                    )
-                },
-                onPreferenceAction = { view, _ ->
-                    val style = when ((view as FelicityButtonGroup).getSelectedIndex()) {
-                        0 -> AppearancePreferences.SEEKBAR_THUMB_PILL
-                        else -> AppearancePreferences.SEEKBAR_THUMB_CIRCLE
-                    }
-                    AppearancePreferences.setSeekbarThumbStyle(style)
-                }
-        )
-
         val effects = Preference(type = PreferenceType.SUB_HEADER, title = R.string.effects)
 
         val shadowEffectToggle = Preference(
@@ -229,7 +203,6 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(header)
         preferences.add(cornerRadius)
         preferences.add(spacing)
-        preferences.add(thumbShape)
         preferences.add(effects)
         preferences.add(shadowEffectToggle)
         preferences.add(albumArt)

@@ -42,7 +42,7 @@
                 android:layout_marginEnd="@dimen/padding_1"
                 app:felicityAnimateInitial="true"
                 app:felicityThumbRadius="@dimen/padding_10"
-                app:felicityThumbRingWidth="@dimen/padding_10"
+
                 app:felicityTrackHeight="@dimen/padding_10" />
 
         </LinearLayout>

@@ -116,7 +116,7 @@
                 app:felicityMin="12"
                 app:felicityProgress="16"
                 app:felicityThumbRadius="@dimen/padding_10"
-                app:felicityThumbRingWidth="@dimen/padding_10"
+
                 app:felicityTrackHeight="@dimen/padding_10" />
 
         </LinearLayout>

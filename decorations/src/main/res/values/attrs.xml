@@ -153,33 +153,22 @@
         <attr name="felicityProgress" format="float" />
         <attr name="felicityTrackColor" format="color|reference" />
         <attr name="felicityProgressColor" format="color|reference" />
-        <attr name="felicityThumbRingColor" format="color|reference" />
-        <attr name="felicityThumbInnerColor" format="color|reference" />
         <attr name="felicityTrackHeight" format="dimension" />
         <attr name="felicityThumbRadius" format="dimension" />
-        <!-- optional pill thumb width (full width). If omitted, a default based on radius is used. -->
+        <!-- Optional pill thumb width (full width). If omitted, a default based on the equalizer pill design is used. -->
         <attr name="felicityThumbWidth" format="dimension" />
-        <attr name="felicityThumbRingWidth" format="dimension" />
         <attr name="felicityAnimateInitial" format="boolean" />
         <attr name="felicitySmudgeEnabled" format="boolean" />
         <attr name="felicitySmudgeRadius" format="dimension" />
         <attr name="felicitySmudgeColor" format="color|reference" />
         <attr name="felicitySmudgeOffsetY" format="dimension" />
-        <attr name="felicityThumbShadowRadius" format="dimension" />
-        <attr name="felicityThumbShadowColor" format="color|reference" />
-        <!-- New: color of small default-value indicator drawn on top of progress -->
+        <!-- Color of the small default-value indicator drawn on top of the progress fill -->
         <attr name="felicityDefaultIndicatorColor" format="color|reference" />
-        <!-- New: choose thumb shape -->
-        <attr name="felicityThumbShape" format="enum">
-            <enum name="pill" value="0" />
-            <enum name="oval" value="1" />
-            <enum name="circle" value="2" />
-        </attr>
         <!-- Side labels -->
         <attr name="felicityLabelsEnabled" format="boolean" />
         <attr name="felicityLabelTextSize" format="dimension" />
         <attr name="felicityLabelTextColor" format="color|reference" />
-        <!-- Extra gap between label text and thumb edge. Mandatory minimum (thumb+ring) is always enforced. -->
+        <!-- Extra gap between label text and thumb edge. Mandatory minimum (thumb + ring) is always enforced. -->
         <attr name="felicityLabelGap" format="dimension" />
         <!-- Label background pill -->
         <attr name="felicityLabelBackgroundEnabled" format="boolean" />

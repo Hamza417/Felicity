@@ -4,7 +4,6 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.os.Build
@@ -25,6 +24,7 @@ import androidx.appcompat.content.res.AppCompatResources
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SnapHelper
+import app.simple.felicity.decorations.drawables.ThumbPillDrawable
 import app.simple.felicity.decorations.itemdecorations.FooterSpacingItemDecoration
 import app.simple.felicity.decorations.itemdecorations.HeaderSpacingItemDecoration
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
@@ -54,8 +54,6 @@ class SlideFastScroller @JvmOverloads constructor(
     /** Half-height of the fader-style pill thumb, matching the equalizer slider design. */
     private val thumbHalfHeightPx = dp(24f)
 
-    /** Corner radius that produces a fully rounded pill shape (equals [thumbHalfHeightPx]). */
-    private val thumbCornerRadiusPx = thumbHalfHeightPx
 
     /** Stroke width of the ring drawn around the pill thumb. */
     private val thumbRingStrokePx = dp(3f)
@@ -84,35 +82,15 @@ class SlideFastScroller @JvmOverloads constructor(
     private var thumbStateAnimator: ValueAnimator? = null
 
     /**
-     * Fill paint for the pill body. Color is always the current accent; the shadow layer
-     * is rebuilt each frame in [onDraw] so the glow radius tracks [thumbState] smoothly.
+     * Unified pill-thumb drawable matching the equalizer slider design.
+     * Orientation is vertical since the fast scroller thumb scrolls along the vertical axis.
      */
-    private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ThemeManager.accent.primaryAccentColor
-        style = Paint.Style.FILL
+    private val thumbPillDrawable = ThumbPillDrawable(ThumbPillDrawable.Orientation.VERTICAL).apply {
+        ringStrokePx = thumbRingStrokePx
+        gripLineStrokePx = dp(1.5f)
+        gripLineHalfLengthFraction = this@SlideFastScroller.gripLineHalfLengthFraction
+        gripLineSpacingFraction = this@SlideFastScroller.gripLineSpacingFraction
     }
-
-    /**
-     * Stroke ring drawn around the pill. Uses the theme's background color to create
-     * a subtle recessed-border effect against the accent fill.
-     */
-    private val thumbRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        color = ThemeManager.theme.viewGroupTheme.backgroundColor
-        strokeWidth = dp(3f)
-    }
-
-    /** Horizontal grip lines drawn on the pill thumb, matching the equalizer slider design. */
-    private val ridgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        color = Color.WHITE
-        alpha = 130
-        strokeWidth = dp(1.5f)
-        strokeCap = Paint.Cap.ROUND
-    }
-
-    // Reusable rect for the pill thumb to avoid per-frame allocations.
-    private val thumbPillRect = RectF()
 
     // Custom drawable support
     private var handleDrawable: Drawable? = null
@@ -974,7 +952,6 @@ class SlideFastScroller @JvmOverloads constructor(
 
         val halfH = thumbHalfHeightPx
         val halfW = thumbHalfWidthPx
-        val cornerRadius = thumbCornerRadiusPx
 
         val trackTop = topPaddingPx + halfH
         val trackBottom = h - bottomPaddingPx - halfH
@@ -984,32 +961,13 @@ class SlideFastScroller @JvmOverloads constructor(
         // Keep a comfortable margin from the right edge of the screen.
         val cx = w - halfW - thumbMarginRightPx
 
-        // Apply the animated glow; accent color is always used for the fill.
-        handlePaint.color = accentColor
-        handlePaint.setShadowLayer(glowRadius, 0f, 0f, glowColor)
-
-        // Draw the filled pill body.
-        thumbPillRect.set(cx - halfW, clampedCY - halfH, cx + halfW, clampedCY + halfH)
-        canvas.drawRoundRect(thumbPillRect, cornerRadius, cornerRadius, handlePaint)
-
-        // Draw the background-colored ring around the pill.
-        val ringInset = thumbRingStrokePx / 2f
-        thumbPillRect.inset(ringInset, ringInset)
-        canvas.drawRoundRect(
-                thumbPillRect,
-                cornerRadius - ringInset,
-                cornerRadius - ringInset,
-                thumbRingPaint
-        )
-        thumbPillRect.inset(-ringInset, -ringInset)
-
-        // Draw the three horizontal grip lines centered on the pill.
-        val gripHalfLen = halfW * gripLineHalfLengthFraction
-        val gripSpacing = halfH * gripLineSpacingFraction
-        for (i in -1..1) {
-            val lineY = clampedCY + i * gripSpacing
-            canvas.drawLine(cx - gripHalfLen, lineY, cx + gripHalfLen, lineY, ridgePaint)
-        }
+        // Draw the pill thumb using the unified drawable, with an animated glow.
+        thumbPillDrawable.fillColor = accentColor
+        thumbPillDrawable.ringColor = ThemeManager.theme.viewGroupTheme.backgroundColor
+        thumbPillDrawable.shadowRadius = glowRadius
+        thumbPillDrawable.shadowColor = glowColor
+        thumbPillDrawable.setBoundsF(cx - halfW, clampedCY - halfH, cx + halfW, clampedCY + halfH)
+        thumbPillDrawable.draw(canvas)
     }
 
     private fun drawCustomHandle(canvas: Canvas, w: Float, h: Float) {
@@ -1272,7 +1230,7 @@ class SlideFastScroller @JvmOverloads constructor(
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
         super.onThemeChanged(theme, animate)
         // Keep the ring color in sync with the current theme background.
-        thumbRingPaint.color = theme.viewGroupTheme.backgroundColor
+        thumbPillDrawable.ringColor = theme.viewGroupTheme.backgroundColor
         invalidate()
     }
 

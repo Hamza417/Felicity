@@ -29,7 +29,7 @@
             app:felicityMax="2"
             app:felicityMin="0"
             app:felicityThumbRadius="@dimen/padding_10"
-            app:felicityThumbRingWidth="@dimen/padding_10"
+
             app:felicityTrackHeight="@dimen/padding_10" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -49,7 +49,7 @@
             app:felicityMin="0.35"
             app:felicityProgress="0.35"
             app:felicityThumbRadius="@dimen/padding_10"
-            app:felicityThumbRingWidth="@dimen/padding_10"
+
             app:felicityTrackHeight="@dimen/padding_10" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -69,7 +69,7 @@
             app:felicityMin="0"
             app:felicityProgress="0"
             app:felicityThumbRadius="@dimen/padding_10"
-            app:felicityThumbRingWidth="@dimen/padding_10"
+
             app:felicityTrackHeight="@dimen/padding_10" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -89,7 +89,7 @@
             app:felicityMin="0.1"
             app:felicityProgress="0"
             app:felicityThumbRadius="@dimen/padding_10"
-            app:felicityThumbRingWidth="@dimen/padding_10"
+
             app:felicityTrackHeight="@dimen/padding_10" />
 
     </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>

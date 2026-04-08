@@ -22,6 +22,7 @@ import androidx.dynamicanimation.animation.FlingAnimation
 import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
+import app.simple.felicity.decorations.drawables.ThumbPillDrawable
 import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders.Companion.NO_ACTIVE_BAND
 import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders.Companion.PREAMP_BAND_INDEX
 import app.simple.felicity.decorations.typeface.TypeFace
@@ -229,7 +230,6 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     private val trackStrokePx = 5f * d
     private val bezierStrokePx = 2.5f * d
     private val thumbRingStrokePx = 3f * d
-    private val thumbCornerRadiusPx = thumbHalfHeightPx
     private val gripLineStrokePx = 1.5f * d
     private val gripLineHalfLengthFraction = 0.42f
     private val gripLineSpacingFraction = 0.22f
@@ -297,11 +297,14 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
 
-    private val thumbInnerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val thumbRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
-    private val gripLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
+    /** Unified pill-thumb drawable shared across all columns (including the preamp). */
+    private val thumbPillDrawable = ThumbPillDrawable(ThumbPillDrawable.Orientation.VERTICAL).apply {
+        ringStrokePx = thumbRingStrokePx
+        gripLineStrokePx = this@FelicityEqualizerSliders.gripLineStrokePx
+        gripLineHalfLengthFraction = this@FelicityEqualizerSliders.gripLineHalfLengthFraction
+        gripLineSpacingFraction = this@FelicityEqualizerSliders.gripLineSpacingFraction
     }
+
     private val trackProgressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND
     }
@@ -328,7 +331,6 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
     private val bezierPath = Path()
     private val bezierFillPath = Path()
-    private val thumbRect = RectF()
     private val pressRingRect = RectF()
 
     // -------------------------------------------------------------------------
@@ -371,13 +373,8 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         bezierPaint.strokeWidth = bezierStrokePx
 
 
-        thumbInnerPaint.color = thumbInnerColor
-        thumbRingPaint.color = thumbRingColor
-        thumbRingPaint.strokeWidth = thumbRingStrokePx
-
-        gripLinePaint.color = Color.WHITE
-        gripLinePaint.alpha = 130
-        gripLinePaint.strokeWidth = gripLineStrokePx
+        thumbPillDrawable.fillColor = thumbInnerColor
+        thumbPillDrawable.ringColor = thumbRingColor
 
         trackProgressPaint.color = accentColor
         trackProgressPaint.strokeWidth = trackStrokePx
@@ -690,38 +687,25 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         val halfW = thumbHalfWidthPx * scale
         val halfH = thumbHalfHeightPx * scale
 
-        thumbRect.set(cx - halfW, thumbY - halfH, cx + halfW, thumbY + halfH)
-
         if (scale > 1f) {
             val haloAlpha = ((scale - 1f) / 0.12f * 80f).toInt().coerceIn(0, 80)
             pressRingRect.set(
-                    thumbRect.left - pressRingOutsetPx,
-                    thumbRect.top - pressRingOutsetPx,
-                    thumbRect.right + pressRingOutsetPx,
-                    thumbRect.bottom + pressRingOutsetPx
+                    cx - halfW - pressRingOutsetPx,
+                    thumbY - halfH - pressRingOutsetPx,
+                    cx + halfW + pressRingOutsetPx,
+                    thumbY + halfH + pressRingOutsetPx
             )
             pressRingPaint.alpha = haloAlpha
             canvas.drawRoundRect(
                     pressRingRect,
-                    thumbCornerRadiusPx + pressRingOutsetPx,
-                    thumbCornerRadiusPx + pressRingOutsetPx,
+                    thumbHalfHeightPx + pressRingOutsetPx,
+                    thumbHalfHeightPx + pressRingOutsetPx,
                     pressRingPaint
             )
         }
 
-        canvas.drawRoundRect(thumbRect, thumbCornerRadiusPx, thumbCornerRadiusPx, thumbInnerPaint)
-
-        val ringInset = thumbRingStrokePx / 2f
-        thumbRect.inset(ringInset, ringInset)
-        canvas.drawRoundRect(thumbRect, thumbCornerRadiusPx - ringInset, thumbCornerRadiusPx - ringInset, thumbRingPaint)
-        thumbRect.inset(-ringInset, -ringInset)
-
-        val gripHalfLen = halfW * gripLineHalfLengthFraction
-        val gripSpacing = halfH * gripLineSpacingFraction
-        for (line in -1..1) {
-            val lineY = thumbY + line * gripSpacing
-            canvas.drawLine(cx - gripHalfLen, lineY, cx + gripHalfLen, lineY, gripLinePaint)
-        }
+        thumbPillDrawable.setBoundsF(cx - halfW, thumbY - halfH, cx + halfW, thumbY + halfH)
+        thumbPillDrawable.draw(canvas)
     }
 
     /**

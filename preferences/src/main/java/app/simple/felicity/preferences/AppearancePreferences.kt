@@ -17,7 +17,6 @@ object AppearancePreferences {
     const val THEME = "current_app_theme"
     const val ACCENT_COLOR = "app_accent_color"
     const val APP_FONT = "type_face"
-    const val SEEKBAR_THUMB_STYLE = "seekbar_thumb_style1"
 
     // Corner radius and spacing limits
     const val MAX_CORNER_RADIUS = 80F
@@ -26,10 +25,6 @@ object AppearancePreferences {
     // Default values for corner radius and spacing
     const val DEFAULT_CORNER_RADIUS = 20F
     const val DEFAULT_SPACING = 48F
-
-    // Seekbar thumb styles
-    const val SEEKBAR_THUMB_CIRCLE = 0
-    const val SEEKBAR_THUMB_PILL = 1
 
     // ---------------------------------------------------------------------------------------------------------- //
 
@@ -142,17 +137,5 @@ object AppearancePreferences {
 
     fun getListSpacing(): Float {
         return getSharedPreferences().getFloat(LIST_SPACING, DEFAULT_SPACING)
-    }
-
-    // ---------------------------------------------------------------------------------------------------------- //
-
-    fun setSeekbarThumbStyle(style: Int) {
-        getSharedPreferences().edit {
-            putInt(SEEKBAR_THUMB_STYLE, style)
-        }
-    }
-
-    fun getSeekbarThumbStyle(): Int {
-        return getSharedPreferences().getInt(SEEKBAR_THUMB_STYLE, SEEKBAR_THUMB_PILL)
     }
 }
