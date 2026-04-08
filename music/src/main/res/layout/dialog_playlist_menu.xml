@@ -62,8 +62,6 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
             android:layout_marginHorizontal="10dp"
-            android:ellipsize="end"
-            android:maxLines="1"
             android:textSize="@dimen/desc_text_size"
             app:appFontStyle="regular"
             app:layout_constraintBottom_toBottomOf="@+id/cover"

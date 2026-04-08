@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
 import app.simple.felicity.R
 import app.simple.felicity.constants.CommonPreferencesConstants
+import app.simple.felicity.core.utils.StringUtils.ifNullOrBlank
 import app.simple.felicity.databinding.AdapterStyleGridBinding
 import app.simple.felicity.databinding.AdapterStyleLabelsBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
@@ -165,7 +166,7 @@ class AdapterPlaylists(initial: List<PlaylistWithSongs>) : FastScrollAdapter<Ver
         fun bind(item: PlaylistWithSongs, isLightBind: Boolean) {
             binding.title.setTextOrUnknown(item.playlist.name)
             binding.secondaryDetail.text = binding.root.context.getString(R.string.x_songs, item.songs.size)
-            binding.tertiaryDetail.text = item.playlist.description.orEmpty()
+            binding.tertiaryDetail.text = item.playlist.description.ifNullOrBlank(getString(R.string.not_available))
             if (isLightBind) return
             item.songs.firstOrNull()?.let { binding.cover.loadArtCoverWithPayload(it) }
             binding.container.setOnClickListener {
@@ -190,7 +191,7 @@ class AdapterPlaylists(initial: List<PlaylistWithSongs>) : FastScrollAdapter<Ver
         fun bind(item: PlaylistWithSongs, isLightBind: Boolean) {
             binding.title.setTextOrUnknown(item.playlist.name)
             binding.secondaryDetail.text = binding.root.context.getString(R.string.x_songs, item.songs.size)
-            binding.tertiaryDetail.text = item.playlist.description.orEmpty()
+            binding.tertiaryDetail.text = item.playlist.description.ifNullOrBlank(getString(R.string.not_available))
             if (isLightBind) return
             item.songs.firstOrNull()?.let { binding.albumArt.loadArtCoverWithPayload(it) }
             binding.container.setOnClickListener {
@@ -215,7 +216,7 @@ class AdapterPlaylists(initial: List<PlaylistWithSongs>) : FastScrollAdapter<Ver
         fun bind(item: PlaylistWithSongs, isLightBind: Boolean) {
             binding.title.setTextOrUnknown(item.playlist.name)
             binding.secondaryDetail.text = binding.root.context.getString(R.string.x_songs, item.songs.size)
-            binding.tertiaryDetail.text = item.playlist.description.orEmpty()
+            binding.tertiaryDetail.text = item.playlist.description.ifNullOrBlank(getString(R.string.not_available))
             if (isLightBind) return
             binding.container.setOnClickListener {
                 onPlaylistClicked?.invoke(item.playlist)
@@ -225,11 +226,5 @@ class AdapterPlaylists(initial: List<PlaylistWithSongs>) : FastScrollAdapter<Ver
                 true
             }
         }
-    }
-
-    companion object {
-        const val VIEW_TYPE_LIST = CommonPreferencesConstants.GRID_TYPE_LIST
-        const val VIEW_TYPE_GRID = CommonPreferencesConstants.GRID_TYPE_GRID
-        const val VIEW_TYPE_LABEL = CommonPreferencesConstants.GRID_TYPE_LABEL
     }
 }

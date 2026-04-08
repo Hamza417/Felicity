@@ -19,6 +19,7 @@ import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import app.simple.felicity.R
+import app.simple.felicity.decorations.popups.SharedImageDialogMenu
 import app.simple.felicity.decorations.transitions.SeekableSharedAxisFadeTransition
 import app.simple.felicity.decorations.transitions.SeekableSharedAxisXTransition
 import app.simple.felicity.decorations.transitions.SeekableSharedAxisZTransition
@@ -26,6 +27,7 @@ import app.simple.felicity.decorations.transitions.SeekableSlideTransition
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.BehaviourPreferences
+import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.theme.managers.ThemeUtils
 import app.simple.felicity.ui.panels.Preferences
@@ -414,6 +416,14 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         when (getTransitionType()) {
             TransitionType.SHARED_AXIS -> setTransitions()
             TransitionType.SLIDE -> setSlideTransitions()
+        }
+    }
+
+    protected fun getDialogWidthRation(): Float {
+        return if (BarHeight.isLandscape(requireContext())) {
+            0.5F
+        } else {
+            SharedImageDialogMenu.DEFAULT_WIDTH_RATIO
         }
     }
 

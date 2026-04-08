@@ -30,7 +30,6 @@ import app.simple.felicity.databinding.DialogEditPlaylistBinding
 import app.simple.felicity.databinding.DialogPlaylistMenuBinding
 import app.simple.felicity.databinding.DialogSongMenuBinding
 import app.simple.felicity.databinding.DialogSureBinding
-import app.simple.felicity.decorations.popups.SharedImageDialogMenu
 import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.dialogs.app.AudioInformation.Companion.showAudioInfo
@@ -48,7 +47,6 @@ import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.PlaylistWithSongs
 import app.simple.felicity.repository.shuffle.Shuffle.shuffle
-import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.shared.utils.ViewUtils.cancelTouch
 import app.simple.felicity.shared.utils.ViewUtils.gone
@@ -595,8 +593,6 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             onDismiss?.invoke()
         }
 
-        val widthRatio = if (BarHeight.isLandscape(requireContext())) 0.5F else SharedImageDialogMenu.DEFAULT_WIDTH_RATIO
-
         if (imageView != null) {
             SimpleSharedImageDialog.Builder(
                     container = requireContainerView(),
@@ -606,7 +602,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 .onViewCreated(onViewCreated)
                 .onDialogInflated(onDialogInflated)
                 .onDismiss(onDismissCallback)
-                .setWidthRatio(widthRatio)
+                .setWidthRatio(getDialogWidthRation())
                 .build()
                 .show()
         } else {
@@ -616,7 +612,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 .onViewCreated(onViewCreated)
                 .onDialogInflated(onDialogInflated)
                 .onDismiss(onDismissCallback)
-                .setWidthRatio(widthRatio)
+                .setWidthRatio(getDialogWidthRation())
                 .build()
                 .show()
         }
@@ -848,8 +844,6 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             miniPlayerCallbacks?.onShowMiniPlayer()
         }
 
-        val widthRatio = if (BarHeight.isLandscape(requireContext())) 0.5F else SharedImageDialogMenu.DEFAULT_WIDTH_RATIO
-
         if (imageView != null) {
             SimpleSharedImageDialog.Builder(
                     container = requireContainerView(),
@@ -859,7 +853,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 .onViewCreated(onViewCreated)
                 .onDialogInflated(onDialogInflated)
                 .onDismiss(onDismissCallback)
-                .setWidthRatio(widthRatio)
+                .setWidthRatio(getDialogWidthRation())
                 .build()
                 .show()
         } else {
@@ -869,7 +863,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 .onViewCreated(onViewCreated)
                 .onDialogInflated(onDialogInflated)
                 .onDismiss(onDismissCallback)
-                .setWidthRatio(widthRatio)
+                .setWidthRatio(getDialogWidthRation())
                 .build()
                 .show()
         }
@@ -938,6 +932,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     dismiss()
                 }
             }
+            .setWidthRatio(getDialogWidthRation())
             .onDismiss { /* no-op */ }
             .build()
             .show()
