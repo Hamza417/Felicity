@@ -29,8 +29,8 @@
         android:gravity="center_vertical"
         android:layout_gravity="center_vertical"
         android:layout_marginEnd="@dimen/padding_1"
-        android:hint="@string/search"
-        android:imeOptions="actionSearch"
+        android:hint="@string/playlist_name"
+        android:imeOptions="actionNext"
         android:layout_marginTop="@dimen/padding_8"
         android:importantForAutofill="yes"
         android:inputType="text"
@@ -38,7 +38,26 @@
         app:appFontStyle="bold"
         app:textColorStyle="primary" />
 
-    <LinearLayout
+        <app.simple.felicity.decorations.corners.DynamicCornerEditText
+            android:id="@+id/playlist_description_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="@dimen/padding_10"
+            android:background="@android:color/transparent"
+            android:gravity="center_vertical"
+            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="@dimen/padding_1"
+            android:hint="@string/playlist_description"
+            android:imeOptions="actionDone"
+            android:layout_marginTop="@dimen/padding_5"
+            android:importantForAutofill="yes"
+            android:inputType="textMultiLine"
+            android:maxLines="3"
+            app:appFontStyle="regular"
+            app:textColorStyle="secondary" />
+
+        <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="end"

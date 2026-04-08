@@ -357,6 +357,7 @@
     <string name="create_playlist">Create Playlist</string>
     <string name="new_playlist">New Playlist</string>
     <string name="playlist_name">Playlist Name</string>
+    <string name="playlist_description">Description (optional)</string>
     <string name="x_playlists">%1$d Playlists</string>
     <string name="no_playlists">No Playlists</string>
     <string name="untitled_playlist">Untitled Playlist</string>

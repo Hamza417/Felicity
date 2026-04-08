@@ -16,12 +16,13 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
- * Bottom-sheet dialog that lets the user create a new named playlist.
+ * Bottom-sheet dialog that lets the user create a new named playlist with an optional description.
  *
- * <p>Presents a single text field for the playlist name and Cancel/Create action
- * buttons. On confirmation the playlist is created via [PlaylistRepository] on the
- * IO dispatcher, and the optional [OnPlaylistCreatedListener] is notified on the
- * main thread before the sheet is dismissed.</p>
+ * <p>Presents a name field and an optional description field, along with Cancel/Create action
+ * buttons. On confirmation the playlist is created via [PlaylistRepository] on the IO
+ * dispatcher, and the optional [OnPlaylistCreatedListener] is notified on the main thread
+ * before the sheet is dismissed. A blank description is stored as {@code null} in the
+ * database rather than an empty string.</p>
  *
  * <p>Usage:
  * ```
@@ -60,9 +61,11 @@ class CreatePlaylistDialog : ScopedBottomSheetFragment() {
         binding.create.setOnClickListener {
             val name = binding.playlistNameInput.text?.toString()?.trim()
             if (name.isNullOrEmpty()) return@setOnClickListener
+            val description = binding.playlistDescriptionInput.text?.toString()?.trim()
+                .takeUnless { it.isNullOrEmpty() }
 
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                playlistRepository.createPlaylist(name)
+                playlistRepository.createPlaylist(name, description)
                 withContext(Dispatchers.Main) {
                     onPlaylistCreatedListener?.onPlaylistCreated(name)
                     dismiss()
