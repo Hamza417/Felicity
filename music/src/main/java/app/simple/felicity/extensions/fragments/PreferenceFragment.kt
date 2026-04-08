@@ -15,7 +15,6 @@ import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.models.ButtonGroupState
 import app.simple.felicity.models.Preference
 import app.simple.felicity.models.SeekbarState
-import app.simple.felicity.popups.home.PopupHomeInterfaceMenu
 import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AppearancePreferences
@@ -26,6 +25,8 @@ import app.simple.felicity.preferences.ListPreferences
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.ui.preferences.sub.AccentColors
+import app.simple.felicity.ui.preferences.sub.HomeUISelection
+import app.simple.felicity.ui.preferences.sub.PlayerUISelection
 import app.simple.felicity.ui.preferences.sub.Themes
 import app.simple.felicity.ui.preferences.sub.TypeFaces
 import java.util.Locale
@@ -278,52 +279,9 @@ abstract class PreferenceFragment : MediaFragment() {
                 title = R.string.change_home_interface,
                 summary = R.string.change_home_interface_summary,
                 icon = R.drawable.ic_felicity_full,
-                type = PreferenceType.POPUP,
-                valueProvider = {
-                    when (UserInterfacePreferences.getHomeInterface()) {
-                        UserInterfacePreferences.HOME_INTERFACE_DASHBOARD -> getString(R.string.dashboard)
-                        UserInterfacePreferences.HOME_INTERFACE_ARTFLOW -> getString(R.string.artflow)
-                        UserInterfacePreferences.HOME_INTERFACE_SPANNED -> getString(R.string.spanned)
-                        UserInterfacePreferences.HOME_INTERFACE_SIMPLE -> getString(R.string.simple)
-                        else -> getString(R.string.app_name)
-                    }
-                },
+                type = PreferenceType.PANEL,
                 onPreferenceAction = { view, callback ->
-                    PopupHomeInterfaceMenu(
-                            container = requireContainerView(),
-                            anchorView = view,
-                            menuItems = listOf(R.string.dashboard,
-                                               R.string.spanned,
-                                               R.string.artflow,
-                                               R.string.simple),
-                            menuIcons = listOf(R.drawable.ic_dot_16dp,
-                                               R.drawable.ic_spanned_16dp,
-                                               R.drawable.ic_flow_16dp,
-                                               R.drawable.ic_list_16dp),
-                            onMenuItemClick = {
-                                when (it) {
-                                    R.string.dashboard -> {
-                                        UserInterfacePreferences.setHomeInterface(UserInterfacePreferences.HOME_INTERFACE_DASHBOARD)
-                                        (view as TextView).text = getString(R.string.dashboard)
-                                    }
-                                    R.string.spanned -> {
-                                        UserInterfacePreferences.setHomeInterface(UserInterfacePreferences.HOME_INTERFACE_SPANNED)
-                                        (view as TextView).text = getString(R.string.spanned)
-                                    }
-                                    R.string.artflow -> {
-                                        UserInterfacePreferences.setHomeInterface(UserInterfacePreferences.HOME_INTERFACE_ARTFLOW)
-                                        (view as TextView).text = getString(R.string.artflow)
-                                    }
-                                    R.string.simple -> {
-                                        UserInterfacePreferences.setHomeInterface(UserInterfacePreferences.HOME_INTERFACE_SIMPLE)
-                                        (view as TextView).text = getString(R.string.simple)
-                                    }
-                                }
-                            },
-                            onDismiss = {
-
-                            }
-                    ).show()
+                    openFragment(HomeUISelection.newInstance(), HomeUISelection.TAG)
                 }
         )
 
@@ -348,34 +306,9 @@ abstract class PreferenceFragment : MediaFragment() {
                 title = R.string.change_player_interface,
                 summary = R.string.change_player_interface_summary,
                 icon = R.drawable.ic_felicity_full,
-                type = PreferenceType.POPUP,
-                valueProvider = {
-                    when (UserInterfacePreferences.getPlayerInterface()) {
-                        UserInterfacePreferences.PLAYER_INTERFACE_FADED -> getString(R.string.faded)
-                        UserInterfacePreferences.PLAYER_INTERFACE_DEFAULT -> getString(R.string.simple)
-                        else -> getString(R.string.simple)
-                    }
-                },
+                type = PreferenceType.PANEL,
                 onPreferenceAction = { view, callback ->
-                    PopupHomeInterfaceMenu(
-                            container = requireContainerView(),
-                            anchorView = view,
-                            menuItems = listOf(R.string.simple, R.string.faded),
-                            menuIcons = listOf(R.drawable.ic_list_16dp, R.drawable.ic_dot_16dp),
-                            onMenuItemClick = {
-                                when (it) {
-                                    R.string.simple -> {
-                                        UserInterfacePreferences.setPlayerInterface(UserInterfacePreferences.PLAYER_INTERFACE_DEFAULT)
-                                        (view as TextView).text = getString(R.string.simple)
-                                    }
-                                    R.string.faded -> {
-                                        UserInterfacePreferences.setPlayerInterface(UserInterfacePreferences.PLAYER_INTERFACE_FADED)
-                                        (view as TextView).text = getString(R.string.faded)
-                                    }
-                                }
-                            },
-                            onDismiss = {}
-                    ).show()
+                    openFragment(PlayerUISelection.newInstance(), PlayerUISelection.TAG)
                 }
         )
 
