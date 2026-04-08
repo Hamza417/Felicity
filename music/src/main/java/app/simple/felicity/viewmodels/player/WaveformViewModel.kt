@@ -59,6 +59,8 @@ class WaveformViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             if (currentPath != audio.path) return@launch
 
+            postFlatData(audio) // Show the ghost waveform immediately while we load the real one in the background
+
             try {
                 val rawAmplitudes = amplitudaInstance!!
                     .processAudio(

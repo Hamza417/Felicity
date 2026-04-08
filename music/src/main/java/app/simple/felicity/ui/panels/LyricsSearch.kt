@@ -58,7 +58,7 @@ class LyricsSearch : MediaFragment() {
      * and reopen the Lyrics screen.
      */
     private val lyricsViewModel: LyricsViewModel by viewModels(
-            ownerProducer = { requireActivity() },
+            ownerProducer = { this },
             extrasProducer = {
                 defaultViewModelCreationExtras.withCreationCallback<LyricsViewModel.Factory> {
                     it.create(audio = null)

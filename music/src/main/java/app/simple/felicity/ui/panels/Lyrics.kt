@@ -64,7 +64,7 @@ class Lyrics : MediaFragment() {
      * observer to pick up the updated lyrics without requiring a full close/reopen cycle.
      */
     private val lyricsViewModel: LyricsViewModel by viewModels(
-            ownerProducer = { requireActivity() },
+            ownerProducer = { this },
             extrasProducer = {
                 defaultViewModelCreationExtras.withCreationCallback<LyricsViewModel.Factory> {
                     it.create(audio = null)
