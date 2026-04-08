@@ -38,9 +38,17 @@ object RecyclerViewUtils {
         }
     }
 
+    /**
+     * Adds an [itemDecoration] to the [RecyclerView] only if no decoration of the same
+     * class is already present. This prevents duplicate decorations from accumulating
+     * when the data is updated multiple times (e.g., on song removal), since each update
+     * creates a new instance whose reference would never match an existing one.
+     *
+     * @param itemDecoration The [RecyclerView.ItemDecoration] to add.
+     */
     fun RecyclerView.addItemDecorationSafely(itemDecoration: RecyclerView.ItemDecoration) {
         for (i in 0 until itemDecorationCount) {
-            if (getItemDecorationAt(i) == itemDecoration) {
+            if (getItemDecorationAt(i)::class == itemDecoration::class) {
                 return
             }
         }
