@@ -5,30 +5,33 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import app.simple.felicity.adapters.ui.dialogs.AdapterPlaylistCheckbox
 import app.simple.felicity.databinding.DialogAddToPlaylistBinding
 import app.simple.felicity.dialogs.playlists.AddToPlaylistDialog.Companion.newInstance
 import app.simple.felicity.dialogs.playlists.CreatePlaylistDialog.Companion.showCreatePlaylistDialog
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
+import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.models.Playlist
-import app.simple.felicity.repository.repositories.PlaylistRepository
+import app.simple.felicity.utils.ParcelUtils.parcelable
+import app.simple.felicity.viewmodels.dialogs.AddToPlaylistViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
+import dagger.hilt.android.lifecycle.withCreationCallback
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import javax.inject.Inject
 
 /**
  * Bottom-sheet dialog that allows the user to add one or more [Audio] tracks to
  * existing playlists via a checkbox list, or create a brand-new playlist inline.
  *
  * <p>Usage: call [show] from any [FragmentManager] and pass the target audio via
- * [newInstance]. The dialog loads all playlists and pre-checks those that already
- * contain the song so users can clearly see and update membership.</p>
+ * [newInstance]. The dialog observes [AddToPlaylistViewModel.state] to keep the checkbox
+ * list reactive — playlist additions and song-count changes surface automatically without
+ * manual reload calls. Pre-checked state reflects actual database membership so the user
+ * can clearly see which playlists already contain the track.</p>
  *
  * @author Hamza417
  */
@@ -38,14 +41,21 @@ class AddToPlaylistDialog : ScopedBottomSheetFragment() {
     private lateinit var binding: DialogAddToPlaylistBinding
     private var adapter: AdapterPlaylistCheckbox? = null
 
-    @Inject
-    lateinit var playlistRepository: PlaylistRepository
+    /** Whether the adapter has been created from the first ViewModel state emission. */
+    private var adapterInitialized = false
 
-    /** The audio track to add to the selected playlists. */
-    private val audio: Audio? by lazy {
-        @Suppress("DEPRECATION")
-        arguments?.getParcelable(ARG_AUDIO)
+    private val audio: Audio by lazy {
+        requireArguments().parcelable<Audio>(BundleConstants.AUDIO)
+            ?: error("AddToPlaylistDialog requires an Audio argument")
     }
+
+    private val viewModel: AddToPlaylistViewModel by viewModels(
+            extrasProducer = {
+                defaultViewModelCreationExtras.withCreationCallback<AddToPlaylistViewModel.Factory> {
+                    it.create(audio = audio)
+                }
+            }
+    )
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = DialogAddToPlaylistBinding.inflate(inflater, container, false)
@@ -57,8 +67,6 @@ class AddToPlaylistDialog : ScopedBottomSheetFragment() {
 
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
-        loadPlaylists()
-
         binding.createPlaylist.setOnClickListener {
             showCreatePlaylistDialog()
         }
@@ -68,82 +76,61 @@ class AddToPlaylistDialog : ScopedBottomSheetFragment() {
         }
 
         binding.save.setOnClickListener {
-            saveMembership()
+            viewModel.saveMembership(adapter?.getCheckedIds() ?: emptySet())
         }
+
+        observeViewModel()
     }
 
     /**
-     * Loads all playlists from the repository and determines which ones already contain
-     * the target audio. Populates the RecyclerView with a pre-checked checkbox state.
+     * Subscribes to [AddToPlaylistViewModel.state] and [AddToPlaylistViewModel.saveComplete].
+     * The first non-null state emission initializes the adapter; subsequent emissions call
+     * [AdapterPlaylistCheckbox.updateData] so the user's checkbox selections are preserved
+     * across playlist-list or song-count changes.
      */
-    private fun loadPlaylists() {
-        val audioHash = audio?.hash ?: return
-
+    private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
-            val playlists: List<Playlist>
-            val preCheckedIds: Set<Long>
-
-            withContext(Dispatchers.IO) {
-                playlists = playlistRepository.getAllPlaylists().first()
-                preCheckedIds = playlists
-                    .filter { playlistRepository.isSongInPlaylist(it.id, audioHash) }
-                    .map { it.id }
-                    .toSet()
-            }
-
-            adapter = AdapterPlaylistCheckbox(playlists, preCheckedIds)
-            binding.recyclerView.adapter = adapter
-        }
-    }
-
-    /**
-     * Persists the updated playlist membership: adds the song to newly checked playlists
-     * and removes it from playlists that were unchecked.
-     */
-    private fun saveMembership() {
-        val audioHash = audio?.hash ?: return
-        val checkedIds = adapter?.getCheckedIds() ?: emptySet()
-
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val allPlaylists = playlistRepository.getAllPlaylists().first()
-
-            allPlaylists.forEach { playlist ->
-                val wasIn = playlistRepository.isSongInPlaylist(playlist.id, audioHash)
-                val isNowIn = checkedIds.contains(playlist.id)
-
-                when {
-                    !wasIn && isNowIn -> playlistRepository.addSong(playlist.id, audioHash)
-                    wasIn && !isNowIn -> playlistRepository.removeSong(playlist.id, audioHash)
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.state.collect { state ->
+                    state ?: return@collect
+                    if (!adapterInitialized) {
+                        adapterInitialized = true
+                        adapter = AdapterPlaylistCheckbox(
+                                state.playlists,
+                                state.preCheckedIds,
+                                state.songCounts
+                        )
+                        binding.recyclerView.adapter = adapter
+                    } else {
+                        adapter?.updateData(state.playlists, state.songCounts)
+                    }
                 }
             }
+        }
 
-            withContext(Dispatchers.Main) { dismiss() }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.saveComplete.collect { dismiss() }
+            }
         }
     }
 
     /**
      * Shows the "Create Playlist" bottom-sheet via [parentFragmentManager] so it sits on top
-     * of this dialog without being dismissed when this sheet is hidden. Reloads the playlist
-     * list once the new playlist is successfully created.
+     * of this dialog. Because [AddToPlaylistViewModel] observes [PlaylistRepository.getAllPlaylistsWithSongs]
+     * reactively, the new playlist appears in the list automatically — no manual reload is needed.
      */
     private fun showCreatePlaylistDialog() {
-        parentFragmentManager.showCreatePlaylistDialog(
-                listener = object : CreatePlaylistDialog.OnPlaylistCreatedListener {
-                    override fun onPlaylistCreated(name: String) {
-                        loadPlaylists()
-                    }
-                }
-        )
+        parentFragmentManager.showCreatePlaylistDialog()
     }
 
     companion object {
         private const val TAG = "AddToPlaylistDialog"
-        private const val ARG_AUDIO = "audio"
 
         fun newInstance(audio: Audio): AddToPlaylistDialog {
             return AddToPlaylistDialog().apply {
                 arguments = Bundle().apply {
-                    putParcelable(ARG_AUDIO, audio)
+                    putParcelable(BundleConstants.AUDIO, audio)
                 }
             }
         }
@@ -152,6 +139,7 @@ class AddToPlaylistDialog : ScopedBottomSheetFragment() {
          * Shows the "Add to Playlist" dialog for the given [audio] track.
          *
          * @param audio The audio track to add to playlists.
+         * @return The shown [AddToPlaylistDialog] instance.
          */
         fun FragmentManager.showAddToPlaylistDialog(audio: Audio): AddToPlaylistDialog {
             val dialog = newInstance(audio)
