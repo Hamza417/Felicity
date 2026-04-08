@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.GridLayoutManager
@@ -17,9 +18,7 @@ import app.simple.felicity.databinding.HeaderGenericSearchBinding
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.viewmodels.panels.LyricsSearchViewModel
-import app.simple.felicity.viewmodels.player.LyricsViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import dagger.hilt.android.lifecycle.withCreationCallback
 
 /**
  * Panel that allows the user to search for and download LRC lyrics from LrcLib.
@@ -51,20 +50,6 @@ class LyricsSearch : MediaFragment() {
 
     private val viewModel: LyricsSearchViewModel by viewModels()
 
-    /**
-     * Activity-scoped reference to [LyricsViewModel] — the same instance held by the
-     * [Lyrics] panel. Calling [LyricsViewModel.reloadLrcData] here causes that panel's
-     * lrc observer to receive the newly saved lyrics without requiring the user to close
-     * and reopen the Lyrics screen.
-     */
-    private val lyricsViewModel: LyricsViewModel by viewModels(
-            ownerProducer = { this },
-            extrasProducer = {
-                defaultViewModelCreationExtras.withCreationCallback<LyricsViewModel.Factory> {
-                    it.create(audio = null)
-                }
-            }
-    )
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentLyricsSearchBinding.inflate(inflater, container, false)
@@ -149,9 +134,9 @@ class LyricsSearch : MediaFragment() {
 
         viewModel.lrcSaved.observe(viewLifecycleOwner) { saved ->
             if (saved) {
-                // Reload the lyrics in the Lyrics panel via the shared activity-scoped ViewModel
-                // so it updates immediately when this fragment pops from the back stack.
-                lyricsViewModel.reloadLrcData()
+                // Notify the Lyrics panel that new lyrics were saved so it can reload without
+                // requiring the user to close and reopen the screen.
+                parentFragmentManager.setFragmentResult(REQUEST_KEY_LYRICS_SAVED, bundleOf())
                 goBack()
             }
         }
@@ -186,6 +171,12 @@ class LyricsSearch : MediaFragment() {
         }
 
         const val TAG = "LyricsSearch"
+
+        /**
+         * Fragment Result API key broadcast by [LyricsSearch] when a lyrics file is
+         * successfully saved. [Lyrics] listens for this key and reloads its lyrics data.
+         */
+        const val REQUEST_KEY_LYRICS_SAVED = "lyrics_search_lyrics_saved"
     }
 }
 

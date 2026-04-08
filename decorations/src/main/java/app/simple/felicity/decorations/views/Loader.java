@@ -21,7 +21,7 @@ import app.simple.felicity.theme.managers.ThemeManager;
 
 public class Loader extends AppCompatImageView {
     
-    private static long ANIMATION_DURATION = 500L;
+    private static long ANIMATION_DURATION = 1000L;
     private ValueAnimator rotateAnimator;
     
     public Loader(@NonNull Context context, @Nullable AttributeSet attrs) {

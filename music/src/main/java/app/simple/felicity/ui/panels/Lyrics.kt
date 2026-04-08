@@ -134,14 +134,20 @@ class Lyrics : MediaFragment() {
                 Log.d(TAG, "No lyrics found for the current song.")
             } else {
                 Log.d(TAG, "Loaded lyrics with ${lrcData.size()} lines.")
-                binding.lrc.updateLrcDataInPlace(
+                // Use setLrcDataWithPosition so scroll is snapped only after the first draw pass,
+                // when layout heights are fully populated. This prevents the highlight being placed
+                // at a wrong (fallback-size based) offset when the cache is empty after a reset().
+                binding.lrc.setLrcDataWithPosition(
                         lrcData, MediaPlaybackManager.getSeekPosition() + lyricsViewModel.syncOffset)
             }
         }
 
-        // Sync offset changed: just nudge updateTime — LrcData and scroll stay untouched
-        lyricsViewModel.getSyncOffsetMs().observe(viewLifecycleOwner) { offset ->
-            Log.d(TAG, "Sync offset updated: ${offset}ms")
+        // Listen for the signal from LyricsSearch that a new .lrc sidecar was saved so that
+        // the lyrics panel refreshes immediately without requiring a close/reopen cycle.
+        parentFragmentManager.setFragmentResultListener(
+                LyricsSearch.REQUEST_KEY_LYRICS_SAVED, viewLifecycleOwner) { _, _ ->
+            Log.d(TAG, "Lyrics saved signal received, reloading lrc data.")
+            lyricsViewModel.reloadLrcData()
         }
 
         binding.seekbar.setLeftLabelProvider { progress, _, _ ->
