@@ -1,5 +1,6 @@
 package app.simple.felicity.ui.preferences.main
 
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -42,6 +43,10 @@ class UserInterface : PreferenceFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             UserInterfacePreferences.HOME_INTERFACE -> {
+                Intent(requireContext(), requireActivity()::class.java).apply {
+                    startActivity(this)
+                    requireActivity().finish()
+                }
             }
             UserInterfacePreferences.PLAYER_INTERFACE -> {
                 // No activity restart needed — the player is opened fresh on each mini player tap.
