@@ -27,10 +27,7 @@
             android:layout_height="wrap_content"
             app:felicityAnimateInitial="false"
             app:felicityMax="2"
-            app:felicityMin="0"
-            app:felicityThumbRadius="@dimen/padding_10"
-
-            app:felicityTrackHeight="@dimen/padding_10" />
+            app:felicityMin="0" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
             android:layout_width="match_parent"
@@ -47,10 +44,7 @@
             app:felicityAnimateInitial="false"
             app:felicityMax="0.85"
             app:felicityMin="0.35"
-            app:felicityProgress="0.35"
-            app:felicityThumbRadius="@dimen/padding_10"
-
-            app:felicityTrackHeight="@dimen/padding_10" />
+            app:felicityProgress="0.35" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
             android:layout_width="match_parent"
@@ -67,10 +61,7 @@
             app:felicityAnimateInitial="false"
             app:felicityMax="0.60"
             app:felicityMin="0"
-            app:felicityProgress="0"
-            app:felicityThumbRadius="@dimen/padding_10"
-
-            app:felicityTrackHeight="@dimen/padding_10" />
+            app:felicityProgress="0" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
             android:layout_width="match_parent"
@@ -87,10 +78,7 @@
             app:felicityAnimateInitial="false"
             app:felicityMax="1"
             app:felicityMin="0.1"
-            app:felicityProgress="0"
-            app:felicityThumbRadius="@dimen/padding_10"
-
-            app:felicityTrackHeight="@dimen/padding_10" />
+            app:felicityProgress="0" />
 
     </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
 

@@ -153,10 +153,6 @@
         <attr name="felicityProgress" format="float" />
         <attr name="felicityTrackColor" format="color|reference" />
         <attr name="felicityProgressColor" format="color|reference" />
-        <attr name="felicityTrackHeight" format="dimension" />
-        <attr name="felicityThumbRadius" format="dimension" />
-        <!-- Optional pill thumb width (full width). If omitted, a default based on the equalizer pill design is used. -->
-        <attr name="felicityThumbWidth" format="dimension" />
         <attr name="felicityAnimateInitial" format="boolean" />
         <attr name="felicitySmudgeEnabled" format="boolean" />
         <attr name="felicitySmudgeRadius" format="dimension" />

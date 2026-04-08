@@ -42,6 +42,7 @@ class FelicitySeekbar @JvmOverloads constructor(
         defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr), SharedPreferences.OnSharedPreferenceChangeListener, ThemeChangedListener {
 
+
     interface OnSeekChangeListener {
         fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean)
         fun onStartTrackingTouch(seekbar: FelicitySeekbar) {}
@@ -98,11 +99,13 @@ class FelicitySeekbar @JvmOverloads constructor(
         ThemeManager.accent.primaryAccentColor
     }
 
-    private var trackHeightPx: Float
-    private var thumbRadiusPx: Float
+    // Fixed visual dimensions – tweak these two numbers to adjust the appearance for the whole app.
+    // trackHeightPx : height of the progress track bar.
+    // thumbRadiusPx : half-height of the pill thumb; width is always thumbRadiusPx × 4.
+    private var trackHeightPx: Float = 0f
+    private var thumbRadiusPx: Float = 0f
+    private var thumbWidthPx: Float = 0f
 
-    // New: horizontal width of pill-shaped thumb (full width, not half). Default set after radius init.
-    private var thumbWidthPx: Float
 
     private var smudgeEnabled = true
     private var smudgeRadius = 10f
@@ -332,13 +335,11 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     init {
         val d = resources.displayMetrics.density
-        trackHeightPx = 4f * d
-        thumbRadiusPx = 12f * d
-        // Default pill width matches the equalizer slider pill rotated 90°:
-        // equalizer halfHeight (24dp) × 2 = 48dp full width → halfWidth = 24dp = thumbRadiusPx * 2
-        thumbWidthPx = thumbRadiusPx * 4f
+        trackHeightPx = 8f * d   // 10 dp
+        thumbRadiusPx = 12f * d   // 12 dp half-height → 24 dp tall pill
+        thumbWidthPx = thumbRadiusPx * 4f   // 48 dp wide → natural 2:1 proportion
         // MD2 press ring defaults
-        pressRingOutsetPx = 6f * d
+        pressRingOutsetPx = 5f * d
         pressRingStrokePx = 2f * d
         pressRingColor = progressColor
         // Default indicator stroke width
@@ -372,9 +373,6 @@ class FelicitySeekbar @JvmOverloads constructor(
 
                 trackColor = getColor(R.styleable.FelicitySeekbar_felicityTrackColor, trackColor)
                 progressColor = getColor(R.styleable.FelicitySeekbar_felicityProgressColor, progressColor)
-                trackHeightPx = getDimension(R.styleable.FelicitySeekbar_felicityTrackHeight, trackHeightPx)
-                thumbRadiusPx = getDimension(R.styleable.FelicitySeekbar_felicityThumbRadius, thumbRadiusPx)
-                thumbWidthPx = getDimension(R.styleable.FelicitySeekbar_felicityThumbWidth, thumbWidthPx)
                 smudgeEnabled = getBoolean(R.styleable.FelicitySeekbar_felicitySmudgeEnabled, smudgeEnabled)
                 smudgeRadius = getDimension(R.styleable.FelicitySeekbar_felicitySmudgeRadius, 2f * d)
                 smudgeColor = getColor(R.styleable.FelicitySeekbar_felicitySmudgeColor, smudgeColor)
@@ -400,8 +398,6 @@ class FelicitySeekbar @JvmOverloads constructor(
             }
         }
 
-        // If width is smaller than diameter, coerce to diameter to avoid inverted corners
-        thumbWidthPx = max(thumbWidthPx, thumbRadiusPx * 2f)
 
         // Seed animated smudge radius from the configured XML value before first paint setup.
         currentSmudgeRadius = smudgeRadius
