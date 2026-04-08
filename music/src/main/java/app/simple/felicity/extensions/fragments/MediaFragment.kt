@@ -26,6 +26,8 @@ import app.simple.felicity.R
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.core.maths.Number.toNegative
 import app.simple.felicity.databinding.DialogDeleteSongBinding
+import app.simple.felicity.databinding.DialogEditPlaylistBinding
+import app.simple.felicity.databinding.DialogPlaylistMenuBinding
 import app.simple.felicity.databinding.DialogSongMenuBinding
 import app.simple.felicity.databinding.DialogSureBinding
 import app.simple.felicity.decorations.popups.SharedImageDialogMenu
@@ -44,6 +46,7 @@ import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.PlaylistWithSongs
 import app.simple.felicity.repository.shuffle.Shuffle.shuffle
 import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
@@ -783,6 +786,174 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
     fun openMilkdropPanel() {
         openFragment(Milkdrop.newInstance(), Milkdrop.TAG)
+    }
+
+    /**
+     * Opens the playlist context menu dialog for the given [item], mirroring the pattern of
+     * [openSongsMenu]. When an [imageView] is supplied the dialog animates in with a shared
+     * image transition; otherwise a plain fade is used.
+     *
+     * Available actions: Play, Shuffle, Add All to Queue, Share, Edit, Delete.
+     *
+     * @param item      The [PlaylistWithSongs] whose metadata populates the menu header and
+     *                  whose songs power the playback and share actions.
+     * @param imageView Optional source [ImageView] for the shared-element transition.
+     */
+    protected fun openPlaylistMenu(item: PlaylistWithSongs, imageView: ImageView?) {
+        val onViewCreated: (DialogPlaylistMenuBinding) -> Unit = { binding ->
+            miniPlayerCallbacks?.onHideMiniPlayer()
+            binding.title.text = item.playlist.name
+            binding.secondaryDetail.text = getString(R.string.x_songs, item.songs.size)
+            binding.tertiaryDetail.text = item.playlist.description.orEmpty()
+            if (imageView == null) {
+                item.songs.firstOrNull()?.let { binding.cover.loadArtCoverWithPayload(it) }
+            }
+        }
+
+        val onDialogInflated: (DialogPlaylistMenuBinding, () -> Unit) -> Unit = { binding, dismiss ->
+            binding.play.setOnClickListener {
+                if (item.songs.isNotEmpty()) setMediaItems(item.songs.toMutableList(), 0)
+                dismiss()
+            }
+
+            binding.shuffle.setOnClickListener {
+                if (item.songs.isNotEmpty()) shuffleMediaItems(item.songs)
+                dismiss()
+            }
+
+            binding.addAllToQueue.setOnClickListener {
+                item.songs.forEach { MediaPlaybackManager.addToQueue(it) }
+                dismiss()
+            }
+
+            binding.share.setOnClickListener {
+                dismiss()
+                sharePlaylistSongs(item)
+            }
+
+            binding.edit.setOnClickListener {
+                dismiss()
+                showEditPlaylistDialog(item)
+            }
+
+            binding.delete.setOnClickListener {
+                dismiss()
+                withSureDialog { confirmed ->
+                    if (confirmed) deletePlaylist(item)
+                }
+            }
+        }
+
+        val onDismissCallback: () -> Unit = {
+            miniPlayerCallbacks?.onShowMiniPlayer()
+        }
+
+        val widthRatio = if (BarHeight.isLandscape(requireContext())) 0.5F else SharedImageDialogMenu.DEFAULT_WIDTH_RATIO
+
+        if (imageView != null) {
+            SimpleSharedImageDialog.Builder(
+                    container = requireContainerView(),
+                    sourceImageView = imageView,
+                    inflateBinding = DialogPlaylistMenuBinding::inflate,
+                    targetImageViewProvider = { it.cover })
+                .onViewCreated(onViewCreated)
+                .onDialogInflated(onDialogInflated)
+                .onDismiss(onDismissCallback)
+                .setWidthRatio(widthRatio)
+                .build()
+                .show()
+        } else {
+            SimpleDialog.Builder(
+                    container = requireContainerView(),
+                    inflateBinding = DialogPlaylistMenuBinding::inflate)
+                .onViewCreated(onViewCreated)
+                .onDialogInflated(onDialogInflated)
+                .onDismiss(onDismissCallback)
+                .setWidthRatio(widthRatio)
+                .build()
+                .show()
+        }
+    }
+
+    /**
+     * Shares all songs in [item] as a multi-file send intent using [FileProvider] URIs.
+     * Silently skips any file whose URI cannot be resolved.
+     *
+     * @param item The [PlaylistWithSongs] whose songs will be shared.
+     */
+    private fun sharePlaylistSongs(item: PlaylistWithSongs) {
+        val uris = item.songs.mapNotNull { audio ->
+            runCatching {
+                FileProvider.getUriForFile(
+                        requireContext(),
+                        "${requireContext().packageName}.provider",
+                        File(audio.path)
+                )
+            }.getOrNull()
+        }
+        if (uris.isEmpty()) return
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
+            type = "audio/*"
+            putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, ArrayList(uris))
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(android.content.Intent.createChooser(intent, getString(R.string.send)))
+    }
+
+    /**
+     * Shows the "Edit Playlist" dialog pre-filled with the current [item] name and description.
+     * On confirmation the [item.playlist] row is updated in the database via the IO dispatcher.
+     *
+     * @param item The [PlaylistWithSongs] whose metadata will be edited.
+     */
+    private fun showEditPlaylistDialog(item: PlaylistWithSongs) {
+        SimpleDialog.Builder(
+                container = requireContainerView(),
+                inflateBinding = DialogEditPlaylistBinding::inflate)
+            .onViewCreated { binding ->
+                binding.playlistNameInput.setText(item.playlist.name)
+                binding.playlistNameInput.requestFocus()
+                val description = item.playlist.description
+                if (!description.isNullOrEmpty()) {
+                    binding.playlistDescriptionInput.setText(description)
+                }
+            }
+            .onDialogInflated { binding, dismiss ->
+                binding.cancel.setOnClickListener { dismiss() }
+
+                binding.save.setOnClickListener {
+                    val newName = binding.playlistNameInput.text?.toString()?.trim()
+                    if (newName.isNullOrEmpty()) return@setOnClickListener
+                    val newDescription = binding.playlistDescriptionInput.text
+                        ?.toString()?.trim()
+                        .takeUnless { it.isNullOrEmpty() }
+                    viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                        val updated = item.playlist.copy(
+                                name = newName,
+                                description = newDescription,
+                                dateModified = System.currentTimeMillis()
+                        )
+                        AudioDatabase.getInstance(requireContext()).playlistDao().updatePlaylist(updated)
+                    }
+                    dismiss()
+                }
+            }
+            .onDismiss { /* no-op */ }
+            .build()
+            .show()
+    }
+
+    /**
+     * Deletes [item]'s playlist row from the database on the IO dispatcher. All associated
+     * cross-ref rows are removed automatically by Room's cascade-delete foreign key.
+     *
+     * @param item The [PlaylistWithSongs] to delete.
+     */
+    private fun deletePlaylist(item: PlaylistWithSongs) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            AudioDatabase.getInstance(requireContext()).playlistDao().deletePlaylist(item.playlist)
+            Log.d(TAG, "Playlist deleted: ${item.playlist.name}")
+        }
     }
 
     override val wantsMiniPlayerVisible: Boolean

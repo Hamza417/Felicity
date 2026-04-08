@@ -115,8 +115,8 @@ class Playlists : PanelFragment() {
             adapterPlaylists?.setOnPlaylistClicked { playlist ->
                 openFragment(PlaylistPage.newInstance(playlist), PlaylistPage.TAG)
             }
-            adapterPlaylists?.setOnPlaylistLongClicked { _ ->
-                // TODO: show playlist context menu
+            adapterPlaylists?.setOnPlaylistLongClicked { item, imageView ->
+                openPlaylistMenu(item, imageView)
             }
             binding.recyclerView.adapter = adapterPlaylists
         } else {

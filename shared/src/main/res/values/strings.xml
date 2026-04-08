@@ -358,6 +358,8 @@
     <string name="new_playlist">New Playlist</string>
     <string name="playlist_name">Playlist Name</string>
     <string name="playlist_description">Description (optional)</string>
+    <string name="edit_playlist">Edit Playlist</string>
+    <string name="add_all_to_queue">Add All to Queue</string>
     <string name="x_playlists">%1$d Playlists</string>
     <string name="no_playlists">No Playlists</string>
     <string name="untitled_playlist">Untitled Playlist</string>

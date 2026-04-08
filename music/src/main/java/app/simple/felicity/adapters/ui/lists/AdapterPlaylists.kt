@@ -3,13 +3,13 @@ package app.simple.felicity.adapters.ui.lists
 import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.recyclerview.widget.AsyncDifferConfig
 import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
 import app.simple.felicity.R
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.core.utils.StringUtils.ifNullOrBlank
 import app.simple.felicity.databinding.AdapterStyleGridBinding
 import app.simple.felicity.databinding.AdapterStyleLabelsBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
@@ -43,7 +43,7 @@ import com.bumptech.glide.Glide
 class AdapterPlaylists(initial: List<PlaylistWithSongs>) : FastScrollAdapter<VerticalListViewHolder>() {
 
     private var onPlaylistClicked: ((Playlist) -> Unit)? = null
-    private var onPlaylistLongClicked: ((Playlist) -> Unit)? = null
+    private var onPlaylistLongClicked: ((PlaylistWithSongs, ImageView?) -> Unit)? = null
 
     private val listUpdateCallback = object : ListUpdateCallback {
         @SuppressLint("NotifyDataSetChanged")
@@ -149,7 +149,7 @@ class AdapterPlaylists(initial: List<PlaylistWithSongs>) : FastScrollAdapter<Ver
     }
 
     /** Registers a callback fired when the user long-presses a playlist row. */
-    fun setOnPlaylistLongClicked(block: (Playlist) -> Unit) {
+    fun setOnPlaylistLongClicked(block: (PlaylistWithSongs, ImageView?) -> Unit) {
         onPlaylistLongClicked = block
     }
 
@@ -165,14 +165,14 @@ class AdapterPlaylists(initial: List<PlaylistWithSongs>) : FastScrollAdapter<Ver
         fun bind(item: PlaylistWithSongs, isLightBind: Boolean) {
             binding.title.setTextOrUnknown(item.playlist.name)
             binding.secondaryDetail.text = binding.root.context.getString(R.string.x_songs, item.songs.size)
-            binding.tertiaryDetail.text = item.playlist.description.ifNullOrBlank(getString(R.string.not_available))
+            binding.tertiaryDetail.text = item.playlist.description.orEmpty()
             if (isLightBind) return
             item.songs.firstOrNull()?.let { binding.cover.loadArtCoverWithPayload(it) }
             binding.container.setOnClickListener {
                 onPlaylistClicked?.invoke(item.playlist)
             }
             binding.container.setOnLongClickListener {
-                onPlaylistLongClicked?.invoke(item.playlist)
+                onPlaylistLongClicked?.invoke(item, binding.cover)
                 true
             }
         }
@@ -190,14 +190,14 @@ class AdapterPlaylists(initial: List<PlaylistWithSongs>) : FastScrollAdapter<Ver
         fun bind(item: PlaylistWithSongs, isLightBind: Boolean) {
             binding.title.setTextOrUnknown(item.playlist.name)
             binding.secondaryDetail.text = binding.root.context.getString(R.string.x_songs, item.songs.size)
-            binding.tertiaryDetail.text = item.playlist.description.ifNullOrBlank(getString(R.string.not_available))
+            binding.tertiaryDetail.text = item.playlist.description.orEmpty()
             if (isLightBind) return
             item.songs.firstOrNull()?.let { binding.albumArt.loadArtCoverWithPayload(it) }
             binding.container.setOnClickListener {
                 onPlaylistClicked?.invoke(item.playlist)
             }
             binding.container.setOnLongClickListener {
-                onPlaylistLongClicked?.invoke(item.playlist)
+                onPlaylistLongClicked?.invoke(item, binding.albumArt)
                 true
             }
         }
@@ -215,13 +215,13 @@ class AdapterPlaylists(initial: List<PlaylistWithSongs>) : FastScrollAdapter<Ver
         fun bind(item: PlaylistWithSongs, isLightBind: Boolean) {
             binding.title.setTextOrUnknown(item.playlist.name)
             binding.secondaryDetail.text = binding.root.context.getString(R.string.x_songs, item.songs.size)
-            binding.tertiaryDetail.text = item.playlist.description.ifNullOrBlank(getString(R.string.not_available))
+            binding.tertiaryDetail.text = item.playlist.description.orEmpty()
             if (isLightBind) return
             binding.container.setOnClickListener {
                 onPlaylistClicked?.invoke(item.playlist)
             }
             binding.container.setOnLongClickListener {
-                onPlaylistLongClicked?.invoke(item.playlist)
+                onPlaylistLongClicked?.invoke(item, null)
                 true
             }
         }
