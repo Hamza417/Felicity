@@ -14,23 +14,22 @@ import app.simple.felicity.databinding.AdapterPlaylistsBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.preferences.PlaylistPreferences
 import app.simple.felicity.repository.models.Playlist
+import app.simple.felicity.repository.models.PlaylistWithSongs
 
 /**
  * Recycler adapter for the Playlists panel.
- * Each item displays the playlist name and its total song count.
- * Tapping an item opens the playlist; long-pressing shows the context menu.
+ * Each item displays the playlist name and its current song count. The count is derived
+ * directly from [PlaylistWithSongs.songs] which Room keeps reactive via the junction table,
+ * so the displayed count automatically updates whenever songs are added or removed.
  *
- * @param initial The initial list of playlists to display.
+ * @param initial The initial list of playlists with their song counts.
  *
  * @author Hamza417
  */
-class AdapterPlaylists(initial: List<Playlist>) : RecyclerView.Adapter<AdapterPlaylists.ViewHolder>() {
+class AdapterPlaylists(initial: List<PlaylistWithSongs>) : RecyclerView.Adapter<AdapterPlaylists.ViewHolder>() {
 
     private var onPlaylistClicked: ((Playlist) -> Unit)? = null
     private var onPlaylistLongClicked: ((Playlist) -> Unit)? = null
-
-    /** Per-playlist song count map populated asynchronously. */
-    private val songCountMap: MutableMap<Long, Int> = mutableMapOf()
 
     private val listUpdateCallback = object : ListUpdateCallback {
         @SuppressLint("NotifyDataSetChanged")
@@ -43,23 +42,21 @@ class AdapterPlaylists(initial: List<Playlist>) : RecyclerView.Adapter<AdapterPl
             if (count > 50) notifyDataSetChanged() else notifyItemRangeRemoved(position, count)
         }
 
-        override fun onMoved(fromPosition: Int, toPosition: Int) {
-            notifyItemMoved(fromPosition, toPosition)
-        }
+        override fun onMoved(fromPosition: Int, toPosition: Int) = notifyItemMoved(fromPosition, toPosition)
 
-        override fun onChanged(position: Int, count: Int, payload: Any?) {
+        override fun onChanged(position: Int, count: Int, payload: Any?) =
             notifyItemRangeChanged(position, count, payload)
-        }
     }
 
-    private val diffCallback = object : DiffUtil.ItemCallback<Playlist>() {
-        override fun areItemsTheSame(oldItem: Playlist, newItem: Playlist): Boolean =
-            oldItem.id == newItem.id
+    private val diffCallback = object : DiffUtil.ItemCallback<PlaylistWithSongs>() {
+        override fun areItemsTheSame(oldItem: PlaylistWithSongs, newItem: PlaylistWithSongs): Boolean =
+            oldItem.playlist.id == newItem.playlist.id
 
-        override fun areContentsTheSame(oldItem: Playlist, newItem: Playlist): Boolean =
-            oldItem.name == newItem.name &&
-                    oldItem.dateModified == newItem.dateModified &&
-                    oldItem.isPinned == newItem.isPinned
+        override fun areContentsTheSame(oldItem: PlaylistWithSongs, newItem: PlaylistWithSongs): Boolean =
+            oldItem.playlist.name == newItem.playlist.name &&
+                    oldItem.playlist.dateModified == newItem.playlist.dateModified &&
+                    oldItem.playlist.isPinned == newItem.playlist.isPinned &&
+                    oldItem.songs.size == newItem.songs.size
     }
 
     private val differ = AsyncListDiffer(
@@ -67,12 +64,11 @@ class AdapterPlaylists(initial: List<Playlist>) : RecyclerView.Adapter<AdapterPl
             AsyncDifferConfig.Builder(diffCallback).build()
     )
 
-    private val playlists: List<Playlist> get() = differ.currentList
+    private val items: List<PlaylistWithSongs> get() = differ.currentList
 
     /**
-     * Current layout mode for this panel. Update this when the grid-size preference changes
-     * and call [notifyItemRangeChanged] to trigger a visual refresh alongside updating the
-     * span count on the layout manager.
+     * Current layout mode. Update when the grid-size preference changes and call
+     * [notifyItemRangeChanged] alongside updating the layout manager span count.
      */
     var layoutMode: CommonPreferencesConstants.LayoutMode = PlaylistPreferences.getGridSize()
 
@@ -81,7 +77,7 @@ class AdapterPlaylists(initial: List<Playlist>) : RecyclerView.Adapter<AdapterPl
         differ.submitList(initial)
     }
 
-    override fun getItemId(position: Int): Long = playlists[position].id
+    override fun getItemId(position: Int): Long = items[position].playlist.id
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         return ViewHolder(
@@ -89,31 +85,19 @@ class AdapterPlaylists(initial: List<Playlist>) : RecyclerView.Adapter<AdapterPl
         )
     }
 
-    override fun getItemCount(): Int = playlists.size
+    override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(playlists[position])
+        holder.bind(items[position])
     }
 
     /**
      * Submits an updated playlist list. The differ runs the comparison on a background thread.
      *
-     * @param list The new list of playlists.
+     * @param list The new list of playlists with song counts.
      */
-    fun updatePlaylists(list: List<Playlist>) {
+    fun updatePlaylists(list: List<PlaylistWithSongs>) {
         differ.submitList(list)
-    }
-
-    /**
-     * Updates the displayed song count for a single playlist row.
-     *
-     * @param playlistId The playlist whose count changed.
-     * @param count      The new song count.
-     */
-    fun updateSongCount(playlistId: Long, count: Int) {
-        songCountMap[playlistId] = count
-        val index = playlists.indexOfFirst { it.id == playlistId }
-        if (index != -1) notifyItemChanged(index)
     }
 
     /** Registers a callback fired when the user taps a playlist row. */
@@ -129,20 +113,18 @@ class AdapterPlaylists(initial: List<Playlist>) : RecyclerView.Adapter<AdapterPl
     inner class ViewHolder(private val binding: AdapterPlaylistsBinding) :
             VerticalListViewHolder(binding.root) {
 
-        fun bind(playlist: Playlist) {
-            binding.name.text = playlist.name
-            val count = songCountMap[playlist.id] ?: 0
-            binding.count.text = binding.root.context.getString(R.string.x_songs, count)
+        fun bind(item: PlaylistWithSongs) {
+            binding.name.text = item.playlist.name
+            binding.count.text = binding.root.context.getString(R.string.x_songs, item.songs.size)
 
             binding.container.setOnClickListener {
-                onPlaylistClicked?.invoke(playlist)
+                onPlaylistClicked?.invoke(item.playlist)
             }
 
             binding.container.setOnLongClickListener {
-                onPlaylistLongClicked?.invoke(playlist)
+                onPlaylistLongClicked?.invoke(item.playlist)
                 true
             }
         }
     }
 }
-

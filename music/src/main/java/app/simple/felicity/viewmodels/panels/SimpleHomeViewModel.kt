@@ -38,6 +38,7 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
                     Panel(R.string.artists, R.drawable.ic_artist),
                     Panel(R.string.genres, R.drawable.ic_piano),
                     Panel(R.string.year, R.drawable.ic_date_range),
+                    Panel(R.string.playlists, R.drawable.ic_list),
                     Group(R.string.activity),
                     Panel(R.string.playing_queue, R.drawable.ic_queue),
                     Panel(R.string.recently_added, R.drawable.ic_recently_added),
@@ -47,7 +48,6 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
                     Group(R.string.files),
                     Panel(R.string.folders, R.drawable.ic_folder),
                     Panel(R.string.folders_hierarchy, R.drawable.ic_tree),
-                    // Element(R.string.playlists, R.drawable.ic_list),
                     // Group(R.string.general),
                     // Panel(R.string.preferences, R.drawable.ic_settings)
             )

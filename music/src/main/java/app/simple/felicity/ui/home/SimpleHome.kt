@@ -27,6 +27,7 @@ import app.simple.felicity.ui.panels.FoldersHierarchy
 import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.panels.MostPlayed
 import app.simple.felicity.ui.panels.PlayingQueue
+import app.simple.felicity.ui.panels.Playlists
 import app.simple.felicity.ui.panels.Preferences
 import app.simple.felicity.ui.panels.RecentlyAdded
 import app.simple.felicity.ui.panels.RecentlyPlayed
@@ -126,6 +127,9 @@ class SimpleHome : PanelFragment() {
                     }
                     R.string.favorites -> {
                         openFragment(Favorites.newInstance(), Favorites.TAG)
+                    }
+                    R.string.playlists -> {
+                        openFragment(Playlists.newInstance(), Playlists.TAG)
                     }
                     else -> {
                         // Handle other cases or show a message

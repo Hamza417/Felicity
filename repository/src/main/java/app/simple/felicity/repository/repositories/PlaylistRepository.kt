@@ -2,13 +2,18 @@ package app.simple.felicity.repository.repositories
 
 import android.content.Context
 import app.simple.felicity.repository.database.instances.AudioDatabase
+import app.simple.felicity.repository.models.Album
+import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.repository.models.Playlist
 import app.simple.felicity.repository.models.PlaylistSongCrossRef
 import app.simple.felicity.repository.models.PlaylistWithSongs
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -69,6 +74,62 @@ class PlaylistRepository @Inject constructor(
      */
     fun getSongsInPlaylistOrdered(playlistId: Long): Flow<List<Audio>> =
         dao.getSongsInPlaylistOrdered(playlistId)
+
+    /**
+     * Returns a reactive [Flow] of [PageData] for the given playlist.
+     *
+     * <p>Songs are fetched in the user-defined manual position order from the cross-ref table.
+     * Artists, albums, and genres are derived in-memory by aggregating the song metadata.</p>
+     *
+     * @param playlist The playlist to build page data for.
+     */
+    fun getPlaylistPageData(playlist: Playlist): Flow<PageData> =
+        dao.getSongsInPlaylistOrdered(playlist.id).map { songs ->
+            val albumsMap = songs.groupBy { it.album }
+                .mapNotNull { (albumName, albumSongs) ->
+                    if (albumName.isNullOrEmpty()) return@mapNotNull null
+                    val primaryArtist = albumSongs.firstOrNull()?.artist ?: ""
+                    Album(
+                            id = albumName.hashCode().toLong(),
+                            name = albumName,
+                            artist = primaryArtist,
+                            artistId = primaryArtist.hashCode().toLong(),
+                            songCount = albumSongs.size,
+                            songPaths = albumSongs.map { it.path }
+                    )
+                }
+
+            val artistsMap = songs.groupBy { it.artist }
+                .mapNotNull { (artistName, artistSongs) ->
+                    if (artistName.isNullOrEmpty()) return@mapNotNull null
+                    val uniqueAlbums = artistSongs.mapNotNull { it.album }.distinct().size
+                    Artist(
+                            id = artistName.hashCode().toLong(),
+                            name = artistName,
+                            albumCount = uniqueAlbums,
+                            trackCount = artistSongs.size,
+                            songPaths = artistSongs.map { it.path }
+                    )
+                }
+
+            val genresMap = songs.groupBy { it.genre }
+                .mapNotNull { (genreName, genreSongs) ->
+                    if (genreName.isNullOrEmpty()) return@mapNotNull null
+                    Genre(
+                            id = genreName.hashCode().toLong(),
+                            name = genreName,
+                            songPaths = genreSongs.map { it.path },
+                            songCount = genreSongs.size
+                    )
+                }
+
+            PageData(
+                    songs = songs,
+                    albums = albumsMap,
+                    artists = artistsMap,
+                    genres = genresMap
+            )
+        }
 
     /**
      * Returns a reactive [Flow] emitting the current song count for the given playlist.

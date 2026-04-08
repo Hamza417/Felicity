@@ -24,6 +24,7 @@ import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Folder
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.PageData
+import app.simple.felicity.repository.models.Playlist
 import app.simple.felicity.repository.models.YearGroup
 import app.simple.felicity.shared.constants.PageConstants
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
@@ -51,6 +52,7 @@ class PageAdapter(
         data class GenrePage(val genre: Genre) : PageType()
         data class FolderPage(val folder: Folder) : PageType()
         data class YearPage(val yearGroup: YearGroup) : PageType()
+        data class PlaylistPage(val playlist: Playlist) : PageType()
     }
 
     init {
@@ -193,6 +195,20 @@ class PageAdapter(
                         songs = data.songs
                 ))
             }
+            is PageType.PlaylistPage -> {
+                items.add(PageItem.Header(
+                        album = Album(
+                                id = pageType.playlist.id,
+                                name = pageType.playlist.name,
+                                artist = pageType.playlist.description ?: "",
+                                artistId = 0L
+                        ),
+                        totalSongs = data.songs.size,
+                        totalDuration = data.songs.sumOf { it.duration },
+                        albumArtists = data.artists,
+                        songs = data.songs
+                ))
+            }
         }
 
         // Add all songs
@@ -212,6 +228,7 @@ class PageAdapter(
                 is PageType.GenrePage -> pageType.genre.name
                 is PageType.FolderPage -> pageType.folder.name
                 is PageType.YearPage -> pageType.yearGroup.year
+                is PageType.PlaylistPage -> pageType.playlist.name
             }
             items.add(PageItem.AlbumsSection(
                     albums = data.albums,
@@ -366,6 +383,10 @@ class PageAdapter(
                         R.string.albums_in_folder,
                         item.artistName ?: context.getString(R.string.unknown)
                 )
+                is PageType.PlaylistPage -> context.getString(
+                        R.string.albums_in_playlist,
+                        item.artistName ?: context.getString(R.string.unknown)
+                )
             }
 
             if (binding.recyclerView.adapter == null) {
@@ -417,6 +438,10 @@ class PageAdapter(
                 is PageType.YearPage -> context.getString(
                         R.string.artists_in_folder,
                         pageType.yearGroup.year
+                )
+                is PageType.PlaylistPage -> context.getString(
+                        R.string.artists_in_playlist,
+                        pageType.playlist.name
                 )
             }
 
@@ -483,7 +508,7 @@ class PageAdapter(
 
                 // Show art flow for albums and artists
                 when (pageType) {
-                    is PageType.AlbumPage, is PageType.ArtistPage, is PageType.FolderPage -> {
+                    is PageType.AlbumPage, is PageType.ArtistPage, is PageType.FolderPage, is PageType.PlaylistPage -> {
                         artFlow.visibility = View.VISIBLE
                         when {
                             item.songs.isNotEmpty() -> {

@@ -19,9 +19,10 @@ import app.simple.felicity.dialogs.playlists.PlaylistsMenu.Companion.showPlaylis
 import app.simple.felicity.dialogs.playlists.PlaylistsSort.Companion.showPlaylistsSort
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.PlaylistPreferences
-import app.simple.felicity.repository.models.Playlist
+import app.simple.felicity.repository.models.PlaylistWithSongs
 import app.simple.felicity.repository.sort.PlaylistSort.setPlaylistOrder
 import app.simple.felicity.repository.sort.PlaylistSort.setPlaylistSort
+import app.simple.felicity.ui.pages.PlaylistPage
 import app.simple.felicity.viewmodels.panels.PlaylistsViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -106,13 +107,13 @@ class Playlists : PanelFragment() {
     /**
      * Initializes or updates the playlist adapter and refreshes the header count chip.
      *
-     * @param playlists The latest sorted list of [Playlist] objects.
+     * @param playlists The latest sorted list of [PlaylistWithSongs] objects.
      */
-    private fun updateList(playlists: List<Playlist>) {
+    private fun updateList(playlists: List<PlaylistWithSongs>) {
         if (adapterPlaylists == null) {
             adapterPlaylists = AdapterPlaylists(playlists)
-            adapterPlaylists?.setOnPlaylistClicked { _ ->
-                // TODO: open playlist detail panel
+            adapterPlaylists?.setOnPlaylistClicked { playlist ->
+                openFragment(PlaylistPage.newInstance(playlist), PlaylistPage.TAG)
             }
             adapterPlaylists?.setOnPlaylistLongClicked { _ ->
                 // TODO: show playlist context menu

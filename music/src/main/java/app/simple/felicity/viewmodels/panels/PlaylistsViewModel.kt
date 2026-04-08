@@ -7,7 +7,7 @@ import androidx.lifecycle.viewModelScope
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.PlaylistPreferences
-import app.simple.felicity.repository.models.Playlist
+import app.simple.felicity.repository.models.PlaylistWithSongs
 import app.simple.felicity.repository.repositories.PlaylistRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -22,8 +22,9 @@ import javax.inject.Inject
 
 /**
  * ViewModel for the Playlists panel.
- * Loads and sorts playlists from [PlaylistRepository] using [PlaylistPreferences]-driven
- * sort/order without a round-trip to the database when only the sort changes.
+ * Loads playlists paired with their song lists from [PlaylistRepository] using
+ * [getAllPlaylistsWithSongs] so the song count is always up to date without a
+ * separate query. Sorting is performed in-memory to avoid round-trips.
  *
  * @author Hamza417
  */
@@ -33,11 +34,11 @@ class PlaylistsViewModel @Inject constructor(
         private val playlistRepository: PlaylistRepository
 ) : WrappedViewModel(application) {
 
-    private val _playlists = MutableStateFlow<List<Playlist>>(emptyList())
-    val playlists: StateFlow<List<Playlist>> = _playlists.asStateFlow()
+    private val _playlists = MutableStateFlow<List<PlaylistWithSongs>>(emptyList())
+    val playlists: StateFlow<List<PlaylistWithSongs>> = _playlists.asStateFlow()
 
     /** Cached raw list kept for cheap in-memory re-sorts. */
-    private var rawList: List<Playlist> = emptyList()
+    private var rawList: List<PlaylistWithSongs> = emptyList()
 
     private var loadJob: Job? = null
 
@@ -48,7 +49,7 @@ class PlaylistsViewModel @Inject constructor(
     private fun loadPlaylists() {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            playlistRepository.getAllPlaylistsPinned()
+            playlistRepository.getAllPlaylistsWithSongs()
                 .catch { e ->
                     Log.e(TAG, "Error loading playlists", e)
                     emit(emptyList())
@@ -65,30 +66,35 @@ class PlaylistsViewModel @Inject constructor(
     private fun resort() {
         viewModelScope.launch(Dispatchers.Default) {
             _playlists.value = rawList.sorted()
-            Log.d(TAG, "resort: ${_playlists.value.size} playlists re-sorted")
         }
     }
 
     /**
-     * Sorts the raw playlist list according to the current [PlaylistPreferences] sort
-     * field and direction, returning the sorted copy.
+     * Sorts the raw playlist-with-songs list according to the current [PlaylistPreferences]
+     * sort field and direction, returning the sorted copy.
      */
-    private fun List<Playlist>.sorted(): List<Playlist> {
+    private fun List<PlaylistWithSongs>.sorted(): List<PlaylistWithSongs> {
         val ascending = PlaylistPreferences.getSortingStyle() == CommonPreferencesConstants.ASCENDING
         return when (PlaylistPreferences.getSongSort()) {
-            CommonPreferencesConstants.BY_NAME -> if (ascending) sortedBy { it.name.lowercase() }
-            else sortedByDescending { it.name.lowercase() }
+            CommonPreferencesConstants.BY_NAME ->
+                if (ascending) sortedBy { it.playlist.name.lowercase() }
+                else sortedByDescending { it.playlist.name.lowercase() }
 
-            CommonPreferencesConstants.BY_DATE_ADDED -> if (ascending) sortedBy { it.dateCreated }
-            else sortedByDescending { it.dateCreated }
+            CommonPreferencesConstants.BY_DATE_ADDED ->
+                if (ascending) sortedBy { it.playlist.dateCreated }
+                else sortedByDescending { it.playlist.dateCreated }
 
-            CommonPreferencesConstants.BY_DATE_MODIFIED -> if (ascending) sortedBy { it.dateModified }
-            else sortedByDescending { it.dateModified }
+            CommonPreferencesConstants.BY_DATE_MODIFIED ->
+                if (ascending) sortedBy { it.playlist.dateModified }
+                else sortedByDescending { it.playlist.dateModified }
 
-            CommonPreferencesConstants.BY_NUMBER_OF_SONGS -> this // Count sorting is done post-load
+            CommonPreferencesConstants.BY_NUMBER_OF_SONGS ->
+                if (ascending) sortedBy { it.songs.size }
+                else sortedByDescending { it.songs.size }
 
-            else -> if (ascending) sortedBy { it.name.lowercase() }
-            else sortedByDescending { it.name.lowercase() }
+            else ->
+                if (ascending) sortedBy { it.playlist.name.lowercase() }
+                else sortedByDescending { it.playlist.name.lowercase() }
         }
     }
 
@@ -104,4 +110,3 @@ class PlaylistsViewModel @Inject constructor(
         private const val TAG = "PlaylistsViewModel"
     }
 }
-
