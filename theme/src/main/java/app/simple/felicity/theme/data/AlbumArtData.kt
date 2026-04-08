@@ -82,7 +82,7 @@ object AlbumArtData {
         tertiaryTextColorDark = palette.getNeutralTone(70.0)
         quaternaryTextColorDark = palette.getNeutralTone(60.0)
         backgroundDark = palette.getNeutralTone(6.0)
-        highlightBackgroundDark = palette.getNeutralVariantTone(30.0)
+        highlightBackgroundDark = palette.getNeutralVariantTone(15.0)
         selectedBackgroundDark = palette.getNeutralTone(20.0)
         dividerBackgroundDark = palette.getNeutralTone(40.0)
         spotColorDark = palette.getPrimaryTone(80.0)
