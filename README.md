@@ -89,7 +89,9 @@ This feature list is not exhaustive and only main features are listed.
 - [x] Milkdrop visualizer support
 - [ ] Crossfade support
 - [ ] Multiple Player interface styles.
-- [ ] Playlist support
+- [x] Playlist support
+- [ ] m3u and pls playlist support
+- [ ] Metadata editing support
 - [ ] Cue sheet support
 - [ ] Local server for centralized music access across multiple devices.
 - [ ] Selection support for library management and playlist creation.
