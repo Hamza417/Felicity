@@ -49,6 +49,8 @@ class AudioDatabaseService : Service() {
             val intent = Intent(context, AudioDatabaseService::class.java).apply {
                 action = ACTION_REFRESH_SCAN
             }
+
+            // TODO: catch the exception here
             context.startService(intent)
         }
     }

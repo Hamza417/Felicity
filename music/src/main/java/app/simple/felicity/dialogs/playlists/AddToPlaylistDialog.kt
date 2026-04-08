@@ -7,12 +7,10 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.dialogs.AdapterPlaylistCheckbox
 import app.simple.felicity.databinding.DialogAddToPlaylistBinding
-import app.simple.felicity.databinding.DialogCreatePlaylistBinding
-import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.dialogs.playlists.AddToPlaylistDialog.Companion.newInstance
+import app.simple.felicity.dialogs.playlists.CreatePlaylistDialog.Companion.showCreatePlaylistDialog
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Playlist
@@ -124,35 +122,18 @@ class AddToPlaylistDialog : ScopedBottomSheetFragment() {
     }
 
     /**
-     * Shows an inline "Create Playlist" dialog. On confirmation it creates the playlist
-     * and reloads the list so the new entry appears pre-checked and ready to save.
+     * Shows the "Create Playlist" bottom-sheet via [parentFragmentManager] so it sits on top
+     * of this dialog without being dismissed when this sheet is hidden. Reloads the playlist
+     * list once the new playlist is successfully created.
      */
     private fun showCreatePlaylistDialog() {
-        val container = requireActivity().findViewById<ViewGroup>(R.id.app_container)
-        SimpleDialog.Builder(
-                container = container,
-                inflateBinding = DialogCreatePlaylistBinding::inflate)
-            .onViewCreated { dialogBinding ->
-                dialogBinding.playlistNameInput.requestFocus()
-            }
-            .onDialogInflated { dialogBinding, dismiss ->
-                dialogBinding.cancel.setOnClickListener { dismiss() }
-
-                dialogBinding.create.setOnClickListener {
-                    val name = dialogBinding.playlistNameInput.text?.toString()?.trim()
-                    if (name.isNullOrEmpty()) return@setOnClickListener
-
-                    viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                        playlistRepository.createPlaylist(name)
-                        withContext(Dispatchers.Main) {
-                            dismiss()
-                            loadPlaylists()
-                        }
+        parentFragmentManager.showCreatePlaylistDialog(
+                listener = object : CreatePlaylistDialog.OnPlaylistCreatedListener {
+                    override fun onPlaylistCreated(name: String) {
+                        loadPlaylists()
                     }
                 }
-            }
-            .build()
-            .show()
+        )
     }
 
     companion object {

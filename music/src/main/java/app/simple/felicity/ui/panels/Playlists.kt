@@ -11,26 +11,23 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.adapters.ui.lists.AdapterPlaylists
-import app.simple.felicity.databinding.DialogCreatePlaylistBinding
 import app.simple.felicity.databinding.FragmentPlaylistsBinding
 import app.simple.felicity.databinding.HeaderPlaylistsBinding
-import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.playlists.CreatePlaylistDialog.Companion.showCreatePlaylistDialog
+import app.simple.felicity.dialogs.playlists.PlaylistsMenu.Companion.showPlaylistsMenu
 import app.simple.felicity.dialogs.playlists.PlaylistsSort.Companion.showPlaylistsSort
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.PlaylistPreferences
 import app.simple.felicity.repository.models.Playlist
-import app.simple.felicity.repository.repositories.PlaylistRepository
 import app.simple.felicity.repository.sort.PlaylistSort.setPlaylistOrder
 import app.simple.felicity.repository.sort.PlaylistSort.setPlaylistSort
 import app.simple.felicity.viewmodels.panels.PlaylistsViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
- * Panel fragment that displays all user-created playlists with sort, search, and
+ * Panel fragment that displays all user-created playlists with sort, list-style, and
  * "New Playlist" creation support. Follows the same structural pattern as
  * [Songs] and [Favorites].
  *
@@ -43,9 +40,7 @@ class Playlists : PanelFragment() {
     private lateinit var headerBinding: HeaderPlaylistsBinding
 
     private var adapterPlaylists: AdapterPlaylists? = null
-
-    @Inject
-    lateinit var playlistRepository: PlaylistRepository
+    private var gridLayoutManager: GridLayoutManager? = null
 
     private val playlistsViewModel: PlaylistsViewModel by viewModels()
 
@@ -61,7 +56,10 @@ class Playlists : PanelFragment() {
         binding.recyclerView.requireAttachedMiniPlayer()
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-        binding.recyclerView.layoutManager = GridLayoutManager(requireContext(), 1)
+
+        val mode = PlaylistPreferences.getGridSize()
+        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
+        binding.recyclerView.layoutManager = gridLayoutManager
 
         setupClickListeners()
 
@@ -80,12 +78,17 @@ class Playlists : PanelFragment() {
 
     override fun onDestroyView() {
         adapterPlaylists = null
+        gridLayoutManager = null
         super.onDestroyView()
     }
 
     private fun setupClickListeners() {
         headerBinding.sortStyle.setPlaylistSort()
         headerBinding.sortOrder.setPlaylistOrder()
+
+        headerBinding.menu.setOnClickListener {
+            childFragmentManager.showPlaylistsMenu()
+        }
 
         headerBinding.sortStyle.setOnClickListener {
             childFragmentManager.showPlaylistsSort()
@@ -96,7 +99,7 @@ class Playlists : PanelFragment() {
         }
 
         headerBinding.newPlaylist.setOnClickListener {
-            showCreatePlaylistDialog()
+            childFragmentManager.showCreatePlaylistDialog()
         }
     }
 
@@ -108,10 +111,10 @@ class Playlists : PanelFragment() {
     private fun updateList(playlists: List<Playlist>) {
         if (adapterPlaylists == null) {
             adapterPlaylists = AdapterPlaylists(playlists)
-            adapterPlaylists?.setOnPlaylistClicked { playlist ->
+            adapterPlaylists?.setOnPlaylistClicked { _ ->
                 // TODO: open playlist detail panel
             }
-            adapterPlaylists?.setOnPlaylistLongClicked { playlist ->
+            adapterPlaylists?.setOnPlaylistLongClicked { _ ->
                 // TODO: show playlist context menu
             }
             binding.recyclerView.adapter = adapterPlaylists
@@ -127,32 +130,6 @@ class Playlists : PanelFragment() {
         headerBinding.sortOrder.setPlaylistOrder()
     }
 
-    /**
-     * Shows the inline "New Playlist" creation dialog with a name input.
-     */
-    private fun showCreatePlaylistDialog() {
-        SimpleDialog.Builder(
-                container = requireContainerView(),
-                inflateBinding = DialogCreatePlaylistBinding::inflate)
-            .onViewCreated { dialogBinding ->
-                dialogBinding.playlistNameInput.requestFocus()
-            }
-            .onDialogInflated { dialogBinding, dismiss ->
-                dialogBinding.cancel.setOnClickListener { dismiss() }
-
-                dialogBinding.create.setOnClickListener {
-                    val name = dialogBinding.playlistNameInput.text?.toString()?.trim()
-                    if (name.isNullOrEmpty()) return@setOnClickListener
-                    viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                        playlistRepository.createPlaylist(name)
-                    }
-                    dismiss()
-                }
-            }
-            .build()
-            .show()
-    }
-
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
@@ -160,6 +137,13 @@ class Playlists : PanelFragment() {
             PlaylistPreferences.SORTING_STYLE -> {
                 headerBinding.sortStyle.setPlaylistSort()
                 headerBinding.sortOrder.setPlaylistOrder()
+            }
+            PlaylistPreferences.GRID_SIZE_PORTRAIT, PlaylistPreferences.GRID_SIZE_LANDSCAPE -> {
+                val newMode = PlaylistPreferences.getGridSize()
+                gridLayoutManager?.spanCount = newMode.spanCount
+                adapterPlaylists?.layoutMode = newMode
+                binding.recyclerView.beginDelayedTransition()
+                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
         }
     }
@@ -174,4 +158,3 @@ class Playlists : PanelFragment() {
         }
     }
 }
-

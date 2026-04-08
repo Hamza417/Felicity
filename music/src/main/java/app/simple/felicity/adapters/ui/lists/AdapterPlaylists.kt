@@ -9,8 +9,10 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
+import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterPlaylistsBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.preferences.PlaylistPreferences
 import app.simple.felicity.repository.models.Playlist
 
 /**
@@ -66,6 +68,13 @@ class AdapterPlaylists(initial: List<Playlist>) : RecyclerView.Adapter<AdapterPl
     )
 
     private val playlists: List<Playlist> get() = differ.currentList
+
+    /**
+     * Current layout mode for this panel. Update this when the grid-size preference changes
+     * and call [notifyItemRangeChanged] to trigger a visual refresh alongside updating the
+     * span count on the layout manager.
+     */
+    var layoutMode: CommonPreferencesConstants.LayoutMode = PlaylistPreferences.getGridSize()
 
     init {
         setHasStableIds(true)

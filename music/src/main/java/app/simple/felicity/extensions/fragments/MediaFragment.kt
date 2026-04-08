@@ -501,7 +501,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             }
 
             binding.addToPlaylist.setOnClickListener {
-                childFragmentManager.showAddToPlaylistDialog(audio)
+                parentFragmentManager.showAddToPlaylistDialog(audio)
                 dismiss()
             }
 
