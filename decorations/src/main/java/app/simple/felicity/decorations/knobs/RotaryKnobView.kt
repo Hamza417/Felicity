@@ -407,7 +407,6 @@ class RotaryKnobView @JvmOverloads constructor(
         if (isInEditMode.not()) {
             setThemeColors(ThemeManager.theme)
             setAccentColor(ThemeManager.accent)
-            applyKnobPreferences()
         }
     }
 
@@ -1003,19 +1002,6 @@ class RotaryKnobView @JvmOverloads constructor(
             applyLayerType()
         }
         recalcGeometry()
-    }
-
-    private fun applyKnobPreferences() {
-        if (isInEditMode.not()) {
-            when (AppearancePreferences.getKnobStyle()) {
-                AppearancePreferences.KNOB_STYLE_DEFAULT -> {
-                    setKnobDrawable(SimpleRotaryKnobDrawable())
-                }
-                AppearancePreferences.KNOB_STYLE_NEU -> {
-                    setKnobDrawable(NeumorphicRotaryKnobDrawable())
-                }
-            }
-        }
     }
 
     /**

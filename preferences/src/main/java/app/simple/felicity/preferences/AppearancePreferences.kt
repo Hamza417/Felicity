@@ -13,7 +13,6 @@ object AppearancePreferences {
     private const val LAST_LIGHT_THEME = "last_light_theme"
     private const val LAST_DARK_THEME = "last_dark_theme"
     const val SHADOW_EFFECT = "shadow_effect"
-    private const val KNOB_STYLE = "knob_style"
 
     const val THEME = "current_app_theme"
     const val ACCENT_COLOR = "app_accent_color"
@@ -31,10 +30,6 @@ object AppearancePreferences {
     // Seekbar thumb styles
     const val SEEKBAR_THUMB_CIRCLE = 0
     const val SEEKBAR_THUMB_PILL = 1
-
-    // Knob styles
-    const val KNOB_STYLE_DEFAULT = 0
-    const val KNOB_STYLE_NEU = 1
 
     // ---------------------------------------------------------------------------------------------------------- //
 
@@ -159,17 +154,5 @@ object AppearancePreferences {
 
     fun getSeekbarThumbStyle(): Int {
         return getSharedPreferences().getInt(SEEKBAR_THUMB_STYLE, SEEKBAR_THUMB_PILL)
-    }
-
-    // ---------------------------------------------------------------------------------------------------------- //
-
-    fun setKnobStyle(style: Int) {
-        getSharedPreferences().edit {
-            putInt(KNOB_STYLE, style)
-        }
-    }
-
-    fun getKnobStyle(): Int {
-        return getSharedPreferences().getInt(KNOB_STYLE, KNOB_STYLE_DEFAULT)
     }
 }

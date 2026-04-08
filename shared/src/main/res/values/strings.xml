@@ -278,10 +278,7 @@
     <string name="reverb_size">Size</string>
     <string name="dashboard">Dashboard</string>
     <string name="now_playing">Now Playing: %1$s</string>
-    <string name="knob_style">Knob Style</string>
-    <string name="knob_style_summary">Change the style of the knob in the app.</string>
     <string name="flat">Flat</string>
-    <string name="neumorphic">Neumorphic</string>
     <string name="equalizer">Equalizer</string>
     <string name="karaoke_mode">Karaoke Mode</string>
     <string name="night_mode">Night Mode</string>

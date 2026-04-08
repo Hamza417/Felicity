@@ -15,7 +15,6 @@ import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.models.ButtonGroupState
 import app.simple.felicity.models.Preference
 import app.simple.felicity.models.SeekbarState
-import app.simple.felicity.popups.home.PopupHomeInterfaceMenu
 import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AppearancePreferences
@@ -153,32 +152,6 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
-        val knobStyle = Preference(
-                title = R.string.knob_style,
-                summary = R.string.knob_style_summary,
-                icon = -1,
-                type = PreferenceType.BUTTON_GROUP,
-                valueProvider = {
-                    ButtonGroupState(
-                            buttons = listOf(
-                                    Button(textResId = R.string.flat),
-                                    Button(textResId = R.string.neumorphic),
-                            ),
-                            selectedIndex = when (AppearancePreferences.getKnobStyle()) {
-                                AppearancePreferences.KNOB_STYLE_DEFAULT -> 0
-                                else -> 1
-                            }
-                    )
-                },
-                onPreferenceAction = { view, _ ->
-                    val style = when ((view as FelicityButtonGroup).getSelectedIndex()) {
-                        0 -> AppearancePreferences.KNOB_STYLE_DEFAULT
-                        else -> AppearancePreferences.KNOB_STYLE_NEU
-                    }
-                    AppearancePreferences.setKnobStyle(style)
-                }
-        )
-
         val effects = Preference(type = PreferenceType.SUB_HEADER, title = R.string.effects)
 
         val shadowEffectToggle = Preference(
@@ -257,7 +230,6 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(cornerRadius)
         preferences.add(spacing)
         preferences.add(thumbShape)
-        preferences.add(knobStyle)
         preferences.add(effects)
         preferences.add(shadowEffectToggle)
         preferences.add(albumArt)
@@ -277,7 +249,7 @@ abstract class PreferenceFragment : MediaFragment() {
         val homeInterface = Preference(
                 title = R.string.change_home_interface,
                 summary = R.string.change_home_interface_summary,
-                icon = R.drawable.ic_felicity_full,
+                icon = R.drawable.ic_home,
                 type = PreferenceType.POPUP,
                 valueProvider = {
                     when (UserInterfacePreferences.getHomeInterface()) {
@@ -289,17 +261,14 @@ abstract class PreferenceFragment : MediaFragment() {
                     }
                 },
                 onPreferenceAction = { view, callback ->
-                    PopupHomeInterfaceMenu(
+                    SharedScrollViewPopup(
                             container = requireContainerView(),
                             anchorView = view,
                             menuItems = listOf(R.string.dashboard,
                                                R.string.spanned,
                                                R.string.artflow,
                                                R.string.simple),
-                            menuIcons = listOf(R.drawable.ic_dot_16dp,
-                                               R.drawable.ic_spanned_16dp,
-                                               R.drawable.ic_flow_16dp,
-                                               R.drawable.ic_list_16dp),
+                            menuIcons = null,
                             onMenuItemClick = {
                                 when (it) {
                                     R.string.dashboard -> {
@@ -347,7 +316,7 @@ abstract class PreferenceFragment : MediaFragment() {
         val playerInterface = Preference(
                 title = R.string.change_player_interface,
                 summary = R.string.change_player_interface_summary,
-                icon = R.drawable.ic_felicity_full,
+                icon = R.drawable.ic_radio,
                 type = PreferenceType.POPUP,
                 valueProvider = {
                     when (UserInterfacePreferences.getPlayerInterface()) {
@@ -357,11 +326,11 @@ abstract class PreferenceFragment : MediaFragment() {
                     }
                 },
                 onPreferenceAction = { view, callback ->
-                    PopupHomeInterfaceMenu(
+                    SharedScrollViewPopup(
                             container = requireContainerView(),
                             anchorView = view,
                             menuItems = listOf(R.string.simple, R.string.faded),
-                            menuIcons = listOf(R.drawable.ic_list_16dp, R.drawable.ic_dot_16dp),
+                            menuIcons = null,
                             onMenuItemClick = {
                                 when (it) {
                                     R.string.simple -> {
