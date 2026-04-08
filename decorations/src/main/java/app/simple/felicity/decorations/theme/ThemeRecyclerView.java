@@ -11,7 +11,7 @@ import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
-import app.simple.felicity.theme.themes.Theme;
+import app.simple.felicity.theme.models.Theme;
 
 public class ThemeRecyclerView extends RecyclerView implements ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
     

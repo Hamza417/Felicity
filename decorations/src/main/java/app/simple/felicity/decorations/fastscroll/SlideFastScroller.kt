@@ -30,7 +30,7 @@ import app.simple.felicity.decorations.itemdecorations.HeaderSpacingItemDecorati
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
-import app.simple.felicity.theme.themes.Theme
+import app.simple.felicity.theme.models.Theme
 import java.lang.ref.WeakReference
 import kotlin.math.abs
 import kotlin.math.floor

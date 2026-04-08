@@ -16,7 +16,7 @@ import androidx.core.graphics.withTranslation
 import androidx.core.os.BundleCompat
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
-import app.simple.felicity.theme.themes.Theme
+import app.simple.felicity.theme.models.Theme
 import com.google.android.material.math.MathUtils.lerp
 import kotlin.math.min
 import kotlin.math.sqrt

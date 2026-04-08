@@ -27,6 +27,7 @@ import app.simple.felicity.shared.utils.ViewUtils.slideOutAnimation
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
+import app.simple.felicity.theme.models.Theme
 
 @Suppress("unused")
 open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
@@ -114,7 +115,7 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
         ThemeManager.removeListener(this)
     }
 
-    override fun onThemeChanged(theme: app.simple.felicity.theme.themes.Theme, animate: Boolean) {
+    override fun onThemeChanged(theme: Theme, animate: Boolean) {
         setTextColor(animate = animate)
         setDrawableTint(animate = animate)
     }

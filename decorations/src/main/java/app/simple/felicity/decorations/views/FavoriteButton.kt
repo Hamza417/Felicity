@@ -25,7 +25,7 @@ import app.simple.felicity.decoration.R
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
-import app.simple.felicity.theme.themes.Theme
+import app.simple.felicity.theme.models.Theme
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin

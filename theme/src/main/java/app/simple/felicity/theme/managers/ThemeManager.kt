@@ -7,7 +7,7 @@ import app.simple.felicity.theme.accents.GrapeFruit
 import app.simple.felicity.theme.accents.MaterialYouAccent
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.models.Accent
-import app.simple.felicity.theme.themes.Theme
+import app.simple.felicity.theme.models.Theme
 import app.simple.felicity.theme.themes.dark.AMOLED
 
 import app.simple.felicity.theme.themes.dark.AlbumArtDark

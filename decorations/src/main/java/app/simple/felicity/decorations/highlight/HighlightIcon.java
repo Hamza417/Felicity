@@ -16,7 +16,7 @@ import androidx.annotation.Nullable;
 import app.simple.felicity.decorations.theme.ThemeIcon;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.theme.managers.ThemeManager;
-import app.simple.felicity.theme.themes.Theme;
+import app.simple.felicity.theme.models.Theme;
 
 public class HighlightIcon extends ThemeIcon {
     

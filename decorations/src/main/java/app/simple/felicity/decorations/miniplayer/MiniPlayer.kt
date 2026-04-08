@@ -61,7 +61,7 @@ import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
-import app.simple.felicity.theme.themes.Theme
+import app.simple.felicity.theme.models.Theme
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
 import kotlin.math.max

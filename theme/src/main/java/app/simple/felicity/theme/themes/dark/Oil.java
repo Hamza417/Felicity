@@ -5,8 +5,8 @@ import android.graphics.Color;
 import app.simple.felicity.theme.models.IconTheme;
 import app.simple.felicity.theme.models.SwitchTheme;
 import app.simple.felicity.theme.models.TextViewTheme;
+import app.simple.felicity.theme.models.Theme;
 import app.simple.felicity.theme.models.ViewGroupTheme;
-import app.simple.felicity.theme.themes.Theme;
 
 public class Oil extends Theme {
     

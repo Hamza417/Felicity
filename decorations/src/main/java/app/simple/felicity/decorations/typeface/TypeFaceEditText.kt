@@ -19,6 +19,7 @@ import app.simple.felicity.shared.utils.ColorUtils.animateColorChange
 import app.simple.felicity.shared.utils.ConditionUtils.invert
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.theme.models.Theme
 
 open class TypeFaceEditText : AppCompatEditText, ThemeChangedListener {
 
@@ -74,7 +75,7 @@ open class TypeFaceEditText : AppCompatEditText, ThemeChangedListener {
         ThemeManager.removeListener(this)
     }
 
-    override fun onThemeChanged(theme: app.simple.felicity.theme.themes.Theme, animate: Boolean) {
+    override fun onThemeChanged(theme: Theme, animate: Boolean) {
         setTextColor(colorMode, animate)
         setHighlightColor()
     }

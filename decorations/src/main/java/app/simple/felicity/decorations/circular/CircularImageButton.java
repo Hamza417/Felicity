@@ -22,7 +22,7 @@ import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;
-import app.simple.felicity.theme.themes.Theme;
+import app.simple.felicity.theme.models.Theme;
 
 public class CircularImageButton extends AppCompatImageButton implements ThemeChangedListener {
     

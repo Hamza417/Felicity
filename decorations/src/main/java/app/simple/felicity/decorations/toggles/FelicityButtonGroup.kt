@@ -24,12 +24,13 @@ import android.view.View
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.ColorInt
 import androidx.appcompat.content.res.AppCompatResources
+import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.MIN_CELL_H_PADDING_DP
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
-import app.simple.felicity.theme.themes.Theme
+import app.simple.felicity.theme.models.Theme
 import kotlin.math.max
 import kotlin.math.min
 

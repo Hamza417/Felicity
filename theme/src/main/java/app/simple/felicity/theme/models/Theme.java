@@ -1,9 +1,4 @@
-package app.simple.felicity.theme.themes;
-
-import app.simple.felicity.theme.models.IconTheme;
-import app.simple.felicity.theme.models.SwitchTheme;
-import app.simple.felicity.theme.models.TextViewTheme;
-import app.simple.felicity.theme.models.ViewGroupTheme;
+package app.simple.felicity.theme.models;
 
 public class Theme {
     private static TextViewTheme textViewTheme;

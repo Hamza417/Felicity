@@ -43,7 +43,7 @@ import app.simple.felicity.theme.data.MaterialYou.presetMaterialYouDynamicColors
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.managers.ThemeUtils
-import app.simple.felicity.theme.themes.Theme
+import app.simple.felicity.theme.models.Theme
 import app.simple.felicity.theme.themes.dark.AlbumArtDark
 import app.simple.felicity.theme.themes.light.AlbumArtLight
 import app.simple.felicity.theme.tools.MonetPalette

@@ -11,7 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
-import app.simple.felicity.theme.themes.Theme;
+import app.simple.felicity.theme.models.Theme;
 
 public class ThemeFrameLayout extends FrameLayout implements ThemeChangedListener {
     

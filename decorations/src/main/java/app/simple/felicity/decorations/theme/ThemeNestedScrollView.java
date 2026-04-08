@@ -9,11 +9,10 @@ import android.util.AttributeSet;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
 import app.simple.felicity.decorations.edgeeffect.EdgeEffectNestedScrollView;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
 import app.simple.felicity.theme.managers.ThemeManager;
-import app.simple.felicity.theme.themes.Theme;
+import app.simple.felicity.theme.models.Theme;
 
 public class ThemeNestedScrollView extends EdgeEffectNestedScrollView implements ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
     

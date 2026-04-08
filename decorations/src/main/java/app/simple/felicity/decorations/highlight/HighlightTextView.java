@@ -28,7 +28,7 @@ import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;
-import app.simple.felicity.theme.themes.Theme;
+import app.simple.felicity.theme.models.Theme;
 
 /**
  * A button-like {@link TypeFaceTextView} that renders a pill-shaped highlight with a

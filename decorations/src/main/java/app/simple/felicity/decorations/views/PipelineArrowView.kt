@@ -13,7 +13,7 @@ import androidx.core.content.ContextCompat
 import app.simple.felicity.decoration.R
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
-import app.simple.felicity.theme.themes.Theme
+import app.simple.felicity.theme.models.Theme
 
 /**
  * A lightweight custom [android.view.View] that renders a downward-pointing pipeline arrow with optional
