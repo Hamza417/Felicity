@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="@dimen/padding_15"
+    android:paddingVertical="@dimen/padding_10">
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="@dimen/text_size_16"
+        app:appFontStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/count"
+        app:layout_constraintEnd_toStartOf="@+id/checkbox"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:textColorStyle="primary" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/count"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="@dimen/desc_text_size"
+        app:appFontStyle="regular"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/checkbox"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/name"
+        app:textColorStyle="secondary" />
+
+    <app.simple.felicity.decorations.toggles.CheckBox
+        android:id="@+id/checkbox"
+        android:layout_width="@dimen/checkbox_dimensions"
+        android:layout_height="@dimen/checkbox_dimensions"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout>
+

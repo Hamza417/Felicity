@@ -33,6 +33,7 @@ import app.simple.felicity.ui.panels.FoldersHierarchy
 import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.panels.MostPlayed
 import app.simple.felicity.ui.panels.PlayingQueue
+import app.simple.felicity.ui.panels.Playlists
 import app.simple.felicity.ui.panels.Preferences
 import app.simple.felicity.ui.panels.RecentlyAdded
 import app.simple.felicity.ui.panels.RecentlyPlayed
@@ -111,6 +112,7 @@ class ArtFlowHome : MediaFragment() {
                                     R.string.folders_hierarchy,
                                     R.string.playing_queue,
                                     R.string.favorites,
+                                    R.string.playlists,
                                     R.string.recently_added,
                                     R.string.recently_played,
                                     R.string.most_played
@@ -122,6 +124,7 @@ class ArtFlowHome : MediaFragment() {
                                     R.drawable.ic_tree,
                                     R.drawable.ic_queue,
                                     R.drawable.ic_favorite_filled,
+                                    R.drawable.ic_playlist_play,
                                     R.drawable.ic_recently_added,
                                     R.drawable.ic_history,
                                     R.drawable.ic_equalizer
@@ -134,6 +137,7 @@ class ArtFlowHome : MediaFragment() {
                                     R.string.folders_hierarchy -> openFragment(FoldersHierarchy.newInstance(), FoldersHierarchy.TAG)
                                     R.string.playing_queue -> openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
                                     R.string.favorites -> openFragment(Favorites.newInstance(), Favorites.TAG)
+                                    R.string.playlists -> openFragment(Playlists.newInstance(), Playlists.TAG)
                                     R.string.recently_added -> openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
                                     R.string.recently_played -> openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
                                     R.string.most_played -> openFragment(MostPlayed.newInstance(), MostPlayed.TAG)

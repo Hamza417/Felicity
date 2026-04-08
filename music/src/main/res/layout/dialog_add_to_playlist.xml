@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.corners.DynamicCornerLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="@dimen/padding_15">
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:text="@string/add_to_playlist"
+            android:textSize="@dimen/popup_text_size"
+            app:appFontStyle="bold"
+            app:textColorStyle="primary" />
+
+        <app.simple.felicity.decorations.highlight.HighlightTextView
+            android:id="@+id/create_playlist"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:paddingVertical="@dimen/padding_5"
+            android:paddingHorizontal="@dimen/padding_10"
+            android:text="@string/create_playlist"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:textColorStyle="tertiary" />
+
+    </LinearLayout>
+
+    <app.simple.felicity.decorations.theme.ThemeDivider
+        android:layout_width="match_parent"
+        android:layout_height="1px" />
+
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fadingEdge="vertical"
+            android:requiresFadingEdge="vertical"
+            android:fadingEdgeLength="@dimen/padding_20"
+            android:clipToPadding="false"
+            app:layout_behavior="app.simple.felicity.decorations.behaviors.OverScrollBehavior">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipToPadding="false"
+                android:paddingVertical="@dimen/padding_5" />
+
+        </androidx.core.widget.NestedScrollView>
+
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+    <app.simple.felicity.decorations.theme.ThemeDivider
+        android:layout_width="match_parent"
+        android:layout_height="1px" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:gravity="end"
+        android:orientation="horizontal"
+        android:padding="@dimen/padding_10">
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:padding="@dimen/padding_15"
+            android:text="@string/cancel"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:textColorStyle="accent" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/padding_5"
+            android:gravity="center"
+            android:padding="@dimen/padding_15"
+            android:text="@string/save"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:textColorStyle="accent" />
+
+    </LinearLayout>
+
+</app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+
