@@ -189,6 +189,7 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
             val tv = DynamicRippleTextView(container.context).apply {
                 val horizontalPadding = (8 * resources.displayMetrics.density).toInt()
                 val verticalPadding = (12 * resources.displayMetrics.density).toInt()
+                minimumWidth = (172 * resources.displayMetrics.density).toInt()
 
                 setPadding(
                         /* left = */ horizontalPadding,

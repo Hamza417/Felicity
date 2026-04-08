@@ -119,6 +119,7 @@ abstract class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
             val tv = DynamicRippleTextView(context).apply {
                 val hPad = (8 * resources.displayMetrics.density).toInt()
                 val vPad = (12 * resources.displayMetrics.density).toInt()
+                minimumWidth = (172 * resources.displayMetrics.density).toInt()
                 setPadding(hPad, vPad, hPad * 2, vPad)
                 layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
