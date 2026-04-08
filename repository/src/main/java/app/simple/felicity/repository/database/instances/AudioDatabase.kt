@@ -9,14 +9,17 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import app.simple.felicity.repository.database.dao.AudioDao
 import app.simple.felicity.repository.database.dao.PlaybackQueueDao
 import app.simple.felicity.repository.database.dao.PlaybackStateDao
+import app.simple.felicity.repository.database.dao.PlaylistDao
 import app.simple.felicity.repository.database.dao.SongStatDao
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioStat
 import app.simple.felicity.repository.models.PlaybackQueueEntry
 import app.simple.felicity.repository.models.PlaybackState
+import app.simple.felicity.repository.models.Playlist
+import app.simple.felicity.repository.models.PlaylistSongCrossRef
 
 /**
- * Room database holding the core audio library, playback state, and song statistics.
+ * Room database holding the core audio library, playback state, song statistics, and playlists.
  *
  * <p>Version history:</p>
  * <ul>
@@ -35,6 +38,10 @@ import app.simple.felicity.repository.models.PlaybackState
  *       The {@code audioHash} column now acts as a logical (unconstrained) reference to
  *       {@code audio.hash}; stats are re-associated automatically when a removed file is
  *       re-added because the XXHash64 fingerprint is deterministic.</li>
+ *   <li>8 → 9: Added the {@code playlists} table and the {@code playlist_song_cross_ref}
+ *       junction table. Each cross-ref row carries cascade-delete foreign keys on both
+ *       {@code playlist_id} and {@code audio_hash} so that deleting a playlist or removing
+ *       a track from the library automatically cleans up all related membership rows.</li>
  * </ul>
  *
  * @author Hamza417
@@ -44,9 +51,11 @@ import app.simple.felicity.repository.models.PlaybackState
             Audio::class,
             PlaybackState::class,
             PlaybackQueueEntry::class,
-            AudioStat::class
+            AudioStat::class,
+            Playlist::class,
+            PlaylistSongCrossRef::class
         ],
-        version = 8,
+        version = 9,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {
@@ -55,6 +64,7 @@ abstract class AudioDatabase : RoomDatabase() {
     abstract fun playbackStateDao(): PlaybackStateDao
     abstract fun playbackQueueDao(): PlaybackQueueDao
     abstract fun songStatDao(): SongStatDao
+    abstract fun playlistDao(): PlaylistDao
 
     companion object {
         private const val DB_NAME = "audio.db"
@@ -257,11 +267,60 @@ abstract class AudioDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migrates the database from version 8 to 9.
+         *
+         * <p>Introduces two new tables to support user-created playlists:</p>
+         * <ul>
+         *   <li>{@code playlists} — stores playlist metadata (name, timestamps, sort
+         *       preferences, artwork path, shuffle flag, and pin flag).</li>
+         *   <li>{@code playlist_song_cross_ref} — junction table that maps playlist rows
+         *       to audio tracks via {@code audio.hash}. Both foreign keys use
+         *       {@code ON DELETE CASCADE} so that deleting a playlist or removing a track
+         *       from the library automatically cleans up all membership rows.</li>
+         * </ul>
+         */
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `playlists` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `description` TEXT,
+                        `date_created` INTEGER NOT NULL DEFAULT 0,
+                        `date_modified` INTEGER NOT NULL DEFAULT 0,
+                        `last_accessed` INTEGER NOT NULL DEFAULT 0,
+                        `artwork_path` TEXT,
+                        `sort_order` INTEGER NOT NULL DEFAULT -1,
+                        `sort_style` INTEGER NOT NULL DEFAULT 0,
+                        `is_shuffled` INTEGER NOT NULL DEFAULT 0,
+                        `is_pinned` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `playlist_song_cross_ref` (
+                        `playlist_id` INTEGER NOT NULL,
+                        `audio_hash` INTEGER NOT NULL,
+                        `position` INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY(`playlist_id`, `audio_hash`),
+                        FOREIGN KEY(`playlist_id`) REFERENCES `playlists`(`id`)
+                            ON UPDATE CASCADE ON DELETE CASCADE,
+                        FOREIGN KEY(`audio_hash`) REFERENCES `audio`(`hash`)
+                            ON UPDATE CASCADE ON DELETE CASCADE
+                    )
+                """.trimIndent())
+
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_song_cross_ref_playlist_id` ON `playlist_song_cross_ref` (`playlist_id`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_song_cross_ref_audio_hash` ON `playlist_song_cross_ref` (`audio_hash`)")
+            }
+        }
+
         fun getInstance(): AudioDatabase? = instance
 
         private fun buildDatabase(context: Context): AudioDatabase {
             return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                 .build()
         }
     }
