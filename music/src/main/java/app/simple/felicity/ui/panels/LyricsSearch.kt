@@ -122,14 +122,14 @@ class LyricsSearch : MediaFragment() {
 
             val isLoading = viewModel.isLoading.value ?: false
 
-            if (results.isEmpty() && !isLoading) {
-                headerBinding.count.text = getString(R.string.no_lyrics_found)
-            }
-
             headerBinding.count.text = if (results.isNotEmpty()) {
                 getString(R.string.x_results, results.size)
             } else {
-                ""
+                if (isLoading) {
+                    getString(R.string.loading)
+                } else {
+                    getString(R.string.no_lyrics_found)
+                }
             }
         }
 

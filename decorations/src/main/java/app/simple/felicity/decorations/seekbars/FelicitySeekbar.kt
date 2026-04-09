@@ -335,12 +335,12 @@ class FelicitySeekbar @JvmOverloads constructor(
 
     init {
         val d = resources.displayMetrics.density
-        trackHeightPx = 8f * d   // 10 dp
+        trackHeightPx = 5f * d   // 5 dp
         thumbRadiusPx = 12f * d   // 12 dp half-height → 24 dp tall pill
         thumbWidthPx = thumbRadiusPx * 4f   // 48 dp wide → natural 2:1 proportion
         // MD2 press ring defaults
         pressRingOutsetPx = 5f * d
-        pressRingStrokePx = 2f * d
+        pressRingStrokePx = 3f * d
         pressRingColor = progressColor
         // Default indicator stroke width
         defaultIndicatorWidthPx = 2f * d
