@@ -10,7 +10,6 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
-import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
 import app.simple.felicity.databinding.AdapterHeaderArtistPageBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
@@ -20,7 +19,6 @@ import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.PageItem
-import app.simple.felicity.preferences.PagePreferences
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Folder
@@ -320,8 +318,7 @@ class PageAdapter(
             }
             is Song -> {
                 val songItem = item as PageItem.SongItem
-                val showTrackInfo = pageType is PageType.AlbumPage &&
-                        PagePreferences.getAlbumSort() == CommonPreferencesConstants.BY_TRACK_NUMBER
+                val showTrackInfo = pageType is PageType.AlbumPage
                 holder.bind(songItem.audio, showTrackInfo, songItem.allSongs.size)
                 holder.binding.container.setOnClickListener {
                     listener?.onSongClicked(songItem.allSongs, songItem.position, holder.binding.cover)
