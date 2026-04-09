@@ -81,15 +81,65 @@
             android:orientation="horizontal">
 
             <app.simple.felicity.decorations.highlight.HighlightTextView
-                android:id="@+id/count"
+                android:id="@+id/chip_songs"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:paddingVertical="@dimen/padding_5"
                 android:paddingHorizontal="@dimen/padding_10"
+                android:layout_marginEnd="@dimen/padding_10"
                 android:drawableStart="@drawable/ic_song_16dp"
                 android:drawablePadding="@dimen/padding_5"
                 android:textSize="@dimen/text_size_14"
+                android:visibility="gone"
+                app:appFontStyle="bold"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="tertiary" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/chip_albums"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:layout_marginEnd="@dimen/padding_10"
+                android:drawableStart="@drawable/ic_album_16dp"
+                android:drawablePadding="@dimen/padding_5"
+                android:textSize="@dimen/text_size_14"
+                android:visibility="gone"
+                app:appFontStyle="bold"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="tertiary" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/chip_artists"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:layout_marginEnd="@dimen/padding_10"
+                android:drawableStart="@drawable/ic_artist_16dp"
+                android:drawablePadding="@dimen/padding_5"
+                android:textSize="@dimen/text_size_14"
+                android:visibility="gone"
+                app:appFontStyle="bold"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="tertiary" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/chip_genres"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:layout_marginEnd="@dimen/padding_10"
+                android:drawableStart="@drawable/ic_piano_16dp"
+                android:drawablePadding="@dimen/padding_5"
+                android:textSize="@dimen/text_size_14"
+                android:visibility="gone"
                 app:appFontStyle="bold"
                 app:drawableTintStyle="accent"
                 app:textColorStyle="tertiary" />
@@ -101,7 +151,7 @@
                 android:gravity="center_vertical"
                 android:paddingVertical="@dimen/padding_5"
                 android:paddingHorizontal="@dimen/padding_10"
-                android:layout_marginStart="@dimen/padding_10"
+                android:layout_marginEnd="@dimen/padding_10"
                 android:drawableStart="@drawable/ic_time_16dp"
                 android:drawablePadding="@dimen/padding_5"
                 android:textSize="@dimen/text_size_14"
@@ -119,7 +169,7 @@
                 android:drawableStart="@drawable/ic_alphabet_16dp"
                 android:drawablePadding="@dimen/padding_5"
                 android:textSize="@dimen/text_size_14"
-                android:layout_marginStart="@dimen/padding_10"
+                android:layout_marginEnd="@dimen/padding_10"
                 app:appFontStyle="bold"
                 app:drawableTintStyle="accent"
                 app:textColorStyle="tertiary" />
@@ -131,7 +181,6 @@
                 android:gravity="center_vertical"
                 android:paddingVertical="@dimen/padding_5"
                 android:paddingHorizontal="@dimen/padding_10"
-                android:layout_marginStart="@dimen/padding_10"
                 android:drawableStart="@drawable/ic_order_16dp"
                 android:drawablePadding="@dimen/padding_5"
                 android:textSize="@dimen/text_size_14"

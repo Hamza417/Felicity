@@ -33,6 +33,8 @@ import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.sort.SearchSort.setSearchOrder
 import app.simple.felicity.repository.sort.SearchSort.setSearchSort
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
+import app.simple.felicity.shared.utils.ViewUtils.gone
+import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.ui.pages.GenrePage
@@ -203,24 +205,90 @@ class Search : PanelFragment() {
     }
 
     private fun updateSearchResults(results: SearchResults) {
+        val songsHeader = getString(R.string.songs)
+        val albumsHeader = getString(R.string.albums)
+        val artistsHeader = getString(R.string.artists)
+        val genresHeader = getString(R.string.genres)
+
         adapterSearch?.submitResults(
                 results = results,
-                songsHeader = getString(R.string.songs),
-                albumsHeader = getString(R.string.albums),
-                artistsHeader = getString(R.string.artists),
-                genresHeader = getString(R.string.genres)
+                songsHeader = songsHeader,
+                albumsHeader = albumsHeader,
+                artistsHeader = artistsHeader,
+                genresHeader = genresHeader
         )
 
-        headerBinding.count.text = getString(R.string.x_songs, results.songs.size)
-        headerBinding.hours.text = results.songs.sumOf { it.duration }.toDynamicTimeString()
         headerBinding.sortStyle.setSearchSort()
         headerBinding.sortOrder.setSearchOrder()
+
+        if (results.songs.isNotEmpty()) {
+            headerBinding.chipSongs.visible()
+            headerBinding.hours.visible()
+            headerBinding.chipSongs.text = getString(R.string.x_songs, results.songs.size)
+            headerBinding.hours.text = results.songs.sumOf { it.duration }.toDynamicTimeString()
+            headerBinding.chipSongs.setOnClickListener {
+                scrollToSection(songsHeader)
+            }
+        } else {
+            headerBinding.chipSongs.gone()
+            headerBinding.hours.gone()
+        }
+
+        // Albums chip: show count and wire scroll, hide when empty.
+        if (results.albums.isNotEmpty()) {
+            headerBinding.chipAlbums.visible()
+            headerBinding.chipAlbums.text = getString(R.string.x_albums, results.albums.size)
+            headerBinding.chipAlbums.setOnClickListener {
+                scrollToSection(albumsHeader)
+            }
+        } else {
+            headerBinding.chipAlbums.gone()
+        }
+
+        // Artists chip: show count and wire scroll, hide when empty.
+        if (results.artists.isNotEmpty()) {
+            headerBinding.chipArtists.visible()
+            headerBinding.chipArtists.text = getString(R.string.x_artists, results.artists.size)
+            headerBinding.chipArtists.setOnClickListener {
+                scrollToSection(artistsHeader)
+            }
+        } else {
+            headerBinding.chipArtists.gone()
+        }
+
+        // Genres chip: show count and wire scroll, hide when empty.
+        if (results.genres.isNotEmpty()) {
+            headerBinding.chipGenres.visible()
+            headerBinding.chipGenres.text = getString(R.string.x_genres, results.genres.size)
+            headerBinding.chipGenres.setOnClickListener {
+                scrollToSection(genresHeader)
+            }
+        } else {
+            headerBinding.chipGenres.gone()
+        }
 
         headerBinding.hours.setOnClickListener {
             childFragmentManager.showTotalTime(
                     totalTime = results.songs.sumOf { it.duration },
                     count = results.songs.size
             )
+        }
+    }
+
+    /**
+     * Smoothly scrolls the RecyclerView to the section header whose title matches [headerTitle].
+     * If the section is not present in the current adapter list, this is a no-op.
+     *
+     * @param headerTitle The exact label used for the target section header.
+     */
+    private fun scrollToSection(headerTitle: String) {
+        val position = adapterSearch?.getSectionPosition(headerTitle) ?: return
+        if (position >= 0) {
+            (binding.recyclerView.layoutManager as GridLayoutManager)
+                .scrollToPositionWithOffset(
+                        position,
+                        /* offset = */
+                        binding.appHeader.height + resources.getDimensionPixelSize(R.dimen.padding_8))
         }
     }
 
@@ -240,9 +308,7 @@ class Search : PanelFragment() {
                 gridLayoutManager?.spanCount = newMode.spanCount
                 adapterSearch?.layoutMode = newMode
                 binding.recyclerView.beginDelayedTransition()
-                // notifyDataSetChanged forces RecyclerView to re-check view types for all positions,
-                // which ensures song items are re-inflated with the correct list/grid/label layout.
-                adapterSearch?.notifyDataSetChanged()
+                adapterSearch?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
             }
         }
     }

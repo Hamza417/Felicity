@@ -67,6 +67,7 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
                 newItem: SearchAdapterItem,
         ): Boolean {
             if (oldItem::class != newItem::class) return false
+            @Suppress("IntroduceWhenSubject")
             return when {
                 oldItem is SearchAdapterItem.Header && newItem is SearchAdapterItem.Header ->
                     oldItem.title == newItem.title
@@ -228,6 +229,17 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
         }
 
         differ.submitList(newItems)
+    }
+
+    /**
+     * Returns the adapter position of the section header whose title matches [headerTitle],
+     * or -1 if no such header exists in the current list (e.g., the section is empty).
+     *
+     * @param headerTitle The exact label string used for the section header.
+     * @return Zero-based adapter position, or -1 when not found.
+     */
+    fun getSectionPosition(headerTitle: String): Int {
+        return items.indexOfFirst { it is SearchAdapterItem.Header && it.title == headerTitle }
     }
 
     /**
