@@ -53,6 +53,10 @@ class YearPage : BasePageFragment() {
         collectPageData { yearViewerViewModel.data }
     }
 
+    override fun resortPageData() {
+        yearViewerViewModel.resort()
+    }
+
     override fun onMenuClicked(view: View) {
         viewLifecycleOwner.lifecycleScope.launch {
             val currentData = yearViewerViewModel.data.value ?: return@launch

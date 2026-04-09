@@ -53,6 +53,10 @@ class FolderPage : BasePageFragment() {
         collectPageData { folderViewerViewModel.data }
     }
 
+    override fun resortPageData() {
+        folderViewerViewModel.resort()
+    }
+
     override fun onMenuClicked(view: View) {
         viewLifecycleOwner.lifecycleScope.launch {
             val currentData = folderViewerViewModel.data.value ?: return@launch

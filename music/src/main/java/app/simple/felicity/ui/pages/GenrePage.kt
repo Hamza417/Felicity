@@ -53,6 +53,10 @@ class GenrePage : BasePageFragment() {
         collectPageData { genreViewerViewModel.data }
     }
 
+    override fun resortPageData() {
+        genreViewerViewModel.resort()
+    }
+
     override fun onMenuClicked(view: View) {
         viewLifecycleOwner.lifecycleScope.launch {
             val currentData = genreViewerViewModel.data.value ?: return@launch

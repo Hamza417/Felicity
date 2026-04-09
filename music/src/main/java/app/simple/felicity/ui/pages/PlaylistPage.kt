@@ -71,6 +71,13 @@ class PlaylistPage : BasePageFragment() {
     }
 
     /**
+     * Delegates sort re-ordering to the [PlaylistViewerViewModel] without a database round-trip.
+     */
+    override fun resortPageData() {
+        playlistViewerViewModel.resort()
+    }
+
+    /**
      * Displays the playlist overflow menu with play, shuffle, and send actions.
      *
      * @param view The anchor [View] for the popup.

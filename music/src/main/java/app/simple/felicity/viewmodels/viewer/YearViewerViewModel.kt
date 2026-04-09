@@ -3,9 +3,11 @@ package app.simple.felicity.viewmodels.viewer
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.repository.models.YearGroup
 import app.simple.felicity.repository.repositories.AudioRepository
+import app.simple.felicity.repository.sort.PageSort.sortedForYearPage
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -27,6 +29,9 @@ class YearViewerViewModel @AssistedInject constructor(
     private val _data = MutableStateFlow<PageData?>(null)
     val data: StateFlow<PageData?> = _data.asStateFlow()
 
+    /** Raw unsorted songs fetched from the repository. Re-sorting does not require a DB trip. */
+    private var rawSongs: List<Audio> = emptyList()
+
     init {
         loadYearData()
     }
@@ -41,8 +46,21 @@ class YearViewerViewModel @AssistedInject constructor(
                 .flowOn(Dispatchers.IO)
                 .collect { pageData ->
                     Log.d(TAG, "loadYearData: Loaded ${pageData.songs.size} songs for year: ${yearGroup.year}")
-                    _data.value = pageData
+                    rawSongs = pageData.songs
+                    _data.value = pageData.copy(songs = rawSongs.sortedForYearPage())
                 }
+        }
+    }
+
+    /**
+     * Re-sorts the cached song list using the current [app.simple.felicity.preferences.PagePreferences]
+     * and re-emits [PageData] without hitting the database.
+     */
+    fun resort() {
+        val current = _data.value ?: return
+        viewModelScope.launch(Dispatchers.Default) {
+            _data.value = current.copy(songs = rawSongs.sortedForYearPage())
+            Log.d(TAG, "resort: re-sorted ${rawSongs.size} songs for year page")
         }
     }
 
@@ -55,4 +73,3 @@ class YearViewerViewModel @AssistedInject constructor(
         private const val TAG = "YearViewerViewModel"
     }
 }
-

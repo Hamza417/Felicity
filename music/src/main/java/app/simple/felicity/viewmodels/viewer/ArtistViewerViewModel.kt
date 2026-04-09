@@ -4,8 +4,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.repository.repositories.AudioRepository
+import app.simple.felicity.repository.sort.PageSort.sortedForArtistPage
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -26,6 +28,9 @@ class ArtistViewerViewModel @AssistedInject constructor(
 
     private val _data = MutableStateFlow<PageData?>(null)
     val data: StateFlow<PageData?> = _data.asStateFlow()
+
+    /** Raw unsorted songs fetched from the repository. Re-sorting does not require a DB trip. */
+    private var rawSongs: List<Audio> = emptyList()
 
     init {
         loadArtistData()
@@ -49,8 +54,21 @@ class ArtistViewerViewModel @AssistedInject constructor(
                     Log.d(TAG, "  - Genres: ${pageData.genres.size}")
                     Log.d(TAG, "  - Load time: $loadTime ms")
 
-                    _data.value = pageData
+                    rawSongs = pageData.songs
+                    _data.value = pageData.copy(songs = rawSongs.sortedForArtistPage())
                 }
+        }
+    }
+
+    /**
+     * Re-sorts the cached song list using the current [app.simple.felicity.preferences.PagePreferences]
+     * and re-emits [PageData] without hitting the database.
+     */
+    fun resort() {
+        val current = _data.value ?: return
+        viewModelScope.launch(Dispatchers.Default) {
+            _data.value = current.copy(songs = rawSongs.sortedForArtistPage())
+            Log.d(TAG, "resort: re-sorted ${rawSongs.size} songs for artist page")
         }
     }
 

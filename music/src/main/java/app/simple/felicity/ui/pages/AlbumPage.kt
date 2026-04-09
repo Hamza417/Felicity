@@ -56,6 +56,10 @@ class AlbumPage : BasePageFragment() {
         collectPageData { albumViewerViewModel.data }
     }
 
+    override fun resortPageData() {
+        albumViewerViewModel.resort()
+    }
+
     override fun onMenuClicked(view: View) {
         viewLifecycleOwner.lifecycleScope.launch {
             val currentData = albumViewerViewModel.data.value ?: return@launch

@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
+import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
 import app.simple.felicity.databinding.AdapterHeaderArtistPageBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
@@ -19,6 +20,7 @@ import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.PageItem
+import app.simple.felicity.preferences.PagePreferences
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Folder
@@ -26,6 +28,18 @@ import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.repository.models.Playlist
 import app.simple.felicity.repository.models.YearGroup
+import app.simple.felicity.repository.sort.PageSort.setAlbumPageOrder
+import app.simple.felicity.repository.sort.PageSort.setAlbumPageSort
+import app.simple.felicity.repository.sort.PageSort.setArtistPageOrder
+import app.simple.felicity.repository.sort.PageSort.setArtistPageSort
+import app.simple.felicity.repository.sort.PageSort.setFolderPageOrder
+import app.simple.felicity.repository.sort.PageSort.setFolderPageSort
+import app.simple.felicity.repository.sort.PageSort.setGenrePageOrder
+import app.simple.felicity.repository.sort.PageSort.setGenrePageSort
+import app.simple.felicity.repository.sort.PageSort.setPlaylistPageOrder
+import app.simple.felicity.repository.sort.PageSort.setPlaylistPageSort
+import app.simple.felicity.repository.sort.PageSort.setYearPageOrder
+import app.simple.felicity.repository.sort.PageSort.setYearPageSort
 import app.simple.felicity.shared.constants.PageConstants
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.shared.utils.ViewUtils.visible
@@ -306,7 +320,9 @@ class PageAdapter(
             }
             is Song -> {
                 val songItem = item as PageItem.SongItem
-                holder.bind(songItem.audio)
+                val showTrackInfo = pageType is PageType.AlbumPage &&
+                        PagePreferences.getAlbumSort() == CommonPreferencesConstants.BY_TRACK_NUMBER
+                holder.bind(songItem.audio, showTrackInfo, songItem.allSongs.size)
                 holder.binding.container.setOnClickListener {
                     listener?.onSongClicked(songItem.allSongs, songItem.position, holder.binding.cover)
                 }
@@ -506,6 +522,21 @@ class PageAdapter(
                 artists.text = item.albumArtists.size.toString()
                 totalTime.text = item.totalDuration.toDynamicTimeString()
 
+                when (pageType) {
+                    is PageType.ArtistPage -> {
+                        sortStyle.setArtistPageSort()
+                        sortOrder.setArtistPageOrder()
+                    }
+                    is PageType.PlaylistPage -> {
+                        sortStyle.setPlaylistPageSort()
+                        sortOrder.setPlaylistPageOrder()
+                    }
+                    else -> {
+                        sortStyle.setAlbumPageSort()
+                        sortOrder.setAlbumPageOrder()
+                    }
+                }
+
                 // Show art flow for albums and artists
                 when (pageType) {
                     is PageType.AlbumPage, is PageType.ArtistPage, is PageType.FolderPage, is PageType.PlaylistPage -> {
@@ -540,6 +571,12 @@ class PageAdapter(
                 menu.setOnClickListener {
                     listener?.onMenuClicked(it)
                 }
+                sortStyle.setOnClickListener {
+                    listener?.onSortClicked(it)
+                }
+                sortOrder.setOnClickListener {
+                    listener?.onSortClicked(it)
+                }
             }
         }
     }
@@ -561,6 +598,29 @@ class PageAdapter(
                 artFlow.setAdapter(SliderAdapter(ArtFlowData(R.string.songs, item.songs)))
                 artFlow.start()
 
+                when (pageType) {
+                    is PageType.GenrePage -> {
+                        sortStyle.setGenrePageSort()
+                        sortOrder.setGenrePageOrder()
+                    }
+                    is PageType.FolderPage -> {
+                        sortStyle.setFolderPageSort()
+                        sortOrder.setFolderPageOrder()
+                    }
+                    is PageType.YearPage -> {
+                        sortStyle.setYearPageSort()
+                        sortOrder.setYearPageOrder()
+                    }
+                    is PageType.PlaylistPage -> {
+                        sortStyle.setPlaylistPageSort()
+                        sortOrder.setPlaylistPageOrder()
+                    }
+                    else -> {
+                        sortStyle.setArtistPageSort()
+                        sortOrder.setArtistPageOrder()
+                    }
+                }
+
                 play.setOnClickListener {
                     listener?.onPlayClicked(item.songs, 0)
                 }
@@ -569,6 +629,12 @@ class PageAdapter(
                 }
                 menu.setOnClickListener {
                     listener?.onMenuClicked(it)
+                }
+                sortStyle.setOnClickListener {
+                    listener?.onSortClicked(it)
+                }
+                sortOrder.setOnClickListener {
+                    listener?.onSortClicked(it)
                 }
             }
         }

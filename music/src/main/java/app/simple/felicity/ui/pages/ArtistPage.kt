@@ -70,6 +70,13 @@ class ArtistPage : BasePageFragment() {
     }
 
     /**
+     * Delegates sort re-ordering to the [ArtistViewerViewModel] without a database round-trip.
+     */
+    override fun resortPageData() {
+        artistViewerViewModel.resort()
+    }
+
+    /**
      * Displays the artist overflow menu with play, shuffle, and send actions.
      *
      * @param view The anchor [View] for the popup.
