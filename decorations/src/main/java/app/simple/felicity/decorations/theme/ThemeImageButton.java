@@ -61,7 +61,7 @@ public class ThemeImageButton extends AppCompatImageButton implements ThemeChang
         }
     }
     
-    private void setTint(int endColor, boolean animate) {
+    protected void setTint(int endColor, boolean animate) {
         if (animate) {
             valueAnimator = ValueAnimator.ofArgb(Objects.requireNonNull(getImageTintList()).getDefaultColor(), endColor);
             valueAnimator.setDuration(getResources().getInteger(R.integer.animation_duration));

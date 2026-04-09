@@ -499,7 +499,7 @@ abstract class BasePlayerFragment : MediaFragment() {
      * No database query required — the model is the source of truth.
      */
     private fun updateFavoriteIcon(audio: Audio) {
-        favorite.setFavorite(audio.isFavorite, animate = true)
+        favorite.setFavorite(audio.isFavorite, true)
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {

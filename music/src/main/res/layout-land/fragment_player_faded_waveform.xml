@@ -51,7 +51,6 @@
             android:layout_height="0dp"
             android:layout_marginEnd="@dimen/padding_1"
             android:layout_weight="1"
-            android:padding="@dimen/padding_8"
             android:src="@drawable/ic_favorite_border"
             app:buttonTintType="regular" />
 
