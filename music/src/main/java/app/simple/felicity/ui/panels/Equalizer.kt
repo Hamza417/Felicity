@@ -14,6 +14,7 @@ import app.simple.felicity.databinding.FragmentEqualizerBinding
 import app.simple.felicity.decorations.knobs.RotaryKnobListener
 import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
+import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
@@ -111,6 +112,7 @@ class Equalizer : MediaFragment() {
         )
 
         binding.panelGroup.setSelectedIndex(initialScreen, animate = false, notifyListener = false)
+        setHeaderTitle(initialScreen)
 
         binding.panelGroup.setOnButtonSelectedListener { index ->
             binding.viewFlipper.displayedChild = index
@@ -118,6 +120,7 @@ class Equalizer : MediaFragment() {
 
         binding.viewFlipper.setOnScreenChangedListener { index ->
             binding.panelGroup.setSelectedIndex(index, animate = true, notifyListener = false)
+            setHeaderTitle(index)
         }
     }
 
@@ -438,6 +441,17 @@ class Equalizer : MediaFragment() {
                 }
             }
         })
+    }
+
+    private fun setHeaderTitle(position: Int) {
+        val title = when (position) {
+            0 -> getString(R.string.equalizer)
+            1 -> getString(R.string.output)
+            2 -> getString(R.string.reverb)
+            else -> ""
+        }
+
+        binding.eqTitle.setTextWithFade(title)
     }
 
     override val wantsMiniPlayerVisible: Boolean
