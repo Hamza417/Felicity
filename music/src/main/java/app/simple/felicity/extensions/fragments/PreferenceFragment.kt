@@ -1,10 +1,13 @@
 package app.simple.felicity.extensions.fragments
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.view.View
 import android.widget.TextView
+import app.simple.felicity.BuildConfig
 import app.simple.felicity.R
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup
@@ -867,6 +870,45 @@ abstract class PreferenceFragment : MediaFragment() {
 
         preferences.add(metadataHeader)
         preferences.add(albumArtistsInsteadOfArtists)
+
+        return preferences
+    }
+
+    protected fun createAboutPanel(): List<Preference> {
+        val preferences = mutableListOf<Preference>()
+
+        val appHeader = Preference(
+                title = R.string.application,
+                type = PreferenceType.SUB_HEADER
+        )
+
+        val appVersion = Preference(
+                title = R.string.version,
+                summary = BuildConfig.VERSION_NAME,
+                icon = R.drawable.ic_felicity_full,
+                type = PreferenceType.NORMAL
+        )
+
+        val socials = Preference(
+                title = R.string.socials,
+                type = PreferenceType.SUB_HEADER
+        )
+
+        val telegram = Preference(
+                title = R.string.telegram_channel,
+                summary = R.string.telegram_channel_summary,
+                icon = R.drawable.ic_telegram,
+                type = PreferenceType.NORMAL,
+                onPreferenceAction = { view, callback ->
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/felicity_music_player"))
+                    startActivity(intent)
+                }
+        )
+
+        preferences.add(appHeader)
+        preferences.add(appVersion)
+        preferences.add(socials)
+        preferences.add(telegram)
 
         return preferences
     }

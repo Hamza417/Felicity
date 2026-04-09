@@ -10,8 +10,7 @@ class Preference {
     @StringRes
     var title: Int
 
-    @StringRes
-    var summary: Int = 0
+    var summary: Any = ""
 
     @DrawableRes
     var icon: Int = 0
@@ -21,7 +20,7 @@ class Preference {
 
     var onPreferenceAction: ((View, (Any?) -> Unit) -> Unit)? = null
 
-    constructor(@StringRes title: Int, @StringRes summary: Int, @DrawableRes icon: Int, type: PreferenceType?) {
+    constructor(@StringRes title: Int, summary: Any, @DrawableRes icon: Int, type: PreferenceType?) {
         this.title = title
         this.summary = summary
         this.icon = icon
@@ -34,7 +33,7 @@ class Preference {
     }
 
     constructor(@StringRes title: Int,
-                @StringRes summary: Int,
+                summary: Any,
                 @DrawableRes icon: Int,
                 type: PreferenceType?,
                 valueProvider: Supplier<Any?>?,
@@ -48,7 +47,7 @@ class Preference {
     }
 
     constructor(@StringRes title: Int,
-                @StringRes summary: Int,
+                @StringRes summary: Any,
                 @DrawableRes icon: Int,
                 type: PreferenceType?,
                 onPreferenceAction: ((View, (Any?) -> Unit) -> Unit)?) {

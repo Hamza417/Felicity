@@ -59,6 +59,11 @@ class PreferencesViewModel(application: Application) : WrappedViewModel(applicat
                             description = R.string.accessibility_desc,
                             icon = R.drawable.ic_accessibility
                     ),
+                    Preference(
+                            title = R.string.about,
+                            description = R.string.about_desc,
+                            icon = R.drawable.ic_info
+                    )
             )
 
             preference.postValue(preferences)

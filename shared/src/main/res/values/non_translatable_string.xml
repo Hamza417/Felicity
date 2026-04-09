@@ -33,4 +33,5 @@
     <string name="format_approx_ms">~%1$d ms</string>
     <string name="format_io_rate">%1$s ➔ %2$s</string>
     <string name="format_bit_depth_io">In: %1$d-bit  Out: %2$d-bit</string>
+    <string name="telegram_channel">Telegram Channel</string>
 </resources>

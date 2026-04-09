@@ -320,7 +320,7 @@
                         android:textSize="@dimen/text_size_14"
                         android:drawablePadding="@dimen/padding_10"
                         app:appFontStyle="bold"
-                        app:drawableStartCompat="@drawable/ic_info_16dp"
+                        app:drawableStartCompat="@drawable/ic_file_info_16dp"
                         app:drawableTintStyle="regular"
                         app:textColorStyle="primary" />
 

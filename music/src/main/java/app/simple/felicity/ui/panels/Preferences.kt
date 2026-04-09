@@ -10,6 +10,7 @@ import app.simple.felicity.adapters.preference.AdapterPreference
 import app.simple.felicity.databinding.FragmentPreferencesBinding
 import app.simple.felicity.databinding.HeaderPreferencesBinding
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.ui.preferences.main.About
 import app.simple.felicity.ui.preferences.main.Accessibility
 import app.simple.felicity.ui.preferences.main.Appearance
 import app.simple.felicity.ui.preferences.main.Behavior
@@ -66,6 +67,9 @@ class Preferences : MediaFragment() {
                         }
                         R.string.accessibility -> {
                             openFragment(Accessibility.newInstance(), Accessibility.TAG)
+                        }
+                        R.string.about -> {
+                            openFragment(About.newInstance(), About.TAG)
                         }
                     }
                 }

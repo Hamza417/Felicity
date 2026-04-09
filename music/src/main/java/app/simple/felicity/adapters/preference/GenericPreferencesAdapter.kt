@@ -3,10 +3,12 @@ package app.simple.felicity.adapters.preference
 import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterPreferenceButtonGroupBinding
 import app.simple.felicity.databinding.AdapterPreferenceDialogBinding
 import app.simple.felicity.databinding.AdapterPreferenceHeaderBinding
+import app.simple.felicity.databinding.AdapterPreferenceNormalBinding
 import app.simple.felicity.databinding.AdapterPreferencePanelBinding
 import app.simple.felicity.databinding.AdapterPreferencePopupBinding
 import app.simple.felicity.databinding.AdapterPreferenceSliderBinding
@@ -49,6 +51,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             VIEW_TYPE_BUTTON_GROUP -> {
                 ButtonGroup(AdapterPreferenceButtonGroupBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
+            VIEW_TYPE_NORMAL -> {
+                Normal(AdapterPreferenceNormalBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            }
             else -> {
                 throw IllegalArgumentException()
             }
@@ -68,7 +73,7 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             is Popup -> {
                 val preference = preferences[position]
                 holder.binding.title.setText(preference.title)
-                holder.binding.summary.setText(preference.summary)
+                holder.binding.summary.setSummary(preference)
 
                 if (preference.icon != -1) {
                     holder.binding.icon.setImageResource(preference.icon)
@@ -85,7 +90,7 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             is Dialog -> {
                 val preference = preferences[position]
                 holder.binding.title.setText(preference.title)
-                holder.binding.summary.setText(preference.summary)
+                holder.binding.summary.setSummary(preference)
                 if (preference.icon != -1) {
                     holder.binding.icon.setImageResource(preference.icon)
                 }
@@ -103,7 +108,7 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                     ?: throw IllegalStateException("SeekbarState cannot be null for slider preference")
 
                 holder.binding.title.setText(preference.title)
-                holder.binding.summary.setText(preference.summary)
+                holder.binding.summary.setSummary(preference)
                 if (preference.icon != -1) {
                     holder.binding.icon.setImageResource(preference.icon)
                 }
@@ -139,7 +144,7 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             is Panel -> {
                 val preference = preferences[position]
                 holder.binding.title.setText(preference.title)
-                holder.binding.summary.setText(preference.summary)
+                holder.binding.summary.setSummary(preference)
                 if (preference.icon != -1) {
                     holder.binding.icon.setImageResource(preference.icon)
                 }
@@ -153,7 +158,7 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             is Switch -> {
                 val preference = preferences[position]
                 holder.binding.title.setText(preference.title)
-                holder.binding.summary.setText(preference.summary)
+                holder.binding.summary.setSummary(preference)
                 if (preference.icon != -1) {
                     holder.binding.icon.setImageResource(preference.icon)
                 }
@@ -172,7 +177,7 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             is ButtonGroup -> {
                 val preference = preferences[position]
                 holder.binding.title.setText(preference.title)
-                holder.binding.summary.setText(preference.summary)
+                holder.binding.summary.setSummary(preference)
 
                 if (preference.icon != -1) {
                     holder.binding.icon.setImageResource(preference.icon)
@@ -186,6 +191,20 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
 
                 holder.binding.buttonGroup.setOnButtonSelectedListener {
                     preference.onPreferenceAction?.invoke(holder.binding.buttonGroup) { /* no-op */ }
+                }
+            }
+            is Normal -> {
+                val preference = preferences[position]
+                holder.binding.title.setText(preference.title)
+                holder.binding.summary.setSummary(preference)
+                if (preference.icon != -1) {
+                    holder.binding.icon.setImageResource(preference.icon)
+                }
+
+                holder.binding.container.setOnClickListener {
+                    preference.onPreferenceAction?.invoke(it) {
+                        /* no-op */
+                    }
                 }
             }
         }
@@ -211,6 +230,7 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             PreferenceType.PANEL -> VIEW_TYPE_PANEL
             PreferenceType.WARN -> VIEW_TYPE_WARNING
             PreferenceType.BUTTON_GROUP -> VIEW_TYPE_BUTTON_GROUP
+            PreferenceType.NORMAL -> VIEW_TYPE_NORMAL
             else -> throw IllegalArgumentException("Unknown view type at position $position")
         }
     }
@@ -238,6 +258,22 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
 
     inner class Header(val binding: AdapterPreferenceHeaderBinding) : VerticalListViewHolder(binding.root)
 
+    inner class Normal(val binding: AdapterPreferenceNormalBinding) : VerticalListViewHolder(binding.root)
+
+    private fun TextView.setSummary(preference: Preference) {
+        when (preference.summary) {
+            is Int -> {
+                setText(preference.summary as Int)
+            }
+            is String -> {
+                text = preference.summary as String
+            }
+            else -> {
+                text = ""
+            }
+        }
+    }
+
     companion object {
         private const val TAG = "GenericPreferencesAdapter"
 
@@ -251,5 +287,6 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
         const val VIEW_TYPE_DIALOG = 7
         const val VIEW_TYPE_WARNING = 8
         const val VIEW_TYPE_BUTTON_GROUP = 9
+        const val VIEW_TYPE_NORMAL = 10
     }
 }

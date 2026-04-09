@@ -93,9 +93,9 @@
     <string name="date_modified">Date Modified</string>
     <string name="lyrics">Lyrics</string>
     <string name="appearance">Appearance</string>
-    <string name="appearance_desc">Change or update appearance of the app\'s interface.</string>
+    <string name="appearance_desc">Customize the look and feel of the interface.</string>
     <string name="user_interface">User Interface</string>
-    <string name="user_interface_desc">Change user interface of the various panels in the app.</string>
+    <string name="user_interface_desc">Personalize the layout of various app panels.</string>
     <string name="corner_radius">Corner Radius</string>
     <string name="corner_radius_summary">Change corner radius of the interface components in the app.</string>
     <string name="change_home_interface_summary">Change default home interface to a different one.</string>
@@ -139,7 +139,7 @@
     <string name="behavior">Behavior</string>
     <string name="predictive_back">Predictive Back</string>
     <string name="predictive_back_summary">Toggle predictive back behavior in the app.</string>
-    <string name="behavior_desc">Change how app components behave with one another.</string>
+    <string name="behavior_desc">Adjust interaction logic and app behavior.</string>
     <string name="number_of_albums">Number of Albums</string>
     <string name="album_art">Album Art</string>
     <string name="shadows">Shadows</string>
@@ -208,7 +208,7 @@
     <string name="skip_silence_summary">Skip silent part while playing the song.</string>
     <string name="list_style">List Style</string>
     <string name="library">Library</string>
-    <string name="library_desc">Configure how app scans and present music files.</string>
+    <string name="library_desc">Manage music library scanning and indexing.</string>
     <string name="scanner">Scanner</string>
     <string name="minimum_audio_length">Minimum Audio Length</string>
     <string name="minimum_audio_length_summary">Minimum audio length (in seconds) required to be scanned and shown in the app.</string>
@@ -237,7 +237,7 @@
     <string name="controls">Edit</string>
     <string name="sync_adjust">Sync Adjust</string>
     <string name="accessibility">Accessibility</string>
-    <string name="accessibility_desc">Configure accessibility features in the app to improve usability of the app.</string>
+    <string name="accessibility_desc">Adjust accessibility settings for a better experience.</string>
     <string name="stroke_around_miniplayer">Stroke Around Miniplayer</string>
     <string name="darker_miniplayer_shadow">Use Darker Shadows</string>
 
@@ -358,4 +358,9 @@
     <string name="untitled_playlist">Untitled Playlist</string>
     <string name="manual">Manual</string>
     <string name="filter_categories">Filter Categories</string>
+    <string name="about">About</string>
+    <string name="about_desc">General information and version details.</string>
+    <string name="version">Version</string>
+    <string name="socials">Socials</string>
+    <string name="telegram_channel_summary">Join app\'s Telegram Channel for all app related updates.</string>
 </resources>
