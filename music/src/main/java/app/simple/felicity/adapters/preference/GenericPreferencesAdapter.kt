@@ -19,8 +19,24 @@ import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.models.Preference
+import app.simple.felicity.utils.AdapterUtils.searchHighlighter
 
-class GenericPreferencesAdapter(private val preferences: List<Preference>) : RecyclerView.Adapter<VerticalListViewHolder>() {
+/**
+ * Generic adapter that renders a heterogeneous list of [Preference] items using a distinct
+ * view type per [PreferenceType].
+ *
+ * When [keyword] is non-blank every bound title and summary text view is passed through
+ * [searchHighlighter] so matching substrings are highlighted in the current accent color.
+ *
+ * @param preferences the ordered list of preference items to display.
+ * @param keyword     optional search keyword used to highlight matching text; pass an empty
+ *                    string (the default) to disable highlighting.
+ * @author Hamza417
+ */
+class GenericPreferencesAdapter(
+        private val preferences: List<Preference>,
+        private val keyword: String = ""
+) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
@@ -86,6 +102,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                 }
 
                 holder.binding.popup.text = preference.valueAsStringProvider ?: ""
+
+                holder.binding.title.highlight()
+                holder.binding.summary.highlight()
             }
             is Dialog -> {
                 val preference = preferences[position]
@@ -101,6 +120,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                         /* no-op */
                     }
                 }
+
+                holder.binding.title.highlight()
+                holder.binding.summary.highlight()
             }
             is Slider -> {
                 val preference = preferences[position]
@@ -140,6 +162,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                         }
                     }
                 })
+
+                holder.binding.title.highlight()
+                holder.binding.summary.highlight()
             }
             is Panel -> {
                 val preference = preferences[position]
@@ -154,6 +179,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                         /* no-op */
                     }
                 }
+
+                holder.binding.title.highlight()
+                holder.binding.summary.highlight()
             }
             is Switch -> {
                 val preference = preferences[position]
@@ -169,10 +197,14 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                         /* no-op */
                     }
                 }
+
+                holder.binding.title.highlight()
+                holder.binding.summary.highlight()
             }
             is Warning -> {
                 val preference = preferences[position]
                 holder.binding.warning.setText(preference.title)
+                holder.binding.warning.highlight()
             }
             is ButtonGroup -> {
                 val preference = preferences[position]
@@ -192,6 +224,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                 holder.binding.buttonGroup.setOnButtonSelectedListener {
                     preference.onPreferenceAction?.invoke(holder.binding.buttonGroup) { /* no-op */ }
                 }
+
+                holder.binding.title.highlight()
+                holder.binding.summary.highlight()
             }
             is Normal -> {
                 val preference = preferences[position]
@@ -206,6 +241,9 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
                         /* no-op */
                     }
                 }
+
+                holder.binding.title.highlight()
+                holder.binding.summary.highlight()
             }
         }
     }
@@ -271,6 +309,16 @@ class GenericPreferencesAdapter(private val preferences: List<Preference>) : Rec
             else -> {
                 text = ""
             }
+        }
+    }
+
+    /**
+     * Applies [searchHighlighter] to this [TextView] using the current [keyword].
+     * Does nothing when [keyword] is blank so the adapter is safe to use without a query.
+     */
+    private fun TextView.highlight() {
+        if (keyword.isNotBlank()) {
+            searchHighlighter(this, keyword)
         }
     }
 

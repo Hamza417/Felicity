@@ -9,6 +9,7 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.preference.AdapterPreference
 import app.simple.felicity.databinding.FragmentPreferencesBinding
 import app.simple.felicity.databinding.HeaderPreferencesBinding
+import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.ui.preferences.main.About
 import app.simple.felicity.ui.preferences.main.Accessibility
@@ -29,8 +30,9 @@ class Preferences : MediaFragment() {
     private val preferencesViewModel: PreferencesViewModel by viewModels({ requireActivity() })
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+
         binding = FragmentPreferencesBinding.inflate(inflater, container, false)
-        headerBinding = HeaderPreferencesBinding.inflate(inflater, binding.recyclerView, false)
+        headerBinding = HeaderPreferencesBinding.inflate(inflater, container, false)
 
         return binding.root
     }
@@ -38,6 +40,12 @@ class Preferences : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         requireHiddenMiniPlayer()
+        binding.header.setContentView(headerBinding.root)
+        binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
+
+        headerBinding.search.setOnClickListener {
+            openFragment(PreferenceSearch.newInstance(), PreferenceSearch.TAG)
+        }
 
         preferencesViewModel.getPreferences().observe(viewLifecycleOwner) { preferences ->
             adapter = AdapterPreference(preferences)
