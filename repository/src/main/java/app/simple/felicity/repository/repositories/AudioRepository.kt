@@ -841,6 +841,24 @@ class AudioRepository @Inject constructor(
     }
 
     /**
+     * Reactive search by genre – re-emits whenever the audio table changes.
+     * Filtered in real-time by [LibraryPreferences] minimum duration and size.
+     */
+    fun searchByGenreFlow(genre: String): Flow<MutableList<Audio>> {
+        return audioDatabase.audioDao()?.searchByGenreFiltered(genre, minDurationMs(), minSizeBytes())
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Reactive search by composer – re-emits whenever the audio table changes.
+     * Filtered in real-time by [LibraryPreferences] minimum duration and size.
+     */
+    fun searchByComposerFlow(composer: String): Flow<MutableList<Audio>> {
+        return audioDatabase.audioDao()?.searchByComposerFiltered(composer, minDurationMs(), minSizeBytes())
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
      * Get audio files sorted by a specific column
      * @param sortColumn The column to sort by (e.g., "title", "artist", "date_added")
      * @param ascending Whether to sort in ascending order (true) or descending (false)

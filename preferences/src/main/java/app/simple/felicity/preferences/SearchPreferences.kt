@@ -13,6 +13,11 @@ object SearchPreferences {
     const val GRID_SIZE_PORTRAIT = "search_grid_size_portrait1"
     const val GRID_SIZE_LANDSCAPE = "search_grid_size_landscape1"
 
+    const val FILTER_SONGS = "search_filter_songs"
+    const val FILTER_ALBUMS = "search_filter_albums"
+    const val FILTER_ARTISTS = "search_filter_artists"
+    const val FILTER_GENRES = "search_filter_genres"
+
     // ----------------------------------------------------------------------------------------- //
 
     fun getSongSort(): Int {
@@ -58,4 +63,30 @@ object SearchPreferences {
             SharedPreferences.getSharedPreferences().edit { putString(GRID_SIZE_LANDSCAPE, mode.name) }
         }
     }
+
+    // ----------------------------------------------------------------------------------------- //
+
+    fun isSongsEnabled(): Boolean =
+        SharedPreferences.getSharedPreferences().getBoolean(FILTER_SONGS, true)
+
+    fun setSongsEnabled(value: Boolean) =
+        SharedPreferences.getSharedPreferences().edit { putBoolean(FILTER_SONGS, value) }
+
+    fun isAlbumsEnabled(): Boolean =
+        SharedPreferences.getSharedPreferences().getBoolean(FILTER_ALBUMS, true)
+
+    fun setAlbumsEnabled(value: Boolean) =
+        SharedPreferences.getSharedPreferences().edit { putBoolean(FILTER_ALBUMS, value) }
+
+    fun isArtistsEnabled(): Boolean =
+        SharedPreferences.getSharedPreferences().getBoolean(FILTER_ARTISTS, true)
+
+    fun setArtistsEnabled(value: Boolean) =
+        SharedPreferences.getSharedPreferences().edit { putBoolean(FILTER_ARTISTS, value) }
+
+    fun isGenresEnabled(): Boolean =
+        SharedPreferences.getSharedPreferences().getBoolean(FILTER_GENRES, true)
+
+    fun setGenresEnabled(value: Boolean) =
+        SharedPreferences.getSharedPreferences().edit { putBoolean(FILTER_GENRES, value) }
 }

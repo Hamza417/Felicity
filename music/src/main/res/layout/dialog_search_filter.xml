@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="@dimen/padding_15">
+
+    <app.simple.felicity.decorations.corners.DynamicCornerLinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/padding_15">
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/filter_categories"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="black"
+            app:textColorStyle="primary" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/categories_chip_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:chipSpacingVertical="-5dp"
+            app:selectionRequired="false"
+            app:singleSelection="false">
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/songs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/songs" />
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/albums"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/albums" />
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/artists"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/artists" />
+
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/genres"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/genres" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+    </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+
+</FrameLayout>
+

@@ -7,6 +7,7 @@ import android.util.AttributeSet
 import android.util.Log
 import android.widget.EdgeEffect
 import androidx.dynamicanimation.animation.DynamicAnimation
+import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
@@ -227,7 +228,13 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
         clearAnimation()
 
         try {
-            adapter?.stateRestorationPolicy = Adapter.StateRestorationPolicy.ALLOW
+            if (adapter is ConcatAdapter) {
+                adapter.adapters.forEach {
+                    it.stateRestorationPolicy = Adapter.StateRestorationPolicy.ALLOW
+                }
+            } else {
+                adapter?.stateRestorationPolicy = Adapter.StateRestorationPolicy.ALLOW
+            }
         } catch (e: UnsupportedOperationException) {
             e.printStackTrace()
         }

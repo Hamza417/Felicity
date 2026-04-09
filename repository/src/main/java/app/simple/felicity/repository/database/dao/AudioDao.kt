@@ -113,6 +113,12 @@ interface AudioDao {
     @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND album LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
     fun searchByAlbumFiltered(query: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
 
+    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND genre LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
+    fun searchByGenreFiltered(query: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
+
+    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND composer LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
+    fun searchByComposerFiltered(query: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
+
     @Query("SELECT id FROM audio WHERE path = :path AND is_available = 1")
     fun getAudioIdByPath(path: String): Long
 

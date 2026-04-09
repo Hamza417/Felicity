@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <app.simple.felicity.decorations.theme.ThemeDivider
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:layout_marginTop="@dimen/padding_5"
+        android:layout_marginBottom="@dimen/padding_5" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/section_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="@dimen/padding_15"
+        android:paddingVertical="@dimen/padding_5"
+        android:textSize="@dimen/text_size_14"
+        app:appFontStyle="black"
+        app:textColorStyle="accent" />
+
+</LinearLayout>
+

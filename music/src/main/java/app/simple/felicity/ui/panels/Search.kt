@@ -18,20 +18,37 @@ import app.simple.felicity.adapters.ui.lists.AdapterSearch
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentSearchBinding
 import app.simple.felicity.databinding.HeaderSearchBinding
-import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
+import app.simple.felicity.dialogs.search.SearchFilter.Companion.showSearchFilter
 import app.simple.felicity.dialogs.search.SearchMenu.Companion.showSearchMenu
 import app.simple.felicity.dialogs.search.SearchSort.Companion.showSearchSort
 import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.models.SearchResults
 import app.simple.felicity.preferences.SearchPreferences
+import app.simple.felicity.repository.models.Album
+import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.sort.SearchSort.setSearchOrder
 import app.simple.felicity.repository.sort.SearchSort.setSearchSort
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
+import app.simple.felicity.ui.pages.AlbumPage
+import app.simple.felicity.ui.pages.ArtistPage
+import app.simple.felicity.ui.pages.GenrePage
 import app.simple.felicity.viewmodels.panels.SearchViewModel
 import kotlinx.coroutines.launch
 
+/**
+ * Search panel that performs a full-library search across songs, albums, artists,
+ * and genres using a single [AdapterSearch] with multiple view types. Results are
+ * separated by labeled section headers that are part of the same flat item list.
+ * A filter button allows toggling which categories are searched.
+ * Search queries are debounced by 300 ms in [SearchViewModel] to avoid excessive
+ * database queries while the user is typing.
+ *
+ * @author Hamza417
+ */
 class Search : PanelFragment() {
 
     private lateinit var binding: FragmentSearchBinding
@@ -41,15 +58,16 @@ class Search : PanelFragment() {
     private var gridLayoutManager: GridLayoutManager? = null
 
     /**
-     * This will keep the query and search results till activity is alive, we will not be going the Inure
-     * way here where we persist the search query and results.
+     * This will keep the query and search results until the activity is alive.
      */
     private val searchViewModel: SearchViewModel by viewModels({ requireActivity() })
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+            inflater: LayoutInflater,
+            container: ViewGroup?,
+            savedInstanceState: Bundle?): View {
         binding = FragmentSearchBinding.inflate(inflater, container, false)
         headerBinding = HeaderSearchBinding.inflate(inflater, container, false)
-
         return binding.root
     }
 
@@ -61,9 +79,12 @@ class Search : PanelFragment() {
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.attachSlideFastScroller()
 
-        gridLayoutManager = GridLayoutManager(requireContext(), SearchPreferences.getGridSize().spanCount)
+        gridLayoutManager = GridLayoutManager(
+                requireContext(), SearchPreferences.getGridSize().spanCount
+        )
         binding.recyclerView.layoutManager = gridLayoutManager
 
+        setupAdapters()
         setupClickListeners()
 
         // Restore previous query to the EditText
@@ -78,8 +99,8 @@ class Search : PanelFragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                searchViewModel.songs.collect { audios ->
-                    updateSongsList(audios)
+                searchViewModel.searchResults.collect { results ->
+                    updateSearchResults(results)
                 }
             }
         }
@@ -91,17 +112,73 @@ class Search : PanelFragment() {
         super.onDestroyView()
     }
 
+    private fun setupAdapters() {
+        adapterSearch = AdapterSearch().also { adapter ->
+            adapter.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
+                override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
+                    setMediaItems(songs, position)
+                }
+
+                override fun onSongLongClicked(
+                        audios: MutableList<Audio>,
+                        position: Int,
+                        imageView: ImageView?) {
+                    openSongsMenu(audios, position, imageView)
+                }
+
+                override fun onAlbumClicked(albums: MutableList<Album>, position: Int, view: View) {
+                    openFragment(AlbumPage.newInstance(albums[position]), AlbumPage.TAG)
+                }
+
+                override fun onArtistClicked(
+                        artist: MutableList<Artist>,
+                        position: Int,
+                        view: View) {
+                    openFragment(ArtistPage.newInstance(artist[position]), ArtistPage.TAG)
+                }
+
+                override fun onGenreClicked(genre: Genre, view: View) {
+                    openFragment(GenrePage.newInstance(genre), GenrePage.TAG)
+                }
+            })
+        }
+
+        binding.recyclerView.adapter = adapterSearch
+
+        gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int): Int {
+                val spanCount = gridLayoutManager?.spanCount ?: 1
+                val adapter = adapterSearch ?: return 1
+                if (position < 0 || position >= adapter.itemCount) return 1
+                return when (adapter.getItemViewType(position)) {
+                    AdapterSearch.VIEW_TYPE_SONG_LIST,
+                    AdapterSearch.VIEW_TYPE_SONG_GRID,
+                    AdapterSearch.VIEW_TYPE_SONG_LABEL -> 1
+                    else -> spanCount
+                }
+            }
+        }
+    }
+
     private fun setupClickListeners() {
         headerBinding.sortStyle.setSearchSort()
         headerBinding.sortOrder.setSearchOrder()
 
         headerBinding.editText.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) =
+                Unit
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) =
+                Unit
+
             override fun afterTextChanged(s: Editable?) {
                 searchViewModel.setSearchQuery(s?.toString() ?: "")
             }
         })
+
+        headerBinding.filter.setOnClickListener {
+            childFragmentManager.showSearchFilter()
+        }
 
         headerBinding.menu.setOnClickListener {
             childFragmentManager.showSearchMenu()
@@ -120,61 +197,31 @@ class Search : PanelFragment() {
         }
 
         headerBinding.shuffle.setOnClickListener {
-            val songs = searchViewModel.songs.value
+            val songs = searchViewModel.searchResults.value.songs
             if (songs.isNotEmpty()) shuffleMediaItems(songs)
         }
     }
 
-    private fun updateSongsList(songs: List<Audio>) {
-        if (adapterSearch == null) {
-            adapterSearch = AdapterSearch(songs)
-            adapterSearch?.setHasStableIds(true)
-            adapterSearch?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
-                override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
-                    setMediaItems(songs, position)
-                }
-
-                override fun onSongLongClicked(audios: MutableList<Audio>, position: Int, imageView: ImageView?) {
-                    openSongsMenu(audios, position, imageView)
-                }
-            })
-            binding.recyclerView.adapter = adapterSearch
-        } else {
-            adapterSearch?.updateSongs(songs)
-            if (binding.recyclerView.adapter == null) {
-                binding.recyclerView.adapter = adapterSearch
-            }
-        }
-
-        binding.recyclerView.requireAttachedSectionScroller(
-                sections = provideScrollPositions(songs),
-                header = binding.appHeader,
-                view = headerBinding.scroll
+    private fun updateSearchResults(results: SearchResults) {
+        adapterSearch?.submitResults(
+                results = results,
+                songsHeader = getString(R.string.songs),
+                albumsHeader = getString(R.string.albums),
+                artistsHeader = getString(R.string.artists),
+                genresHeader = getString(R.string.genres)
         )
 
-        headerBinding.count.text = getString(R.string.x_songs, songs.size)
-        headerBinding.hours.text = songs.sumOf { it.duration }.toDynamicTimeString()
+        headerBinding.count.text = getString(R.string.x_songs, results.songs.size)
+        headerBinding.hours.text = results.songs.sumOf { it.duration }.toDynamicTimeString()
         headerBinding.sortStyle.setSearchSort()
         headerBinding.sortOrder.setSearchOrder()
 
         headerBinding.hours.setOnClickListener {
             childFragmentManager.showTotalTime(
-                    totalTime = songs.sumOf { it.duration },
-                    count = songs.size
+                    totalTime = results.songs.sumOf { it.duration },
+                    count = results.songs.size
             )
         }
-    }
-
-    private fun provideScrollPositions(songs: List<Audio>): List<SectionedFastScroller.Position> {
-        val firstAlphabetToIndex = linkedMapOf<String, Int>()
-        songs.forEachIndexed { index, song ->
-            val firstChar = song.title?.firstOrNull()?.uppercaseChar()
-            val key = if (firstChar != null && firstChar.isLetter()) firstChar.toString() else "#"
-            if (!firstAlphabetToIndex.containsKey(key)) {
-                firstAlphabetToIndex[key] = index
-            }
-        }
-        return firstAlphabetToIndex.map { (char, index) -> SectionedFastScroller.Position(char, index) }
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
@@ -183,15 +230,19 @@ class Search : PanelFragment() {
             SearchPreferences.SONG_SORT -> {
                 headerBinding.sortStyle.setSearchSort()
             }
+
             SearchPreferences.SORTING_STYLE -> {
                 headerBinding.sortOrder.setSearchOrder()
             }
+
             SearchPreferences.GRID_SIZE_PORTRAIT, SearchPreferences.GRID_SIZE_LANDSCAPE -> {
                 val newMode = SearchPreferences.getGridSize()
                 gridLayoutManager?.spanCount = newMode.spanCount
                 adapterSearch?.layoutMode = newMode
                 binding.recyclerView.beginDelayedTransition()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
+                // notifyDataSetChanged forces RecyclerView to re-check view types for all positions,
+                // which ensures song items are re-inflated with the correct list/grid/label layout.
+                adapterSearch?.notifyDataSetChanged()
             }
         }
     }

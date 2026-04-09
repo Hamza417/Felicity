@@ -357,4 +357,5 @@
     <string name="no_playlists">No Playlists</string>
     <string name="untitled_playlist">Untitled Playlist</string>
     <string name="manual">Manual</string>
+    <string name="filter_categories">Filter Categories</string>
 </resources>
