@@ -28,6 +28,11 @@ public class DynamicRippleImageButton extends ThemeImageButton {
         setBackgroundColor(Color.TRANSPARENT);
     }
     
+    public DynamicRippleImageButton(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        setBackgroundColor(Color.TRANSPARENT);
+    }
+    
     @Override
     public void setOnClickListener(@Nullable OnClickListener l) {
         super.setOnClickListener(l);

@@ -270,8 +270,7 @@
                 android:layout_weight="1"
                 android:layout_height="@dimen/button_size"
                 android:layout_marginEnd="@dimen/padding_1"
-                android:padding="@dimen/padding_8"
-                android:src="@drawable/ic_equalizer"
+                android:src="@drawable/ic_tune"
                 app:buttonTintType="regular" />
 
             <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
