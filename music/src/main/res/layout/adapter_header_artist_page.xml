@@ -15,7 +15,7 @@
         app:fadeDirection="top_to_bottom"
         app:fadeEnabled="true"
         app:fadeStartFraction="0.4"
-        app:showIndicator="true"
+        app:showIndicator="false"
         app:slideIntervalMs="5000"
         app:slideSwiftness="0.25"
         app:springDamping="0.60"
