@@ -13,6 +13,7 @@ import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.PreferenceFragment
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.services.AudioDatabaseService
+import app.simple.felicity.repository.utils.AudioUtils
 
 class Library : PreferenceFragment() {
 
@@ -46,6 +47,9 @@ class Library : PreferenceFragment() {
             LibraryPreferences.SKIP_HIDDEN_FOLDERS -> {
                 // Any scanner-related preference change requires a fresh scan
                 AudioDatabaseService.refreshScan(requireContext())
+            }
+            LibraryPreferences.ALBUM_ARTIST_OVER_ARTIST -> {
+                AudioUtils.albumArtistOverArtist = LibraryPreferences.isAlbumArtistOverArtist()
             }
         }
     }

@@ -1,7 +1,7 @@
 package app.simple.felicity.repository.utils
 
 import app.simple.felicity.core.utils.StringUtils.ifNullOrBlank
-import app.simple.felicity.preferences.ListPreferences
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.models.Audio
 import net.jpountz.xxhash.XXHashFactory
 
@@ -10,7 +10,7 @@ import net.jpountz.xxhash.XXHashFactory
  */
 object AudioUtils {
 
-    var albumArtistOverArtist: Boolean = ListPreferences.isAlbumArtistOverArtist()
+    var albumArtistOverArtist: Boolean = LibraryPreferences.isAlbumArtistOverArtist()
 
     /**
      * Generates a stable 64-bit identifier from a subset of [Audio] metadata fields.

@@ -45,11 +45,6 @@ class PreferencesViewModel(application: Application) : WrappedViewModel(applicat
                             icon = R.drawable.ic_volume_up
                     ),
                     Preference(
-                            title = R.string.list,
-                            description = R.string.list_desc,
-                            icon = R.drawable.ic_list
-                    ),
-                    Preference(
                             title = R.string.library,
                             description = R.string.library_desc,
                             icon = R.drawable.ic_library

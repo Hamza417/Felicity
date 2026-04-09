@@ -6,6 +6,7 @@ import app.simple.felicity.manager.SharedPreferences
 object LibraryPreferences {
 
     private const val USE_MEDIASTORE_ARTWORK = "use_mediastore_artwork"
+    const val ALBUM_ARTIST_OVER_ARTIST = "album_artist_over_artist"
 
     const val MINIMUM_AUDIO_LENGTH = "minimum_audio_length"
     const val MINIMUM_AUDIO_SIZE = "minimum_audio_size"
@@ -70,6 +71,19 @@ object LibraryPreferences {
 
     fun setUseMediaStoreArtwork(use: Boolean) {
         SharedPreferences.getSharedPreferences().edit { putBoolean(USE_MEDIASTORE_ARTWORK, use) }
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    fun isAlbumArtistOverArtist(): Boolean {
+        return SharedPreferences.getSharedPreferences()
+            .getBoolean(ALBUM_ARTIST_OVER_ARTIST, false)
+    }
+
+    fun setAlbumArtistOverArtist(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit {
+            putBoolean(ALBUM_ARTIST_OVER_ARTIST, enabled)
+        }
     }
 }
 

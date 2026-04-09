@@ -304,7 +304,6 @@
     <string name="drift">Drift</string>
     <string name="presets">Presets</string>
     <string name="visualizer">Visualizer</string>
-    <string name="list_desc">Change how lists are presented in the app.</string>
     <string name="metadata">Metadata</string>
     <string name="show_album_artists">Show Album Artists</string>
     <string name="show_album_artists_summary">Show album artists instead of artists in the artists field of the lists in the app.</string>
