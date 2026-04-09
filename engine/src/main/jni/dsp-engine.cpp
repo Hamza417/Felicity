@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "modernize-loop-convert"
 /**
  * @file dsp-engine.cpp
  * @brief JNI bridge and implementation for the Felicity unified native DSP engine.
@@ -1504,3 +1506,5 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetReverb(
 
 } // extern "C"
 
+
+#pragma clang diagnostic pop

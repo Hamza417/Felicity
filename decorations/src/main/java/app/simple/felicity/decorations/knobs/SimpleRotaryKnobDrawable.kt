@@ -72,7 +72,7 @@ class SimpleRotaryKnobDrawable(
 
     private val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        setShadowLayer(20f, 0f, 0f, 0x44000000) // Subtle consistent shadow for the knob body.
+        setShadowLayer(30f, 0f, 0f, 0x44000000) // Subtle consistent shadow for the knob body.
     }
 
     /**
@@ -347,11 +347,11 @@ class SimpleRotaryKnobDrawable(
         @ColorInt
         val DEFAULT_BODY_COLOR: Int = 0xFFFFFFFF.toInt()
 
-        const val DEFAULT_STROKE_WIDTH_FRACTION = 0.015f
-        const val DEFAULT_INDICATOR_RADIUS_FRACTION = 0.074f
+        const val DEFAULT_STROKE_WIDTH_FRACTION = 0.035f
+        const val DEFAULT_INDICATOR_RADIUS_FRACTION = 0.084f
 
         /** How far the indicator dot sits from the center, as a fraction of body radius. */
-        const val INDICATOR_DISTANCE_FRACTION = 0.81f
+        const val INDICATOR_DISTANCE_FRACTION = 0.78f
 
         const val DEFAULT_INTRINSIC_SIZE_PX = 500
 
@@ -361,6 +361,6 @@ class SimpleRotaryKnobDrawable(
          * or indicator glow progress (both in [0..1]), so the luminance bloom grows from
          * nothing to full intensity — like a capacitor charging up to its rated voltage.
          */
-        private const val GLOW_RADIUS_FRACTION = 0.05f
+        private const val GLOW_RADIUS_FRACTION = 0.10f
     }
 }
