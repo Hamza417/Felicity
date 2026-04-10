@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterPreferenceButtonGroupBinding
 import app.simple.felicity.databinding.AdapterPreferenceDialogBinding
 import app.simple.felicity.databinding.AdapterPreferenceHeaderBinding
+import app.simple.felicity.databinding.AdapterPreferenceInfoBinding
 import app.simple.felicity.databinding.AdapterPreferenceLinkBinding
 import app.simple.felicity.databinding.AdapterPreferenceNormalBinding
 import app.simple.felicity.databinding.AdapterPreferencePanelBinding
@@ -73,6 +74,9 @@ class GenericPreferencesAdapter(
             }
             VIEW_TYPE_LINK -> {
                 Link(AdapterPreferenceLinkBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            }
+            VIEW_TYPE_INFO -> {
+                Info(AdapterPreferenceInfoBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
             else -> {
                 throw IllegalArgumentException()
@@ -266,6 +270,20 @@ class GenericPreferencesAdapter(
                 holder.binding.title.highlight()
                 holder.binding.summary.highlight()
             }
+            is Info -> {
+                val preference = preferences[position]
+                holder.binding.title.setText(preference.title)
+                holder.binding.summary.setSummary(preference)
+
+                holder.binding.container.setOnClickListener {
+                    preference.onPreferenceAction?.invoke(it) {
+                        /* no-op */
+                    }
+                }
+
+                holder.binding.title.highlight()
+                holder.binding.summary.highlight()
+            }
         }
     }
 
@@ -291,6 +309,7 @@ class GenericPreferencesAdapter(
             PreferenceType.BUTTON_GROUP -> VIEW_TYPE_BUTTON_GROUP
             PreferenceType.NORMAL -> VIEW_TYPE_NORMAL
             PreferenceType.LINK -> VIEW_TYPE_LINK
+            PreferenceType.INFO -> VIEW_TYPE_INFO
             else -> throw IllegalArgumentException("Unknown view type at position $position")
         }
     }
@@ -326,6 +345,8 @@ class GenericPreferencesAdapter(
     inner class Normal(val binding: AdapterPreferenceNormalBinding) : VerticalListViewHolder(binding.root)
 
     inner class Link(val binding: AdapterPreferenceLinkBinding) : VerticalListViewHolder(binding.root)
+
+    inner class Info(val binding: AdapterPreferenceInfoBinding) : VerticalListViewHolder(binding.root)
 
     private fun TextView.setSummary(preference: Preference) {
         when (preference.summary) {
@@ -366,5 +387,6 @@ class GenericPreferencesAdapter(
         const val VIEW_TYPE_BUTTON_GROUP = 9
         const val VIEW_TYPE_NORMAL = 10
         const val VIEW_TYPE_LINK = 11
+        const val VIEW_TYPE_INFO = 12
     }
 }

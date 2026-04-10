@@ -373,4 +373,7 @@
     <string name="purchase_desc">Purchase and activate the full version of the app.</string>
     <string name="verify">Verify</string>
     <string name="verifying_license">Verifying License</string>
+    <string name="trial">Trial</string>
+    <string name="trial_period">Trial Period</string>
+    <string name="trial_period_summary">%1$d remaining in the trial period.</string>
 </resources>

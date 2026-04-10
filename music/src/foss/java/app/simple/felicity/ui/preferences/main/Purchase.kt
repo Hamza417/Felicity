@@ -15,6 +15,7 @@ import app.simple.felicity.dialogs.app.GumroadLicenseKey.Companion.showGumroadLi
 import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.extensions.fragments.PreferenceFragment
 import app.simple.felicity.models.Preference
+import app.simple.felicity.preferences.TrialPreferences
 
 class Purchase : PreferenceFragment() {
 
@@ -44,6 +45,29 @@ class Purchase : PreferenceFragment() {
     private fun createPurchasePanel(): MutableList<Preference> {
         val preferences = mutableListOf<Preference>()
 
+        val trialHeader = Preference(
+                title = R.string.trial,
+                type = PreferenceType.SUB_HEADER
+        )
+
+        val trialIcon = if (TrialPreferences.isWithinTrialPeriod()) {
+            R.drawable.ic_hourglass_top
+        } else {
+            R.drawable.ic_hourglass_bottom
+        }
+
+        val trialPeriod = Preference(
+                title = R.string.trial_period,
+                summary = getString(R.string.trial_period_summary, TrialPreferences.getDaysLeft()),
+                icon = trialIcon,
+                type = PreferenceType.NORMAL
+        )
+
+        val gumroadHeader = Preference(
+                title = R.string.gumroad,
+                type = PreferenceType.SUB_HEADER
+        )
+
         val purchaseHeader = Preference(
                 title = R.string.gumroad,
                 summary = R.string.support_development_summary,
@@ -65,6 +89,9 @@ class Purchase : PreferenceFragment() {
                 }
         )
 
+        preferences.add(trialHeader)
+        preferences.add(trialPeriod)
+        preferences.add(gumroadHeader)
         preferences.add(purchaseHeader)
         preferences.add(purchase)
 

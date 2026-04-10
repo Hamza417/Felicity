@@ -877,8 +877,8 @@ abstract class PreferenceFragment : MediaFragment() {
         val appVersion = Preference(
                 title = R.string.version,
                 summary = BuildConfig.VERSION_NAME,
-                icon = R.drawable.ic_felicity_full,
-                type = PreferenceType.NORMAL
+                icon = -1,
+                type = PreferenceType.INFO
         )
 
         val socials = Preference(

@@ -35,6 +35,7 @@ import app.simple.felicity.manager.SharedPreferences.unregisterEncryptedSharedPr
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
+import app.simple.felicity.preferences.TrialPreferences
 import app.simple.felicity.repository.covers.AudioCover
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.shared.utils.BarHeight
@@ -99,6 +100,10 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         initTheme()
         applyPredictiveBackGesture()
         observeSongChangesForPalette()
+
+        if (TrialPreferences.isFirstLaunchDateSet().not()) {
+            TrialPreferences.setFirstLaunchDate(System.currentTimeMillis())
+        }
     }
 
     /**

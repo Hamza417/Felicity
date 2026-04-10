@@ -28,6 +28,10 @@ object TrialPreferences {
         return SharedPreferences.getEncryptedSharedPreferences().getLong(FIRST_LAUNCH, -1)
     }
 
+    fun isFirstLaunchDateSet(): Boolean {
+        return getFirstLaunchDate() != -1L
+    }
+
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun getDaysLeft(): Int {

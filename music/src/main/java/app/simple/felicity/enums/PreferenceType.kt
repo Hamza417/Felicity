@@ -13,4 +13,5 @@ enum class PreferenceType {
     BUTTON_GROUP,
     NORMAL,
     LINK,
+    INFO
 }
