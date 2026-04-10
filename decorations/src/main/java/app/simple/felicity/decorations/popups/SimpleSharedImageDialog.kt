@@ -36,7 +36,7 @@ class SimpleSharedImageDialog<VB : ViewBinding> private constructor(
         inflateBinding: (LayoutInflater, ViewGroup?, Boolean) -> VB,
         targetImageViewProvider: (VB) -> ImageView,
         dialogWidthRatio: Float,
-        onDialogInflated: (VB, () -> Unit) -> Unit,
+        onDialogInflated: (VB, () -> Unit, () -> Unit) -> Unit,
         onDismiss: (() -> Unit)?,
         private val viewCreatedCallback: ((VB) -> Unit)?
 ) : SharedImageDialogMenu<VB>(
@@ -63,7 +63,7 @@ class SimpleSharedImageDialog<VB : ViewBinding> private constructor(
             private val targetImageViewProvider: (VB) -> ImageView
     ) {
         private var onViewCreatedCallback: ((VB) -> Unit)? = null
-        private var onDialogInflatedCallback: (VB, () -> Unit) -> Unit = { _, _ -> }
+        private var onDialogInflatedCallback: (VB, () -> Unit, () -> Unit) -> Unit = { _, _, _ -> }
         private var onDismissCallback: (() -> Unit)? = null
         private var widthRatio: Float = DEFAULT_WIDTH_RATIO
 
@@ -87,9 +87,11 @@ class SimpleSharedImageDialog<VB : ViewBinding> private constructor(
 
         /**
          * Set callback when the dialog is inflated.
-         * Provides the binding and a dismiss function.
+         * Provides the binding, an animated dismiss function, and an immediate dismiss function.
+         * Use the immediate dismiss function for actions that open a new screen so the image
+         * is not animated back to a source view that is no longer visible.
          */
-        fun onDialogInflated(callback: (VB, () -> Unit) -> Unit): Builder<VB> {
+        fun onDialogInflated(callback: (VB, () -> Unit, () -> Unit) -> Unit): Builder<VB> {
             this.onDialogInflatedCallback = callback
             return this
         }

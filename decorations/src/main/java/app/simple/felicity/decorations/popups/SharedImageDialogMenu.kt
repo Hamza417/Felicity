@@ -34,7 +34,10 @@ import androidx.viewbinding.ViewBinding
  * @param sourceImageView The ImageView from RecyclerView that will be used as the shared element source
  * @param inflateBinding Lambda to inflate the dialog content ViewBinding
  * @param targetImageViewProvider Lambda that returns the target ImageView from the inflated binding
- * @param onDialogInflated Callback when the dialog is inflated, provides binding and dismiss function
+ * @param onDialogInflated Callback when the dialog is inflated. Provides the binding, an animated
+ *                         dismiss lambda, and an immediate-dismiss lambda (no return animation).
+ *                         Use the immediate-dismiss lambda when the action navigates to a new screen
+ *                         so the source image is not animated back to a view that is no longer visible.
  * @param onDismiss Callback when the dialog is fully dismissed
  */
 abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor(
@@ -43,7 +46,7 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         private val inflateBinding: (LayoutInflater, ViewGroup?, Boolean) -> VB,
         private val targetImageViewProvider: (VB) -> ImageView,
         private val dialogWidthRatio: Float = DEFAULT_WIDTH_RATIO,
-        private val onDialogInflated: (VB, () -> Unit) -> Unit = { _, _ -> },
+        private val onDialogInflated: (VB, () -> Unit, () -> Unit) -> Unit = { _, _, _ -> },
         private val onDismiss: (() -> Unit)? = null
 ) {
 
@@ -123,7 +126,7 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
             animateShow()
         }
 
-        onDialogInflated(binding) { dismiss() }
+        onDialogInflated(binding, { dismiss() }, { dismissImmediately() })
         onViewCreated(binding)
         setupBackPressListener()
     }

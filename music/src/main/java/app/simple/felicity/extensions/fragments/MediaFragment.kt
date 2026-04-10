@@ -483,7 +483,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             if (audio.isAlwaysSkip) binding.alwaysSkip.text = getString(R.string.never_skip)
         }
 
-        val onDialogInflated: (DialogSongMenuBinding, () -> Unit) -> Unit = { binding, dismiss ->
+        val onDialogInflated: (DialogSongMenuBinding, () -> Unit, () -> Unit) -> Unit = { binding, dismiss, dismissImmediately ->
             binding.play.setOnClickListener {
                 val pos = audios.indexOfFirst { it.id == audio.id }.coerceAtLeast(0)
                 setMediaItems(audios, pos)
@@ -514,7 +514,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                         trackCount = 0
                 )
                 openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
-                dismiss()
+                dismissImmediately()
             }
 
             binding.goToAlbum.setOnClickListener {
@@ -527,7 +527,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                         artistId = artistName.hashCode().toLong()
                 )
                 openFragment(AlbumPage.newInstance(album), AlbumPage.TAG)
-                dismiss()
+                dismissImmediately()
             }
 
             binding.addToFavorites.setOnClickListener {
@@ -590,7 +590,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
             binding.editMetadata.setOnClickListener {
                 openFragment(MetadataEditor.newInstance(audio), MetadataEditor.TAG)
-                dismiss()
+                dismissImmediately()
             }
         }
 
@@ -677,7 +677,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 }
 
                 binding.deleteSummary.text = spannable
-            }.onDialogInflated { binding, dismiss ->
+            }.onDialogInflated { binding, dismiss, _ ->
                 binding.sure.setOnClickListener {
                     onResult(true, binding.deleteLyricsCheckbox.isChecked)
                     dismiss()
@@ -701,7 +701,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 inflateBinding = DialogSureBinding::inflate)
             .onViewCreated { binding ->
                 /* no-op */
-            }.onDialogInflated { binding, dismiss ->
+            }.onDialogInflated { binding, dismiss, _ ->
                 binding.sure.setOnClickListener {
                     onResult(true)
                     dismiss()
@@ -812,7 +812,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             }
         }
 
-        val onDialogInflated: (DialogPlaylistMenuBinding, () -> Unit) -> Unit = { binding, dismiss ->
+        val onDialogInflated: (DialogPlaylistMenuBinding, () -> Unit, () -> Unit) -> Unit = { binding, dismiss, _ ->
             binding.play.setOnClickListener {
                 if (item.songs.isNotEmpty()) setMediaItems(item.songs.toMutableList(), 0)
                 dismiss()
@@ -918,7 +918,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     binding.playlistDescriptionInput.setText(description)
                 }
             }
-            .onDialogInflated { binding, dismiss ->
+            .onDialogInflated { binding, dismiss, _ ->
                 binding.cancel.setOnClickListener { dismiss() }
 
                 binding.save.setOnClickListener {

@@ -49,7 +49,7 @@ class SimpleDialog<VB : ViewBinding> private constructor(
         private val container: ViewGroup,
         private val inflateBinding: (LayoutInflater, ViewGroup?, Boolean) -> VB,
         private val dialogWidthRatio: Float,
-        private val onDialogInflated: (VB, () -> Unit) -> Unit,
+        private val onDialogInflated: (VB, () -> Unit, () -> Unit) -> Unit,
         private val onDismiss: (() -> Unit)?,
         private val viewCreatedCallback: ((VB) -> Unit)?
 ) {
@@ -90,7 +90,9 @@ class SimpleDialog<VB : ViewBinding> private constructor(
             animateShow()
         }
 
-        onDialogInflated(binding) { dismiss() }
+        // SimpleDialog has no shared-element return animation, so both dismiss lambdas
+        // resolve to the same animated dismiss call.
+        onDialogInflated(binding, { dismiss() }, { dismiss() })
         viewCreatedCallback?.invoke(binding)
         setupBackPressListener()
     }
@@ -259,7 +261,7 @@ class SimpleDialog<VB : ViewBinding> private constructor(
             private val inflateBinding: (LayoutInflater, ViewGroup?, Boolean) -> VB
     ) {
         private var onViewCreatedCallback: ((VB) -> Unit)? = null
-        private var onDialogInflatedCallback: (VB, () -> Unit) -> Unit = { _, _ -> }
+        private var onDialogInflatedCallback: (VB, () -> Unit, () -> Unit) -> Unit = { _, _, _ -> }
         private var onDismissCallback: (() -> Unit)? = null
         private var widthRatio: Float = DEFAULT_WIDTH_RATIO
 
@@ -283,9 +285,11 @@ class SimpleDialog<VB : ViewBinding> private constructor(
 
         /**
          * Set callback when the dialog is inflated.
-         * Provides the binding and a dismiss function.
+         * Provides the binding, an animated dismiss function, and an immediate dismiss function.
+         * For [SimpleDialog] both dismiss functions behave identically since there is no
+         * shared-element return animation to skip.
          */
-        fun onDialogInflated(callback: (VB, () -> Unit) -> Unit): Builder<VB> {
+        fun onDialogInflated(callback: (VB, () -> Unit, () -> Unit) -> Unit): Builder<VB> {
             this.onDialogInflatedCallback = callback
             return this
         }
