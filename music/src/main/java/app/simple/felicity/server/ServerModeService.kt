@@ -7,20 +7,23 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.net.toUri
 import app.simple.felicity.R
 import app.simple.felicity.preferences.ServerPreferences
+import app.simple.felicity.repository.repositories.SongStatRepository
 import app.simple.felicity.server.ServerModeService.Companion.start
 import app.simple.felicity.server.ServerModeService.Companion.stop
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.IOException
 import java.net.Inet4Address
 import java.net.NetworkInterface
+import javax.inject.Inject
 
 /**
  * Foreground service that hosts a local WiFi HTTP music server.
@@ -38,7 +41,11 @@ import java.net.NetworkInterface
  *
  * @author Hamza417
  */
+@AndroidEntryPoint
 class ServerModeService : Service() {
+
+    @Inject
+    lateinit var songStatRepository: SongStatRepository
 
     private var httpServer: MusicHttpServer? = null
 
@@ -66,7 +73,7 @@ class ServerModeService : Service() {
         if (httpServer?.isAlive == true) return
 
         val port = ServerPreferences.getServerPort()
-        val server = MusicHttpServer(applicationContext, port)
+        val server = MusicHttpServer(applicationContext, port, songStatRepository)
 
         try {
             server.startServer()
@@ -98,7 +105,7 @@ class ServerModeService : Service() {
     private fun buildNotification(ip: String, port: Int): Notification {
         val url = "http://$ip:$port"
 
-        val openIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+        val openIntent = Intent(Intent.ACTION_VIEW, url.toUri()).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         val openPending = PendingIntent.getActivity(
@@ -197,4 +204,3 @@ class ServerModeService : Service() {
         }
     }
 }
-

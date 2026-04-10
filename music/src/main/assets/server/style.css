@@ -1,0 +1,663 @@
+/* ═══════════════════════════════════════════════
+   Felicity Web Player — Glassmorphism Design
+   ═══════════════════════════════════════════════ */
+
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --accent:       #c084fc;
+    --accent-glow:  rgba(192, 132, 252, 0.35);
+    --accent-dim:   rgba(192, 132, 252, 0.12);
+
+    --glass-bg:     rgba(10, 10, 18, 0.58);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-blur:   blur(28px) saturate(180%);
+
+    --text-1:  rgba(255, 255, 255, 0.93);
+    --text-2:  rgba(255, 255, 255, 0.50);
+    --text-3:  rgba(255, 255, 255, 0.25);
+    --hover:   rgba(255, 255, 255, 0.06);
+    --active:  rgba(192, 132, 252, 0.13);
+
+    --r-xl: 22px;
+    --r-lg: 16px;
+    --r-md: 10px;
+    --r-sm:  6px;
+
+    --sidebar-w: 340px;
+    --dock-h:     78px;
+    --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --pad: 12px;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    background: #060610;
+    color: var(--text-1);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-size: 14px;
+}
+
+/* ─── Ambient Full-Screen Background ─────────── */
+
+.ambient-bg {
+    position: fixed;
+    inset: -12%;
+    background-size: cover;
+    background-position: center;
+    filter: blur(100px) brightness(0.20) saturate(2.8);
+    z-index: 0;
+    opacity: 0;
+    transition: opacity 0.9s ease, background-image 0s;
+    pointer-events: none;
+    will-change: opacity;
+}
+
+.ambient-bg.visible { opacity: 1; }
+
+.ambient-overlay {
+    position: fixed;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 80% 60% at 50% 0%,   rgba(6, 6, 16, 0.30) 0%, transparent 70%),
+        radial-gradient(ellipse 100% 80% at 50% 100%, rgba(6, 6, 16, 0.70) 0%, transparent 70%),
+        rgba(6, 6, 16, 0.45);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* ─── Frosted Glass Mixin ────────────────────── */
+
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+}
+
+/* ─── App Shell ──────────────────────────────── */
+
+.app-shell {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    gap: var(--pad);
+    height: calc(100vh - var(--dock-h) - var(--pad) * 2);
+    padding: var(--pad) var(--pad) 0;
+}
+
+/* ─── Sidebar ────────────────────────────────── */
+
+.sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    border-radius: var(--r-xl);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.sidebar-head {
+    padding: 16px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-bottom: 1px solid var(--glass-border);
+    flex-shrink: 0;
+}
+
+.brand-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.app-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+.brand-name {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    color: var(--text-1);
+}
+
+/* ─── Back Button ────────────────────────────── */
+
+.back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(192, 132, 252, 0.2);
+    border-radius: var(--r-md);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+    cursor: pointer;
+    width: fit-content;
+    transition: background 0.15s;
+    font-family: inherit;
+}
+
+.back-btn:hover { background: rgba(192, 132, 252, 0.22); }
+.back-btn .material-icons-round { font-size: 16px !important; }
+.back-btn.hidden { display: none; }
+
+/* ─── Search Bar ─────────────────────────────── */
+
+.search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    padding: 7px 12px;
+    transition: border-color 0.18s;
+}
+
+.search-bar:focus-within { border-color: var(--accent); }
+
+.search-bar .material-icons-round {
+    font-size: 18px !important;
+    color: var(--text-2);
+    flex-shrink: 0;
+}
+
+.search-bar input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text-1);
+    font-size: 13px;
+    font-family: inherit;
+}
+
+.search-bar input::placeholder { color: var(--text-3); }
+
+.item-count {
+    font-size: 11px;
+    color: var(--text-3);
+    padding-left: 4px;
+}
+
+/* ─── Sidebar Scrollable Body ────────────────── */
+
+.sidebar-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 6px 0;
+    transition: opacity 0.15s ease;
+}
+
+.sidebar-body.fading { opacity: 0; }
+
+.sidebar-body::-webkit-scrollbar { width: 3px; }
+.sidebar-body::-webkit-scrollbar-track { background: transparent; }
+.sidebar-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+}
+
+/* ─── Song List Row ──────────────────────────── */
+
+.song-row {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 8px 14px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.song-row:hover { background: var(--hover); }
+
+.song-row.active {
+    background: var(--active);
+    border-left-color: var(--accent);
+}
+
+.song-thumb {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--r-sm);
+    object-fit: cover;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.song-info { flex: 1; min-width: 0; }
+
+.song-name {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-1);
+}
+
+.song-row.active .song-name { color: var(--accent); }
+
+.song-sub {
+    font-size: 11px;
+    color: var(--text-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+
+.song-dur {
+    font-size: 11px;
+    color: var(--text-3);
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ─── Album Grid ─────────────────────────────── */
+
+.album-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 8px;
+}
+
+.album-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.18s var(--ease);
+}
+
+.album-card:hover {
+    background: var(--hover);
+    transform: scale(1.025);
+}
+
+.album-cover {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.album-info { padding: 8px 10px 10px; }
+
+.album-name {
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.album-meta {
+    font-size: 11px;
+    color: var(--text-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+
+/* ─── Artist List Row ────────────────────────── */
+
+.artist-row, .genre-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.artist-row:hover, .genre-row:hover { background: var(--hover); }
+
+.artist-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.genre-icon-wrap {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--r-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.genre-icon-wrap .material-icons-round { font-size: 22px !important; }
+
+.row-info { flex: 1; min-width: 0; }
+
+.row-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.row-sub {
+    font-size: 11px;
+    color: var(--text-2);
+    margin-top: 2px;
+}
+
+.chevron {
+    color: var(--text-3);
+    font-size: 18px !important;
+    flex-shrink: 0;
+}
+
+/* ─── Player Panel ───────────────────────────── */
+
+.player-panel {
+    flex: 1;
+    border-radius: var(--r-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+/* ─── Empty State ────────────────────────────── */
+
+.empty-state {
+    text-align: center;
+    color: var(--text-2);
+    pointer-events: none;
+}
+
+.empty-icon {
+    font-size: 72px !important;
+    opacity: 0.22;
+    display: block;
+    margin-bottom: 16px;
+}
+
+.empty-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-1);
+    margin-bottom: 6px;
+}
+
+.empty-sub { font-size: 13px; }
+
+/* ─── Player Content ─────────────────────────── */
+
+.player-content {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 400px;
+    padding: 28px 32px 36px;
+    gap: 20px;
+}
+
+.art-wrap {
+    width: 220px;
+    height: 220px;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow:
+        0 28px 72px rgba(0, 0, 0, 0.75),
+        0 0 0 1px var(--glass-border);
+    flex-shrink: 0;
+}
+
+.now-art {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    background: rgba(255, 255, 255, 0.06);
+    transition: opacity 0.3s ease;
+}
+
+.now-meta { text-align: center; width: 100%; }
+
+.now-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+}
+
+.now-artist {
+    font-size: 14px;
+    color: var(--text-2);
+    margin-top: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.now-album {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ─── Slider ─────────────────────────────────── */
+
+.progress-wrap { width: 100%; }
+
+.slider {
+    --fill: 0%;
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    background: linear-gradient(
+        to right,
+        var(--accent) var(--fill),
+        rgba(255, 255, 255, 0.12) var(--fill)
+    );
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 10px var(--accent-glow);
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: none;
+    cursor: pointer;
+}
+
+.time-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 7px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ─── Controls ───────────────────────────────── */
+
+.controls-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.ctrl-btn {
+    background: none;
+    border: none;
+    color: var(--text-2);
+    cursor: pointer;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s, transform 0.1s;
+}
+
+.ctrl-btn .material-icons-round { font-size: 30px !important; }
+.ctrl-btn:hover { color: var(--text-1); background: var(--hover); }
+.ctrl-btn:active { transform: scale(0.88); }
+
+.play-btn {
+    width: 60px;
+    height: 60px;
+    background: var(--accent) !important;
+    color: #000 !important;
+    box-shadow: 0 4px 28px var(--accent-glow);
+}
+
+.play-btn .material-icons-round { font-size: 34px !important; }
+.play-btn:hover { background: #d0a5fd !important; }
+
+/* ─── Volume ─────────────────────────────────── */
+
+.vol-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 170px;
+}
+
+.vol-icon {
+    font-size: 20px !important;
+    color: var(--text-3);
+    flex-shrink: 0;
+}
+
+.vol-slider { flex: 1; }
+
+/* ─── macOS Dock ─────────────────────────────── */
+
+.dock {
+    position: fixed;
+    bottom: var(--pad);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 7px 10px;
+    border-radius: 100px;
+    width: max-content;
+}
+
+.dock-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 18px;
+    border-radius: 22px;
+    border: none;
+    background: transparent;
+    color: var(--text-2);
+    font-size: 10px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: color 0.18s, background 0.18s, transform 0.18s var(--ease);
+}
+
+.dock-btn .material-icons-round {
+    font-size: 22px !important;
+    transition: transform 0.22s var(--ease);
+}
+
+.dock-btn:hover {
+    color: var(--text-1);
+    background: var(--hover);
+}
+
+.dock-btn:hover .material-icons-round {
+    transform: scale(1.18) translateY(-3px);
+}
+
+.dock-btn:active { transform: scale(0.93); }
+
+.dock-btn.active {
+    color: var(--accent);
+    background: var(--active);
+}
+
+.dock-sep {
+    width: 1px;
+    height: 28px;
+    background: var(--glass-border);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+/* ─── Responsive ─────────────────────────────── */
+
+@supports not (backdrop-filter: blur(1px)) {
+    .glass { background: rgba(10, 10, 20, 0.92); }
+}
+
+@media (max-width: 720px) {
+    :root { --sidebar-w: 100%; --dock-h: 70px; }
+
+    .app-shell {
+        flex-direction: column;
+        height: calc(100vh - var(--dock-h) - var(--pad) * 2);
+    }
+
+    .sidebar { flex: 1; max-height: 48%; }
+    .player-panel { flex: 1; }
+    .art-wrap { width: 160px; height: 160px; }
+    .player-content { padding: 20px 18px 28px; gap: 16px; }
+    .dock-btn { padding: 6px 14px; }
+}
+
