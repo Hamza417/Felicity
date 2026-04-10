@@ -94,6 +94,7 @@ This feature list is not exhaustive and only main features are listed.
 - [x] Playlist support
 - [ ] m3u and pls playlist support
 - [x] Metadata editing support
+- [ ] Replay gain
 - [ ] Cue sheet support
 - [ ] Local server for centralized music access across multiple devices.
 - [ ] Selection support for library management and playlist creation.
