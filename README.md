@@ -114,7 +114,7 @@ F-Droid release is currently not sure, the Glide library is breaking the reprodu
 
 ## Screenshots
 
-Last Updated: 6 April 2026
+Last Updated: 10 April 2026
 
 |                                                                      |                                                                      |                                                                      |
 |----------------------------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------|
