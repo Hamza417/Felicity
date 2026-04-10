@@ -14,6 +14,7 @@ import app.simple.felicity.databinding.FragmentArtflowBinding
 import app.simple.felicity.decorations.artflow.ArtFlow.OnCoverClickListener
 import app.simple.felicity.decorations.artflow.ArtFlowDataProvider
 import app.simple.felicity.decorations.artflow.ArtFlowRenderer
+import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselMenu
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
@@ -114,9 +115,10 @@ class ArtFlow : MediaFragment() {
             SharedScrollViewPopup(
                     container = requireContainerView(),
                     anchorView = it,
-                    menuItems = listOf(R.string.carousel_settings, R.string.songs_settings),
-                    menuIcons = listOf(R.drawable.ic_carousel,
-                                       R.drawable.ic_song_16dp),
+                    menuItems = listOf(
+                            PopupMenuItem(title = R.string.carousel_settings, icon = R.drawable.ic_carousel),
+                            PopupMenuItem(title = R.string.songs_settings, icon = R.drawable.ic_song_16dp)
+                    ),
                     onMenuItemClick = { id ->
                         when (id) {
                             R.string.songs_settings -> {

@@ -1,6 +1,7 @@
 package app.simple.felicity.decorations.views
 
 import android.annotation.SuppressLint
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.util.TypedValue
 import android.view.Gravity
@@ -8,9 +9,11 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
+import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatImageView
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
@@ -27,7 +30,7 @@ import androidx.transition.TransitionManager
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.behaviors.OverScrollBehavior
 import app.simple.felicity.decorations.corners.DynamicCornersNestedScrollView
-import app.simple.felicity.decorations.ripple.DynamicRippleTextView
+import app.simple.felicity.decorations.ripple.RippleUtils
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.typeface.TypefaceStyle
 import app.simple.felicity.theme.managers.ThemeManager
@@ -45,11 +48,15 @@ import kotlin.math.sign
  * the animation begins, so the transform always travels from the anchor's exact
  * source rect to the popup's exact target rect with no midair resizing.
  *
+ * Each menu entry is described by a [PopupMenuItem]. When at least one entry
+ * carries a non-zero icon, a same-sized transparent placeholder is rendered for
+ * icon-less entries so that all title labels stay horizontally aligned. An
+ * optional summary string is rendered below the title when provided.
+ *
  * @param container The root [ViewGroup] that hosts both the scrim and the popup.
  * @param anchorView The view the popup expands from and collapses back to.
- * @param menuItems String resource IDs for each menu entry.
- * @param menuIcons Optional drawable resource IDs aligned by index with [menuItems].
- * @param onMenuItemClick Invoked with the resource ID of the tapped item.
+ * @param menuItems Ordered list of [PopupMenuItem] descriptors for each entry.
+ * @param onMenuItemClick Invoked with the string resource ID of the tapped item's title.
  * @param onDismiss Optional callback fired after the popup has fully collapsed.
  * @param backProgression When true (default), a back press or a scrim tap dismisses
  *   the popup. Set to false for dialogs that require an explicit action to close.
@@ -59,8 +66,7 @@ import kotlin.math.sign
 open class SharedScrollViewPopup @JvmOverloads constructor(
         private val container: ViewGroup,
         private val anchorView: View,
-        private val menuItems: List<Int>,
-        private val menuIcons: List<Int>? = null,
+        private val menuItems: List<PopupMenuItem>,
         private val onMenuItemClick: (itemResId: Int) -> Unit,
         private val onDismiss: (() -> Unit)? = null,
         private val backProgression: Boolean = true
@@ -184,33 +190,29 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
             orientation = LinearLayout.VERTICAL
         }
 
+        val density = container.resources.displayMetrics.density
+        val hasAnyIcon = menuItems.any { it.icon != 0 }
+
         // Create menu items dynamically
-        menuItems.forEach { resId ->
-            val tv = DynamicRippleTextView(container.context).apply {
-                val horizontalPadding = (8 * resources.displayMetrics.density).toInt()
-                val verticalPadding = (12 * resources.displayMetrics.density).toInt()
-                minimumWidth = (172 * resources.displayMetrics.density).toInt()
+        menuItems.forEach { item ->
+            val hPad = (8 * density).toInt()
+            val vPad = (12 * density).toInt()
 
-                setPadding(
-                        /* left = */ horizontalPadding,
-                        /* top = */ verticalPadding,
-                        /* right = */ horizontalPadding + horizontalPadding,
-                        /* bottom = */ verticalPadding)
-
+            // Outer row — serves as the clickable item with a ripple foreground
+            val itemLayout = LinearLayout(container.context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
                 layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
                 )
-                setTypeFaceStyle(TypefaceStyle.BOLD.style)
-                gravity = Gravity.CENTER_VERTICAL
-                compoundDrawablePadding = (16 * resources.displayMetrics.density).toInt()
-                setTextColor(ThemeManager.theme.textViewTheme.primaryTextColor)
-                setText(resId)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                minimumWidth = (172 * density).toInt()
+                setPadding(hPad, vPad, hPad * 2, vPad)
                 isClickable = true
                 isFocusable = true
+                RippleUtils.setForegroundDrawable(this)
                 setOnClickListener {
-                    onMenuItemClick(resId)
+                    onMenuItemClick(item.title)
                     if (backProgression) {
                         dismiss()
                     } else {
@@ -218,20 +220,58 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
                         simplyDismiss()
                     }
                 }
-
-                val textSizePx = textSize.times(1.3F)
-                val drawableResId = menuIcons?.getOrNull(menuItems.indexOf(resId)) ?: 0
-                val drawable = if (drawableResId != 0) {
-                    ContextCompat.getDrawable(context, drawableResId)?.apply {
-                        setBounds(0, 0, textSizePx.toInt(), textSizePx.toInt())
-                    }
-                } else null
-
-                setCompoundDrawables(drawable, null, null, null)
-                setDrawableTineMode(TypeFaceTextView.DRAWABLE_ACCENT)
             }
 
-            linearLayout.addView(tv)
+            // Icon slot — present for every item when at least one has an icon,
+            // ensuring consistent horizontal alignment of all title labels.
+            if (hasAnyIcon) {
+                val iconSizePx = (16 * density * 1.3F).toInt()
+                val iconView = AppCompatImageView(container.context).apply {
+                    layoutParams = LinearLayout.LayoutParams(iconSizePx, iconSizePx).apply {
+                        marginEnd = (16 * density).toInt()
+                    }
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    if (item.icon != 0) {
+                        setImageDrawable(ContextCompat.getDrawable(context, item.icon))
+                        imageTintList = ColorStateList.valueOf(ThemeManager.accent.primaryAccentColor)
+                    } else {
+                        // Transparent placeholder to maintain icon-column width
+                        visibility = View.INVISIBLE
+                    }
+                }
+                itemLayout.addView(iconView)
+            }
+
+            // Text column — title is mandatory, summary is rendered only when non-blank
+            val textColumn = LinearLayout(container.context).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+
+            val titleView = TypeFaceTextView(container.context).apply {
+                setTypeFaceStyle(TypefaceStyle.BOLD.style)
+                setTextColor(ThemeManager.theme.textViewTheme.primaryTextColor)
+                setText(item.title)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            }
+            textColumn.addView(titleView)
+
+            if (!item.summary.isNullOrBlank()) {
+                val summaryView = TypeFaceTextView(container.context).apply {
+                    setTypeFaceStyle(TypefaceStyle.REGULAR.style)
+                    setTextColor(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+                    text = item.summary
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                    maxWidth = (200 * density).toInt()
+                }
+                textColumn.addView(summaryView)
+            }
+
+            itemLayout.addView(textColumn)
+            linearLayout.addView(itemLayout)
         }
 
         popupScrollView.addView(linearLayout)

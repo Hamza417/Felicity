@@ -1,6 +1,7 @@
 package app.simple.felicity.decorations.views
 
 import android.annotation.SuppressLint
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.util.Log
 import android.util.TypedValue
@@ -9,9 +10,11 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
+import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatImageView
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -31,7 +34,7 @@ import app.simple.felicity.decorations.corners.DynamicCornerCoordinatorLayout
 import app.simple.felicity.decorations.corners.DynamicCornerFrameLayout
 import app.simple.felicity.decorations.corners.DynamicCornerLinearLayout
 import app.simple.felicity.decorations.corners.DynamicCornersNestedScrollView
-import app.simple.felicity.decorations.ripple.DynamicRippleTextView
+import app.simple.felicity.decorations.ripple.RippleUtils
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.typeface.TypefaceStyle
 import app.simple.felicity.theme.managers.ThemeManager
@@ -45,9 +48,8 @@ import kotlin.math.sign
 abstract class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
         private val container: ViewGroup,
         private val anchorView: View,
-        private val menuItems: List<Int>, // String resource IDs
-        private val menuIcons: List<Int>? = null, // Optional icons
-        private val onMenuItemClick: (itemResId: Int) -> Unit, // Callback
+        private val menuItems: List<PopupMenuItem>,
+        private val onMenuItemClick: (itemResId: Int) -> Unit,
         private val onDismiss: (() -> Unit)? = null
 ) {
 
@@ -114,40 +116,83 @@ abstract class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
             orientation = LinearLayout.VERTICAL
         }
 
-        // Add menu items as text views with optional icons
-        menuItems.forEachIndexed { i, resId ->
-            val tv = DynamicRippleTextView(context).apply {
-                val hPad = (8 * resources.displayMetrics.density).toInt()
-                val vPad = (12 * resources.displayMetrics.density).toInt()
-                minimumWidth = (172 * resources.displayMetrics.density).toInt()
-                setPadding(hPad, vPad, hPad * 2, vPad)
+        val density = context.resources.displayMetrics.density
+        val hasAnyIcon = menuItems.any { it.icon != 0 }
+
+        // Add menu items as composite row views supporting icon, title, and optional summary
+        menuItems.forEach { item ->
+            val hPad = (8 * density).toInt()
+            val vPad = (12 * density).toInt()
+
+            // Outer row — serves as the clickable item with a ripple foreground
+            val itemLayout = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
                 layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
                 )
-                setTypeFaceStyle(TypefaceStyle.BOLD.style)
-                gravity = Gravity.CENTER_VERTICAL
-                compoundDrawablePadding = (16 * resources.displayMetrics.density).toInt()
-                setTextColor(ThemeManager.theme.textViewTheme.primaryTextColor)
-                setText(resId)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                minimumWidth = (172 * density).toInt()
+                setPadding(hPad, vPad, hPad * 2, vPad)
                 isClickable = true
                 isFocusable = true
+                RippleUtils.setForegroundDrawable(this)
                 setOnClickListener {
-                    onMenuItemClick(resId)
+                    onMenuItemClick(item.title)
                     dismiss()
                 }
-                val drawableResId = menuIcons?.getOrNull(i) ?: 0
-                val textSizePx = textSize.times(1.3F)
-                val drawable = if (drawableResId != 0) {
-                    ContextCompat.getDrawable(context, drawableResId)?.apply {
-                        setBounds(0, 0, textSizePx.toInt(), textSizePx.toInt())
-                    }
-                } else null
-                setCompoundDrawables(drawable, null, null, null)
-                setDrawableTineMode(TypeFaceTextView.DRAWABLE_ACCENT)
             }
-            linearLayout.addView(tv)
+
+            // Icon slot — present for every item when at least one has an icon,
+            // ensuring consistent horizontal alignment of all title labels.
+            if (hasAnyIcon) {
+                val iconSizePx = (16 * density * 1.3F).toInt()
+                val iconView = AppCompatImageView(context).apply {
+                    layoutParams = LinearLayout.LayoutParams(iconSizePx, iconSizePx).apply {
+                        marginEnd = (16 * density).toInt()
+                    }
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    if (item.icon != 0) {
+                        setImageDrawable(ContextCompat.getDrawable(context, item.icon))
+                        imageTintList = ColorStateList.valueOf(ThemeManager.accent.primaryAccentColor)
+                    } else {
+                        // Transparent placeholder to maintain icon-column width
+                        visibility = View.INVISIBLE
+                    }
+                }
+                itemLayout.addView(iconView)
+            }
+
+            // Text column — title is mandatory, summary is rendered only when non-blank
+            val textColumn = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+
+            val titleView = TypeFaceTextView(context).apply {
+                setTypeFaceStyle(TypefaceStyle.BOLD.style)
+                setTextColor(ThemeManager.theme.textViewTheme.primaryTextColor)
+                setText(item.title)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            }
+            textColumn.addView(titleView)
+
+            if (!item.summary.isNullOrBlank()) {
+                val summaryView = TypeFaceTextView(container.context).apply {
+                    setTypeFaceStyle(TypefaceStyle.REGULAR.style)
+                    setTextColor(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+                    text = item.summary
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                    maxWidth = (200 * density).toInt()
+                }
+                textColumn.addView(summaryView)
+            }
+
+            itemLayout.addView(textColumn)
+            linearLayout.addView(itemLayout)
         }
 
         // Add the linear layout to the scroll view

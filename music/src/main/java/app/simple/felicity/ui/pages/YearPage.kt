@@ -10,8 +10,9 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.page.PageAdapter
 import app.simple.felicity.databinding.FragmentPageYearBinding
+import app.simple.felicity.decorations.views.PopupMenuItem
+import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.extensions.fragments.BasePageFragment
-import app.simple.felicity.popups.PopupGenreMenu
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.YearGroup
 import app.simple.felicity.utils.ParcelUtils.parcelable
@@ -61,11 +62,15 @@ class YearPage : BasePageFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             val currentData = yearViewerViewModel.data.value ?: return@launch
 
-            PopupGenreMenu(
+            SharedScrollViewPopup(
                     container = requireContainerView(),
                     anchorView = view,
-                    menuItems = listOf(R.string.play, R.string.shuffle, R.string.add_to_queue, R.string.add_to_playlist),
-                    menuIcons = listOf(R.drawable.ic_play, R.drawable.ic_shuffle, R.drawable.ic_add_to_queue, R.drawable.ic_add_to_playlist),
+                    menuItems = listOf(
+                            PopupMenuItem(title = R.string.play, icon = R.drawable.ic_play),
+                            PopupMenuItem(title = R.string.shuffle, icon = R.drawable.ic_shuffle),
+                            PopupMenuItem(title = R.string.add_to_queue, icon = R.drawable.ic_add_to_queue),
+                            PopupMenuItem(title = R.string.add_to_playlist, icon = R.drawable.ic_add_to_playlist)
+                    ),
                     onMenuItemClick = {
                         when (it) {
                             R.string.play -> setMediaItems(currentData.songs.toMutableList(), 0)

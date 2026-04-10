@@ -13,6 +13,7 @@ import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.decorations.toggles.FelicitySwitch
+import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.models.ButtonGroupState
@@ -239,11 +240,12 @@ abstract class PreferenceFragment : MediaFragment() {
                     SharedScrollViewPopup(
                             container = requireContainerView(),
                             anchorView = view,
-                            menuItems = listOf(R.string.dashboard,
-                                               R.string.spanned,
-                                               R.string.artflow,
-                                               R.string.simple),
-                            menuIcons = null,
+                            menuItems = listOf(
+                                    PopupMenuItem(title = R.string.dashboard),
+                                    PopupMenuItem(title = R.string.spanned),
+                                    PopupMenuItem(title = R.string.artflow),
+                                    PopupMenuItem(title = R.string.simple)
+                            ),
                             onMenuItemClick = {
                                 when (it) {
                                     R.string.dashboard -> {
@@ -304,8 +306,10 @@ abstract class PreferenceFragment : MediaFragment() {
                     SharedScrollViewPopup(
                             container = requireContainerView(),
                             anchorView = view,
-                            menuItems = listOf(R.string.simple, R.string.faded),
-                            menuIcons = null,
+                            menuItems = listOf(
+                                    PopupMenuItem(title = R.string.simple, summary = getString(R.string.simple_ui_desc)),
+                                    PopupMenuItem(title = R.string.faded, summary = getString(R.string.faded_ui_desc))
+                            ),
                             onMenuItemClick = {
                                 when (it) {
                                     R.string.simple -> {
@@ -461,10 +465,10 @@ abstract class PreferenceFragment : MediaFragment() {
                             container = requireContainerView(),
                             anchorView = view,
                             menuItems = listOf(
-                                    R.string.no_effect,
-                                    R.string.fade,
-                                    R.string.slide,
-                                    R.string.typewriting
+                                    PopupMenuItem(title = R.string.no_effect),
+                                    PopupMenuItem(title = R.string.fade),
+                                    PopupMenuItem(title = R.string.slide),
+                                    PopupMenuItem(title = R.string.typewriting)
                             ),
                             onMenuItemClick = {
                                 val effect = when (it) {
@@ -518,7 +522,10 @@ abstract class PreferenceFragment : MediaFragment() {
                     SharedScrollViewPopup(
                             container = requireContainerView(),
                             anchorView = view,
-                            menuItems = listOf(R.string.system_hardware, R.string.ffmpeg),
+                            menuItems = listOf(
+                                    PopupMenuItem(title = R.string.system_hardware),
+                                    PopupMenuItem(title = R.string.ffmpeg)
+                            ),
                             onMenuItemClick = {
                                 when (it) {
                                     R.string.system_hardware -> {
@@ -672,7 +679,10 @@ abstract class PreferenceFragment : MediaFragment() {
                     SharedScrollViewPopup(
                             container = requireContainerView(),
                             anchorView = view,
-                            menuItems = listOf(R.string.fisher_yates, R.string.miller),
+                            menuItems = listOf(
+                                    PopupMenuItem(title = R.string.fisher_yates),
+                                    PopupMenuItem(title = R.string.miller)
+                            ),
                             onMenuItemClick = {
                                 when (it) {
                                     R.string.fisher_yates -> {

@@ -12,8 +12,9 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.page.PageAdapter
 import app.simple.felicity.databinding.FragmentPageArtistBinding
+import app.simple.felicity.decorations.views.PopupMenuItem
+import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.extensions.fragments.BasePageFragment
-import app.simple.felicity.popups.PopupArtistMenu
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.utils.ParcelUtils.parcelable
@@ -64,10 +65,14 @@ class AlbumPage : BasePageFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             val currentData = albumViewerViewModel.data.value ?: return@launch
 
-            PopupArtistMenu(
+            SharedScrollViewPopup(
                     container = requireContainerView(),
                     anchorView = view,
-                    menuItems = listOf(R.string.play, R.string.shuffle, R.string.send),
+                    menuItems = listOf(
+                            PopupMenuItem(title = R.string.play, icon = R.drawable.ic_play),
+                            PopupMenuItem(title = R.string.shuffle, icon = R.drawable.ic_shuffle),
+                            PopupMenuItem(title = R.string.send, icon = R.drawable.ic_send)
+                    ),
                     onMenuItemClick = {
                         when (it) {
                             R.string.play -> setMediaItems(currentData.songs.toMutableList(), 0)
@@ -85,12 +90,10 @@ class AlbumPage : BasePageFragment() {
                             }
                         }
                     },
-                    menuIcons = listOf(R.drawable.ic_play, R.drawable.ic_shuffle, R.drawable.ic_send),
                     onDismiss = {}
             ).show()
         }
     }
-
 
     companion object {
         const val TAG = "AlbumPage"

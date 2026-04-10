@@ -19,6 +19,7 @@ import app.simple.felicity.adapters.home.main.AdapterArtFlowHome
 import app.simple.felicity.databinding.FragmentHomeArtflowBinding
 import app.simple.felicity.decorations.flowsidemenu.FelicitySideBar
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolder
+import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.models.ArtFlowData
@@ -106,28 +107,16 @@ class ArtFlowHome : MediaFragment() {
                             anchorView = anchorView,
                             backProgression = false,
                             menuItems = listOf(
-                                    R.string.genres,
-                                    R.string.year,
-                                    R.string.folders,
-                                    R.string.folders_hierarchy,
-                                    R.string.playing_queue,
-                                    R.string.favorites,
-                                    R.string.playlists,
-                                    R.string.recently_added,
-                                    R.string.recently_played,
-                                    R.string.most_played
-                            ),
-                            menuIcons = listOf(
-                                    R.drawable.ic_piano,
-                                    R.drawable.ic_date_range,
-                                    R.drawable.ic_folder,
-                                    R.drawable.ic_tree,
-                                    R.drawable.ic_queue,
-                                    R.drawable.ic_favorite_filled,
-                                    R.drawable.ic_playlist_play,
-                                    R.drawable.ic_recently_added,
-                                    R.drawable.ic_history,
-                                    R.drawable.ic_equalizer
+                                    PopupMenuItem(title = R.string.genres, icon = R.drawable.ic_piano),
+                                    PopupMenuItem(title = R.string.year, icon = R.drawable.ic_date_range),
+                                    PopupMenuItem(title = R.string.folders, icon = R.drawable.ic_folder),
+                                    PopupMenuItem(title = R.string.folders_hierarchy, icon = R.drawable.ic_tree),
+                                    PopupMenuItem(title = R.string.playing_queue, icon = R.drawable.ic_queue),
+                                    PopupMenuItem(title = R.string.favorites, icon = R.drawable.ic_favorite_filled),
+                                    PopupMenuItem(title = R.string.playlists, icon = R.drawable.ic_playlist_play),
+                                    PopupMenuItem(title = R.string.recently_added, icon = R.drawable.ic_recently_added),
+                                    PopupMenuItem(title = R.string.recently_played, icon = R.drawable.ic_history),
+                                    PopupMenuItem(title = R.string.most_played, icon = R.drawable.ic_equalizer)
                             ),
                             onMenuItemClick = { itemResId ->
                                 when (itemResId) {
