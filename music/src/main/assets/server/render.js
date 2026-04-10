@@ -78,13 +78,52 @@ function makeSongCard(song, ctx) {
 }
 
 /**
+ * Applies a staggered entrance animation to the direct children of a
+ * container. List items animate sequentially top-to-bottom; grid items
+ * animate in diagonal waves from top-left to bottom-right, matching the
+ * visual sweep seen in modern music apps.
+ *
+ * The animation itself is defined in content.css as {@code @keyframes itemAppear}.
+ *
+ * @param {HTMLElement} container  Parent whose children will be animated.
+ * @param {boolean}     isGrid     Pass true for grid containers.
+ * @param {number}      [cols=3]   Estimated column count used for diagonal
+ *                                 stagger calculations when isGrid is true.
+ */
+function animateEntrance(container, isGrid, cols) {
+    const items = Array.from(container.children);
+    if (items.length === 0) return;
+
+    const STEP     = isGrid ? 48 : 28;   /* ms between stagger steps */
+    const MAX_STEP = isGrid ? 7  : 16;   /* cap to avoid very long waits */
+
+    if (isGrid) {
+        const estimatedCols = cols || Math.max(2, Math.floor((container.offsetWidth || 600) / 210));
+        items.forEach((item, i) => {
+            const row  = Math.floor(i / estimatedCols);
+            const col  = i % estimatedCols;
+            const diag = Math.min(row + col, MAX_STEP);
+            item.style.animation = `itemAppear 280ms var(--ease) ${diag * STEP}ms backwards`;
+            item.addEventListener("animationend", () => { item.style.animation = ""; }, { once: true });
+        });
+    } else {
+        items.forEach((item, i) => {
+            const step = Math.min(i, MAX_STEP);
+            item.style.animation = `itemAppear 280ms var(--ease) ${step * STEP}ms backwards`;
+            item.addEventListener("animationend", () => { item.style.animation = ""; }, { once: true });
+        });
+    }
+}
+
+/**
  * Renders a flat song list into the content area.
  *
- * @param {object[]} songs  Filtered songs to display.
- * @param {object[]} ctx    Full queue context for playback.
- * @param {string}   mode   "list" or "grid".
+ * @param {object[]} songs    Filtered songs to display.
+ * @param {object[]} ctx      Full queue context for playback.
+ * @param {string}   mode     "list" or "grid".
+ * @param {boolean}  animate  True to play the entrance animation.
  */
-function renderSongList(songs, ctx, mode = "list") {
+function renderSongList(songs, ctx, mode = "list", animate = false) {
     contentBody.innerHTML = "";
     if (songs.length === 0) {
         contentBody.innerHTML =
@@ -97,20 +136,23 @@ function renderSongList(songs, ctx, mode = "list") {
         grid.className = "album-grid";
         songs.forEach(song => grid.appendChild(makeSongCard(song, ctx)));
         contentBody.appendChild(grid);
+        if (animate) animateEntrance(grid, true);
     } else {
         const frag = document.createDocumentFragment();
         songs.forEach(song => frag.appendChild(makeSongRow(song, ctx)));
         contentBody.appendChild(frag);
+        if (animate) animateEntrance(contentBody, false);
     }
 }
 
 /**
  * Renders an auto-fill album card grid into the content area.
  *
- * @param {object[]} albums  Albums to display.
- * @param {string}   mode    "grid" or "list".
+ * @param {object[]} albums   Albums to display.
+ * @param {string}   mode     "grid" or "list".
+ * @param {boolean}  animate  True to play the entrance animation.
  */
-function renderAlbumGrid(albums, mode = "grid") {
+function renderAlbumGrid(albums, mode = "grid", animate = false) {
     contentBody.innerHTML = "";
     if (albums.length === 0) {
         contentBody.innerHTML =
@@ -135,6 +177,7 @@ function renderAlbumGrid(albums, mode = "grid") {
             frag.appendChild(row);
         });
         contentBody.appendChild(frag);
+        if (animate) animateEntrance(contentBody, false);
     } else {
         const grid = document.createElement("div");
         grid.className = "album-grid";
@@ -152,6 +195,7 @@ function renderAlbumGrid(albums, mode = "grid") {
             grid.appendChild(card);
         });
         contentBody.appendChild(grid);
+        if (animate) animateEntrance(grid, true);
     }
 }
 
@@ -160,8 +204,9 @@ function renderAlbumGrid(albums, mode = "grid") {
  *
  * @param {object[]} artists  Artists to display.
  * @param {string}   mode     "list" or "grid".
+ * @param {boolean}  animate  True to play the entrance animation.
  */
-function renderArtistList(artists, mode = "list") {
+function renderArtistList(artists, mode = "list", animate = false) {
     contentBody.innerHTML = "";
     if (artists.length === 0) {
         contentBody.innerHTML =
@@ -184,6 +229,7 @@ function renderArtistList(artists, mode = "list") {
             grid.appendChild(card);
         });
         contentBody.appendChild(grid);
+        if (animate) animateEntrance(grid, true, Math.max(2, Math.floor((grid.offsetWidth || 500) / 170)));
     } else {
         const frag = document.createDocumentFragment();
         artists.forEach(artist => {
@@ -201,6 +247,7 @@ function renderArtistList(artists, mode = "list") {
             frag.appendChild(row);
         });
         contentBody.appendChild(frag);
+        if (animate) animateEntrance(contentBody, false);
     }
 }
 
@@ -209,8 +256,9 @@ function renderArtistList(artists, mode = "list") {
  *
  * @param {object[]} genres  Genres to display.
  * @param {string}   mode    "list" or "grid".
+ * @param {boolean}  animate True to play the entrance animation.
  */
-function renderGenreList(genres, mode = "list") {
+function renderGenreList(genres, mode = "list", animate = false) {
     contentBody.innerHTML = "";
     if (genres.length === 0) {
         contentBody.innerHTML =
@@ -236,6 +284,7 @@ function renderGenreList(genres, mode = "list") {
             grid.appendChild(card);
         });
         contentBody.appendChild(grid);
+        if (animate) animateEntrance(grid, true, Math.max(2, Math.floor((grid.offsetWidth || 500) / 170)));
     } else {
         const frag = document.createDocumentFragment();
         genres.forEach(genre => {
@@ -255,14 +304,19 @@ function renderGenreList(genres, mode = "list") {
             frag.appendChild(row);
         });
         contentBody.appendChild(frag);
+        if (animate) animateEntrance(contentBody, false);
     }
 }
 
 /**
  * Top-level dispatcher — selects the appropriate renderer based on the active
  * section, drill-down state, current search query, and current view mode.
+ *
+ * @param {boolean} [animate=false]  When true, items will play their entrance
+ *                                   animation. Pass true on navigation events;
+ *                                   false for live search filtering.
  */
-function renderContent() {
+function renderContent(animate = false) {
     const q    = searchQuery.toLowerCase();
     const mode = drillItem ? drillViewMode : (viewMode[section] || "list");
 
@@ -273,7 +327,7 @@ function renderContent() {
             (s.artist || "").toLowerCase().includes(q)
         );
         itemCount.textContent = plural(items.length, "song");
-        renderSongList(items, drillItem.items, mode);
+        renderSongList(items, drillItem.items, mode, animate);
         return;
     }
 
@@ -288,7 +342,7 @@ function renderContent() {
             itemCount.textContent = q
                 ? `${items.length} / ${plural((cache.songs || []).length, "song")}`
                 : plural(items.length, "song");
-            renderSongList(items, items, mode);
+            renderSongList(items, items, mode, animate);
             break;
         }
         case "albums": {
@@ -298,21 +352,21 @@ function renderContent() {
                 (a.artist || "").toLowerCase().includes(q)
             );
             itemCount.textContent = plural(items.length, "album");
-            renderAlbumGrid(items, mode);
+            renderAlbumGrid(items, mode, animate);
             break;
         }
         case "artists": {
             let items = cache.artists || [];
             if (q) items = items.filter(a => (a.name || "").toLowerCase().includes(q));
             itemCount.textContent = plural(items.length, "artist");
-            renderArtistList(items, mode);
+            renderArtistList(items, mode, animate);
             break;
         }
         case "genres": {
             let items = cache.genres || [];
             if (q) items = items.filter(g => (g.name || "").toLowerCase().includes(q));
             itemCount.textContent = plural(items.length, "genre");
-            renderGenreList(items, mode);
+            renderGenreList(items, mode, animate);
             break;
         }
     }

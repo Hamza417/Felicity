@@ -87,6 +87,23 @@
     font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Item entrance animation — scale-and-fade from 90% to 100%.
+ * Applied per-element via inline animation style in render.js with staggered
+ * delays. The "backwards" fill mode keeps items invisible before their delay
+ * fires, creating a clean sequential or diagonal sweep effect.
+ */
+@keyframes itemAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.90);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 /* Album grid — bigger cards with visible artwork and shadow depth */
 .album-grid {
     display: grid;
@@ -362,3 +379,13 @@
     text-align: center;
 }
 
+/* Mobile grid override — two columns so cards are not excessively large. */
+@media (max-width: 700px) {
+    .album-grid,
+    .artist-grid,
+    .genre-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 12px;
+    }
+}

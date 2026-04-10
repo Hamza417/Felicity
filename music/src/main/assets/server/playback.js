@@ -32,7 +32,7 @@ function playSong(song, ctx) {
     setAmbient(artUrl);
 
     seekBar.disabled = false;
-    document.title   = `${song.title || song.name} — Felicity`;
+    document.title   = `${song.title || song.name}`;
 
     recordPlay(song.id);
     renderContent();

@@ -9,16 +9,14 @@
  * sets the value directly.
  */
 
-/* Player bar — sits at the bottom of main-shell, separated by a top border */
+/* Player bar — sits at the bottom of main-shell, separated by the bar resize handle */
 .player-bar {
     height: var(--bar-h);
     flex-shrink: 0;
-    border-top: 1px solid var(--sep-c);
     display: flex;
     align-items: center;
     gap: 18px;
     padding: 0 22px;
-    transition: border-color 0.30s ease;
 }
 
 /* Album art thumbnail */

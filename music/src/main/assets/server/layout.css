@@ -70,11 +70,10 @@ body {
 .nav-pane {
     width: var(--nav-w);
     flex-shrink: 0;
-    border-right: 1px solid var(--sep-c);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: border-color 0.30s ease;
+    transition: width 0s;
 }
 
 .nav-header {
@@ -327,3 +326,86 @@ body {
     .nav-item { padding: 12px; justify-content: center; gap: 0; }
 }
 
+/*
+ * Resize handles — Blender-style draggable dividers between panes.
+ * They sit in the flex layout as separate elements so they act as both the
+ * visual separator and the interaction target.
+ * Drag interactions are wired in resize.js and are disabled on mobile.
+ */
+.resize-handle {
+    flex-shrink: 0;
+    background: transparent;
+    position: relative;
+    z-index: 5;
+    transition: background 0.18s ease;
+}
+
+/* Vertical handle — between nav pane and content area */
+.resize-v {
+    width: 5px;
+    cursor: col-resize;
+    border-left: 1px solid var(--sep-c);
+    transition: background 0.18s ease, border-color 0.30s ease;
+}
+
+/* Horizontal handle — between top layout and player bar */
+.resize-h {
+    height: 5px;
+    cursor: row-resize;
+    border-top: 1px solid var(--sep-c);
+    transition: background 0.18s ease, border-color 0.30s ease;
+}
+
+.resize-handle:hover,
+.resize-handle.dragging {
+    background: var(--accent-dim);
+}
+
+.resize-handle.dragging {
+    background: rgba(5, 174, 254, 0.22);
+}
+
+/* Grip indicator — a short center line that appears on hover */
+.resize-v::after,
+.resize-h::after {
+    content: "";
+    position: absolute;
+    background: var(--accent);
+    border-radius: 2px;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+    pointer-events: none;
+}
+
+.resize-v::after {
+    width: 2px;
+    height: 28px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.resize-h::after {
+    height: 2px;
+    width: 28px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.resize-handle:hover::after,
+.resize-handle.dragging::after {
+    opacity: 0.60;
+}
+
+/* On mobile the handles become invisible — borders on original elements
+ * already provide the visual separation at that breakpoint. */
+@media (max-width: 700px) {
+    .resize-v { cursor: default; width: 0; border-left: none; }
+    .resize-h { cursor: default; height: 0; border-top: none; }
+    .resize-handle::after { display: none; }
+
+    /* Restore separator borders that the resize handles replace on desktop. */
+    .nav-pane  { border-right: 1px solid var(--sep-c); }
+    .player-bar { border-top: 1px solid var(--sep-c); }
+}

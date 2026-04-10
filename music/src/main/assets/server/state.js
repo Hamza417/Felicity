@@ -81,16 +81,28 @@ let seeking = false;
 /**
  * Per-section view mode preference — "list" or "grid".
  * Albums default to "grid"; everything else defaults to "list".
+ * The object is initialized from localStorage so the user's preference is
+ * preserved across page reloads.
  *
  * @type {{ songs: string, albums: string, artists: string, genres: string }}
  */
-const viewMode = { songs: "list", albums: "grid", artists: "list", genres: "list" };
+const VIEWMODE_DEFAULTS = { songs: "list", albums: "grid", artists: "list", genres: "list" };
+const viewMode = (() => {
+    try {
+        const saved = JSON.parse(localStorage.getItem("felicity_viewMode") || "null");
+        return (saved && typeof saved === "object")
+            ? Object.assign({ ...VIEWMODE_DEFAULTS }, saved)
+            : { ...VIEWMODE_DEFAULTS };
+    } catch (_) {
+        return { ...VIEWMODE_DEFAULTS };
+    }
+})();
 
 /**
  * View mode used when the user has drilled into an album/artist/genre
- * and is viewing the resulting song list.
+ * and is viewing the resulting song list. Persisted in localStorage.
  */
-let drillViewMode = "list";
+let drillViewMode = localStorage.getItem("felicity_drillViewMode") || "list";
 
 /**
  * Song targeted by the most recently opened context menu.

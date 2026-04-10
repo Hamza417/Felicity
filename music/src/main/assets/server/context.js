@@ -33,10 +33,14 @@ function closeCtxMenu() {
     ctxSong = null;
 }
 
-/* Close on any click outside the menu, Escape key, or right-click elsewhere. */
+/* Close on any click outside the menu, Escape key, or right-click on non-song elements. */
 document.addEventListener("click",       e => { if (!ctxMenu.contains(e.target)) closeCtxMenu(); });
 document.addEventListener("keydown",     e => { if (e.key === "Escape") closeCtxMenu(); });
-document.addEventListener("contextmenu", e => { if (!e.target.closest(".song-row")) closeCtxMenu(); });
+document.addEventListener("contextmenu", e => {
+    /* Keep the menu open when the right-click originates from a song item
+     * (either a list row or a grid card). Close it for everything else. */
+    if (!e.target.closest(".song-row") && !e.target.closest(".song-card")) closeCtxMenu();
+});
 
 /* Play — starts the song immediately. */
 ctxPlay.addEventListener("click", () => {

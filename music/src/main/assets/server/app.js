@@ -66,7 +66,7 @@ async function goSection(sec) {
     contentBody.classList.add("fading");
     await ensureLoaded(sec);
     setTimeout(() => {
-        renderContent();
+        renderContent(true);
         contentBody.classList.remove("fading");
     }, 120);
 }
@@ -88,7 +88,7 @@ async function drillDown(type, name) {
     sectionTitle.textContent = name;
     searchInput.placeholder  = "Filter songs…";
     updateViewToggle();
-    renderContent();
+    renderContent(true);
 }
 
 /**
@@ -102,7 +102,7 @@ function goBack() {
     sectionTitle.textContent = SECTION_LABELS[section] || section;
     searchInput.placeholder  = SECTION_PLACEHOLDERS[section] || "Search…";
     updateViewToggle();
-    renderContent();
+    renderContent(true);
 }
 
 /* ─── Event wiring ───────────────────────────── */
@@ -120,16 +120,19 @@ searchInput.addEventListener("input", () => {
 
 /**
  * Toggles the view mode for the active section (or drill-down) between
- * "list" and "grid", then re-renders the content area.
+ * "list" and "grid", persists the preference to localStorage, then
+ * re-renders the content area.
  */
 viewToggle.addEventListener("click", () => {
     if (drillItem) {
         drillViewMode = drillViewMode === "list" ? "grid" : "list";
+        localStorage.setItem("felicity_drillViewMode", drillViewMode);
     } else {
         viewMode[section] = viewMode[section] === "list" ? "grid" : "list";
+        localStorage.setItem("felicity_viewMode", JSON.stringify(viewMode));
     }
     updateViewToggle();
-    renderContent();
+    renderContent(true);
 });
 
 /* ─── Initialize ─────────────────────────────── */

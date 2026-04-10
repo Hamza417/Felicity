@@ -58,6 +58,9 @@
             </nav>
         </aside>
 
+        <!-- Vertical resize handle — drag to adjust nav pane width (desktop only) -->
+        <div class="resize-handle resize-v" id="navResizer"></div>
+
         <!-- Right content area -->
         <section class="content-area">
             <div class="content-header">
@@ -87,6 +90,9 @@
         </section>
 
     </div>
+
+    <!-- Horizontal resize handle — drag to adjust player bar height (desktop only) -->
+    <div class="resize-handle resize-h" id="barResizer"></div>
 
     <!-- Bottom player strip (always visible, separated by a top border) -->
     <div class="player-bar">
@@ -161,5 +167,6 @@
 <script src="playback.js"></script>
 <script src="context.js"></script>
 <script src="app.js"></script>
+<script src="resize.js"></script>
 </body>
 </html>
