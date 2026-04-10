@@ -71,6 +71,7 @@ future.
   and USB drives.
 - **Auto Scanning:** The app automatically scans for new music files and updates the library without
   requiring manual refreshes.
+- **Server Mode:** Host Felicity as a local server to create a central music library for all local and possibly remote devices through Wi-Fi.
 
 ### Smart Core
 
@@ -90,7 +91,7 @@ This feature list is not exhaustive and only main features are listed.
 - [x] Realtime audio visualizer
 - [x] Milkdrop visualizer support
 - [ ] Crossfade support
-- [ ] Multiple Player interface styles.
+- [ ] Multiple Player interface styles. _(partially fulfilled)_
 - [x] Playlist support
 - [ ] m3u and pls playlist support
 - [x] Metadata editing support
