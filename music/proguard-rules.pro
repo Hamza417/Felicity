@@ -24,6 +24,10 @@
 -keep class app.simple.felicity.activities.** { *; }
 -keepattributes Signature
 
+# NanoHTTPD — embedded HTTP server used by the local WiFi server mode
+-keep class fi.iki.elonen.** { *; }
+-dontwarn fi.iki.elonen.**
+
 -dontwarn java.awt.Graphics2D
 -dontwarn java.awt.Image
 -dontwarn java.awt.geom.AffineTransform

@@ -48,6 +48,13 @@
                     android:src="@drawable/ic_search" />
 
                 <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+                    android:id="@+id/server_toggle"
+                    android:layout_width="@dimen/button_size"
+                    android:layout_height="@dimen/button_size"
+                    android:layout_gravity="center_vertical"
+                    android:src="@drawable/ic_wifi" />
+
+                <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
                     android:id="@+id/settings"
                     android:layout_width="@dimen/button_size"
                     android:layout_height="@dimen/button_size"

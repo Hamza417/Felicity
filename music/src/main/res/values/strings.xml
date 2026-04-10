@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Server mode strings -->
+    <string name="server_notification_title">Music Server Running</string>
+    <string name="server_notification_subtext">Tap to open in browser</string>
+    <string name="server_stop_action">Stop</string>
+    <string name="server_channel_name">Music Server</string>
+    <string name="server_channel_description">Shows the status of the local WiFi music server</string>
+    <string name="server_unknown_ip">unknown-ip</string>
+
     <string name="stroke_around_miniplayer_summary">Add a dark line around the miniplayer boundary to help with visibility.</string>
     <string name="darker_miniplayer_shadow_summary">Replace the system elevation shadow with a softer, accent-colored glow drawn directly onto the canvas.</string>
     <string name="support_development_summary">Purchase app\'s license key from Gumroad.</string>

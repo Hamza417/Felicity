@@ -96,7 +96,7 @@ This feature list is not exhaustive and only main features are listed.
 - [x] Metadata editing support
 - [ ] Replay gain
 - [ ] Cue sheet support
-- [ ] Local server for centralized music access across multiple devices.
+- [x] Local server for centralized music access across multiple devices.
 - [ ] Selection support for library management and playlist creation.
 
 ... and more features will be updated here as development progresses.

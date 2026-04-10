@@ -1,6 +1,7 @@
 package app.simple.felicity.ui.home
 
 import android.content.SharedPreferences
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -28,8 +29,10 @@ import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.preferences.MainPreferences
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.server.ServerModeService
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
+import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Favorites
@@ -115,6 +118,14 @@ class Dashboard : PanelFragment() {
     private fun setupHeader() {
         binding.search.setOnClickListener {
             openFragment(Search.newInstance(), Search.TAG)
+        }
+
+        binding.serverToggle.setOnClickListener {
+            if (ServerModeService.isRunning.value) {
+                ServerModeService.stop(requireContext())
+            } else {
+                ServerModeService.start(requireContext())
+            }
         }
     }
 
@@ -259,7 +270,27 @@ class Dashboard : PanelFragment() {
                         updateFavorites(songs)
                     }
                 }
+                launch {
+                    ServerModeService.isRunning.collect { running ->
+                        updateServerToggleState(running)
+                    }
+                }
             }
+        }
+    }
+
+    /**
+     * Tints the server toggle button with the theme accent color when the server is running,
+     * and resets it to the default icon tint when it is stopped.
+     *
+     * @param running `true` if the HTTP server is currently active.
+     */
+    private fun updateServerToggleState(running: Boolean) {
+        if (running) {
+            binding.serverToggle.imageTintList =
+                ColorStateList.valueOf(ThemeManager.accent.primaryAccentColor)
+        } else {
+            binding.serverToggle.imageTintList = null
         }
     }
 
