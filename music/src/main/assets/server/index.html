@@ -1,107 +1,137 @@
 <!DOCTYPE html>
-<html lang="en">
+<html data-theme="dark" lang="en">
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Felicity</title>
+    <!-- Prevent flash of wrong theme by reading localStorage before first paint -->
+    <script>
+        (function () {
+            var t = localStorage.getItem("felicity_theme");
+            if (t) document.documentElement.setAttribute("data-theme", t);
+        })();
+    </script>
     <link href="style.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 </head>
 <body>
 
-<!-- Dual-layer ambient background for cross-fade transitions -->
+<!-- Dual-layer ambient cross-fade background -->
 <div class="ambient-bg" id="ambientA"></div>
 <div class="ambient-bg" id="ambientB"></div>
 <div class="ambient-overlay"></div>
 
-<div class="app-shell">
+<!-- Main layout: nav pane + content area -->
+<div class="app-layout">
 
-    <!-- Library sidebar -->
-    <aside class="glass sidebar" id="sidebar">
-        <div class="sidebar-head">
-            <div class="brand-row">
-                <img alt="Felicity" class="app-icon" onerror="this.style.display='none'"
-                     src="/app-icon">
-                <span class="brand-name">Felicity</span>
-            </div>
-            <button class="back-btn hidden" id="backBtn">
-                <span class="material-icons-round">arrow_back_ios_new</span>
-                <span id="backLabel">Back</span>
+    <!-- Left navigation pane -->
+    <aside class="nav-pane glass">
+        <div class="nav-header">
+            <img alt="Felicity" class="app-icon" onerror="this.style.display='none'"
+                 src="/app-icon">
+            <span class="brand-name">Felicity</span>
+            <button class="theme-btn" id="themeToggle" title="Toggle light / dark">
+                <span class="material-icons-round" id="themeIcon">dark_mode</span>
             </button>
-            <div class="search-bar">
-                <span class="material-icons-round">search</span>
-                <input autocomplete="off" id="searchInput" placeholder="Search…" type="text">
-            </div>
-            <span class="item-count" id="itemCount"></span>
         </div>
-        <div class="sidebar-body" id="sidebarBody"></div>
+        <nav class="nav-menu">
+            <button class="nav-item active" data-sec="songs">
+                <span class="material-icons-round">music_note</span>
+                <span>Songs</span>
+            </button>
+            <button class="nav-item" data-sec="albums">
+                <span class="material-icons-round">album</span>
+                <span>Albums</span>
+            </button>
+            <button class="nav-item" data-sec="artists">
+                <span class="material-icons-round">person</span>
+                <span>Artists</span>
+            </button>
+            <button class="nav-item" data-sec="genres">
+                <span class="material-icons-round">piano</span>
+                <span>Genres</span>
+            </button>
+        </nav>
     </aside>
 
-    <!-- Player panel -->
-    <main class="glass player-panel" id="playerPanel">
-        <div class="empty-state" id="emptyState">
-            <span class="material-icons-round empty-icon">queue_music</span>
-            <p class="empty-title">Nothing playing</p>
-            <p class="empty-sub">Pick a song from your library</p>
-        </div>
-        <div class="player-content" id="playerContent">
-            <div class="art-wrap">
-                <img alt="Album Art" class="now-art" id="nowArt" src="">
-            </div>
-            <div class="now-meta">
-                <p class="now-title" id="nowTitle">—</p>
-                <p class="now-artist" id="nowArtist"></p>
-                <p class="now-album" id="nowAlbum"></p>
-            </div>
-            <div class="progress-wrap">
-                <input class="slider" id="seekBar" max="100" min="0" step="0.1" type="range"
-                       value="0">
-                <div class="time-row">
-                    <span id="elapsed">0:00</span>
-                    <span id="remaining">0:00</span>
-                </div>
-            </div>
-            <div class="controls-row">
-                <button class="ctrl-btn" id="prevBtn">
-                    <span class="material-icons-round">skip_previous</span>
+    <!-- Right content area -->
+    <section class="content-area glass">
+        <div class="content-header">
+            <div class="header-left">
+                <button class="back-btn hidden" id="backBtn">
+                    <span class="material-icons-round">arrow_back_ios_new</span>
+                    <span id="backLabel">Back</span>
                 </button>
-                <button class="ctrl-btn play-btn" id="playBtn">
-                    <span class="material-icons-round" id="playIcon">play_arrow</span>
-                </button>
-                <button class="ctrl-btn" id="nextBtn">
-                    <span class="material-icons-round">skip_next</span>
-                </button>
+                <span class="section-title" id="sectionTitle">Songs</span>
+                <span class="item-count" id="itemCount"></span>
             </div>
-            <div class="vol-row">
-                <span class="material-icons-round vol-icon">volume_up</span>
-                <input class="slider vol-slider" id="volBar" max="100" min="0" type="range"
-                       value="100">
+            <div class="search-bar">
+                <span class="material-icons-round">search</span>
+                <input autocomplete="off" id="searchInput"
+                       placeholder="Search songs, artists, albums…" type="text">
             </div>
         </div>
-    </main>
+        <div class="content-body" id="contentBody">
+            <div class="empty-state">
+                <span class="material-icons-round empty-icon">hourglass_empty</span>
+                <p class="empty-title">Loading library…</p>
+            </div>
+        </div>
+    </section>
 
 </div>
 
-<!-- macOS-style bottom dock -->
-<nav class="dock glass" id="dock">
-    <button class="dock-btn active" data-sec="songs">
-        <span class="material-icons-round">home</span>
-        <span>Songs</span>
+<!-- Bottom player strip -->
+<div class="player-bar glass">
+    <div class="bar-art-wrap">
+        <span class="material-icons-round bar-art-placeholder">music_note</span>
+        <img alt="" class="bar-art" id="nowArt" src="">
+    </div>
+    <div class="bar-meta">
+        <p class="bar-title" id="nowTitle">Nothing playing</p>
+        <p class="bar-artist" id="nowArtist">Pick a song to start</p>
+    </div>
+    <div class="bar-seek">
+        <input class="slider" disabled id="seekBar" max="100" min="0" step="0.1"
+               type="range" value="0">
+        <div class="bar-time">
+            <span id="elapsed">0:00</span>
+            <span id="remaining">0:00</span>
+        </div>
+    </div>
+    <div class="bar-controls">
+        <button class="ctrl-btn" id="prevBtn">
+            <span class="material-icons-round">skip_previous</span>
+        </button>
+        <button class="ctrl-btn play-btn" id="playBtn">
+            <span class="material-icons-round" id="playIcon">play_arrow</span>
+        </button>
+        <button class="ctrl-btn" id="nextBtn">
+            <span class="material-icons-round">skip_next</span>
+        </button>
+    </div>
+    <div class="bar-vol">
+        <span class="material-icons-round vol-icon">volume_up</span>
+        <input class="slider vol-slider" id="volBar" max="100" min="0" type="range" value="100">
+    </div>
+</div>
+
+<!-- Right-click context menu -->
+<div class="ctx-menu glass hidden" id="ctxMenu">
+    <button class="ctx-item" id="ctxPlay">
+        <span class="material-icons-round">play_arrow</span>
+        <span>Play</span>
     </button>
-    <span class="dock-sep"></span>
-    <button class="dock-btn" data-sec="albums">
-        <span class="material-icons-round">album</span>
-        <span>Albums</span>
+    <button class="ctx-item" id="ctxAddQueue">
+        <span class="material-icons-round">queue_music</span>
+        <span>Add to Queue</span>
     </button>
-    <button class="dock-btn" data-sec="artists">
-        <span class="material-icons-round">person</span>
-        <span>Artists</span>
+    <div class="ctx-sep"></div>
+    <button class="ctx-item ctx-danger" id="ctxDelete">
+        <span class="material-icons-round">delete_outline</span>
+        <span>Delete</span>
     </button>
-    <button class="dock-btn" data-sec="genres">
-        <span class="material-icons-round">piano</span>
-        <span>Genres</span>
-    </button>
-</nav>
+</div>
 
 <audio id="audioEl" preload="none"></audio>
 <script src="player.js"></script>

@@ -65,8 +65,11 @@ class MusicHttpServer(
 
     override fun serve(session: IHTTPSession): Response {
         return try {
-            if (session.method == Method.POST) handlePost(session)
-            else handleGet(session)
+            when (session.method) {
+                Method.POST -> handlePost(session)
+                Method.DELETE -> handleDelete(session)
+                else -> handleGet(session)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling ${session.method} ${session.uri}", e)
             newFixedLengthResponse(
@@ -115,6 +118,34 @@ class MusicHttpServer(
         } else {
             newFixedLengthResponse(
                     Response.Status.METHOD_NOT_ALLOWED, MIME_PLAINTEXT, "Method not allowed"
+            )
+        }
+    }
+
+    /**
+     * Handles `DELETE /api/songs/{id}` by permanently removing the audio file from disk
+     * and evicting it from the in-memory cache.
+     *
+     * This is a destructive, irreversible operation. The Android MediaStore will reflect
+     * the change on its next scan.
+     */
+    private fun handleDelete(session: IHTTPSession): Response {
+        val uri = session.uri
+        if (!DELETE_REGEX.matches(uri)) {
+            return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not found")
+        }
+        val id = DELETE_REGEX.find(uri)!!.groupValues[1].toLongOrNull()
+            ?: return badRequest("Invalid song ID")
+        val audio = findAudio(id) ?: return notFound("Song not found")
+        val file = audio.file
+        return if (file.exists() && file.delete()) {
+            audioCache = audioCache - id
+            Log.i(TAG, "Deleted: ${file.absolutePath}")
+            newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, "Deleted")
+        } else {
+            Log.w(TAG, "Failed to delete: ${file.absolutePath}")
+            newFixedLengthResponse(
+                    Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Could not delete file"
             )
         }
     }
@@ -350,5 +381,6 @@ class MusicHttpServer(
         private val STREAM_REGEX = Regex("/api/songs/(\\d+)/stream")
         private val ART_REGEX = Regex("/api/songs/(\\d+)/art")
         private val PLAYED_REGEX = Regex("/api/songs/(\\d+)/played")
+        private val DELETE_REGEX = Regex("/api/songs/(\\d+)")
     }
 }
