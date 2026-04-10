@@ -25,6 +25,11 @@ class PreferencesViewModel(application: Application) : WrappedViewModel(applicat
         viewModelScope.launch(Dispatchers.Default) {
             val preferences = listOf(
                     Preference(
+                            title = R.string.purchase,
+                            description = R.string.purchase_desc,
+                            icon = R.drawable.ic_sell
+                    ),
+                    Preference(
                             title = R.string.appearance,
                             description = R.string.appearance_desc,
                             icon = R.drawable.ic_water_drop

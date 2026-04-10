@@ -4,27 +4,61 @@ import android.content.Context
 import android.content.SharedPreferences
 import app.simple.felicity.manager.SharedPreferences.init
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
+import dev.spght.encryptedprefs.EncryptedSharedPreferences
+import dev.spght.encryptedprefs.MasterKey
+import java.io.File
 
 object SharedPreferences {
 
-    private const val preferences = "Preferences"
+    private const val PREFERENCES = "Preferences"
+    private const val PREFERENCES_ENCRYPTED = "PreferencesSecured"
     private var sharedPreferences: SharedPreferences? = null
+    private var encryptedSharedPreferences: SharedPreferences? = null
+
+    private var isInitialized = false
 
     fun init(context: Context) {
         if (sharedPreferences.isNull()) {
-            sharedPreferences = context.getSharedPreferences(preferences, Context.MODE_PRIVATE)
+            sharedPreferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         }
     }
 
     fun Context.initSharedPreferences() {
         if (sharedPreferences.isNull()) {
-            sharedPreferences = getSharedPreferences(preferences, Context.MODE_PRIVATE)
+            sharedPreferences = getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         }
     }
 
     fun SharedPreferences.OnSharedPreferenceChangeListener.initRegisterSharedPreferenceChangeListener(context: Context) {
         init(context)
         registerSharedPreferenceChangeListener()
+    }
+
+    fun initEncrypted(context: Context) {
+        kotlin.runCatching {
+            if (encryptedSharedPreferences.isNull()) {
+                val masterKeyAlias = MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+
+                encryptedSharedPreferences = EncryptedSharedPreferences.create(
+                        context,
+                        PREFERENCES_ENCRYPTED,
+                        masterKeyAlias,
+                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
+            }
+        }.onFailure {
+            /**
+             * Retry with a fail safe for recursion
+             */
+            if (isInitialized.not()) {
+                // Delete the encrypted shared preferences if it fails to initialize
+                File(getEncryptedSharedPreferencesPath(context)).delete()
+                initEncrypted(context)
+                isInitialized = true
+            }
+        }
     }
 
     /**
@@ -38,6 +72,19 @@ object SharedPreferences {
         return sharedPreferences ?: throw NullPointerException()
     }
 
+    fun getSharedPreference(context: Context): SharedPreferences {
+        init(context)
+        return sharedPreferences ?: throw NullPointerException()
+    }
+
+    fun getEncryptedSharedPreferences(): SharedPreferences {
+        return encryptedSharedPreferences ?: throw NullPointerException()
+    }
+
+    fun registerSharedPreferencesListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        getSharedPreferences().registerOnSharedPreferenceChangeListener(listener)
+    }
+
     fun registerListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
         getSharedPreferences().registerOnSharedPreferenceChangeListener(listener)
     }
@@ -48,20 +95,28 @@ object SharedPreferences {
 
     /**
      * Use this function to register shared preference change listener if
-     * the current context has [android.content.SharedPreferences.OnSharedPreferenceChangeListener]
+     * the current context has [SharedPreferences.OnSharedPreferenceChangeListener]
      * implemented.
      */
     fun SharedPreferences.OnSharedPreferenceChangeListener.registerSharedPreferenceChangeListener() {
-        registerListener(this)
+        registerSharedPreferencesListener(this)
     }
 
     /**
      * Use this function to unregister shared preference change listener if
-     * the current context has [android.content.SharedPreferences.OnSharedPreferenceChangeListener]
+     * the current context has [SharedPreferences.OnSharedPreferenceChangeListener]
      * implemented.
      */
     fun SharedPreferences.OnSharedPreferenceChangeListener.unregisterSharedPreferenceChangeListener() {
         unregisterListener(this)
+    }
+
+    fun SharedPreferences.OnSharedPreferenceChangeListener.registerEncryptedSharedPreferencesListener() {
+        getEncryptedSharedPreferences().registerOnSharedPreferenceChangeListener(this)
+    }
+
+    fun SharedPreferences.OnSharedPreferenceChangeListener.unregisterEncryptedSharedPreferencesListener() {
+        getEncryptedSharedPreferences().unregisterOnSharedPreferenceChangeListener(this)
     }
 
     /**
@@ -70,7 +125,7 @@ object SharedPreferences {
      * @see init
      */
     fun getSharedPreferences(context: Context): SharedPreferences {
-        runCatching {
+        kotlin.runCatching {
             return sharedPreferences ?: throw NullPointerException()
         }.getOrElse {
             init(context)
@@ -79,6 +134,10 @@ object SharedPreferences {
     }
 
     fun getSharedPreferencesPath(context: Context): String {
-        return context.applicationInfo.dataDir + "/shared_prefs/" + preferences + ".xml"
+        return context.applicationInfo.dataDir + "/shared_prefs/" + PREFERENCES + ".xml"
+    }
+
+    fun getEncryptedSharedPreferencesPath(context: Context): String {
+        return context.applicationInfo.dataDir + "/shared_prefs/" + PREFERENCES_ENCRYPTED + ".xml"
     }
 }

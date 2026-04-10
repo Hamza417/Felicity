@@ -1,12 +1,12 @@
 package app.simple.felicity.extensions.fragments
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.view.View
 import android.widget.TextView
+import androidx.core.net.toUri
 import app.simple.felicity.BuildConfig
 import app.simple.felicity.R
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
@@ -890,9 +890,9 @@ abstract class PreferenceFragment : MediaFragment() {
                 title = R.string.telegram_channel,
                 summary = R.string.telegram_channel_summary,
                 icon = R.drawable.ic_telegram,
-                type = PreferenceType.NORMAL,
+                type = PreferenceType.LINK,
                 onPreferenceAction = { view, callback ->
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://t.me/felicity_music_player"))
+                    val intent = Intent(Intent.ACTION_VIEW, "https://t.me/felicity_music_player".toUri())
                     startActivity(intent)
                 }
         )

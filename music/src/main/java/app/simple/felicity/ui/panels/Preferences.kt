@@ -17,6 +17,7 @@ import app.simple.felicity.ui.preferences.main.Appearance
 import app.simple.felicity.ui.preferences.main.Behavior
 import app.simple.felicity.ui.preferences.main.Engine
 import app.simple.felicity.ui.preferences.main.Library
+import app.simple.felicity.ui.preferences.main.Purchase
 import app.simple.felicity.ui.preferences.main.UserInterface
 import app.simple.felicity.viewmodels.panels.PreferencesViewModel
 
@@ -54,6 +55,9 @@ class Preferences : MediaFragment() {
             adapter?.setAdapterPreferenceCallbacks(object : AdapterPreference.Companion.AdapterPreferenceCallbacks {
                 override fun onPreferenceClicked(preference: PreferencesViewModel.Companion.Preference, position: Int, view: View) {
                     when (preference.title) {
+                        R.string.purchase -> {
+                            openFragment(Purchase.newInstance(), Purchase.TAG)
+                        }
                         R.string.appearance -> {
                             openFragment(Appearance.newInstance(), Appearance.TAG)
                         }

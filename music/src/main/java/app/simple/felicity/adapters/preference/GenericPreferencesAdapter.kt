@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterPreferenceButtonGroupBinding
 import app.simple.felicity.databinding.AdapterPreferenceDialogBinding
 import app.simple.felicity.databinding.AdapterPreferenceHeaderBinding
+import app.simple.felicity.databinding.AdapterPreferenceLinkBinding
 import app.simple.felicity.databinding.AdapterPreferenceNormalBinding
 import app.simple.felicity.databinding.AdapterPreferencePanelBinding
 import app.simple.felicity.databinding.AdapterPreferencePopupBinding
@@ -69,6 +70,9 @@ class GenericPreferencesAdapter(
             }
             VIEW_TYPE_NORMAL -> {
                 Normal(AdapterPreferenceNormalBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            }
+            VIEW_TYPE_LINK -> {
+                Link(AdapterPreferenceLinkBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
             else -> {
                 throw IllegalArgumentException()
@@ -245,6 +249,23 @@ class GenericPreferencesAdapter(
                 holder.binding.title.highlight()
                 holder.binding.summary.highlight()
             }
+            is Link -> {
+                val preference = preferences[position]
+                holder.binding.title.setText(preference.title)
+                holder.binding.summary.setSummary(preference)
+                if (preference.icon != -1) {
+                    holder.binding.icon.setImageResource(preference.icon)
+                }
+
+                holder.binding.container.setOnClickListener {
+                    preference.onPreferenceAction?.invoke(it) {
+                        /* no-op */
+                    }
+                }
+
+                holder.binding.title.highlight()
+                holder.binding.summary.highlight()
+            }
         }
     }
 
@@ -269,6 +290,7 @@ class GenericPreferencesAdapter(
             PreferenceType.WARN -> VIEW_TYPE_WARNING
             PreferenceType.BUTTON_GROUP -> VIEW_TYPE_BUTTON_GROUP
             PreferenceType.NORMAL -> VIEW_TYPE_NORMAL
+            PreferenceType.LINK -> VIEW_TYPE_LINK
             else -> throw IllegalArgumentException("Unknown view type at position $position")
         }
     }
@@ -277,7 +299,12 @@ class GenericPreferencesAdapter(
 
     inner class Dialog(val binding: AdapterPreferenceDialogBinding) : VerticalListViewHolder(binding.root)
 
-    inner class Slider(val binding: AdapterPreferenceSliderBinding) : VerticalListViewHolder(binding.root)
+    inner class Slider(val binding: AdapterPreferenceSliderBinding) : VerticalListViewHolder(binding.root) {
+        init {
+            binding.root.clipToPadding = false
+            binding.root.clipChildren = false
+        }
+    }
 
     inner class Panel(val binding: AdapterPreferencePanelBinding) : VerticalListViewHolder(binding.root)
 
@@ -297,6 +324,8 @@ class GenericPreferencesAdapter(
     inner class Header(val binding: AdapterPreferenceHeaderBinding) : VerticalListViewHolder(binding.root)
 
     inner class Normal(val binding: AdapterPreferenceNormalBinding) : VerticalListViewHolder(binding.root)
+
+    inner class Link(val binding: AdapterPreferenceLinkBinding) : VerticalListViewHolder(binding.root)
 
     private fun TextView.setSummary(preference: Preference) {
         when (preference.summary) {
@@ -336,5 +365,6 @@ class GenericPreferencesAdapter(
         const val VIEW_TYPE_WARNING = 8
         const val VIEW_TYPE_BUTTON_GROUP = 9
         const val VIEW_TYPE_NORMAL = 10
+        const val VIEW_TYPE_LINK = 11
     }
 }

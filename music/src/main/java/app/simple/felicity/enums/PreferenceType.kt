@@ -11,5 +11,6 @@ enum class PreferenceType {
     PANEL,
     WARN,
     BUTTON_GROUP,
-    NORMAL
+    NORMAL,
+    LINK,
 }

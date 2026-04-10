@@ -29,7 +29,9 @@ import app.simple.felicity.core.singletons.AppOrientation
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.engine.services.FelicityPlayerService
+import app.simple.felicity.manager.SharedPreferences.registerEncryptedSharedPreferencesListener
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
+import app.simple.felicity.manager.SharedPreferences.unregisterEncryptedSharedPreferencesListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
@@ -72,7 +74,9 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
     override fun attachBaseContext(newBase: Context?) {
         app.simple.felicity.manager.SharedPreferences.init(newBase!!)
+        app.simple.felicity.manager.SharedPreferences.initEncrypted(newBase)
         registerSharedPreferenceChangeListener()
+        registerEncryptedSharedPreferencesListener()
         super.attachBaseContext(newBase)
     }
 
@@ -404,6 +408,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     override fun onDestroy() {
         super.onDestroy()
         unregisterSharedPreferenceChangeListener()
+        unregisterEncryptedSharedPreferencesListener()
         ThemeManager.removeListener(this)
 
         // Skip releasing the MediaController on configuration changes (e.g. rotation).

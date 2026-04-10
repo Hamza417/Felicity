@@ -4,6 +4,7 @@ import android.app.SearchManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.IBinder
 import android.provider.MediaStore
@@ -31,6 +32,7 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtIntoBitmap
 import app.simple.felicity.interfaces.MiniPlayerPolicy
+import app.simple.felicity.preferences.TrialPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.models.Audio
@@ -299,6 +301,15 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         val wantsVisible = (fragment as? MiniPlayerPolicy)?.wantsMiniPlayerVisible ?: true
         if (wantsVisible) {
             binding.miniPlayer.show(animated = true)
+        }
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            TrialPreferences.HAS_LICENSE_KEY -> {
+
+            }
         }
     }
 

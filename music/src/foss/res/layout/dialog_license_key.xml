@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:clipChildren="false"
+    android:layout_gravity="bottom"
+    android:clipToPadding="false">
+
+    <app.simple.felicity.decorations.corners.DynamicCornerLinearLayout
+        android:id="@+id/dialog_purchase"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/dialog_padding"
+        android:animateLayoutChanges="true"
+        android:orientation="vertical"
+        android:padding="@dimen/dialog_padding">
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="@dimen/padding_5"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="@dimen/dialog_padding"
+            android:text="@string/enter_license_key_summary"
+            android:textSize="@dimen/desc_text_size"
+            app:appFontStyle="regular"
+            app:drawableTintStyle="accent"
+            app:textColorStyle="accent" />
+
+        <LinearLayout
+            android:id="@+id/license_key_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:animateLayoutChanges="true"
+            android:orientation="horizontal">
+
+            <app.simple.felicity.decorations.corners.DynamicCornerEditText
+                android:id="@+id/license_key"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_gravity="center_vertical"
+                android:layout_height="wrap_content"
+                android:hint="@string/enter_license_key"
+                android:importantForAutofill="no"
+                android:inputType="textNoSuggestions"
+                android:maxLines="1"
+                android:paddingHorizontal="@dimen/dialog_padding"
+                app:appFontStyle="medium"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+                android:id="@+id/verify"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end|center_vertical"
+                android:layout_marginStart="@dimen/padding_1"
+                android:gravity="center"
+                android:padding="@dimen/dialog_padding"
+                android:text="@string/verify"
+                android:textSize="@dimen/text_size_14"
+                android:visibility="visible"
+                app:appFontStyle="bold"
+                app:textColorStyle="accent" />
+
+        </LinearLayout>
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/dialog_padding"
+            android:text="@string/verifying_license"
+            android:textSize="@dimen/desc_text_size"
+            android:gravity="center_vertical"
+            android:drawablePadding="5dp"
+            app:appFontStyle="regular"
+            app:drawableStartCompat="@drawable/ic_arrow_right_16dp"
+            app:drawableTintStyle="accent"
+            app:textColorStyle="secondary" />
+
+    </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+
+</FrameLayout>

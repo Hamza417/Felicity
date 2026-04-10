@@ -43,6 +43,23 @@ android {
         }
     }
 
+    flavorDimensions.add("type")
+
+    productFlavors {
+        foss { // GitHub build
+            dimension "type"
+            if (signingConfigs.release != null && signingConfigs.release.storeFile != null) {
+                signingConfig = signingConfigs.release
+            }
+        }
+        play { // Play Store build
+            dimension "type"
+            if (signingConfigs.release != null && signingConfigs.release.storeFile != null) {
+                signingConfig = signingConfigs.release
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled true
