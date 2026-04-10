@@ -53,6 +53,7 @@ import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
+import app.simple.felicity.ui.panels.MetadataEditor
 import app.simple.felicity.ui.panels.Milkdrop
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.ui.player.PlayerFaded
@@ -585,6 +586,11 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
             binding.info.setOnClickListener {
                 childFragmentManager.showAudioInfo(audio).also { dismiss() }
+            }
+
+            binding.editMetadata.setOnClickListener {
+                openFragment(MetadataEditor.newInstance(audio), MetadataEditor.TAG)
+                dismiss()
             }
         }
 

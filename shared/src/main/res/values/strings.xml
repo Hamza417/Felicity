@@ -308,6 +308,10 @@
     <string name="show_album_artists">Show Album Artists</string>
     <string name="show_album_artists_summary">Show album artists instead of artists in the artists field of the lists in the app.</string>
     <string name="copy">Copy</string>
+    <string name="edit_metadata">Edit Metadata</string>
+    <string name="metadata_saved">Metadata saved successfully.</string>
+    <string name="comment">Comment</string>
+    <string name="change">Change</string>
 
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">Track Info</string>
