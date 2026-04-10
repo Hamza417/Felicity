@@ -376,4 +376,18 @@
     <string name="trial">Trial</string>
     <string name="trial_period">Trial Period</string>
     <string name="trial_period_summary">%1$d remaining in the trial period.</string>
+
+    <!-- Trial expired dialog strings -->
+    <string name="trial_expired">Trial Expired</string>
+    <string name="trial_expired_message">Your free trial period has ended. Purchase the full version to continue enjoying Felicity without interruption.</string>
+    <string name="grace_period_expired_message">All grace launches have been used. Please purchase the app to continue listening.</string>
+    <string name="purchase_now">Purchase Now</string>
+    <string name="purchase_later">I\'ll Purchase Later</string>
+    <string name="grace_launches_used">%1$d of %2$d grace launches consumed.</string>
+
+    <!-- Play Store purchase screen strings -->
+    <string name="play_store">Play Store</string>
+    <string name="play_store_purchase_summary">Open the Play Store listing to purchase the full version of Felicity.</string>
+    <string name="features">Full Version Features</string>
+    <string name="play_store_features">Purchasing Felicity unlocks unlimited use, future updates, and supports continued development. Thank you for your support!</string>
 </resources>

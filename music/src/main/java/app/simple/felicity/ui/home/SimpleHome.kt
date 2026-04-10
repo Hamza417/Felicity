@@ -196,6 +196,10 @@ class SimpleHome : PanelFragment() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+    }
+
     companion object {
         fun newInstance(): SimpleHome {
             val args = Bundle()

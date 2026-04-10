@@ -45,6 +45,7 @@ import app.simple.felicity.ui.home.Dashboard
 import app.simple.felicity.ui.home.SimpleHome
 import app.simple.felicity.ui.home.SpannedHome
 import app.simple.felicity.ui.launcher.Setup
+import app.simple.felicity.ui.launcher.TrialExpired
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.ui.player.PlayerFaded
 import app.simple.felicity.viewmodels.setup.PermissionViewModel
@@ -203,14 +204,23 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         val allPermissionsGranted = isManageExternalStoragePermissionGranted() &&
                 isPostNotificationsPermissionGranted()
 
-        if (!allPermissionsGranted) {
-            // Show Setup screen first to request permissions
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, Setup.newInstance(), Setup.TAG)
-                .commit()
-        } else {
-            // All permissions granted, go directly to Home
-            showHome()
+        when {
+            !allPermissionsGranted -> {
+                // Show Setup screen first to request permissions
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, Setup.newInstance(), Setup.TAG)
+                    .commit()
+            }
+            TrialPreferences.isTrialExpired() -> {
+                // Trial has expired — show the paywall screen instead of home
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, TrialExpired.newInstance(), TrialExpired.TAG)
+                    .commit()
+            }
+            else -> {
+                // All permissions granted and trial is still active, go directly to home
+                showHome()
+            }
         }
     }
 

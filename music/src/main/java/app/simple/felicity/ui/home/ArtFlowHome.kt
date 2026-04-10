@@ -274,6 +274,10 @@ class ArtFlowHome : MediaFragment() {
         return sections
     }
 
+    override fun onResume() {
+        super.onResume()
+    }
+
     companion object {
         /**
          * Creates a new instance of [ArtFlowHome].

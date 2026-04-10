@@ -380,6 +380,10 @@ class Dashboard : PanelFragment() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+    }
+
     companion object {
         /**
          * Creates a new instance of [Dashboard].
