@@ -12,7 +12,7 @@ object TrialPreferences {
     private const val MAX_TRIAL_DAYS = 0xF
 
     private const val FIRST_LAUNCH = "first_launch_"
-    private const val IS_APP_FULL_VERSION_ENABLED = "is_full_version_"
+    const val IS_APP_FULL_VERSION_ENABLED = "is_full_version_"
     private const val LAST_VERIFICATION_DATE = "last_verification_date_"
     private const val IS_EARLY_ACCESS_USER = "is_early_access_user_"
     private const val IS_SUPPORTER = "is_supporter_"

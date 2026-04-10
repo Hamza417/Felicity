@@ -4,6 +4,7 @@
     android:id="@+id/container"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:paddingHorizontal="@dimen/padding_10"
     android:orientation="horizontal">
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -11,7 +12,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
-        android:textSize="@dimen/text_size_14"
+        android:textSize="@dimen/text_size_16"
         app:appFontStyle="bold"
         app:textColorStyle="secondary" />
 

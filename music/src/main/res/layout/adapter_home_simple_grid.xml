@@ -10,10 +10,10 @@
     android:orientation="vertical"
     android:padding="@dimen/padding_10">
 
-    <app.simple.felicity.decorations.highlight.HighlightIcon
+    <app.simple.felicity.decorations.theme.ThemeIcon
         android:id="@+id/icon"
-        android:layout_width="@dimen/icon_size_40"
-        android:layout_height="@dimen/icon_size_40"
+        android:layout_width="@dimen/icon_size_50"
+        android:layout_height="@dimen/icon_size_50"
         android:layout_gravity="center_horizontal"
         android:padding="@dimen/padding_8"
         android:src="@drawable/ic_song"
