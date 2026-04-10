@@ -1,0 +1,75 @@
+/*
+ * theme.css — Felicity Web Player
+ *
+ * All CSS custom properties for both themes.
+ * Dark theme is the default (defined on :root).
+ * Light theme overrides are scoped to [data-theme="light"].
+ */
+
+/* Shared structural and accent constants */
+:root {
+    --accent:           #05aefe;
+    --accent-2:         #04c0fd;
+    --accent-gradient:  linear-gradient(135deg, #05aefe 0%, #04c0fd 100%);
+    --accent-glow:      rgba(5, 174, 254, 0.40);
+    --accent-dim:       rgba(5, 174, 254, 0.13);
+    --accent-border:    rgba(5, 174, 254, 0.32);
+
+    --nav-w:  220px;
+    --bar-h:   80px;
+    --pad:     10px;
+    --r-xl:    20px;
+    --r-lg:    14px;
+    --r-md:    10px;
+    --r-sm:     6px;
+    --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Dark theme (default) */
+:root {
+    --bg-base:        #060c14;
+    --glass-bg:       rgba(8, 15, 28, 0.72);
+    --glass-border:   rgba(255, 255, 255, 0.07);
+    --glass-blur:     blur(28px) saturate(180%);
+
+    --text-1:         rgba(255, 255, 255, 0.92);
+    --text-2:         rgba(255, 255, 255, 0.50);
+    --text-3:         rgba(255, 255, 255, 0.26);
+    --hover:          rgba(255, 255, 255, 0.06);
+    --active-bg:      rgba(5, 174, 254, 0.12);
+    --active-text:    #05aefe;
+
+    --ambient-filter: blur(100px) brightness(0.18) saturate(2.8);
+    --overlay-c:      rgba(6, 12, 20, 0.50);
+    --scrollbar-c:    rgba(255, 255, 255, 0.13);
+    --sep-c:          rgba(255, 255, 255, 0.07);
+    --track-c:        rgba(255, 255, 255, 0.16);
+    --shadow:         0 8px 32px rgba(0, 0, 0, 0.65);
+    --danger:         #f87171;
+    --danger-bg:      rgba(248, 113, 113, 0.10);
+}
+
+/* Light theme */
+[data-theme="light"] {
+    --bg-base:        #ddeeff;
+    --glass-bg:       rgba(255, 255, 255, 0.76);
+    --glass-border:   rgba(5, 174, 254, 0.16);
+    --glass-blur:     blur(28px) saturate(140%);
+
+    --text-1:         rgba(8, 20, 40, 0.92);
+    --text-2:         rgba(8, 20, 40, 0.54);
+    --text-3:         rgba(8, 20, 40, 0.32);
+    --hover:          rgba(5, 174, 254, 0.07);
+    --active-bg:      rgba(5, 174, 254, 0.13);
+    --active-text:    #0090e0;
+
+    --ambient-filter: blur(100px) brightness(0.70) saturate(2.2);
+    --overlay-c:      rgba(200, 228, 255, 0.30);
+    --scrollbar-c:    rgba(5, 174, 254, 0.22);
+    --sep-c:          rgba(5, 174, 254, 0.10);
+    --track-c:        rgba(5, 174, 254, 0.18);
+    --shadow:         0 4px 24px rgba(0, 100, 200, 0.18);
+    --danger:         #dc2626;
+    --danger-bg:      rgba(220, 38, 38, 0.08);
+}
+

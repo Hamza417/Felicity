@@ -85,8 +85,6 @@ class MusicHttpServer(
         val uri = session.uri
         return when {
             uri == "/" || uri == "/index.html" -> serveAsset("server/index.html", MIME_HTML)
-            uri == "/style.css" -> serveAsset("server/style.css", MIME_CSS)
-            uri == "/player.js" -> serveAsset("server/player.js", MIME_JS)
             uri == "/app-icon" -> serveAppIcon()
             uri == "/api/songs" -> serveSongList()
             uri == "/api/albums" -> serveAlbums()
@@ -102,6 +100,15 @@ class MusicHttpServer(
             ART_REGEX.matches(uri) -> {
                 val id = ART_REGEX.find(uri)!!.groupValues[1].toLong()
                 serveAlbumArt(id)
+            }
+            STATIC_REGEX.matches(uri) -> {
+                val filename = uri.removePrefix("/")
+                val mimeType = if (filename.endsWith(".css")) MIME_CSS else MIME_JS
+                try {
+                    serveAsset("server/$filename", mimeType)
+                } catch (_: Exception) {
+                    newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not found")
+                }
             }
             else -> newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "Not found")
         }
@@ -382,5 +389,8 @@ class MusicHttpServer(
         private val ART_REGEX = Regex("/api/songs/(\\d+)/art")
         private val PLAYED_REGEX = Regex("/api/songs/(\\d+)/played")
         private val DELETE_REGEX = Regex("/api/songs/(\\d+)")
+
+        /** Matches any top-level CSS or JS file request, e.g. `/theme.css` or `/app.js`. */
+        private val STATIC_REGEX = Regex("/[\\w-]+\\.(?:css|js)")
     }
 }

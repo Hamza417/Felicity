@@ -1,0 +1,296 @@
+/*
+ * layout.css — Felicity Web Player
+ *
+ * Global reset, body flex column, the unified main-shell glass panel,
+ * the side-by-side app-layout, nav pane, content area, and their dividers.
+ * No spacing between panes — divider lines (border) are used instead.
+ */
+
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-base);
+    color: var(--text-1);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-size: 14px;
+    transition: background 0.30s ease, color 0.20s ease;
+}
+
+/* Body is a flex column — shell + its padding fills the whole viewport. */
+body {
+    display: flex;
+    flex-direction: column;
+    padding: var(--pad);
+}
+
+/* Glass frosted-panel mixin */
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    transition: background 0.30s ease, border-color 0.30s ease;
+}
+
+/* Fallback for browsers without backdrop-filter */
+@supports not (backdrop-filter: blur(1px)) {
+    [data-theme="dark"]  .glass { background: rgba(8, 15, 28, 0.96); }
+    [data-theme="light"] .glass { background: rgba(240, 248, 255, 0.98); }
+}
+
+/* One rounded outer shell containing every UI surface */
+.main-shell {
+    flex: 1;
+    min-height: 0;
+    border-radius: var(--r-xl);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    z-index: 2;
+}
+
+/* Horizontal row: nav pane (left) + content area (right) */
+.app-layout {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    overflow: hidden;
+}
+
+/* Left navigation pane */
+.nav-pane {
+    width: var(--nav-w);
+    flex-shrink: 0;
+    border-right: 1px solid var(--sep-c);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: border-color 0.30s ease;
+}
+
+.nav-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 14px 14px;
+    border-bottom: 1px solid var(--sep-c);
+    flex-shrink: 0;
+    transition: border-color 0.30s ease;
+}
+
+.app-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.40);
+}
+
+/* App name — plain white in dark mode, plain dark in light mode (no gradient). */
+.brand-name {
+    flex: 1;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--text-1);
+    white-space: nowrap;
+}
+
+.theme-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--hover);
+    color: var(--text-2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+}
+
+.theme-btn:hover { background: var(--active-bg); color: var(--active-text); }
+.theme-btn .material-icons-round { font-size: 18px !important; }
+
+.nav-menu {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 8px;
+    gap: 2px;
+    overflow-y: auto;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--r-md);
+    border: none;
+    background: transparent;
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s, color 0.15s;
+}
+
+.nav-item .material-icons-round {
+    font-size: 20px !important;
+    flex-shrink: 0;
+    transition: transform 0.20s var(--ease);
+}
+
+.nav-item:hover { background: var(--hover); color: var(--text-1); }
+
+.nav-item.active {
+    background: var(--active-bg);
+    color: var(--active-text);
+    font-weight: 600;
+}
+
+.nav-item.active .material-icons-round { transform: scale(1.12); }
+
+/* Right content area */
+.content-area {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 20px 12px;
+    border-bottom: 1px solid var(--sep-c);
+    flex-shrink: 0;
+    transition: border-color 0.30s ease;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    color: var(--text-1);
+}
+
+.item-count {
+    font-size: 11px;
+    color: var(--text-3);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Back button */
+.back-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--active-bg);
+    border: 1px solid var(--accent-border);
+    border-radius: 100px;
+    color: var(--active-text);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 11px 5px 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: inherit;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.back-btn:hover { background: rgba(5, 174, 254, 0.22); }
+.back-btn .material-icons-round { font-size: 15px !important; }
+.back-btn.hidden { display: none; }
+
+/* Search bar */
+.search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--hover);
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    padding: 7px 14px;
+    transition: border-color 0.18s;
+    min-width: 180px;
+    max-width: 300px;
+    flex-shrink: 0;
+}
+
+.search-bar:focus-within { border-color: var(--accent); }
+
+.search-bar .material-icons-round {
+    font-size: 17px !important;
+    color: var(--text-3);
+    flex-shrink: 0;
+}
+
+.search-bar input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text-1);
+    font-size: 13px;
+    font-family: inherit;
+    min-width: 0;
+}
+
+.search-bar input::placeholder { color: var(--text-3); }
+
+/* Scrollable content body */
+.content-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transition: opacity 0.15s ease;
+}
+
+.content-body.fading { opacity: 0; }
+
+.content-body::-webkit-scrollbar { width: 4px; }
+.content-body::-webkit-scrollbar-track { background: transparent; }
+.content-body::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-c);
+    border-radius: 2px;
+}
+
+/* Responsive: icon-only nav on small screens */
+@media (max-width: 700px) {
+    :root { --nav-w: 58px; }
+
+    .brand-name { display: none; }
+    .theme-btn  { margin-left: auto; }
+    .nav-item span:last-child { display: none; }
+    .nav-item { padding: 12px; justify-content: center; gap: 0; }
+}
+

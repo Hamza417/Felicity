@@ -1,122 +1,137 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html data-theme="dark" lang="en">
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Felicity</title>
-    <!-- Prevent flash of wrong theme by reading localStorage before first paint -->
+    <!-- Read localStorage before first paint to avoid theme flash -->
     <script>
-        (function () {
-            var t = localStorage.getItem("felicity_theme");
-            if (t) document.documentElement.setAttribute("data-theme", t);
-        })();
+        (function(){var t=localStorage.getItem("felicity_theme");if(t)document.documentElement.setAttribute("data-theme",t);})();
     </script>
-    <link href="style.css" rel="stylesheet">
+    <link href="theme.css" rel="stylesheet">
+    <link href="layout.css" rel="stylesheet">
+    <link href="content.css" rel="stylesheet">
+    <link href="player-bar.css" rel="stylesheet">
+    <link href="overlays.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 </head>
 <body>
 
-<!-- Dual-layer ambient cross-fade background -->
+<!-- Ambient cross-fade background layers -->
 <div class="ambient-bg" id="ambientA"></div>
 <div class="ambient-bg" id="ambientB"></div>
 <div class="ambient-overlay"></div>
 
-<!-- Main layout: nav pane + content area -->
-<div class="app-layout">
+<!-- Unified outer shell: nav + content + player bar — one glass panel -->
+<div class="main-shell glass">
 
-    <!-- Left navigation pane -->
-    <aside class="nav-pane glass">
-        <div class="nav-header">
-            <img alt="Felicity" class="app-icon" onerror="this.style.display='none'"
-                 src="/app-icon">
-            <span class="brand-name">Felicity</span>
-            <button class="theme-btn" id="themeToggle" title="Toggle light / dark">
-                <span class="material-icons-round" id="themeIcon">dark_mode</span>
-            </button>
-        </div>
-        <nav class="nav-menu">
-            <button class="nav-item active" data-sec="songs">
-                <span class="material-icons-round">music_note</span>
-                <span>Songs</span>
-            </button>
-            <button class="nav-item" data-sec="albums">
-                <span class="material-icons-round">album</span>
-                <span>Albums</span>
-            </button>
-            <button class="nav-item" data-sec="artists">
-                <span class="material-icons-round">person</span>
-                <span>Artists</span>
-            </button>
-            <button class="nav-item" data-sec="genres">
-                <span class="material-icons-round">piano</span>
-                <span>Genres</span>
-            </button>
-        </nav>
-    </aside>
+    <!-- Top section: nav pane (left) + content area (right) -->
+    <div class="app-layout">
 
-    <!-- Right content area -->
-    <section class="content-area glass">
-        <div class="content-header">
-            <div class="header-left">
-                <button class="back-btn hidden" id="backBtn">
-                    <span class="material-icons-round">arrow_back_ios_new</span>
-                    <span id="backLabel">Back</span>
+        <!-- Left navigation pane -->
+        <aside class="nav-pane">
+            <div class="nav-header">
+                <img alt="Felicity" class="app-icon" onerror="this.style.display='none'"
+                     src="/app-icon">
+                <span class="brand-name">Felicity</span>
+                <button class="theme-btn" id="themeToggle" title="Toggle light / dark">
+                    <span class="material-icons-round" id="themeIcon">dark_mode</span>
                 </button>
-                <span class="section-title" id="sectionTitle">Songs</span>
-                <span class="item-count" id="itemCount"></span>
             </div>
-            <div class="search-bar">
-                <span class="material-icons-round">search</span>
-                <input autocomplete="off" id="searchInput"
-                       placeholder="Search songs, artists, albums…" type="text">
+            <nav class="nav-menu">
+                <button class="nav-item active" data-sec="songs">
+                    <span class="material-icons-round">music_note</span>
+                    <span>Songs</span>
+                </button>
+                <button class="nav-item" data-sec="albums">
+                    <span class="material-icons-round">album</span>
+                    <span>Albums</span>
+                </button>
+                <button class="nav-item" data-sec="artists">
+                    <span class="material-icons-round">person</span>
+                    <span>Artists</span>
+                </button>
+                <button class="nav-item" data-sec="genres">
+                    <span class="material-icons-round">piano</span>
+                    <span>Genres</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Right content area -->
+        <section class="content-area">
+            <div class="content-header">
+                <div class="header-left">
+                    <button class="back-btn hidden" id="backBtn">
+                        <span class="material-icons-round">arrow_back_ios_new</span>
+                        <span id="backLabel">Back</span>
+                    </button>
+                    <span class="section-title" id="sectionTitle">Songs</span>
+                    <span class="item-count" id="itemCount"></span>
+                </div>
+                <div class="search-bar">
+                    <span class="material-icons-round">search</span>
+                    <input autocomplete="off" id="searchInput"
+                           placeholder="Search songs, artists, albums…" type="text">
+                </div>
+            </div>
+            <div class="content-body" id="contentBody">
+                <div class="empty-state">
+                    <span class="material-icons-round empty-icon">hourglass_empty</span>
+                    <p class="empty-title">Loading library…</p>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Bottom player strip (always visible, separated by a top border) -->
+    <div class="player-bar">
+        <div class="bar-art-wrap">
+            <span class="material-icons-round bar-art-placeholder">music_note</span>
+            <img alt="" class="bar-art" id="nowArt" src="">
+        </div>
+        <div class="bar-meta">
+            <p class="bar-title" id="nowTitle">Nothing playing</p>
+            <p class="bar-artist" id="nowArtist">Pick a song to start</p>
+        </div>
+        <div class="bar-seek">
+            <input class="seek-slider" disabled id="seekBar" max="100" min="0"
+                   step="0.1" type="range" value="0">
+            <div class="bar-time">
+                <span id="elapsed">0:00</span>
+                <span id="remaining">0:00</span>
             </div>
         </div>
-        <div class="content-body" id="contentBody">
-            <div class="empty-state">
-                <span class="material-icons-round empty-icon">hourglass_empty</span>
-                <p class="empty-title">Loading library…</p>
+        <div class="bar-controls">
+            <button class="ctrl-btn" id="prevBtn">
+                <span class="material-icons-round">skip_previous</span>
+            </button>
+            <button class="ctrl-btn play-btn" id="playBtn">
+                <span class="material-icons-round" id="playIcon">play_arrow</span>
+            </button>
+            <button class="ctrl-btn" id="nextBtn">
+                <span class="material-icons-round">skip_next</span>
+            </button>
+        </div>
+        <!-- Volume: speaker icon, hover reveals a vertical popup slider -->
+        <div class="vol-wrap">
+            <button class="vol-btn" title="Volume">
+                <span class="material-icons-round" id="volIcon">volume_up</span>
+            </button>
+            <div class="vol-popup glass">
+                <span class="vol-pct" id="volPct">100%</span>
+                <div class="vol-track-wrap">
+                    <input class="vol-slider" id="volBar" max="100" min="0"
+                           type="range" value="100">
+                </div>
             </div>
         </div>
-    </section>
+    </div>
 
 </div>
 
-<!-- Bottom player strip -->
-<div class="player-bar glass">
-    <div class="bar-art-wrap">
-        <span class="material-icons-round bar-art-placeholder">music_note</span>
-        <img alt="" class="bar-art" id="nowArt" src="">
-    </div>
-    <div class="bar-meta">
-        <p class="bar-title" id="nowTitle">Nothing playing</p>
-        <p class="bar-artist" id="nowArtist">Pick a song to start</p>
-    </div>
-    <div class="bar-seek">
-        <input class="slider" disabled id="seekBar" max="100" min="0" step="0.1"
-               type="range" value="0">
-        <div class="bar-time">
-            <span id="elapsed">0:00</span>
-            <span id="remaining">0:00</span>
-        </div>
-    </div>
-    <div class="bar-controls">
-        <button class="ctrl-btn" id="prevBtn">
-            <span class="material-icons-round">skip_previous</span>
-        </button>
-        <button class="ctrl-btn play-btn" id="playBtn">
-            <span class="material-icons-round" id="playIcon">play_arrow</span>
-        </button>
-        <button class="ctrl-btn" id="nextBtn">
-            <span class="material-icons-round">skip_next</span>
-        </button>
-    </div>
-    <div class="bar-vol">
-        <span class="material-icons-round vol-icon">volume_up</span>
-        <input class="slider vol-slider" id="volBar" max="100" min="0" type="range" value="100">
-    </div>
-</div>
-
-<!-- Right-click context menu -->
+<!-- Right-click context menu (fixed, floats above everything) -->
 <div class="ctx-menu glass hidden" id="ctxMenu">
     <button class="ctx-item" id="ctxPlay">
         <span class="material-icons-round">play_arrow</span>
@@ -134,7 +149,14 @@
 </div>
 
 <audio id="audioEl" preload="none"></audio>
-<script src="player.js"></script>
+
+<!-- JS files loaded in dependency order -->
+<script src="helpers.js"></script>
+<script src="state.js"></script>
+<script src="theme.js"></script>
+<script src="render.js"></script>
+<script src="playback.js"></script>
+<script src="context.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
-

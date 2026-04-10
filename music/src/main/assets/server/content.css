@@ -1,0 +1,204 @@
+/*
+ * content.css — Felicity Web Player
+ *
+ * Styles for everything rendered inside the scrollable content area:
+ * empty states, song list rows, album card grid, artist rows, and genre rows.
+ * Items are sized generously so artwork is clearly visible.
+ */
+
+/* Empty / loading state */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 240px;
+    height: 100%;
+    gap: 14px;
+    color: var(--text-2);
+    text-align: center;
+    padding: 48px;
+    pointer-events: none;
+}
+
+.empty-icon { font-size: 60px !important; opacity: 0.18; }
+
+.empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-2);
+}
+
+/* Song list row — generous height for comfortable scanning */
+.song-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 22px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: background 0.10s, border-color 0.10s;
+    user-select: none;
+}
+
+.song-row:hover { background: var(--hover); }
+
+.song-row.active {
+    background: var(--active-bg);
+    border-left-color: var(--accent);
+}
+
+/* Larger thumbnail so artwork is actually recognizable */
+.song-thumb {
+    width: 54px;
+    height: 54px;
+    border-radius: var(--r-sm);
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--hover);
+}
+
+.song-info { flex: 1; min-width: 0; }
+
+.song-name {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-1);
+}
+
+.song-row.active .song-name { color: var(--active-text); }
+
+.song-sub {
+    font-size: 12px;
+    color: var(--text-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 3px;
+}
+
+.song-dur {
+    font-size: 12px;
+    color: var(--text-3);
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Album grid — bigger cards with visible artwork and shadow depth */
+.album-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 18px;
+    padding: 20px;
+}
+
+.album-card {
+    background: var(--hover);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: background 0.15s, transform 0.20s var(--ease), box-shadow 0.20s;
+    user-select: none;
+}
+
+.album-card:hover {
+    background: var(--active-bg);
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.70);
+}
+
+[data-theme="light"] .album-card:hover {
+    box-shadow: 0 12px 36px rgba(0, 100, 200, 0.28);
+}
+
+.album-cover {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+    background: var(--hover);
+}
+
+.album-info { padding: 10px 12px 12px; }
+
+.album-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-1);
+}
+
+.album-meta {
+    font-size: 11px;
+    color: var(--text-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 3px;
+}
+
+/* Artist and genre list rows */
+.artist-row, .genre-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 22px;
+    cursor: pointer;
+    transition: background 0.10s;
+    user-select: none;
+}
+
+.artist-row:hover, .genre-row:hover { background: var(--hover); }
+
+/* Larger circular avatar */
+.artist-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--hover);
+}
+
+.genre-icon-wrap {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--r-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.genre-icon-wrap .material-icons-round { font-size: 24px !important; }
+
+.row-info { flex: 1; min-width: 0; }
+
+.row-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-1);
+}
+
+.row-sub {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 3px;
+}
+
+.chevron {
+    color: var(--text-3);
+    font-size: 18px !important;
+    flex-shrink: 0;
+}
+

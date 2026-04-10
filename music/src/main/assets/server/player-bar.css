@@ -1,0 +1,283 @@
+/*
+ * player-bar.css — Felicity Web Player
+ *
+ * The bottom player strip: album art thumbnail, metadata, seek slider,
+ * playback controls (prev/play/next), and the volume icon with its
+ * hover-activated vertical popup slider.
+ *
+ * Sliders use a thick bar with NO thumb — clicking anywhere on the track
+ * sets the value directly.
+ */
+
+/* Player bar — sits at the bottom of main-shell, separated by a top border */
+.player-bar {
+    height: var(--bar-h);
+    flex-shrink: 0;
+    border-top: 1px solid var(--sep-c);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 0 22px;
+    transition: border-color 0.30s ease;
+}
+
+/* Album art thumbnail */
+.bar-art-wrap {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--r-sm);
+    overflow: hidden;
+    flex-shrink: 0;
+    background: var(--hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bar-art-placeholder {
+    font-size: 22px !important;
+    color: var(--text-3);
+}
+
+.bar-art {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    opacity: 0;
+    transition: opacity 0.30s ease;
+}
+
+/* Song metadata */
+.bar-meta {
+    min-width: 0;
+    width: 200px;
+    flex-shrink: 0;
+}
+
+.bar-title {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-1);
+}
+
+.bar-artist {
+    font-size: 11px;
+    color: var(--text-2);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Seek bar area */
+.bar-seek {
+    flex: 1;
+    min-width: 100px;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 5px;
+}
+
+.bar-time {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Thick seek slider — no thumb, just a fat filled bar */
+.seek-slider {
+    --fill: 0%;
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+    border: none;
+    background: linear-gradient(
+        to right,
+        var(--accent) var(--fill),
+        var(--track-c) var(--fill)
+    );
+}
+
+.seek-slider:disabled { cursor: default; opacity: 0.35; }
+
+/* Hide the thumb completely on both engines */
+.seek-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 0;
+    height: 0;
+    opacity: 0;
+}
+
+.seek-slider::-moz-range-thumb {
+    width: 0;
+    height: 0;
+    border: none;
+    opacity: 0;
+}
+
+/* Playback controls */
+.bar-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.ctrl-btn {
+    background: none;
+    border: none;
+    color: var(--text-2);
+    cursor: pointer;
+    border-radius: 50%;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s, transform 0.10s;
+    flex-shrink: 0;
+}
+
+.ctrl-btn .material-icons-round { font-size: 26px !important; }
+.ctrl-btn:hover { color: var(--text-1); background: var(--hover); }
+.ctrl-btn:active { transform: scale(0.88); }
+
+/* Play / pause button — gradient filled circle */
+.play-btn {
+    width: 50px;
+    height: 50px;
+    background: var(--accent-gradient) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 20px var(--accent-glow);
+}
+
+.play-btn .material-icons-round { font-size: 28px !important; }
+.play-btn:hover { box-shadow: 0 6px 28px var(--accent-glow); }
+
+/* Volume wrap — contains the icon button and the hover popup */
+.vol-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.vol-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: none;
+    color: var(--text-3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s;
+}
+
+.vol-btn:hover { color: var(--text-1); background: var(--hover); }
+.vol-btn .material-icons-round { font-size: 22px !important; }
+
+/* Vertical volume popup — appears on hover, fades in smoothly */
+.vol-popup {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%) translateY(6px);
+    width: 46px;
+    padding: 14px 0 12px;
+    border-radius: var(--r-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s var(--ease), transform 0.18s var(--ease);
+    z-index: 20;
+}
+
+/* Show popup whenever the cursor is anywhere inside vol-wrap */
+.vol-wrap:hover .vol-popup {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+
+.vol-pct {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.2px;
+}
+
+/* Wrapper that gives the rotated slider a correct bounding box */
+.vol-track-wrap {
+    width: 6px;
+    height: 92px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+}
+
+/*
+ * Vertical volume slider — implemented by rotating a standard horizontal
+ * range input. The original width (92px) becomes the visual height; the
+ * original height (6px) is the track thickness.
+ * No thumb — same thick-bar style as the seek slider.
+ */
+.vol-slider {
+    --fill: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    width: 92px;
+    height: 6px;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+    border: none;
+    transform: rotate(-90deg);
+    background: linear-gradient(
+        to right,
+        var(--accent) var(--fill),
+        var(--track-c) var(--fill)
+    );
+}
+
+.vol-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 0;
+    height: 0;
+    opacity: 0;
+}
+
+.vol-slider::-moz-range-thumb {
+    width: 0;
+    height: 0;
+    border: none;
+    opacity: 0;
+}
+
+/* Responsive: hide volume on tiny screens */
+@media (max-width: 700px) {
+    .vol-wrap { display: none; }
+    .bar-meta { width: 120px; }
+    .bar-seek { min-width: 80px; }
+}
+
