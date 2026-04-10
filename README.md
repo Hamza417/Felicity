@@ -25,6 +25,10 @@ future.
 ![](https://img.shields.io/badge/Target%20SDK-36%20(Android%2016)-566573?logo=android&logoColor=white)
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Hamza417/Felicity/build_preview.yml?branch=master&logo=github&logoColor=white&label=build%20(preview)&color=white)](https://github.com/Hamza417/Felicity/actions/workflows/build_preview.yml)
 
+## Purchase
+[![](https://img.shields.io/badge/License%20Key%20(GumRoad)-Purchase-23a094?logo=gumroad&logoColor=white)](https://hamza417.gumroad.com/l/Felicity/)
+
+Felicity Music Player is currently free to use but you can purchase license key for the app at a relatively lower price with a lifetime validity. This will help cover the development cost and you will get a Early Access badge in the app along with the complete license to use the app.
 
 ## Features
 
