@@ -56,12 +56,35 @@ function makeSongRow(song, ctx) {
 }
 
 /**
- * Renders a flat list of songs into the content area.
+ * Builds a song grid card element (alternative to the list row).
+ *
+ * @param   {object}   song  Song data object from the API.
+ * @param   {object[]} ctx   Full queue context.
+ * @returns {HTMLDivElement}
+ */
+function makeSongCard(song, ctx) {
+    const card = document.createElement("div");
+    card.className = "song-card album-card" + (song.id === nowId ? " active" : "");
+    card.innerHTML = `
+        <img class="album-cover" src="/api/songs/${song.id}/art" loading="lazy" alt=""
+             onerror="this.style.opacity='0'">
+        <div class="album-info">
+            <div class="album-name">${esc(song.title || song.name)}</div>
+            <div class="album-meta">${esc(song.artist || "Unknown Artist")}</div>
+        </div>`;
+    card.addEventListener("click",       ()  => playSong(song, ctx));
+    card.addEventListener("contextmenu", e   => openCtxMenu(e, song, ctx));
+    return card;
+}
+
+/**
+ * Renders a flat song list into the content area.
  *
  * @param {object[]} songs  Filtered songs to display.
  * @param {object[]} ctx    Full queue context for playback.
+ * @param {string}   mode   "list" or "grid".
  */
-function renderSongList(songs, ctx) {
+function renderSongList(songs, ctx, mode = "list") {
     contentBody.innerHTML = "";
     if (songs.length === 0) {
         contentBody.innerHTML =
@@ -69,17 +92,25 @@ function renderSongList(songs, ctx) {
              <p class="empty-title">No songs found</p></div>`;
         return;
     }
-    const frag = document.createDocumentFragment();
-    songs.forEach(song => frag.appendChild(makeSongRow(song, ctx)));
-    contentBody.appendChild(frag);
+    if (mode === "grid") {
+        const grid = document.createElement("div");
+        grid.className = "album-grid";
+        songs.forEach(song => grid.appendChild(makeSongCard(song, ctx)));
+        contentBody.appendChild(grid);
+    } else {
+        const frag = document.createDocumentFragment();
+        songs.forEach(song => frag.appendChild(makeSongRow(song, ctx)));
+        contentBody.appendChild(frag);
+    }
 }
 
 /**
  * Renders an auto-fill album card grid into the content area.
  *
  * @param {object[]} albums  Albums to display.
+ * @param {string}   mode    "grid" or "list".
  */
-function renderAlbumGrid(albums) {
+function renderAlbumGrid(albums, mode = "grid") {
     contentBody.innerHTML = "";
     if (albums.length === 0) {
         contentBody.innerHTML =
@@ -87,30 +118,50 @@ function renderAlbumGrid(albums) {
              <p class="empty-title">No albums found</p></div>`;
         return;
     }
-    const grid = document.createElement("div");
-    grid.className = "album-grid";
-    albums.forEach(album => {
-        const card = document.createElement("div");
-        card.className = "album-card";
-        card.innerHTML = `
-            <img class="album-cover" src="/api/songs/${album.coverSongId}/art"
-                 loading="lazy" alt="" onerror="this.style.opacity='0'">
-            <div class="album-info">
-                <div class="album-name">${esc(album.name)}</div>
-                <div class="album-meta">${esc(album.artist || "")} · ${plural(album.songCount, "song")}</div>
-            </div>`;
-        card.addEventListener("click", () => drillDown("albums", album.name));
-        grid.appendChild(card);
-    });
-    contentBody.appendChild(grid);
+    if (mode === "list") {
+        const frag = document.createDocumentFragment();
+        albums.forEach(album => {
+            const row = document.createElement("div");
+            row.className = "album-row";
+            row.innerHTML = `
+                <img class="album-row-art" src="/api/songs/${album.coverSongId}/art"
+                     loading="lazy" alt="" onerror="this.style.opacity='0'">
+                <div class="row-info">
+                    <div class="row-name">${esc(album.name)}</div>
+                    <div class="row-sub">${esc(album.artist || "")} · ${plural(album.songCount, "song")}</div>
+                </div>
+                <span class="material-icons-round chevron">chevron_right</span>`;
+            row.addEventListener("click", () => drillDown("albums", album.name));
+            frag.appendChild(row);
+        });
+        contentBody.appendChild(frag);
+    } else {
+        const grid = document.createElement("div");
+        grid.className = "album-grid";
+        albums.forEach(album => {
+            const card = document.createElement("div");
+            card.className = "album-card";
+            card.innerHTML = `
+                <img class="album-cover" src="/api/songs/${album.coverSongId}/art"
+                     loading="lazy" alt="" onerror="this.style.opacity='0'">
+                <div class="album-info">
+                    <div class="album-name">${esc(album.name)}</div>
+                    <div class="album-meta">${esc(album.artist || "")} · ${plural(album.songCount, "song")}</div>
+                </div>`;
+            card.addEventListener("click", () => drillDown("albums", album.name));
+            grid.appendChild(card);
+        });
+        contentBody.appendChild(grid);
+    }
 }
 
 /**
- * Renders a list of artists with circular photo avatars.
+ * Renders a list of artists with circular photo avatars, or a grid of cards.
  *
  * @param {object[]} artists  Artists to display.
+ * @param {string}   mode     "list" or "grid".
  */
-function renderArtistList(artists) {
+function renderArtistList(artists, mode = "list") {
     contentBody.innerHTML = "";
     if (artists.length === 0) {
         contentBody.innerHTML =
@@ -118,30 +169,48 @@ function renderArtistList(artists) {
              <p class="empty-title">No artists found</p></div>`;
         return;
     }
-    const frag = document.createDocumentFragment();
-    artists.forEach(artist => {
-        const row = document.createElement("div");
-        row.className = "artist-row";
-        row.innerHTML = `
-            <img class="artist-avatar" src="/api/songs/${artist.coverSongId}/art"
-                 loading="lazy" alt="" onerror="this.style.opacity='0'">
-            <div class="row-info">
-                <div class="row-name">${esc(artist.name)}</div>
-                <div class="row-sub">${plural(artist.songCount, "song")} · ${plural(artist.albumCount, "album")}</div>
-            </div>
-            <span class="material-icons-round chevron">chevron_right</span>`;
-        row.addEventListener("click", () => drillDown("artists", artist.name));
-        frag.appendChild(row);
-    });
-    contentBody.appendChild(frag);
+    if (mode === "grid") {
+        const grid = document.createElement("div");
+        grid.className = "artist-grid";
+        artists.forEach(artist => {
+            const card = document.createElement("div");
+            card.className = "artist-card";
+            card.innerHTML = `
+                <img class="artist-card-img" src="/api/songs/${artist.coverSongId}/art"
+                     loading="lazy" alt="" onerror="this.style.opacity='0'">
+                <div class="artist-card-name">${esc(artist.name)}</div>
+                <div class="artist-card-sub">${plural(artist.songCount, "song")}</div>`;
+            card.addEventListener("click", () => drillDown("artists", artist.name));
+            grid.appendChild(card);
+        });
+        contentBody.appendChild(grid);
+    } else {
+        const frag = document.createDocumentFragment();
+        artists.forEach(artist => {
+            const row = document.createElement("div");
+            row.className = "artist-row";
+            row.innerHTML = `
+                <img class="artist-avatar" src="/api/songs/${artist.coverSongId}/art"
+                     loading="lazy" alt="" onerror="this.style.opacity='0'">
+                <div class="row-info">
+                    <div class="row-name">${esc(artist.name)}</div>
+                    <div class="row-sub">${plural(artist.songCount, "song")} · ${plural(artist.albumCount, "album")}</div>
+                </div>
+                <span class="material-icons-round chevron">chevron_right</span>`;
+            row.addEventListener("click", () => drillDown("artists", artist.name));
+            frag.appendChild(row);
+        });
+        contentBody.appendChild(frag);
+    }
 }
 
 /**
- * Renders a list of genres with deterministically colored icon badges.
+ * Renders a list of genres with deterministically colored icon badges, or a grid.
  *
  * @param {object[]} genres  Genres to display.
+ * @param {string}   mode    "list" or "grid".
  */
-function renderGenreList(genres) {
+function renderGenreList(genres, mode = "list") {
     contentBody.innerHTML = "";
     if (genres.length === 0) {
         contentBody.innerHTML =
@@ -149,32 +218,53 @@ function renderGenreList(genres) {
              <p class="empty-title">No genres found</p></div>`;
         return;
     }
-    const frag = document.createDocumentFragment();
-    genres.forEach(genre => {
-        const { bg, fg } = genreColor(genre.name);
-        const row = document.createElement("div");
-        row.className = "genre-row";
-        row.innerHTML = `
-            <div class="genre-icon-wrap" style="background:${bg}; border:1px solid ${fg}33;">
-                <span class="material-icons-round" style="color:${fg}">music_note</span>
-            </div>
-            <div class="row-info">
-                <div class="row-name">${esc(genre.name || "Unknown")}</div>
-                <div class="row-sub">${plural(genre.songCount, "song")}</div>
-            </div>
-            <span class="material-icons-round chevron">chevron_right</span>`;
-        row.addEventListener("click", () => drillDown("genres", genre.name));
-        frag.appendChild(row);
-    });
-    contentBody.appendChild(frag);
+    if (mode === "grid") {
+        const grid = document.createElement("div");
+        grid.className = "genre-grid";
+        genres.forEach(genre => {
+            const { bg, fg } = genreColor(genre.name);
+            const card = document.createElement("div");
+            card.className = "genre-card";
+            card.style.borderColor = `${fg}44`;
+            card.innerHTML = `
+                <div class="genre-card-icon-wrap" style="background:${bg}; border:1px solid ${fg}55; border-radius:var(--r-md);">
+                    <span class="material-icons-round" style="color:${fg}">music_note</span>
+                </div>
+                <div class="genre-card-name">${esc(genre.name || "Unknown")}</div>
+                <div class="genre-card-sub">${plural(genre.songCount, "song")}</div>`;
+            card.addEventListener("click", () => drillDown("genres", genre.name));
+            grid.appendChild(card);
+        });
+        contentBody.appendChild(grid);
+    } else {
+        const frag = document.createDocumentFragment();
+        genres.forEach(genre => {
+            const { bg, fg } = genreColor(genre.name);
+            const row = document.createElement("div");
+            row.className = "genre-row";
+            row.innerHTML = `
+                <div class="genre-icon-wrap" style="background:${bg}; border:1px solid ${fg}33;">
+                    <span class="material-icons-round" style="color:${fg}">music_note</span>
+                </div>
+                <div class="row-info">
+                    <div class="row-name">${esc(genre.name || "Unknown")}</div>
+                    <div class="row-sub">${plural(genre.songCount, "song")}</div>
+                </div>
+                <span class="material-icons-round chevron">chevron_right</span>`;
+            row.addEventListener("click", () => drillDown("genres", genre.name));
+            frag.appendChild(row);
+        });
+        contentBody.appendChild(frag);
+    }
 }
 
 /**
  * Top-level dispatcher — selects the appropriate renderer based on the active
- * section, drill-down state, and current search query.
+ * section, drill-down state, current search query, and current view mode.
  */
 function renderContent() {
-    const q = searchQuery.toLowerCase();
+    const q    = searchQuery.toLowerCase();
+    const mode = drillItem ? drillViewMode : (viewMode[section] || "list");
 
     if (drillItem) {
         let items = drillItem.items;
@@ -183,7 +273,7 @@ function renderContent() {
             (s.artist || "").toLowerCase().includes(q)
         );
         itemCount.textContent = plural(items.length, "song");
-        renderSongList(items, drillItem.items);
+        renderSongList(items, drillItem.items, mode);
         return;
     }
 
@@ -198,7 +288,7 @@ function renderContent() {
             itemCount.textContent = q
                 ? `${items.length} / ${plural((cache.songs || []).length, "song")}`
                 : plural(items.length, "song");
-            renderSongList(items, items);
+            renderSongList(items, items, mode);
             break;
         }
         case "albums": {
@@ -208,21 +298,21 @@ function renderContent() {
                 (a.artist || "").toLowerCase().includes(q)
             );
             itemCount.textContent = plural(items.length, "album");
-            renderAlbumGrid(items);
+            renderAlbumGrid(items, mode);
             break;
         }
         case "artists": {
             let items = cache.artists || [];
             if (q) items = items.filter(a => (a.name || "").toLowerCase().includes(q));
             itemCount.textContent = plural(items.length, "artist");
-            renderArtistList(items);
+            renderArtistList(items, mode);
             break;
         }
         case "genres": {
             let items = cache.genres || [];
             if (q) items = items.filter(g => (g.name || "").toLowerCase().includes(q));
             itemCount.textContent = plural(items.length, "genre");
-            renderGenreList(items);
+            renderGenreList(items, mode);
             break;
         }
     }

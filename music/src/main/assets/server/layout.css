@@ -23,11 +23,11 @@ html, body {
     transition: background 0.30s ease, color 0.20s ease;
 }
 
-/* Body is a flex column — shell + its padding fills the whole viewport. */
+/* Body is a flex column — shell fills the whole viewport edge-to-edge. */
 body {
     display: flex;
     flex-direction: column;
-    padding: var(--pad);
+    padding: 0;
 }
 
 /* Glass frosted-panel mixin */
@@ -45,11 +45,12 @@ body {
     [data-theme="light"] .glass { background: rgba(240, 248, 255, 0.98); }
 }
 
-/* One rounded outer shell containing every UI surface */
+/* One outer shell filling the entire viewport — no rounded corners, no border. */
 .main-shell {
     flex: 1;
     min-height: 0;
-    border-radius: var(--r-xl);
+    border-radius: 0;
+    border: none;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -98,7 +99,7 @@ body {
 /* App name — plain white in dark mode, plain dark in light mode (no gradient). */
 .brand-name {
     flex: 1;
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 700;
     letter-spacing: -0.3px;
     color: var(--text-1);
@@ -180,9 +181,8 @@ body {
     justify-content: space-between;
     gap: 12px;
     padding: 14px 20px 12px;
-    border-bottom: 1px solid var(--sep-c);
     flex-shrink: 0;
-    transition: border-color 0.30s ease;
+    /* No divider border — the larger font alone provides visual separation. */
 }
 
 .header-left {
@@ -194,15 +194,15 @@ body {
 }
 
 .section-title {
-    font-size: 16px;
+    font-size: 20px;
     font-weight: 700;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.4px;
     white-space: nowrap;
     color: var(--text-1);
 }
 
 .item-count {
-    font-size: 11px;
+    font-size: 13px;
     color: var(--text-3);
     white-space: nowrap;
     flex-shrink: 0;
@@ -267,12 +267,26 @@ body {
 
 .search-bar input::placeholder { color: var(--text-3); }
 
-/* Scrollable content body */
+/* Scrollable content body — vertical fade at both edges */
 .content-body {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
     transition: opacity 0.15s ease;
+    mask-image: linear-gradient(
+        to bottom,
+        transparent 0px,
+        black 28px,
+        black calc(100% - 28px),
+        transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        transparent 0px,
+        black 28px,
+        black calc(100% - 28px),
+        transparent 100%
+    );
 }
 
 .content-body.fading { opacity: 0; }
@@ -283,6 +297,25 @@ body {
     background: var(--scrollbar-c);
     border-radius: 2px;
 }
+
+/* View toggle button (grid ↔ list) in the content header */
+.view-toggle-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--glass-border);
+    background: var(--hover);
+    color: var(--text-2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.view-toggle-btn:hover { background: var(--active-bg); color: var(--active-text); border-color: var(--accent-border); }
+.view-toggle-btn .material-icons-round { font-size: 18px !important; }
 
 /* Responsive: icon-only nav on small screens */
 @media (max-width: 700px) {

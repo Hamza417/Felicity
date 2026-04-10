@@ -114,6 +114,23 @@ seekBar.addEventListener("change", () => {
     seeking = false;
 });
 
+/* ─── Volume popup — JS-managed open/close with a grace-period ─── */
+
+/**
+ * Timer used to delay closing the volume popup so the cursor can move
+ * from the icon button to the slider without the popup disappearing.
+ */
+let volCloseTimer;
+
+volWrap.addEventListener("mouseenter", () => {
+    clearTimeout(volCloseTimer);
+    volWrap.classList.add("vol-open");
+});
+
+volWrap.addEventListener("mouseleave", () => {
+    volCloseTimer = setTimeout(() => volWrap.classList.remove("vol-open"), 200);
+});
+
 /* ─── Volume popup slider ────────────────────── */
 
 /**

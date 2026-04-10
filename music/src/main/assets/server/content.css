@@ -202,3 +202,163 @@
     flex-shrink: 0;
 }
 
+/* Song grid card — plays song on click, reuses the album-grid layout */
+.song-card {
+    background: var(--hover);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: background 0.15s, transform 0.20s var(--ease), box-shadow 0.20s;
+    user-select: none;
+}
+
+.song-card:hover {
+    background: var(--active-bg);
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.70);
+}
+
+.song-card.active {
+    background: var(--active-bg);
+    border-color: var(--accent);
+}
+
+.song-card.active .album-name { color: var(--active-text); }
+
+/* Album list row — shows album as a horizontal row (list-view alternative to grid) */
+.album-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 22px;
+    cursor: pointer;
+    transition: background 0.10s;
+    user-select: none;
+}
+
+.album-row:hover { background: var(--hover); }
+
+.album-row-art {
+    width: 54px;
+    height: 54px;
+    border-radius: var(--r-sm);
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--hover);
+}
+
+/* Artist grid — card with circular cover image */
+.artist-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 18px;
+    padding: 20px;
+}
+
+.artist-card {
+    background: var(--hover);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: background 0.15s, transform 0.20s var(--ease), box-shadow 0.20s;
+    user-select: none;
+    text-align: center;
+    padding-bottom: 12px;
+}
+
+.artist-card:hover {
+    background: var(--active-bg);
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.70);
+}
+
+.artist-card-img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+    background: var(--hover);
+    border-radius: 50%;
+    padding: 14px;
+}
+
+.artist-card-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-1);
+    padding: 0 10px;
+    margin-top: 6px;
+}
+
+.artist-card-sub {
+    font-size: 11px;
+    color: var(--text-2);
+    margin-top: 2px;
+    padding: 0 10px;
+}
+
+/* Genre grid — colored card */
+.genre-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 18px;
+    padding: 20px;
+}
+
+.genre-card {
+    background: var(--hover);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: background 0.15s, transform 0.20s var(--ease), box-shadow 0.20s;
+    user-select: none;
+    padding: 24px 12px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.genre-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.70);
+}
+
+.genre-card-icon-wrap {
+    width: 58px;
+    height: 58px;
+    border-radius: var(--r-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.genre-card-icon-wrap .material-icons-round { font-size: 28px !important; }
+
+.genre-card-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-1);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+
+.genre-card-sub {
+    font-size: 11px;
+    color: var(--text-2);
+    text-align: center;
+}
+

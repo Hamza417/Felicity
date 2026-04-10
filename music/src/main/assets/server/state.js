@@ -31,12 +31,16 @@ const nextBtn      = el("nextBtn");
 const volBar       = el("volBar");
 const volIcon      = el("volIcon");
 const volPct       = el("volPct");
+const volWrap      = document.querySelector(".vol-wrap");
+const volPopup     = document.querySelector(".vol-popup");
 const themeToggle  = el("themeToggle");
 const themeIcon    = el("themeIcon");
 const ctxMenu      = el("ctxMenu");
 const ctxPlay      = el("ctxPlay");
 const ctxAddQueue  = el("ctxAddQueue");
 const ctxDelete    = el("ctxDelete");
+const viewToggle   = el("viewToggle");
+const viewToggleIcon = el("viewToggleIcon");
 const navItems     = document.querySelectorAll(".nav-item");
 
 /* ─── App state ──────────────────────────────── */
@@ -73,6 +77,20 @@ let nowId = null;
 
 /** True while the user is dragging the seek slider. */
 let seeking = false;
+
+/**
+ * Per-section view mode preference — "list" or "grid".
+ * Albums default to "grid"; everything else defaults to "list".
+ *
+ * @type {{ songs: string, albums: string, artists: string, genres: string }}
+ */
+const viewMode = { songs: "list", albums: "grid", artists: "list", genres: "list" };
+
+/**
+ * View mode used when the user has drilled into an album/artist/genre
+ * and is viewing the resulting song list.
+ */
+let drillViewMode = "list";
 
 /**
  * Song targeted by the most recently opened context menu.

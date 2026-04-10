@@ -19,6 +19,16 @@ const SECTION_PLACEHOLDERS = {
 };
 
 /**
+ * Updates the view-toggle button icon to reflect the OPPOSITE of the current
+ * mode (icon shows what you will switch TO when you click).
+ */
+function updateViewToggle() {
+    const mode = drillItem ? drillViewMode : (viewMode[section] || "list");
+    viewToggleIcon.textContent = mode === "list" ? "grid_view" : "view_list";
+    viewToggle.title = mode === "list" ? "Switch to grid view" : "Switch to list view";
+}
+
+/**
  * Fetches section data from the server if it has not been loaded yet.
  * Results are stored in the shared {@link cache} object.
  *
@@ -51,6 +61,7 @@ async function goSection(sec) {
     searchInput.placeholder     = SECTION_PLACEHOLDERS[sec] || "Search…";
 
     navItems.forEach(b => b.classList.toggle("active", b.dataset.sec === sec));
+    updateViewToggle();
 
     contentBody.classList.add("fading");
     await ensureLoaded(sec);
@@ -76,6 +87,7 @@ async function drillDown(type, name) {
     backBtn.classList.remove("hidden");
     sectionTitle.textContent = name;
     searchInput.placeholder  = "Filter songs…";
+    updateViewToggle();
     renderContent();
 }
 
@@ -89,6 +101,7 @@ function goBack() {
     backBtn.classList.add("hidden");
     sectionTitle.textContent = SECTION_LABELS[section] || section;
     searchInput.placeholder  = SECTION_PLACEHOLDERS[section] || "Search…";
+    updateViewToggle();
     renderContent();
 }
 
@@ -105,7 +118,20 @@ searchInput.addEventListener("input", () => {
     renderContent();
 });
 
+/**
+ * Toggles the view mode for the active section (or drill-down) between
+ * "list" and "grid", then re-renders the content area.
+ */
+viewToggle.addEventListener("click", () => {
+    if (drillItem) {
+        drillViewMode = drillViewMode === "list" ? "grid" : "list";
+    } else {
+        viewMode[section] = viewMode[section] === "list" ? "grid" : "list";
+    }
+    updateViewToggle();
+    renderContent();
+});
+
 /* ─── Initialize ─────────────────────────────── */
 
 goSection("songs");
-
