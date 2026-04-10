@@ -35,7 +35,16 @@ import java.lang.ref.WeakReference
 import kotlin.math.abs
 import kotlin.math.floor
 
-// High-performance fast scroller with adapter index mapping, throttling, and prefetch optimization
+/**
+ * High-performance fast scroller with adapter index mapping, throttling, and prefetch optimization.
+ *
+ * Light-bind mode is intentionally applied only to **future** view holders that are created or
+ * recycled while the drag is in progress.  Views that are already in memory when the drag starts
+ * are left untouched — they are already correctly bound and rebinding them on drag initiation is
+ * the primary source of the initial stutter.
+ *
+ * @author Hamza417
+ */
 class SlideFastScroller @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
@@ -161,10 +170,15 @@ class SlideFastScroller @JvmOverloads constructor(
     private var originalPrefetchCount = -1
     private var lightBindExitPending = false // Prevent multiple exit calls
 
-    // Delayed full-bind while dragging
+    /**
+     * Fired 80 ms after the last [MotionEvent.ACTION_MOVE] while the thumb is still held down,
+     * giving the user a brief pause-preview of full-quality content.  Only the currently visible
+     * items are rebound; the rest of the adapter is left alone so we do not pay the cost of a full
+     * [RecyclerView.Adapter.notifyItemRangeChanged] call while the drag is still active.
+     */
     private val delayedFullBindRunnable = Runnable {
         if (dragging && lightBindMode) {
-            exitLightBindMode()
+            rebindVisibleItemsFull()
         }
     }
 
@@ -194,15 +208,14 @@ class SlideFastScroller @JvmOverloads constructor(
         pendingPercentUpdate = null
     }
 
-    // Periodic position updates during light binding
-    private val lightBindUpdateInterval = 30L // Update positions every 30ms during drag (~33fps)
-    private val lightBindUpdateRunnable: Runnable = object : Runnable {
-        override fun run() {
-            if (dragging && lightBindMode) {
-                updateVisibleItemPositions()
-                handler.postDelayed(this, lightBindUpdateInterval)
-            }
-        }
+    /**
+     * Kept solely so that defensive [android.os.Handler.removeCallbacks] calls in
+     * [exitLightBindMode] and [onDetachedFromWindow] remain valid without requiring a broader
+     * refactor.  The runnable is never posted — periodic rebinding of every visible holder was
+     * removed because it continuously consumed main-thread frame budget during drag.
+     */
+    private val lightBindUpdateRunnable: Runnable = Runnable {
+        // Intentionally empty — no longer posted.
     }
 
     // Index-to-offset cache for variable height items
@@ -214,14 +227,19 @@ class SlideFastScroller @JvmOverloads constructor(
 
     private val scrollListener = object : RecyclerView.OnScrollListener() {
         override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-            if (!dragging) updatePercentFromRecycler()
-            if (dy != 0) {
-                show(true)
-                scheduleAutoHide()
-                // Invalidate cache on scroll
-                if (cacheInvalidated) {
-                    cacheCurrentOffsets()
-                    cacheInvalidated = false
+            if (!dragging) {
+                // Only update thumb position and schedule UI work when the user is
+                // not actively dragging.  Every rv.scrollBy() we issue during a drag
+                // also fires onScrolled — suppressing these callbacks while dragging
+                // prevents redundant show/autoHide/cache operations on every frame.
+                updatePercentFromRecycler()
+                if (dy != 0) {
+                    show(true)
+                    scheduleAutoHide()
+                    if (cacheInvalidated) {
+                        cacheCurrentOffsets()
+                        cacheInvalidated = false
+                    }
                 }
             }
         }
@@ -358,78 +376,56 @@ class SlideFastScroller @JvmOverloads constructor(
         lightBindMode = true
 
         val rv = recyclerRef?.get() ?: return
-        val adapter = rv.adapter
+        val adapter = rv.adapter ?: return
 
-        // Check for enhanced interface first, then fall back to basic interface
+        // Flip the flag on the adapter so that only *future* onBindViewHolder calls —
+        // triggered by RecyclerView's own recycling machinery as new items scroll into
+        // view — use the lightweight path.
+        //
+        // Views that are already in memory when the drag starts are correctly bound.
+        // Rebinding them here (which the old code did) is the primary cause of the
+        // initial stutter: it forces a synchronous measure/draw pass for every visible
+        // ViewHolder on the main thread at the exact moment the finger touches the handle.
+        //
+        // The lightBindUpdateRunnable that used to re-bind all visible holders every 30 ms
+        // is also intentionally not started here; that timer was a continuous 33-fps
+        // main-thread pump throughout the entire drag that eliminated any budget headroom
+        // for scrolling smoothly.
         when {
-            adapter is FastScrollBindingController -> {
-                adapter.setLightBindMode(true)
-
-                // If adapter wants custom binding control, trigger rebind of visible items
-                if (adapter.shouldHandleCustomBinding()) {
-                    val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
-                    val firstVisible = layoutManager.findFirstVisibleItemPosition()
-                    val lastVisible = layoutManager.findLastVisibleItemPosition()
-
-                    if (firstVisible >= 0 && lastVisible >= 0 && firstVisible <= lastVisible) {
-                        // Trigger custom binding for visible items
-                        for (position in firstVisible..lastVisible) {
-                            val view = layoutManager.findViewByPosition(position)
-                            if (view != null) {
-                                val holder = rv.getChildViewHolder(view)
-                                if (holder != null) {
-                                    adapter.onBindViewHolder(holder, position, true)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            adapter is FastScrollOptimizedAdapter -> {
-                adapter.setLightBindMode(true)
-            }
+            adapter is FastScrollBindingController -> adapter.setLightBindMode(true)
+            adapter is FastScrollOptimizedAdapter -> adapter.setLightBindMode(true)
         }
-
-        // Start periodic position updates
-        handler.removeCallbacks(lightBindUpdateRunnable)
-        handler.postDelayed(lightBindUpdateRunnable, lightBindUpdateInterval)
     }
 
+
     /**
-     * Update positions of visible items during light binding to show correct data
+     * Rebinds only the currently visible ViewHolders with full (non-light) data.
+     *
+     * Used by [delayedFullBindRunnable] when the user pauses the drag for more than 80 ms.
+     * Only the visible range is touched; off-screen items are intentionally skipped to avoid
+     * the cost of a full [RecyclerView.Adapter.notifyItemRangeChanged] call while the drag
+     * is still active.  Off-screen items will be properly rebound when the drag ends via
+     * [exitLightBindModeImmediate].
      */
-    private fun updateVisibleItemPositions() {
+    private fun rebindVisibleItemsFull() {
         val rv = recyclerRef?.get() ?: return
         val adapter = rv.adapter ?: return
         val layoutManager = rv.layoutManager as? LinearLayoutManager ?: return
 
         val firstVisible = layoutManager.findFirstVisibleItemPosition()
         val lastVisible = layoutManager.findLastVisibleItemPosition()
-
         if (firstVisible < 0 || lastVisible < 0) return
 
-        // Update positions of currently visible items
-        when (adapter) {
-            is FastScrollBindingController -> {
-                if (adapter.shouldHandleCustomBinding()) {
-                    // Use custom light binding to update positions only
-                    for (position in firstVisible..lastVisible) {
-                        val view = layoutManager.findViewByPosition(position)
-                        if (view != null) {
-                            val holder = rv.getChildViewHolder(view)
-                            if (holder != null) {
-                                adapter.onBindViewHolder(holder, position, true)
-                            }
-                        }
-                    }
-                }
-            }
-            is FastScrollOptimizedAdapter -> {
-                // Notify change with payload to trigger position-only updates
-                adapter.notifyItemRangeChanged(
-                        firstVisible, lastVisible - firstVisible + 1, "position_update")
+        if (adapter is FastScrollBindingController && adapter.shouldHandleCustomBinding()) {
+            for (position in firstVisible..lastVisible) {
+                val view = layoutManager.findViewByPosition(position) ?: continue
+                val holder = rv.getChildViewHolder(view) ?: continue
+                adapter.onBindViewHolder(holder, position, false)
             }
         }
+        // FastScrollOptimizedAdapter: no explicit rebind here — the adapter's own
+        // onBindViewHolder will use the correct (non-light) path once the flag is
+        // cleared on drag end.
     }
 
     private fun exitLightBindMode() {
@@ -1173,15 +1169,16 @@ class SlideFastScroller @JvmOverloads constructor(
                 val targetOffset = (scrollRange * newPercent.coerceIn(0f, 1f)).toInt()
                 val deltaY = targetOffset - currentOffset
                 if (abs(deltaY) > 0) {
+                    // scrollBy() is synchronous — the list is already at rest when this
+                    // returns.  Calling stopScroll() immediately after provides no benefit
+                    // and invokes extra layout machinery on the main thread every frame.
                     rv.scrollBy(0, deltaY)
-                    // Ensure there's no residual fling or settling from programmatic scroll
-                    rv.stopScroll()
                 }
             } else {
                 // Direct position scrolling for edge cases
                 val position = percentToAdapterPosition(newPercent)
+                // scrollToPosition() is also synchronous; no stopScroll() needed.
                 rv.scrollToPosition(position)
-                rv.stopScroll()
             }
         }
     }
