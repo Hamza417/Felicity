@@ -28,10 +28,6 @@ future.
 ## Purchase
 [![](https://img.shields.io/badge/License%20Key%20(GumRoad)-Purchase-23a094?logo=gumroad&logoColor=white)](https://hamza417.gumroad.com/l/Felicity/)
 
-Felicity Music Player is currently free to use, but you can purchase license key for the app at a
-relatively lower price with a lifetime validity. This will help cover the development cost, and you
-will get the complete license to use the app.
-
 ## Features
 
 ### Custom Audio Engine
