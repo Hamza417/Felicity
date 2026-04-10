@@ -8,10 +8,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.adapters.ui.lists.AdapterSongs
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
@@ -23,29 +19,26 @@ import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.dialogs.songs.ShuffleAlgorithmDialog.Companion.showShuffleAlgorithmDialog
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
-import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.sort.SongSort.setSongOrder
 import app.simple.felicity.repository.sort.SongSort.setSongSort
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.viewmodels.panels.SongsViewModel
-import kotlinx.coroutines.launch
 
-class Songs : PanelFragment() {
+class Songs : BasePanelFragment() {
 
     private lateinit var binding: FragmentSongsBinding
     private lateinit var headerBinding: HeaderSongsBinding
 
     private var adapterSongs: AdapterSongs? = null
-    private var gridLayoutManager: GridLayoutManager? = null
 
     private val songsViewModel: SongsViewModel by viewModels({ requireActivity() })
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentSongsBinding.inflate(inflater, container, false)
         headerBinding = HeaderSongsBinding.inflate(inflater, container, false)
-
         return binding.root
     }
 
@@ -57,38 +50,22 @@ class Songs : PanelFragment() {
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.attachSlideFastScroller()
 
-        // Initialize layout manager once
-        gridLayoutManager = GridLayoutManager(requireContext(), SongsPreferences.getGridSize().spanCount)
-        binding.recyclerView.layoutManager = gridLayoutManager
+        binding.recyclerView.setupGridLayoutManager(SongsPreferences.getGridSize().spanCount)
 
         setupClickListeners()
 
-        // Observe StateFlow with proper lifecycle handling for immediate updates
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                songsViewModel.songs.collect { audios ->
-                    Log.d(TAG, "Received songs update: ${audios.size} songs")
-                    // Skip empty initial state, but allow empty updates after adapter exists
-                    if (audios.isNotEmpty()) {
-                        updateSongsList(audios)
-                    } else if (adapterSongs != null) {
-                        // Allow empty list update if adapter already exists (e.g., after deletion)
-                        updateSongsList(audios)
-                    }
-                }
-            }
+        songsViewModel.songs.collectListWhenStarted({ adapterSongs != null }) { audios ->
+            Log.d(TAG, "Received songs update: ${audios.size} songs")
+            updateSongsList(audios)
         }
     }
 
     override fun onDestroyView() {
-        // Clear adapter reference when view is destroyed
         adapterSongs = null
-        gridLayoutManager = null
         super.onDestroyView()
     }
 
     private fun setupClickListeners() {
-        // Set up header UI once
         headerBinding.sortStyle.setSongSort()
         headerBinding.sortOrder.setSongOrder()
 
@@ -124,11 +101,10 @@ class Songs : PanelFragment() {
     }
 
     /**
-     * Update songs list and header information
-     * This method is called whenever the Flow emits new data
+     * Updates the songs list and header information.
+     * This method is called whenever the Flow emits new data.
      */
     private fun updateSongsList(songs: List<Audio>) {
-        // Initialize adapter on first data arrival to preserve layout animations
         if (adapterSongs == null) {
             adapterSongs = AdapterSongs(songs)
             adapterSongs?.setHasStableIds(true)
@@ -143,23 +119,18 @@ class Songs : PanelFragment() {
             })
             binding.recyclerView.adapter = adapterSongs
         } else {
-            // Update existing adapter data using a background coroutine for the diff calculation
             adapterSongs?.updateSongs(songs)
-
-            // Re-attach adapter if RecyclerView lost its reference (e.g., after navigation)
             if (binding.recyclerView.adapter == null) {
                 binding.recyclerView.adapter = adapterSongs
             }
         }
 
-        // Update section scroller
         binding.recyclerView.requireAttachedSectionScroller(
                 sections = provideScrollPositionDataBasedOnSortStyle(songs),
                 header = binding.appHeader,
                 view = headerBinding.scroll
         )
 
-        // Update header counts
         headerBinding.count.text = songs.size.toString()
         headerBinding.hours.text = songs.sumOf { it.duration }.toDynamicTimeString()
         headerBinding.sortStyle.setSongSort()
@@ -251,10 +222,8 @@ class Songs : PanelFragment() {
         when (key) {
             SongsPreferences.GRID_SIZE_PORTRAIT, SongsPreferences.GRID_SIZE_LANDSCAPE -> {
                 val newMode = SongsPreferences.getGridSize()
-                gridLayoutManager?.spanCount = newMode.spanCount
                 adapterSongs?.layoutMode = newMode
-                binding.recyclerView.beginDelayedTransition()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
+                applyGridSizeUpdate(binding.recyclerView, newMode.spanCount)
             }
         }
     }

@@ -6,10 +6,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterAlbums
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
@@ -20,27 +16,25 @@ import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.albums.AlbumsMenu.Companion.showAlbumsMenu
 import app.simple.felicity.dialogs.albums.AlbumsSort.Companion.showAlbumsSort
-import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.AlbumPreferences
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.sort.AlbumSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.AlbumSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.viewmodels.panels.AlbumsViewModel
-import kotlinx.coroutines.launch
 
 /**
  * Panel fragment displaying the user's albums with sort, grid layout, and search support.
  *
  * @author Hamza417
  */
-class Albums : PanelFragment() {
+class Albums : BasePanelFragment() {
 
     private lateinit var binding: FragmentAlbumsBinding
     private lateinit var headerBinding: HeaderAlbumsBinding
 
     private var adapterAlbums: AdapterAlbums? = null
-    private var gridLayoutManager: GridLayoutManager? = null
 
     private val albumsViewModel: AlbumsViewModel by viewModels({ requireActivity() })
 
@@ -59,31 +53,19 @@ class Albums : PanelFragment() {
         binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
 
-        val mode = AlbumPreferences.getGridSize()
-        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
-        binding.recyclerView.layoutManager = gridLayoutManager
+        binding.recyclerView.setupGridLayoutManager(AlbumPreferences.getGridSize().spanCount)
 
         setupClickListeners()
 
         adapterAlbums?.let { binding.recyclerView.adapter = it }
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                albumsViewModel.albums
-                    .collect { albums ->
-                        if (albums.isNotEmpty()) {
-                            updateAlbumsList(albums)
-                        } else if (adapterAlbums != null) {
-                            updateAlbumsList(albums)
-                        }
-                    }
-            }
+        albumsViewModel.albums.collectListWhenStarted({ adapterAlbums != null }) { albums ->
+            updateAlbumsList(albums)
         }
     }
 
     override fun onDestroyView() {
         adapterAlbums = null
-        gridLayoutManager = null
         super.onDestroyView()
     }
 
@@ -145,10 +127,7 @@ class Albums : PanelFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             AlbumPreferences.GRID_SIZE_PORTRAIT, AlbumPreferences.GRID_SIZE_LANDSCAPE -> {
-                val newMode = AlbumPreferences.getGridSize()
-                gridLayoutManager?.spanCount = newMode.spanCount
-                binding.recyclerView.beginDelayedTransition()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
+                applyGridSizeUpdate(binding.recyclerView, AlbumPreferences.getGridSize().spanCount)
             }
         }
     }

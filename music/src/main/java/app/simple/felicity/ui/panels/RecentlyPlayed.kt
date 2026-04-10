@@ -7,10 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterRecentlyPlayed
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
@@ -19,14 +15,13 @@ import app.simple.felicity.databinding.HeaderRecentlyPlayedBinding
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.dialogs.recentlyplayed.RecentlyPlayedMenu.Companion.showRecentlyPlayedMenu
-import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.RecentlyPlayedPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioWithStat
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.viewmodels.panels.RecentlyPlayedViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 
 /**
  * Panel fragment displaying songs the user has played most recently, ordered by last-played
@@ -37,13 +32,12 @@ import kotlinx.coroutines.launch
  * @author Hamza417
  */
 @AndroidEntryPoint
-class RecentlyPlayed : PanelFragment() {
+class RecentlyPlayed : BasePanelFragment() {
 
     private lateinit var binding: FragmentRecentlyPlayedBinding
     private lateinit var headerBinding: HeaderRecentlyPlayedBinding
 
     private var adapterSongs: AdapterRecentlyPlayed? = null
-    private var gridLayoutManager: GridLayoutManager? = null
 
     private val recentlyPlayedViewModel: RecentlyPlayedViewModel by viewModels({ requireActivity() })
 
@@ -61,28 +55,17 @@ class RecentlyPlayed : PanelFragment() {
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
 
-        val mode = RecentlyPlayedPreferences.getGridSize()
-        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
-        binding.recyclerView.layoutManager = gridLayoutManager
+        binding.recyclerView.setupGridLayoutManager(RecentlyPlayedPreferences.getGridSize().spanCount)
 
         setupClickListeners()
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                recentlyPlayedViewModel.songs.collect { songs ->
-                    if (songs.isNotEmpty()) {
-                        updateSongsList(songs)
-                    } else if (adapterSongs != null) {
-                        updateSongsList(songs)
-                    }
-                }
-            }
+        recentlyPlayedViewModel.songs.collectListWhenStarted({ adapterSongs != null }) { songs ->
+            updateSongsList(songs)
         }
     }
 
     override fun onDestroyView() {
         adapterSongs = null
-        gridLayoutManager = null
         super.onDestroyView()
     }
 
@@ -138,10 +121,8 @@ class RecentlyPlayed : PanelFragment() {
         when (key) {
             RecentlyPlayedPreferences.GRID_SIZE_PORTRAIT, RecentlyPlayedPreferences.GRID_SIZE_LANDSCAPE -> {
                 val newMode = RecentlyPlayedPreferences.getGridSize()
-                gridLayoutManager?.spanCount = newMode.spanCount
                 adapterSongs?.layoutMode = newMode
-                binding.recyclerView.beginDelayedTransition()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
+                applyGridSizeUpdate(binding.recyclerView, newMode.spanCount)
             }
         }
     }

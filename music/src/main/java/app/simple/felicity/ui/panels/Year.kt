@@ -6,10 +6,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterYear
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
@@ -20,7 +16,7 @@ import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.year.DialogYearSort.Companion.showYearSortDialog
 import app.simple.felicity.dialogs.year.YearMenu.Companion.showYearMenu
-import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.YearPreferences
 import app.simple.felicity.repository.models.YearGroup
 import app.simple.felicity.repository.sort.YearSort.setCurrentSortOrder
@@ -28,7 +24,6 @@ import app.simple.felicity.repository.sort.YearSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.YearPage
 import app.simple.felicity.viewmodels.panels.YearViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 
 /**
  * Panel fragment displaying song groups organized by release year.
@@ -36,14 +31,13 @@ import kotlinx.coroutines.launch
  * @author Hamza417
  */
 @AndroidEntryPoint
-class Year : PanelFragment() {
+class Year : BasePanelFragment() {
 
     private val yearViewModel: YearViewModel by viewModels({ requireActivity() })
 
     private lateinit var binding: FragmentYearBinding
     private lateinit var headerBinding: HeaderYearBinding
 
-    private var gridLayoutManager: GridLayoutManager? = null
     private var adapterYear: AdapterYear? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -60,28 +54,17 @@ class Year : PanelFragment() {
         binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
 
-        val mode = YearPreferences.getGridSize()
-        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
-        binding.recyclerView.layoutManager = gridLayoutManager
+        binding.recyclerView.setupGridLayoutManager(YearPreferences.getGridSize().spanCount)
 
         setupClickListeners()
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                yearViewModel.years.collect { years ->
-                    if (years.isNotEmpty()) {
-                        updateYearList(years)
-                    } else if (adapterYear != null) {
-                        updateYearList(years)
-                    }
-                }
-            }
+        yearViewModel.years.collectListWhenStarted({ adapterYear != null }) { years ->
+            updateYearList(years)
         }
     }
 
     override fun onDestroyView() {
         adapterYear = null
-        gridLayoutManager = null
         super.onDestroyView()
     }
 
@@ -139,10 +122,7 @@ class Year : PanelFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             YearPreferences.GRID_SIZE_PORTRAIT, YearPreferences.GRID_SIZE_LANDSCAPE -> {
-                val newMode = YearPreferences.getGridSize()
-                gridLayoutManager?.spanCount = newMode.spanCount
-                binding.recyclerView.beginDelayedTransition()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
+                applyGridSizeUpdate(binding.recyclerView, YearPreferences.getGridSize().spanCount)
             }
         }
     }

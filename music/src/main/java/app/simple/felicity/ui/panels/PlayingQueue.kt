@@ -6,9 +6,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterPlayingQueue
@@ -18,19 +15,17 @@ import app.simple.felicity.databinding.HeaderPlayingQueueBinding
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.engine.managers.MediaPlaybackManager
-import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.viewmodels.panels.PlayingQueueViewModel
-import kotlinx.coroutines.launch
 
-class PlayingQueue : PanelFragment() {
+class PlayingQueue : BasePanelFragment() {
 
     private lateinit var binding: FragmentPlayingQueueBinding
     private lateinit var headerBinding: HeaderPlayingQueueBinding
 
     private var adapterPlayingQueue: AdapterPlayingQueue? = null
-    private var gridLayoutManager: GridLayoutManager? = null
     private var hasScrolledToInitialPosition = false
 
     private val playingQueueViewModel: PlayingQueueViewModel by viewModels({ requireActivity() })
@@ -49,35 +44,26 @@ class PlayingQueue : PanelFragment() {
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.attachSlideFastScroller()
 
-        // Use single-column list (queue always shows as list, no grid switching)
-        gridLayoutManager = GridLayoutManager(requireContext(), 1)
-        binding.recyclerView.layoutManager = gridLayoutManager
+        /** Queue always shows as a single-column list; no grid switching. */
+        binding.recyclerView.setupGridLayoutManager(1)
 
         setupHeaderClicks()
-        observeQueue()
+
+        playingQueueViewModel.songs.collectWhenStarted { songs ->
+            if (songs.isNotEmpty()) {
+                updateQueueList(songs)
+            }
+        }
     }
 
     override fun onDestroyView() {
         adapterPlayingQueue = null
-        gridLayoutManager = null
         hasScrolledToInitialPosition = false
         super.onDestroyView()
     }
 
     private fun setupHeaderClicks() {
         // Reserved for future header actions
-    }
-
-    private fun observeQueue() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                playingQueueViewModel.songs.collect { songs ->
-                    if (songs.isNotEmpty()) {
-                        updateQueueList(songs)
-                    }
-                }
-            }
-        }
     }
 
     private fun updateQueueList(songs: List<Audio>) {
@@ -87,7 +73,6 @@ class PlayingQueue : PanelFragment() {
 
             adapterPlayingQueue?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
-                    // Explicit tap on a queue item always starts playback.
                     MediaPlaybackManager.updatePosition(position, forcePlay = true)
                 }
 
@@ -95,7 +80,6 @@ class PlayingQueue : PanelFragment() {
                     openSongsMenu(audios, position, imageView)
                 }
             })
-
 
             adapterPlayingQueue?.setOnItemSwipedCallback { position ->
                 MediaPlaybackManager.removeQueueItemSilently(position)
@@ -109,7 +93,6 @@ class PlayingQueue : PanelFragment() {
             }
         }
 
-        // Update header info
         headerBinding.count.text = getString(R.string.x_songs, songs.size)
         headerBinding.hours.text = songs.sumOf { it.duration }.toDynamicTimeString()
 
@@ -120,23 +103,22 @@ class PlayingQueue : PanelFragment() {
             )
         }
 
-        // Check if current song is already visible; if not, scroll to it.
-        // Only do this once on initial load — subsequent queue updates (drag reorder,
-        // swipe-to-remove, song change) must NOT trigger a programmatic scroll because
-        // that creates a feedback loop: queue change → scroll → onScrolled → show/hide
-        // animations keep recycling, which floods the RV with continuous scroll calls.
+        /**
+         * Scroll to the currently playing song only on the initial load. Subsequent queue
+         * changes (drag reorder, swipe-to-remove, song change) must NOT trigger a scroll
+         * to avoid a feedback loop that floods the RecyclerView with continuous scroll events.
+         */
         if (!hasScrolledToInitialPosition && binding.recyclerView.layoutManager is GridLayoutManager) {
             hasScrolledToInitialPosition = true
             val layoutManager = binding.recyclerView.layoutManager as GridLayoutManager
             val currentPosition = MediaPlaybackManager.getCurrentSongPosition()
             binding.recyclerView.post {
-                // Post so the layout has had a chance to measure before we read visible range
                 val firstVisible = layoutManager.findFirstVisibleItemPosition()
                 val lastVisible = layoutManager.findLastVisibleItemPosition()
                 if (currentPosition !in firstVisible..lastVisible) {
                     layoutManager.scrollToPositionWithOffset(
-                            /* position = */ currentPosition,
-                            /* offset = */ binding.appHeader.height + resources.getDimensionPixelSize(R.dimen.padding_8))
+                            currentPosition,
+                            binding.appHeader.height + resources.getDimensionPixelSize(R.dimen.padding_8))
                 }
             }
         }

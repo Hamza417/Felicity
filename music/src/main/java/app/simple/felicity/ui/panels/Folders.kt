@@ -7,10 +7,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterFolders
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
@@ -21,7 +17,7 @@ import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.folders.DialogFolderSort.Companion.showFoldersSortDialog
 import app.simple.felicity.dialogs.folders.FoldersMenu.Companion.showFoldersMenu
-import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.FoldersPreferences
 import app.simple.felicity.repository.models.Folder
 import app.simple.felicity.repository.sort.FolderSort.setCurrentSortOrder
@@ -29,7 +25,6 @@ import app.simple.felicity.repository.sort.FolderSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.FolderPage
 import app.simple.felicity.viewmodels.panels.FoldersViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 
 /**
  * Panel fragment displaying the user's music folders with sort and grid layout support.
@@ -37,14 +32,13 @@ import kotlinx.coroutines.launch
  * @author Hamza417
  */
 @AndroidEntryPoint
-class Folders : PanelFragment() {
+class Folders : BasePanelFragment() {
 
     private val foldersViewModel: FoldersViewModel by viewModels({ requireActivity() })
 
     private lateinit var binding: FragmentFoldersBinding
     private lateinit var headerBinding: HeaderFoldersBinding
 
-    private var gridLayoutManager: GridLayoutManager? = null
     private var adapterFolders: AdapterFolders? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -63,30 +57,18 @@ class Folders : PanelFragment() {
         binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
 
-        val mode = FoldersPreferences.getGridSize()
-        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
-        binding.recyclerView.layoutManager = gridLayoutManager
+        binding.recyclerView.setupGridLayoutManager(FoldersPreferences.getGridSize().spanCount)
 
         setupClickListeners()
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                foldersViewModel.folders
-                    .collect { folders ->
-                        if (folders.isNotEmpty()) {
-                            updateFoldersList(folders)
-                        } else if (adapterFolders != null) {
-                            updateFoldersList(folders)
-                        }
-                    }
-            }
+        foldersViewModel.folders.collectListWhenStarted({ adapterFolders != null }) { folders ->
+            updateFoldersList(folders)
         }
     }
 
     override fun onDestroyView() {
         Log.d(TAG, "onDestroyView: Clearing adapter reference")
         adapterFolders = null
-        gridLayoutManager = null
         super.onDestroyView()
     }
 
@@ -154,10 +136,7 @@ class Folders : PanelFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             FoldersPreferences.GRID_SIZE_PORTRAIT, FoldersPreferences.GRID_SIZE_LANDSCAPE -> {
-                val newMode = FoldersPreferences.getGridSize()
-                gridLayoutManager?.spanCount = newMode.spanCount
-                binding.recyclerView.beginDelayedTransition()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
+                applyGridSizeUpdate(binding.recyclerView, FoldersPreferences.getGridSize().spanCount)
             }
         }
     }

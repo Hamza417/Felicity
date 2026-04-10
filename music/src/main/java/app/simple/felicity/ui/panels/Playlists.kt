@@ -6,10 +6,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.adapters.ui.lists.AdapterPlaylists
 import app.simple.felicity.databinding.FragmentPlaylistsBinding
 import app.simple.felicity.databinding.HeaderPlaylistsBinding
@@ -17,7 +13,7 @@ import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.playlists.CreatePlaylistDialog.Companion.showCreatePlaylistDialog
 import app.simple.felicity.dialogs.playlists.PlaylistsMenu.Companion.showPlaylistsMenu
 import app.simple.felicity.dialogs.playlists.PlaylistsSort.Companion.showPlaylistsSort
-import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.PlaylistPreferences
 import app.simple.felicity.repository.models.PlaylistWithSongs
 import app.simple.felicity.repository.sort.PlaylistSort.setPlaylistOrder
@@ -25,7 +21,6 @@ import app.simple.felicity.repository.sort.PlaylistSort.setPlaylistSort
 import app.simple.felicity.ui.pages.PlaylistPage
 import app.simple.felicity.viewmodels.panels.PlaylistsViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 
 /**
  * Panel fragment that displays all user-created playlists with sort, list-style, and
@@ -35,13 +30,12 @@ import kotlinx.coroutines.launch
  * @author Hamza417
  */
 @AndroidEntryPoint
-class Playlists : PanelFragment() {
+class Playlists : BasePanelFragment() {
 
     private lateinit var binding: FragmentPlaylistsBinding
     private lateinit var headerBinding: HeaderPlaylistsBinding
 
     private var adapterPlaylists: AdapterPlaylists? = null
-    private var gridLayoutManager: GridLayoutManager? = null
 
     private val playlistsViewModel: PlaylistsViewModel by viewModels()
 
@@ -58,28 +52,17 @@ class Playlists : PanelFragment() {
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
 
-        val mode = PlaylistPreferences.getGridSize()
-        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
-        binding.recyclerView.layoutManager = gridLayoutManager
+        binding.recyclerView.setupGridLayoutManager(PlaylistPreferences.getGridSize().spanCount)
 
         setupClickListeners()
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                playlistsViewModel.playlists.collect { playlists ->
-                    if (playlists.isNotEmpty()) {
-                        updateList(playlists)
-                    } else if (adapterPlaylists != null) {
-                        updateList(playlists)
-                    }
-                }
-            }
+        playlistsViewModel.playlists.collectListWhenStarted({ adapterPlaylists != null }) { playlists ->
+            updateList(playlists)
         }
     }
 
     override fun onDestroyView() {
         adapterPlaylists = null
-        gridLayoutManager = null
         super.onDestroyView()
     }
 
@@ -141,10 +124,8 @@ class Playlists : PanelFragment() {
             }
             PlaylistPreferences.GRID_SIZE_PORTRAIT, PlaylistPreferences.GRID_SIZE_LANDSCAPE -> {
                 val newMode = PlaylistPreferences.getGridSize()
-                gridLayoutManager?.spanCount = newMode.spanCount
                 adapterPlaylists?.layoutMode = newMode
-                binding.recyclerView.beginDelayedTransition()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
+                applyGridSizeUpdate(binding.recyclerView, newMode.spanCount)
             }
         }
     }

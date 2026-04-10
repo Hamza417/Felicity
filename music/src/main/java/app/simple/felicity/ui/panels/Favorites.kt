@@ -7,10 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterFavorites
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
@@ -23,7 +19,7 @@ import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.dialogs.favorites.FavoritesMenu.Companion.showFavoritesMenu
 import app.simple.felicity.dialogs.favorites.FavoritesSort.Companion.showFavoritesSort
 import app.simple.felicity.dialogs.songs.ShuffleAlgorithmDialog.Companion.showShuffleAlgorithmDialog
-import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.FavoritesPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.sort.FavoritesSort.setFavoritesOrder
@@ -31,7 +27,6 @@ import app.simple.felicity.repository.sort.FavoritesSort.setFavoritesSort
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.viewmodels.panels.FavoritesViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 
 /**
  * Panel fragment that displays the user's favorite songs with full sort, grid, and shuffle support.
@@ -39,13 +34,12 @@ import kotlinx.coroutines.launch
  * @author Hamza417
  */
 @AndroidEntryPoint
-class Favorites : PanelFragment() {
+class Favorites : BasePanelFragment() {
 
     private lateinit var binding: FragmentFavoritesBinding
     private lateinit var headerBinding: HeaderFavoritesBinding
 
     private var adapterSongs: AdapterFavorites? = null
-    private var gridLayoutManager: GridLayoutManager? = null
 
     private val favoritesViewModel: FavoritesViewModel by viewModels()
 
@@ -63,28 +57,17 @@ class Favorites : PanelFragment() {
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.attachSlideFastScroller()
 
-        val mode = FavoritesPreferences.getGridSize()
-        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
-        binding.recyclerView.layoutManager = gridLayoutManager
+        binding.recyclerView.setupGridLayoutManager(FavoritesPreferences.getGridSize().spanCount)
 
         setupClickListeners()
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                favoritesViewModel.favorites.collect { songs ->
-                    if (songs.isNotEmpty()) {
-                        updateFavoritesList(songs)
-                    } else if (adapterSongs != null) {
-                        updateFavoritesList(songs)
-                    }
-                }
-            }
+        favoritesViewModel.favorites.collectListWhenStarted({ adapterSongs != null }) { songs ->
+            updateFavoritesList(songs)
         }
     }
 
     override fun onDestroyView() {
         adapterSongs = null
-        gridLayoutManager = null
         super.onDestroyView()
     }
 
@@ -123,7 +106,7 @@ class Favorites : PanelFragment() {
      * Updates the favorites list and refreshes all header chips.
      * Initializes the adapter on first call and diffs subsequent updates.
      *
-     * @param songs the latest sorted list of favorite [Audio] entries
+     * @param songs The latest sorted list of favorite [Audio] entries.
      */
     private fun updateFavoritesList(songs: List<Audio>) {
         if (adapterSongs == null) {
@@ -225,10 +208,8 @@ class Favorites : PanelFragment() {
         when (key) {
             FavoritesPreferences.GRID_SIZE_PORTRAIT, FavoritesPreferences.GRID_SIZE_LANDSCAPE -> {
                 val newMode = FavoritesPreferences.getGridSize()
-                gridLayoutManager?.spanCount = newMode.spanCount
                 adapterSongs?.layoutMode = newMode
-                binding.recyclerView.beginDelayedTransition()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
+                applyGridSizeUpdate(binding.recyclerView, newMode.spanCount)
             }
         }
     }

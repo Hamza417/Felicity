@@ -7,9 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterFolderHierarchy
@@ -20,7 +17,7 @@ import app.simple.felicity.databinding.HeaderFoldersHierarchyBinding
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.folders.DialogFolderHierarchySort.Companion.showFolderHierarchySortDialog
 import app.simple.felicity.dialogs.folders.FolderHierarchyMenu.Companion.showFolderHierarchyMenu
-import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.FolderHierarchyPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Folder
@@ -29,10 +26,9 @@ import app.simple.felicity.repository.sort.FolderHierarchySort.setCurrentSortSty
 import app.simple.felicity.viewmodels.panels.FolderHierarchyViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
-import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
-class FoldersHierarchy : PanelFragment() {
+class FoldersHierarchy : BasePanelFragment() {
 
     /** Path passed via bundle, or null when this is the root level. */
     private val folderPath: String? by lazy {
@@ -50,7 +46,6 @@ class FoldersHierarchy : PanelFragment() {
     private lateinit var binding: FragmentFoldersHierarchyBinding
     private lateinit var headerBinding: HeaderFoldersHierarchyBinding
 
-    private var gridLayoutManager: GridLayoutManager? = null
     private var adapter: AdapterFolderHierarchy? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -73,25 +68,18 @@ class FoldersHierarchy : PanelFragment() {
         binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
 
-        val mode = FolderHierarchyPreferences.getLayoutMode()
-        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
-        binding.recyclerView.layoutManager = gridLayoutManager
+        binding.recyclerView.setupGridLayoutManager(FolderHierarchyPreferences.getLayoutMode().spanCount)
         updateGridLayoutSpanSizeLookup()
 
         setupClickListeners()
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.contents.collect { contents ->
-                    updateContents(contents)
-                }
-            }
+        viewModel.contents.collectWhenStarted { contents ->
+            updateContents(contents)
         }
     }
 
     override fun onDestroyView() {
         adapter = null
-        gridLayoutManager = null
         super.onDestroyView()
     }
 
@@ -173,10 +161,7 @@ class FoldersHierarchy : PanelFragment() {
         when (key) {
             FolderHierarchyPreferences.LAYOUT_MODE_PORTRAIT,
             FolderHierarchyPreferences.LAYOUT_MODE_LANDSCAPE -> {
-                val newMode = FolderHierarchyPreferences.getLayoutMode()
-                gridLayoutManager?.spanCount = newMode.spanCount
-                binding.recyclerView.beginDelayedTransition()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
+                applyGridSizeUpdate(binding.recyclerView, FolderHierarchyPreferences.getLayoutMode().spanCount)
             }
         }
     }

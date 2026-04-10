@@ -6,10 +6,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterGenres
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
@@ -20,7 +16,7 @@ import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.genres.GenreMenu.Companion.showGenreMenu
 import app.simple.felicity.dialogs.genres.GenreSort.Companion.showGenresSortDialog
-import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.sort.GenreSort.setCurrentSortOrder
@@ -28,7 +24,6 @@ import app.simple.felicity.repository.sort.GenreSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.GenrePage
 import app.simple.felicity.viewmodels.panels.GenresViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 
 /**
  * Panel fragment displaying the user's genres with sort, grid layout, and search support.
@@ -36,14 +31,13 @@ import kotlinx.coroutines.launch
  * @author Hamza417
  */
 @AndroidEntryPoint
-class Genres : PanelFragment() {
+class Genres : BasePanelFragment() {
 
     private val genresViewModel: GenresViewModel by viewModels({ requireActivity() })
 
     private lateinit var binding: FragmentGenresBinding
     private lateinit var headerBinding: HeaderGenresBinding
 
-    private var gridLayoutManager: GridLayoutManager? = null
     private var adapterGenres: AdapterGenres? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -60,29 +54,19 @@ class Genres : PanelFragment() {
         binding.recyclerView.attachSlideFastScroller()
         binding.recyclerView.requireAttachedMiniPlayer()
 
-        val mode = GenresPreferences.getGridSize()
-        gridLayoutManager = GridLayoutManager(requireContext(), mode.spanCount)
-        binding.recyclerView.layoutManager = gridLayoutManager
+        binding.recyclerView.setupGridLayoutManager(GenresPreferences.getGridSize().spanCount)
 
         adapterGenres?.let { binding.recyclerView.adapter = it }
 
         setupClickListeners()
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                genresViewModel.genres.collect { genres ->
-                    if (genres.isNotEmpty()) {
-                        updateGenresList(genres)
-                    } else if (adapterGenres != null) {
-                        updateGenresList(genres)
-                    }
-                }
-            }
+        genresViewModel.genres.collectListWhenStarted({ adapterGenres != null }) { genres ->
+            updateGenresList(genres)
         }
     }
 
     override fun onDestroyView() {
-        gridLayoutManager = null
+        adapterGenres = null
         super.onDestroyView()
     }
 
@@ -139,10 +123,7 @@ class Genres : PanelFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             GenresPreferences.GRID_SIZE_PORTRAIT, GenresPreferences.GRID_SIZE_LANDSCAPE -> {
-                val newMode = GenresPreferences.getGridSize()
-                gridLayoutManager?.spanCount = newMode.spanCount
-                binding.recyclerView.beginDelayedTransition()
-                binding.recyclerView.adapter?.notifyItemRangeChanged(0, binding.recyclerView.adapter?.itemCount ?: 0)
+                applyGridSizeUpdate(binding.recyclerView, GenresPreferences.getGridSize().spanCount)
             }
         }
     }
