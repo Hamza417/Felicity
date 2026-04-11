@@ -392,4 +392,5 @@
     <string name="play_store_features">Purchasing Felicity unlocks unlimited use, future updates, and supports continued development. Thank you for your support!</string>
     <string name="simple_ui_desc">Simple and flat player UI suitable for most normal users.</string>
     <string name="faded_ui_desc">Faded album art with immersive ambience, best used in dark modes.</string>
+    <string name="sync_adjust_desc">Adjusting sync here will update the timestamps in the LRC file itself.</string>
 </resources>

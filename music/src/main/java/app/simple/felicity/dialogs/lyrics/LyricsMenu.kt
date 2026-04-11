@@ -5,12 +5,18 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
+import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogLyricsMenuBinding
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
 import app.simple.felicity.preferences.LyricsPreferences
+import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.utils.AudioUtils.hasLrc
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 class LyricsMenu : MediaBottomDialogFragment() {
@@ -18,6 +24,7 @@ class LyricsMenu : MediaBottomDialogFragment() {
     private lateinit var binding: DialogLyricsMenuBinding
 
     private var menuListener: LyricsMenuListener? = null
+    private var audio: Audio? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = DialogLyricsMenuBinding.inflate(inflater, container, false)
@@ -28,6 +35,7 @@ class LyricsMenu : MediaBottomDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         updateLyricsAlignmentState()
+        audio = MediaPlaybackManager.getCurrentSong()
 
         binding.textSizeSeekbar.setProgress(LyricsPreferences.getLrcTextSize())
         binding.textSizeSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
@@ -53,6 +61,22 @@ class LyricsMenu : MediaBottomDialogFragment() {
         binding.delete.setOnClickListener {
             menuListener?.onLyricsDelete()
             dismiss()
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Default) {
+            val hasLrc = audio?.hasLrc() ?: false
+            launch(Dispatchers.Main) {
+                if (hasLrc) {
+                    binding.edit.visibility = View.VISIBLE
+
+                    binding.edit.setOnClickListener {
+                        menuListener?.onLrcEdit()
+                        dismiss()
+                    }
+                } else {
+                    binding.edit.visibility = View.GONE
+                }
+            }
         }
     }
 
@@ -106,6 +130,7 @@ class LyricsMenu : MediaBottomDialogFragment() {
             fun onTimeMinusClicked()
             fun onTimePlusClicked()
             fun onLyricsDelete()
+            fun onLrcEdit()
         }
     }
 }

@@ -15,6 +15,8 @@ import app.simple.felicity.databinding.FragmentLyricsBinding
 import app.simple.felicity.decorations.lrc.view.ModernLrcView
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
+import app.simple.felicity.dialogs.lyrics.AddLyrics
+import app.simple.felicity.dialogs.lyrics.AddLyrics.Companion.showAddLyrics
 import app.simple.felicity.dialogs.lyrics.LyricsMenu
 import app.simple.felicity.dialogs.lyrics.LyricsMenu.Companion.showLyricsMenu
 import app.simple.felicity.engine.managers.MediaPlaybackManager
@@ -30,7 +32,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
 
 @AndroidEntryPoint
-class Lyrics : MediaFragment() {
+class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
 
     private lateinit var binding: FragmentLyricsBinding
 
@@ -111,6 +113,11 @@ class Lyrics : MediaFragment() {
                         }
                     }
                 }
+
+                override fun onLrcEdit() {
+                    val currentAudio = MediaPlaybackManager.getCurrentSong() ?: return
+                    openFragment(LrcEditor.newInstance(currentAudio), LrcEditor.TAG)
+                }
             })
         }
 
@@ -129,6 +136,13 @@ class Lyrics : MediaFragment() {
         binding.search.setOnClickListener {
             openFragment(LyricsSearch.newInstance(), LyricsSearch.TAG)
         }
+
+        binding.addLyrics?.setOnClickListener {
+            val currentAudio = MediaPlaybackManager.getCurrentSong() ?: return@setOnClickListener
+            childFragmentManager.showAddLyrics(currentAudio)
+                .setOnLyricsCreatedListener(this)
+        }
+
         lyricsViewModel.getLrcData().observe(viewLifecycleOwner) { lrcData ->
             if (lrcData.isEmpty) {
                 Log.d(TAG, "No lyrics found for the current song.")
@@ -147,6 +161,14 @@ class Lyrics : MediaFragment() {
         parentFragmentManager.setFragmentResultListener(
                 LyricsSearch.REQUEST_KEY_LYRICS_SAVED, viewLifecycleOwner) { _, _ ->
             Log.d(TAG, "Lyrics saved signal received, reloading lrc data.")
+            lyricsViewModel.reloadLrcData()
+        }
+
+        // Listen for the signal from LrcEditor that the user has saved a newly edited .lrc
+        // file, so this panel can reload without requiring the user to close and reopen.
+        parentFragmentManager.setFragmentResultListener(
+                LrcEditor.REQUEST_KEY_LRC_SAVED, viewLifecycleOwner) { _, _ ->
+            Log.d(TAG, "LRC editor saved signal received, reloading lrc data.")
             lyricsViewModel.reloadLrcData()
         }
 
@@ -323,6 +345,11 @@ class Lyrics : MediaFragment() {
                 updatePlayButtonState(false)
             }
         }
+    }
+
+    override fun onLyricsCreated() {
+        // Reload the lyrics view after the sidecar file has been created
+        lyricsViewModel.reloadLrcData()
     }
 
     companion object {

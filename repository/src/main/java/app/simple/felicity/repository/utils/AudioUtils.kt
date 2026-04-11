@@ -1,5 +1,6 @@
 package app.simple.felicity.repository.utils
 
+import app.simple.felicity.core.utils.FileUtils.toFile
 import app.simple.felicity.core.utils.StringUtils.ifNullOrBlank
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.models.Audio
@@ -36,5 +37,11 @@ object AudioUtils {
         }
 
         return artist.ifNullOrBlank("Unknown")
+    }
+
+    fun Audio.hasLrc(): Boolean {
+        val path = this.path
+        val lrcPath = path.substringBeforeLast('.').plus(".lrc")
+        return lrcPath.toFile().exists()
     }
 }

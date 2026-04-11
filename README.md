@@ -99,6 +99,7 @@ This feature list is not exhaustive and only main features are listed.
 - [ ] Crossfade support
 - [ ] Multiple Player interface styles. _(partially fulfilled)_
 - [x] Playlist support
+- [x] LRC Editor
 - [ ] m3u and pls playlist support
 - [x] Metadata editing support
 - [ ] Replay gain
@@ -137,6 +138,7 @@ Last Updated: 10 April 2026
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/15.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/16.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/17.png) |
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/18.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/19.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/20.png) |
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/21.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/22.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/23.png) |
+| ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/24.png) |                                                                      |                                                                      |
 
 | Artflow Interface                                                    |
 |----------------------------------------------------------------------|

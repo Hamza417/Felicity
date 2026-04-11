@@ -22,16 +22,32 @@
             android:clipChildren="false"
             android:orientation="horizontal">
 
-            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            <LinearLayout
                 android:layout_width="0dp"
-                android:padding="@dimen/padding_15"
-                android:layout_height="wrap_content"
-                android:text="@string/sync_adjust"
                 android:layout_weight="1"
-                android:layout_gravity="center_vertical"
-                android:textSize="@dimen/text_size_14"
-                app:appFontStyle="bold"
-                app:textColorStyle="primary" />
+                android:layout_height="wrap_content"
+                android:padding="@dimen/padding_15"
+                android:orientation="vertical">
+
+                <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sync_adjust"
+                    android:layout_gravity="center_vertical"
+                    android:textSize="@dimen/text_size_14"
+                    app:appFontStyle="bold"
+                    app:textColorStyle="primary" />
+
+                <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sync_adjust_desc"
+                    android:layout_gravity="center_vertical"
+                    android:textSize="@dimen/text_size_12"
+                    app:appFontStyle="regular"
+                    app:textColorStyle="accent" />
+
+            </LinearLayout>
 
             <app.simple.felicity.decorations.highlight.HighlightTextView
                 android:id="@+id/minus"
@@ -129,6 +145,16 @@
             android:layout_height="match_parent"
             android:padding="@dimen/padding_15"
             android:text="@string/delete_lyrics"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:textColorStyle="primary" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/edit"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="@dimen/padding_15"
+            android:text="@string/edit_lrc"
             android:textSize="@dimen/text_size_14"
             app:appFontStyle="bold"
             app:textColorStyle="primary" />

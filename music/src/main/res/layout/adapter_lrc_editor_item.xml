@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:minHeight="@dimen/min_touch_target_size"
+    android:paddingVertical="@dimen/padding_10"
+    android:orientation="horizontal">
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        android:id="@+id/clock_stamp"
+        android:layout_width="@dimen/button_size"
+        android:layout_height="@dimen/button_size"
+        android:contentDescription="@string/lrc_stamp_timestamp"
+        android:src="@drawable/ic_clock"
+        android:padding="@dimen/padding_12"
+        app:buttonTintType="secondary"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <app.simple.felicity.decorations.corners.DynamicCornerEditText
+        android:id="@+id/timestamp_field"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:hint="@string/lrc_timestamp_hint"
+        android:inputType="text"
+        android:maxLines="1"
+        android:padding="@dimen/padding_10"
+        android:singleLine="true"
+        android:textSize="@dimen/text_size_12"
+        android:layout_marginStart="8dp"
+        app:appFontStyle="medium"
+        app:layout_constraintEnd_toStartOf="@+id/delete_button"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toEndOf="@+id/clock_stamp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:textColorStyle="secondary" />
+
+    <app.simple.felicity.decorations.corners.DynamicCornerEditText
+        android:id="@+id/text_field"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="@dimen/padding_1"
+        android:layout_weight="1"
+        android:hint="@string/lrc_lyric_hint"
+        android:layout_marginTop="@dimen/padding_5"
+        android:inputType="textMultiLine|textCapSentences"
+        android:maxLines="3"
+        android:textSize="@dimen/text_size_14"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:padding="@dimen/padding_10"
+        app:appFontStyle="bold"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/delete_button"
+        app:layout_constraintStart_toEndOf="@+id/clock_stamp"
+        app:layout_constraintTop_toBottomOf="@+id/timestamp_field"
+        app:textColorStyle="primary" />
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        android:id="@+id/delete_button"
+        android:layout_width="@dimen/button_size"
+        android:layout_height="@dimen/button_size"
+        android:contentDescription="@string/delete"
+        android:src="@drawable/ic_cross"
+        android:padding="@dimen/padding_12"
+        app:buttonTintType="secondary"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
