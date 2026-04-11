@@ -74,7 +74,7 @@ class Purchase : PreferenceFragment() {
                 icon = R.drawable.ic_gumroad,
                 type = PreferenceType.LINK,
                 onPreferenceAction = { view, callback ->
-                    val intent = Intent(Intent.ACTION_VIEW, "https://hamza417.gumroad.com/l/Felicity/".toUri())
+                    val intent = Intent(Intent.ACTION_VIEW, "https://hamza417.gumroad.com/l/Felicity/EARLY_ACCESS".toUri())
                     startActivity(intent)
                 }
         )

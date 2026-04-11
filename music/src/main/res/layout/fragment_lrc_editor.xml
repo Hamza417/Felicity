@@ -17,6 +17,7 @@
         android:clipToPadding="false"
         android:paddingTop="@dimen/padding_10"
         android:scrollbars="none"
+        app:isFadingEdgeRequired="true"
         app:navigationPaddingRequired="false"
         app:statusPaddingRequired="true" />
 

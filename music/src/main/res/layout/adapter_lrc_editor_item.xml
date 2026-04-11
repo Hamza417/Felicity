@@ -10,15 +10,16 @@
 
     <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
         android:id="@+id/clock_stamp"
-        android:layout_width="@dimen/button_size"
-        android:layout_height="@dimen/button_size"
+        android:layout_width="@dimen/icon_size_30"
+        android:layout_height="@dimen/icon_size_30"
         android:contentDescription="@string/lrc_stamp_timestamp"
         android:src="@drawable/ic_clock"
         android:padding="@dimen/padding_12"
+        android:layout_marginStart="8dp"
         app:buttonTintType="secondary"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintBottom_toBottomOf="@+id/timestamp_field"
+        app:layout_constraintStart_toEndOf="@+id/timestamp_field"
+        app:layout_constraintTop_toTopOf="@+id/timestamp_field" />
 
     <app.simple.felicity.decorations.corners.DynamicCornerEditText
         android:id="@+id/timestamp_field"
@@ -30,11 +31,10 @@
         android:padding="@dimen/padding_10"
         android:singleLine="true"
         android:textSize="@dimen/text_size_12"
-        android:layout_marginStart="8dp"
         app:appFontStyle="medium"
         app:layout_constraintEnd_toStartOf="@+id/delete_button"
         app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toEndOf="@+id/clock_stamp"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:textColorStyle="secondary" />
 
@@ -49,27 +49,26 @@
         android:inputType="textMultiLine|textCapSentences"
         android:maxLines="3"
         android:textSize="@dimen/text_size_14"
-        android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp"
         android:padding="@dimen/padding_10"
         app:appFontStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/delete_button"
-        app:layout_constraintStart_toEndOf="@+id/clock_stamp"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/timestamp_field"
         app:textColorStyle="primary" />
 
     <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
         android:id="@+id/delete_button"
-        android:layout_width="@dimen/button_size"
-        android:layout_height="@dimen/button_size"
+        android:layout_width="@dimen/icon_size_30"
+        android:layout_height="@dimen/icon_size_30"
         android:contentDescription="@string/delete"
         android:src="@drawable/ic_cross"
         android:padding="@dimen/padding_12"
         app:buttonTintType="secondary"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toBottomOf="@+id/text_field"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="@+id/text_field" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
 
