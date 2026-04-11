@@ -361,6 +361,22 @@
                     android:layout_height="1px"
                     android:layout_marginVertical="@dimen/padding_5" />
 
+
+                <!-- Add to Selection row — triggers the MiniPlayer action buttons -->
+                <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+                    android:id="@+id/add_to_selection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:padding="@dimen/padding_10"
+                    android:text="@string/add_to_selection"
+                    android:textSize="@dimen/text_size_14"
+                    android:drawablePadding="@dimen/padding_10"
+                    app:appFontStyle="bold"
+                    app:drawableStartCompat="@drawable/ic_check_16dp"
+                    app:drawableTintStyle="regular"
+                    app:textColorStyle="primary" />
+
                 <!-- Delete row -->
                 <app.simple.felicity.decorations.ripple.DynamicRippleTextView
                     android:id="@+id/delete"

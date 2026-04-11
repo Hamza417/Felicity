@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+    This is the popup that slides up when you tap the three-dots button
+    while songs are selected. It shows you how many songs you've picked
+    and gives you actions to perform on the whole batch at once.
+-->
+
+<app.simple.felicity.decorations.corners.DynamicCornerLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <!-- Header section — shows the total count of selected songs -->
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/selection_count"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/padding_15"
+        android:textSize="@dimen/text_size_16"
+        app:appFontStyle="bold"
+        app:textColorStyle="primary" />
+
+    <app.simple.felicity.decorations.theme.ThemeDivider
+        android:layout_width="match_parent"
+        android:layout_height="1px" />
+
+    <!-- The actual action buttons — one for each thing you can do with the batch -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/padding_10">
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/delete_all"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="@dimen/padding_10"
+            android:gravity="center_vertical"
+            android:padding="@dimen/padding_10"
+            android:text="@string/delete"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:drawableStartCompat="@drawable/ic_delete_16dp"
+            app:drawableTintStyle="regular"
+            app:textColorStyle="primary" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/share_all"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="@dimen/padding_10"
+            android:gravity="center_vertical"
+            android:padding="@dimen/padding_10"
+            android:text="@string/send"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:drawableStartCompat="@drawable/ic_send_16dp"
+            app:drawableTintStyle="regular"
+            app:textColorStyle="primary" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/clear_selection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="@dimen/padding_10"
+            android:gravity="center_vertical"
+            android:padding="@dimen/padding_10"
+            android:text="@string/clear_selection"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:drawableStartCompat="@drawable/ic_close"
+            app:drawableTintStyle="regular"
+            app:textColorStyle="primary" />
+
+    </LinearLayout>
+
+</app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+

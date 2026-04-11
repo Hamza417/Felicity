@@ -13,6 +13,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.ImageButton
 import android.widget.ImageView
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.app.ShareCompat
 import androidx.core.content.FileProvider
 import androidx.core.widget.NestedScrollView
@@ -44,6 +45,7 @@ import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
+import app.simple.felicity.repository.managers.SelectionManager
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
@@ -483,6 +485,15 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             if (audio.album.isNullOrBlank()) binding.goToAlbum.gone(animate = false)
             if (audio.isFavorite) binding.addToFavorites.text = getString(R.string.remove_from_favorites)
             if (audio.isAlwaysSkip) binding.alwaysSkip.text = getString(R.string.never_skip)
+
+            // Flip the selection button text depending on whether this song is already in the basket.
+            // It's like a toggle switch — on means "remove", off means "add".
+            if (SelectionManager.isSelected(audio)) {
+                binding.addToSelection.text = getString(R.string.remove_from_selection)
+                binding.addToSelection.setCompoundDrawablesWithIntrinsicBounds(
+                        AppCompatResources.getDrawable(requireContext(), R.drawable.ic_close),
+                        null, null, null)
+            }
         }
 
         val onDialogInflated: (DialogSongMenuBinding, () -> Unit, () -> Unit) -> Unit = { binding, dismiss, dismissImmediately ->
@@ -599,6 +610,13 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             binding.editMetadata.setOnClickListener {
                 openFragment(MetadataEditor.newInstance(audio), MetadataEditor.TAG)
                 dismissImmediately()
+            }
+
+            // Drop this song into the selection basket (or pull it out) depending on its
+            // current state. One button, two jobs — efficient and intuitive.
+            binding.addToSelection.setOnClickListener {
+                SelectionManager.toggle(audio)
+                dismiss()
             }
         }
 

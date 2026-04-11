@@ -25,6 +25,59 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!--
+        This row of quick-action buttons floats just above the mini player card.
+        It only appears when the user has songs in their selection basket.
+        The translationY is kept in sync with the mini player via a PreDrawListener
+        in MainActivity so both slide on and off screen as a single unit.
+    -->
+    <LinearLayout
+        android:id="@+id/mini_player_action_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:gravity="end"
+        android:orientation="horizontal"
+        android:paddingHorizontal="15dp"
+        android:paddingBottom="6dp"
+        android:visibility="gone">
+
+        <!-- Delete all selected songs -->
+        <ImageView
+            android:id="@+id/action_delete"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginEnd="6dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            android:src="@drawable/ic_delete_16dp"
+            android:contentDescription="@string/delete" />
+
+        <!-- Share all selected songs -->
+        <ImageView
+            android:id="@+id/action_share"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginEnd="6dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            android:src="@drawable/ic_send_16dp"
+            android:contentDescription="@string/send" />
+
+        <!-- Three-dots vertical more menu — opens the full selection actions dialog -->
+        <ImageView
+            android:id="@+id/action_more"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            android:src="@drawable/ic_more_vert"
+            android:contentDescription="@string/select" />
+
+    </LinearLayout>
+
     <app.simple.felicity.decorations.miniplayer.MiniPlayer
         android:id="@+id/mini_player"
         android:layout_width="match_parent"

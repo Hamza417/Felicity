@@ -9,9 +9,15 @@ import android.os.Bundle
 import android.os.IBinder
 import android.provider.MediaStore
 import android.util.Log
+import android.util.TypedValue
 import android.view.KeyEvent
+import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.activity.viewModels
+import androidx.core.app.ShareCompat
+import androidx.core.content.FileProvider
+import androidx.core.view.isVisible
 import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
@@ -19,8 +25,10 @@ import app.simple.felicity.R
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.crash.CrashReporter
 import app.simple.felicity.databinding.ActivityMainBinding
+import app.simple.felicity.databinding.DialogSelectionMenuBinding
 import app.simple.felicity.decorations.miniplayer.MiniPlayer
 import app.simple.felicity.decorations.miniplayer.MiniPlayerItem
+import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
@@ -35,11 +43,13 @@ import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.TrialPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
+import app.simple.felicity.repository.managers.SelectionManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
+import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.home.ArtFlowHome
 import app.simple.felicity.ui.home.Dashboard
 import app.simple.felicity.ui.home.SimpleHome
@@ -181,6 +191,51 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             }
         }
 
+        // Watch the selection basket — when songs pile in, show the action bar above the card.
+        // When the basket empties, tuck it away again so things look clean.
+        lifecycleScope.launch {
+            SelectionManager.selectedAudios.collect { selected ->
+                updateActionBar(selected)
+            }
+        }
+
+        // Keep the action bar perfectly above the mini player by mirroring its
+        // translationY every frame. This runs before every draw, so they always
+        // move as one unit — no manual syncing needed anywhere else.
+        binding.root.viewTreeObserver.addOnPreDrawListener {
+            binding.miniPlayerActionBar.translationY = binding.miniPlayer.translationY
+            true
+        }
+
+        // Reposition the action bar whenever the mini player's layout changes —
+        // this handles both the initial placement AND nav-bar inset updates.
+        binding.miniPlayer.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            val lp = binding.miniPlayer.layoutParams as? ViewGroup.MarginLayoutParams
+            val totalMiniPlayerSpace = binding.miniPlayer.height + (lp?.bottomMargin ?: 0)
+            val gap = dpToPx(4f)
+            val alp = binding.miniPlayerActionBar.layoutParams as? ViewGroup.MarginLayoutParams
+            if (alp != null && alp.bottomMargin != totalMiniPlayerSpace + gap) {
+                alp.bottomMargin = totalMiniPlayerSpace + gap
+                binding.miniPlayerActionBar.requestLayout()
+            }
+        }
+
+        // Wire up the three action bar buttons — delete, share, and the three-dots more menu.
+        // Also apply the theme's icon tint so they blend in with the rest of the app.
+        applyActionBarIconTints()
+
+        binding.actionDelete.setOnClickListener {
+            SelectionManager.clear()
+        }
+
+        binding.actionShare.setOnClickListener {
+            shareSelectedAudios(SelectionManager.selectedAudios.value)
+        }
+
+        binding.actionMore.setOnClickListener {
+            showSelectionMenu()
+        }
+
         serviceConnection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 val binder = service as? AudioDatabaseService.AudioDatabaseBinder
@@ -274,6 +329,101 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             unbindService(serviceConnection!!)
             audioDatabaseService = null
         }
+    }
+
+    /**
+     * Shows or hides the action bar above the mini player based on how many songs
+     * are currently selected. When songs are selected, the bar slides into view with
+     * a gentle fade. When the basket is empty, it quietly disappears.
+     *
+     * @param selected The current list of selected tracks.
+     */
+    private fun updateActionBar(selected: List<Audio>) {
+        val shouldShow = selected.isNotEmpty()
+        if (shouldShow && !binding.miniPlayerActionBar.isVisible) {
+            binding.miniPlayerActionBar.visibility = View.VISIBLE
+            binding.miniPlayerActionBar.animate().alpha(1f).setDuration(200).start()
+        } else if (!shouldShow && binding.miniPlayerActionBar.isVisible) {
+            binding.miniPlayerActionBar.animate().alpha(0f).setDuration(160).withEndAction {
+                binding.miniPlayerActionBar.visibility = View.GONE
+            }.start()
+        }
+    }
+
+    /**
+     * Applies the theme's regular icon color as a tint to each action bar button
+     * so they always look at home regardless of which theme is active.
+     * Think of it as dress-coding the buttons to match the rest of the app.
+     */
+    private fun applyActionBarIconTints() {
+        val tint = android.content.res.ColorStateList.valueOf(
+                ThemeManager.theme.iconTheme.regularIconColor)
+        binding.actionDelete.imageTintList = tint
+        binding.actionShare.imageTintList = tint
+        binding.actionMore.imageTintList = tint
+    }
+
+    /**
+     * Converts dp to pixels using the screen's display metrics. Just a handy shortcut
+     * so we don't have to type out the full conversion formula everywhere.
+     */
+    private fun dpToPx(dp: Float): Int =
+        TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, resources.displayMetrics).toInt()
+
+    /**
+     * Opens a dialog showing how many songs are selected and what actions can be performed
+     * on the whole batch. The user gets to feel powerful — like a DJ with a big remote control.
+     */
+    private fun showSelectionMenu() {
+        val selected = SelectionManager.selectedAudios.value
+        SimpleDialog.Builder(
+                container = binding.appContainer,
+                inflateBinding = DialogSelectionMenuBinding::inflate)
+            .onViewCreated { dialogBinding ->
+                dialogBinding.selectionCount.text = getString(
+                        R.string.x_songs_selected, selected.size)
+            }
+            .onDialogInflated { dialogBinding, dismiss, _ ->
+                dialogBinding.deleteAll.setOnClickListener {
+                    // For now just clearing the selection — real deletion flow wired in later.
+                    SelectionManager.clear()
+                    dismiss()
+                }
+                dialogBinding.shareAll.setOnClickListener {
+                    shareSelectedAudios(selected)
+                    dismiss()
+                }
+                dialogBinding.clearSelection.setOnClickListener {
+                    SelectionManager.clear()
+                    dismiss()
+                }
+            }
+            .onDismiss { /* nothing to clean up */ }
+            .build()
+            .show()
+    }
+
+    /**
+     * Fires an Android share sheet containing all of the [songs] files at once.
+     * Each file is added as a separate stream so the receiving app can handle all of them.
+     * Any file that can't be wrapped in a FileProvider URI is silently skipped.
+     *
+     * @param songs The tracks to share.
+     */
+    private fun shareSelectedAudios(songs: List<Audio>) {
+        val uris = songs.mapNotNull { audio ->
+            runCatching {
+                FileProvider.getUriForFile(this, "$packageName.provider", audio.file)
+            }.getOrNull()
+        }
+        if (uris.isEmpty()) return
+
+        val intent = ShareCompat.IntentBuilder(this)
+            .setType("audio/*")
+            .apply { uris.forEach { addStream(it) } }
+            .createChooserIntent()
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        startActivity(intent)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {

@@ -107,6 +107,11 @@
     <string name="scale">Scale</string>
     <string name="vertical_spacing">Vertical Spacing</string>
     <string name="delete">Delete</string>
+    <string name="select">Select</string>
+    <string name="add_to_selection">Add to Selection</string>
+    <string name="remove_from_selection">Remove from Selection</string>
+    <string name="clear_selection">Clear Selection</string>
+    <string name="x_songs_selected">%1$d songs selected</string>
     <string name="spacing_summary">Adjust spaces between items in various lists of the app.</string>
     <string name="name">Name</string>
     <string name="last_year">Last Year</string>

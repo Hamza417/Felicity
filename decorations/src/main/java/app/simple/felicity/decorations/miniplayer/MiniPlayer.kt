@@ -220,6 +220,7 @@ class MiniPlayer @JvmOverloads constructor(
         /** Margin applied around the view on all sides when attached to a window, in dp. */
         private const val SIDE_MARGIN_DP = 15f
 
+
         /**
          * How long (ms) to wait after the last [NestedScrollView] scroll event before
          * snapping the player to fully shown or fully hidden, mimicking the
@@ -1313,6 +1314,7 @@ class MiniPlayer @JvmOverloads constructor(
         playPauseDrawer.color = iconColor
         refreshRippleTheme()
         refreshProgressColors()
+
         seekThumbLinePaint.strokeWidth = dp(2f)
         paintShadowRadiusPx = dp(PAINT_SHADOW_RADIUS_DP)
         paintShadowDyPx = dp(PAINT_SHADOW_DY_DP)
