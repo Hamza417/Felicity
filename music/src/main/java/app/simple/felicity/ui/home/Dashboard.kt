@@ -1,7 +1,6 @@
 package app.simple.felicity.ui.home
 
 import android.content.SharedPreferences
-import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -26,27 +25,11 @@ import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutMa
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.dialogs.app.AppLabel.Companion.showAppLabel
 import app.simple.felicity.engine.managers.MediaPlaybackManager
-import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.extensions.fragments.BaseHomeFragment
 import app.simple.felicity.preferences.MainPreferences
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.server.ServerModeService
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
-import app.simple.felicity.theme.managers.ThemeManager
-import app.simple.felicity.ui.panels.Albums
-import app.simple.felicity.ui.panels.Artists
-import app.simple.felicity.ui.panels.Favorites
-import app.simple.felicity.ui.panels.Folders
-import app.simple.felicity.ui.panels.FoldersHierarchy
-import app.simple.felicity.ui.panels.Genres
-import app.simple.felicity.ui.panels.MostPlayed
-import app.simple.felicity.ui.panels.PlayingQueue
-import app.simple.felicity.ui.panels.Preferences
-import app.simple.felicity.ui.panels.RecentlyAdded
-import app.simple.felicity.ui.panels.RecentlyPlayed
-import app.simple.felicity.ui.panels.Search
-import app.simple.felicity.ui.panels.Songs
-import app.simple.felicity.ui.panels.Year
 import app.simple.felicity.viewmodels.panels.DashboardViewModel
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 import dagger.hilt.android.AndroidEntryPoint
@@ -56,14 +39,13 @@ import kotlinx.coroutines.launch
  * Dashboard home screen fragment.
  *
  * Displays a scrollable dashboard composed of:
- * - A header with the app name, search, and settings buttons.
- * - A spanned art grid of recommended songs loaded once per app session. The user can
- *   request a new random selection at any time via the shuffle button next to the section title.
- * - A horizontal carousel of recently played songs.
- * - A four-column browse grid of panel navigation shortcuts with an inline
- *   expand/collapse button that reveals the full panel list without navigation.
- * - A horizontal carousel of recently added songs.
- * - A horizontal carousel of favorite songs.
+ *  - A header with the app name, search, WiFi server, and settings buttons.
+ *  - A spanned art grid of recommended songs loaded once per app session. The user can
+ *    request a new random selection at any time via the shuffle button next to the section title.
+ *  - A horizontal carousel of recently played songs.
+ *  - A four-column browse grid of every available panel navigation shortcut.
+ *  - A horizontal carousel of recently added songs.
+ *  - A horizontal carousel of favorite songs.
  *
  * All song items across every section support tap to play and long-press to open the
  * song context menu. Carousel and recommended data is loaded once and remains stable for
@@ -72,7 +54,7 @@ import kotlinx.coroutines.launch
  * @author Hamza417
  */
 @AndroidEntryPoint
-class Dashboard : PanelFragment() {
+class Dashboard : BaseHomeFragment() {
 
     private lateinit var binding: FragmentHomeDashboardBinding
 
@@ -96,9 +78,9 @@ class Dashboard : PanelFragment() {
             childFragmentManager.showAppLabel()
         }
 
+        setupPanelsGrid()
         showMiniPlayer()
         setupHeader()
-        setupPanelsGrid()
         setupCarouselSpacing()
         observeData()
 
@@ -117,22 +99,14 @@ class Dashboard : PanelFragment() {
 
     private fun setupHeader() {
         binding.search.setOnClickListener {
-            openFragment(Search.newInstance(), Search.TAG)
+            openSearch()
         }
 
-        binding.serverToggle.setOnClickListener {
-            if (ServerModeService.isRunning.value) {
-                ServerModeService.stop(requireContext())
-            } else {
-                ServerModeService.start(requireContext())
-            }
-        }
+        setupServerToggle(binding.serverToggle)
     }
 
     private fun setupPanelsGrid() {
-        val adapter = AdapterDashboardPanels(
-                firstPanels = dashboardViewModel.firstPanelPanels,
-                allPanels = dashboardViewModel.allPanelPanels)
+        val adapter = AdapterDashboardPanels(panels = dashboardViewModel.allPanelPanels)
         binding.panelsRecyclerView.layoutManager = GridLayoutManager(requireContext(), PANEL_SPAN_COUNT)
         binding.panelsRecyclerView.adapter = adapter
         adapter.setCallbacks(object : AdapterDashboardPanelsCallbacks {
@@ -159,24 +133,18 @@ class Dashboard : PanelFragment() {
      * @param data The fresh list of [Audio] items emitted by [DashboardViewModel.recommended].
      */
     private fun setupRecommendedGrid(data: List<Audio>) {
-        // Define the 4 exact patterns from your image
         val validPatterns = listOf(
-                intArrayOf(0, 4), // Pattern 1: Diagonal (Top-Left, Bottom-Right)
-                intArrayOf(1, 4), // Pattern 2: Stacked Right
-                intArrayOf(1, 3), // Pattern 3: Diagonal (Top-Right, Bottom-Left)
-                intArrayOf(0, 3)  // Pattern 4: Stacked Left
+                intArrayOf(0, 4),
+                intArrayOf(1, 4),
+                intArrayOf(1, 3),
+                intArrayOf(0, 3)
         )
 
-        // Randomly select one pattern
         val randomSpanPositions = validPatterns.random()
 
-        val layoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, 3) // Make sure this is 3!
+        val layoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, 3)
         layoutManager.spanSizeLookup = SpannedGridLayoutManager.SpanSizeLookup { position ->
-            if (position in randomSpanPositions) {
-                SpanSize(2, 2) // The "Pink" blocks in your image
-            } else {
-                SpanSize(1, 1) // The "Green" blocks in your image
-            }
+            if (position in randomSpanPositions) SpanSize(2, 2) else SpanSize(1, 1)
         }
 
         if (binding.recommendedGrid.adapter != null) {
@@ -227,8 +195,6 @@ class Dashboard : PanelFragment() {
             })
         }
 
-        // IMPORTANT: Update the grid's height to fit its content
-        // (otherwise the shuffle animation will cause it to collapse to zero height and disappear).
         binding.recommendedGrid.post {
             try {
                 binding.recommendedGrid.layoutParams.height =
@@ -237,9 +203,7 @@ class Dashboard : PanelFragment() {
                             binding.recommendedGrid.paddingBottom
                 binding.recommendedGrid.requestLayout()
             } catch (_: UninitializedPropertyAccessException) {
-                // This can occur if the user navigates away from the dashboard before the first
-                // data emission, causing the grid to be destroyed before the posted runnable executes.
-                // In this case, we can safely ignore the exception since the grid will no longer be visible.
+                // View was destroyed before the post executed; safely ignored.
             }
         }
 
@@ -270,27 +234,7 @@ class Dashboard : PanelFragment() {
                         updateFavorites(songs)
                     }
                 }
-                launch {
-                    ServerModeService.isRunning.collect { running ->
-                        updateServerToggleState(running)
-                    }
-                }
             }
-        }
-    }
-
-    /**
-     * Tints the server toggle button with the theme accent color when the server is running,
-     * and resets it to the default icon tint when it is stopped.
-     *
-     * @param running `true` if the HTTP server is currently active.
-     */
-    private fun updateServerToggleState(running: Boolean) {
-        if (running) {
-            binding.serverToggle.imageTintList =
-                ColorStateList.valueOf(ThemeManager.accent.primaryAccentColor)
-        } else {
-            binding.serverToggle.imageTintList = null
         }
     }
 
@@ -363,27 +307,7 @@ class Dashboard : PanelFragment() {
         }
     }
 
-    private fun navigateToPanel(panel: Panel) {
-        when (panel.titleResId) {
-            R.string.songs -> openFragment(Songs.newInstance(), Songs.TAG)
-            R.string.albums -> openFragment(Albums.newInstance(), Albums.TAG)
-            R.string.artists -> openFragment(Artists.newInstance(), Artists.TAG)
-            R.string.genres -> openFragment(Genres.newInstance(), Genres.TAG)
-            R.string.favorites -> openFragment(Favorites.newInstance(), Favorites.TAG)
-            R.string.playing_queue -> openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
-            R.string.recently_added -> openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
-            R.string.recently_played -> openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
-            R.string.most_played -> openFragment(MostPlayed.newInstance(), MostPlayed.TAG)
-            R.string.folders -> openFragment(Folders.newInstance(), Folders.TAG)
-            R.string.folders_hierarchy -> openFragment(FoldersHierarchy.newInstance(), FoldersHierarchy.TAG)
-            R.string.year -> openFragment(Year.newInstance(), Year.TAG)
-            R.string.preferences -> openFragment(Preferences.newInstance(), Preferences.TAG)
-        }
-    }
-
     override fun onDestroyView() {
-        // Null adapter references so they are cleanly re-created when the view is
-        // re-inflated after returning from another fragment (mirrors Songs.kt behavior).
         recentlyPlayedAdapter = null
         recentlyAddedAdapter = null
         favoritesAdapter = null
@@ -426,6 +350,6 @@ class Dashboard : PanelFragment() {
         /** Back-stack tag used when navigating to this fragment. */
         const val TAG = "Dashboard"
 
-        private const val PANEL_SPAN_COUNT = 4
+        private const val PANEL_SPAN_COUNT = 3
     }
 }

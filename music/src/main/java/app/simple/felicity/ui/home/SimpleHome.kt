@@ -16,27 +16,22 @@ import app.simple.felicity.databinding.HeaderHomeBinding
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.app.AppLabel.Companion.showAppLabel
 import app.simple.felicity.dialogs.home.SimpleHomeMenu.Companion.showHomeMenu
-import app.simple.felicity.extensions.fragments.PanelFragment
+import app.simple.felicity.extensions.fragments.BaseHomeFragment
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.MainPreferences
-import app.simple.felicity.ui.panels.Albums
-import app.simple.felicity.ui.panels.Artists
-import app.simple.felicity.ui.panels.Favorites
-import app.simple.felicity.ui.panels.Folders
-import app.simple.felicity.ui.panels.FoldersHierarchy
-import app.simple.felicity.ui.panels.Genres
-import app.simple.felicity.ui.panels.MostPlayed
-import app.simple.felicity.ui.panels.PlayingQueue
-import app.simple.felicity.ui.panels.Playlists
-import app.simple.felicity.ui.panels.Preferences
-import app.simple.felicity.ui.panels.RecentlyAdded
-import app.simple.felicity.ui.panels.RecentlyPlayed
-import app.simple.felicity.ui.panels.Songs
-import app.simple.felicity.ui.panels.Year
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 
-class SimpleHome : PanelFragment() {
+/**
+ * Simple home screen that displays all library panels in a scrollable list or grid.
+ *
+ * The header is managed by [AppHeader] and hides on downward scroll. The layout type
+ * (list vs. grid) and grid span count are driven by [HomePreferences] and update live
+ * when the user changes them through [SimpleHomeMenu].
+ *
+ * @author Hamza417
+ */
+class SimpleHome : BaseHomeFragment() {
 
     private lateinit var binding: FragmentHomeSimpleBinding
     private lateinit var headerBinding: HeaderHomeBinding
@@ -73,6 +68,8 @@ class SimpleHome : PanelFragment() {
             childFragmentManager.showHomeMenu()
         }
 
+        setupServerToggle(headerBinding.serverToggle)
+
         homeViewModel!!.getHomeData().observe(viewLifecycleOwner) { list ->
             adapterSimpleHome = AdapterSimpleHome(list)
             adapterSimpleHome!!.setLayoutType(HomePreferences.getHomeLayoutType())
@@ -88,53 +85,7 @@ class SimpleHome : PanelFragment() {
     private fun setupAdapterCallbacks() {
         adapterSimpleHome?.setAdapterSimpleHomeCallbacks(object : AdapterSimpleHomeCallbacks {
             override fun onItemClicked(panel: Panel, position: Int, view: View) {
-                when (panel.titleResId) {
-                    R.string.songs -> {
-                        openFragment(Songs.newInstance(), Songs.TAG)
-                    }
-                    R.string.albums -> {
-                        openFragment(Albums.newInstance(), Albums.TAG)
-                    }
-                    R.string.artists -> {
-                        openFragment(Artists.newInstance(), Artists.TAG)
-                    }
-                    R.string.genres -> {
-                        openFragment(Genres.newInstance(), Genres.TAG)
-                    }
-                    R.string.folders -> {
-                        openFragment(Folders.newInstance(), Folders.TAG)
-                    }
-                    R.string.folders_hierarchy -> {
-                        openFragment(FoldersHierarchy.newInstance(), FoldersHierarchy.TAG)
-                    }
-                    R.string.recently_added -> {
-                        openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
-                    }
-                    R.string.recently_played -> {
-                        openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
-                    }
-                    R.string.most_played -> {
-                        openFragment(MostPlayed.newInstance(), MostPlayed.TAG)
-                    }
-                    R.string.year -> {
-                        openFragment(Year.newInstance(), Year.TAG)
-                    }
-                    R.string.preferences -> {
-                        openFragment(Preferences.newInstance(), Preferences.TAG)
-                    }
-                    R.string.playing_queue -> {
-                        openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
-                    }
-                    R.string.favorites -> {
-                        openFragment(Favorites.newInstance(), Favorites.TAG)
-                    }
-                    R.string.playlists -> {
-                        openFragment(Playlists.newInstance(), Playlists.TAG)
-                    }
-                    else -> {
-                        // Handle other cases or show a message
-                    }
-                }
+                navigateToPanel(panel)
             }
         })
     }
@@ -197,6 +148,11 @@ class SimpleHome : PanelFragment() {
     }
 
     companion object {
+        /**
+         * Creates a new instance of [SimpleHome].
+         *
+         * @return A fresh [SimpleHome] fragment.
+         */
         fun newInstance(): SimpleHome {
             val args = Bundle()
             val fragment = SimpleHome()

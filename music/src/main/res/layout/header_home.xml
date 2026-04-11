@@ -33,15 +33,22 @@
             android:id="@+id/search"
             android:layout_gravity="center_vertical"
             android:layout_width="@dimen/button_size"
-            android:src="@drawable/ic_search"
-            android:layout_height="@dimen/button_size" />
+            android:layout_height="@dimen/button_size"
+            android:src="@drawable/ic_search" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/server_toggle"
+            android:layout_gravity="center_vertical"
+            android:layout_width="@dimen/button_size"
+            android:layout_height="@dimen/button_size"
+            android:src="@drawable/ic_wifi" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/menu"
             android:layout_gravity="center_vertical"
             android:layout_width="@dimen/button_size"
-            android:src="@drawable/ic_settings"
-            android:layout_height="@dimen/button_size" />
+            android:layout_height="@dimen/button_size"
+            android:src="@drawable/ic_settings" />
 
     </LinearLayout>
 

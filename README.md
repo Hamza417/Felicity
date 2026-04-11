@@ -1,6 +1,7 @@
 # Felicity
 
-*_Felicity_ is the third and final app of the three projects I had planned for my own learning, the first
+*_Felicity_ is the third and final app of the three projects I had planned for my own learning, the
+first
 two are [Positional](https://github.com/Hamza417/Positional)
 and [Inure App Manager](https://github.com/Hamza417/Inure).*
 
@@ -26,6 +27,7 @@ future.
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Hamza417/Felicity/build_preview.yml?branch=master&logo=github&logoColor=white&label=build%20(preview)&color=white)](https://github.com/Hamza417/Felicity/actions/workflows/build_preview.yml)
 
 ## Purchase
+
 [![](https://img.shields.io/badge/License%20Key%20(GumRoad)-Purchase-23a094?logo=gumroad&logoColor=white)](https://hamza417.gumroad.com/l/Felicity/EARLY_ACCESS)
 
 ## Features
@@ -33,7 +35,9 @@ future.
 ### Custom Audio Engine
 
 - **Dual Decoder** utilizing both hardware and software decoding through FFmpeg.
-- **Custom DSP:** The entire audio processing chain (EQ, Bass, Reverb) is written in C++ via JNI. It utilizes ARM NEON SIMD auto-vectorization to process audio arrays with absolute minimum CPU overhead.
+- **Custom DSP:** The entire audio processing chain (EQ, Bass, Reverb) is written in C++ via JNI. It
+  utilizes ARM NEON SIMD auto-vectorization to process audio arrays with absolute minimum CPU
+  overhead.
     - Supports bass, treble and more.
     - Native downmixing support to pass multichannel audio to stereo output.
 - **Advanced Effects:** Integrated spatial effects including stereo widening and tape saturation for
@@ -61,7 +65,8 @@ future.
   LrcLib.
 - **Dual Fast Scroll:** Simultaneous support for both slide to scroll and jump to letter fast
   scroll.
-- **Realtime Audio Visualizer:** A lock-free, zero-allocation visualizer rendering on the Canvas at native fps, powered by a native PFFFT implementation.
+- **Realtime Audio Visualizer:** A lock-free, zero-allocation visualizer rendering on the Canvas at
+  native fps, powered by a native PFFFT implementation.
 
 ### Library Management
 
@@ -71,7 +76,8 @@ future.
   and USB drives.
 - **Auto Scanning:** The app automatically scans for new music files and updates the library without
   requiring manual refreshes.
-- **Server Mode:** Host Felicity as a local server to create a central music library for all local and possibly remote devices through Wi-Fi.
+- **Server Mode:** Host Felicity as a local server to create a central music library for all local
+  and possibly remote devices through Wi-Fi.
 
 ### Smart Core
 
@@ -106,12 +112,17 @@ This feature list is not exhaustive and only main features are listed.
 
 The development release sequence will be like
 
-- Preview release (preview is made available to the early users and have the app available to try in the public domain, there are 10 previews planned).
-- Alpha release (alpha testing will be done after almost every feature I have planned has been added)
-- Beta release (app is stable enough to be moved to pre-release stage, this stage should be where app is released on various app stores.)
+- Preview release (preview is made available to the early users and have the app available to try in
+  the public domain, there are 10 previews planned).
+- Alpha release (alpha testing will be done after almost every feature I have planned has been
+  added)
+- Beta release (app is stable enough to be moved to pre-release stage, this stage should be where
+  app is released on various app stores.)
 - Release (app should be released for everyone)
 
-F-Droid release is currently not sure, the Glide library is breaking the reproducible build and I have submitted a PR to fix that but it has not been addressed yet at the time of writing this. See bumptech/glide#5657
+F-Droid release is currently not sure, the Glide library is breaking the reproducible build and I
+have submitted a PR to fix that but it has not been addressed yet at the time of writing this. See
+bumptech/glide#5657
 
 ## Screenshots
 
@@ -127,10 +138,15 @@ Last Updated: 10 April 2026
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/18.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/19.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/20.png) |
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/21.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/22.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/23.png) |
 
-|                                                                      |
+| Artflow Interface                                                    |
 |----------------------------------------------------------------------|
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/09.png) |
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/10.png) |
+
+| Server Webpage                        |
+|---------------------------------------|
+| ![](/screenshots/server_01_dark.png)  |
+| ![](/screenshots/server_01_light.png) |
 
 ## License
 

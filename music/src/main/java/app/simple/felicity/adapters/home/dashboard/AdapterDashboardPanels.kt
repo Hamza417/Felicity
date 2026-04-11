@@ -1,79 +1,41 @@
 package app.simple.felicity.adapters.home.dashboard
 
-import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import app.simple.felicity.R
-import app.simple.felicity.databinding.AdapterDashboardExpandBinding
-import app.simple.felicity.databinding.AdapterDashboardPanelBinding
+import app.simple.felicity.databinding.AdapterHomeSimpleGridBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 
 /**
  * Adapter for the panel navigation grid shown in the dashboard browse section.
  *
- * Renders up to [firstPanels] items by default, followed by an eighth expand item.
- * When the expand item is tapped the adapter reveals the full [allPanels] list inline
- * and swaps the expand icon for a collapse icon — no navigation occurs.
+ * Displays all [panels] at once using the same grid item layout as the Simple Home
+ * screen. There is no expand/collapse button; every panel is always visible.
  *
- * @param firstPanels The initial subset of panels to display (typically seven items).
- * @param allPanels   The complete panel list revealed after the user taps expand.
+ * @param panels The complete list of [Panel] items to display in the grid.
  * @author Hamza417
  */
 class AdapterDashboardPanels(
-        private val firstPanels: List<Panel>,
-        private val allPanels: List<Panel>
-) : RecyclerView.Adapter<VerticalListViewHolder>() {
+        private val panels: List<Panel>
+) : RecyclerView.Adapter<AdapterDashboardPanels.PanelHolder>() {
 
     private var callbacks: AdapterDashboardPanelsCallbacks? = null
 
-    /** Whether the full panel list is currently shown. */
-    private var isExpanded = false
-
-    private val activePanels: List<Panel>
-        get() = if (isExpanded) allPanels else firstPanels
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
-        val inflater = LayoutInflater.from(parent.context)
-        return when (viewType) {
-            VIEW_TYPE_EXPAND -> ExpandHolder(
-                    AdapterDashboardExpandBinding.inflate(inflater, parent, false))
-            else -> PanelHolder(
-                    AdapterDashboardPanelBinding.inflate(inflater, parent, false))
-        }
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PanelHolder {
+        return PanelHolder(
+                AdapterHomeSimpleGridBinding.inflate(
+                        LayoutInflater.from(parent.context), parent, false))
     }
 
-    override fun getItemCount(): Int = activePanels.size + 1
+    override fun getItemCount(): Int = panels.size
 
-    override fun getItemViewType(position: Int): Int {
-        return if (position < activePanels.size) VIEW_TYPE_PANEL else VIEW_TYPE_EXPAND
-    }
-
-    @SuppressLint("NotifyDataSetChanged")
-    override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
-        when (holder) {
-            is PanelHolder -> {
-                val element = activePanels[position]
-                holder.binding.icon.setImageResource(element.iconResId)
-                holder.binding.title.text = holder.itemView.context.getString(element.titleResId)
-                holder.binding.container.setOnClickListener {
-                    callbacks?.onPanelClicked(activePanels[holder.bindingAdapterPosition])
-                }
-            }
-            is ExpandHolder -> {
-                if (isExpanded) {
-                    holder.binding.icon.setImageResource(R.drawable.ic_fold)
-                    holder.binding.title.setText(R.string.less)
-                } else {
-                    holder.binding.icon.setImageResource(R.drawable.ic_unfold)
-                    holder.binding.title.setText(R.string.more)
-                }
-                holder.binding.container.setOnClickListener {
-                    isExpanded = !isExpanded
-                    notifyDataSetChanged()
-                }
-            }
+    override fun onBindViewHolder(holder: PanelHolder, position: Int) {
+        val panel = panels[position]
+        holder.binding.icon.setImageResource(panel.iconResId)
+        holder.binding.title.text = holder.itemView.context.getString(panel.titleResId)
+        holder.binding.container.setOnClickListener {
+            callbacks?.onPanelClicked(panels[holder.bindingAdapterPosition])
         }
     }
 
@@ -86,16 +48,10 @@ class AdapterDashboardPanels(
         this.callbacks = callbacks
     }
 
-    inner class PanelHolder(val binding: AdapterDashboardPanelBinding) :
-            VerticalListViewHolder(binding.root)
-
-    inner class ExpandHolder(val binding: AdapterDashboardExpandBinding) :
+    inner class PanelHolder(val binding: AdapterHomeSimpleGridBinding) :
             VerticalListViewHolder(binding.root)
 
     companion object {
-        private const val VIEW_TYPE_PANEL = 0
-        private const val VIEW_TYPE_EXPAND = 1
-
         /**
          * Callback interface for panel grid interactions.
          */
