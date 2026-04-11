@@ -106,5 +106,19 @@
 
     </LinearLayout>
 
+    <app.simple.felicity.decorations.theme.ThemeDivider
+        android:layout_width="match_parent"
+        android:layout_height="1px" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:text="@string/selection_desc"
+        android:padding="@dimen/padding_10"
+        android:layout_margin="@dimen/padding_10"
+        android:textSize="@dimen/text_size_12"
+        app:appFontStyle="regular"
+        app:textColorStyle="tertiary" />
+
 </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
 

@@ -90,13 +90,9 @@ class HighlightImageButton @JvmOverloads constructor(
             applyRippleForeground()
             applyIconTint()
 
-            // No background insets — we manage the background ourselves.
-            setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom)
-
             // Remove the default image button border/background shadow so only our
             // pill background shows through.
             setBackgroundDrawable(background)
-            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
         }
     }
 

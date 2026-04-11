@@ -44,7 +44,7 @@ object SelectionManager {
      */
     fun select(audio: Audio) {
         if (_selectedAudios.value.any { it.id == audio.id }) return
-        _selectedAudios.value = _selectedAudios.value + audio
+        _selectedAudios.value += audio
     }
 
     /**

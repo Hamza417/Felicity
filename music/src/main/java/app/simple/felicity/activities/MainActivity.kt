@@ -14,6 +14,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.core.app.ShareCompat
 import androidx.core.content.FileProvider
@@ -198,6 +199,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         lifecycleScope.launch {
             SelectionManager.selectedAudios.collect { selected ->
                 updateActionBar(selected)
+                binding.selectionCount.setSelectedSongsSize(selected.size)
             }
         }
 
@@ -234,6 +236,10 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         }
 
         binding.actionMore.setOnClickListener {
+            showSelectionMenu()
+        }
+
+        binding.selectionCount.setOnClickListener {
             showSelectionMenu()
         }
 
@@ -451,9 +457,8 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         SimpleDialog.Builder(
                 container = binding.appContainer,
                 inflateBinding = DialogSelectionMenuBinding::inflate)
-            .onViewCreated { dialogBinding ->
-                dialogBinding.selectionCount.text = getString(
-                        R.string.x_songs_selected, selected.size)
+            .onViewCreated { binding ->
+                binding.selectionCount.setSelectedSongsSize(selected.size)
             }
             .onDialogInflated { dialogBinding, dismiss, _ ->
                 dialogBinding.deleteAll.setOnClickListener {
@@ -613,6 +618,10 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         lifecycleScope.launch(Dispatchers.IO) {
             PlaybackStateManager.saveCurrentPlaybackState(applicationContext, "MainActivity")
         }
+    }
+
+    private fun TextView.setSelectedSongsSize(size: Int) {
+        text = resources.getQuantityString(R.plurals.songs_selected, size, size)
     }
 
     override fun onNewIntent(intent: Intent) {

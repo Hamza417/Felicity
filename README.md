@@ -1,16 +1,12 @@
 # Felicity
 
 *_Felicity_ is the third and final app of the three projects I had planned for my own learning, the
-first
-two are [Positional](https://github.com/Hamza417/Positional)
+first two are [Positional](https://github.com/Hamza417/Positional)
 and [Inure App Manager](https://github.com/Hamza417/Inure).*
 
 The development of the app has started and if you've used the first two apps you might want to join
 the [Telegram Channel](https://t.me/felicity_music_player) and become the part of the whole initial
 development process.
-
-I am taking my time developing it because I want it to exceed my own expectations and by that I mean
-the quality of the software. I hope you are patient enough until the first few results :)
 
 The project will be developed under the codename Felicity, the final name maybe updated in the
 future.
@@ -122,12 +118,12 @@ The development release sequence will be like
 - Release (app should be released for everyone)
 
 F-Droid release is currently not sure, the Glide library is breaking the reproducible build and I
-have submitted a PR to fix that but it has not been addressed yet at the time of writing this. See
+have submitted a PR to fix that, but it has not been addressed yet at the time of writing this. See
 bumptech/glide#5657
 
 ## Screenshots
 
-Last Updated: 10 April 2026
+Last Updated: 11 April 2026
 
 |                                                                      |                                                                      |                                                                      |
 |----------------------------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------|
@@ -138,7 +134,7 @@ Last Updated: 10 April 2026
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/15.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/16.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/17.png) |
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/18.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/19.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/20.png) |
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/21.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/22.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/23.png) |
-| ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/24.png) |                                                                      |                                                                      |
+| ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/24.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/25.png) |                                                                      |
 
 | Artflow Interface                                                    |
 |----------------------------------------------------------------------|

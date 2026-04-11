@@ -111,7 +111,6 @@
     <string name="add_to_selection">Add to Selection</string>
     <string name="remove_from_selection">Remove from Selection</string>
     <string name="clear_selection">Clear Selection</string>
-    <string name="x_songs_selected">%1$d songs selected</string>
     <string name="spacing_summary">Adjust spaces between items in various lists of the app.</string>
     <string name="name">Name</string>
     <string name="last_year">Last Year</string>
@@ -398,4 +397,5 @@
     <string name="simple_ui_desc">Simple and flat player UI suitable for most normal users.</string>
     <string name="faded_ui_desc">Faded album art with immersive ambience, best used in dark modes.</string>
     <string name="sync_adjust_desc">Adjusting sync here will update the timestamps in the LRC file itself.</string>
+    <string name="selection_desc">Selection mode is global. You can navigate the app to select tracks from any album or playlist. To exit, tap Clear Selection.</string>
 </resources>

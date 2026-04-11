@@ -499,7 +499,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             if (SelectionManager.isSelected(audio)) {
                 binding.addToSelection.text = getString(R.string.remove_from_selection)
                 binding.addToSelection.setCompoundDrawablesWithIntrinsicBounds(
-                        AppCompatResources.getDrawable(requireContext(), R.drawable.ic_close),
+                        AppCompatResources.getDrawable(requireContext(), R.drawable.ic_cross_16dp),
                         null, null, null)
             }
         }
