@@ -26,7 +26,7 @@ future.
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Hamza417/Felicity/build_preview.yml?branch=master&logo=github&logoColor=white&label=build%20(preview)&color=white)](https://github.com/Hamza417/Felicity/actions/workflows/build_preview.yml)
 
 ## Purchase
-[![](https://img.shields.io/badge/License%20Key%20(GumRoad)-Purchase-23a094?logo=gumroad&logoColor=white)](https://hamza417.gumroad.com/l/Felicity/i3gezju)
+[![](https://img.shields.io/badge/License%20Key%20(GumRoad)-Purchase-23a094?logo=gumroad&logoColor=white)](https://hamza417.gumroad.com/l/Felicity/EARLY_ACCESS)
 
 ## Features
 
