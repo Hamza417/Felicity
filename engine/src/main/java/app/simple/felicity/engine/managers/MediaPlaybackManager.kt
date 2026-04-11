@@ -17,6 +17,7 @@ import app.simple.felicity.engine.managers.MediaPlaybackManager.next
 import app.simple.felicity.engine.managers.MediaPlaybackManager.notifyCurrentPosition
 import app.simple.felicity.engine.managers.MediaPlaybackManager.notifyPlaybackState
 import app.simple.felicity.engine.managers.MediaPlaybackManager.pendingSeekPositions
+import app.simple.felicity.engine.managers.MediaPlaybackManager.playNext
 import app.simple.felicity.engine.managers.MediaPlaybackManager.previous
 import app.simple.felicity.engine.managers.MediaPlaybackManager.removeQueueItemSilently
 import app.simple.felicity.engine.managers.MediaPlaybackManager.setSongs
@@ -668,6 +669,10 @@ object MediaPlaybackManager {
             setSongs(newList, 0)
         } else {
             songs = newList
+            // Guard the appended position against spurious ExoPlayer transition callbacks
+            // that fire when addMediaItem triggers a state change (e.g. from STATE_ENDED).
+            val addedAt = newList.size - 1
+            pendingSeekPositions.add(addedAt)
             scope.launch {
                 val uri = File(audio.path).toUri()
                 val mediaItem = MediaItem.Builder()
@@ -721,6 +726,9 @@ object MediaPlaybackManager {
         } else {
             newList.add(insertAt, audio)
             songs = newList
+            // Guard the inserted position against spurious ExoPlayer transition callbacks
+            // that fire when addMediaItem triggers a state change (e.g. from STATE_ENDED).
+            pendingSeekPositions.add(insertAt)
 
             scope.launch {
                 val uri = File(audio.path).toUri()
@@ -735,6 +743,73 @@ object MediaPlaybackManager {
                     )
                     .build()
                 mediaController?.addMediaItem(insertAt, mediaItem)
+            }
+            scope.launch {
+                _songListFlow.emit(songs)
+            }
+        }
+    }
+
+    /**
+     * Inserts [audio] immediately after the currently playing song, seeks to it, and starts
+     * playback. If the song already exists in the queue it is moved to that position instead
+     * of being duplicated. If the queue is empty the song becomes the only item and plays
+     * from the start.
+     *
+     * Unlike [playNext], this function immediately seeks and plays the inserted song.
+     *
+     * @param audio The [Audio] track to insert and play.
+     * @author Hamza417
+     */
+    fun insertAndPlay(audio: Audio) {
+        val newList = songs.toMutableList()
+
+        if (newList.isEmpty()) {
+            setSongs(mutableListOf(audio), 0, autoPlay = true)
+            return
+        }
+
+        val insertAt = (currentSongPosition + 1).coerceAtMost(newList.size)
+        val existingIndex = newList.indexOfFirst { it.id == audio.id }
+
+        if (existingIndex != -1) {
+            // Song already exists in the queue — move it, then seek and play.
+            if (existingIndex == currentSongPosition + 1) {
+                // Already right after the current song; just seek and play.
+                updatePosition(existingIndex, forcePlay = true)
+                return
+            }
+            val targetIndex = if (existingIndex < insertAt) {
+                (insertAt - 1).coerceAtMost((newList.size - 1).coerceAtLeast(0))
+            } else {
+                insertAt.coerceAtMost((newList.size - 1).coerceAtLeast(0))
+            }
+            moveQueueItemSilently(existingIndex, targetIndex)
+            updatePosition(targetIndex, forcePlay = true)
+        } else {
+            // New song — insert, seek, and play.
+            newList.add(insertAt, audio)
+            songs = newList
+            lastNavigationDirection = true
+            currentSongPosition = insertAt
+            pendingSeekPositions.add(insertAt)
+
+            scope.launch {
+                val uri = File(audio.path).toUri()
+                val mediaItem = MediaItem.Builder()
+                    .setMediaId(audio.id.toString())
+                    .setUri(uri)
+                    .setMediaMetadata(
+                            MediaMetadata.Builder()
+                                .setArtist(audio.artist)
+                                .setTitle(audio.title)
+                                .build()
+                    )
+                    .build()
+                mediaController?.addMediaItem(insertAt, mediaItem)
+                mediaController?.seekTo(insertAt, 0L)
+                mediaController?.play()
+                startSeekPositionUpdates()
             }
             scope.launch {
                 _songListFlow.emit(songs)

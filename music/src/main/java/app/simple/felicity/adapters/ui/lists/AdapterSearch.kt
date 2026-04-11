@@ -387,7 +387,7 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
             }
             binding.container.setOnLongClickListener {
                 if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
-                    generalAdapterCallbacks?.onAlbumLongClicked(albums, albums.indexOf(album), it)
+                    generalAdapterCallbacks?.onAlbumLongClicked(albums, albums.indexOf(album), binding.cover)
                 }
                 true
             }
@@ -422,7 +422,7 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
             }
             binding.container.setOnLongClickListener {
                 if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
-                    generalAdapterCallbacks?.onArtistLongClicked(artists, artists.indexOf(artist), it)
+                    generalAdapterCallbacks?.onArtistLongClicked(artists, artists.indexOf(artist), binding.cover)
                 }
                 true
             }

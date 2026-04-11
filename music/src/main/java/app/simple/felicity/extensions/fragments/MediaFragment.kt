@@ -25,6 +25,8 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.core.maths.Number.toNegative
+import app.simple.felicity.databinding.DialogAlbumMenuBinding
+import app.simple.felicity.databinding.DialogArtistMenuBinding
 import app.simple.felicity.databinding.DialogDeleteSongBinding
 import app.simple.felicity.databinding.DialogEditPlaylistBinding
 import app.simple.felicity.databinding.DialogPlaylistMenuBinding
@@ -500,6 +502,12 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 dismiss()
             }
 
+            binding.insertAndPlay.setOnClickListener {
+                MediaPlaybackManager.insertAndPlay(audio)
+                openDefaultPlayer()
+                dismiss()
+            }
+
             binding.addToPlaylist.setOnClickListener {
                 parentFragmentManager.showAddToPlaylistDialog(audio)
                 dismiss()
@@ -955,6 +963,230 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             AudioDatabase.getInstance(requireContext()).playlistDao().deletePlaylist(item.playlist)
             Log.d(TAG, "Playlist deleted: ${item.playlist.name}")
         }
+    }
+
+    /**
+     * Opens the album context menu dialog for the given [album], mirroring the structure of
+     * [openPlaylistMenu]. When [imageView] is supplied the dialog animates in with a shared
+     * image transition; otherwise a plain fade is used.
+     *
+     * Songs belonging to this album are fetched lazily from [Album.songPaths] on the IO
+     * dispatcher only when a playback or share action is tapped, avoiding the cost of loading
+     * full [Audio] objects upfront for every item in the album list.
+     *
+     * Available actions: Play, Shuffle, Add All to Queue, Go to Artist, Share.
+     *
+     * @param album     The [Album] whose metadata populates the menu header.
+     * @param imageView Optional source [ImageView] for the shared-element transition.
+     */
+    protected fun openAlbumMenu(album: Album, imageView: ImageView?) {
+        val onViewCreated: (DialogAlbumMenuBinding) -> Unit = { binding ->
+            miniPlayerCallbacks?.onHideMiniPlayer()
+            binding.title.text = album.name
+            binding.secondaryDetail.text = album.artist
+            binding.tertiaryDetail.text = getString(R.string.x_songs, album.songCount)
+            if (imageView == null) {
+                binding.cover.loadArtCoverWithPayload(album)
+            }
+        }
+
+        val onDialogInflated: (DialogAlbumMenuBinding, () -> Unit, () -> Unit) -> Unit = { binding, dismiss, dismissImmediately ->
+            binding.play.setOnClickListener {
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val songs = fetchAudiosByPaths(album.songPaths)
+                    if (songs.isNotEmpty()) setMediaItems(songs.toMutableList(), 0)
+                }
+                dismiss()
+            }
+
+            binding.shuffle.setOnClickListener {
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val songs = fetchAudiosByPaths(album.songPaths)
+                    if (songs.isNotEmpty()) shuffleMediaItems(songs)
+                }
+                dismiss()
+            }
+
+            binding.addAllToQueue.setOnClickListener {
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val songs = fetchAudiosByPaths(album.songPaths)
+                    songs.forEach { MediaPlaybackManager.addToQueue(it) }
+                }
+                dismiss()
+            }
+
+            binding.goToArtist.setOnClickListener {
+                val artistName = album.artist ?: return@setOnClickListener
+                val artist = Artist(
+                        id = album.artistId,
+                        name = artistName,
+                        albumCount = 0,
+                        trackCount = album.songCount
+                )
+                openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
+                dismissImmediately()
+            }
+
+            binding.share.setOnClickListener {
+                dismiss()
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val songs = fetchAudiosByPaths(album.songPaths)
+                    if (songs.isNotEmpty()) shareAudioList(songs)
+                }
+            }
+        }
+
+        val onDismissCallback: () -> Unit = {
+            miniPlayerCallbacks?.onShowMiniPlayer()
+        }
+
+        if (imageView != null) {
+            SimpleSharedImageDialog.Builder(
+                    container = requireContainerView(),
+                    sourceImageView = imageView,
+                    inflateBinding = DialogAlbumMenuBinding::inflate,
+                    targetImageViewProvider = { it.cover })
+                .onViewCreated(onViewCreated)
+                .onDialogInflated(onDialogInflated)
+                .onDismiss(onDismissCallback)
+                .setWidthRatio(getDialogWidthRation())
+                .build()
+                .show()
+        } else {
+            SimpleDialog.Builder(
+                    container = requireContainerView(),
+                    inflateBinding = DialogAlbumMenuBinding::inflate)
+                .onViewCreated(onViewCreated)
+                .onDialogInflated(onDialogInflated)
+                .onDismiss(onDismissCallback)
+                .setWidthRatio(getDialogWidthRation())
+                .build()
+                .show()
+        }
+    }
+
+    /**
+     * Opens the artist context menu dialog for the given [artist], mirroring the structure of
+     * [openAlbumMenu]. When [imageView] is supplied the dialog animates in with a shared image
+     * transition; otherwise a plain fade is used.
+     *
+     * Available actions: Play, Shuffle, Add All to Queue, Share.
+     *
+     * @param artist    The [Artist] whose metadata populates the menu header.
+     * @param imageView Optional source [ImageView] for the shared-element transition.
+     */
+    protected fun openArtistMenu(artist: Artist, imageView: ImageView?) {
+        val onViewCreated: (DialogArtistMenuBinding) -> Unit = { binding ->
+            miniPlayerCallbacks?.onHideMiniPlayer()
+            binding.title.text = artist.name
+            binding.secondaryDetail.text = getString(R.string.x_albums, artist.albumCount)
+            binding.tertiaryDetail.text = getString(R.string.x_songs, artist.trackCount)
+            if (imageView == null) {
+                binding.cover.loadArtCoverWithPayload(artist)
+            }
+        }
+
+        val onDialogInflated: (DialogArtistMenuBinding, () -> Unit, () -> Unit) -> Unit = { binding, dismiss, _ ->
+            binding.play.setOnClickListener {
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val songs = fetchAudiosByPaths(artist.songPaths)
+                    if (songs.isNotEmpty()) setMediaItems(songs.toMutableList(), 0)
+                }
+                dismiss()
+            }
+
+            binding.shuffle.setOnClickListener {
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val songs = fetchAudiosByPaths(artist.songPaths)
+                    if (songs.isNotEmpty()) shuffleMediaItems(songs)
+                }
+                dismiss()
+            }
+
+            binding.addAllToQueue.setOnClickListener {
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val songs = fetchAudiosByPaths(artist.songPaths)
+                    songs.forEach { MediaPlaybackManager.addToQueue(it) }
+                }
+                dismiss()
+            }
+
+            binding.share.setOnClickListener {
+                dismiss()
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val songs = fetchAudiosByPaths(artist.songPaths)
+                    if (songs.isNotEmpty()) shareAudioList(songs)
+                }
+            }
+        }
+
+        val onDismissCallback: () -> Unit = {
+            miniPlayerCallbacks?.onShowMiniPlayer()
+        }
+
+        if (imageView != null) {
+            SimpleSharedImageDialog.Builder(
+                    container = requireContainerView(),
+                    sourceImageView = imageView,
+                    inflateBinding = DialogArtistMenuBinding::inflate,
+                    targetImageViewProvider = { it.cover })
+                .onViewCreated(onViewCreated)
+                .onDialogInflated(onDialogInflated)
+                .onDismiss(onDismissCallback)
+                .setWidthRatio(getDialogWidthRation())
+                .build()
+                .show()
+        } else {
+            SimpleDialog.Builder(
+                    container = requireContainerView(),
+                    inflateBinding = DialogArtistMenuBinding::inflate)
+                .onViewCreated(onViewCreated)
+                .onDialogInflated(onDialogInflated)
+                .onDismiss(onDismissCallback)
+                .setWidthRatio(getDialogWidthRation())
+                .build()
+                .show()
+        }
+    }
+
+    /**
+     * Fetches full [Audio] objects for the given list of file [paths] from the local database.
+     * Runs on the IO dispatcher and silently skips any path whose record is not found.
+     *
+     * @param paths The ordered list of file paths to resolve.
+     * @return Resolved [Audio] objects in the same order as [paths], with missing entries omitted.
+     */
+    private suspend fun fetchAudiosByPaths(paths: List<String>): List<Audio> {
+        return withContext(Dispatchers.IO) {
+            val dao = AudioDatabase.getInstance(requireContext()).audioDao()
+                ?: return@withContext emptyList<Audio>()
+            paths.mapNotNull { path -> dao.getAudioByPath(path) }
+        }
+    }
+
+    /**
+     * Shares all [audios] as a multi-file send intent using [FileProvider] URIs.
+     * Silently skips any file whose URI cannot be resolved.
+     *
+     * @param audios The list of [Audio] tracks to share.
+     */
+    private fun shareAudioList(audios: List<Audio>) {
+        val uris = audios.mapNotNull { audio ->
+            runCatching {
+                FileProvider.getUriForFile(
+                        requireContext(),
+                        "${requireContext().packageName}.provider",
+                        File(audio.path)
+                )
+            }.getOrNull()
+        }
+        if (uris.isEmpty()) return
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
+            type = "audio/*"
+            putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, ArrayList(uris))
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(android.content.Intent.createChooser(intent, getString(R.string.send)))
     }
 
     override val wantsMiniPlayerVisible: Boolean

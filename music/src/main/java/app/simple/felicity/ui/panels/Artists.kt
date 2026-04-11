@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterArtists
@@ -93,6 +94,11 @@ class Artists : BasePanelFragment() {
             adapterArtists?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {
                     openFragment(ArtistPage.newInstance(artists[position]), ArtistPage.TAG)
+                }
+
+                override fun onArtistLongClicked(artists: List<Artist>, position: Int, imageView: ImageView?) {
+                    val artist = artists.getOrNull(position) ?: return
+                    openArtistMenu(artist, imageView)
                 }
             })
             binding.recyclerView.adapter = adapterArtists

@@ -130,7 +130,7 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
             if (isLightBind) return
             binding.cover.loadArtCoverWithPayload(album)
             binding.container.setOnLongClickListener {
-                generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)
+                generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, binding.cover)
                 true
             }
             binding.container.setOnClickListener {
@@ -147,7 +147,7 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
             if (isLightBind) return
             binding.albumArt.loadArtCoverWithPayload(album)
             binding.container.setOnLongClickListener {
-                generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)
+                generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, binding.albumArt)
                 true
             }
             binding.container.setOnClickListener {
@@ -163,7 +163,7 @@ class AdapterAlbums(initial: List<Album>) : FastScrollAdapter<VerticalListViewHo
             binding.secondaryDetail.setTextOrUnknown(context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount))
             if (isLightBind) return
             binding.container.setOnLongClickListener {
-                generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, it)
+                generalAdapterCallbacks?.onAlbumLongClicked(albums, bindingAdapterPosition, null)
                 true
             }
             binding.container.setOnClickListener {

@@ -41,7 +41,7 @@ public interface GeneralAdapterCallbacks {
     
     }
     
-    default void onArtistLongClicked(@NonNull List <Artist> artist, int position, @NonNull View view) {
+    default void onArtistLongClicked(@NonNull List <Artist> artists, int position, @Nullable ImageView imageView) {
     
     }
     
@@ -49,7 +49,7 @@ public interface GeneralAdapterCallbacks {
     
     }
     
-    default void onAlbumLongClicked(List <Album> albums, int position, View view) {
+    default void onAlbumLongClicked(List <Album> albums, int position, @Nullable ImageView imageView) {
     
     }
     

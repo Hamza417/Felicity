@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.corners.DynamicCornerLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:padding="@dimen/padding_15">
+
+        <ImageView
+            android:id="@+id/cover"
+            android:layout_width="@dimen/album_art_dimen"
+            android:layout_height="@dimen/album_art_dimen"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:ignore="ContentDescription" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:layout_marginTop="8dp"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:textSize="@dimen/text_size_16"
+            app:appFontStyle="bold"
+            app:layout_constraintBottom_toTopOf="@+id/secondary_detail"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/cover"
+            app:layout_constraintTop_toTopOf="@+id/cover"
+            app:layout_constraintVertical_chainStyle="packed"
+            app:textColorStyle="primary" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/secondary_detail"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="@dimen/desc_text_size"
+            app:appFontStyle="regular"
+            app:layout_constraintBottom_toTopOf="@+id/tertiary_detail"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/cover"
+            app:layout_constraintTop_toBottomOf="@+id/title"
+            app:textColorStyle="accent" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/tertiary_detail"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:layout_marginHorizontal="10dp"
+            android:textSize="@dimen/desc_text_size"
+            app:appFontStyle="regular"
+            app:layout_constraintBottom_toBottomOf="@+id/cover"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/cover"
+            app:layout_constraintTop_toBottomOf="@+id/secondary_detail"
+            app:textColorStyle="secondary" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <app.simple.felicity.decorations.theme.ThemeDivider
+        android:layout_width="match_parent"
+        android:layout_height="1px" />
+
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:fadingEdge="vertical"
+            android:requiresFadingEdge="vertical"
+            android:fadingEdgeLength="@dimen/padding_20"
+            android:padding="@dimen/padding_10"
+            android:clipToPadding="false"
+            android:layout_height="wrap_content"
+            app:layout_behavior="app.simple.felicity.decorations.behaviors.OverScrollBehavior">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Play and Shuffle row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+                        android:id="@+id/play"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:layout_marginEnd="@dimen/gap"
+                        android:padding="@dimen/padding_10"
+                        android:text="@string/play"
+                        android:textSize="@dimen/text_size_14"
+                        android:drawablePadding="@dimen/padding_10"
+                        app:appFontStyle="bold"
+                        app:drawableStartCompat="@drawable/ic_play_16dp"
+                        app:drawableTintStyle="regular"
+                        app:textColorStyle="primary" />
+
+                    <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+                        android:id="@+id/shuffle"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:padding="@dimen/padding_10"
+                        android:text="@string/shuffle"
+                        android:textSize="@dimen/text_size_14"
+                        android:drawablePadding="@dimen/padding_10"
+                        app:appFontStyle="bold"
+                        app:drawableStartCompat="@drawable/ic_shuffle_16dp"
+                        app:drawableTintStyle="regular"
+                        app:textColorStyle="primary" />
+
+                </LinearLayout>
+
+                <!-- Add All to Queue -->
+                <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+                    android:id="@+id/add_all_to_queue"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:padding="@dimen/padding_10"
+                    android:text="@string/add_all_to_queue"
+                    android:textSize="@dimen/text_size_14"
+                    android:drawablePadding="@dimen/padding_10"
+                    app:appFontStyle="bold"
+                    app:drawableStartCompat="@drawable/ic_queue_16dp"
+                    app:drawableTintStyle="regular"
+                    app:textColorStyle="primary" />
+
+                <app.simple.felicity.decorations.theme.ThemeDivider
+                    android:layout_width="match_parent"
+                    android:layout_height="1px"
+                    android:layout_marginVertical="@dimen/padding_5" />
+
+                <!-- Share -->
+                <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+                    android:id="@+id/share"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:padding="@dimen/padding_10"
+                    android:text="@string/send"
+                    android:textSize="@dimen/text_size_14"
+                    android:drawablePadding="@dimen/padding_10"
+                    app:appFontStyle="bold"
+                    app:drawableStartCompat="@drawable/ic_send_16dp"
+                    app:drawableTintStyle="regular"
+                    app:textColorStyle="primary" />
+
+            </LinearLayout>
+
+        </androidx.core.widget.NestedScrollView>
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+</app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+
