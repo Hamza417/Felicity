@@ -23,11 +23,9 @@
 
             <app.simple.felicity.decorations.typeface.TypeFaceTextView
                 android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:paddingHorizontal="@dimen/padding_15"
-                android:paddingTop="@dimen/padding_15"
+                android:layout_height="wrap_content"
+                android:padding="@dimen/padding_15"
                 android:text="@string/list_style"
-                android:paddingBottom="@dimen/padding_10"
                 android:textSize="@dimen/text_size_14"
                 app:appFontStyle="bold"
                 app:textColorStyle="primary" />
