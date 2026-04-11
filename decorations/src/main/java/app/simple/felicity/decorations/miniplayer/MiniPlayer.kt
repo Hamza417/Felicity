@@ -37,6 +37,8 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.ColorInt
+import androidx.core.graphics.ColorUtils
+import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.graphics.withClip
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -44,6 +46,7 @@ import androidx.core.view.marginBottom
 import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decorations.itemdecorations.FooterSpacingItemDecoration
+import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.ACTION_BTN_MAX_COUNT
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.ARTIST_TEXT_SIZE_SP
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.DEFAULT_ELEVATION_DP
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.PAINT_SHADOW_DY_DP
@@ -233,6 +236,25 @@ class MiniPlayer @JvmOverloads constructor(
 
         /** Downward Y offset in dp for the paint-shadow card background. */
         private const val PAINT_SHADOW_DY_DP = 0f
+
+        // Action button constants — feel free to tweak these to taste
+        /** Side length of each action button, in dp. */
+        private const val ACTION_BTN_SIZE_DP = 30f
+
+        /** Spacing between buttons and from the button strip edges, in dp. */
+        private const val ACTION_BTN_MARGIN_DP = 8f
+
+        /** Inner padding between the button edge and the icon inside it, in dp. */
+        private const val ACTION_BTN_ICON_PADDING_DP = 7f
+
+        /** Maximum number of action buttons that can be shown at once. */
+        private const val ACTION_BTN_MAX_COUNT = 4
+
+        /** How long (ms) the buttons take to fade in when shown. */
+        private const val ACTION_BTN_SHOW_MS = 240L
+
+        /** How long (ms) the buttons take to fade out when hidden. */
+        private const val ACTION_BTN_HIDE_MS = 160L
     }
 
     // -------------------------------------------------------------------------
@@ -414,8 +436,50 @@ class MiniPlayer @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        // Action buttons sit in the strip above the card — handle their touch first so
+        // they don't accidentally trigger play/pause or page-swipe logic below.
+        if (actionButtonsAlpha > 0f && actionButtons.isNotEmpty()) {
+            val btnIdx = findActionButtonAt(event.x, event.y)
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (btnIdx >= 0) {
+                        pressedActionBtnIdx = btnIdx
+                        actionButtonRipples[btnIdx].setHotspot(
+                                event.x - actionButtonRects[btnIdx].left,
+                                event.y - actionButtonRects[btnIdx].top)
+                        actionButtonRipples[btnIdx].setState(intArrayOf(android.R.attr.state_pressed))
+                        return true
+                    }
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (pressedActionBtnIdx >= 0) {
+                        val fired = pressedActionBtnIdx
+                        pressedActionBtnIdx = -1
+                        actionButtonRipples[fired].setState(intArrayOf())
+                        if (btnIdx == fired) {
+                            // Finger lifted inside the same button — trigger the click.
+                            actionButtons[fired].onClick()
+                        }
+                        return true
+                    }
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    if (pressedActionBtnIdx >= 0) {
+                        actionButtonRipples[pressedActionBtnIdx].setState(intArrayOf())
+                        pressedActionBtnIdx = -1
+                        return true
+                    }
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    // Keep absorbing MOVE events while a button is being held so the
+                    // swipe engine doesn't steal the gesture mid-press.
+                    if (pressedActionBtnIdx >= 0) return true
+                }
+            }
+        }
+
         if (event.actionMasked == MotionEvent.ACTION_UP && !isBeingDragged && !isInSeekMode) {
-            if (isInPlayPauseZone(event.x)) {
+            if (isInPlayPauseZone(event.x, event.y)) {
                 performPlayPauseClick()
                 return true
             }
@@ -513,17 +577,20 @@ class MiniPlayer @JvmOverloads constructor(
     override fun onScroll(e1: MotionEvent?, e2: MotionEvent, dx: Float, dy: Float): Boolean = false
 
     override fun onSingleTapUp(e: MotionEvent): Boolean {
-        if (isInPlayPauseZone(e.x)) {
+        if (isInPlayPauseZone(e.x, e.y)) {
             performPlayPauseClick()
         } else {
             val w = width.takeIf { it > 0 } ?: return true
-            if (e.x < w - btnZoneWidth) callbacks?.onItemClick(scrollEngine.currentPage.coerceAtLeast(0))
+            // Only fire the item click if the tap landed inside the card, not in the button strip.
+            if (e.y >= buttonStripHeightPx && e.x < w - btnZoneWidth) {
+                callbacks?.onItemClick(scrollEngine.currentPage.coerceAtLeast(0))
+            }
         }
         return true
     }
 
     override fun onLongPress(e: MotionEvent) {
-        if (!isInPlayPauseZone(e.x)) {
+        if (!isInPlayPauseZone(e.x, e.y)) {
             if (!isBeingDragged) {
                 // Enter seek mode: cancel any page animation, give haptic feedback once,
                 // then subsequent drags will seek the track rather than change pages.
@@ -554,7 +621,12 @@ class MiniPlayer @JvmOverloads constructor(
         callbacks?.onPlayPauseClick()
     }
 
-    private fun isInPlayPauseZone(x: Float): Boolean = x >= width - btnZoneWidth
+    /**
+     * Returns true when (x, y) is inside the card area (i.e. below the button strip).
+     * Play/pause and item click gestures should only fire inside the card, never in the strip.
+     */
+    private fun isInPlayPauseZone(x: Float, y: Float = buttonStripHeightPx): Boolean =
+        y >= buttonStripHeightPx && x >= width - btnZoneWidth
 
     /**
      * Snaps the scroll engine to the nearest page boundary when
@@ -599,6 +671,79 @@ class MiniPlayer @JvmOverloads constructor(
      * @author Hamza417
      */
     private var baseCornerRadiusPx = 0f
+
+    /**
+     * The real height of the card area (view height minus the action button strip at the top).
+     * When no buttons are set this equals [height] and nothing changes from the original layout.
+     */
+    private var cardH: Float = 0f
+
+    // -------------------------------------------------------------------------
+    // Action buttons — live above the card, appear/disappear with a fade
+    // -------------------------------------------------------------------------
+
+    /** The buttons currently registered. Setting via [setActionButtons] replaces all at once. */
+    private var actionButtons: List<MiniPlayerButton> = emptyList()
+
+    /** Current opacity of the button strip — animated between 0 (hidden) and 1 (visible). */
+    private var actionButtonsAlpha: Float = 0f
+
+    /** In-flight animator for the show/hide fade. Only one can run at a time. */
+    private var actionButtonsAnimator: ValueAnimator? = null
+
+    /** Index of the button the user is currently pressing, or -1 when nothing is pressed. */
+    private var pressedActionBtnIdx: Int = -1
+
+    /** Pre-allocated clip paths for the ripple clipping inside each button — rebuilt in [rebuildActionButtonRects]. */
+    private val actionButtonClipPaths: Array<Path> = Array(ACTION_BTN_MAX_COUNT) { Path() }
+
+    /** Pre-allocated hit rects for each button slot. Empty when the slot is unused. */
+    private val actionButtonRects: Array<RectF> = Array(ACTION_BTN_MAX_COUNT) { RectF() }
+
+    /** One ripple drawable per button slot — bounds and hotspot are updated on every touch. */
+    private val actionButtonRipples: Array<FelicityRippleDrawable> = Array(ACTION_BTN_MAX_COUNT) {
+        FelicityRippleDrawable(Color.WHITE)
+    }
+
+    /**
+     * A single shared callback that forwards invalidation requests from any of the
+     * per-button ripple drawables back to the MiniPlayer view so the ripple animations
+     * actually appear on screen.
+     */
+    private val actionBtnRippleCallback = object : Drawable.Callback {
+        override fun invalidateDrawable(who: Drawable) = invalidate()
+        override fun scheduleDrawable(who: Drawable, what: Runnable, `when`: Long) = Unit
+        override fun unscheduleDrawable(who: Drawable, what: Runnable) = Unit
+    }
+
+    /** Pre-tinted copies of the button icons — rebuilt only when buttons change or theme changes. */
+    private val tintedActionIcons: MutableList<Drawable> = mutableListOf()
+
+    /** Background paint for the highlighted pill behind each action button. */
+    private val actionButtonBgPaint: Paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+
+    /** Height of the strip reserved above the card for the action buttons.
+     * Zero when no buttons are set, so the card fills the entire view as normal.
+     */
+    private var buttonStripHeightPx: Float = 0f
+
+    /**
+     * Cached corner radius for action button pill backgrounds and clip paths.
+     * Mirrors [AppearancePreferences.getCornerRadius] but updated only in [rebuildActionButtonRects]
+     * so [drawActionButtons] never has to call the preferences getter mid-frame.
+     */
+    private var actionBtnCornerR: Float = 0f
+
+    /** Cached inner icon padding in px — computed once in [rebuildActionButtonRects], used in [drawActionButtons]. */
+    private var actionBtnIconPaddingPx: Float = 0f
+
+    /** Cached highlight fill color — refreshed from the active theme in [applyConfig]. */
+    private var actionBtnHighlightColor: Int = Color.TRANSPARENT
+
+    /** Cached icon tint color — refreshed from the active theme in [applyConfig]. */
+    private var actionBtnIconColor: Int = Color.WHITE
 
     /**
      * Whether the miniplayer is currently in flat (marginless) mode.
@@ -659,6 +804,184 @@ class MiniPlayer @JvmOverloads constructor(
      */
     private fun releaseAllRipples() {
         fullRipple.setState(intArrayOf())
+        // Also release any in-progress button press so it animates its ripple to completion.
+        if (pressedActionBtnIdx >= 0) {
+            actionButtonRipples[pressedActionBtnIdx].setState(intArrayOf())
+            pressedActionBtnIdx = -1
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Action buttons — public API and internal helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Replaces the entire set of action buttons that float above the card.
+     * Pass an empty list to remove all buttons and collapse the strip back to zero height.
+     * Triggers a layout pass so the view grows or shrinks to accommodate the new strip.
+     *
+     * @param buttons up to [ACTION_BTN_MAX_COUNT] buttons; extras are silently ignored.
+     */
+    fun setActionButtons(buttons: List<MiniPlayerButton>) {
+        actionButtons = buttons.take(ACTION_BTN_MAX_COUNT)
+        // Compute the strip height that will live above the card.
+        buttonStripHeightPx = if (actionButtons.isNotEmpty()) {
+            dp(ACTION_BTN_SIZE_DP) + dp(ACTION_BTN_MARGIN_DP) * 2f
+        } else {
+            0f
+        }
+        // Rebuild tinted icon cache so onDraw never has to allocate drawables.
+        refreshActionButtonTints()
+        rebuildActionButtonRects()
+        // Tell the layout system the view height changed — CoordinatorLayout will
+        // push us up from the bottom to reveal the freshly-sized strip.
+        requestLayout()
+        invalidate()
+    }
+
+    /**
+     * Fades the action buttons in with a quick decelerate animation.
+     * Safe to call even if the buttons are already visible — it's a no-op then.
+     */
+    fun showActionButtons() {
+        animateActionButtons(show = true)
+    }
+
+    /**
+     * Fades the action buttons out with a snappy accelerate animation.
+     * Safe to call even if the buttons are already hidden — it's a no-op then.
+     */
+    fun hideActionButtons() {
+        animateActionButtons(show = false)
+    }
+
+    /** Kicks off the show or hide fade animation for the button strip. */
+    private fun animateActionButtons(show: Boolean) {
+        val target = if (show) 1f else 0f
+        if (actionButtonsAlpha == target) return
+        actionButtonsAnimator?.cancel()
+        actionButtonsAnimator = ValueAnimator.ofFloat(actionButtonsAlpha, target).apply {
+            duration = if (show) ACTION_BTN_SHOW_MS else ACTION_BTN_HIDE_MS
+            interpolator = if (show) DecelerateInterpolator() else AccelerateInterpolator()
+            addUpdateListener {
+                actionButtonsAlpha = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    /**
+     * Rebuilds the pre-tinted icon list from the current [actionButtons].
+     * Copies each icon, wraps it for tinting, and stores the result so [drawActionButtons]
+     * never has to allocate anything inside the draw loop.
+     */
+    private fun refreshActionButtonTints() {
+        tintedActionIcons.clear()
+        val rippleAccent = ThemeManager.accent.primaryAccentColor
+        actionButtons.forEach { btn ->
+            val tinted = btn.icon.constantState?.newDrawable()?.mutate()
+                ?: btn.icon.mutate()
+            DrawableCompat.setTint(DrawableCompat.wrap(tinted), actionBtnIconColor)
+            tintedActionIcons.add(tinted)
+        }
+        // Also sync the per-button ripple colors so they match the active accent.
+        actionButtonRipples.forEach { ripple ->
+            ripple.setRippleColor(rippleAccent)
+            ripple.setStartColor(actionBtnHighlightColor)
+        }
+    }
+
+    /**
+     * Positions each action button rect inside the strip above the card.
+     * Buttons are stacked right-to-left from the trailing edge of the view.
+     */
+    private fun rebuildActionButtonRects() {
+        if (width <= 0 || buttonStripHeightPx <= 0f) {
+            actionButtonRects.forEach { it.setEmpty() }
+            return
+        }
+        val btnSize = dp(ACTION_BTN_SIZE_DP)
+        val margin = dp(ACTION_BTN_MARGIN_DP)
+        val cornerR = AppearancePreferences.getCornerRadius()
+        actionBtnCornerR = cornerR
+        actionBtnIconPaddingPx = dp(ACTION_BTN_ICON_PADDING_DP)
+        // Center buttons vertically within the strip.
+        val topY = (buttonStripHeightPx - btnSize) / 2f
+        for (i in 0 until ACTION_BTN_MAX_COUNT) {
+            if (i < actionButtons.size) {
+                val right = width - margin - i * (btnSize + margin)
+                val left = right - btnSize
+                actionButtonRects[i].set(left, topY, right, topY + btnSize)
+                // Keep ripple bounds in sync so the clip path is always up-to-date.
+                actionButtonRipples[i].bounds = Rect(
+                        left.toInt(), topY.toInt(), right.toInt(), (topY + btnSize).toInt())
+                actionButtonRipples[i].setCornerRadius(cornerR)
+                // Pre-build the rounded clip path so drawActionButtons never allocates.
+                actionButtonClipPaths[i].rewind()
+                actionButtonClipPaths[i].addRoundRect(
+                        actionButtonRects[i], cornerR, cornerR, Path.Direction.CW)
+            } else {
+                actionButtonRects[i].setEmpty()
+                actionButtonClipPaths[i].rewind()
+            }
+        }
+    }
+
+    /**
+     * Returns the index of the action button whose rect contains (x, y),
+     * or -1 if the point is not inside any button.
+     *
+     * @param x touch X in view coordinates
+     * @param y touch Y in view coordinates
+     */
+    private fun findActionButtonAt(x: Float, y: Float): Int {
+        if (actionButtonsAlpha <= 0f || actionButtons.isEmpty()) return -1
+        for (i in actionButtons.indices) {
+            if (actionButtonRects[i].contains(x, y)) return i
+        }
+        return -1
+    }
+
+    /**
+     * Draws all action buttons — highlight background, icon, and per-button ripple — into
+     * the view's own coordinate space (i.e. above the card, in the button strip area).
+     * This is called BEFORE the canvas-translate that shifts card drawing down, so all
+     * Y coordinates here are in the range 0..buttonStripHeightPx.
+     */
+    private fun drawActionButtons(canvas: Canvas) {
+        if (actionButtonsAlpha <= 0f || tintedActionIcons.isEmpty()) return
+        val padding = actionBtnIconPaddingPx
+        val cornerR = actionBtnCornerR
+        // The highlight fill is alpha-modulated by the overall button strip opacity.
+        val bgAlpha = (255 * actionButtonsAlpha).toInt().coerceIn(0, 255)
+        val bgColor = ColorUtils.setAlphaComponent(actionBtnHighlightColor, bgAlpha)
+
+        tintedActionIcons.forEachIndexed { index, icon ->
+            val rect = actionButtonRects[index]
+            if (rect.isEmpty) return@forEachIndexed
+
+            // 1. Pill-shaped highlight background — same style as HighlightTextView MODE_FLAT.
+            actionButtonBgPaint.color = bgColor
+            canvas.drawRoundRect(rect, cornerR, cornerR, actionButtonBgPaint)
+
+            // 2. Icon centered inside the button with inner padding.
+            val iconAlpha = (255 * actionButtonsAlpha).toInt().coerceIn(0, 255)
+            icon.alpha = iconAlpha
+            icon.setBounds(
+                    (rect.left + padding).toInt(),
+                    (rect.top + padding).toInt(),
+                    (rect.right - padding).toInt(),
+                    (rect.bottom - padding).toInt())
+            icon.draw(canvas)
+
+            // 3. Ripple on top — clipped to the same rounded rectangle so it doesn't bleed.
+            val ripple = actionButtonRipples[index]
+            val rippleSave = canvas.save()
+            canvas.clipPath(actionButtonClipPaths[index])
+            ripple.draw(canvas)
+            canvas.restoreToCount(rippleSave)
+        }
     }
 
     /**
@@ -1077,7 +1400,8 @@ class MiniPlayer @JvmOverloads constructor(
      */
     private fun drawSeekThumb(canvas: Canvas) {
         if (seekThumbAlpha <= 0f) return
-        val h = height.toFloat()
+        // Use cardH so the seek thumb line spans only the card area, not the button strip above.
+        val h = cardH
         val thumbX = artSize + (width.toFloat() - artSize) * progress
 
         val r = Color.red(progressAccentColor)
@@ -1340,24 +1664,27 @@ class MiniPlayer @JvmOverloads constructor(
 
         if (w <= 0f || h <= 0f) return
 
-        val btnSz = h * BTN_HEIGHT_FACTOR
+        // The button strip lives above the card — compute the actual card height from what's left.
+        cardH = h - buttonStripHeightPx
+
+        val btnSz = cardH * BTN_HEIGHT_FACTOR
         val btnHorizPad = dp(BTN_HORIZ_PADDING_DP)
         btnZoneWidth = btnSz + btnHorizPad * 2f
 
         val textPad = dp(TEXT_PADDING_DP)
-        artSize = h
+        artSize = cardH
         textLeft = artSize + textPad
         textRight = w - btnZoneWidth - textPad
 
-        cardRect.set(0f, 0f, w, h)
+        cardRect.set(0f, 0f, w, cardH)
         rebuildCardClipPath()
 
         edgeFadeWidth = (w * EDGE_FADE_WIDTH_FRACTION).coerceAtLeast(dp(EDGE_FADE_MIN_WIDTH_DP))
-        rebuildEdgeFadeRects(w, h)
+        rebuildEdgeFadeRects(w, cardH)
 
         playPauseDrawer.btnZoneWidth = btnZoneWidth
         playPauseDrawer.centerX = w - btnZoneWidth / 2f
-        playPauseDrawer.centerY = h / 2f
+        playPauseDrawer.centerY = cardH / 2f
         playPauseDrawer.updateGeometry(btnSz)
 
         // Re-anchor the scroll position to the current page whenever the view width
@@ -1374,7 +1701,13 @@ class MiniPlayer @JvmOverloads constructor(
         }
 
         // Keep ripple bounds in sync with the new geometry
-        updateRippleBounds(w.toInt(), h.toInt())
+        updateRippleBounds(w.toInt(), cardH.toInt())
+
+        // Update action button colors from the active theme, then re-position their rects.
+        actionBtnHighlightColor = ThemeManager.theme.viewGroupTheme.highlightColor
+        actionBtnIconColor = ThemeManager.theme.iconTheme.regularIconColor
+        refreshActionButtonTints()
+        rebuildActionButtonRects()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -1405,6 +1738,17 @@ class MiniPlayer @JvmOverloads constructor(
 
         if (w > 0) ensurePageBitmaps()
         applyPendingTy()
+    }
+
+    /**
+     * Expands the view's measured height to include the action button strip above the card.
+     * When no buttons are set the strip is zero-height and the view stays at its XML size.
+     */
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        if (buttonStripHeightPx > 0f) {
+            setMeasuredDimension(measuredWidth, measuredHeight + buttonStripHeightPx.toInt())
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -1570,6 +1914,9 @@ class MiniPlayer @JvmOverloads constructor(
         // Seed paint colors, typefaces, and text sizes. Geometry is deferred
         // to onSizeChanged because width/height are 0 at construction time.
         applyConfig()
+        // Wire up ripple callbacks so that each per-button ripple animation can
+        // ask this view to repaint itself — without this the ripple would be silent.
+        actionButtonRipples.forEach { it.callback = actionBtnRippleCallback }
     }
 
     /** Fade the card background to transparent and switch the icon/text to white. */
@@ -1674,6 +2021,16 @@ class MiniPlayer @JvmOverloads constructor(
         val h = height.toFloat()
         if (w <= 0f || h <= 0f) return
 
+        // 0. Action buttons sit in the strip ABOVE the card — draw them first, in view coordinates.
+        if (actionButtonsAlpha > 0f && actionButtons.isNotEmpty()) {
+            drawActionButtons(canvas)
+        }
+
+        // Shift the canvas down so all card drawing lands below the button strip, even though
+        // the card rect and all geometry is expressed starting from y=0.
+        val cardSave = canvas.save()
+        canvas.translate(0f, buttonStripHeightPx)
+
         // 1. Card background
         bgPaint.color = cardColor
         canvas.drawRoundRect(cardRect, cornerRadiusPx, cornerRadiusPx, bgPaint)
@@ -1697,12 +2054,12 @@ class MiniPlayer @JvmOverloads constructor(
                 // saveLayer isolates DST_OUT so it only erases page content, not the card bg
                 canvas.saveLayer(cardRect, null)
                 canvas.clipPath(cardClipPath)
-                drawPages(canvas, pageW, h)
+                drawPages(canvas, pageW, cardH)
                 drawEdgeFades(canvas)
                 canvas.restore()
             } else {
                 canvas.withClip(cardClipPath) {
-                    drawPages(this, pageW, h)
+                    drawPages(this, pageW, cardH)
                 }
             }
         }
@@ -1722,6 +2079,8 @@ class MiniPlayer @JvmOverloads constructor(
         canvas.withClip(cardClipPath) {
             fullRipple.draw(this)
         }
+
+        canvas.restoreToCount(cardSave)
     }
 
     private fun drawPages(canvas: Canvas, pageW: Int, h: Float) {
@@ -2474,6 +2833,7 @@ class MiniPlayer @JvmOverloads constructor(
         progressValueAnimator?.cancel()
         seekThumbAlphaAnimator?.cancel()
         tyAnimator?.cancel()
+        actionButtonsAnimator?.cancel()
         resetManualHandler.removeCallbacks(resetManualRunnable)
         isManuallyControlled = false
         hadImmersiveDrag = false

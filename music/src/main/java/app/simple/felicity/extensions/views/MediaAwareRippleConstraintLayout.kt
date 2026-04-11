@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.graphics.Shader
 import android.util.AttributeSet
 import android.view.View
@@ -13,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout
 import app.simple.felicity.engine.managers.MediaPlaybackManager
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.repository.listeners.MediaStateListener
 import app.simple.felicity.repository.managers.SelectionManager
 import app.simple.felicity.repository.models.Audio
@@ -57,6 +60,24 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
 
+    /**
+     * Reusable clip path for the gradient strip — rebuilt whenever the view size changes
+     * so we never allocate inside onDraw. The right corners are rounded to match the app's
+     * global corner radius, giving the indicator the same polished feel as the rest of the UI.
+     */
+    private val selectionClipPath = Path()
+
+    /** Reusable RectF so we don't allocate a new one in every layout pass. */
+    private val selectionRect = RectF()
+
+    /**
+     * The last width and height used to build the gradient shader.
+     * We only rebuild the shader when these change, keeping onDraw allocation-free.
+     */
+    private var cachedShaderW = -1f
+    private var cachedShaderH = -1f
+    private var cachedShaderColor = 0
+
     init {
         // ViewGroups skip onDraw by default. We need it to draw the indicator strip
         // behind the child views, so we have to opt in explicitly.
@@ -92,6 +113,49 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
     }
 
     /**
+     * Rebuilds the cached gradient shader and clip path whenever the view size or accent
+     * color changes. Calling this from [onSizeChanged] keeps [onDraw] completely
+     * allocation-free — no new objects are created per frame.
+     */
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        rebuildSelectionGeometry(w.toFloat(), h.toFloat())
+    }
+
+    /**
+     * Computes the gradient shader and the rounded clip path for the selection strip.
+     * Called from [onSizeChanged] and whenever the accent color changes.
+     */
+    private fun rebuildSelectionGeometry(w: Float, h: Float) {
+        if (w <= 0f || h <= 0f) return
+        // Use the secondary accent color — it tends to be softer and reads better in both
+        // light and dark themes, unlike the primary accent which can be too harsh.
+        val accentColor = ThemeManager.accent.secondaryAccentColor
+        val accentSemi = ColorUtils.setAlphaComponent(accentColor, 60)
+        val indicatorW = h  // square strip matching the full row height
+
+        // Rebuild the gradient that fades from transparent on the left into a soft accent wash.
+        selectionBgPaint.shader = LinearGradient(
+                w - indicatorW, 0f,
+                w, 0f,
+                intArrayOf(0x00000000, accentSemi),
+                null,
+                Shader.TileMode.CLAMP
+        )
+
+        // Rounded clip path — right corners follow the app's global radius so the strip
+        // looks like it belongs there instead of being a blunt rectangle.
+        val cornerR = AppearancePreferences.getCornerRadius()
+        selectionRect.set(w - indicatorW, 0f, w, h)
+        selectionClipPath.rewind()
+        selectionClipPath.addRoundRect(selectionRect, cornerR, cornerR, Path.Direction.CW)
+
+        cachedShaderW = w
+        cachedShaderH = h
+        cachedShaderColor = accentColor
+    }
+
+    /**
      * Draws a semi-transparent check indicator at the right edge of the view, sitting
      * behind all the child views (album art, text, etc.). It fades in from transparent
      * on the left to a soft accent-colored wash on the right, with the check icon on top.
@@ -105,28 +169,30 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
 
         val w = width.toFloat()
         val h = height.toFloat()
-        val indicatorW = h  // The indicator is a square matching the full height of the row
 
-        val accentColor = ThemeManager.accent.primaryAccentColor
-        val accentSemi = ColorUtils.setAlphaComponent(accentColor, 60)
+        // Lazily rebuild geometry if the size somehow changed without onSizeChanged firing
+        // (rare, but defensive programming never hurt anyone).
+        if (cachedShaderW != w || cachedShaderH != h ||
+                cachedShaderColor != ThemeManager.accent.secondaryAccentColor) {
+            rebuildSelectionGeometry(w, h)
+        }
 
-        // Draw a gradient strip fading from transparent (left) to a soft accent wash (right)
-        selectionBgPaint.shader = LinearGradient(
-                w - indicatorW, 0f,
-                w, 0f,
-                intArrayOf(0x00000000, accentSemi),
-                null,
-                Shader.TileMode.CLAMP
-        )
-        canvas.drawRect(w - indicatorW, 0f, w, h, selectionBgPaint)
+        // Draw the gradient strip clipped to the rounded rectangle — no allocations here.
+        val clipSave = canvas.save()
+        canvas.clipPath(selectionClipPath)
+        canvas.drawRect(selectionRect, selectionBgPaint)
+        canvas.restoreToCount(clipSave)
 
-        // Draw the check icon centered in the right-side strip
+        // Draw the check icon centered in the right-side strip.
         val iconSize = (h * 0.45f).toInt()
         val iconLeft = (w - iconSize - h * 0.18f).toInt()
         val iconTop = ((h - iconSize) / 2f).toInt()
         checkDrawable?.let {
+            // Use the secondary accent color to tint the checkmark so it's always visible,
+            // even in dark mode where the default black tint would blend into the background.
+            it.setTint(ThemeManager.accent.secondaryAccentColor)
             it.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
-            it.alpha = 160
+            it.alpha = 200
             it.draw(canvas)
         }
     }

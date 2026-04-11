@@ -26,7 +26,6 @@
         android:layout_width="match_parent"
         android:layout_height="1px" />
 
-    <!-- The actual action buttons — one for each thing you can do with the batch -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -71,7 +70,7 @@
             android:text="@string/clear_selection"
             android:textSize="@dimen/text_size_14"
             app:appFontStyle="bold"
-            app:drawableStartCompat="@drawable/ic_close"
+            app:drawableStartCompat="@drawable/ic_cross_16dp"
             app:drawableTintStyle="regular"
             app:textColorStyle="primary" />
 

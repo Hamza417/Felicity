@@ -342,6 +342,19 @@
         <attr name="highlightStrokeWidth" format="dimension" />
     </declare-styleable>
 
+    <!--
+        HighlightImageButton: same pill shape and highlight modes as HighlightTextView,
+        but for icon/image buttons. The icon tint always follows the theme's regular icon color.
+        highlightMode        – flat (filled, default), outline (stroke only), or both.
+        highlightCustomColor – pins fill/stroke to a fixed color; omit for theme-driven colors.
+        highlightStrokeWidth – stroke thickness for outline and both modes (default: 0.5dp).
+    -->
+    <declare-styleable name="HighlightImageButton">
+        <attr name="highlightMode" />
+        <attr name="highlightCustomColor" />
+        <attr name="highlightStrokeWidth" />
+    </declare-styleable>
+
     <!-- FelicityVisualizer: real-time audio spectrum bar and wave visualizer -->
     <declare-styleable name="FelicityVisualizer">
         <!--

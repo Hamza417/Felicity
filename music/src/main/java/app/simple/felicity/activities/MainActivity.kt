@@ -25,6 +25,7 @@ import app.simple.felicity.R
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.crash.CrashReporter
 import app.simple.felicity.databinding.ActivityMainBinding
+import app.simple.felicity.databinding.DialogDeleteSongBinding
 import app.simple.felicity.databinding.DialogSelectionMenuBinding
 import app.simple.felicity.decorations.miniplayer.MiniPlayer
 import app.simple.felicity.decorations.miniplayer.MiniPlayerItem
@@ -43,13 +44,13 @@ import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.TrialPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
+import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.managers.SelectionManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
-import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.home.ArtFlowHome
 import app.simple.felicity.ui.home.Dashboard
 import app.simple.felicity.ui.home.SimpleHome
@@ -62,6 +63,8 @@ import app.simple.felicity.viewmodels.setup.PermissionViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 @AndroidEntryPoint
 class MainActivity : BaseActivity(), MiniPlayerCallbacks {
@@ -163,7 +166,6 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
         lifecycleScope.launch {
             MediaPlaybackManager.songListFlow.collect { songs ->
-                Log.d("MainActivity", "songListFlow: ${songs.size}")
                 val items = songs.map { audio ->
                     MiniPlayerItem(
                             title = audio.title,
@@ -221,11 +223,10 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         }
 
         // Wire up the three action bar buttons — delete, share, and the three-dots more menu.
-        // Also apply the theme's icon tint so they blend in with the rest of the app.
-        applyActionBarIconTints()
+        // HighlightImageButton automatically handles its own icon tinting, so no manual tint needed.
 
         binding.actionDelete.setOnClickListener {
-            SelectionManager.clear()
+            deleteSelectedSongs()
         }
 
         binding.actionShare.setOnClickListener {
@@ -351,24 +352,95 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     }
 
     /**
-     * Applies the theme's regular icon color as a tint to each action bar button
-     * so they always look at home regardless of which theme is active.
-     * Think of it as dress-coding the buttons to match the rest of the app.
-     */
-    private fun applyActionBarIconTints() {
-        val tint = android.content.res.ColorStateList.valueOf(
-                ThemeManager.theme.iconTheme.regularIconColor)
-        binding.actionDelete.imageTintList = tint
-        binding.actionShare.imageTintList = tint
-        binding.actionMore.imageTintList = tint
-    }
-
-    /**
      * Converts dp to pixels using the screen's display metrics. Just a handy shortcut
      * so we don't have to type out the full conversion formula everywhere.
      */
     private fun dpToPx(dp: Float): Int =
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, resources.displayMetrics).toInt()
+
+    /**
+     * Shows the delete-confirmation dialog for all currently selected songs.
+     * The dialog tells the user exactly how many songs are about to be wiped and gives them
+     * a chance to back out before anything irreversible happens. If they confirm, every
+     * selected song gets removed from the playback queue (or playback skips forward if one
+     * is currently playing), then the physical files and database rows are deleted.
+     */
+    private fun deleteSelectedSongs() {
+        val songsToDelete = SelectionManager.selectedAudios.value.toList()
+        if (songsToDelete.isEmpty()) return
+
+        SimpleDialog.Builder(
+                container = binding.appContainer,
+                inflateBinding = DialogDeleteSongBinding::inflate)
+            .onViewCreated { dialogBinding ->
+                // Show exactly how many songs are about to meet their maker.
+                // e.g. "4 Songs will be permanently deleted from storage."
+                val countLabel = getString(R.string.x_songs, songsToDelete.size)
+                dialogBinding.deleteSummary.text = getString(R.string.delete_audio_summary, countLabel)
+            }
+            .onDialogInflated { dialogBinding, dismiss, _ ->
+                dialogBinding.sure.setOnClickListener {
+                    dismiss()
+                    performBulkDelete(songsToDelete, deleteLyrics = dialogBinding.deleteLyricsCheckbox.isChecked)
+                }
+                dialogBinding.cancel.setOnClickListener { dismiss() }
+            }
+            .onDismiss { /* nothing to clean up after a confirmation dialog */ }
+            .build()
+            .show()
+    }
+
+    /**
+     * Does the actual heavy lifting of deleting every song in [songs].
+     * For each song we:
+     *   1. Pull it out of the playback queue (or skip forward if it is playing right now).
+     *   2. Delete the file from storage.
+     *   3. Remove its record from the database.
+     *   4. Optionally nuke the associated lyrics file too.
+     * Everything file- and database-related runs on the IO thread so the UI stays snappy.
+     *
+     * @param songs        The batch of tracks to permanently delete.
+     * @param deleteLyrics Whether to also remove any .txt / .lrc sidecar lyrics files.
+     */
+    private fun performBulkDelete(songs: List<Audio>, deleteLyrics: Boolean) {
+        lifecycleScope.launch {
+            // Step 1: Kick every song out of the queue on the main thread first, so playback
+            // never tries to read a path we are about to delete.
+            songs.forEach { audio ->
+                val queueIndex = MediaPlaybackManager.getSongs().indexOfFirst { it.id == audio.id }
+                when {
+                    queueIndex != -1 -> MediaPlaybackManager.removeQueueItemSilently(queueIndex)
+                    MediaPlaybackManager.getCurrentSong()?.id == audio.id -> MediaPlaybackManager.next()
+                }
+            }
+
+            // Step 2: Delete files + database rows on the IO thread in one go.
+            withContext(Dispatchers.IO) {
+                val db = AudioDatabase.getInstance(applicationContext)
+                songs.forEach { audio ->
+                    runCatching {
+                        val file = File(audio.path)
+                        if (file.exists()) file.delete()
+
+                        db.audioDao()?.delete(audio)
+
+                        if (deleteLyrics) {
+                            val basePath = audio.path.substringBeforeLast('.')
+                            listOf(
+                                    File("$basePath.txt"),
+                                    File("$basePath.lrc")
+                            ).filter { it.exists() }.forEach { it.delete() }
+                        }
+                    }.onFailure { e ->
+                        Log.e("MainActivity", "Failed to delete ${audio.title}: ${e.message}", e)
+                    }
+                }
+            }
+
+            // Step 3: Clear the selection basket now that everything is gone.
+            SelectionManager.clear()
+        }
+    }
 
     /**
      * Opens a dialog showing how many songs are selected and what actions can be performed
@@ -385,9 +457,9 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             }
             .onDialogInflated { dialogBinding, dismiss, _ ->
                 dialogBinding.deleteAll.setOnClickListener {
-                    // For now just clearing the selection — real deletion flow wired in later.
-                    SelectionManager.clear()
                     dismiss()
+                    // Route through the same confirmation dialog used by the action bar button.
+                    deleteSelectedSongs()
                 }
                 dialogBinding.shareAll.setOnClickListener {
                     shareSelectedAudios(selected)

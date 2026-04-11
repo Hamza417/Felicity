@@ -26,6 +26,8 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import app.simple.felicity.core.constants.ThemeConstants
 import app.simple.felicity.core.singletons.AppOrientation
+import app.simple.felicity.databinding.DialogSureBinding
+import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.engine.services.FelicityPlayerService
@@ -408,6 +410,30 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
             activity.onBackInvokedDispatcher.unregisterOnBackInvokedCallback(predictiveBackCallback!!)
             predictiveBackCallback = null
         }
+    }
+
+    protected fun withSureDialog(onResult: (Boolean) -> Unit) {
+        SimpleDialog.Builder(
+                container = content,
+                inflateBinding = DialogSureBinding::inflate)
+            .onViewCreated { binding ->
+                /* no-op */
+            }.onDialogInflated { binding, dismiss, _ ->
+                binding.sure.setOnClickListener {
+                    onResult(true)
+                    dismiss()
+                }
+
+                binding.cancel.setOnClickListener {
+                    onResult(false)
+                    dismiss()
+                }
+            }
+            .onDismiss {
+                /* no-op */
+            }
+            .build()
+            .show()
     }
 
     override fun onDestroy() {

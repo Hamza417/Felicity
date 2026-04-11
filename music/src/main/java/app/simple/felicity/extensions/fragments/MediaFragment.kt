@@ -128,6 +128,14 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     protected fun setMediaItems(songs: List<Audio>, position: Int = 0) {
+        // If even one song is in the basket already, this tap is a selection action, not a play
+        // action. Toggle the tapped song in or out of the basket and call it a day.
+        if (SelectionManager.hasSelection) {
+            val audio = songs.getOrNull(position) ?: return
+            SelectionManager.toggle(audio)
+            return
+        }
+
         val currentSong = MediaPlaybackManager.getCurrentSong()
         val requestedSong = songs.getOrNull(position)
         val isSameQueue = MediaPlaybackManager.isSameQueue(songs)
