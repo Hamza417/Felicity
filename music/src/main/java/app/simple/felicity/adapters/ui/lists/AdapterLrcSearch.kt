@@ -14,7 +14,7 @@ import app.simple.felicity.repository.models.LrcLibResponse
 
 /**
  * RecyclerView adapter for displaying a list of [LrcLibResponse] search results in
- * the [app.simple.felicity.ui.panels.LyricsSearch] panel.
+ * the [app.simple.felicity.ui.subpanels.LyricsSearch] panel.
  *
  * Each item shows the track name, artist name, and album with duration. Tapping an item
  * invokes [onItemClick] so the panel can download and save the selected LRC entry.

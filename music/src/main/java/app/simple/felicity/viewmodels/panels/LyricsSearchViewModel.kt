@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * ViewModel for the [app.simple.felicity.ui.panels.LyricsSearch] panel.
+ * ViewModel for the [app.simple.felicity.ui.subpanels.LyricsSearch] panel.
  *
  * Handles fetching LRC lyrics from the LrcLib API, persisting the user's search keyword
  * across configuration changes and process death via [SavedStateHandle], and saving the

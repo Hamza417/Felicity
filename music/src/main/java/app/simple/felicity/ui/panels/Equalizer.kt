@@ -19,6 +19,7 @@ import app.simple.felicity.dialogs.player.SaveEqualizerPreset.Companion.showSave
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
+import app.simple.felicity.ui.subpanels.EqualizerPresets
 import app.simple.felicity.viewmodels.panels.EqualizerViewModel
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first

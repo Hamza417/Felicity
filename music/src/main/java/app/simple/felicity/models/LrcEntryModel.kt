@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Mutable representation of a single LRC lyric entry used exclusively within the
- * [app.simple.felicity.ui.panels.LrcEditor] while the user is editing.
+ * [app.simple.felicity.ui.subpanels.LrcEditor] while the user is editing.
  *
  * Each instance carries a stable [id] generated from an incrementing counter so
  * that [app.simple.felicity.adapters.ui.lists.AdapterLrcEditor] can distinguish

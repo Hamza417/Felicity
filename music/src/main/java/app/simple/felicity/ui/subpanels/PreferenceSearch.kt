@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.panels
+package app.simple.felicity.ui.subpanels
 
 import android.os.Bundle
 import android.text.Editable
@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
  *
  * On opening, the panel merges the preference items from every category panel (Appearance,
  * User Interface, Behavior, Engine, Library, Accessibility, and About) into a single flat list.
- * Structural items such as [PreferenceType.HEADER] and [PreferenceType.SUB_HEADER] are excluded
+ * Structural items such as [app.simple.felicity.enums.PreferenceType.HEADER] and [app.simple.felicity.enums.PreferenceType.SUB_HEADER] are excluded
  * because they carry no actionable content of their own.
  *
  * As the user types in the search field the list is filtered instantly against the resolved
@@ -77,7 +77,7 @@ class PreferenceSearch : PreferenceFragment() {
     /**
      * Builds and returns the merged list of all searchable preference items.
      *
-     * Items whose type is [PreferenceType.HEADER] or [PreferenceType.SUB_HEADER]
+     * Items whose type is [app.simple.felicity.enums.PreferenceType.HEADER] or [app.simple.felicity.enums.PreferenceType.SUB_HEADER]
      * are stripped out because they serve only as visual section dividers inside
      * individual category screens and carry no actionable information of their own.
      *
@@ -99,7 +99,7 @@ class PreferenceSearch : PreferenceFragment() {
 
     /**
      * Initializes the search field with the last known query from the [viewModel]
-     * and attaches a [TextWatcher] that forwards every keystroke to the ViewModel.
+     * and attaches a [android.text.TextWatcher] that forwards every keystroke to the ViewModel.
      */
     private fun setupSearchBox() {
         val currentQuery = viewModel.searchQuery.value
@@ -119,7 +119,7 @@ class PreferenceSearch : PreferenceFragment() {
 
     /**
      * Starts collecting [PreferenceSearchViewModel.searchQuery] and applies the filter
-     * each time the query changes. Collection is tied to the [Lifecycle.State.STARTED]
+     * each time the query changes. Collection is tied to the [androidx.lifecycle.Lifecycle.State.STARTED]
      * state so it automatically pauses when the fragment is not on screen.
      */
     private fun observeSearchQuery() {
@@ -180,5 +180,3 @@ class PreferenceSearch : PreferenceFragment() {
         const val TAG = "PreferenceSearch"
     }
 }
-
-

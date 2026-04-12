@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.panels
+package app.simple.felicity.ui.subpanels
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -16,7 +16,6 @@ import app.simple.felicity.databinding.HeaderEqualizerPresetsBinding
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
-import app.simple.felicity.dialogs.player.SaveEqualizerPreset
 import app.simple.felicity.dialogs.player.SaveEqualizerPreset.Companion.showSaveEqualizerPreset
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -44,7 +43,7 @@ import kotlinx.coroutines.launch
  *    since those cannot (and should not) be deleted.
  *
  * The "Save Preset" button in the header captures the current EQ state into a named
- * preset via [SaveEqualizerPreset], without leaving this screen.
+ * preset via [app.simple.felicity.dialogs.player.SaveEqualizerPreset], without leaving this screen.
  *
  * @author Hamza417
  */
@@ -99,7 +98,7 @@ class EqualizerPresets : MediaFragment() {
     }
 
     /**
-     * Opens the [SaveEqualizerPreset] bottom-sheet so the user can snapshot their
+     * Opens the [app.simple.felicity.dialogs.player.SaveEqualizerPreset] bottom-sheet so the user can snapshot their
      * current EQ settings into a named preset right from this screen.
      */
     private fun setupSaveButton() {
@@ -128,7 +127,7 @@ class EqualizerPresets : MediaFragment() {
 
     /**
      * Applies [preset] to the live audio engine, persists all band gains and the preamp
-     * to [EqualizerPreferences], and then navigates back to the EQ screen so the user
+     * to [app.simple.felicity.preferences.EqualizerPreferences], and then navigates back to the EQ screen so the user
      * can immediately see the sliders jump to the preset positions. One tap, done.
      *
      * @param preset The preset to apply.
@@ -195,7 +194,7 @@ class EqualizerPresets : MediaFragment() {
 
         /**
          * Creates a fresh instance of [EqualizerPresets] ready to be pushed onto the
-         * fragment back stack via [app.simple.felicity.extensions.fragments.ScopedFragment.openFragment].
+         * fragment back stack via [openFragment].
          */
         fun newInstance(): EqualizerPresets {
             return EqualizerPresets().apply {
@@ -204,4 +203,3 @@ class EqualizerPresets : MediaFragment() {
         }
     }
 }
-

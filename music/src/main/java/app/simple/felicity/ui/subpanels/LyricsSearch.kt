@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.panels
+package app.simple.felicity.ui.subpanels
 
 import android.os.Bundle
 import android.text.Editable
@@ -42,7 +42,7 @@ class LyricsSearch : MediaFragment() {
     private var adapterLrcSearch: AdapterLrcSearch? = null
 
     /**
-     * Guards against the [TextWatcher] treating programmatic text updates as user edits.
+     * Guards against the [android.text.TextWatcher] treating programmatic text updates as user edits.
      * Set to `true` before calling [android.widget.EditText.setText] programmatically
      * and reset to `false` immediately after.
      */
@@ -175,9 +175,8 @@ class LyricsSearch : MediaFragment() {
 
         /**
          * Fragment Result API key broadcast by [LyricsSearch] when a lyrics file is
-         * successfully saved. [Lyrics] listens for this key and reloads its lyrics data.
+         * successfully saved. [app.simple.felicity.ui.panels.Lyrics] listens for this key and reloads its lyrics data.
          */
         const val REQUEST_KEY_LYRICS_SAVED = "lyrics_search_lyrics_saved"
     }
 }
-

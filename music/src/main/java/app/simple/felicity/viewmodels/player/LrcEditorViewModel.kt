@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * ViewModel for the [app.simple.felicity.ui.panels.LrcEditor] panel.
+ * ViewModel for the [app.simple.felicity.ui.subpanels.LrcEditor] panel.
  *
  * Manages a local [ExoPlayer] instance that plays the song being edited,
  * completely independent of the global [MediaPlaybackManager]. When this

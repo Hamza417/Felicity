@@ -26,6 +26,8 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.ui.panels.Lyrics.Companion.TEXT_SIZE_DEBOUNCE_MS
+import app.simple.felicity.ui.subpanels.LrcEditor
+import app.simple.felicity.ui.subpanels.LyricsSearch
 import app.simple.felicity.viewmodels.player.LyricsViewModel
 import app.simple.felicity.viewmodels.player.WaveformViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -61,7 +63,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
     private val waveformViewModel: WaveformViewModel by viewModels()
 
     /**
-     * Scoped to the activity so that [LyricsSearch] can obtain the same instance and call
+     * Scoped to the activity so that [app.simple.felicity.ui.subpanels.LyricsSearch] can obtain the same instance and call
      * [LyricsViewModel.reloadLrcData] after saving a new sidecar file, causing this fragment's
      * observer to pick up the updated lyrics without requiring a full close/reopen cycle.
      */

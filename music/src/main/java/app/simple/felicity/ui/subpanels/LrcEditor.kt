@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.panels
+package app.simple.felicity.ui.subpanels
 
 import android.content.ClipboardManager
 import android.content.Context
@@ -19,7 +19,7 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
-import app.simple.felicity.ui.panels.LrcEditor.Companion.SEEK_JUMP_MS
+import app.simple.felicity.ui.subpanels.LrcEditor.Companion.SEEK_JUMP_MS
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.player.LrcEditorViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -229,7 +229,7 @@ class LrcEditor : MediaFragment() {
 
         /**
          * Fragment Result API key emitted when the user saves the LRC file.
-         * Observers (e.g., [Lyrics]) can listen to this key and reload their lyrics view.
+         * Observers (e.g., [app.simple.felicity.ui.panels.Lyrics]) can listen to this key and reload their lyrics view.
          */
         const val REQUEST_KEY_LRC_SAVED = "lrc_editor_lrc_saved"
 
@@ -251,4 +251,3 @@ class LrcEditor : MediaFragment() {
         }
     }
 }
-
