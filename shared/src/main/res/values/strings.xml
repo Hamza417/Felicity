@@ -13,22 +13,13 @@
     <string name="recently_played">Recently Played</string>
     <string name="most_played">Most Played</string>
     <string name="browse">Browse</string>
-    <string name="more">More</string>
-    <string name="less">Less</string>
     <string name="player">Player</string>
     <string name="search">Search</string>
     <string name="preferences">Preferences</string>
-    <string name="knob">Knob</string>
     <string name="loading">Loading</string>
-    <string name="done">Done</string>
     <string name="folders">Folders</string>
     <string name="folders_hierarchy">Folders Hierarchy</string>
     <string name="favorites">Favorites</string>
-    <string name="links">Links</string>
-    <string name="bookmarks">Bookmarks</string>
-    <string name="please_wait">Please wait</string>
-    <string name="no_files_found">No files found</string>
-    <string name="next">Next</string>
     <string name="cancel">Cancel</string>
     <string name="ok">OK</string>
     <string name="playlists">Playlists</string>
@@ -43,14 +34,12 @@
     <string name="x_genres">%1$d Genres</string>
     <string name="x_folders">%1$d Folders</string>
     <string name="x_years">%1$d Years</string>
-    <string name="no_songs">No Songs</string>
     <string name="albums_in_genre">Albums in %1$s</string>
     <string name="artists_in_genre">Artists in %1$s</string>
     <string name="albums_in_folder">Albums in %1$s</string>
     <string name="artists_in_folder">Artists in %1$s</string>
     <string name="albums_in_playlist">Albums in %1$s</string>
     <string name="artists_in_playlist">Artists in %1$s</string>
-    <string name="genres_in_playlist">Genres in %1$s</string>
     <string name="albums_from_artist">Albums from %1$s</string>
     <string name="album_artists">Album Artists</string>
     <string name="album_genres">Album Genres</string>
@@ -60,7 +49,6 @@
     <string name="add_to_playlist">Add to Playlist</string>
     <string name="go_to_artist">Go to Artist</string>
     <string name="go_to_album">Go to Album</string>
-    <string name="grid_size">Grid Size</string>
     <string name="one">One</string>
     <string name="two">Two</string>
     <string name="three">Three</string>
@@ -72,7 +60,6 @@
     <string name="camera_y">Camera Y</string>
     <string name="change_home_interface">Change Home Interface</string>
     <string name="spanned">Spanned</string>
-    <string name="carousel">Carousel</string>
     <string name="simple">Simple</string>
     <string name="recommended">Recommended</string>
     <string name="title">Title</string>
@@ -137,7 +124,6 @@
     <string name="effects">Effects</string>
     <string name="shadow_effect">Shadow Effect</string>
     <string name="font">Font</string>
-    <string name="show_genre_cover">Show Genre Cover</string>
     <string name="list">List</string>
     <string name="grid">Grid</string>
     <string name="behavior">Behavior</string>
@@ -167,12 +153,9 @@
     <string name="not_granted">Not Granted</string>
     <string name="post_notifications">Post Notifications</string>
     <string name="desc_post_notifications">Required to show media player and other necessary notifications.</string>
-    <string name="optional">Optional</string>
     <string name="manage_all_files">Manage All Files</string>
     <string name="desc_manage_all_files">Required to delete, rename, or modify audio files and their metadata. Also needed to access sidecar files like subtitles (.srt), lyrics (.lrc), and cue sheets (.cue). Without this, modification features will be limited.</string>
-    <string name="dont_show_again">Don\'t Show Again</string>
     <string name="start_app_now">Start App Now</string>
-    <string name="skip">Skip</string>
     <string name="audio">Audio</string>
     <string name="audio_desc">Configure decoder, audio engine, and output quality.</string>
     <string name="decoder">Decoder</string>
@@ -230,15 +213,10 @@
     <string name="volume">Volume</string>
     <string name="balance">Balance</string>
     <string name="alignment">Alignment</string>
-    <string name="left">Left</string>
-    <string name="center">Center</string>
-    <string name="right">Right</string>
     <string name="text_size">Text Size</string>
     <string name="fallback_to_software_decoder">Fallback To Software Decoder</string>
     <string name="fallback_to_software_decoder_summary">Quietly fallback to software decoder if system hardware fails to play an audio file.</string>
     <string name="playing_queue">Playing Queue</string>
-    <string name="customize">Customize</string>
-    <string name="controls">Edit</string>
     <string name="sync_adjust">Sync Adjust</string>
     <string name="accessibility">Accessibility</string>
     <string name="accessibility_desc">Adjust accessibility settings for a better experience.</string>
@@ -278,19 +256,13 @@
     <string name="reverb_size">Size</string>
     <string name="dashboard">Dashboard</string>
     <string name="now_playing">Now Playing: %1$s</string>
-    <string name="flat">Flat</string>
     <string name="equalizer">Equalizer</string>
-    <string name="karaoke_mode">Karaoke Mode</string>
-    <string name="night_mode">Night Mode</string>
     <string name="reset">Reset</string>
     <string name="bass">Bass</string>
     <string name="treble">Treble</string>
     <string name="keep_mini_player_visible">Keep MiniPlayer Visible</string>
     <string name="keep_mini_player_visible_summary">Stops hiding Mini Player on scrolling and keeps it always visible.</string>
-    <string name="open_artflow">Open in ArtFlow</string>
-    <string name="organize">Organize</string>
     <string name="activity">Activity</string>
-    <string name="general">General</string>
     <string name="files">Files</string>
     <string name="style">Style</string>
     <string name="latency">Latency</string>
@@ -321,8 +293,6 @@
     <string name="channels">Channels</string>
     <string name="decoder_name">Decoder Name</string>
     <string name="resampler">Resampler</string>
-    <string name="input_rate">Input Rate</string>
-    <string name="output_rate">Output Rate</string>
     <string name="io_rate">I/O Rate</string>
     <string name="resampler_type">Type</string>
     <string name="resampler_cutoff">Cutoff</string>
@@ -334,8 +304,6 @@
     <string name="buffers">Buffers</string>
     <string name="output_device">Output Device</string>
     <string name="device_name">Device Name</string>
-    <string name="bit_depth_in">Bit Depth In</string>
-    <string name="bit_depth_out">Bit Depth Out</string>
     <string name="disabled">Disabled</string>
     <string name="insert_and_play">Insert in Queue and Play</string>
 
@@ -355,16 +323,10 @@
     <!-- Playlist strings -->
     <string name="create_playlist">Create Playlist</string>
     <string name="new_playlist">New Playlist</string>
-    <string name="import_m3u">Import M3U</string>
-    <string name="m3u_import_success">Imported "%1$s" — %2$d tracks added.</string>
-    <string name="m3u_import_failed">M3U import failed. Please check the file and try again.</string>
     <string name="playlist_name">Playlist Name</string>
     <string name="playlist_description">Description (optional)</string>
     <string name="edit_playlist">Edit Playlist</string>
     <string name="add_all_to_queue">Add All to Queue</string>
-    <string name="x_playlists">%1$d Playlists</string>
-    <string name="no_playlists">No Playlists</string>
-    <string name="untitled_playlist">Untitled Playlist</string>
     <string name="manual">Manual</string>
     <string name="filter_categories">Filter Categories</string>
     <string name="about">About</string>
@@ -392,10 +354,6 @@
     <string name="grace_launches_used">%1$d of %2$d grace launches consumed.</string>
 
     <!-- Play Store purchase screen strings -->
-    <string name="play_store">Play Store</string>
-    <string name="play_store_purchase_summary">Open the Play Store listing to purchase the full version of Felicity.</string>
-    <string name="features">Full Version Features</string>
-    <string name="play_store_features">Purchasing Felicity unlocks unlimited use, future updates, and supports continued development. Thank you for your support!</string>
     <string name="simple_ui_desc">Simple and flat player UI suitable for most normal users.</string>
     <string name="faded_ui_desc">Faded album art with immersive ambience, best used in dark modes.</string>
     <string name="sync_adjust_desc">Adjusting sync here will update the timestamps in the LRC file itself.</string>
@@ -425,15 +383,9 @@
     <string name="save_preset">Save Preset</string>
     <string name="preset_name_hint">Preset name…</string>
     <string name="built_in">Built-in</string>
-    <string name="preset_applied">Preset applied</string>
-    <string name="preset_saved">Preset saved</string>
-    <string name="preset_deleted">Preset deleted</string>
     <string name="custom">Custom</string>
-    <string name="preset_already_exists">A preset named \"%1$s\" already exists. Please choose a different name.</string>
 
     <!-- LRC Editor -->
-    <string name="lrc_editor">LRC Editor</string>
-    <string name="lrc_timestamp_hint">00:00.000</string>
     <string name="lrc_lyric_hint">Lyric line…</string>
     <string name="lrc_stamp_timestamp">Stamp current position as timestamp</string>
     <string name="lrc_paste">Paste lyrics from clipboard</string>

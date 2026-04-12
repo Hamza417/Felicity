@@ -19,6 +19,7 @@
     <string name="time_plus_ms">+ 0.5s</string>
     <string name="fisher_yates">Fisher-Yates</string>
     <string name="miller">Miller</string>
+    <string name="lrc_timestamp_hint">00:00.000</string>
 
     <!-- Audio Pipeline Dialog — channel display values -->
     <string name="channel_mono">1 (Mono)</string>
