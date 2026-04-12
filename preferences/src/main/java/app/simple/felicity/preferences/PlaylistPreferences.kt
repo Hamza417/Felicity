@@ -20,7 +20,7 @@ import app.simple.felicity.manager.SharedPreferences
  */
 object PlaylistPreferences {
 
-    const val SONG_SORT = "playlist_song_sort"
+    const val SONG_SORT = "playlist_sort"
     const val SORTING_STYLE = "playlist_sorting_style"
     const val GRID_SIZE_PORTRAIT = "playlist_grid_size_portrait"
     const val GRID_SIZE_LANDSCAPE = "playlist_grid_size_landscape"

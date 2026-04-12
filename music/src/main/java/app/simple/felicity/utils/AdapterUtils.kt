@@ -8,6 +8,7 @@ import android.widget.TextView
 import androidx.core.text.toSpannable
 import app.simple.felicity.R
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.Playlist
 import app.simple.felicity.theme.managers.ThemeManager
 import java.util.Locale
 
@@ -26,6 +27,17 @@ object AdapterUtils {
             }
             Audio.AUDIO_QUALITY_HI_RES -> {
                 setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, R.drawable.ic_hires_12dp, 0)
+            }
+            else -> {
+                setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0)
+            }
+        }
+    }
+
+    fun TextView.addPlaylistTypeIcon(playlist: Playlist) {
+        when {
+            playlist.isM3UPlaylist -> {
+                setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, R.drawable.ic_m3u_16dp, 0)
             }
             else -> {
                 setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0)

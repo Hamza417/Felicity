@@ -42,6 +42,9 @@ import app.simple.felicity.repository.models.PlaylistSongCrossRef
  *       junction table. Each cross-ref row carries cascade-delete foreign keys on both
  *       {@code playlist_id} and {@code audio_hash} so that deleting a playlist or removing
  *       a track from the library automatically cleans up all related membership rows.</li>
+ *   <li>9 → 10: Added {@code is_m3u_playlist} and {@code m3u_file_path} columns to the
+ *       {@code playlists} table so the scanner can automatically create and maintain
+ *       playlists from M3U files found on the device.</li>
  * </ul>
  *
  * @author Hamza417
@@ -55,7 +58,7 @@ import app.simple.felicity.repository.models.PlaylistSongCrossRef
             Playlist::class,
             PlaylistSongCrossRef::class
         ],
-        version = 9,
+        version = 10,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {
@@ -318,9 +321,29 @@ abstract class AudioDatabase : RoomDatabase() {
 
         fun getInstance(): AudioDatabase? = instance
 
+        /**
+         * Migrates the database from version 9 to 10.
+         *
+         * <p>Adds two columns to the {@code playlists} table to support automatic playlist
+         * generation from M3U files found on the device's storage:</p>
+         * <ul>
+         *   <li>{@code is_m3u_playlist} — a boolean flag that tells the app "hey, a file
+         *       on disk owns this playlist, don't let the user accidentally delete it
+         *       thinking it's just a regular one."</li>
+         *   <li>{@code m3u_file_path} — the absolute path to the M3U source file, so the
+         *       scanner can find and re-read it when something changes.</li>
+         * </ul>
+         */
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE playlists ADD COLUMN is_m3u_playlist INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE playlists ADD COLUMN m3u_file_path TEXT")
+            }
+        }
+
         private fun buildDatabase(context: Context): AudioDatabase {
             return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                 .build()
         }
     }

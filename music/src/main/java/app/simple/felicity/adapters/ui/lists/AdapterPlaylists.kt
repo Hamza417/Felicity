@@ -21,6 +21,7 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.PlaylistPreferences
 import app.simple.felicity.repository.models.Playlist
 import app.simple.felicity.repository.models.PlaylistWithSongs
+import app.simple.felicity.utils.AdapterUtils.addPlaylistTypeIcon
 import com.bumptech.glide.Glide
 
 /**
@@ -165,6 +166,7 @@ class AdapterPlaylists(initial: List<PlaylistWithSongs>) : FastScrollAdapter<Ver
          */
         fun bind(item: PlaylistWithSongs, isLightBind: Boolean) {
             binding.title.setTextOrUnknown(item.playlist.name)
+            binding.title.addPlaylistTypeIcon(item.playlist)
             binding.secondaryDetail.text = binding.root.context.getString(R.string.x_songs, item.songs.size)
             binding.tertiaryDetail.text = item.playlist.description.ifNullOrBlank(getString(R.string.not_available))
             if (isLightBind) return
@@ -190,6 +192,7 @@ class AdapterPlaylists(initial: List<PlaylistWithSongs>) : FastScrollAdapter<Ver
          */
         fun bind(item: PlaylistWithSongs, isLightBind: Boolean) {
             binding.title.setTextOrUnknown(item.playlist.name)
+            binding.title.addPlaylistTypeIcon(item.playlist)
             binding.secondaryDetail.text = binding.root.context.getString(R.string.x_songs, item.songs.size)
             binding.tertiaryDetail.text = item.playlist.description.ifNullOrBlank(getString(R.string.not_available))
             if (isLightBind) return
@@ -215,6 +218,7 @@ class AdapterPlaylists(initial: List<PlaylistWithSongs>) : FastScrollAdapter<Ver
          */
         fun bind(item: PlaylistWithSongs, isLightBind: Boolean) {
             binding.title.setTextOrUnknown(item.playlist.name)
+            binding.title.addPlaylistTypeIcon(item.playlist)
             binding.secondaryDetail.text = binding.root.context.getString(R.string.x_songs, item.songs.size)
             binding.tertiaryDetail.text = item.playlist.description.ifNullOrBlank(getString(R.string.not_available))
             if (isLightBind) return

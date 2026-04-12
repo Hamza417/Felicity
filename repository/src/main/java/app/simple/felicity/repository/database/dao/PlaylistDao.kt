@@ -224,5 +224,21 @@ interface PlaylistDao {
      */
     @Query("DELETE FROM playlists")
     suspend fun nukeAllPlaylists()
+
+    /**
+     * Returns all playlists that were auto-generated from M3U files on the device.
+     * This is the list the playlist loader checks when deciding what to update or remove.
+     */
+    @Query("SELECT * FROM playlists WHERE is_m3u_playlist = 1")
+    suspend fun getAllM3uPlaylists(): List<Playlist>
+
+    /**
+     * Looks up a single M3U-sourced playlist by the absolute path of its source file.
+     * Returns null when no such playlist exists yet — which means we need to create one.
+     *
+     * @param path The absolute file-system path of the M3U file.
+     */
+    @Query("SELECT * FROM playlists WHERE m3u_file_path = :path LIMIT 1")
+    suspend fun getM3uPlaylistByFilePath(path: String): Playlist?
 }
 

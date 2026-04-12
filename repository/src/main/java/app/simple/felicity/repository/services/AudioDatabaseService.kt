@@ -8,6 +8,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.annotation.Keep
 import app.simple.felicity.repository.loader.AudioDatabaseLoader
+import app.simple.felicity.repository.loader.PlaylistDatabaseLoader
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +22,9 @@ class AudioDatabaseService : Service() {
 
     @Inject
     lateinit var audioDatabaseLoader: AudioDatabaseLoader
+
+    @Inject
+    lateinit var playlistDatabaseLoader: PlaylistDatabaseLoader
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var currentStartId: Int = -1
@@ -96,7 +100,9 @@ class AudioDatabaseService : Service() {
             try {
                 Log.d(TAG, "Starting audio database scan (idle path)…")
                 audioDatabaseLoader.processAudioFiles()
-                Log.d(TAG, "Scan completed successfully")
+                Log.d(TAG, "Audio scan completed — starting M3U playlist scan…")
+                playlistDatabaseLoader.processM3uFiles()
+                Log.d(TAG, "M3U playlist scan completed successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "Error during scan", e)
             } finally {
@@ -114,6 +120,8 @@ class AudioDatabaseService : Service() {
             try {
                 Log.d(TAG, "Forced refresh: cancelling existing scan and starting fresh…")
                 audioDatabaseLoader.cancelAndRestartScan()
+                Log.d(TAG, "Audio scan completed — starting M3U playlist scan…")
+                playlistDatabaseLoader.processM3uFiles()
                 Log.d(TAG, "Forced scan completed successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "Error during forced scan", e)

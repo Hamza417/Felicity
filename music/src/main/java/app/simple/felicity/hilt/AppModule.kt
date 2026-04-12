@@ -2,6 +2,7 @@ package app.simple.felicity.hilt
 
 import android.content.Context
 import app.simple.felicity.repository.loader.AudioDatabaseLoader
+import app.simple.felicity.repository.loader.PlaylistDatabaseLoader
 import app.simple.felicity.repository.repositories.AlbumRepository
 import app.simple.felicity.repository.repositories.ArtistRepository
 import app.simple.felicity.repository.repositories.AudioRepository
@@ -32,6 +33,18 @@ object AppModule {
     @Singleton
     fun provideAudioDatabaseLoader(@ApplicationContext context: Context): AudioDatabaseLoader {
         return AudioDatabaseLoader(context)
+    }
+
+    /**
+     * Provides the singleton [PlaylistDatabaseLoader] so Hilt can inject it into the
+     * [app.simple.felicity.repository.services.AudioDatabaseService]. It lives next
+     * to the audio loader because the two always run together — audio first, then
+     * playlists on top of whatever tracks were just scanned.
+     */
+    @Provides
+    @Singleton
+    fun providePlaylistDatabaseLoader(@ApplicationContext context: Context): PlaylistDatabaseLoader {
+        return PlaylistDatabaseLoader(context)
     }
 
     @Provides
