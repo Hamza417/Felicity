@@ -72,16 +72,16 @@ jobs:
                 run: |
                     mkdir -p ${{ runner.temp }}
                     ## Find apk first, then move it
-                    find music/ -name "*.apk" -exec mv {} ${{ runner.temp }}/music-release.apk \;
+                    find music/ -name "*.apk" -exec mv {} ${{ runner.temp }}/music-foss-release.apk \;
 
             -   name: Create GitHub Release
                 uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631
                 with:
                     files: |
-                        ${{ runner.temp }}/music-release.apk
+                        ${{ runner.temp }}/music-foss-release.apk
                     name: ${{ env.VERSION_NAME }} # Use the original case for the release name
                     tag_name: ${{ env.TAG }} # Use lowercase for the tag
-                    body: _to be updated_
+                    body_path: changelog
                 env:
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -1,0 +1,29 @@
+### User Interface
+
+- Added **Metadata Editor** to edit song metadata.
+- Added a local music server mode to host your music library.
+- Added dedicated **Album** and **Artist** menu.
+- Added **Lrc Editor** to edit song lyrics files.
+- Updated some home UIs (they still need some work).
+- Added **Selection Mode** to select multiple music files for batch operations.
+  - It works globally, meaning once toggled on, you can select music files across all screens without losing your selections.
+- Added new way to highlight the playing songs in the app, it looks really simple and clean :)))
+- Added **Presets** in **Equalizer** to save your custom EQ settings.
+  - Added a few built-in presets as well.
+- Added **M3U** playlist support, app will automatically detect and import M3U playlists in your music library.
+- Implemented the **Insert and Play** feature, which allows you to insert songs into the playing queue and play them immediately.
+- Added a notification for when scanner is running in the background.
+- Added **Configuration** screen to manage app settings.
+  - Added **Language** selection panel.
+  - Added **Keep Screen On** toggle.
+
+### Bug Fixes
+
+- Fixed an issue where the spacing at the kept increasing as keyboard is opened and closed.
+- Fixed laggy fastscroll in **Playing Queue** screen.
+- Fixed wrong playlist sort order.
+
+### Improvements
+
+- Improved slider fast scroll internal logic to fix the stutters caused during first scroll.
+- Dismiss some popups immediately to prevent them from overlapping between the panel transitions.
