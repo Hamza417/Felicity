@@ -1,15 +1,18 @@
 package app.simple.felicity.adapters.ui.lists
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import app.simple.felicity.databinding.AdapterEqualizerPresetBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.repository.models.EqualizerPreset
+import app.simple.felicity.shared.utils.ViewUtils.gone
+import app.simple.felicity.shared.utils.ViewUtils.visible
 
 /**
- * [ListAdapter] that shows the equalizer preset list inside the presets bottom-sheet dialog.
+ * [ListAdapter] that populates the equalizer preset panel with one row per preset.
  *
  * Every row displays the preset name, a small "Built-in" badge for factory presets,
  * and a [app.simple.felicity.decorations.views.EqualizerWaveView] that gives the user
@@ -19,14 +22,15 @@ import app.simple.felicity.repository.models.EqualizerPreset
  * The currently active preset (identified by [selectedPresetId]) shows an accent-colored
  * indicator so users always know which preset is in effect, even after scrolling around.
  *
- * @param onPresetClicked  Called when the user taps a row to apply that preset.
- * @param onPresetLongClicked Called when the user long-presses a row (used to offer delete).
+ * @param onPresetClicked      Called when the user taps a row to apply that preset.
+ * @param onOptionClicked  Called when the user long-presses a row; receives both the
+ *                             preset and the view so the caller can anchor a popup near it.
  *
  * @author Hamza417
  */
 class AdapterEqualizerPresets(
         private val onPresetClicked: (EqualizerPreset) -> Unit,
-        private val onPresetLongClicked: (EqualizerPreset) -> Unit = {}
+        private val onOptionClicked: (EqualizerPreset, View) -> Unit = { _, _ -> }
 ) : ListAdapter<EqualizerPreset, AdapterEqualizerPresets.ViewHolder>(DIFF_CALLBACK) {
 
     /** The id of the currently applied preset, or -1 if none is active. */
@@ -71,25 +75,28 @@ class AdapterEqualizerPresets(
             if (preset.isBuiltIn) {
                 binding.presetBuiltInLabel.text = binding.root.context.getString(
                         app.simple.felicity.R.string.built_in)
-                binding.presetBuiltInLabel.visibility = android.view.View.VISIBLE
+                binding.presetBuiltInLabel.visible()
             } else {
-                binding.presetBuiltInLabel.visibility = android.view.View.GONE
+                binding.presetBuiltInLabel.gone()
             }
 
             // Highlight the row whose preset is currently applied — handy for orientation.
             if (preset.id == selectedPresetId) {
                 binding.presetSelectedIndicator.text = "●"
-                binding.presetSelectedIndicator.visibility = android.view.View.VISIBLE
+                binding.presetSelectedIndicator.visible()
             } else {
-                binding.presetSelectedIndicator.visibility = android.view.View.GONE
+                binding.presetSelectedIndicator.gone()
             }
 
             // Feed the wave view the band gains so it renders the correct EQ curve shape.
             binding.equalizerWave.setGains(preset.getBandGains())
 
-            binding.container.setOnClickListener { onPresetClicked(preset) }
-            binding.container.setOnLongClickListener {
-                onPresetLongClicked(preset)
+            binding.container.setOnClickListener {
+                onPresetClicked(preset)
+            }
+
+            binding.presetOptionsButton.setOnClickListener {
+                onOptionClicked(preset, binding.presetOptionsButton)
                 true
             }
         }

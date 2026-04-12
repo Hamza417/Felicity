@@ -1,17 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/container"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="@dimen/padding_10">
+    android:padding="@dimen/padding_5"
+    android:orientation="vertical">
 
     <LinearLayout
-        android:layout_width="match_parent"
+        android:id="@+id/linearLayout3"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:layout_marginEnd="@dimen/padding_15"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toStartOf="@+id/preset_options_button"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
             android:id="@+id/preset_name"
@@ -20,7 +25,7 @@
             android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textSize="@dimen/text_size_14"
+            android:textSize="@dimen/text_size_16"
             app:appFontStyle="bold"
             app:textColorStyle="primary" />
 
@@ -50,9 +55,23 @@
 
     <app.simple.felicity.decorations.views.EqualizerWaveView
         android:id="@+id/equalizer_wave"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="50dp"
-        android:layout_marginTop="@dimen/padding_5" />
+        android:layout_marginEnd="@dimen/padding_15"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/preset_options_button"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout3" />
 
-</app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+        android:id="@+id/preset_options_button"
+        android:layout_width="@dimen/button_size"
+        android:layout_height="@dimen/button_size"
+        android:src="@drawable/ic_more_vert"
+        app:buttonTintType="secondary"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout>
 

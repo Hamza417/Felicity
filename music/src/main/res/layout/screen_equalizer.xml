@@ -14,30 +14,26 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="end"
+        android:layout_marginTop="@dimen/padding_10"
         android:paddingHorizontal="@dimen/padding_20"
-        android:paddingVertical="@dimen/padding_15"
         android:orientation="horizontal">
 
-        <app.simple.felicity.decorations.typeface.TypeFaceTextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
-            android:layout_weight="1"
-            android:textSize="@dimen/text_size_16"
-            android:text="@string/apply_equalizer"
-            app:appFontStyle="bold"
-            app:textColorStyle="primary" />
-
         <app.simple.felicity.decorations.highlight.HighlightTextView
-            android:id="@+id/presets_button"
+            android:id="@+id/save_preset"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
-            android:layout_marginStart="@dimen/padding_5"
-            android:padding="@dimen/padding_10"
-            android:text="@string/presets"
+            android:paddingHorizontal="@dimen/padding_10"
+            android:paddingVertical="@dimen/padding_5"
+            android:text="@string/save_preset"
             app:appFontStyle="bold"
             app:textColorStyle="secondary" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
 
         <app.simple.felicity.decorations.highlight.HighlightTextView
             android:id="@+id/reset"
@@ -45,9 +41,22 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:layout_marginStart="@dimen/padding_5"
-            android:padding="@dimen/padding_10"
-            android:layout_marginEnd="@dimen/padding_15"
+            android:paddingHorizontal="@dimen/padding_10"
+            android:paddingVertical="@dimen/padding_5"
             android:text="@string/reset"
+            app:appFontStyle="bold"
+            app:textColorStyle="secondary" />
+
+        <app.simple.felicity.decorations.highlight.HighlightTextView
+            android:id="@+id/presets_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="@dimen/padding_5"
+            android:paddingHorizontal="@dimen/padding_10"
+            android:paddingVertical="@dimen/padding_5"
+            android:text="@string/presets"
+            android:layout_marginEnd="@dimen/padding_10"
             app:appFontStyle="bold"
             app:textColorStyle="secondary" />
 

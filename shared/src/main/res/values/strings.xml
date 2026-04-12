@@ -282,7 +282,6 @@
     <string name="equalizer">Equalizer</string>
     <string name="karaoke_mode">Karaoke Mode</string>
     <string name="night_mode">Night Mode</string>
-    <string name="apply_equalizer">Apply Equalizer</string>
     <string name="reset">Reset</string>
     <string name="bass">Bass</string>
     <string name="treble">Treble</string>
@@ -401,4 +400,5 @@
     <string name="faded_ui_desc">Faded album art with immersive ambience, best used in dark modes.</string>
     <string name="sync_adjust_desc">Adjusting sync here will update the timestamps in the LRC file itself.</string>
     <string name="selection_desc">Selection mode is global. You can navigate the app to select tracks from any album or playlist. To exit, tap Clear Selection.</string>
+    <string name="apply_preset">Apply Preset</string>
 </resources>
