@@ -24,10 +24,12 @@ import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.BehaviourPreferences
+import app.simple.felicity.preferences.ConfigurationPreferences
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.ui.preferences.sub.AccentColors
+import app.simple.felicity.ui.preferences.sub.Language
 import app.simple.felicity.ui.preferences.sub.Themes
 import app.simple.felicity.ui.preferences.sub.TypeFaces
 import java.util.Locale
@@ -333,6 +335,41 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(playerInterface)
         preferences.add(miniPlayerHeader)
         preferences.add(marginAroundMiniplayerToggle)
+
+        return preferences
+    }
+
+    protected fun createConfigurationPreferences(): List<Preference> {
+        val preferences = mutableListOf<Preference>()
+
+        val applicationHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.application)
+
+        val keepScreenOn = Preference(
+                title = R.string.keep_screen_on,
+                summary = R.string.keep_screen_on_summary,
+                icon = R.drawable.ic_keep_screen_on,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    ConfigurationPreferences.setKeepScreenOn((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    ConfigurationPreferences.isKeepScreenOn()
+                }
+        )
+
+        val language = Preference(
+                title = R.string.language,
+                summary = R.string.language_summary,
+                icon = R.drawable.ic_translate,
+                type = PreferenceType.PANEL,
+                onPreferenceAction = { view, callback ->
+                    openFragment(Language.newInstance(), Language.TAG)
+                },
+        )
+
+        preferences.add(applicationHeader)
+        preferences.add(keepScreenOn)
+        preferences.add(language)
 
         return preferences
     }

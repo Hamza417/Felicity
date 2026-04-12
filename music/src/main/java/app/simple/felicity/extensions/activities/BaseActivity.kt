@@ -19,6 +19,7 @@ import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.graphics.scale
+import androidx.core.os.ConfigurationCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
@@ -37,10 +38,13 @@ import app.simple.felicity.manager.SharedPreferences.unregisterEncryptedSharedPr
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
+import app.simple.felicity.preferences.ConfigurationPreferences
 import app.simple.felicity.preferences.TrialPreferences
 import app.simple.felicity.repository.covers.AudioCover
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.shared.utils.BarHeight
+import app.simple.felicity.shared.utils.ContextUtils
+import app.simple.felicity.shared.utils.LocaleUtils
 import app.simple.felicity.theme.accents.AlbumArt
 import app.simple.felicity.theme.accents.Felicity
 import app.simple.felicity.theme.data.AlbumArtData
@@ -80,7 +84,9 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         app.simple.felicity.manager.SharedPreferences.initEncrypted(newBase)
         registerSharedPreferenceChangeListener()
         registerEncryptedSharedPreferencesListener()
-        super.attachBaseContext(newBase)
+        super.attachBaseContext(/* newBase = */ ContextUtils.updateLocale(
+                baseContext = newBase,
+                languageCode = ConfigurationPreferences.getAppLanguage()))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -105,6 +111,18 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
         if (TrialPreferences.isFirstLaunchDateSet().not()) {
             TrialPreferences.setFirstLaunchDate(System.currentTimeMillis())
+        }
+
+        /**
+         * Keeps the instance of current locale of the app
+         */
+        LocaleUtils.setAppLocale(ConfigurationCompat.getLocales(resources.configuration)[0]!!)
+
+        /**
+         * Sets window flags for keeping the screen on
+         */
+        if (ConfigurationPreferences.isKeepScreenOn()) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 

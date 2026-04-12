@@ -150,7 +150,7 @@ object LyricsMetaHelper {
                 val seconds = (timeInMs % 60000) / 1000
                 val centiseconds = (timeInMs % 1000) / 10
 
-                // Using Locale.US prevents issues in regions where commas are used instead of decimals
+                // Using Lang.US prevents issues in regions where commas are used instead of decimals
                 val timeTag = String.format(Locale.US, "[%02d:%02d.%02d]", minutes, seconds, centiseconds)
                 lrcBuilder.append(timeTag).append(textLine).append("\n")
             }

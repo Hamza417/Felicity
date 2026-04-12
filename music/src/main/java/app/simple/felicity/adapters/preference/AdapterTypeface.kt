@@ -11,6 +11,7 @@ import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.decorations.typeface.TypefaceStyle
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.utils.AdapterUtils.setSelectedIndicator
 
 class AdapterTypeface : RecyclerView.Adapter<VerticalListViewHolder>() {
 
@@ -46,11 +47,7 @@ class AdapterTypeface : RecyclerView.Adapter<VerticalListViewHolder>() {
                 holder.binding.description.visibility = ViewGroup.VISIBLE
             }
 
-            if (typeface.name == AppearancePreferences.getAppFont()) {
-                holder.binding.name.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.ic_ring_12dp, 0)
-            } else {
-                holder.binding.name.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
-            }
+            holder.binding.name.setSelectedIndicator(typeface.name == AppearancePreferences.getAppFont())
 
             holder.binding.name.typeface = TypeFace.getTypeFace(typeface.name, TypefaceStyle.BOLD.style, holder.context)
             holder.binding.license.typeface = TypeFace.getTypeFace(typeface.name, TypefaceStyle.REGULAR.style, holder.context)

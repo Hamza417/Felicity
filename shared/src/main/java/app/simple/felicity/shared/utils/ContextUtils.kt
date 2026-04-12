@@ -1,4 +1,4 @@
-package app.simple.felicity.utils
+package app.simple.felicity.shared.utils
 
 import android.content.Context
 import android.content.ContextWrapper
@@ -13,7 +13,7 @@ open class ContextUtils(context: Context) : ContextWrapper(context) {
          * Android does not have a default method to change app locale
          * at runtime like changing theme. This method at first only
          * applicable before the app starts, second is not solution
-         * rather a work around, third uses deprecated methods for
+         * rather a workaround, third uses deprecated methods for
          * older APIs which can cause issues in some phones.
          *
          * @param baseContext is base context
@@ -21,10 +21,10 @@ open class ContextUtils(context: Context) : ContextWrapper(context) {
          */
         fun updateLocale(baseContext: Context, languageCode: String): ContextWrapper {
             val localeToSwitchTo = if (languageCode == "default") {
-                if (LocaleHelper.isOneOfTraditionalChinese()) {
+                if (LocaleUtils.isOneOfTraditionalChinese()) {
                     Locale.forLanguageTag("zh-TW")
                 } else {
-                    Locale.forLanguageTag(LocaleHelper.getSystemLanguageCode())
+                    Locale.forLanguageTag(LocaleUtils.getSystemLanguageCode())
                 }
             } else {
                 Locale.forLanguageTag(languageCode)

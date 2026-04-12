@@ -45,9 +45,9 @@ class PreferencesViewModel(application: Application) : WrappedViewModel(applicat
 
             preferences.add(
                     Preference(
-                            title = R.string.user_interface,
-                            description = R.string.user_interface_desc,
-                            icon = R.drawable.ic_carousel
+                            title = R.string.configration,
+                            description = R.string.configuration_desc,
+                            icon = R.drawable.ic_app_settings
                     )
             )
 
@@ -56,6 +56,14 @@ class PreferencesViewModel(application: Application) : WrappedViewModel(applicat
                             title = R.string.behavior,
                             description = R.string.behavior_desc,
                             icon = R.drawable.ic_behavior
+                    )
+            )
+
+            preferences.add(
+                    Preference(
+                            title = R.string.user_interface,
+                            description = R.string.user_interface_desc,
+                            icon = R.drawable.ic_carousel
                     )
             )
 

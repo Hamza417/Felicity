@@ -15,7 +15,7 @@ import androidx.lifecycle.MutableLiveData;
 import app.simple.felicity.extensions.livedata.ErrorLiveData;
 import app.simple.felicity.preferences.ConfigurationPreferences;
 import app.simple.felicity.repository.database.instances.StackTraceDatabase;
-import app.simple.felicity.utils.ContextUtils;
+import app.simple.felicity.shared.utils.ContextUtils;
 
 public class WrappedViewModel extends AndroidViewModel implements SharedPreferences.OnSharedPreferenceChangeListener {
     
@@ -29,7 +29,8 @@ public class WrappedViewModel extends AndroidViewModel implements SharedPreferen
     }
     
     public final Context getContext() {
-        return ContextUtils.Companion.updateLocale(applicationContext(), ConfigurationPreferences.INSTANCE.getAppLanguage());
+        return ContextUtils.Companion.updateLocale(
+                applicationContext(), ConfigurationPreferences.INSTANCE.getAppLanguage());
     }
     
     public LiveData <Throwable> getError() {

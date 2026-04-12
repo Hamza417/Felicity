@@ -114,4 +114,12 @@ object AdapterUtils {
 
         textView.text = spannable
     }
+
+    fun TextView.setSelectedIndicator(isSelected: Boolean) {
+        if (isSelected) {
+            setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, R.drawable.ic_ring_12dp, 0)
+        } else {
+            setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0)
+        }
+    }
 }
