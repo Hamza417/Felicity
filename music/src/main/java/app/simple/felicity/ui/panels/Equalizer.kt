@@ -15,6 +15,7 @@ import app.simple.felicity.decorations.knobs.RotaryKnobListener
 import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
+import app.simple.felicity.dialogs.player.SaveEqualizerPreset.Companion.showSaveEqualizerPreset
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
@@ -37,6 +38,10 @@ import kotlinx.coroutines.launch
  *
  * Band gains are kept in sync with [EqualizerManager.bandGainsFlow] so any external change
  * (e.g., a future preset loader) is reflected in the UI automatically.
+ *
+ * The preset name label between the "Save Preset" and "Reset" buttons always reflects the
+ * active preset, or "Custom" when the current EQ curve does not match any saved preset.
+ * The ViewModel does that comparison in the background whenever the gains change.
  *
  * @author Hamza417
  */
@@ -72,6 +77,20 @@ class Equalizer : MediaFragment() {
             }
         }
 
+        // Show the save dialog, then let the ViewModel handle the actual DB work —
+        // including the duplicate check that guards against accidental overwrites.
+        binding.equalizerScreen.savePreset.setOnClickListener {
+            childFragmentManager.showSaveEqualizerPreset { name ->
+                viewModel.savePreset(
+                        name = name,
+                        gains = EqualizerManager.getAllGains(),
+                        preampDb = EqualizerManager.getPreamp(),
+                        onDuplicate = { /* show warning */ },
+                        onSuccess = { /* the preset list updates automatically via Room */ }
+                )
+            }
+        }
+
         // Open the presets panel so the user can browse, apply, or save EQ snapshots.
         // It's a full-screen panel pushed onto the back stack — clean and simple.
         binding.equalizerScreen.presetsButton.setOnClickListener {
@@ -81,6 +100,9 @@ class Equalizer : MediaFragment() {
         // Register live-update observers for the EQ sliders. Initial values are applied
         // once the ViewModel delivers its state below.
         setupEqualizerSliderObservers()
+
+        // Keep the preset name label in sync whenever the ViewModel figures out a match.
+        observeCurrentPresetName()
 
         // Collect the ViewModel's initial state (loaded on the IO thread) to populate
         // all visible controls without blocking the main thread.
@@ -192,6 +214,21 @@ class Equalizer : MediaFragment() {
         } else {
             binding.equalizerScreen.equalizerSliders.alpha = if (isEnabled) 1f else 0.5f
             binding.equalizerScreen.equalizerSliders.isEnabled = isEnabled
+        }
+    }
+
+    /**
+     * Collects [EqualizerViewModel.currentPresetName] and keeps the preset name label
+     * between the Save and Reset buttons up to date. The fade animation makes the
+     * transition between "Custom" and a named preset look smooth rather than jarring.
+     */
+    private fun observeCurrentPresetName() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.currentPresetName.collect { name ->
+                    binding.equalizerScreen.presetName.setTextWithFade(name)
+                }
+            }
         }
     }
 

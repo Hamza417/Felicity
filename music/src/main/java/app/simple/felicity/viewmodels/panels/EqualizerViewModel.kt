@@ -2,13 +2,21 @@ package app.simple.felicity.viewmodels.panels
 
 import android.app.Application
 import androidx.lifecycle.viewModelScope
+import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.EqualizerPreferences
+import app.simple.felicity.repository.database.instances.EqualizerDatabase
+import app.simple.felicity.repository.models.EqualizerPreset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.math.abs
 
 /**
  * ViewModel for the [app.simple.felicity.ui.panels.Equalizer] panel.
@@ -22,6 +30,11 @@ import kotlinx.coroutines.launch
  * background coroutine warms up the entire [android.content.SharedPreferences] instance,
  * making all subsequent reads instant HashMap lookups.
  *
+ * It also keeps the full preset list in memory (there are only about 14 built-ins plus
+ * however many the user creates, so this is essentially free) and computes [currentPresetName]
+ * by comparing the live band gains and preamp against every preset. If nothing matches,
+ * it falls back to "Custom" so the user always knows exactly where their EQ stands.
+ *
  * @author Hamza417
  */
 class EqualizerViewModel(application: Application) : WrappedViewModel(application) {
@@ -34,6 +47,42 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
      * typically happens within a single frame on modern devices.
      */
     val initialState: StateFlow<EqualizerInitialState?> = _initialState.asStateFlow()
+
+    /** Lazy reference to the equalizer database — opened only when first needed. */
+    private val db: EqualizerDatabase by lazy {
+        EqualizerDatabase.getInstance(getApplication())
+    }
+
+    /**
+     * Live list of every saved preset, ordered built-ins first then alphabetically.
+     * Kept entirely in memory because the total count is tiny (think 15–30 entries tops),
+     * and having it ready here lets us check for name matches without any extra DB queries.
+     */
+    val allPresets: StateFlow<List<EqualizerPreset>> = db.equalizerPresetDao()
+        .getAllPresetsFlow()
+        .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList()
+        )
+
+    /**
+     * Reacts to changes in the live band gains, the preamp level, and the preset list
+     * all at once. If the current EQ state exactly matches a saved preset it emits that
+     * preset's name; otherwise it emits "Custom". Updates happen on the collector's
+     * thread (main thread in the fragment), so the UI just observes and updates the label.
+     */
+    val currentPresetName: StateFlow<String> = combine(
+            EqualizerManager.bandGainsFlow,
+            EqualizerManager.preampFlow,
+            allPresets
+    ) { gains, preamp, presets ->
+        findMatchingPreset(gains, preamp, presets)?.name ?: CUSTOM_PRESET_NAME
+    }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = CUSTOM_PRESET_NAME
+    )
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -51,6 +100,66 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
                     reverbSize = EqualizerPreferences.getReverbSize(),
                     reverbDamp = EqualizerPreferences.getReverbDamp()
             )
+        }
+    }
+
+    /**
+     * Tries to save the current EQ settings under [name]. If a preset with that exact name
+     * (case-insensitive) already exists, the [onDuplicate] callback is called on the main
+     * thread and nothing is written. If the name is free, the preset is inserted and
+     * [onSuccess] is called on the main thread. Either way, the operation is fully
+     * off-thread — the caller never has to worry about blocking the UI.
+     *
+     * @param name        The name the user typed in. Leading/trailing spaces are trimmed.
+     * @param gains       Snapshot of all 10 band gains in dB to persist.
+     * @param preampDb    The current preamp level in dB.
+     * @param onDuplicate Called on the main thread when a preset with this name already exists.
+     * @param onSuccess   Called on the main thread after the preset is successfully saved.
+     */
+    fun savePreset(
+            name: String,
+            gains: FloatArray,
+            preampDb: Float,
+            onDuplicate: () -> Unit,
+            onSuccess: () -> Unit
+    ) {
+        val trimmedName = name.trim()
+        viewModelScope.launch(Dispatchers.IO) {
+            val existing = db.equalizerPresetDao().getPresetByName(trimmedName)
+            if (existing != null) {
+                withContext(Dispatchers.Main) { onDuplicate() }
+                return@launch
+            }
+            val preset = EqualizerPreset.fromGains(
+                    name = trimmedName,
+                    gains = gains,
+                    preampDb = preampDb,
+                    isBuiltIn = false
+            )
+            db.equalizerPresetDao().insertPreset(preset)
+            withContext(Dispatchers.Main) { onSuccess() }
+        }
+    }
+
+    /**
+     * Walks the [presets] list and returns the first one whose band gains and preamp level
+     * are within floating-point rounding tolerance of [gains] and [preamp]. Returns null
+     * if no preset matches, which means the EQ is in a "Custom" state.
+     *
+     * The tolerance of 0.005 dB is half the smallest step that can be represented after
+     * the "%.2f" serialization round-trip, so this check never gives false negatives.
+     */
+    private fun findMatchingPreset(
+            gains: FloatArray,
+            preamp: Float,
+            presets: List<EqualizerPreset>
+    ): EqualizerPreset? {
+        return presets.firstOrNull { preset ->
+            val presetGains = preset.getBandGains()
+            val gainsMatch = gains.size == presetGains.size &&
+                    gains.indices.all { i -> abs(gains[i] - presetGains[i]) < GAIN_TOLERANCE }
+            val preampMatch = abs(preamp - preset.preampDb) < GAIN_TOLERANCE
+            gainsMatch && preampMatch
         }
     }
 
@@ -119,5 +228,19 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             return result
         }
     }
-}
 
+    companion object {
+        /**
+         * The label shown when the current EQ state does not match any saved preset.
+         * Using a constant here makes it easy to check against this sentinel value elsewhere.
+         */
+        const val CUSTOM_PRESET_NAME = "Custom"
+
+        /**
+         * Maximum absolute difference in dB that we still consider a "match" between
+         * the live gain and a preset's stored gain. Half of 0.01 covers the rounding error
+         * introduced by the "%.2f" serialization round-trip used in [EqualizerPreset.gainsToRaw].
+         */
+        private const val GAIN_TOLERANCE = 0.005f
+    }
+}

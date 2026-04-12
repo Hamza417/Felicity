@@ -4,6 +4,18 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/preset_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:padding="@dimen/padding_15"
+        android:gravity="center_horizontal"
+        android:textSize="@dimen/text_size_14"
+        android:text="@string/custom"
+        app:appFontStyle="bold"
+        app:textColorStyle="heading" />
+
     <app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders
         android:id="@+id/equalizer_sliders"
         android:layout_width="match_parent"
