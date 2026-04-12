@@ -15,7 +15,26 @@ class SpacingItemDecoration(
 ) : RecyclerView.ItemDecoration() {
     override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
         val layoutManager = parent.layoutManager
-        val position = parent.getChildAdapterPosition(view)
+
+        /**
+         * When items are being animated (e.g. after a sort order change), the adapter
+         * position of the view may not be known yet. In that case we fall back to the
+         * layout position, which is the last position the view was laid out at.
+         * If even that comes back as NO_POSITION (the view is in a completely
+         * indeterminate transitional state), we skip all offsets so we don't accidentally
+         * apply wrong spacing that persists beyond the animation.
+         */
+        val adapterPos = parent.getChildAdapterPosition(view)
+        val position = if (adapterPos != RecyclerView.NO_POSITION) {
+            adapterPos
+        } else {
+            parent.getChildLayoutPosition(view)
+        }
+
+        if (position == RecyclerView.NO_POSITION) {
+            return
+        }
+
         if (layoutManager is GridLayoutManager) {
             val spanCount = layoutManager.spanCount
             val column = position % spanCount
