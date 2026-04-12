@@ -1,9 +1,13 @@
 package app.simple.felicity.repository.loader
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.util.Log
 import androidx.annotation.WorkerThread
+import androidx.core.app.NotificationCompat
 import app.simple.felicity.preferences.LibraryPreferences
+import app.simple.felicity.repository.R
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.metadata.MetaDataHelper.extractMetadata
 import app.simple.felicity.repository.models.Audio
@@ -20,6 +24,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.cancellation.CancellationException
@@ -33,6 +38,15 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         private const val TAG = "AudioDatabaseLoader"
         private const val MIN_SEMAPHORE_PERMITS = 4
         private const val BATCH_SIZE = 50 // Number of audio items to accumulate before inserting to database
+
+        /** Notification channel ID — stays constant so the system only creates it once. */
+        private const val SCAN_CHANNEL_ID = "felicity_library_scanner"
+
+        /** A stable notification ID so each new scan updates the same notification. */
+        private const val SCAN_NOTIFICATION_ID = 1001
+
+        /** How often (in files processed) the progress notification text is refreshed. */
+        private const val NOTIFICATION_UPDATE_INTERVAL = 25
 
         data class IndexedFile(val lastModified: Long, val size: Long, val id: Long = 0L, val isFavorite: Boolean = false, val alwaysSkip: Boolean = false)
     }
@@ -58,6 +72,13 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         AudioDatabase.getInstance(context)
     }
 
+    /** The system notification manager — used to post and update the scan progress card. */
+    private val notificationManager =
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    /** Counts how many files have been fully processed during the current scan. */
+    private val processedFileCount = AtomicInteger(0)
+
     suspend fun processAudioFiles() {
         checkNotMainThread()
 
@@ -72,6 +93,10 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             Log.d(TAG, "Recreating dead scanScope before new scan")
             scanScope = newScanScope()
         }
+
+        setupScannerNotificationChannel()
+        processedFileCount.set(0)
+        postScannerNotification(0)
 
         try {
             val startTime = System.currentTimeMillis()
@@ -184,6 +209,14 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                                 Log.e(TAG, "Error processing ${file.absolutePath}", e)
                             } finally {
                                 semaphore.release()
+
+                                // Bump the counter and refresh the notification every
+                                // NOTIFICATION_UPDATE_INTERVAL files so the user can
+                                // see the scan is actually making progress.
+                                val count = processedFileCount.incrementAndGet()
+                                if (count % NOTIFICATION_UPDATE_INTERVAL == 0) {
+                                    postScannerNotification(count)
+                                }
                             }
                         }
 
@@ -224,12 +257,70 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                 activeJobs.clear()
             }
 
+            dismissScannerNotification()
+
             try {
                 scanMutex.unlock()
             } catch (_: IllegalStateException) {
                 Log.w(TAG, "Mutex unlock skipped in finally block – not locked by current owner")
             }
         }
+    }
+
+    /**
+     * Creates the notification channel for scanner progress cards.
+     * Android only creates the channel once; subsequent calls are harmless no-ops.
+     * The channel is low-importance and completely silent so it never interrupts playback.
+     */
+    private fun setupScannerNotificationChannel() {
+        val channel = NotificationChannel(
+                SCAN_CHANNEL_ID,
+                "Library Scanner",
+                NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Shows progress while your music library is being scanned"
+            setSound(null, null)
+            enableVibration(false)
+        }
+        notificationManager.createNotificationChannel(channel)
+    }
+
+    /**
+     * Posts (or updates) the scan progress notification.
+     *
+     * When [filesProcessed] is 0 the progress bar is indeterminate, which is the right
+     * look for the initial reconcile phase when we don't have a total yet.
+     * Once files start coming in, the text updates to show how many have been handled.
+     *
+     * @param filesProcessed The number of audio files processed so far this scan.
+     */
+    private fun postScannerNotification(filesProcessed: Int) {
+        val isIndeterminate = filesProcessed == 0
+        val contentText = if (isIndeterminate) {
+            "Scanning your music library…"
+        } else {
+            "$filesProcessed files indexed so far"
+        }
+
+        val notification = NotificationCompat.Builder(context, SCAN_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_felicity_full)
+            .setContentTitle("Scanning Library")
+            .setContentText(contentText)
+            .setProgress(0, 0, isIndeterminate)
+            .setSilent(true)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+        notificationManager.notify(SCAN_NOTIFICATION_ID, notification)
+    }
+
+    /**
+     * Removes the scan progress notification once the scan finishes (or is cancelled).
+     * Safe to call multiple times.
+     */
+    private fun dismissScannerNotification() {
+        notificationManager.cancel(SCAN_NOTIFICATION_ID)
     }
 
     /**
