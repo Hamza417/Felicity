@@ -34,6 +34,7 @@ import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
+import app.simple.felicity.dialogs.playlists.AddMultipleToPlaylistDialog.Companion.showAddMultipleToPlaylistDialog
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.extensions.activities.BaseActivity
@@ -469,6 +470,17 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                 dialogBinding.shareAll.setOnClickListener {
                     shareSelectedAudios(selected)
                     dismiss()
+                }
+                // Drop all selected songs onto the end of the current playback queue in one shot.
+                dialogBinding.addAllToQueue.setOnClickListener {
+                    selected.forEach { MediaPlaybackManager.addToQueue(it) }
+                    SelectionManager.clear()
+                    dismiss()
+                }
+                // Open the batch add-to-playlist dialog so the user can pick which playlists to add them to.
+                dialogBinding.addToPlaylist.setOnClickListener {
+                    dismiss()
+                    supportFragmentManager.showAddMultipleToPlaylistDialog(selected)
                 }
                 dialogBinding.clearSelection.setOnClickListener {
                     SelectionManager.clear()

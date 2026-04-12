@@ -8,10 +8,9 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
 import android.util.AttributeSet
-import android.view.View
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.ColorUtils
-import androidx.recyclerview.widget.RecyclerView
+import androidx.core.graphics.withClip
 import app.simple.felicity.R
 import app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout
 import app.simple.felicity.engine.managers.MediaPlaybackManager
@@ -178,10 +177,9 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         }
 
         // Draw the gradient strip clipped to the rounded rectangle — no allocations here.
-        val clipSave = canvas.save()
-        canvas.clipPath(selectionClipPath)
-        canvas.drawRect(selectionRect, selectionBgPaint)
-        canvas.restoreToCount(clipSave)
+        canvas.withClip(selectionClipPath) {
+            drawRect(selectionRect, selectionBgPaint)
+        }
 
         // Draw the check icon centered in the right-side strip.
         val iconSize = (h * 0.45f).toInt()
@@ -222,29 +220,7 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         selectionScope = null
     }
 
-    private fun requestRecyclerViewToScrollToSelf() {
-        var currentView: View = this
-        var currentParent = parent
-
-        while (currentParent != null) {
-            if (currentParent is RecyclerView) {
-                val position = currentParent.getChildAdapterPosition(currentView)
-                if (position != RecyclerView.NO_POSITION) {
-                    currentParent.scrollToPosition(position)
-                }
-                break
-            }
-
-            if (currentParent is View) {
-                currentView = currentParent
-                currentParent = currentParent.parent
-            } else {
-                break
-            }
-        }
-    }
-
     companion object {
-        private const val ANIMATION_DURATION = 500L
+        private const val TAG = "MediaAwareRippleConstraintLayout"
     }
 }
