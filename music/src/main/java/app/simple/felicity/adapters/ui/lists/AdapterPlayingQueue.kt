@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterPlayingQueueBinding
+import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.engine.managers.MediaPlaybackManager
@@ -29,18 +30,37 @@ import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import com.bumptech.glide.Glide
 
-class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPlayingQueue.QueueHolder>() {
+/**
+ * Adapter for the "Playing Queue" screen. It shows every song in the playback queue, lets the
+ * user drag items to reorder them, and swipe to remove them. Items that have already been played
+ * (i.e. they sit before the current song) are gently faded out so it's immediately obvious where
+ * you are in the queue — kind of like a musical rearview mirror.
+ *
+ * It extends [FastScrollAdapter] so that heavy work like image loading is automatically skipped
+ * while the fast-scroll thumb is being dragged, which keeps scrolling buttery-smooth.
+ *
+ * @author Hamza417
+ */
+class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayingQueue.QueueHolder>() {
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
     private var itemTouchHelper: ItemTouchHelper? = null
     private var onItemMovedCallback: ((fromPosition: Int, toPosition: Int) -> Unit)? = null
     private var onItemSwipedCallback: ((position: Int) -> Unit)? = null
 
-    // Plain mutable list — single source of truth, mutated directly on the main thread.
-    // No AsyncListDiffer: async diffs race with ItemTouchHelper and cause wrong highlights.
+    /**
+     * Plain mutable list — single source of truth, mutated directly on the main thread.
+     * No AsyncListDiffer: async diffs race with ItemTouchHelper and cause wrong highlights.
+     */
     private val songs: MutableList<Audio> = mutableListOf()
 
-    // True while a drag gesture is in progress — defers external list updates.
+    /**
+     * The index of the song that is currently playing. Every item at a lower index will be
+     * drawn at a reduced alpha to show that those songs are "in the past".
+     */
+    private var currentPosition: Int = 0
+
+    /** True while a drag gesture is in progress — defers external list updates. */
     private var isDragInProgress = false
     private var pendingList: List<Audio>? = null
 
@@ -72,8 +92,16 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
         )
     }
 
-    override fun onBindViewHolder(holder: QueueHolder, position: Int) {
-        holder.bind(songs[position], isLightBind = false)
+    /**
+     * This is called by [FastScrollAdapter] automatically. When [isLightBind] is true (fast-scroll
+     * thumb being dragged), we skip heavy work like image loading so scrolling stays smooth.
+     * We still apply the "past songs" fade here because that's just an alpha — very cheap.
+     */
+    override fun onBind(holder: QueueHolder, position: Int, isLightBind: Boolean) {
+        holder.bind(songs[position], isLightBind)
+        // Songs before the currently playing one look "faded out" — they've already had their
+        // moment in the spotlight, so we dim them a little as a polite reminder.
+        holder.itemView.alpha = if (position < currentPosition) PAST_SONG_ALPHA else 1f
     }
 
 
@@ -95,6 +123,19 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
 
     fun setOnItemSwipedCallback(callback: (position: Int) -> Unit) {
         this.onItemSwipedCallback = callback
+    }
+
+    /**
+     * Tell the adapter which song is currently playing so it can fade out the ones before it.
+     * Only the items whose faded-ness actually changed are refreshed — no unnecessary redraws.
+     */
+    fun updateCurrentPosition(newPosition: Int) {
+        val old = currentPosition
+        currentPosition = newPosition
+        // Refresh only the items whose fade state changed — typically just the one that flipped.
+        val start = minOf(old, newPosition)
+        val end = maxOf(old, newPosition)
+        notifyItemRangeChanged(start, end - start + 1)
     }
 
     /**
@@ -330,5 +371,10 @@ class AdapterPlayingQueue(initial: List<Audio>) : RecyclerView.Adapter<AdapterPl
     }
 
     companion object {
+        /**
+         * How transparent the "already played" songs look. 0.38f is the standard Material
+         * "disabled" alpha — dim enough to notice, bright enough to still read.
+         */
+        private const val PAST_SONG_ALPHA = 0.38f
     }
 }

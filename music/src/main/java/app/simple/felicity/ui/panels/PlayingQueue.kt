@@ -54,6 +54,12 @@ class PlayingQueue : BasePanelFragment() {
                 updateQueueList(songs)
             }
         }
+
+        // Keep the "past songs" fade in sync with whatever is playing right now.
+        // This runs every time the current song index changes, not just on startup.
+        playingQueueViewModel.currentPosition.collectWhenStarted { position ->
+            adapterPlayingQueue?.updateCurrentPosition(position)
+        }
     }
 
     override fun onDestroyView() {
@@ -119,6 +125,7 @@ class PlayingQueue : BasePanelFragment() {
                     layoutManager.scrollToPositionWithOffset(
                             currentPosition,
                             binding.appHeader.height + resources.getDimensionPixelSize(R.dimen.padding_8))
+                    binding.recyclerView.scheduleLayoutAnimation()
                 }
             }
         }
