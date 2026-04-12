@@ -39,7 +39,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:layout_marginStart="@dimen/padding_5"
-            android:padding="@dimen/padding_5"
+            android:padding="@dimen/padding_10"
             android:layout_marginEnd="@dimen/padding_15"
             android:text="@string/reset"
             app:appFontStyle="bold"

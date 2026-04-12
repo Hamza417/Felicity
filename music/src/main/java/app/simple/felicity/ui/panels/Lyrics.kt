@@ -104,8 +104,8 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
                 }
 
                 override fun onLyricsDelete() {
-                    withSureDialog {
-                        if (it) {
+                    withSureDialog { sure ->
+                        if (sure) {
                             lyricsViewModel.deleteLrc {
                                 binding.lrc.reset()
                                 Log.d(TAG, "Lyrics deleted successfully.")

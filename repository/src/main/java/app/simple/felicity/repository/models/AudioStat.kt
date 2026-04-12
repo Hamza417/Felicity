@@ -9,13 +9,15 @@ import kotlinx.parcelize.Parcelize
 /**
  * Tracks per-song playback statistics stored in the {@code song_stats} table.
  *
- * <p>The {@code audioHash} field is the XXHash64 content fingerprint produced during library
+ * <p>
+ * The {@code audioHash} field is the XXHash64 content fingerprint produced during library
  * scanning and logically identifies the audio track. There is intentionally no database-level
  * foreign key pointing at {@code audio.hash}: a hard FK with {@code ON DELETE NO ACTION} would
  * prevent deleting audio rows that have statistics, while the desired behavior is that stats
  * survive even after the corresponding track is removed from the library. If the same file is
  * re-added later, the same fingerprint is computed and the historical stats are automatically
- * associated again.</p>
+ * associated again.
+ * </p>
  *
  * @author Hamza417
  */

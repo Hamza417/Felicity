@@ -729,6 +729,12 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             .show()
     }
 
+    /**
+     * Shows a simple "Are you sure?" confirmation dialog with "Sure" and "Cancel" options.
+     * The [onResult] callback returns true if the user confirmed, false if they canceled.
+     *
+     * Calls on result on both conditions, so make sure to check for the result in the block.
+     */
     protected fun withSureDialog(onResult: (Boolean) -> Unit) {
         SimpleDialog.Builder(
                 container = requireContainerView(),

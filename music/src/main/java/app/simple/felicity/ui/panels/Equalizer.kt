@@ -64,9 +64,11 @@ class Equalizer : MediaFragment() {
         }
 
         binding.equalizerScreen.reset.setOnClickListener {
-            withSureDialog {
-                EqualizerManager.resetAllBands()
-                EqualizerPreferences.setPreampDb(0f)
+            withSureDialog { sure ->
+                if (sure) {
+                    EqualizerManager.resetAllBands()
+                    EqualizerPreferences.setPreampDb(0f)
+                }
             }
         }
 
