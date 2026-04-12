@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="number_of_songs">
+        <item quantity="one">%d Song</item>
+        <item quantity="other">%d Songs</item>
+    </plurals>
+    <plurals name="songs_selected">
+        <item quantity="one">%d Song Selected</item>
+        <item quantity="other">%d Songs Selected</item>
+    </plurals>
+    <plurals name="number_of_albums">
+        <item quantity="one">%d Album</item>
+        <item quantity="other">%d Albums</item>
+    </plurals>
+    <plurals name="grace_launches_remaining">
+        <item quantity="one">You have %d buffer launch remaining before the app closes.</item>
+        <item quantity="other">You have %d buffer launches remaining before the app closes.</item>
+    </plurals>
+</resources>
