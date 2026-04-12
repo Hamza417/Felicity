@@ -45,24 +45,33 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
 
     private var audioID: Long = -1L
 
+    /** True when this song is the one currently on stage (i.e., playing right now). */
+    private var isPlaying: Boolean = false
+
     /** True when this song is currently sitting in the selection basket. */
     private var isInSelection: Boolean = false
 
     /** Coroutine scope that lives exactly as long as this view is attached to a window. */
     private var selectionScope: CoroutineScope? = null
 
-    /** The checkmark drawable scaled up to cover the right-side indicator strip. */
+    /**
+     * The little play icon that shows up when this row is the currently playing song.
+     * It's like a tiny spotlight — subtle but clear.
+     */
+    private val playDrawable = AppCompatResources.getDrawable(context, R.drawable.ic_play)
+
+    /** The checkmark that appears when this song is selected — "yep, this one's picked!" */
     private val checkDrawable = AppCompatResources.getDrawable(context, R.drawable.ic_check)
 
-    /** Paint used to draw the gradient background strip behind the check icon. */
+    /** Paint used to draw the gradient background strip behind the icons. */
     private val selectionBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
 
     /**
-     * Reusable clip path for the gradient strip — rebuilt whenever the view size changes
-     * so we never allocate inside onDraw. The right corners are rounded to match the app's
-     * global corner radius, giving the indicator the same polished feel as the rest of the UI.
+     * Reusable clip path for the gradient strip — rebuilt whenever the view size or state
+     * changes so we never allocate inside onDraw. The right corners are rounded to match
+     * the app's global corner radius, giving the strip that polished, belongs-here feel.
      */
     private val selectionClipPath = Path()
 
@@ -70,12 +79,14 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
     private val selectionRect = RectF()
 
     /**
-     * The last width and height used to build the gradient shader.
-     * We only rebuild the shader when these change, keeping onDraw allocation-free.
+     * Cached values that let us detect when the geometry needs rebuilding.
+     * We check these in [onDraw] and only redo the math when something actually changed.
      */
     private var cachedShaderW = -1f
     private var cachedShaderH = -1f
     private var cachedShaderColor = 0
+    private var cachedIsPlaying = false
+    private var cachedIsInSelection = false
 
     init {
         // ViewGroups skip onDraw by default. We need it to draw the indicator strip
@@ -84,61 +95,79 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
     }
 
     /**
-     * Binds the given [audioID] to this view. The initial selection state is applied
-     * instantly (no animation) so the recycled view reflects the correct state immediately.
+     * Binds the given [audioID] to this view. The initial playing and selection states are
+     * applied instantly (no animation) so a recycled view always reflects the correct state
+     * right away — no awkward delay where a row thinks it's still the old song.
      *
      * @param audioID the ID of the audio item this view represents.
      */
     fun setAudioID(audioID: Long) {
-        if (audioID == -1L) {
-            return
-        }
+        if (audioID == -1L) return
         this.audioID = audioID
-        isSelected = audioID == MediaPlaybackManager.getCurrentSongId()
+        isPlaying = audioID == MediaPlaybackManager.getCurrentSongId()
         isInSelection = SelectionManager.selectedAudios.value.any { it.id == audioID }
         invalidate()
     }
 
     /**
      * Called by [MediaPlaybackManager] on the main thread whenever the playing song changes.
-     * Smoothly animates the background tint between the transparent and selected states.
+     * Instead of lighting up the whole row, we just flip the play-icon flag and ask
+     * the view to redraw — subtle and non-intrusive.
      *
      * @param audio the newly playing [Audio], or null if playback stopped.
      */
     override fun onAudioChange(audio: Audio?) {
-        val shouldBeSelected = audio?.id == audioID
-        if (isSelected == shouldBeSelected) return
-        setSelected(shouldBeSelected, true)
+        val shouldBePlaying = audio?.id == audioID
+        if (isPlaying == shouldBePlaying) return
+        isPlaying = shouldBePlaying
+        invalidate()
     }
 
     /**
-     * Rebuilds the cached gradient shader and clip path whenever the view size or accent
-     * color changes. Calling this from [onSizeChanged] keeps [onDraw] completely
-     * allocation-free — no new objects are created per frame.
+     * Rebuilds the cached gradient shader and clip path whenever the view size, accent
+     * color, or icon visibility changes. Calling this from [onSizeChanged] keeps [onDraw]
+     * completely allocation-free — no new objects are created per frame.
      */
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        rebuildSelectionGeometry(w.toFloat(), h.toFloat())
+        rebuildSelectionGeometry(w.toFloat(), h.toFloat(), isPlaying, isInSelection)
     }
 
     /**
-     * Computes the gradient shader and the rounded clip path for the selection strip.
-     * Called from [onSizeChanged] and whenever the accent color changes.
+     * Computes the gradient shader and the rounded clip path for the icon strip.
+     * The gradient follows a cubic ease-in Bézier curve — it starts nearly invisible
+     * and ramps up quickly near the right edge, which feels much more natural than
+     * a boring straight linear fade.
+     *
+     * The strip width adapts to how many icons need to be shown: one slot when only
+     * one icon is visible, two slots when the song is both playing and selected.
      */
-    private fun rebuildSelectionGeometry(w: Float, h: Float) {
+    private fun rebuildSelectionGeometry(w: Float, h: Float, playing: Boolean, inSelection: Boolean) {
         if (w <= 0f || h <= 0f) return
+
         // Use the secondary accent color — it tends to be softer and reads better in both
         // light and dark themes, unlike the primary accent which can be too harsh.
         val accentColor = ThemeManager.accent.secondaryAccentColor
-        val accentSemi = ColorUtils.setAlphaComponent(accentColor, 60)
-        val indicatorW = h  // square strip matching the full row height
+        val maxAlpha = 60
 
-        // Rebuild the gradient that fades from transparent on the left into a soft accent wash.
+        // When both icons are on duty, we need a wider strip to fit them side by side.
+        val slotCount = if (playing && inSelection) 2f else 1f
+        val indicatorW = h * slotCount
+
+        // Build a cubic ease-in curve using multiple color stops so the fade-in
+        // looks smooth and intentional rather than a blunt hard-edge transition.
+        // f(t) = t^3 maps directly to alpha, giving a slow start that accelerates.
+        val positions = floatArrayOf(0f, 0.15f, 0.30f, 0.45f, 0.65f, 0.80f, 1f)
+        val colors = positions.map { t ->
+            val alpha = (maxAlpha * t * t * t).toInt().coerceIn(0, maxAlpha)
+            ColorUtils.setAlphaComponent(accentColor, alpha)
+        }.toIntArray()
+
         selectionBgPaint.shader = LinearGradient(
                 w - indicatorW, 0f,
                 w, 0f,
-                intArrayOf(0x00000000, accentSemi),
-                null,
+                colors,
+                positions,
                 Shader.TileMode.CLAMP
         )
 
@@ -152,46 +181,86 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         cachedShaderW = w
         cachedShaderH = h
         cachedShaderColor = accentColor
+        cachedIsPlaying = playing
+        cachedIsInSelection = inSelection
     }
 
     /**
-     * Draws a semi-transparent check indicator at the right edge of the view, sitting
-     * behind all the child views (album art, text, etc.). It fades in from transparent
-     * on the left to a soft accent-colored wash on the right, with the check icon on top.
+     * Draws a semi-transparent icon strip at the right edge of the view, sitting behind
+     * all the child views (text, album art, etc.). The strip shows:
      *
-     * This only draws when [isInSelection] is true — otherwise we skip it entirely
-     * so there is zero performance cost for non-selected rows.
+     * - A play icon when this song is currently playing.
+     * - A check icon when this song is selected.
+     * - Both icons side by side when the song is both playing and selected
+     *   (they're great together, like bread and butter).
+     *
+     * The gradient behind the icons uses a cubic ease-in bezier curve so it fades in
+     * gradually and looks intentional rather than slapped on. When neither icon is
+     * needed, the whole thing is skipped so non-active rows have zero overhead.
      */
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (!isInSelection) return
+        if (!isPlaying && !isInSelection) return
 
         val w = width.toFloat()
         val h = height.toFloat()
 
-        // Lazily rebuild geometry if the size somehow changed without onSizeChanged firing
-        // (rare, but defensive programming never hurt anyone).
+        // Rebuild geometry if the size, accent color, or icon combination changed.
+        // This is a lazy fallback — most of the time onSizeChanged already took care of it.
         if (cachedShaderW != w || cachedShaderH != h ||
-                cachedShaderColor != ThemeManager.accent.secondaryAccentColor) {
-            rebuildSelectionGeometry(w, h)
+                cachedShaderColor != ThemeManager.accent.secondaryAccentColor ||
+                cachedIsPlaying != isPlaying || cachedIsInSelection != isInSelection) {
+            rebuildSelectionGeometry(w, h, isPlaying, isInSelection)
         }
 
-        // Draw the gradient strip clipped to the rounded rectangle — no allocations here.
+        // Draw the bezier-faded gradient strip clipped to the rounded rectangle.
         canvas.withClip(selectionClipPath) {
             drawRect(selectionRect, selectionBgPaint)
         }
 
-        // Draw the check icon centered in the right-side strip.
+        // These sizing constants keep the icons proportional regardless of row height.
         val iconSize = (h * 0.45f).toInt()
-        val iconLeft = (w - iconSize - h * 0.18f).toInt()
+        val iconPadding = (h * 0.18f).toInt()
         val iconTop = ((h - iconSize) / 2f).toInt()
-        checkDrawable?.let {
-            // Use the secondary accent color to tint the checkmark so it's always visible,
-            // even in dark mode where the default black tint would blend into the background.
-            it.setTint(ThemeManager.accent.secondaryAccentColor)
-            it.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
-            it.alpha = 200
-            it.draw(canvas)
+        val accentColor = ThemeManager.accent.secondaryAccentColor
+
+        if (isPlaying && isInSelection) {
+            // Both icons are here — play on the left, check on the right,
+            // each sitting in its own half of the double-wide strip.
+            val checkLeft = (w - iconSize - iconPadding).toInt()
+            val playLeft = checkLeft - iconSize - iconPadding
+
+            playDrawable?.let {
+                it.setTint(accentColor)
+                it.setBounds(playLeft, iconTop, playLeft + iconSize, iconTop + iconSize)
+                it.alpha = 200
+                it.draw(canvas)
+            }
+
+            checkDrawable?.let {
+                it.setTint(accentColor)
+                it.setBounds(checkLeft, iconTop, checkLeft + iconSize, iconTop + iconSize)
+                it.alpha = 200
+                it.draw(canvas)
+            }
+        } else if (isPlaying) {
+            // Only the play icon — song is playing but not selected.
+            val iconLeft = (w - iconSize - iconPadding).toInt()
+            playDrawable?.let {
+                it.setTint(accentColor)
+                it.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
+                it.alpha = 200
+                it.draw(canvas)
+            }
+        } else {
+            // Only the check icon — song is selected but not currently playing.
+            val iconLeft = (w - iconSize - iconPadding).toInt()
+            checkDrawable?.let {
+                it.setTint(accentColor)
+                it.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
+                it.alpha = 200
+                it.draw(canvas)
+            }
         }
     }
 
