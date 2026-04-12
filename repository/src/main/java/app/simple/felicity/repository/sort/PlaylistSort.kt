@@ -80,17 +80,24 @@ object PlaylistSort {
     }
 
     /**
-     * Sets this [AppCompatTextView]'s text to the human-readable name of the current
-     * playlist song sort field.
+     * Sets this [AppCompatTextView]'s text to the human-readable label for whatever
+     * sort field is currently active in the Playlists panel.
+     *
+     * The panel can be sorted by playlist-level fields (name, date, song count) chosen
+     * from the playlists sort dialog, or by song-level fields (title, artist, etc.) used
+     * inside a single playlist — both ultimately live in the same preference key, so
+     * we handle all valid values here to avoid ever showing "Unknown" to the user.
      */
     fun AppCompatTextView.setPlaylistSort() {
         text = when (PlaylistPreferences.getSongSort()) {
+            CommonPreferencesConstants.BY_NAME -> context.getString(R.string.name)
+            CommonPreferencesConstants.BY_NUMBER_OF_SONGS -> context.getString(R.string.number_of_songs)
             CommonPreferencesConstants.BY_TITLE -> context.getString(R.string.title)
             CommonPreferencesConstants.BY_ARTIST -> context.getString(R.string.artist)
             CommonPreferencesConstants.BY_ALBUM -> context.getString(R.string.album)
             CommonPreferencesConstants.BY_PATH -> context.getString(R.string.path)
             CommonPreferencesConstants.BY_DATE_ADDED -> context.getString(R.string.date_added)
-            CommonPreferencesConstants.BY_DATE_MODIFIED -> context.getString(R.string.date_added)
+            CommonPreferencesConstants.BY_DATE_MODIFIED -> context.getString(R.string.date_modified)
             CommonPreferencesConstants.BY_DURATION -> context.getString(R.string.duration)
             CommonPreferencesConstants.BY_YEAR -> context.getString(R.string.year)
             CommonPreferencesConstants.BY_TRACK_NUMBER -> context.getString(R.string.track_number)
