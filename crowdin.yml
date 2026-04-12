@@ -1,9 +1,8 @@
+skip_untranslated_strings: true
+skip_untranslated_files: true
+
 files:
     -   source: /shared/src/main/res/values/strings.xml
         translation: /shared/src/main/res/values-%android_code%/%original_file_name%
-        translate_content: 0
-        translate_attributes: 0
     -   source: /shared/src/main/res/values/plurals.xml
         translation: /shared/src/main/res/values-%android_code%/%original_file_name%
-        translate_content: 0
-        translate_attributes: 0
