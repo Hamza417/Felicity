@@ -272,20 +272,20 @@ class M3uRepository @Inject constructor(
         val file = File(absolutePath)
         val audio = Audio()
 
-        audio.setName(file.name)
+        audio.name = file.name
         audio.setTitle(displayTitle ?: file.nameWithoutExtension)
-        audio.setPath(absolutePath)
-        audio.setMimeType(file.extension.lowercase())
-        audio.setHash(hashPath(absolutePath))
-        audio.setSize(0L)
-        audio.setDuration(0L)
-        audio.setBitrate(0L)
-        audio.setSamplingRate(0L)
-        audio.setBitPerSample(0L)
-        audio.setDateAdded(System.currentTimeMillis())
-        audio.setDateModified(0L)
-        audio.setDateTaken(0L)
-        audio.setNumTracks("0")
+        audio.path = absolutePath
+        audio.mimeType = file.extension.lowercase()
+        audio.hash = hashPath(absolutePath)
+        audio.size = 0L
+        audio.duration = 0L
+        audio.bitrate = 0L
+        audio.samplingRate = 0L
+        audio.bitPerSample = 0L
+        audio.dateAdded = System.currentTimeMillis()
+        audio.dateModified = 0L
+        audio.dateTaken = 0L
+        audio.numTracks = "0"
         // Mark it as unavailable so normal library queries skip it.
         audio.isAvailable = false
 
