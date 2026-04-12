@@ -11,11 +11,6 @@
         android:layout_weight="1"
         android:layout_height="0dp" />
 
-    <app.simple.felicity.decorations.toggles.FelicityChipGroup
-        android:id="@+id/preset_group"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -32,6 +27,17 @@
             android:text="@string/apply_equalizer"
             app:appFontStyle="bold"
             app:textColorStyle="primary" />
+
+        <app.simple.felicity.decorations.highlight.HighlightTextView
+            android:id="@+id/presets_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="@dimen/padding_5"
+            android:padding="@dimen/padding_10"
+            android:text="@string/presets"
+            app:appFontStyle="bold"
+            app:textColorStyle="secondary" />
 
         <app.simple.felicity.decorations.highlight.HighlightTextView
             android:id="@+id/reset"

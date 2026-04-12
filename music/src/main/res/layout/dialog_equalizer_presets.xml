@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_gravity="bottom"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:padding="@dimen/padding_15"
+    android:layout_height="wrap_content">
+
+    <app.simple.felicity.decorations.corners.DynamicCornerLinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:padding="@dimen/padding_15"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:layout_marginBottom="@dimen/padding_10">
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/presets"
+                android:textSize="@dimen/text_size_16"
+                app:appFontStyle="bold"
+                app:textColorStyle="heading" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/save_preset_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="@dimen/padding_8"
+                android:text="@string/save_preset"
+                android:textSize="@dimen/text_size_12"
+                app:appFontStyle="bold"
+                app:textColorStyle="accent" />
+
+        </LinearLayout>
+
+        <app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
+            android:id="@+id/presets_recycler_view"
+            android:layout_width="match_parent"
+            android:layout_marginTop="@dimen/padding_5"
+            android:layout_height="420dp"
+            app:isFadingEdgeRequired="true"
+            app:navigationPaddingRequired="false"
+            app:statusPaddingRequired="false" />
+
+    </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+
+</FrameLayout>
+

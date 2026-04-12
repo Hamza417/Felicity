@@ -15,6 +15,7 @@ import app.simple.felicity.decorations.knobs.RotaryKnobListener
 import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
+import app.simple.felicity.dialogs.player.EqualizerPresets.Companion.showEqualizerPresets
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
@@ -70,6 +71,13 @@ class Equalizer : MediaFragment() {
                     EqualizerPreferences.setPreampDb(0f)
                 }
             }
+        }
+
+        // Open the presets dialog so the user can browse and apply saved EQ snapshots.
+        // When a preset is applied the sliders will update automatically via the
+        // EqualizerManager flows — no extra wiring needed here.
+        binding.equalizerScreen.presetsButton.setOnClickListener {
+            childFragmentManager.showEqualizerPresets()
         }
 
         // Register live-update observers for the EQ sliders. Initial values are applied

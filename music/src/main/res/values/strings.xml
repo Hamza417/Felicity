@@ -12,6 +12,14 @@
     <string name="darker_miniplayer_shadow_summary">Replace the system elevation shadow with a softer, accent-colored glow drawn directly onto the canvas.</string>
     <string name="support_development_summary">Purchase app\'s license key from Gumroad.</string>
 
+    <!-- Equalizer Presets -->
+    <string name="save_preset">Save Preset</string>
+    <string name="preset_name_hint">Preset name…</string>
+    <string name="built_in">Built-in</string>
+    <string name="preset_applied">Preset applied</string>
+    <string name="preset_saved">Preset saved</string>
+    <string name="preset_deleted">Preset deleted</string>
+
     <!-- LRC Editor -->
     <string name="lrc_editor">LRC Editor</string>
     <string name="lrc_timestamp_hint">00:00.000</string>
