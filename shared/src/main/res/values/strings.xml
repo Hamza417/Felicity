@@ -356,6 +356,9 @@
     <!-- Playlist strings -->
     <string name="create_playlist">Create Playlist</string>
     <string name="new_playlist">New Playlist</string>
+    <string name="import_m3u">Import M3U</string>
+    <string name="m3u_import_success">Imported "%1$s" — %2$d tracks added.</string>
+    <string name="m3u_import_failed">M3U import failed. Please check the file and try again.</string>
     <string name="playlist_name">Playlist Name</string>
     <string name="playlist_description">Description (optional)</string>
     <string name="edit_playlist">Edit Playlist</string>

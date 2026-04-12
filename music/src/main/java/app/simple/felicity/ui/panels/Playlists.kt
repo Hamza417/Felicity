@@ -5,7 +5,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.viewModels
+import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterPlaylists
 import app.simple.felicity.databinding.FragmentPlaylistsBinding
 import app.simple.felicity.databinding.HeaderPlaylistsBinding
@@ -23,9 +26,9 @@ import app.simple.felicity.viewmodels.panels.PlaylistsViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
- * Panel fragment that displays all user-created playlists with sort, list-style, and
- * "New Playlist" creation support. Follows the same structural pattern as
- * [Songs] and [Favorites].
+ * Panel fragment that displays all user-created playlists with sort, list-style,
+ * "New Playlist" creation support, and M3U import. Follows the same structural
+ * pattern as [Songs] and [Favorites].
  *
  * @author Hamza417
  */
@@ -38,6 +41,19 @@ class Playlists : BasePanelFragment() {
     private var adapterPlaylists: AdapterPlaylists? = null
 
     private val playlistsViewModel: PlaylistsViewModel by viewModels()
+
+    /**
+     * Launcher that opens the system file picker filtered to M3U and M3U8 files.
+     * When the user picks a file (or backs out), the result lands here and kicks
+     * off the import through the ViewModel.
+     */
+    private val m3uFilePicker = registerForActivityResult(
+            ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        // User pressed back without picking anything — nothing to do here.
+        uri ?: return@registerForActivityResult
+        playlistsViewModel.importM3u(uri)
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentPlaylistsBinding.inflate(inflater, container, false)
@@ -59,6 +75,9 @@ class Playlists : BasePanelFragment() {
         playlistsViewModel.playlists.collectListWhenStarted({ adapterPlaylists != null }) { playlists ->
             updateList(playlists)
         }
+
+        // Watch for import results so we can let the user know how it went.
+        observeImportState()
     }
 
     override fun onDestroyView() {
@@ -84,6 +103,42 @@ class Playlists : BasePanelFragment() {
 
         headerBinding.newPlaylist.setOnClickListener {
             childFragmentManager.showCreatePlaylistDialog()
+        }
+
+        // Open the file picker when the user taps "Import M3U". We accept both
+        // the plain .m3u and the extended .m3u8 variants.
+        headerBinding.importM3u.setOnClickListener {
+            m3uFilePicker.launch(arrayOf("audio/x-mpegurl", "audio/mpegurl", "*/*"))
+        }
+    }
+
+    /**
+     * Collects import state events from the ViewModel and shows simple feedback
+     * via a Toast. Nothing fancy — the playlist list will refresh on its own
+     * through the reactive Room query once the import writes to the database.
+     */
+    private fun observeImportState() {
+        playlistsViewModel.importResult.collectWhenStarted { state ->
+            when (state) {
+                is PlaylistsViewModel.ImportState.Loading -> {
+                    // Could show a progress indicator here later. For now, silence.
+                }
+                is PlaylistsViewModel.ImportState.Success -> {
+                    val msg = getString(
+                            R.string.m3u_import_success,
+                            state.result.playlistName,
+                            state.result.totalTracks
+                    )
+                    Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+                }
+                is PlaylistsViewModel.ImportState.Error -> {
+                    Toast.makeText(
+                            requireContext(),
+                            getString(R.string.m3u_import_failed),
+                            Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
         }
     }
 

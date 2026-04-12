@@ -162,6 +162,21 @@ interface AudioDao {
     fun insert(audio: Audio)
 
     /**
+     * Tries to insert an [Audio] item, but quietly gives up if a row with the
+     * same hash already exists — no drama, no exceptions, just a polite -1 return.
+     *
+     * <p>This is used when importing M3U playlists to create placeholder entries
+     * for tracks that are referenced in the file but not yet in the library.
+     * The [OnConflictStrategy.IGNORE] strategy means we never accidentally
+     * overwrite a real library entry with a placeholder.</p>
+     *
+     * @param audio The audio entry to insert.
+     * @return The new row ID on success, or {@code -1} if a hash conflict was ignored.
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insertOrIgnore(audio: Audio): Long
+
+    /**
      * Insert multiple [Audio] items in a batch
      * into the table
      */
