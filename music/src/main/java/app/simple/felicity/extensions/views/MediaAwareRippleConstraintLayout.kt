@@ -27,15 +27,19 @@ import kotlinx.coroutines.launch
 
 /**
  * A [DynamicRippleConstraintLayout] that automatically registers itself with
- * [MediaPlaybackManager] to reflect the currently playing song state. When the playing
- * song changes, the selection highlight transitions smoothly via a color animation.
+ * [MediaPlaybackManager] to reflect the currently playing song state. Instead of
+ * highlighting the entire row, it draws a small play icon at the right edge so you
+ * always know which song is on stage without the whole row screaming for attention.
  *
- * It also draws a semi-transparent check indicator at the right end (behind all child
- * views) whenever this song is sitting in the [SelectionManager] selection basket.
- * Think of it as a sticky note on the right side that says "yep, this one's picked!"
+ * When a song is also sitting in the [SelectionManager] basket, a check icon appears
+ * right next to the play icon — two little buddies hanging out on the right side.
+ * If the song is only selected (not playing), just the check icon shows up.
+ *
+ * The background behind the icons fades in from the left using a cubic ease-in
+ * bezier gradient, so it looks smooth and intentional rather than a hard line.
  *
  * Call [setAudioID] once per bind cycle to associate a song ID with this view.
- * All subsequent highlight updates are handled internally without adapter callbacks.
+ * All subsequent updates are handled internally without any adapter callbacks.
  *
  * @author Hamza417
  */
@@ -194,7 +198,7 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
      * - Both icons side by side when the song is both playing and selected
      *   (they're great together, like bread and butter).
      *
-     * The gradient behind the icons uses a cubic ease-in bezier curve so it fades in
+     * The gradient behind the icons uses a cubic ease-in Bézier curve so it fades in
      * gradually and looks intentional rather than slapped on. When neither icon is
      * needed, the whole thing is skipped so non-active rows have zero overhead.
      */
