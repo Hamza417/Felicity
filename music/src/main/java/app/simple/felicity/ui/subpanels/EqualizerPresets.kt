@@ -16,7 +16,6 @@ import app.simple.felicity.databinding.HeaderEqualizerPresetsBinding
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
-import app.simple.felicity.dialogs.player.SaveEqualizerPreset.Companion.showSaveEqualizerPreset
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
@@ -35,15 +34,6 @@ import kotlinx.coroutines.launch
  *
  * Tapping a preset applies it immediately and returns to the EQ screen so the user
  * can see the sliders snap to the preset curve in real time.
- *
- * Long-pressing a preset shows a [SharedScrollPopupView] with two options:
- *  - "Apply" — same as a regular tap, applies the preset and goes back.
- *  - "Delete" — asks for confirmation via [withSureDialog] and removes the preset
- *    from the database. This option is hidden from the popup for built-in presets
- *    since those cannot (and should not) be deleted.
- *
- * The "Save Preset" button in the header captures the current EQ state into a named
- * preset via [app.simple.felicity.dialogs.player.SaveEqualizerPreset], without leaving this screen.
  *
  * @author Hamza417
  */
@@ -76,7 +66,6 @@ class EqualizerPresets : MediaFragment() {
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
         setupAdapter()
-        setupSaveButton()
         observePresets()
     }
 
@@ -95,20 +84,6 @@ class EqualizerPresets : MediaFragment() {
                 onOptionClicked = ::showPresetOptions
         )
         binding.recyclerView.adapter = adapter
-    }
-
-    /**
-     * Opens the [app.simple.felicity.dialogs.player.SaveEqualizerPreset] bottom-sheet so the user can snapshot their
-     * current EQ settings into a named preset right from this screen.
-     */
-    private fun setupSaveButton() {
-        headerBinding.savePreset.setOnClickListener {
-            childFragmentManager.showSaveEqualizerPreset { name ->
-                val gains = EqualizerManager.getAllGains()
-                val preamp = EqualizerManager.getPreamp()
-                viewModel.savePreset(name, gains, preamp)
-            }
-        }
     }
 
     /**
@@ -147,7 +122,7 @@ class EqualizerPresets : MediaFragment() {
     }
 
     /**
-     * Shows a [SharedScrollPopupView] anchored to [anchorView] with context actions for
+     * Shows a [SharedScrollViewPopup] anchored to [anchorView] with context actions for
      * the given [preset]. "Apply" is always present; "Delete" is only offered for
      * presets that the user created (not the built-in factory ones).
      *

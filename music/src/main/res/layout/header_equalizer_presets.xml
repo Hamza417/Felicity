@@ -22,16 +22,6 @@
             app:appFontStyle="black"
             app:textColorStyle="primary" />
 
-        <app.simple.felicity.decorations.highlight.HighlightTextView
-            android:id="@+id/save_preset"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
-            android:padding="@dimen/padding_10"
-            android:text="@string/save_preset"
-            app:appFontStyle="bold"
-            app:textColorStyle="secondary" />
-
     </LinearLayout>
 
     <app.simple.felicity.decorations.theme.ThemeDivider
