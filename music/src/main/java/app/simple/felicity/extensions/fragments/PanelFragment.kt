@@ -56,11 +56,9 @@ open class PanelFragment : MediaFragment() {
         sectionedFastScroller.setPositions(sections)
         sectionedFastScroller.setOnPositionSelectedListener { position ->
             val layoutManager = this.layoutManager as? GridLayoutManager ?: return@setOnPositionSelectedListener
-            val recyclerViewHeight = this.height
-            val itemView = layoutManager.findViewByPosition(position.index)
-            val itemHeight = itemView?.height ?: 0
-            val offset = (recyclerViewHeight / 2) - (paddingTop + itemHeight / 2)
-            layoutManager.scrollToPositionWithOffset(position.index, paddingTop)
+            layoutManager.scrollToPositionWithOffset(
+                    /* position = */ position.index,
+                    /* offset = */ resources.getDimensionPixelSize(R.dimen.padding_8) + header.height + paddingTop)
 
             if (position.index > 10) {
                 header.hideHeader()
