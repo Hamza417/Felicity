@@ -124,7 +124,9 @@ class PlayingQueue : BasePanelFragment() {
                 if (currentPosition !in firstVisible..lastVisible) {
                     layoutManager.scrollToPositionWithOffset(
                             currentPosition,
-                            binding.appHeader.height + resources.getDimensionPixelSize(R.dimen.padding_8))
+                            binding.appHeader.height
+                                    + resources.getDimensionPixelSize(R.dimen.padding_8)
+                                    + binding.recyclerView.paddingTop)
                     binding.recyclerView.scheduleLayoutAnimation()
                 }
             }

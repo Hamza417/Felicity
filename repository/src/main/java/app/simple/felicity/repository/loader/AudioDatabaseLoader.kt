@@ -226,7 +226,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
             try {
                 scanMutex.unlock()
-            } catch (e: IllegalStateException) {
+            } catch (_: IllegalStateException) {
                 Log.w(TAG, "Mutex unlock skipped in finally block – not locked by current owner")
             }
         }
@@ -273,10 +273,20 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
                     when {
                         !file.exists() -> {
-                            // CASE 1: Hard Delete (User deleted file using a file manager)
-                            Log.d(TAG, "File missing on mounted storage. Deleting: ${audio.path}")
-                            toDelete.add(audio)
-                            indexedMap.remove(audio.path)
+                            if (audio.isAvailable) {
+                                // CASE 1: The file was a real, known track that the user deleted
+                                // using a file manager or some other means. We go ahead and remove
+                                // it from the database because there is nothing left to play.
+                                Log.d(TAG, "File missing on mounted storage. Deleting: ${audio.path}")
+                                toDelete.add(audio)
+                                indexedMap.remove(audio.path)
+                            } else {
+                                // CASE 1b: The file doesn't exist, but the entry is already marked
+                                // unavailable — this is a ghost/placeholder that was created when an
+                                // M3U playlist was imported and the referenced track wasn't on the
+                                // device yet. We leave it alone so the playlist doesn't lose that slot.
+                                Log.d(TAG, "Ghost entry (file missing, already unavailable) — keeping: ${audio.path}")
+                            }
                         }
                         isExcludedByFilter(file, skipNomedia, skipHiddenFiles, skipHiddenFolders) -> {
                             // CASE 2: File now excluded by current filter prefs (e.g., user added .nomedia
