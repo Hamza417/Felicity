@@ -192,7 +192,7 @@
                 <app.simple.felicity.decorations.overscroll.CustomHorizontalRecyclerView
                     android:id="@+id/recently_played_list"
                     android:clipToPadding="false"
-                    android:layoutAnimation="@anim/list_pop_in_animation_controller"
+                    android:layoutAnimation="@anim/list_animation_controller"
                     android:layout_height="wrap_content"
                     android:layout_width="match_parent"
                     android:paddingHorizontal="@dimen/padding_20"
@@ -221,7 +221,7 @@
                 <app.simple.felicity.decorations.overscroll.CustomHorizontalRecyclerView
                     android:id="@+id/recently_added_list"
                     android:clipToPadding="false"
-                    android:layoutAnimation="@anim/list_pop_in_animation_controller"
+                    android:layoutAnimation="@anim/list_animation_controller"
                     android:layout_height="wrap_content"
                     android:layout_width="match_parent"
                     android:paddingHorizontal="@dimen/padding_20"
