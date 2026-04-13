@@ -56,6 +56,7 @@ import app.simple.felicity.theme.models.Theme
 import app.simple.felicity.theme.themes.dark.AlbumArtDark
 import app.simple.felicity.theme.themes.light.AlbumArtLight
 import app.simple.felicity.theme.tools.MonetPalette
+import app.simple.felicity.utils.DateUtils.toDate
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Dispatchers
@@ -110,7 +111,10 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         observeSongChangesForPalette()
 
         if (TrialPreferences.isFirstLaunchDateSet().not()) {
+            Log.d(TAG, "First launch detected — setting trial start date")
             TrialPreferences.setFirstLaunchDate(System.currentTimeMillis())
+        } else {
+            Log.d(TAG, "daysLeft=${TrialPreferences.getDaysLeft()}, firstLaunchDate=${TrialPreferences.getFirstLaunchDate().toDate()}")
         }
 
         /**
