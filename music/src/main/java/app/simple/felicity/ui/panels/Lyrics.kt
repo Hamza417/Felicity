@@ -183,6 +183,11 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
         }
 
         binding.seekbar.setOnSeekListener(object : WaveformSeekbar.OnSeekListener {
+            override fun onSeekTo(positionMs: Long, fromUser: Boolean) {
+                if (fromUser) {
+                    binding.lrc.updateTime(positionMs + lyricsViewModel.syncOffset)
+                }
+            }
             override fun onSeekEnd(positionMs: Long) {
                 MediaPlaybackManager.seekTo(positionMs)
             }
