@@ -8,9 +8,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.decorations.lrc.model.LrcData
+import app.simple.felicity.decorations.lrc.parser.ILyricsParser
 import app.simple.felicity.decorations.lrc.parser.LrcParser
 import app.simple.felicity.decorations.lrc.parser.LyricsParseException
 import app.simple.felicity.decorations.lrc.parser.TxtParser
+import app.simple.felicity.decorations.lrc.parser.WordLrcParser
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.models.Audio
@@ -90,6 +92,19 @@ class LyricsViewModel @AssistedInject constructor(
     /** Current sync offset to add to every updateTime call. */
     fun getSyncOffsetMs(): LiveData<Long> = syncOffsetMs
 
+    /**
+     * Picks the right parser for the given raw lyrics string.
+     *
+     * We try the most specific format first (word-by-word), then standard LRC,
+     * and finally fall back to plain text so nothing is ever left unhandled.
+     * Think of it as a parser beauty pageant — the most talented wins.
+     */
+    private fun selectParser(content: String): ILyricsParser = when {
+        WordLrcParser().canParse(content) -> WordLrcParser()
+        LrcParser().canParse(content) -> LrcParser()
+        else -> TxtParser()
+    }
+
     fun loadLrcData() {
         val currentSongPath = (audio ?: MediaPlaybackManager.getCurrentSong())?.path
 
@@ -131,7 +146,7 @@ class LyricsViewModel @AssistedInject constructor(
                     if (lrcContent != null) {
                         Log.d(TAG, "Existing LRC file found for ${currentSong.title}, loading lyrics.")
                         try {
-                            val lrcDataLoaded = LrcParser().parse(lrcContent)
+                            val lrcDataLoaded = selectParser(lrcContent).parse(lrcContent)
                             lrcData.postValue(lrcDataLoaded)
                         } catch (e: LyricsParseException) {
                             e.printStackTrace()

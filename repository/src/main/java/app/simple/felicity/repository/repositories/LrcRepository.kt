@@ -177,7 +177,8 @@ class LrcRepository @Inject constructor() {
     }
 
     /**
-     * Load LRC content from a sidecar file.
+     * Load LRC content from a sidecar file. Prioritizes the sidecar files
+     * first, then falls back to embedded lyrics if no sidecar file is found.
      *
      * @param audioFilePath The path to the audio file.
      * @return The LRC content as a string, or null if the file doesn't exist.
@@ -185,18 +186,17 @@ class LrcRepository @Inject constructor() {
     suspend fun loadLrcFromFile(audioFilePath: String): Result<String?> {
         return withContext(Dispatchers.IO) {
             try {
-                val lyrics = LyricsMetaHelper.extractEmbeddedLyrics(audioFilePath)
-                if (!lyrics.isNullOrBlank()) {
-                    return@withContext Result.success(lyrics)
-                }
-
                 val lrcFilePath = audioFilePath.substringBeforeLast(".") + ".lrc"
                 val lrcFile = File(lrcFilePath)
 
-                // TODO - which should I prioritize first.
                 if (lrcFile.exists()) {
                     val content = lrcFile.readText()
                     return@withContext Result.success(content)
+                }
+
+                val lyrics = LyricsMetaHelper.extractEmbeddedLyrics(audioFilePath)
+                if (!lyrics.isNullOrBlank()) {
+                    return@withContext Result.success(lyrics)
                 }
 
                 return@withContext Result.success(null)

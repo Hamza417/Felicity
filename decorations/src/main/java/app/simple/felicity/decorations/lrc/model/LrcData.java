@@ -7,22 +7,25 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Container for parsed lyrics data
- * This common format can be used by different parsers (LRC, SRT, etc.)
+ * Container for all parsed lyrics data — both the per-line entries and the
+ * header metadata like title, artist, and any global offset.
+ *
+ * <p>This one class handles both regular LRC and word-by-word LRC because
+ * the entries themselves know which kind they are via {@link LrcEntry#hasWordSync()}.</p>
  */
 public class LrcData {
     private final List <LrcEntry> entries;
     private final Map <String, String> metadata;
-    
+
     public LrcData() {
         this.entries = new ArrayList <>();
         this.metadata = new HashMap <>();
     }
-    
+
     public void addEntry(LrcEntry entry) {
         entries.add(entry);
     }
-    
+
     public void addMetadata(String key, String value) {
         metadata.put(key, value);
     }
@@ -34,27 +37,27 @@ public class LrcData {
     public Map <String, String> getMetadata() {
         return metadata;
     }
-    
+
     public String getMetadata(String key) {
         return metadata.get(key);
     }
-    
+
     public String getTitle() {
         return metadata.get("ti");
     }
-    
+
     public String getArtist() {
         return metadata.get("ar");
     }
-    
+
     public String getAlbum() {
         return metadata.get("al");
     }
-    
+
     public String getAuthor() {
         return metadata.get("au");
     }
-    
+
     public String getCreator() {
         return metadata.get("by");
     }
@@ -72,56 +75,112 @@ public class LrcData {
     }
     
     /**
-     * Sort entries by timestamp
+     * Formats milliseconds as {@code [mm:ss.mmm]} (outer line-level tags).
      */
-    public void sort() {
-        Collections.sort(entries);
+    private static String formatBracketTime(long ms) {
+        long minutes = ms / 60000;
+        long seconds = (ms % 60000) / 1000;
+        long millis = ms % 1000;
+        return String.format(java.util.Locale.US, "[%02d:%02d.%03d]", minutes, seconds, millis);
     }
-    
+
     public boolean isEmpty() {
         return entries.isEmpty();
     }
-    
+
     public int size() {
         return entries.size();
     }
     
     /**
-     * Returns a new LrcData with all entry timestamps shifted by {@code deltaMs} milliseconds.
-     * Metadata is copied as-is. The returned data is already sorted.
+     * Formats milliseconds as {@code <mm:ss.mmm>} (inline word-level tags).
+     */
+    private static String formatAngleTime(long ms) {
+        long minutes = ms / 60000;
+        long seconds = (ms % 60000) / 1000;
+        long millis = ms % 1000;
+        return String.format(java.util.Locale.US, "<%02d:%02d.%03d>", minutes, seconds, millis);
+    }
+    
+    /**
+     * Sorts entries by timestamp — call this after adding all entries.
+     */
+    public void sort() {
+        Collections.sort(entries);
+    }
+    
+    /**
+     * Returns a new {@link LrcData} with every timestamp shifted by {@code deltaMs}
+     * milliseconds.  This includes both line-level timestamps AND the per-word start/end
+     * times inside word-sync entries, so word highlighting stays perfectly aligned
+     * after a sync adjustment is baked to disk.
      *
      * @param deltaMs positive = shift forward in time, negative = shift backward
      */
     public LrcData shiftTimestamps(long deltaMs) {
         LrcData shifted = new LrcData();
-        for (Map.Entry <String, String> entry : metadata.entrySet()) {
-            shifted.addMetadata(entry.getKey(), entry.getValue());
+        for (Map.Entry <String, String> meta : metadata.entrySet()) {
+            shifted.addMetadata(meta.getKey(), meta.getValue());
         }
         for (LrcEntry entry : entries) {
-            long newTime = Math.max(0, entry.getTimeInMillis() + deltaMs);
-            shifted.addEntry(new LrcEntry(newTime, entry.getText()));
+            long newLineTime = Math.max(0, entry.getTimeInMillis() + deltaMs);
+            if (entry.hasWordSync()) {
+                // Shift every word timestamp by the same delta so word highlights
+                // stay in sync with the new line-level positions.
+                List <WordEntry> shiftedWords = new ArrayList <>();
+                for (WordEntry word : entry.getWords()) {
+                    long newStart = Math.max(0, word.getStartMs() + deltaMs);
+                    long newEnd = Math.max(0, word.getEndMs() + deltaMs);
+                    shiftedWords.add(new WordEntry(newStart, newEnd, word.getText()));
+                }
+                shifted.addEntry(new LrcEntry(newLineTime, entry.getText(), shiftedWords));
+            } else {
+                shifted.addEntry(new LrcEntry(newLineTime, entry.getText()));
+            }
         }
         shifted.sort();
         return shifted;
     }
     
     /**
-     * Serializes this LrcData back to a standard LRC-format string.
-     * Metadata tags appear first, followed by timed lyric lines.
+     * Serializes this data back to an LRC-format string suitable for writing to disk.
+     *
+     * <p>Regular lines are written as standard {@code [mm:ss.mmm]text} entries.
+     * Word-sync lines are re-emitted in the enhanced format with inline
+     * {@code <mm:ss.mmm>} word timestamps so that nothing is lost when we bake
+     * a sync adjustment into the file.</p>
      */
     public String toLrcString() {
         StringBuilder sb = new StringBuilder();
-        // Write metadata tags
-        for (Map.Entry <String, String> entry : metadata.entrySet()) {
-            sb.append('[').append(entry.getKey()).append(':').append(entry.getValue()).append(']').append('\n');
+        for (Map.Entry <String, String> meta : metadata.entrySet()) {
+            sb.append('[').append(meta.getKey()).append(':').append(meta.getValue()).append(']').append('\n');
         }
-        // Write lyric lines
         for (LrcEntry entry : entries) {
             long t = entry.getTimeInMillis();
-            long minutes = t / 60000;
-            long seconds = (t % 60000) / 1000;
-            long millis = t % 1000;
-            sb.append(String.format(java.util.Locale.US, "[%02d:%02d.%03d]%s\n", minutes, seconds, millis, entry.getText()));
+            String lineTag = formatBracketTime(t);
+            if (entry.hasWordSync()) {
+                // Enhanced word-sync format:  [lineMs]v1:<w0Start>word0<w0End><w1Start>word1...
+                sb.append(lineTag).append("v1:");
+                List <WordEntry> words = entry.getWords();
+                for (int i = 0; i < words.size(); i++) {
+                    WordEntry w = words.get(i);
+                    sb.append(formatAngleTime(w.getStartMs()));
+                    sb.append(w.getText());
+                    sb.append(formatAngleTime(w.getEndMs()));
+                    // Duplicate the end timestamp as a start sentinel for the next word,
+                    // matching the format produced by tools like SongSync.
+                    if (i < words.size() - 1) {
+                        sb.append(formatAngleTime(w.getEndMs()));
+                    }
+                }
+                // A trailing duplicate of the last word's end timestamp closes the line.
+                if (!words.isEmpty()) {
+                    sb.append(formatAngleTime(words.get(words.size() - 1).getEndMs()));
+                }
+                sb.append('\n');
+            } else {
+                sb.append(lineTag).append(entry.getText()).append('\n');
+            }
         }
         return sb.toString();
     }

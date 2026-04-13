@@ -13,9 +13,12 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Shader;
 import android.text.Layout;
+import android.text.SpannableString;
+import android.text.Spanned;
 import android.text.StaticLayout;
 import android.text.TextDirectionHeuristics;
 import android.text.TextPaint;
+import android.text.style.ForegroundColorSpan;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.GestureDetector;
@@ -25,6 +28,7 @@ import android.view.animation.DecelerateInterpolator;
 import android.widget.OverScroller;
 
 import java.util.HashMap;
+import java.util.List;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
@@ -36,6 +40,7 @@ import androidx.dynamicanimation.animation.SpringForce;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.decorations.lrc.model.LrcData;
 import app.simple.felicity.decorations.lrc.model.LrcEntry;
+import app.simple.felicity.decorations.lrc.model.WordEntry;
 import app.simple.felicity.decorations.lrc.parser.TxtParser;
 import app.simple.felicity.decorations.ripple.FelicityRippleDrawable;
 import app.simple.felicity.decorations.typeface.TypeFace;
@@ -75,6 +80,25 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     // Data
     private LrcData lrcData;
     private int currentLineIndex = -1;
+    
+    /**
+     * Index of the word currently being sung within the active word-sync line.
+     * Stays at -1 when the line has no word-sync data or nothing has started yet.
+     */
+    private int currentWordIndex = -1;
+    
+    /**
+     * Cached {@link StaticLayout} for the active word-sync line, backed by a
+     * {@link SpannableString} so each word gets its own color.  Rebuilt whenever
+     * the active word changes — no more, no less.
+     */
+    private StaticLayout wordSyncCurrentLayout = null;
+    
+    /**
+     * Remembers which line index the {@link #wordSyncCurrentLayout} was built for
+     * so we can detect when a line change should force a rebuild.
+     */
+    private int wordSyncLayoutLineIndex = -1;
     
     // Cache for wrapped text layouts at normal size
     private final HashMap <Integer, StaticLayout> normalLayoutCache = new HashMap <>();
@@ -239,7 +263,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         normalPaint.setTextSize(normalTextSize);
         normalPaint.setColor(normalTextColor);
         if (!isInEditMode()) {
-            normalPaint.setTypeface(TypeFace.INSTANCE.getRegularTypeFace(context));
+            normalPaint.setTypeface(TypeFace.INSTANCE.getMediumTypeFace(context));
         }
         
         currentPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
@@ -247,7 +271,7 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         currentPaint.setColor(currentTextColor);
         currentPaint.setFakeBoldText(true);
         if (!isInEditMode()) {
-            currentPaint.setTypeface(TypeFace.INSTANCE.getMediumTypeFace(context));
+            currentPaint.setTypeface(TypeFace.INSTANCE.getBoldTypeFace(context));
         }
         
         // Initialize fade paint for vertical gradient effect
@@ -558,8 +582,15 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             // Apply animated text size
             paint.setTextSize(animatedSize);
             
-            // Get or create StaticLayout for this line
-            StaticLayout layout = getOrCreateLayout(text, paint, i);
+            // Get or create StaticLayout for this line.
+            // Word-sync lines on the active row get a specially colored spannable
+            // so each word lights up individually; everything else uses the normal path.
+            StaticLayout layout;
+            if (!isStaticMode() && i == currentLineIndex && entry.hasWordSync()) {
+                layout = getOrCreateWordSyncLayout(entry, paint, i);
+            } else {
+                layout = getOrCreateLayout(text, paint, i);
+            }
             
             // Skip lines that are completely off-screen (accounting for multi-line height)
             float lineHeight = layout.getHeight();
@@ -839,6 +870,139 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     }
     
     /**
+     * Figures out which word inside {@code entry} is currently active based on
+     * the playback position.  We return the index of the last word whose start
+     * time is at or before {@code timeMs}, or -1 if the line hasn't started yet.
+     *
+     * <p>Think of it as the "last word the singer has begun" — once a word starts,
+     * it stays lit until the next one takes over.</p>
+     */
+    private int findCurrentWordIndex(LrcEntry entry, long timeMs) {
+        List <WordEntry> words = entry.getWords();
+        int wordIdx = -1;
+        for (int i = 0; i < words.size(); i++) {
+            if (timeMs >= words.get(i).getStartMs()) {
+                wordIdx = i;
+            } else {
+                break;
+            }
+        }
+        return wordIdx;
+    }
+    
+    /**
+     * Builds a {@link SpannableString} for the given word-sync entry where words
+     * that have already been reached (index ≤ {@link #currentWordIndex}) are painted
+     * in the highlight color and upcoming words stay in the normal dimmed color.
+     *
+     * <p>Character positions in the spannable are derived directly from each
+     * {@link WordEntry}'s text length, so they always match what was parsed — no
+     * trimming or other transformations that could shift the boundaries.</p>
+     */
+    private CharSequence buildWordSyncSpannable(LrcEntry entry) {
+        List <WordEntry> words = entry.getWords();
+        String fullText = entry.getText();
+        SpannableString spannable = new SpannableString(fullText);
+        
+        int charPos = 0;
+        for (int i = 0; i < words.size(); i++) {
+            WordEntry word = words.get(i);
+            int wordStart = charPos;
+            int wordEnd = Math.min(charPos + word.getText().length(), fullText.length());
+            
+            if (wordStart < wordEnd) {
+                // Words up to and including the active one glow in the accent color.
+                int color = (i <= currentWordIndex) ? currentTextColor : normalTextColor;
+                spannable.setSpan(
+                        new ForegroundColorSpan(color),
+                        wordStart, wordEnd,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                                 );
+            }
+            
+            charPos += word.getText().length();
+            if (charPos >= fullText.length()) {
+                break;
+            }
+        }
+        
+        return spannable;
+    }
+    
+    /**
+     * Gets (or lazily creates) a {@link StaticLayout} for the currently highlighted
+     * word-sync line.  The layout is backed by a colored {@link SpannableString}
+     * so each word carries its own foreground color.
+     *
+     * <p>The layout is cached between frames and only rebuilt when
+     * {@link #wordSyncCurrentLayout} has been set to {@code null} — which happens
+     * whenever the active word changes or the line changes.</p>
+     */
+    private StaticLayout getOrCreateWordSyncLayout(LrcEntry entry, TextPaint paint, int lineIndex) {
+        // Reuse the cached layout if it is still valid for this line.
+        if (wordSyncCurrentLayout != null && wordSyncLayoutLineIndex == lineIndex) {
+            return wordSyncCurrentLayout;
+        }
+        
+        CharSequence spannable = buildWordSyncSpannable(entry);
+        
+        int paddingLeft = getPaddingLeft();
+        int paddingRight = getPaddingRight();
+        int availableWidth = getWidth() - paddingLeft - paddingRight;
+        if (availableWidth <= 0) {
+            availableWidth = 1;
+        }
+        
+        String plainText = entry.getText();
+        float textWidth = paint.measureText(plainText);
+        boolean needsWrapping = textWidth > availableWidth;
+        
+        Layout.Alignment multiLineAlignment = switch (textAlignment) {
+            case RIGHT ->
+                    Layout.Alignment.ALIGN_OPPOSITE;
+            case CENTER ->
+                    Layout.Alignment.ALIGN_CENTER;
+            default ->
+                    Layout.Alignment.ALIGN_NORMAL;
+        };
+        
+        StaticLayout layout;
+        if (!needsWrapping) {
+            layout = StaticLayout.Builder
+                    .obtain(spannable, 0, spannable.length(), paint, availableWidth)
+                    .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+                    .setLineSpacing(0f, 1f)
+                    .setIncludePad(false)
+                    .setMaxLines(1)
+                    .build();
+        } else {
+            layout = StaticLayout.Builder
+                    .obtain(spannable, 0, spannable.length(), paint, availableWidth)
+                    .setAlignment(multiLineAlignment)
+                    .setLineSpacing(0f, 1f)
+                    .setIncludePad(false)
+                    .build();
+        }
+        
+        // Keep height tracking in sync so line spacing and scroll positions stay accurate.
+        float newHeight = layout.getHeight();
+        Float previousHeight = layoutHeights.get(lineIndex);
+        if (previousHeight == null) {
+            previousHeight = animatedHeights.get(lineIndex);
+        }
+        if (previousHeight != null && Math.abs(previousHeight - newHeight) > 1f) {
+            animateHeight(lineIndex, previousHeight, newHeight);
+        } else {
+            animatedHeights.put(lineIndex, newHeight);
+        }
+        layoutHeights.put(lineIndex, newHeight);
+        
+        wordSyncCurrentLayout = layout;
+        wordSyncLayoutLineIndex = lineIndex;
+        return layout;
+    }
+    
+    /**
      * Updates the lyrics data reference and re-evaluates the highlighted line without
      * resetting the user's manual scroll position or blowing away existing caches.
      * @noinspection unused
@@ -867,9 +1031,14 @@ public class ModernLrcView extends View implements ThemeChangedListener {
                 normalLayoutCache.remove(previousLineIndex);
                 currentLayoutCache.remove(previousLineIndex);
             }
-            
+
             previousLineIndex = currentLineIndex;
             currentLineIndex = newLineIndex;
+            
+            // Drop the word-sync layout so it is rebuilt for the new active line.
+            currentWordIndex = -1;
+            wordSyncCurrentLayout = null;
+            wordSyncLayoutLineIndex = -1;
             
             // Prime the new highlight line's text size so it is correct from frame 0
             if (currentLineIndex >= 0 && lrcData != null && currentLineIndex < lrcData.size()) {
@@ -918,6 +1087,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.animatedHeights.clear();
         this.animatedTextSizes.clear();
         this.blurMaskFilters.clear();
+        this.currentWordIndex = -1;
+        this.wordSyncCurrentLayout = null;
+        this.wordSyncLayoutLineIndex = -1;
         
         // Cancel all height animations - create a copy to avoid ConcurrentModificationException
         for (SpringAnimation animation : new java.util.ArrayList <>(heightAnimations.values())) {
@@ -1113,6 +1285,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.animatedHeights.clear();
         this.animatedTextSizes.clear();
         this.blurMaskFilters.clear();
+        this.currentWordIndex = -1;
+        this.wordSyncCurrentLayout = null;
+        this.wordSyncLayoutLineIndex = -1;
         
         for (SpringAnimation animation : new java.util.ArrayList <>(heightAnimations.values())) {
             if (animation != null && animation.isRunning()) {
@@ -1241,6 +1416,17 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         
         invalidate();
         
+        // If the current line has word-sync data, prime the active word index immediately
+        // so the first drawn frame already shows the correct word highlighted.
+        if (currentLineIndex >= 0 && currentLineIndex < lrcData.size()) {
+            LrcEntry posEntry = lrcData.getEntries().get(currentLineIndex);
+            if (posEntry.hasWordSync()) {
+                currentWordIndex = findCurrentWordIndex(posEntry, adjustedTime);
+                wordSyncCurrentLayout = null;
+                wordSyncLayoutLineIndex = -1;
+            }
+        }
+
         // Post the scroll snap so that layout heights are guaranteed to be populated
         // (getLineOffset relies on animatedHeights which are filled during the first draw pass)
         final int lineToSnap = currentLineIndex;
@@ -1299,6 +1485,11 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             previousLineIndex = currentLineIndex;
             currentLineIndex = newLineIndex;
             
+            // A new line means the active word from the old line is gone — start fresh.
+            currentWordIndex = -1;
+            wordSyncCurrentLayout = null;
+            wordSyncLayoutLineIndex = -1;
+            
             // Animate text size changes
             if (previousLineIndex >= 0 && previousLineIndex < lrcData.size()) {
                 // Animate previous line to normal size
@@ -1333,6 +1524,24 @@ public class ModernLrcView extends View implements ThemeChangedListener {
             
             // Only invalidate once per line change, not on every time update
             invalidate();
+        }
+        
+        // Track the active word within the current line (for word-sync files).
+        // This runs on every updateTime call — words change inside the same line, so
+        // we can't limit this check to when the line index changes.
+        if (!isStaticMode() && currentLineIndex >= 0 && lrcData != null
+                && currentLineIndex < lrcData.size()) {
+            LrcEntry wordSyncEntry = lrcData.getEntries().get(currentLineIndex);
+            if (wordSyncEntry.hasWordSync()) {
+                int newWordIdx = findCurrentWordIndex(wordSyncEntry, timeInMillis);
+                if (newWordIdx != currentWordIndex) {
+                    currentWordIndex = newWordIdx;
+                    // Drop the cached layout so it is rebuilt with the fresh coloring.
+                    wordSyncCurrentLayout = null;
+                    wordSyncLayoutLineIndex = -1;
+                    invalidate();
+                }
+            }
         }
     }
     
@@ -1664,6 +1873,8 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         // Clear layout caches so new layouts are built with the correct StaticLayout alignment
         normalLayoutCache.clear();
         currentLayoutCache.clear();
+        wordSyncCurrentLayout = null;
+        wordSyncLayoutLineIndex = -1;
         
         if (animate) {
             // Animate alignmentFraction toward the target value for a smooth visual shift
@@ -1730,6 +1941,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         // Clear layout caches — stale layouts have wrong heights/wrapping for the new sizes.
         normalLayoutCache.clear();
         currentLayoutCache.clear();
+        // The word-sync layout also depends on text size, so drop it too.
+        wordSyncCurrentLayout = null;
+        wordSyncLayoutLineIndex = -1;
         
         // Cancel any in-flight text-size springs and re-kick them toward the new targets.
         // This makes the font scale animate elastically instead of snapping.
@@ -1883,6 +2097,9 @@ public class ModernLrcView extends View implements ThemeChangedListener {
         this.animatedHeights.clear();
         this.animatedTextSizes.clear();
         this.blurMaskFilters.clear();
+        this.currentWordIndex = -1;
+        this.wordSyncCurrentLayout = null;
+        this.wordSyncLayoutLineIndex = -1;
         
         // Cancel all height animations - create a copy to avoid ConcurrentModificationException
         for (SpringAnimation animation : new java.util.ArrayList <>(heightAnimations.values())) {

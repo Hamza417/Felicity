@@ -97,6 +97,7 @@ This feature list is not exhaustive and only main features are listed.
 - [ ] Multiple Player interface styles. _(partially fulfilled)_
 - [x] Playlist support
 - [x] LRC Editor
+- [x] Word-by-Word LRC support
 - [x] m3u playlist support
 - [x] Metadata editing support
 - [ ] Replay gain
