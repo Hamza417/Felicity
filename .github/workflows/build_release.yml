@@ -90,4 +90,4 @@ jobs:
                 with:
                     name: ${{ env.VERSION_NAME }} APKs
                     path: |
-                        ${{ runner.temp }}/music-release.apk
+                        ${{ runner.temp }}/music-foss-release.apk
