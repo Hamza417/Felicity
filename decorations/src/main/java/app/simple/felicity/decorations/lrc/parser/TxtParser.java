@@ -4,12 +4,13 @@ import android.text.TextUtils;
 
 import app.simple.felicity.decorations.lrc.model.LrcData;
 import app.simple.felicity.decorations.lrc.model.LrcEntry;
+import app.simple.felicity.decorations.lrc.view.FelicityLrcView;
 
 /**
  * Parser for plain-text lyrics (no timestamps).
  * <p>
  * Each non-empty line is stored as an {@link LrcEntry} with
- * {@code timeInMillis = -1}, which signals to {@link app.simple.felicity.decorations.lrc.view.ModernLrcView}
+ * {@code timeInMillis = -1}, which signals to {@link FelicityLrcView}
  * that this is a static (non-seekable) lyrics display.
  * </p>
  */

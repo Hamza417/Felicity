@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import app.simple.felicity.decorations.lrc.model.LrcData;
 import app.simple.felicity.decorations.lrc.model.LrcEntry;
 import app.simple.felicity.decorations.lrc.model.WordEntry;
+import app.simple.felicity.decorations.lrc.view.FelicityLrcView;
 
 /**
  * Parser for the enhanced word-by-word LRC format.
@@ -25,7 +26,7 @@ import app.simple.felicity.decorations.lrc.model.WordEntry;
  * <p>The repeated timestamp at each word boundary (end of word N = start of word N+1)
  * is part of the spec — we simply skip pairs where no text sits between them.</p>
  *
- * <p>The result lets {@link app.simple.felicity.decorations.lrc.view.ModernLrcView}
+ * <p>The result lets {@link FelicityLrcView}
  * highlight one word at a time as the song plays — karaoke at its finest.</p>
  *
  * @author Hamza417

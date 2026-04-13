@@ -9,7 +9,7 @@
     app:navigationPaddingRequired="true"
     app:statusPaddingRequired="false">
 
-    <app.simple.felicity.decorations.lrc.view.ModernLrcView
+    <app.simple.felicity.decorations.lrc.view.FelicityLrcView
         android:id="@+id/lrc"
         android:layout_width="match_parent"
         android:paddingHorizontal="@dimen/padding_5"

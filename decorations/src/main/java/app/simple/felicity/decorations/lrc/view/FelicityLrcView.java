@@ -53,7 +53,7 @@ import app.simple.felicity.theme.models.Theme;
 /**
  * Modern LRC lyrics view with center prominence and smooth scrolling
  */
-public class ModernLrcView extends View implements ThemeChangedListener {
+public class FelicityLrcView extends View implements ThemeChangedListener {
     
     // Default values
     private static final float DEFAULT_TEXT_SIZE = 22f; // sp
@@ -194,15 +194,15 @@ public class ModernLrcView extends View implements ThemeChangedListener {
     private float rippleX = 0f;
     private float rippleY = 0f;
     
-    public ModernLrcView(Context context) {
+    public FelicityLrcView(Context context) {
         this(context, null);
     }
     
-    public ModernLrcView(Context context, @Nullable AttributeSet attrs) {
+    public FelicityLrcView(Context context, @Nullable AttributeSet attrs) {
         this(context, attrs, 0);
     }
     
-    public ModernLrcView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+    public FelicityLrcView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init(context, attrs);
     }

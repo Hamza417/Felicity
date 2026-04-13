@@ -64,7 +64,7 @@
             android:layout_marginVertical="@dimen/padding_5"
             android:layout_height="1px" />
 
-        <app.simple.felicity.decorations.lrc.view.ModernLrcView
+        <app.simple.felicity.decorations.lrc.view.FelicityLrcView
             android:id="@+id/lrc_view"
             android:layout_width="match_parent"
             android:layout_height="0dp"

@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.viewModels
 import app.simple.felicity.databinding.DialogLyricsBinding
-import app.simple.felicity.decorations.lrc.view.ModernLrcView
+import app.simple.felicity.decorations.lrc.view.FelicityLrcView
 import app.simple.felicity.dialogs.lyrics.AddLyrics.Companion.showAddLyrics
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
@@ -49,7 +49,7 @@ class Lyrics : MediaBottomDialogFragment(), AddLyrics.Companion.OnLyricsCreatedL
 
         // Allow the BottomSheet to take over (dismiss) once the user scrolls past the end of lyrics
         binding.lrcView.setParentDismissEnabled(true)
-        binding.lrcView.setFadeLength(ModernLrcView.DEFAULT_FADE_LENGTH.div(2))
+        binding.lrcView.setFadeLength(FelicityLrcView.DEFAULT_FADE_LENGTH.div(2))
         setAlignment()
         applyTextSize()
 
@@ -103,9 +103,9 @@ class Lyrics : MediaBottomDialogFragment(), AddLyrics.Companion.OnLyricsCreatedL
 
     private fun setAlignment(animate: Boolean = false) {
         when (LyricsPreferences.getLrcAlignment()) {
-            LyricsPreferences.LEFT -> binding.lrcView.setTextAlignment(ModernLrcView.Alignment.LEFT, animate)
-            LyricsPreferences.CENTER -> binding.lrcView.setTextAlignment(ModernLrcView.Alignment.CENTER, animate)
-            LyricsPreferences.RIGHT -> binding.lrcView.setTextAlignment(ModernLrcView.Alignment.RIGHT, animate)
+            LyricsPreferences.LEFT -> binding.lrcView.setTextAlignment(FelicityLrcView.Alignment.LEFT, animate)
+            LyricsPreferences.CENTER -> binding.lrcView.setTextAlignment(FelicityLrcView.Alignment.CENTER, animate)
+            LyricsPreferences.RIGHT -> binding.lrcView.setTextAlignment(FelicityLrcView.Alignment.RIGHT, animate)
         }
     }
 

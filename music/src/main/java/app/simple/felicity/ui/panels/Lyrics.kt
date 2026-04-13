@@ -12,7 +12,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentLyricsBinding
-import app.simple.felicity.decorations.lrc.view.ModernLrcView
+import app.simple.felicity.decorations.lrc.view.FelicityLrcView
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.dialogs.lyrics.AddLyrics
@@ -199,9 +199,9 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
 
     private fun setAlignment(animate: Boolean = false) {
         when (LyricsPreferences.getLrcAlignment()) {
-            LyricsPreferences.LEFT -> binding.lrc.setTextAlignment(ModernLrcView.Alignment.LEFT, animate)
-            LyricsPreferences.CENTER -> binding.lrc.setTextAlignment(ModernLrcView.Alignment.CENTER, animate)
-            LyricsPreferences.RIGHT -> binding.lrc.setTextAlignment(ModernLrcView.Alignment.RIGHT, animate)
+            LyricsPreferences.LEFT -> binding.lrc.setTextAlignment(FelicityLrcView.Alignment.LEFT, animate)
+            LyricsPreferences.CENTER -> binding.lrc.setTextAlignment(FelicityLrcView.Alignment.CENTER, animate)
+            LyricsPreferences.RIGHT -> binding.lrc.setTextAlignment(FelicityLrcView.Alignment.RIGHT, animate)
         }
     }
 

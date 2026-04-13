@@ -62,7 +62,7 @@ import kotlin.math.roundToLong
  *
  * Horizontal fading edges are applied on both sides using a
  * [PorterDuff.Mode.DST_OUT] gradient layer, following the same technique
- * as [app.simple.felicity.decorations.lrc.view.ModernLrcView].
+ * as [app.simple.felicity.decorations.lrc.view.FelicityLrcView].
  *
  * After a drag gesture the view continues to scroll with momentum via [OverScroller],
  * mimicking a natural fling.
