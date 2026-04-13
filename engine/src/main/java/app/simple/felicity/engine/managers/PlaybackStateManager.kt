@@ -47,10 +47,13 @@ object PlaybackStateManager {
             position = MediaPlaybackManager.getCurrentSongPosition()
         }
 
-        if (seek == 0L) {
-            Log.w(logTag, "Seek position is zero, skipping state save")
-            return false
-        }
+        // We intentionally allow seek == 0 here. When the user swipes to a new song
+        // while the player is paused, the seek position of the newly loaded song is
+        // naturally 0ms (it just got there). Skipping the save in that case would
+        // mean the queue index is never written to the database, so restarting the
+        // app would take the user right back to the song they were on 20 swipes ago.
+        // The only time we truly have nothing worth saving is when the queue is empty,
+        // and that is already guarded by the songs.isEmpty() check above.
 
         return try {
             val audioDatabase = AudioDatabase.getInstance(context)
