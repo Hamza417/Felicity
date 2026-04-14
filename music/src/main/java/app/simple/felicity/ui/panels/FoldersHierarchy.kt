@@ -7,7 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.fragment.app.viewModels
-import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterFolderHierarchy
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
@@ -69,7 +68,6 @@ class FoldersHierarchy : BasePanelFragment() {
         binding.recyclerView.requireAttachedMiniPlayer()
 
         binding.recyclerView.setupGridLayoutManager(FolderHierarchyPreferences.getLayoutMode().spanCount)
-        updateGridLayoutSpanSizeLookup()
 
         setupClickListeners()
 
@@ -81,20 +79,6 @@ class FoldersHierarchy : BasePanelFragment() {
     override fun onDestroyView() {
         adapter = null
         super.onDestroyView()
-    }
-
-    private fun updateGridLayoutSpanSizeLookup() {
-        gridLayoutManager?.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-            override fun getSpanSize(position: Int): Int {
-                val viewType = adapter?.getItemViewType(position) ?: return 1
-                // Folder rows always span the full width so they are never partial tiles.
-                return if (viewType in AdapterFolderHierarchy.FOLDER_VIEW_TYPES) {
-                    gridLayoutManager?.spanCount ?: 1
-                } else {
-                    1
-                }
-            }
-        }
     }
 
     private fun setupClickListeners() {
@@ -161,6 +145,7 @@ class FoldersHierarchy : BasePanelFragment() {
         when (key) {
             FolderHierarchyPreferences.LAYOUT_MODE_PORTRAIT,
             FolderHierarchyPreferences.LAYOUT_MODE_LANDSCAPE -> {
+                adapter?.layoutMode = FolderHierarchyPreferences.getLayoutMode()
                 applyGridSizeUpdate(binding.recyclerView, FolderHierarchyPreferences.getLayoutMode().spanCount)
             }
         }

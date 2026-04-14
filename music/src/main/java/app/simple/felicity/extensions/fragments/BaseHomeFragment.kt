@@ -1,12 +1,12 @@
 package app.simple.felicity.extensions.fragments
 
-import android.content.res.ColorStateList
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.decorations.ripple.DynamicRippleImageButton
 import app.simple.felicity.server.ServerModeService
+import app.simple.felicity.shared.utils.ViewUtils.toColorStateList
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.panels.AlbumArtists
 import app.simple.felicity.ui.panels.Albums
@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
  * Base fragment shared by all home screen variants.
  *
  * Provides a single implementation of:
- *  - WiFi server toggle button setup and state synchronization.
+ *  - Wi-Fi server toggle button setup and state synchronization.
  *  - Panel navigation routing for every panel available in the app.
  *
  * Subclasses should call [setupServerToggle] in [onViewCreated] to activate the
@@ -44,7 +44,7 @@ abstract class BaseHomeFragment : PanelFragment() {
     /**
      * Attaches a click listener and a lifecycle-aware state observer to [button].
      *
-     * Tapping [button] starts or stops the WiFi server via [ServerModeService].
+     * Tapping [button] starts or stops the Wi-Fi server via [ServerModeService].
      * The button's tint tracks the server's running state for the lifetime of
      * the current fragment view — no manual observation is required in subclasses.
      *
@@ -76,14 +76,14 @@ abstract class BaseHomeFragment : PanelFragment() {
      */
     private fun applyServerToggleTint(button: DynamicRippleImageButton, running: Boolean) {
         button.imageTintList = if (running) {
-            ColorStateList.valueOf(ThemeManager.accent.primaryAccentColor)
+            ThemeManager.accent.primaryAccentColor.toColorStateList()
         } else {
-            null
+            ThemeManager.theme.iconTheme.regularIconColor.toColorStateList()
         }
     }
 
     /**
-     * Opens the panel fragment that corresponds to [panel.titleResId].
+     * Opens the panel fragment that corresponds to [Panel.titleResId].
      * Covers every panel exposed in [SimpleHomeViewModel] and [DashboardViewModel].
      *
      * @param panel The [Panel] item the user tapped.

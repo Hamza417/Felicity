@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
+import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterFolderHierarchyFolderBinding
 import app.simple.felicity.databinding.AdapterFolderHierarchyFolderGridBinding
 import app.simple.felicity.databinding.AdapterStyleGridBinding
@@ -37,6 +38,8 @@ class AdapterFolderHierarchy(contents: FolderHierarchyContents) : RecyclerView.A
     private val folderCount: Int get() = folders.size
     private val songCount: Int get() = songs.size
 
+    var layoutMode: CommonPreferencesConstants.LayoutMode = FolderHierarchyPreferences.getLayoutMode()
+
     init {
         setHasStableIds(true)
     }
@@ -53,10 +56,19 @@ class AdapterFolderHierarchy(contents: FolderHierarchyContents) : RecyclerView.A
 
     override fun getItemViewType(position: Int): Int {
         val isSong = position >= folderCount
-        return if (FolderHierarchyPreferences.getLayoutMode().isGrid) {
-            if (isSong) VIEW_TYPE_SONG_GRID else VIEW_TYPE_FOLDER_GRID
-        } else {
-            if (isSong) VIEW_TYPE_SONG_LIST else VIEW_TYPE_FOLDER_LIST
+        return when {
+            layoutMode.isGrid -> {
+                when {
+                    isSong -> VIEW_TYPE_SONG_GRID
+                    else -> VIEW_TYPE_FOLDER_GRID
+                }
+            }
+            else -> {
+                when {
+                    isSong -> VIEW_TYPE_SONG_LIST
+                    else -> VIEW_TYPE_FOLDER_LIST
+                }
+            }
         }
     }
 

@@ -8,7 +8,7 @@
     android:clipChildren="false"
     android:clipToPadding="false">
 
-    <ImageView
+    <app.simple.felicity.decorations.theme.ThemeIcon
         android:id="@+id/cover"
         android:src="@drawable/ic_folder"
         android:layout_width="@dimen/album_art_dimen"
@@ -16,6 +16,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        app:tintType="accent"
         tools:ignore="ContentDescription" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -23,7 +24,6 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="@dimen/padding_10"
-        android:layout_marginBottom="2dp"
         android:ellipsize="end"
         android:maxLines="1"
         android:textSize="@dimen/text_size_16"
