@@ -14,6 +14,10 @@ open class VerticalListViewHolder(itemView: View) : RecyclerView.ViewHolder(item
         return context.getString(resId)
     }
 
+    fun getString(resId: Int, vararg formatArgs: Any): String {
+        return context.getString(resId, *formatArgs)
+    }
+
     /**
      * A [SpringAnimation] for this RecyclerView item. This animation is used to bring the item back
      * after the over-scroll effect.

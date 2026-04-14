@@ -9,9 +9,9 @@ import androidx.recyclerview.widget.ListUpdateCallback
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
-import app.simple.felicity.databinding.AdapterGenresListBinding
 import app.simple.felicity.databinding.AdapterStyleGridBinding
 import app.simple.felicity.databinding.AdapterStyleLabelsBinding
+import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
@@ -75,7 +75,7 @@ class AdapterGenres(initial: List<Genre>) : FastScrollAdapter<VerticalListViewHo
                 LabelHolder(AdapterStyleLabelsBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
             else -> {
-                ListHolder(AdapterGenresListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+                ListHolder(AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             }
         }
     }
@@ -104,16 +104,18 @@ class AdapterGenres(initial: List<Genre>) : FastScrollAdapter<VerticalListViewHo
         fun bind(genre: Genre, isLightBind: Boolean) {
             binding.title.text = genre.name ?: context.getString(R.string.unknown)
             binding.tertiaryDetail.gone(false)
-            binding.secondaryDetail.gone(false)
+            binding.secondaryDetail.text = getString(R.string.x_songs, genre.songCount)
             if (isLightBind) return
             binding.albumArt.loadArtCoverWithPayload(genre)
             binding.container.setOnClickListener { callbacks?.onGenreClicked(genre, it) }
         }
     }
 
-    inner class ListHolder(private val binding: AdapterGenresListBinding) : VerticalListViewHolder(binding.root) {
+    inner class ListHolder(private val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
         fun bind(genre: Genre, isLightBind: Boolean) {
-            binding.name.text = genre.name ?: context.getString(R.string.unknown)
+            binding.title.text = genre.name ?: context.getString(R.string.unknown)
+            binding.secondaryDetail.text = getString(R.string.x_songs, genre.songCount)
+            binding.tertiaryDetail.gone(false)
             if (isLightBind) return
             binding.cover.loadArtCoverWithPayload(genre)
             binding.container.setOnClickListener { callbacks?.onGenreClicked(genre, it) }
@@ -123,7 +125,7 @@ class AdapterGenres(initial: List<Genre>) : FastScrollAdapter<VerticalListViewHo
     inner class LabelHolder(private val binding: AdapterStyleLabelsBinding) : VerticalListViewHolder(binding.root) {
         fun bind(genre: Genre, isLightBind: Boolean) {
             binding.title.text = genre.name ?: context.getString(R.string.unknown)
-            binding.secondaryDetail.gone(false)
+            binding.secondaryDetail.text = getString(R.string.x_songs, genre.songCount)
             binding.tertiaryDetail.gone(false)
             if (isLightBind) return
             binding.container.setOnClickListener { callbacks?.onGenreClicked(genre, it) }
