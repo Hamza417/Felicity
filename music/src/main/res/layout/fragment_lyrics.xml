@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:orientation="vertical"
-    android:paddingHorizontal="@dimen/padding_20"
+    android:paddingHorizontal="@dimen/padding_10"
     android:clipToPadding="false"
     android:layout_height="match_parent"
     app:navigationPaddingRequired="true"
@@ -98,7 +98,7 @@
         android:layout_width="match_parent"
         android:layout_height="100dp"
         android:layout_gravity="center_vertical"
-        app:wsbBarWidth="7dp"
+        app:wsbBarWidth="6dp"
         app:wsbLabelGravity="center"
         app:wsbLabelHighlightMode="both"
         app:wsbWaveformMode="full" />

@@ -339,8 +339,8 @@ class FelicitySeekbar @JvmOverloads constructor(
         thumbRadiusPx = 12f * d   // 12 dp half-height → 24 dp tall pill
         thumbWidthPx = thumbRadiusPx * 4f   // 48 dp wide → natural 2:1 proportion
         // MD2 press ring defaults
-        pressRingOutsetPx = 5f * d
-        pressRingStrokePx = 3f * d
+        pressRingOutsetPx = 3f * d
+        pressRingStrokePx = 1.5f * d
         pressRingColor = progressColor
         // Default indicator stroke width
         defaultIndicatorWidthPx = 2f * d

@@ -113,6 +113,11 @@ class LyricsSearch : MediaFragment() {
             headerBinding.progress.isVisible = isLoading
             if (isLoading) {
                 headerBinding.count.text = getString(R.string.loading)
+            } else {
+                // If loading just finished and there are no results, show "No lyrics found".
+                if (viewModel.searchResults.value.isNullOrEmpty()) {
+                    headerBinding.count.text = getString(R.string.no_lyrics_found)
+                }
             }
         }
 
