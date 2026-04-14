@@ -164,6 +164,96 @@ class AudioRepository @Inject constructor(
     }
 
     /**
+     * Get all unique album artists from the database as a Flow, with aggregated
+     * album counts, track counts, and song paths grouped by the album_artist tag.
+     * Songs that have no album artist tag are quietly skipped — no tag, no entry.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
+     *
+     * @return Flow of album artists with complete metadata, sorted by name
+     */
+    fun getAllAlbumArtistsWithAggregation(): Flow<List<Artist>> {
+        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
+            // Group audio files by album artist name (the tag that says who "owns" the album)
+            audioList.groupBy { it.albumArtist }
+                .mapNotNull { (albumArtistName, songs) ->
+                    if (albumArtistName.isNullOrEmpty()) return@mapNotNull null
+
+                    // Count unique albums credited to this album artist
+                    val uniqueAlbums = songs.mapNotNull { it.album }.distinct().size
+
+                    // Gather all song file paths so we can play/shuffle from a menu later
+                    val songPaths = songs.map { it.path }
+
+                    // Use a hash of the album artist name as a stable unique ID
+                    val uniqueId = albumArtistName.hashCode().toLong()
+
+                    Artist(
+                            id = uniqueId,
+                            name = albumArtistName,
+                            albumCount = uniqueAlbums,
+                            trackCount = songs.size,
+                            songPaths = songPaths
+                    )
+                }
+                .sortedBy { it.name?.lowercase() }
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Get page data for a specific album artist as a Flow.
+     * Returns every song whose album_artist tag matches the given artist, along with
+     * their albums and genres — basically everything you'd want to see on the artist page.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
+     *
+     * @param albumArtist The [Artist] (acting as album artist) whose page data we want.
+     * @return Flow of [PageData] with songs, albums, and genres for this album artist.
+     */
+    fun getAlbumArtistPageData(albumArtist: Artist): Flow<PageData> {
+        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
+            // Keep only songs where the album_artist tag exactly matches our target
+            val artistAudios = audioList.filter { audio ->
+                audio.albumArtist?.equals(albumArtist.name, ignoreCase = true) == true
+            }
+
+            // Pull out unique albums from those songs
+            val albumsMap = artistAudios.groupBy { it.album }
+                .mapNotNull { (albumName, albumSongs) ->
+                    if (albumName.isNullOrEmpty()) return@mapNotNull null
+
+                    Album(
+                            id = albumName.hashCode().toLong(),
+                            name = albumName,
+                            artist = albumArtist.name ?: "",
+                            artistId = albumArtist.id,
+                            songCount = albumSongs.size,
+                            songPaths = albumSongs.map { it.path }
+                    )
+                }
+
+            // Pull out unique genres from those songs
+            val genresMap = artistAudios.groupBy { it.genre }
+                .mapNotNull { (genreName, _) ->
+                    if (genreName.isNullOrEmpty()) return@mapNotNull null
+
+                    val genreAllSongs = audioList.filter { it.genre == genreName }
+
+                    Genre(
+                            id = genreName.hashCode().toLong(),
+                            name = genreName,
+                            songPaths = genreAllSongs.map { it.path },
+                            songCount = genreAllSongs.size
+                    )
+                }
+
+            PageData(
+                    songs = artistAudios,
+                    albums = albumsMap,
+                    genres = genresMap
+            )
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
      * Get all genres with aggregated data including song counts and song paths.
      * This method groups audio files by genre and creates proper Genre objects.
      * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.

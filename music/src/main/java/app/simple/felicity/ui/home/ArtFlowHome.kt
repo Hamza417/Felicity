@@ -26,6 +26,7 @@ import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.ui.panels.AlbumArtists
 import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Favorites
@@ -82,7 +83,7 @@ class ArtFlowHome : MediaFragment() {
         binding.sideBar.setItemStyle(backgroundColor = ThemeManager.theme.viewGroupTheme.backgroundColor)
         binding.sideBar.setItems(listOf(
                 FelicitySideBar.SidebarItem(R.drawable.ic_song),
-                FelicitySideBar.SidebarItem(R.drawable.ic_artist),
+                FelicitySideBar.SidebarItem(R.drawable.ic_people),
                 FelicitySideBar.SidebarItem(R.drawable.ic_album),
                 FelicitySideBar.SidebarItem(R.drawable.ic_menu),
                 FelicitySideBar.SidebarItem(R.drawable.ic_search),
@@ -107,6 +108,7 @@ class ArtFlowHome : MediaFragment() {
                             anchorView = anchorView,
                             backProgression = false,
                             menuItems = listOf(
+                                    PopupMenuItem(title = R.string.album_artists, icon = R.drawable.ic_artist),
                                     PopupMenuItem(title = R.string.genres, icon = R.drawable.ic_piano),
                                     PopupMenuItem(title = R.string.year, icon = R.drawable.ic_date_range),
                                     PopupMenuItem(title = R.string.folders, icon = R.drawable.ic_folder),
@@ -120,6 +122,7 @@ class ArtFlowHome : MediaFragment() {
                             ),
                             onMenuItemClick = { itemResId ->
                                 when (itemResId) {
+                                    R.string.album_artists -> openFragment(AlbumArtists.newInstance(), AlbumArtists.TAG)
                                     R.string.genres -> openFragment(Genres.newInstance(), Genres.TAG)
                                     R.string.year -> openFragment(Year.newInstance(), Year.TAG)
                                     R.string.folders -> openFragment(Folders.newInstance(), Folders.TAG)

@@ -8,6 +8,7 @@ import app.simple.felicity.R
 import app.simple.felicity.decorations.ripple.DynamicRippleImageButton
 import app.simple.felicity.server.ServerModeService
 import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.ui.panels.AlbumArtists
 import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Favorites
@@ -95,6 +96,7 @@ abstract class BaseHomeFragment : PanelFragment() {
             R.string.genres -> openFragment(Genres.newInstance(), Genres.TAG)
             R.string.favorites -> openFragment(Favorites.newInstance(), Favorites.TAG)
             R.string.playing_queue -> openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
+            R.string.album_artists -> openFragment(AlbumArtists.newInstance(), AlbumArtists.TAG)
             R.string.recently_added -> openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
             R.string.recently_played -> openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
             R.string.most_played -> openFragment(MostPlayed.newInstance(), MostPlayed.TAG)

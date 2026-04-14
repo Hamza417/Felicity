@@ -3,6 +3,7 @@ package app.simple.felicity.repository.constants
 object BundleConstants {
     const val GENRE = "genre"
     const val ARTIST = "artist"
+    const val ALBUM_ARTIST = "album_artist"
     const val ALBUM = "album"
     const val AUDIO = "song"
     const val SONGS = "songs"
