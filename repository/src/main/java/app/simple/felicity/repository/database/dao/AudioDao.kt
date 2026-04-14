@@ -177,10 +177,12 @@ interface AudioDao {
     fun insertOrIgnore(audio: Audio): Long
 
     /**
-     * Insert multiple [Audio] items in a batch
-     * into the table
+     * Insert multiple [Audio] items in a batch. Uses IGNORE on conflict so that
+     * if a hash somehow collides with an existing row (astronomically unlikely with
+     * path-aware hashes), we silently skip the offending item rather than deleting
+     * the row that's already safely in the library.
      */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertBatch(audioList: List<Audio>)
 
     @Update

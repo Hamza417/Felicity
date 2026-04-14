@@ -211,8 +211,7 @@ public class JAudioMetadataLoader {
         return audioFile.getAudioHeader().getBitsPerSample();
     }
     
-    private long generateId
-            () {
+    private long generateId() {
         return FileUtils.INSTANCE.generateXXHash64(file, Integer.MAX_VALUE);
     }
 }

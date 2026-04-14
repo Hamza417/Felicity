@@ -15,17 +15,22 @@ import androidx.room.PrimaryKey;
 /**
  * Represents a single audio track stored in the local library database.
  *
- * <p>The {@code id} field is a simple auto-incremented long integer assigned by Room on insertion.
- * The {@code hash} field holds the XXHash64 content fingerprint of the file and is used for
- * file-identity comparisons and deduplication logic. The {@code hash} column has a unique index
- * so that it can serve as a foreign-key parent for the {@code song_stats} table.</p>
+ * <p>The {@code id} field is the auto-incremented primary key assigned by Room on insertion.
+ * The {@code hash} field holds the XXHash64 content fingerprint — the same song at two
+ * different locations will have the same hash, which is intentional: it lets song statistics
+ * stay connected to a track even when the file is moved or temporarily removed from the
+ * device. The {@code path} column carries a unique index because no two library entries
+ * should ever point at the same file system location.</p>
  *
  * @author Hamza417
  * @noinspection EqualsReplaceableByObjectsCall
  */
 @Entity (
         tableName = "audio",
-        indices = {@Index (value = {"hash"}, unique = true)}
+        indices = {
+                @Index (value = {"hash"}),
+                @Index (value = {"path"}, unique = true)
+        }
 )
 public class Audio implements Parcelable {
     

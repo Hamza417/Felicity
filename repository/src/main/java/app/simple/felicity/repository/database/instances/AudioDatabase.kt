@@ -45,6 +45,11 @@ import app.simple.felicity.repository.models.PlaylistSongCrossRef
  *   <li>9 → 10: Added {@code is_m3u_playlist} and {@code m3u_file_path} columns to the
  *       {@code playlists} table so the scanner can automatically create and maintain
  *       playlists from M3U files found on the device.</li>
+ *   <li>10 → 11: Replaced the unique constraint on {@code audio.hash} with a unique
+ *       constraint on {@code audio.path}. This lets two identical audio files that live in
+ *       different folders each have their own library row and show up independently in the
+ *       UI, while the pure content hash is still used as a logical link so that song
+ *       statistics survive a file being moved or temporarily removed from the device.</li>
  * </ul>
  *
  * @author Hamza417
@@ -58,7 +63,7 @@ import app.simple.felicity.repository.models.PlaylistSongCrossRef
             Playlist::class,
             PlaylistSongCrossRef::class
         ],
-        version = 10,
+        version = 11,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {
@@ -341,9 +346,86 @@ abstract class AudioDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migrates the database from version 10 to 11.
+         *
+         * <p>The unique index on {@code audio.hash} is replaced with a unique index on
+         * {@code audio.path}. This change allows two identical audio files living in
+         * different folders to each have their own row in the library and appear
+         * independently in the UI — no more mysterious flip-flopping between which copy
+         * shows up on each scan.</p>
+         *
+         * <p>The pure XXHash64 content fingerprint in {@code hash} is kept unchanged and
+         * still serves as the logical key for song statistics, so play counts and history
+         * survive a file being moved or temporarily removed from the device.</p>
+         *
+         * <p>Before adding the path unique index we clean up any rows that somehow ended up
+         * sharing the same path (keeping the one with the highest id, i.e. the most recently
+         * scanned version), so the {@code CREATE UNIQUE INDEX} never hits a duplicate-key
+         * error on an existing dirty database.</p>
+         */
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Clean up any path-duplicate rows before the unique index lands.
+                // We keep the row with the highest id (most recently scanned) for each path.
+                db.execSQL("""
+                    DELETE FROM audio
+                    WHERE id NOT IN (
+                        SELECT MAX(id) FROM audio GROUP BY path
+                    )
+                """.trimIndent())
+
+                // Drop the old unique index on hash — the content fingerprint should not
+                // enforce row uniqueness on its own anymore.
+                db.execSQL("DROP INDEX IF EXISTS `index_audio_hash`")
+
+                // Restore a non-unique index on hash so stats lookups (JOIN by hash) and
+                // the reconcile pass stay fast even though uniqueness is no longer required.
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_audio_hash` ON `audio` (`hash`)")
+
+                // The file path is now the true uniqueness key for library rows.
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_audio_path` ON `audio` (`path`)")
+
+                // Recreate playback_queue without the audio-hash foreign key.
+                // Room's schema validator checks that the table schema matches the entity
+                // annotations exactly — since PlaybackQueueEntry no longer declares a FK,
+                // the table must not have one either. FK enforcement was already disabled
+                // database-wide, so this has zero runtime impact on queue behavior.
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `playback_queue_new` (
+                        `queuePos` INTEGER PRIMARY KEY NOT NULL,
+                        `audioHash` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO `playback_queue_new` SELECT * FROM `playback_queue`")
+                db.execSQL("DROP TABLE `playback_queue`")
+                db.execSQL("ALTER TABLE `playback_queue_new` RENAME TO `playback_queue`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_playback_queue_audioHash` ON `playback_queue` (`audioHash`)")
+
+                // Recreate playlist_song_cross_ref keeping only the playlist FK (still valid
+                // because playlists.id is a primary key). The audio-hash FK is dropped for the
+                // same reason as the one on playback_queue — hash is no longer unique in audio.
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `playlist_song_cross_ref_new` (
+                        `playlist_id` INTEGER NOT NULL,
+                        `audio_hash` INTEGER NOT NULL,
+                        `position` INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY(`playlist_id`, `audio_hash`),
+                        FOREIGN KEY(`playlist_id`) REFERENCES `playlists`(`id`)
+                            ON UPDATE CASCADE ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO `playlist_song_cross_ref_new` SELECT * FROM `playlist_song_cross_ref`")
+                db.execSQL("DROP TABLE `playlist_song_cross_ref`")
+                db.execSQL("ALTER TABLE `playlist_song_cross_ref_new` RENAME TO `playlist_song_cross_ref`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_song_cross_ref_playlist_id` ON `playlist_song_cross_ref` (`playlist_id`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_song_cross_ref_audio_hash` ON `playlist_song_cross_ref` (`audio_hash`)")
+            }
+        }
+
         private fun buildDatabase(context: Context): AudioDatabase {
             return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                 .build()
         }
     }

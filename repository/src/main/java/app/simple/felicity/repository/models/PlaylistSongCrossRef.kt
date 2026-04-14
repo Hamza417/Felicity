@@ -6,23 +6,22 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 
 /**
- * Junction table that associates {@link Audio} tracks with {@link Playlist} rows.
+ * Junction table that associates [Audio] tracks with [Playlist] rows.
  *
- * <p>Each row records the membership of one audio track in one playlist. The
- * {@code position} column preserves the user-defined ordering inside the playlist
- * (e.g. after a drag-and-drop reorder). When the playlist's {@code sortOrder} field
- * is set to anything other than {@code -1} the UI ignores {@code position} and applies
- * the selected sort field instead. The {@code position} value is still kept up-to-date
- * so that the manual ordering is never silently discarded when the user switches back.</p>
+ * Each row records the membership of one audio track in one playlist. The [position]
+ * column preserves the user-defined ordering inside the playlist (e.g. after a
+ * drag-and-drop reorder). When the playlist's sortOrder field is set to anything
+ * other than -1 the UI ignores position and applies the selected sort field instead —
+ * the position value is still kept up-to-date so manual ordering is never silently lost.
  *
- * <p>Two cascade-delete foreign keys are declared:</p>
- * <ul>
- *   <li>{@code playlist_id} → {@code playlists.id}: deleting a playlist removes all of
- *       its song membership rows automatically.</li>
- *   <li>{@code audio_hash} → {@code audio.hash}: removing a track from the library
- *       automatically removes it from every playlist — identical to the behavior of
- *       {@link PlaybackQueueEntry}.</li>
- * </ul>
+ * The playlist cascade-delete foreign key is still active: deleting a playlist removes
+ * all of its song membership rows automatically.
+ *
+ * The audio foreign key that used to reference audio.hash was removed in migration
+ * 10 → 11 because hash is no longer unique in the audio table. FK enforcement was
+ * already disabled database-wide, so the only thing that changes is that Room's schema
+ * validator no longer rejects the build. Stale cross-ref rows (tracks removed from the
+ * library) are cleaned up by the reconcile pass in the scanner.
  *
  * @author Hamza417
  */
@@ -40,22 +39,15 @@ import androidx.room.Index
                     childColumns = ["playlist_id"],
                     onDelete = ForeignKey.CASCADE,
                     onUpdate = ForeignKey.CASCADE
-            ),
-            ForeignKey(
-                    entity = Audio::class,
-                    parentColumns = ["hash"],
-                    childColumns = ["audio_hash"],
-                    onDelete = ForeignKey.CASCADE,
-                    onUpdate = ForeignKey.CASCADE
             )
         ]
 )
 data class PlaylistSongCrossRef(
-        /** Foreign key referencing the owning {@link Playlist}. */
+        /** Foreign key referencing the owning [Playlist]. */
         @ColumnInfo(name = "playlist_id")
         val playlistId: Long,
 
-        /** XXHash64 content fingerprint referencing {@code audio.hash}. */
+        /** XXHash64 content fingerprint used as a logical reference to audio.hash. */
         @ColumnInfo(name = "audio_hash")
         val audioHash: Long,
 
@@ -63,4 +55,3 @@ data class PlaylistSongCrossRef(
         @ColumnInfo(name = "position", defaultValue = "0")
         val position: Int = 0
 )
-
