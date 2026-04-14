@@ -533,9 +533,21 @@ class AudioRepository @Inject constructor(
      */
     fun getArtistPageData(artist: Artist): Flow<PageData> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            // Filter songs where artist name contains the specified artist (handles split artists)
+            val targetName = artist.name ?: ""
+
+            /**
+             * Instead of a simple substring check (which would wrongly pull "CARALISA" into
+             * LISA's page), we split the song's artist field by the same delimiters used
+             * everywhere else in this class, then look for an exact match on any individual
+             * token. This means "LISA" only matches if the field is exactly "LISA" OR if
+             * "LISA" appears as a standalone name in a multi-artist string like "CARALISA, LISA".
+             */
             val artistAudios = audioList.filter { audio ->
-                audio.artist?.contains(artist.name ?: "", ignoreCase = true) == true
+                val audioArtist = audio.artist ?: return@filter false
+                val tokens = audioArtist.split(Regex(ARTIST_REGEX))
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                tokens.any { it.equals(targetName, ignoreCase = true) }
             }
 
             // Extract unique albums from artist songs
