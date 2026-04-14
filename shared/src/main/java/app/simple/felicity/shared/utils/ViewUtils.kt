@@ -17,7 +17,7 @@ import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.widget.LinearLayout
 import androidx.annotation.ColorInt
-import androidx.dynamicanimation.animation.SpringForce
+import androidx.core.view.isVisible
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 
 object ViewUtils {
@@ -26,16 +26,11 @@ object ViewUtils {
     const val RIGHT = 1
 
     // Hover props
-    const val hoverAnimationDuration = 250L
-    const val hoverAnimationDampingRatio = SpringForce.DAMPING_RATIO_NO_BOUNCY
-    const val hoverAnimationStiffness = SpringForce.STIFFNESS_LOW
-    const val hoverAnimationScaleOnHover = 0.90F
-    const val hoverAnimationScaleOnUnHover = 1.0F
-    const val hoverAnimationElevation = 10F
-    const val hoverAnimationAlpha = 0.8F
+    const val HOVER_ANIMATION_DURATION = 250L
+    const val HOVER_ANIMATION_ALPHA = 0.6F
 
-    const val blurRadius = 16F
-    const val dimAmount = 0.35F
+    const val BLUR_RADIUS = 16F
+    const val DIM_AMOUNT = 0.35F
 
     /**
      * Dim the background when PopupWindow shows
@@ -51,13 +46,13 @@ object ViewUtils {
 
         if (isDimmingOn) {
             layoutParams.flags = layoutParams.flags or WindowManager.LayoutParams.FLAG_DIM_BEHIND
-            layoutParams.dimAmount = dimAmount
+            layoutParams.dimAmount = DIM_AMOUNT
         }
 
         if (isBlurringOn) {
             layoutParams.flags = layoutParams.flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                layoutParams.blurBehindRadius = blurRadius.toInt()
+                layoutParams.blurBehindRadius = BLUR_RADIUS.toInt()
             }
         }
 
@@ -97,7 +92,7 @@ object ViewUtils {
      *                    shadow
      */
     fun addShadow(contentView: View, @ColorInt color: Int = -1) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && color != -1) {
+        if (color != -1) {
             contentView.outlineAmbientShadowColor = color
             contentView.outlineSpotShadowColor = color
         }
@@ -184,7 +179,7 @@ object ViewUtils {
      * @param animate adds animation to the process
      */
     fun View.visible(animate: Boolean = false) {
-        if (visibility == View.VISIBLE) return
+        if (isVisible) return
 
         if (animate) {
             clearAnimation()
@@ -344,20 +339,21 @@ object ViewUtils {
      */
     fun View.triggerHover(event: MotionEvent) {
         if (isClickable) {
-            if (event.action == MotionEvent.ACTION_HOVER_ENTER) {
-                animate()
-                    .scaleX(hoverAnimationScaleOnHover)
-                    .scaleY(hoverAnimationScaleOnHover)
-                    .setDuration(hoverAnimationDuration)
-                    .setInterpolator(DecelerateInterpolator())
-                    .start()
-            } else if (event.action == MotionEvent.ACTION_HOVER_EXIT) {
-                animate()
-                    .scaleX(hoverAnimationScaleOnUnHover)
-                    .scaleY(hoverAnimationScaleOnUnHover)
-                    .setDuration(hoverAnimationDuration)
-                    .setInterpolator(DecelerateInterpolator())
-                    .start()
+            when (event.action) {
+                MotionEvent.ACTION_HOVER_ENTER -> {
+                    animate()
+                        .alpha(HOVER_ANIMATION_ALPHA)
+                        .setDuration(HOVER_ANIMATION_DURATION)
+                        .setInterpolator(DecelerateInterpolator())
+                        .start()
+                }
+                MotionEvent.ACTION_HOVER_EXIT -> {
+                    animate()
+                        .alpha(1F)
+                        .setDuration(HOVER_ANIMATION_DURATION)
+                        .setInterpolator(DecelerateInterpolator())
+                        .start()
+                }
             }
         }
     }
@@ -385,7 +381,8 @@ object ViewUtils {
 
     fun View.cancelTouch() {
         val now = SystemClock.uptimeMillis()
-        val cancelEvent = MotionEvent.obtain(now, now, MotionEvent.ACTION_CANCEL, 0f, 0f, 0)
+        val cancelEvent = MotionEvent.obtain(
+                now, now, MotionEvent.ACTION_CANCEL, 0f, 0f, 0)
         dispatchTouchEvent(cancelEvent)
         cancelEvent.recycle()
     }

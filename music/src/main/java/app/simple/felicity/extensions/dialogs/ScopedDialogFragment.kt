@@ -48,7 +48,7 @@ open class ScopedDialogFragment : DialogFragment(), SharedPreferences.OnSharedPr
         @Suppress("deprecation")
         window.windowManager.defaultDisplay.getMetrics(displayMetrics)
 
-        dialog?.window?.setDimAmount(ViewUtils.dimAmount)
+        dialog?.window?.setDimAmount(ViewUtils.DIM_AMOUNT)
 
         window.attributes.gravity = Gravity.CENTER
 

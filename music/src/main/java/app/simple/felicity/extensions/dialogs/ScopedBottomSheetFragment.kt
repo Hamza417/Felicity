@@ -38,7 +38,7 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
 
         dialog?.window?.attributes?.windowAnimations = R.style.BottomDialogAnimation
 
-        dialog?.window?.setDimAmount(ViewUtils.dimAmount)
+        dialog?.window?.setDimAmount(ViewUtils.DIM_AMOUNT)
 
         dialog?.setOnShowListener { dialog ->
             /**
