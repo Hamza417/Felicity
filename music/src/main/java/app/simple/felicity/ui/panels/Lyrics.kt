@@ -120,6 +120,12 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
                     val currentAudio = MediaPlaybackManager.getCurrentSong() ?: return
                     openFragment(LrcEditor.newInstance(currentAudio), LrcEditor.TAG)
                 }
+
+                override fun onAddLyrics() {
+                    val currentAudio = MediaPlaybackManager.getCurrentSong() ?: return
+                    childFragmentManager.showAddLyrics(currentAudio)
+                        .setOnLyricsCreatedListener(this@Lyrics)
+                }
             })
         }
 
@@ -137,12 +143,6 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
 
         binding.search.setOnClickListener {
             openFragment(LyricsSearch.newInstance(), LyricsSearch.TAG)
-        }
-
-        binding.addLyrics?.setOnClickListener {
-            val currentAudio = MediaPlaybackManager.getCurrentSong() ?: return@setOnClickListener
-            childFragmentManager.showAddLyrics(currentAudio)
-                .setOnLyricsCreatedListener(this)
         }
 
         lyricsViewModel.getLrcData().observe(viewLifecycleOwner) { lrcData ->
@@ -188,6 +188,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
                     binding.lrc.updateTime(positionMs + lyricsViewModel.syncOffset)
                 }
             }
+
             override fun onSeekEnd(positionMs: Long) {
                 MediaPlaybackManager.seekTo(positionMs)
             }

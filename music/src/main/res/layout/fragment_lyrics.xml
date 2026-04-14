@@ -41,13 +41,6 @@
             android:layout_height="1px" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-            android:id="@+id/add_lyrics"
-            android:layout_width="@dimen/button_size"
-            android:src="@drawable/ic_lyrics_add"
-            android:layout_marginEnd="@dimen/padding_1"
-            android:layout_height="@dimen/button_size" />
-
-        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/search"
             android:layout_width="@dimen/button_size"
             android:src="@drawable/ic_search"

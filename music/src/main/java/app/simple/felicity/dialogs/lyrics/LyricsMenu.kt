@@ -15,6 +15,8 @@ import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
 import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils.hasLrc
+import app.simple.felicity.shared.utils.ViewUtils.gone
+import app.simple.felicity.shared.utils.ViewUtils.visible
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -50,31 +52,42 @@ class LyricsMenu : MediaBottomDialogFragment() {
             String.format(Locale.getDefault(), "%.1f px", progress)
         }
 
-        binding.minus.setOnClickListener {
-            menuListener?.onTimeMinusClicked()
-        }
-
-        binding.plus.setOnClickListener {
-            menuListener?.onTimePlusClicked()
-        }
-
-        binding.delete.setOnClickListener {
-            menuListener?.onLyricsDelete()
-            dismiss()
-        }
-
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Default) {
             val hasLrc = audio?.hasLrc() ?: false
             launch(Dispatchers.Main) {
                 if (hasLrc) {
-                    binding.edit.visibility = View.VISIBLE
+                    binding.edit.visible()
+                    binding.delete.visible()
+                    binding.syncAdjustLayout.visible()
+
+                    binding.addLyrics.gone()
+
+                    binding.delete.setOnClickListener {
+                        menuListener?.onLyricsDelete()
+                        dismiss()
+                    }
 
                     binding.edit.setOnClickListener {
                         menuListener?.onLrcEdit()
                         dismiss()
                     }
+
+                    binding.minus.setOnClickListener {
+                        menuListener?.onTimeMinusClicked()
+                    }
+
+                    binding.plus.setOnClickListener {
+                        menuListener?.onTimePlusClicked()
+                    }
                 } else {
-                    binding.edit.visibility = View.GONE
+                    binding.edit.gone()
+                    binding.delete.gone()
+                    binding.syncAdjustLayout.gone()
+
+                    binding.addLyrics.setOnClickListener {
+                        menuListener?.onAddLyrics()
+                        dismiss()
+                    }
                 }
             }
         }
@@ -131,6 +144,7 @@ class LyricsMenu : MediaBottomDialogFragment() {
             fun onTimePlusClicked()
             fun onLyricsDelete()
             fun onLrcEdit()
+            fun onAddLyrics()
         }
     }
 }

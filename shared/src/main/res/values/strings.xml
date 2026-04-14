@@ -394,4 +394,5 @@
     <string name="edit_lrc">Edit LRC</string>
     <string name="rewind">Rewind</string>
     <string name="forward">Forward</string>
+    <string name="add_lyrics">Add Lyrics</string>
 </resources>

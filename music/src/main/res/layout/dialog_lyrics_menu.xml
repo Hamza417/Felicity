@@ -17,6 +17,7 @@
         android:orientation="vertical">
 
         <LinearLayout
+            android:id="@+id/sync_adjust_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:clipChildren="false"
@@ -138,6 +139,16 @@
             android:layout_width="match_parent"
             android:layout_marginVertical="@dimen/padding_10"
             android:layout_height="1px" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/add_lyrics"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="@dimen/padding_15"
+            android:text="@string/add_lyrics"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:textColorStyle="primary" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleTextView
             android:id="@+id/delete"
