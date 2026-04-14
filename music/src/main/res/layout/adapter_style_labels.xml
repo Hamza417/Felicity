@@ -17,7 +17,7 @@
         android:ellipsize="end"
         android:gravity="center_vertical"
         android:maxLines="1"
-        android:textSize="@dimen/text_size_16"
+        android:textSize="@dimen/text_size_14"
         app:appFontStyle="bold"
         app:drawableTintStyle="custom"
         app:layout_constraintBottom_toTopOf="@+id/secondary_detail"
