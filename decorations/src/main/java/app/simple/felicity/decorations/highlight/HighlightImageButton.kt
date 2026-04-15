@@ -5,7 +5,6 @@ import android.content.SharedPreferences
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.util.AttributeSet
-import android.util.TypedValue
 import android.view.MotionEvent
 import androidx.annotation.ColorInt
 import androidx.appcompat.widget.AppCompatImageButton
@@ -19,6 +18,7 @@ import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceCha
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.shared.utils.UnitUtils.dpToPx
 import app.simple.felicity.shared.utils.ViewUtils.triggerHover
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
@@ -280,11 +280,6 @@ class HighlightImageButton @JvmOverloads constructor(
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {
         triggerHover(event)
         return super.onGenericMotionEvent(event)
-    }
-
-    private fun dpToPx(dp: Float): Float {
-        return TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, dp, resources.displayMetrics)
     }
 }
 

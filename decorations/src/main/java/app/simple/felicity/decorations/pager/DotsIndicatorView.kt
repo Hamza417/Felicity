@@ -8,6 +8,7 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.Choreographer
 import android.view.View
+import app.simple.felicity.shared.utils.UnitUtils.dpToPx
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
@@ -47,7 +48,7 @@ class DotsIndicatorView @JvmOverloads constructor(
         }
 
     /** Center-to-center spacing between dots in pixels. */
-    var dotSpacing = dpToPx(13f)
+    var dotSpacing: Float = dpToPx(13f)
         set(v) {
             field = v; requestLayout(); invalidate()
         }
@@ -193,7 +194,7 @@ class DotsIndicatorView @JvmOverloads constructor(
 
     // ── Physics simulation ───────────────────────────────────────────────────────
 
-    private fun targetBlobX() = targetPage * dotSpacing
+    private fun targetBlobX(): Float = targetPage * dotSpacing
 
     private fun tick(nowMs: Long) {
         if (lastFrameMs == -1L) lastFrameMs = nowMs
@@ -284,8 +285,4 @@ class DotsIndicatorView @JvmOverloads constructor(
             animPosted = false
         }
     }
-
-    // ── Helpers ──────────────────────────────────────────────────────────────────
-
-    private fun dpToPx(dp: Float) = dp * resources.displayMetrics.density
 }

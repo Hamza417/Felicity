@@ -7,7 +7,6 @@ import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.util.AttributeSet;
-import android.util.TypedValue;
 import android.view.MotionEvent;
 
 import com.google.android.material.shape.CornerFamily;
@@ -25,6 +24,7 @@ import app.simple.felicity.decorations.ripple.FelicityRippleDrawable;
 import app.simple.felicity.decorations.typeface.TypeFaceTextView;
 import app.simple.felicity.preferences.AccessibilityPreferences;
 import app.simple.felicity.preferences.AppearancePreferences;
+import app.simple.felicity.shared.utils.UnitUtils;
 import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Accent;
@@ -79,19 +79,19 @@ public class HighlightTextView extends TypeFaceTextView {
     
     public HighlightTextView(@NonNull Context context) {
         super(context);
-        strokeWidth = dpToPx(DEFAULT_STROKE_DP);
+        strokeWidth = UnitUtils.INSTANCE.dpToPx(context, DEFAULT_STROKE_DP);
         init(null);
     }
     
     public HighlightTextView(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
-        strokeWidth = dpToPx(DEFAULT_STROKE_DP);
+        strokeWidth = UnitUtils.INSTANCE.dpToPx(context, DEFAULT_STROKE_DP);
         init(attrs);
     }
     
     public HighlightTextView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        strokeWidth = dpToPx(DEFAULT_STROKE_DP);
+        strokeWidth = UnitUtils.INSTANCE.dpToPx(context, DEFAULT_STROKE_DP);
         init(attrs);
     }
     
@@ -187,11 +187,6 @@ public class HighlightTextView extends TypeFaceTextView {
     
     private float getGlobalRoundedRadius() {
         return AppearancePreferences.INSTANCE.getCornerRadius();
-    }
-    
-    private float dpToPx(float dp) {
-        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp,
-                getResources().getDisplayMetrics());
     }
     
     /**

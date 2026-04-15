@@ -8,7 +8,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.core.content.withStyledAttributes
 import app.simple.felicity.decoration.R
-
+import app.simple.felicity.shared.utils.UnitUtils.dpToPx
 
 /**
  * A self-contained image-slider compound widget built on top of [FelicityPager].
@@ -288,9 +288,5 @@ class FelicitySlider @JvmOverloads constructor(
         val ms = 900f - swiftness * (900f - 220f)
         return ms.toLong().coerceIn(100L, 1200L)
     }
-
-
-    private fun dpToPx(dp: Float): Float =
-        dp * resources.displayMetrics.density
 }
 

@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.itemdecorations.HeaderSpacingItemDecoration
 import app.simple.felicity.decorations.theme.ThemeFrameLayout
+import app.simple.felicity.shared.utils.UnitUtils.dpToPx
 import app.simple.felicity.shared.utils.WindowUtil
 import kotlin.math.max
 import kotlin.math.min
@@ -43,7 +44,7 @@ class AppHeader @JvmOverloads constructor(
 
     private var recyclerView: RecyclerView? = null
     private var scrollMode: ScrollMode = ScrollMode.PINNED
-    private var hideThresholdPx: Int = dpToPx(10)
+    private var hideThresholdPx: Int = dpToPx(10F).toInt()
     private var accumulatedScroll = 0
     private var isHidden = false
 
@@ -268,9 +269,6 @@ class AppHeader @JvmOverloads constructor(
         isScrollListenerAttached = false
         removeOnLayoutChangeListener(layoutChangeListener)
     }
-
-    @Suppress("SameParameterValue")
-    private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
 
     fun isHeaderHidden(): Boolean = isHidden
 

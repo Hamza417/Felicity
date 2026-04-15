@@ -9,7 +9,6 @@ import android.os.Bundle
 import android.os.IBinder
 import android.provider.MediaStore
 import android.util.Log
-import android.util.TypedValue
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
@@ -53,6 +52,7 @@ import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
+import app.simple.felicity.shared.utils.UnitUtils.dpToPx
 import app.simple.felicity.ui.home.ArtFlowHome
 import app.simple.felicity.ui.home.Dashboard
 import app.simple.felicity.ui.home.SimpleHome
@@ -217,7 +217,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         binding.miniPlayer.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             val lp = binding.miniPlayer.layoutParams as? ViewGroup.MarginLayoutParams
             val totalMiniPlayerSpace = binding.miniPlayer.height + (lp?.bottomMargin ?: 0)
-            val gap = dpToPx(4f)
+            val gap = dpToPx(4f).toInt()
             val alp = binding.miniPlayerActionBar.layoutParams as? ViewGroup.MarginLayoutParams
             if (alp != null && alp.bottomMargin != totalMiniPlayerSpace + gap) {
                 alp.bottomMargin = totalMiniPlayerSpace + gap
@@ -357,13 +357,6 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             }.start()
         }
     }
-
-    /**
-     * Converts dp to pixels using the screen's display metrics. Just a handy shortcut
-     * so we don't have to type out the full conversion formula everywhere.
-     */
-    private fun dpToPx(dp: Float): Int =
-        TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, resources.displayMetrics).toInt()
 
     /**
      * Shows the delete-confirmation dialog for all currently selected songs.
