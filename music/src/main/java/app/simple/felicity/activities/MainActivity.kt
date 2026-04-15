@@ -248,6 +248,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 val binder = service as? AudioDatabaseService.AudioDatabaseBinder
                 audioDatabaseService = binder?.getService() ?: return
+                audioDatabaseService?.refreshAudioFiles()
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
@@ -607,11 +608,6 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     override fun onStart() {
         super.onStart()
         startAudioDatabaseService()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        AudioDatabaseService.refreshScan(applicationContext)
     }
 
     override fun onStop() {

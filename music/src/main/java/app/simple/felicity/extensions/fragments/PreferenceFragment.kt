@@ -28,6 +28,7 @@ import app.simple.felicity.preferences.ConfigurationPreferences
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
+import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.ui.preferences.sub.AccentColors
 import app.simple.felicity.ui.preferences.sub.Language
 import app.simple.felicity.ui.preferences.sub.Themes
@@ -771,6 +772,20 @@ abstract class PreferenceFragment : MediaFragment() {
 
         val scannerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.scanner)
 
+        val refreshLibrary = Preference(
+                title = R.string.refresh_library,
+                summary = R.string.refresh_library_summary,
+                icon = R.drawable.ic_refresh,
+                type = PreferenceType.NORMAL,
+                onPreferenceAction = { view, callback ->
+                    withSureDialog {
+                        if (it) {
+                            AudioDatabaseService.refreshScan(requireContext())
+                        }
+                    }
+                }
+        )
+
         val minimumAudioLength = Preference(
                 title = R.string.minimum_audio_length,
                 summary = R.string.minimum_audio_length_summary,
@@ -858,6 +873,7 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        preferences.add(refreshLibrary)
         preferences.add(shuffleHeader)
         preferences.add(currentShuffle)
         preferences.add(metadataHeader)
