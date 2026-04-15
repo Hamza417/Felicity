@@ -148,6 +148,15 @@ Last Updated: 11 April 2026
 | ![](/screenshots/server_01_dark.png)  |
 | ![](/screenshots/server_01_light.png) |
 
+## Translations
+
+[![Crowdin](https://badges.crowdin.net/felicity/localized.svg)](https://crowdin.com/project/felicity)
+
+Felicity now supports localization. If you want to translate it into your own language(s), you can do so [here on Crowdin](https://crowdin.com/project/felicity).
+
+[Contributors](https://crowdin.com/project/felicity/members)
+
+
 ## License
 
 **Felicity Music Player** Copyright © 2026 - Hamza Rizwan
