@@ -134,6 +134,7 @@
             android:gravity="center"
             android:maxLines="1"
             android:singleLine="true"
+            android:minWidth="100dp"
             android:ellipsize="marquee"
             android:marqueeRepeatLimit="marquee_forever"
             android:layout_gravity="center_vertical"

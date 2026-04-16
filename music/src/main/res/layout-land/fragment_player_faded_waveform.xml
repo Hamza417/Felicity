@@ -187,6 +187,7 @@
                         android:ellipsize="marquee"
                         android:gravity="center"
                         android:marqueeRepeatLimit="marquee_forever"
+                        android:minWidth="100dp"
                         android:maxLines="1"
                         android:maxWidth="100dp"
                         android:paddingHorizontal="@dimen/padding_10"

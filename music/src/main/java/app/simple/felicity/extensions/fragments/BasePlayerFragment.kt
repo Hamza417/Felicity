@@ -266,11 +266,11 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         pcmInfo.setOnClickListener {
-            PlayerPreferences.setPcmInfoMode((PlayerPreferences.getPcmInfoMode() + 1) % 3)
+            showAudioPipeline(anchorView = pcmInfo)
         }
 
         pcmInfo.setOnLongClickListener {
-            showAudioPipeline(anchorView = pcmInfo)
+            PlayerPreferences.setPcmInfoMode((PlayerPreferences.getPcmInfoMode() + 1) % 3)
             true
         }
 
