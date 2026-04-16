@@ -241,6 +241,19 @@ public class LrcLineView extends View implements ThemeChangedListener {
         }
     }
     
+    public void reset() {
+        currentLineIndex = -1;
+        currentWordIndex = -1;
+        invalidateCache();
+        requestLayout();
+        invalidate();
+    }
+    
+    public void clear() {
+        setLrcData(null);
+        reset();
+    }
+    
     /**
      * Scans the lyric entries to find which line is active at {@code positionMs}.
      * We stop as soon as we find an entry that's in the future — since the list is

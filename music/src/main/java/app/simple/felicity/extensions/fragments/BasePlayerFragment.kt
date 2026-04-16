@@ -474,6 +474,7 @@ abstract class BasePlayerFragment : MediaFragment() {
             album.setTextWithEffect(audio.album ?: getString(R.string.unknown), forward, 100L)
             pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
             seekbar.setDurationWithReset(audio.duration)
+            lrc.clear()
             lyricsViewModel.loadLrcData()
         }
 
