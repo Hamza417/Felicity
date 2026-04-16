@@ -8,12 +8,14 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
+import app.simple.felicity.decorations.lrc.view.LrcLineView
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
 import app.simple.felicity.decorations.views.FavoriteButton
 import app.simple.felicity.decorations.views.FelicityVisualizer
 import app.simple.felicity.decorations.views.FlipPlayPauseView
 import app.simple.felicity.extensions.fragments.BasePlayerFragment
+import app.simple.felicity.theme.managers.ThemeManager
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -86,9 +88,19 @@ class DefaultPlayer : BasePlayerFragment() {
     override val album: TextView
         get() = binding.album
 
+    override val lrc: LrcLineView
+        get() = binding.lrc
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentDefaultPlayerBinding.inflate(inflater, container, false)
         return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        lrc.setShowBackgroundPill(true)
+        lrc.setNormalColor(ThemeManager.theme.textViewTheme.tertiaryTextColor)
     }
 
     companion object {

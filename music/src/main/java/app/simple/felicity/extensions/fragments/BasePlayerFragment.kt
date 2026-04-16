@@ -13,6 +13,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.decorations.helpers.SwipeDownToCloseListener
+import app.simple.felicity.decorations.lrc.view.LrcLineView
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.pager.ImagePageAdapter
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
@@ -37,8 +38,10 @@ import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.panels.Lyrics
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Search
+import app.simple.felicity.viewmodels.player.LyricsViewModel
 import app.simple.felicity.viewmodels.player.WaveformViewModel
 import com.bumptech.glide.Glide
+import dagger.hilt.android.lifecycle.withCreationCallback
 import kotlinx.coroutines.launch
 
 /**
@@ -61,6 +64,14 @@ abstract class BasePlayerFragment : MediaFragment() {
 
     /** ViewModel that decodes and exposes the per-second waveform amplitude data. */
     private val waveformViewModel: WaveformViewModel by viewModels()
+    private val lyricsViewModel: LyricsViewModel by viewModels(
+            ownerProducer = { this },
+            extrasProducer = {
+                defaultViewModelCreationExtras.withCreationCallback<LyricsViewModel.Factory> {
+                    it.create(audio = null)
+                }
+            }
+    )
 
     /**
      * Holds an [Audio] track whose waveform has been requested but whose load has been
@@ -72,7 +83,7 @@ abstract class BasePlayerFragment : MediaFragment() {
     /**
      * Tracks the ID of the last song for which [onAudio] performed a full seekbar reset.
      * Used to distinguish a genuine song change from a lifecycle re-emission (e.g., a
-     * predictive back gesture that is cancelled), so that [setDurationWithReset] is not
+     * predictive back gesture that is canceled), so that [setDurationWithReset] is not
      * called again for the same song and the seekbar does not reanimate from position 0.
      */
     private var lastLoadedAudioId: Long = -1L
@@ -133,6 +144,9 @@ abstract class BasePlayerFragment : MediaFragment() {
 
     /** The text view that shows the album name. */
     protected abstract val album: TextView
+
+    /** LRC view that shows synced lyrics lines. */
+    protected abstract val lrc: LrcLineView
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -308,6 +322,19 @@ abstract class BasePlayerFragment : MediaFragment() {
         visualizerButton.setOnClickListener {
             childFragmentManager.showVisualizerConfig()
         }
+
+        lyricsViewModel.getLrcData().observe(viewLifecycleOwner) { lrcData ->
+            if (lrcData.isEmpty) {
+                Log.d(TAG, "No lyrics found for the current song.")
+            } else {
+                Log.d(TAG, "Loaded lyrics with ${lrcData.size()} lines.")
+                // Use setLrcDataWithPosition so scroll is snapped only after the first draw pass,
+                // when layout heights are fully populated. This prevents the highlight being placed
+                // at a wrong (fallback-size based) offset when the cache is empty after a reset().
+                lrc.setLrcData(
+                        lrcData, MediaPlaybackManager.getSeekPosition() + lyricsViewModel.syncOffset)
+            }
+        }
     }
 
     private fun setVisualizerState() {
@@ -447,6 +474,7 @@ abstract class BasePlayerFragment : MediaFragment() {
             album.setTextWithEffect(audio.album ?: getString(R.string.unknown), forward, 100L)
             pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
             seekbar.setDurationWithReset(audio.duration)
+            lyricsViewModel.loadLrcData()
         }
 
         // Always sync seek position. For a same-song re-emission (e.g., predictive back
@@ -462,6 +490,7 @@ abstract class BasePlayerFragment : MediaFragment() {
     override fun onSeekChanged(seek: Long) {
         super.onSeekChanged(seek)
         seekbar.setProgress(seek, animate = true)
+        lrc.updateTime(seek + lyricsViewModel.syncOffset)
     }
 
     override fun onPlaybackStateChanged(state: Int) {

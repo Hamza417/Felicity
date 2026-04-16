@@ -8,6 +8,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import app.simple.felicity.databinding.FragmentPlayerFadedWaveformBinding
+import app.simple.felicity.decorations.lrc.view.LrcLineView
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
 import app.simple.felicity.decorations.views.FavoriteButton
@@ -85,6 +86,9 @@ class PlayerFaded : BasePlayerFragment() {
 
     override val album: TextView
         get() = binding.album
+
+    override val lrc: LrcLineView
+        get() = binding.lrc
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentPlayerFadedWaveformBinding.inflate(inflater, container, false)
