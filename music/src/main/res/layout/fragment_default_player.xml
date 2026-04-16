@@ -28,6 +28,7 @@
         <app.simple.felicity.decorations.lrc.view.LrcLineView
             android:id="@+id/lrc"
             android:layout_margin="@dimen/padding_10"
+            android:padding="@dimen/padding_5"
             android:layout_width="match_parent"
             android:layout_gravity="bottom"
             android:layout_height="wrap_content" />

@@ -68,7 +68,7 @@ public class LrcLineView extends View implements ThemeChangedListener {
     private static final String DEFAULT_EMPTY_TEXT = "";
     // Paint for measuring and drawing text
     private final TextPaint textPaint = new TextPaint(TextPaint.ANTI_ALIAS_FLAG);
-    // Reusable rect and paint for the pill — allocated once to keep onDraw allocation-free
+    // Reusable rect and paint for the background rectangle — allocated once to keep onDraw allocation-free
     private final RectF pillRect = new RectF();
     private final Paint pillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     // The loaded lyrics data — null means "nothing to show"
@@ -108,15 +108,6 @@ public class LrcLineView extends View implements ThemeChangedListener {
      */
     @ColorInt
     private int backgroundPillColor = Color.BLACK; // updated from theme in onAttachedToWindow
-    /**
-     * How much horizontal space to add on each side of the text inside the pill.
-     * Keeps the text from touching the pill's edges.
-     */
-    private float pillPaddingH;
-    /**
-     * How much vertical space to add above and below the text inside the pill.
-     */
-    private float pillPaddingV;
     
     public LrcLineView(@NonNull Context context) {
         this(context, null);
@@ -146,12 +137,6 @@ public class LrcLineView extends View implements ThemeChangedListener {
         if (!isInEditMode()) {
             textPaint.setTypeface(TypeFace.INSTANCE.getBoldTypeFace(context));
         }
-        
-        // 8dp horizontal, 4dp vertical gives the pill a natural-looking breathing room
-        pillPaddingH = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8f,
-                context.getResources().getDisplayMetrics());
-        pillPaddingV = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 4f,
-                context.getResources().getDisplayMetrics());
         pillPaint.setStyle(Paint.Style.FILL);
     }
     
@@ -328,45 +313,40 @@ public class LrcLineView extends View implements ThemeChangedListener {
     @Override
     protected void onDraw(@NonNull Canvas canvas) {
         super.onDraw(canvas);
-        
+
         StaticLayout layout = getOrBuildLayout();
         if (layout == null) {
             return; // Nothing to draw — stay invisible
         }
-        
+
         int width = getWidth();
         int height = getHeight();
         
-        // Center the text vertically within the view's bounds
-        float textHeight = layout.getHeight();
-        float textTop = (height - textHeight) / 2f;
-        
-        // If the pill background is enabled, draw a rounded rect behind the text first.
-        // We measure the widest line in the layout so the pill hugs the text snugly
-        // rather than spanning the full view width — looks much nicer on album art.
+        // Draw the rounded rectangle background first so it sits behind the text.
+        // It spans the full view width and height, minus the view's own padding on each
+        // side — exactly the same area that HighlightTextView's MaterialShapeDrawable covers.
         if (showBackgroundPill) {
-            float maxLineWidth = 0f;
-            for (int i = 0; i < layout.getLineCount(); i++) {
-                maxLineWidth = Math.max(maxLineWidth, layout.getLineWidth(i));
-            }
-            
-            // Center the pill horizontally around the text
-            float pillLeft = (width - maxLineWidth) / 2f - pillPaddingH;
-            float pillRight = (width + maxLineWidth) / 2f + pillPaddingH;
-            float pillTop = textTop - pillPaddingV;
-            float pillBottom = textTop + textHeight + pillPaddingV;
-            
-            float cornerRadius = isInEditMode()
+            float themeRadius = isInEditMode()
                     ? TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8f,
                     getResources().getDisplayMetrics())
                     : AppearancePreferences.INSTANCE.getCornerRadius();
             
-            pillRect.set(pillLeft, pillTop, pillRight, pillBottom);
-            canvas.drawRoundRect(pillRect, cornerRadius, cornerRadius, pillPaint);
+            pillRect.set(
+                    getPaddingLeft(),
+                    getPaddingTop(),
+                    width - getPaddingRight(),
+                    height - getPaddingBottom()
+                        );
+            canvas.drawRoundRect(pillRect, themeRadius, themeRadius, pillPaint);
         }
         
+        // Center the text vertically within the padded content area
+        float contentHeight = height - getPaddingTop() - getPaddingBottom();
+        float textHeight = layout.getHeight();
+        float textTop = getPaddingTop() + (contentHeight - textHeight) / 2f;
+
         // The layout handles horizontal alignment internally (including RTL),
-        // so we just need to drop to the right vertical position.
+        // so we just need to drop down to the right vertical position.
         canvas.save();
         canvas.translate(0, textTop);
         layout.draw(canvas);
@@ -575,4 +555,3 @@ public class LrcLineView extends View implements ThemeChangedListener {
         }
     }
 }
-
