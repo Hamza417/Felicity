@@ -42,6 +42,8 @@ class VolumeKnob : ScopedBottomSheetFragment() {
      */
     private val volumeFlow = MutableStateFlow(-1)
 
+    private var volumeListener: VolumeListener? = null
+
     /** Cached stream maximum so it is not queried inside every rotation callback. */
     private val maxVolume: Int by lazy {
         audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
@@ -108,7 +110,9 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         })
 
         binding.equalizer.setOnClickListener {
-
+            volumeListener?.onEqualizerClicked().also {
+                dismiss()
+            }
         }
 
         // Hardware volume keys
@@ -173,6 +177,10 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         super.onDestroy()
     }
 
+    fun setVolumeListener(listener: VolumeListener) {
+        this.volumeListener = listener
+    }
+
     companion object {
 
         fun newInstance(): VolumeKnob {
@@ -191,6 +199,11 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         }
 
         private fun FragmentManager.isVolumeKnobShowing(): Boolean = findFragmentByTag(TAG) != null
+
+        interface VolumeListener {
+
+            fun onEqualizerClicked()
+        }
 
         const val TAG = "VolumeKnob"
     }

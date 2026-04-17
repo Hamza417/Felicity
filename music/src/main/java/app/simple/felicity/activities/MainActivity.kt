@@ -32,6 +32,7 @@ import app.simple.felicity.decorations.miniplayer.MiniPlayerItem
 import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
+import app.simple.felicity.dialogs.app.VolumeKnob
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.dialogs.playlists.AddMultipleToPlaylistDialog.Companion.showAddMultipleToPlaylistDialog
 import app.simple.felicity.engine.managers.MediaPlaybackManager
@@ -59,6 +60,7 @@ import app.simple.felicity.ui.home.SimpleHome
 import app.simple.felicity.ui.home.SpannedHome
 import app.simple.felicity.ui.launcher.Setup
 import app.simple.felicity.ui.launcher.TrialExpired
+import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.ui.player.PlayerFaded
 import app.simple.felicity.viewmodels.setup.PermissionViewModel
@@ -512,12 +514,12 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> {
-                showVolumeKnob()
+                openVolumeKnobDialog()
                 true
             }
 
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                showVolumeKnob()
+                openVolumeKnobDialog()
                 true
             }
 
@@ -525,6 +527,17 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                 super.onKeyDown(keyCode, event)
             }
         }
+    }
+
+    private fun openVolumeKnobDialog() {
+        showVolumeKnob().setVolumeListener(object : VolumeKnob.Companion.VolumeListener {
+            override fun onEqualizerClicked() {
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, Equalizer.newInstance(), Equalizer.TAG)
+                    .addToBackStack(Equalizer.TAG)
+                    .commit()
+            }
+        })
     }
 
     override fun onHideMiniPlayer() {
