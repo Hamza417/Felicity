@@ -95,6 +95,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
+        android:clipChildren="false"
         android:layout_marginHorizontal="@dimen/padding_15"
         android:orientation="horizontal">
 
@@ -242,6 +243,7 @@
         android:layout_marginHorizontal="@dimen/padding_10"
         android:layout_marginTop="@dimen/dialog_padding"
         android:layout_marginBottom="@dimen/dialog_padding"
+        android:clipChildren="false"
         android:orientation="horizontal"
         android:gravity="center_vertical">
 
@@ -254,11 +256,6 @@
             android:layout_gravity="center_vertical"
             app:buttonTintType="regular" />
 
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1" />
-
         <app.simple.felicity.decorations.views.FelicityMediaControls
             android:id="@+id/mediaControls"
             android:layout_width="0dp"
@@ -266,11 +263,6 @@
             android:layout_weight="3"
             android:clipChildren="false"
             android:clipToPadding="false" />
-
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/queue"

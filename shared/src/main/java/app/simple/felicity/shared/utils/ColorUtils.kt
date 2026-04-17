@@ -56,6 +56,11 @@ object ColorUtils {
         return origColor and 0x00ffffff or (userInputAlpha shl 24)
     }
 
+    fun Int.toHalfAlpha(): Int {
+        val alpha = Color.alpha(this) / 2
+        return changeAlpha(this, alpha)
+    }
+
     fun Int.toHexColor(): String {
         return String.format("#%06X", 0xFFFFFF and this)
     }

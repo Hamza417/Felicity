@@ -14,15 +14,16 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.animation.OvershootInterpolator
 import androidx.core.content.ContextCompat
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.ripple.FelicityRippleDrawable
-import app.simple.felicity.decorations.views.FelicityMediaControls.Companion.GAP_DP
 import app.simple.felicity.decorations.views.FelicityMediaControls.Companion.SEEK_INTERVAL_MS
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.shared.utils.ColorUtils.toHalfAlpha
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
@@ -129,10 +130,13 @@ class FelicityMediaControls @JvmOverloads constructor(
     private var playIconAlpha = 255   // 255 = fully visible
     private var pauseIconAlpha = 0
 
-    // Unscaled center positions and half-sizes for each button slot
-    private val btnCx = FloatArray(BTN_COUNT)
+    // Unscaled half-sizes for each button slot and the fixed vertical center.
+    // Horizontal centers are NOT static — they get recalculated every frame via
+    // computeDynamicCenters() so the gap between buttons stays constant even as scales animate.
     private val btnCy = FloatArray(BTN_COUNT)
     private val btnHalf = FloatArray(BTN_COUNT)   // half the side length (unscaled)
+    private val dynCx = FloatArray(BTN_COUNT)     // live centers updated each draw frame
+    private var contentCenterX = 0f              // horizontal midpoint of the usable area
     private var gapPx = 0f
 
     // Drawing
@@ -183,7 +187,7 @@ class FelicityMediaControls @JvmOverloads constructor(
 
     /** Reads the current theme and accent colors into local fields. */
     private fun pullTheme() {
-        highlightColor = ThemeManager.theme.viewGroupTheme.highlightColor
+        highlightColor = ThemeManager.theme.viewGroupTheme.highlightColor.toHalfAlpha()
         iconColor = ThemeManager.theme.iconTheme.regularIconColor
         accentColor = ThemeManager.accent.primaryAccentColor
     }
@@ -254,21 +258,22 @@ class FelicityMediaControls @JvmOverloads constructor(
     }
 
     /**
-     * Computes the center and unscaled half-size for each button slot so that all
-     * buttons together fill the available width with [GAP_DP] of breathing room between
-     * each pair, and the tallest button (play) fills the available height exactly.
+     * Computes the *unscaled* half-sizes and the vertical center for each button slot.
+     * The horizontal centers are NOT stored here — they're recalculated every draw frame
+     * by [computeDynamicCenters] so that the gap between buttons stays exactly [gapPx]
+     * even as button scales animate.
      */
     private fun computeLayout(w: Int, h: Int) {
         gapPx = GAP_DP * resources.displayMetrics.density
         val contentW = (w - paddingLeft - paddingRight).toFloat()
         val contentH = (h - paddingTop - paddingBottom).toFloat()
         val midY = paddingTop + contentH / 2f
+        contentCenterX = paddingLeft + contentW / 2f
 
         if (showSeekButtons) {
             // 5 slots — total weight = 0.6 + 0.7 + 1.0 + 0.7 + 0.6 = 3.6
             val totalWeight = FWD_REW_RATIO + PREV_NEXT_RATIO + PLAY_RATIO + PREV_NEXT_RATIO + FWD_REW_RATIO
             val totalGaps = 4 * gapPx
-            // Base size so that all 5 pills fit within available width at their ratios
             val base = minOf(contentH, (contentW - totalGaps) / totalWeight)
 
             btnHalf[BTN_REWIND] = base * FWD_REW_RATIO / 2f
@@ -276,15 +281,6 @@ class FelicityMediaControls @JvmOverloads constructor(
             btnHalf[BTN_PLAY] = base * PLAY_RATIO / 2f
             btnHalf[BTN_NEXT] = base * PREV_NEXT_RATIO / 2f
             btnHalf[BTN_FORWARD] = base * FWD_REW_RATIO / 2f
-
-            val totalW = btnHalf.sum() * 2f + totalGaps
-            var x = paddingLeft + (contentW - totalW) / 2f
-
-            for (btn in 0 until BTN_COUNT) {
-                btnCx[btn] = x + btnHalf[btn]
-                btnCy[btn] = midY
-                x += btnHalf[btn] * 2f + gapPx
-            }
         } else {
             // 3 slots — total weight = 0.7 + 1.0 + 0.7 = 2.4
             val totalWeight = PREV_NEXT_RATIO + PLAY_RATIO + PREV_NEXT_RATIO
@@ -296,15 +292,36 @@ class FelicityMediaControls @JvmOverloads constructor(
             btnHalf[BTN_NEXT] = base * PREV_NEXT_RATIO / 2f
             btnHalf[BTN_REWIND] = 0f
             btnHalf[BTN_FORWARD] = 0f
+        }
 
-            val totalW = (btnHalf[BTN_PREVIOUS] + btnHalf[BTN_PLAY] + btnHalf[BTN_NEXT]) * 2f + totalGaps
-            var x = paddingLeft + (contentW - totalW) / 2f
+        // Y centers don't change with scale, so we can set them once here
+        for (i in 0 until BTN_COUNT) {
+            btnCy[i] = midY
+        }
+    }
 
-            for (btn in intArrayOf(BTN_PREVIOUS, BTN_PLAY, BTN_NEXT)) {
-                btnCx[btn] = x + btnHalf[btn]
-                btnCy[btn] = midY
-                x += btnHalf[btn] * 2f + gapPx
-            }
+    /**
+     * Recalculates the X center of every visible button based on their *current*
+     * animated scale values, keeping exactly [gapPx] of breathing room between the
+     * scaled edges of adjacent pills. This is called at the start of every [onDraw]
+     * call so positions always match the live scale values.
+     */
+    private fun computeDynamicCenters() {
+        val slots = if (showSeekButtons) intArrayOf(BTN_REWIND, BTN_PREVIOUS, BTN_PLAY, BTN_NEXT, BTN_FORWARD)
+        else intArrayOf(BTN_PREVIOUS, BTN_PLAY, BTN_NEXT)
+
+        // Total pixel width occupied by all buttons at their current scale + gaps
+        val totalScaledW = slots.sumOf { (btnHalf[it] * currentScale(it) * 2f).toDouble() }.toFloat()
+        val totalGaps = (slots.size - 1) * gapPx
+        val totalW = totalScaledW + totalGaps
+
+        // Start from the center so the whole group stays centered in the view
+        var x = contentCenterX - totalW / 2f
+
+        for (btn in slots) {
+            val scaledHalf = btnHalf[btn] * currentScale(btn)
+            dynCx[btn] = x + scaledHalf
+            x += scaledHalf * 2f + gapPx
         }
     }
 
@@ -312,6 +329,8 @@ class FelicityMediaControls @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        // Recompute positions so every button slides on X to maintain exact gaps
+        computeDynamicCenters()
         val slots = if (showSeekButtons) intArrayOf(0, 1, 2, 3, 4) else intArrayOf(1, 2, 3)
         for (btn in slots) {
             drawSlot(canvas, btn)
@@ -321,11 +340,14 @@ class FelicityMediaControls @JvmOverloads constructor(
     /**
      * Draws one button slot: background pill → ripple overlay → icon (or crossfaded
      * play/pause icons for the play slot).
+     *
+     * The center X is taken from [dynCx] which is recalculated before every draw pass,
+     * so the buttons always slide apart/together to keep the gap constant.
      */
     private fun drawSlot(canvas: Canvas, btn: Int) {
         val scale = currentScale(btn)
         val hs = btnHalf[btn] * scale   // scaled half-size
-        val cx = btnCx[btn]
+        val cx = dynCx[btn]             // live X center — not the static one
         val cy = btnCy[btn]
 
         // The pill is a square with corner radius = half-side, making it a circle
@@ -394,10 +416,12 @@ class FelicityMediaControls @JvmOverloads constructor(
         if (isPlaying == playing && animate) return
         isPlaying = playing
 
-        // Where each group needs to end up
-        val toPlayScale = if (playing) 1.15f else 1f
-        val toPrevNextScale = if (playing) 0.90f else 1f
-        val toFwdRewScale = if (playing) 0.85f else 1f
+        // Where each group needs to end up.
+        // Paused → play is the "hero" and gets bigger; the others shrink to make room.
+        // Playing → everything returns to a neutral 1× so the UI stays clean during playback.
+        val toPlayScale = if (playing) 1f else 1.15f
+        val toPrevNextScale = if (playing) 1f else 0.90f
+        val toFwdRewScale = if (playing) 1f else 0.85f
         val toPlayIcon = if (playing) 0 else 255
         val toPauseIcon = if (playing) 255 else 0
 
@@ -420,8 +444,8 @@ class FelicityMediaControls @JvmOverloads constructor(
 
         scaleAnim?.cancel()
         scaleAnim = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 280L
-            interpolator = FastOutSlowInInterpolator()
+            duration = 500L
+            interpolator = OvershootInterpolator(3F)
             addUpdateListener {
                 val t = it.animatedFraction
                 playScale = fromPlay + (toPlayScale - fromPlay) * t
@@ -457,12 +481,12 @@ class FelicityMediaControls @JvmOverloads constructor(
                 pressedButton = btn
                 isPulsing = false
 
-                // Arm the ripple
+                // Arm the ripple — use dynCx so the bounds match what was actually drawn
                 val hs = btnHalf[btn] * currentScale(btn)
                 val r = ripples[btn] ?: return true
                 r.setBounds(
-                        (btnCx[btn] - hs).toInt(), (btnCy[btn] - hs).toInt(),
-                        (btnCx[btn] + hs).toInt(), (btnCy[btn] + hs).toInt()
+                        (dynCx[btn] - hs).toInt(), (btnCy[btn] - hs).toInt(),
+                        (dynCx[btn] + hs).toInt(), (btnCy[btn] + hs).toInt()
                 )
                 r.setHotspot(event.x, event.y)
                 r.state = intArrayOf(android.R.attr.state_pressed)
@@ -522,13 +546,14 @@ class FelicityMediaControls @JvmOverloads constructor(
 
     /**
      * Returns which button slot [x], [y] falls inside, or -1 if none.
-     * The hit area scales with the button's current animated size.
+     * The hit area scales with the button's current animated size, and uses the
+     * same dynamic centers as drawing so touch targets are always where you see them.
      */
     private fun hitTest(x: Float, y: Float): Int {
         val slots = if (showSeekButtons) intArrayOf(0, 1, 2, 3, 4) else intArrayOf(1, 2, 3)
         for (btn in slots) {
             val hs = btnHalf[btn] * currentScale(btn)
-            if (x in (btnCx[btn] - hs)..(btnCx[btn] + hs) &&
+            if (x in (dynCx[btn] - hs)..(dynCx[btn] + hs) &&
                     y in (btnCy[btn] - hs)..(btnCy[btn] + hs)) {
                 return btn
             }

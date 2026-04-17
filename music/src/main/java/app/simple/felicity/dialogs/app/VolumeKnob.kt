@@ -108,7 +108,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         })
 
         binding.equalizer.setOnClickListener {
-            // TODO: open equalizer panel
+
         }
 
         // Hardware volume keys
@@ -188,15 +188,6 @@ class VolumeKnob : ScopedBottomSheetFragment() {
                 return dialog
             }
             return supportFragmentManager.findFragmentByTag(TAG) as VolumeKnob
-        }
-
-        fun FragmentManager.showVolumeKnob(): VolumeKnob {
-            if (!isVolumeKnobShowing()) {
-                val dialog = newInstance()
-                dialog.show(this, TAG)
-                return dialog
-            }
-            return findFragmentByTag(TAG) as VolumeKnob
         }
 
         private fun FragmentManager.isVolumeKnobShowing(): Boolean = findFragmentByTag(TAG) != null
