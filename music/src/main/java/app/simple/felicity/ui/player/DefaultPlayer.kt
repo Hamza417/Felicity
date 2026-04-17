@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import app.simple.felicity.databinding.FragmentDefaultPlayerBinding
@@ -12,8 +11,8 @@ import app.simple.felicity.decorations.lrc.view.LrcLineView
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
 import app.simple.felicity.decorations.views.FavoriteButton
+import app.simple.felicity.decorations.views.FelicityMediaControls
 import app.simple.felicity.decorations.views.FelicityVisualizer
-import app.simple.felicity.decorations.views.FlipPlayPauseView
 import app.simple.felicity.extensions.fragments.BasePlayerFragment
 import app.simple.felicity.theme.managers.ThemeManager
 import dagger.hilt.android.AndroidEntryPoint
@@ -37,8 +36,8 @@ class DefaultPlayer : BasePlayerFragment() {
     override val count: TextView
         get() = binding.count
 
-    override val play: FlipPlayPauseView
-        get() = binding.play
+    override val mediaControls: FelicityMediaControls
+        get() = binding.mediaControls!!
 
     override val queue: View
         get() = binding.queue
@@ -73,11 +72,6 @@ class DefaultPlayer : BasePlayerFragment() {
     override val visualizer: FelicityVisualizer
         get() = binding.visualizer
 
-    override val next: ImageButton
-        get() = binding.next
-
-    override val previous: ImageButton
-        get() = binding.previous
 
     override val title: TextView
         get() = binding.title

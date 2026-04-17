@@ -369,6 +369,114 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         }
     }
 
+    /**
+     * Sets up [this] view as a dedicated seek-forward button.
+     *
+     * A short tap seeks forward by one pulse amount (about 2.5 seconds). Holding the
+     * button down keeps seeking forward at a steady pace — great for skipping ahead
+     * without accidentally jumping to the next track.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    protected fun View.setupSeekForwardButton() {
+        var isPulsing = false
+
+        val pulseRunnable = object : Runnable {
+            override fun run() {
+                val currentPosition = MediaPlaybackManager.getSeekPosition()
+                val totalDuration = MediaPlaybackManager.getDuration()
+
+                if (currentPosition + SEEK_PER_PULSE_MS >= totalDuration) {
+                    isPulsing = false
+                    handler.removeCallbacks(this)
+                    cancelTouch()
+                    return
+                }
+
+                isPulsing = true
+                MediaPlaybackManager.seekRelative(SEEK_PER_PULSE_MS)
+                handler.postDelayed(this, SEEK_INTERVAL_MS)
+            }
+        }
+
+        setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    isPulsing = false
+                    handler.postDelayed(pulseRunnable, ViewConfiguration.getLongPressTimeout().toLong())
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    handler.removeCallbacks(pulseRunnable)
+                    // A quick tap just seeks one step — no track skipping here
+                    if (!isPulsing) {
+                        MediaPlaybackManager.seekRelative(SEEK_PER_PULSE_MS)
+                    }
+                    isPulsing = false
+                    true
+                }
+                MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_MOVE -> {
+                    handler.removeCallbacks(pulseRunnable)
+                    isPulsing = true
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    /**
+     * Sets up [this] view as a dedicated seek-backward button.
+     *
+     * A short tap seeks backward by one pulse amount (about 2.5 seconds). Holding
+     * the button down keeps seeking backward. Unlike the previous-track button, this
+     * one never jumps to the prior song — it only rewinds within the current track.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    protected fun View.setupSeekRewindButton() {
+        var isPulsing = false
+
+        val pulseRunnable = object : Runnable {
+            override fun run() {
+                val currentPosition = MediaPlaybackManager.getSeekPosition()
+
+                if (currentPosition + SEEK_PER_PULSE_MS.toNegative() <= 0) {
+                    isPulsing = false
+                    handler.removeCallbacks(this)
+                    cancelTouch()
+                    return
+                }
+
+                isPulsing = true
+                MediaPlaybackManager.seekRelative(SEEK_PER_PULSE_MS.toNegative())
+                handler.postDelayed(this, SEEK_INTERVAL_MS)
+            }
+        }
+
+        setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    isPulsing = false
+                    handler.postDelayed(pulseRunnable, ViewConfiguration.getLongPressTimeout().toLong())
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    handler.removeCallbacks(pulseRunnable)
+                    if (!isPulsing) {
+                        MediaPlaybackManager.seekRelative(SEEK_PER_PULSE_MS.toNegative())
+                    }
+                    isPulsing = false
+                    true
+                }
+                MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_MOVE -> {
+                    handler.removeCallbacks(pulseRunnable)
+                    isPulsing = true
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
     protected fun RecyclerView.requireAttachedMiniPlayer() {
         viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
@@ -1245,7 +1353,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     companion object {
         private const val TAG = "MediaFragment"
 
-        private const val SEEK_PER_PULSE_MS = 2500L
+        const val SEEK_PER_PULSE_MS = 2500L
         private const val SEEK_INTERVAL_MS = 500L
     }
 }

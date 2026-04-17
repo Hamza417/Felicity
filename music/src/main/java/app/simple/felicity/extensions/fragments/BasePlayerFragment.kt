@@ -6,12 +6,12 @@ import android.text.format.DateUtils
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
+import app.simple.felicity.core.maths.Number.toNegative
 import app.simple.felicity.decorations.helpers.SwipeDownToCloseListener
 import app.simple.felicity.decorations.lrc.view.LrcLineView
 import app.simple.felicity.decorations.pager.FelicityPager
@@ -20,8 +20,8 @@ import app.simple.felicity.decorations.seekbars.WaveformSeekbar
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
 import app.simple.felicity.decorations.views.FavoriteButton
+import app.simple.felicity.decorations.views.FelicityMediaControls
 import app.simple.felicity.decorations.views.FelicityVisualizer
-import app.simple.felicity.decorations.views.FlipPlayPauseView
 import app.simple.felicity.dialogs.app.AudioPipelineDialog.Companion.showAudioPipeline
 import app.simple.felicity.dialogs.player.VisualizerConfig.Companion.showVisualizerConfig
 import app.simple.felicity.engine.managers.MediaPlaybackManager
@@ -94,9 +94,6 @@ abstract class BasePlayerFragment : MediaFragment() {
     /** The text view showing the current queue position (e.g. "3/12"). */
     protected abstract val count: TextView
 
-    /** The animated play/pause toggle button. */
-    protected abstract val play: FlipPlayPauseView
-
     /** The button that opens the playing queue panel. */
     protected abstract val queue: View
 
@@ -130,12 +127,6 @@ abstract class BasePlayerFragment : MediaFragment() {
     /** The in-player FFT visualizer overlay. */
     protected abstract val visualizer: FelicityVisualizer
 
-    /** The fast-forward / next track button. */
-    protected abstract val next: ImageButton
-
-    /** The rewind / previous track button. */
-    protected abstract val previous: ImageButton
-
     /** The text view that shows the track title. */
     protected abstract val title: TextView
 
@@ -147,6 +138,12 @@ abstract class BasePlayerFragment : MediaFragment() {
 
     /** LRC view that shows synced lyrics lines. */
     protected abstract val lrc: LrcLineView
+
+    /**
+     * The five-button media control bar. Providing this lets the base class drive
+     * the grow/shrink animation on the play button whenever the playback state changes.
+     */
+    protected abstract val mediaControls: FelicityMediaControls
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -216,12 +213,27 @@ abstract class BasePlayerFragment : MediaFragment() {
             }
         })
 
-        next.setupFastForwardButton()
-        previous.setupFastRewindButton()
+        mediaControls.setMediaControlListener(object : FelicityMediaControls.Companion.MediaControlListener {
+            override fun onPreviousClick() {
+                MediaPlaybackManager.previous()
+            }
 
-        play.setOnClickListener {
-            MediaPlaybackManager.flipState()
-        }
+            override fun onNextClick() {
+                MediaPlaybackManager.next()
+            }
+
+            override fun onPlayClick() {
+                MediaPlaybackManager.flipState()
+            }
+
+            override fun onForwardStep() {
+                MediaPlaybackManager.seekRelative(SEEK_PER_PULSE_MS)
+            }
+
+            override fun onRewindStep() {
+                MediaPlaybackManager.seekRelative(SEEK_PER_PULSE_MS.toNegative())
+            }
+        })
 
         queue.setOnClickListener {
             openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
@@ -374,11 +386,9 @@ abstract class BasePlayerFragment : MediaFragment() {
     }
 
     private fun updatePlayButtonState(isPlaying: Boolean) {
-        if (isPlaying) {
-            play.playing()
-        } else {
-            play.paused()
-        }
+        // Route through the media controls so the grow/shrink animation fires along with
+        // the play/pause icon morph — two birds, one stone.
+        mediaControls.setPlaying(isPlaying)
     }
 
     private fun updateRepeatButtonIcon(repeatMode: Int) {
