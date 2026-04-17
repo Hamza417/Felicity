@@ -1,6 +1,5 @@
 package app.simple.felicity.preferences
 
-import androidx.core.content.edit
 import app.simple.felicity.manager.SharedPreferences
 
 object LibraryPreferences {
@@ -14,6 +13,52 @@ object LibraryPreferences {
     const val SKIP_NOMEDIA = "skip_nomedia_folders"
     const val SKIP_HIDDEN_FILES = "skip_hidden_files"
     const val SKIP_HIDDEN_FOLDERS = "skip_hidden_folders"
+
+    /** Key for the set of folder paths that should always be included in the scan. */
+    private const val INCLUDED_FOLDERS = "included_folders_set"
+
+    /** Key for the set of folder paths that should always be excluded from the scan. */
+    private const val EXCLUDED_FOLDERS = "excluded_folders_set"
+
+    fun getIncludedFolders(): Set<String> {
+        return SharedPreferences.getSharedPreferences().getStringSet(INCLUDED_FOLDERS, emptySet()) ?: emptySet()
+    }
+
+    fun setIncludedFolders(folders: Set<String>) {
+        SharedPreferences.getSharedPreferences().edit { putStringSet(INCLUDED_FOLDERS, folders) }
+    }
+
+    fun addIncludedFolder(path: String) {
+        val current = getIncludedFolders().toMutableSet()
+        current.add(path)
+        setIncludedFolders(current)
+    }
+
+    fun removeIncludedFolder(path: String) {
+        val current = getIncludedFolders().toMutableSet()
+        current.remove(path)
+        setIncludedFolders(current)
+    }
+
+    fun getExcludedFolders(): Set<String> {
+        return SharedPreferences.getSharedPreferences().getStringSet(EXCLUDED_FOLDERS, emptySet()) ?: emptySet()
+    }
+
+    fun setExcludedFolders(folders: Set<String>) {
+        SharedPreferences.getSharedPreferences().edit { putStringSet(EXCLUDED_FOLDERS, folders) }
+    }
+
+    fun addExcludedFolder(path: String) {
+        val current = getExcludedFolders().toMutableSet()
+        current.add(path)
+        setExcludedFolders(current)
+    }
+
+    fun removeExcludedFolder(path: String) {
+        val current = getExcludedFolders().toMutableSet()
+        current.remove(path)
+        setExcludedFolders(current)
+    }
 
     fun getMinimumAudioLength(): Int {
         return SharedPreferences.getSharedPreferences().getInt(MINIMUM_AUDIO_LENGTH, 0)

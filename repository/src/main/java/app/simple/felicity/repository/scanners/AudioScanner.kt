@@ -46,12 +46,13 @@ class AudioScanner() {
             Log.d(TAG, "Scanning for audio files in: ${root.absolutePath}")
         }
 
-        // Read user preferences fresh on every scan
+        // Read user preferences fresh on every scan.
         val skipNomedia = LibraryPreferences.isSkipNomedia()
         val skipHiddenFiles = LibraryPreferences.isSkipHiddenFiles()
         val skipHiddenFolders = LibraryPreferences.isSkipHiddenFolders()
+        val excludedFolders = LibraryPreferences.getExcludedFolders()
 
-        return collectAudio(root, skipNomedia, skipHiddenFiles, skipHiddenFolders)
+        return collectAudio(root, skipNomedia, skipHiddenFiles, skipHiddenFolders, excludedFolders)
     }
 
     /**
@@ -75,8 +76,9 @@ class AudioScanner() {
         val skipNomedia = LibraryPreferences.isSkipNomedia()
         val skipHiddenFiles = LibraryPreferences.isSkipHiddenFiles()
         val skipHiddenFolders = LibraryPreferences.isSkipHiddenFolders()
+        val excludedFolders = LibraryPreferences.getExcludedFolders()
 
-        return collectM3u(root, skipNomedia, skipHiddenFiles, skipHiddenFolders)
+        return collectM3u(root, skipNomedia, skipHiddenFiles, skipHiddenFolders, excludedFolders)
     }
 
     private fun File.isAudioFile(): Boolean {
@@ -99,12 +101,18 @@ class AudioScanner() {
             root: File,
             skipNomedia: Boolean,
             skipHiddenFiles: Boolean,
-            skipHiddenFolders: Boolean
+            skipHiddenFolders: Boolean,
+            excludedFolders: Set<String>
     ): List<File> {
         val result = mutableListOf<File>()
 
         root.walkTopDown()
             .onEnter { dir ->
+                // Never descend into a folder the user has explicitly blacklisted.
+                if (excludedFolders.any { dir.absolutePath.startsWith(it) }) {
+                    Log.d(TAG, "Skipping excluded folder: ${dir.absolutePath}")
+                    return@onEnter false
+                }
                 if (skipNomedia && File(dir, ".nomedia").exists()) {
                     Log.d(TAG, "Skipping .nomedia folder: ${dir.absolutePath}")
                     return@onEnter false
@@ -136,12 +144,17 @@ class AudioScanner() {
             root: File,
             skipNomedia: Boolean,
             skipHiddenFiles: Boolean,
-            skipHiddenFolders: Boolean
+            skipHiddenFolders: Boolean,
+            excludedFolders: Set<String>
     ): List<File> {
         val result = mutableListOf<File>()
 
         root.walkTopDown()
             .onEnter { dir ->
+                if (excludedFolders.any { dir.absolutePath.startsWith(it) }) {
+                    Log.d(TAG, "Skipping excluded folder for M3U scan: ${dir.absolutePath}")
+                    return@onEnter false
+                }
                 if (skipNomedia && File(dir, ".nomedia").exists()) {
                     Log.d(TAG, "Skipping .nomedia folder for M3U scan: ${dir.absolutePath}")
                     return@onEnter false

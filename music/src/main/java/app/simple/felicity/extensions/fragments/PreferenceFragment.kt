@@ -30,9 +30,11 @@ import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.ui.preferences.sub.AccentColors
+import app.simple.felicity.ui.preferences.sub.BlacklistFolders
 import app.simple.felicity.ui.preferences.sub.Language
 import app.simple.felicity.ui.preferences.sub.Themes
 import app.simple.felicity.ui.preferences.sub.TypeFaces
+import app.simple.felicity.ui.preferences.sub.WhitelistFolders
 import java.util.Locale
 import java.util.function.Supplier
 
@@ -772,6 +774,26 @@ abstract class PreferenceFragment : MediaFragment() {
 
         val scannerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.scanner)
 
+        val includedFolders = Preference(
+                title = R.string.included_folders,
+                summary = R.string.included_folders_summary,
+                icon = R.drawable.ic_folder,
+                type = PreferenceType.PANEL,
+                onPreferenceAction = { view, callback ->
+                    openFragment(WhitelistFolders.newInstance(), WhitelistFolders.TAG)
+                },
+        )
+
+        val excludedFolders = Preference(
+                title = R.string.excluded_folders,
+                summary = R.string.excluded_folders_summary,
+                icon = R.drawable.ic_folder,
+                type = PreferenceType.PANEL,
+                onPreferenceAction = { view, callback ->
+                    openFragment(BlacklistFolders.newInstance(), BlacklistFolders.TAG)
+                },
+        )
+
         val refreshLibrary = Preference(
                 title = R.string.refresh_library,
                 summary = R.string.refresh_library_summary,
@@ -881,6 +903,8 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(albumArtHeader)
         preferences.add(mediaStoreArt)
         preferences.add(scannerHeader)
+        preferences.add(includedFolders)
+        preferences.add(excludedFolders)
         preferences.add(minimumAudioLength)
         preferences.add(minimumAudioSize)
         preferences.add(filtersHeader)

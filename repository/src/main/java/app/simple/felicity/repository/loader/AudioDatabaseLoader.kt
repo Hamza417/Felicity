@@ -293,6 +293,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         val skipNomedia = LibraryPreferences.isSkipNomedia()
         val skipHiddenFiles = LibraryPreferences.isSkipHiddenFiles()
         val skipHiddenFolders = LibraryPreferences.isSkipHiddenFolders()
+        val excludedFolders = LibraryPreferences.getExcludedFolders()
 
         val toDelete = mutableListOf<Audio>()
         val toUpdate = mutableListOf<Audio>()
@@ -318,7 +319,8 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                                 Log.d(TAG, "Ghost entry (file missing, already unavailable) — keeping: ${audio.path}")
                             }
                         }
-                        isExcludedByFilter(file, skipNomedia, skipHiddenFiles, skipHiddenFolders) -> {
+                        isExcludedByFilter(file, skipNomedia, skipHiddenFiles, skipHiddenFolders) ||
+                                isInExcludedFolder(file, excludedFolders) -> {
                             // The user toggled a filter (like .nomedia) — respect their wishes.
                             Log.d(TAG, "File excluded by current filter settings. Removing: ${audio.path}")
                             toDelete.add(audio)
@@ -348,6 +350,21 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         if (toUpdate.isNotEmpty()) dao.update(toUpdate)
 
         Log.d(TAG, "Reconcile complete: Deleted ${toDelete.size}, Updated status for ${toUpdate.size}")
+    }
+
+    /**
+     * Returns true if the file lives inside any of the folders the user has
+     * explicitly added to the excluded (blacklist) folders setting.
+     * Uses a simple path-prefix check — if the file's path starts with an
+     * excluded folder's path, it doesn't belong in the library.
+     */
+    private fun isInExcludedFolder(file: File, excludedFolders: Set<String>): Boolean {
+        if (excludedFolders.isEmpty()) return false
+        return excludedFolders.any { excluded ->
+            file.absolutePath.startsWith(excluded).also { hit ->
+                if (hit) Log.d(TAG, "Excluded (user blacklist '$excluded'): ${file.absolutePath}")
+            }
+        }
     }
 
     /**
