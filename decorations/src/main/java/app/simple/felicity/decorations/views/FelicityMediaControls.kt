@@ -121,12 +121,15 @@ class FelicityMediaControls @JvmOverloads constructor(
     // Playback state
     private var isPlaying = false
 
-    // Per-group animated scale values — animated smoothly on play/pause transitions
-    private var playScale = 1f
-    private var prevNextScale = 1f
-    private var fwdRewScale = 1f
+    // Per-group animated scale values — animated smoothly on play/pause transitions.
+    // Default values match the paused state (isPlaying = false at construction time)
+    // so the buttons look correct the very first frame they appear on screen.
+    private var playScale = 1.15f
+    private var prevNextScale = 0.90f
+    private var fwdRewScale = 0.85f
 
-    // Play/pause crossfade: play icon is visible when paused, pause icon when playing
+    // Play/pause crossfade: play icon is visible when paused, pause icon when playing.
+    // Start showing the play icon since we begin in a paused state.
     private var playIconAlpha = 255   // 255 = fully visible
     private var pauseIconAlpha = 0
 
