@@ -15,31 +15,8 @@ object LibraryPreferences {
     const val SKIP_HIDDEN_FILES = "skip_hidden_files"
     const val SKIP_HIDDEN_FOLDERS = "skip_hidden_folders"
 
-    /** Key for the set of folder paths that should always be included in the scan. */
-    private const val INCLUDED_FOLDERS = "included_folders_set"
-
     /** Key for the set of folder paths that should always be excluded from the scan. */
     private const val EXCLUDED_FOLDERS = "excluded_folders_set"
-
-    fun getIncludedFolders(): Set<String> {
-        return SharedPreferences.getSharedPreferences().getStringSet(INCLUDED_FOLDERS, emptySet()) ?: emptySet()
-    }
-
-    fun setIncludedFolders(folders: Set<String>) {
-        SharedPreferences.getSharedPreferences().edit { putStringSet(INCLUDED_FOLDERS, folders) }
-    }
-
-    fun addIncludedFolder(path: String) {
-        val current = getIncludedFolders().toMutableSet()
-        current.add(path)
-        setIncludedFolders(current)
-    }
-
-    fun removeIncludedFolder(path: String) {
-        val current = getIncludedFolders().toMutableSet()
-        current.remove(path)
-        setIncludedFolders(current)
-    }
 
     fun getExcludedFolders(): Set<String> {
         return SharedPreferences.getSharedPreferences().getStringSet(EXCLUDED_FOLDERS, emptySet()) ?: emptySet()
