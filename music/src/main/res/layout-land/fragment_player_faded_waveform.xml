@@ -134,7 +134,7 @@
 
             <app.simple.felicity.decorations.lrc.view.LrcLineView
                 android:id="@+id/lrc"
-                android:layout_margin="@dimen/padding_10"
+                android:layout_margin="@dimen/padding_15"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
 
@@ -143,7 +143,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom|end"
                 android:layout_marginHorizontal="@dimen/padding_15"
-                android:layout_marginVertical="@dimen/padding_5"
+                android:layout_marginBottom="@dimen/padding_5"
                 android:orientation="horizontal">
 
                 <app.simple.felicity.decorations.highlight.HighlightTextView
