@@ -70,6 +70,34 @@ object TypeFace {
         return typeface
     }
 
+    /**
+     * Warms up the cache by loading every weight for every known font family into memory.
+     * Call this from a background thread so the UI never feels the heat.
+     */
+    fun preloadAll(context: Context) {
+        val styles = TypefaceStyle.entries
+        list.forEach { model ->
+            styles.forEach { style ->
+                getTypeFace(model.name, style.style, context)
+            }
+        }
+    }
+
+    /**
+     * Removes the cached typefaces for ALL known font families from memory.
+     * Think of it as taking out the trash — we loaded these fonts for the
+     * typeface picker panel and now that the panel is gone, we don't need
+     * them sitting around eating RAM.
+     */
+    fun clearAllPreloadedCache() {
+        list.forEach { model ->
+            TypefaceStyle.entries.forEach { style ->
+                val weight = getFontWeight(style.style)
+                typefaceCache.remove("${model.name}-$weight")
+            }
+        }
+    }
+
     fun getBlackTypeFace(context: Context) = getTypeFaceForStyle(TypefaceStyle.BLACK, context)
     fun getBoldTypeFace(context: Context) = getTypeFaceForStyle(TypefaceStyle.BOLD, context)
     fun getMediumTypeFace(context: Context) = getTypeFaceForStyle(TypefaceStyle.MEDIUM, context)
