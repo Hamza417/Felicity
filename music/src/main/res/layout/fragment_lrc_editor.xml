@@ -47,7 +47,7 @@
             android:src="@drawable/ic_fast_rewind"
             android:padding="@dimen/padding_10" />
 
-        <app.simple.felicity.decorations.views.FlipPlayPauseView
+        <app.simple.felicity.decorations.views.PlayButton
             android:id="@+id/play"
             android:layout_width="@dimen/button_size"
             android:layout_height="@dimen/button_size"

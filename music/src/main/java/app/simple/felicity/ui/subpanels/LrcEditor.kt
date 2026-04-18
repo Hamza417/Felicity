@@ -189,7 +189,7 @@ class LrcEditor : MediaFragment() {
         }
 
         viewModel.isPlayingLiveData().observe(viewLifecycleOwner) { isPlaying ->
-            if (isPlaying) binding.play.playing() else binding.play.paused()
+            if (isPlaying) binding.play.setPlaying() else binding.play.setPaused()
         }
 
         viewModel.getSaved().observe(viewLifecycleOwner) { saved ->
