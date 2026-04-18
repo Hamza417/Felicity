@@ -245,9 +245,9 @@ abstract class PreferenceFragment : MediaFragment() {
                             container = requireContainerView(),
                             anchorView = view,
                             menuItems = listOf(
-                                    PopupMenuItem(title = R.string.dashboard),
-                                    PopupMenuItem(title = R.string.spanned),
-                                    PopupMenuItem(title = R.string.artflow),
+                                    PopupMenuItem(title = R.string.dashboard, isExperimental = true),
+                                    PopupMenuItem(title = R.string.spanned, isExperimental = true),
+                                    PopupMenuItem(title = R.string.artflow, isExperimental = true),
                                     PopupMenuItem(title = R.string.simple)
                             ),
                             onMenuItemClick = {

@@ -151,7 +151,7 @@ class DashboardViewModel @Inject constructor(
      * with [_recommendedRefreshTrigger]. Any change in the audio table, the stats table, or
      * an explicit refresh request will trigger a full recompute of the recommendation list.
      *
-     * The previous collection job is cancelled before a new one starts to avoid duplicate
+     * The previous collection job is canceled before a new one starts to avoid duplicate
      * emissions when [refreshRecommended] is called.
      */
     private fun startRecommendedFlow() {
