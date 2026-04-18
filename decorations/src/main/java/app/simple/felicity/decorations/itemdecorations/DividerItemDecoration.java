@@ -84,9 +84,6 @@ public class DividerItemDecoration extends RecyclerView.ItemDecoration {
      * @param drawable Drawable that should be used as a divider.
      */
     public void setDrawable(@NonNull Drawable drawable) {
-        if (drawable == null) {
-            throw new IllegalArgumentException("Drawable cannot be null.");
-        }
         dividerDrawable = drawable;
     }
     
@@ -121,8 +118,23 @@ public class DividerItemDecoration extends RecyclerView.ItemDecoration {
         for (int i = 0; i < childCount; i++) {
             final View child = parent.getChildAt(i);
             parent.getDecoratedBoundsWithMargins(child, bounds);
-            final int bottom = bounds.bottom + Math.round(child.getTranslationY());
-            final int top = bottom - dividerDrawable.getIntrinsicHeight();
+            
+            /*
+             * Instead of gluing the divider to the very bottom of the decorated bounds
+             * (which makes it collide with the top of the next item when spacing decorations
+             * are also present), we figure out the gap between where the item's content
+             * actually ends and where the decorated area ends, then place the divider
+             * right in the center of that gap — like a nice little peace treaty between items.
+             */
+            final int translationY = Math.round(child.getTranslationY());
+            final int itemContentBottom = child.getBottom() + translationY;
+            final int decoratedBottom = bounds.bottom + translationY;
+            final int gap = decoratedBottom - itemContentBottom;
+            final int dividerCenter = itemContentBottom + gap / 2;
+            final int dividerHalfHeight = dividerDrawable.getIntrinsicHeight() / 2;
+            final int top = dividerCenter - dividerHalfHeight;
+            final int bottom = top + dividerDrawable.getIntrinsicHeight();
+
             dividerDrawable.setBounds(left, top, right, bottom);
             dividerDrawable.draw(canvas);
         }
@@ -147,6 +159,7 @@ public class DividerItemDecoration extends RecyclerView.ItemDecoration {
         final int childCount = parent.getChildCount();
         for (int i = 0; i < childCount; i++) {
             final View child = parent.getChildAt(i);
+            assert parent.getLayoutManager() != null;
             parent.getLayoutManager().getDecoratedBoundsWithMargins(child, bounds);
             final int right = bounds.right + Math.round(child.getTranslationX());
             final int left = right - dividerDrawable.getIntrinsicWidth();
