@@ -17,7 +17,7 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.utils.ParcelUtils.parcelable
-import app.simple.felicity.viewmodels.player.LyricsViewModel
+import app.simple.felicity.viewmodels.player.ModalLyricsViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
 
@@ -30,9 +30,9 @@ class Lyrics : MediaBottomDialogFragment(), AddLyrics.Companion.OnLyricsCreatedL
         requireArguments().parcelable(BundleConstants.AUDIO)
     }
 
-    private val lyricsViewModel: LyricsViewModel by viewModels(
+    private val lyricsViewModel: ModalLyricsViewModel by viewModels(
             extrasProducer = {
-                defaultViewModelCreationExtras.withCreationCallback<LyricsViewModel.Factory> {
+                defaultViewModelCreationExtras.withCreationCallback<ModalLyricsViewModel.Factory> {
                     it.create(audio = audio)
                 }
             }

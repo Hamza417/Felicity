@@ -41,7 +41,6 @@ import app.simple.felicity.ui.panels.Search
 import app.simple.felicity.viewmodels.player.LyricsViewModel
 import app.simple.felicity.viewmodels.player.WaveformViewModel
 import com.bumptech.glide.Glide
-import dagger.hilt.android.lifecycle.withCreationCallback
 import kotlinx.coroutines.launch
 
 /**
@@ -64,14 +63,9 @@ abstract class BasePlayerFragment : MediaFragment() {
 
     /** ViewModel that decodes and exposes the per-second waveform amplitude data. */
     private val waveformViewModel: WaveformViewModel by viewModels()
-    private val lyricsViewModel: LyricsViewModel by viewModels(
-            ownerProducer = { this },
-            extrasProducer = {
-                defaultViewModelCreationExtras.withCreationCallback<LyricsViewModel.Factory> {
-                    it.create(audio = null)
-                }
-            }
-    )
+
+    /** Reads lyrics data from the shared [LyricsManager] — no separate load needed. */
+    private val lyricsViewModel: LyricsViewModel by viewModels()
 
     /**
      * Holds an [Audio] track whose waveform has been requested but whose load has been
@@ -335,16 +329,17 @@ abstract class BasePlayerFragment : MediaFragment() {
             childFragmentManager.showVisualizerConfig()
         }
 
-        lyricsViewModel.getLrcData().observe(viewLifecycleOwner) { lrcData ->
-            if (lrcData.isEmpty) {
-                Log.d(TAG, "No lyrics found for the current song.")
-            } else {
-                Log.d(TAG, "Loaded lyrics with ${lrcData.size()} lines.")
-                // Use setLrcDataWithPosition so scroll is snapped only after the first draw pass,
-                // when layout heights are fully populated. This prevents the highlight being placed
-                // at a wrong (fallback-size based) offset when the cache is empty after a reset().
-                lrc.setLrcData(
-                        lrcData, MediaPlaybackManager.getSeekPosition() + lyricsViewModel.syncOffset)
+        // Collect lyrics from the shared manager. When this screen and the full Lyrics panel
+        // are both open, they both read from the exact same StateFlow so they always agree.
+        viewLifecycleOwner.lifecycleScope.launch {
+            lyricsViewModel.lrcData.collect { lrcData ->
+                if (lrcData == null || lrcData.isEmpty) {
+                    Log.d(TAG, "No lyrics found for the current song.")
+                } else {
+                    Log.d(TAG, "Loaded lyrics with ${lrcData.size()} lines.")
+                    lrc.setLrcData(
+                            lrcData, MediaPlaybackManager.getSeekPosition() + lyricsViewModel.syncOffset)
+                }
             }
         }
     }

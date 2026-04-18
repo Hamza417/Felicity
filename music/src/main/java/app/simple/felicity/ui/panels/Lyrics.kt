@@ -10,6 +10,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentLyricsBinding
 import app.simple.felicity.decorations.lrc.view.FelicityLrcView
@@ -31,7 +32,7 @@ import app.simple.felicity.ui.subpanels.LyricsSearch
 import app.simple.felicity.viewmodels.player.LyricsViewModel
 import app.simple.felicity.viewmodels.player.WaveformViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import dagger.hilt.android.lifecycle.withCreationCallback
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
@@ -63,18 +64,10 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
     private val waveformViewModel: WaveformViewModel by viewModels()
 
     /**
-     * Scoped to the activity so that [app.simple.felicity.ui.subpanels.LyricsSearch] can obtain the same instance and call
-     * [LyricsViewModel.reloadLrcData] after saving a new sidecar file, causing this fragment's
-     * observer to pick up the updated lyrics without requiring a full close/reopen cycle.
+     * Reads from the shared [app.simple.felicity.managers.LyricsManager] so this panel and
+     * the player screen always display the same lyrics data — no more stale panel blues.
      */
-    private val lyricsViewModel: LyricsViewModel by viewModels(
-            ownerProducer = { this },
-            extrasProducer = {
-                defaultViewModelCreationExtras.withCreationCallback<LyricsViewModel.Factory> {
-                    it.create(audio = null)
-                }
-            }
-    )
+    private val lyricsViewModel: LyricsViewModel by viewModels()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentLyricsBinding.inflate(inflater, container, false)
@@ -97,12 +90,12 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
             childFragmentManager.showLyricsMenu().setOnMenuListener(object : LyricsMenu.Companion.LyricsMenuListener {
                 override fun onTimeMinusClicked() {
                     lyricsViewModel.seekBy(-SEEK_JUMP_MS)
-                    lyricsViewModel.syncOffset -= SEEK_JUMP_MS
+                    // syncOffset is updated inside LyricsManager.seekBy() — no extra line needed
                 }
 
                 override fun onTimePlusClicked() {
                     lyricsViewModel.seekBy(SEEK_JUMP_MS)
-                    lyricsViewModel.syncOffset += SEEK_JUMP_MS
+                    // Same as above — the manager keeps track of the accumulated offset
                 }
 
                 override fun onLyricsDelete() {
@@ -145,16 +138,17 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
             openFragment(LyricsSearch.newInstance(), LyricsSearch.TAG)
         }
 
-        lyricsViewModel.getLrcData().observe(viewLifecycleOwner) { lrcData ->
-            if (lrcData.isEmpty) {
-                Log.d(TAG, "No lyrics found for the current song.")
-            } else {
-                Log.d(TAG, "Loaded lyrics with ${lrcData.size()} lines.")
-                // Use setLrcDataWithPosition so scroll is snapped only after the first draw pass,
-                // when layout heights are fully populated. This prevents the highlight being placed
-                // at a wrong (fallback-size based) offset when the cache is empty after a reset().
-                binding.lrc.setLrcDataWithPosition(
-                        lrcData, MediaPlaybackManager.getSeekPosition() + lyricsViewModel.syncOffset)
+        // Collect from the shared manager — every screen collecting this StateFlow
+        // always gets the same data, so the lyrics panel never shows a stale song.
+        viewLifecycleOwner.lifecycleScope.launch {
+            lyricsViewModel.lrcData.collect { lrcData ->
+                if (lrcData == null || lrcData.isEmpty) {
+                    Log.d(TAG, "No lyrics found for the current song.")
+                } else {
+                    Log.d(TAG, "Loaded lyrics with ${lrcData.size()} lines.")
+                    binding.lrc.setLrcDataWithPosition(
+                            lrcData, MediaPlaybackManager.getSeekPosition() + lyricsViewModel.syncOffset)
+                }
             }
         }
 
@@ -286,7 +280,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
         super.onResume()
         // If lyrics data is missing after returning from a long background session,
         // force a fresh reload so the view is not left blank.
-        if (lyricsViewModel.getLrcData().value?.isEmpty == true) {
+        if (lyricsViewModel.lrcData.value?.isEmpty == true) {
             lyricsViewModel.reloadLrcData()
         }
     }
