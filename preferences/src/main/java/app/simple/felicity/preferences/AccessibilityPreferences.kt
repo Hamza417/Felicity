@@ -24,17 +24,17 @@ object AccessibilityPreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setHighlightMode(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(IS_HIGHLIGHT_MODE, boolean).apply()
+        getSharedPreferences().edit { putBoolean(IS_HIGHLIGHT_MODE, boolean) }
     }
 
     fun isHighlightMode(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(IS_HIGHLIGHT_MODE, false)
+        return getSharedPreferences().getBoolean(IS_HIGHLIGHT_MODE, false)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setHighlightStroke(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(IS_HIGHLIGHT_STROKE, boolean).apply()
+        SharedPreferences.getSharedPreferences().edit { putBoolean(IS_HIGHLIGHT_STROKE, boolean) }
     }
 
     fun isHighlightStroke(): Boolean {
@@ -48,7 +48,7 @@ object AccessibilityPreferences {
     }
 
     fun isDividerEnabled(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(IS_DIVIDER_ENABLED, false)
+        return getSharedPreferences().getBoolean(IS_DIVIDER_ENABLED, false)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //

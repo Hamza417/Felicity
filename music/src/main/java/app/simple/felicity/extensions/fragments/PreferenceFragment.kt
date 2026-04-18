@@ -908,6 +908,19 @@ abstract class PreferenceFragment : MediaFragment() {
 
         val userInterfaceHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.user_interface)
 
+        val divider = Preference(
+                title = R.string.dividers,
+                summary = R.string.dividers_summary,
+                icon = R.drawable.ic_divider,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AccessibilityPreferences.setDivider((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    AccessibilityPreferences.isDividerEnabled()
+                }
+        )
+
         val strokeAroundMiniplayer = Preference(
                 title = R.string.stroke_around_miniplayer,
                 summary = R.string.stroke_around_miniplayer_summary,
@@ -935,6 +948,7 @@ abstract class PreferenceFragment : MediaFragment() {
         )
 
         preferences.add(userInterfaceHeader)
+        preferences.add(divider)
         preferences.add(strokeAroundMiniplayer)
         preferences.add(darkerMiniplayerShadow)
 

@@ -217,7 +217,7 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
 
             dividerItemDecoration!!.setDrawable(ShapeDrawable().apply {
                 intrinsicHeight = 1
-                paint.color = app.simple.felicity.theme.managers.ThemeManager.theme.viewGroupTheme.dividerColor
+                paint.color = ThemeManager.theme.viewGroupTheme.dividerColor
             })
 
             addItemDecoration(dividerItemDecoration!!)
