@@ -214,6 +214,10 @@ public class Audio implements Parcelable {
         }
     }
     
+    public String getRawTitle() {
+        return title;
+    }
+    
     public void setTitle(@Nullable String title) {
         this.title = title;
     }

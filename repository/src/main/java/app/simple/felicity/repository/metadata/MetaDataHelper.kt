@@ -30,12 +30,12 @@ object MetaDataHelper {
 
     fun Audio.generateStableHash(): Long {
         // Sanitize strings to prevent minor typo/case mismatches
-        val safeTitle = title?.trim()?.lowercase() ?: "unknown_title"
+        val safeTitle = rawTitle?.trim()?.lowercase() ?: "unknown_title"
         val safeArtist = artist?.trim()?.lowercase() ?: "unknown_artist"
         val safeAlbum = album?.trim()?.lowercase() ?: "unknown_album"
 
         // Payload
-        val stableString = "$safeTitle|$safeArtist|$safeAlbum|$duration|$trackNumber|$year"
+        val stableString = "$safeTitle|$safeArtist|$safeAlbum|$duration|$trackNumber|$year|$name|$size"
 
         // Generate the MD5 hash (16 bytes)
         val digest = MessageDigest.getInstance("MD5").digest(stableString.toByteArray())
