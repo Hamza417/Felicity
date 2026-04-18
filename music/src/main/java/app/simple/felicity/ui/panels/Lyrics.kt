@@ -217,9 +217,9 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
 
     private fun updatePlayButtonState(isPlaying: Boolean) {
         if (isPlaying) {
-            binding.play.playing()
+            binding.play.setPlaying()
         } else {
-            binding.play.paused()
+            binding.play.setPaused()
         }
     }
 

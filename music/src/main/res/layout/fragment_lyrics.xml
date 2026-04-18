@@ -54,7 +54,7 @@
             android:layout_marginEnd="@dimen/padding_1"
             android:layout_height="@dimen/button_size" />
 
-        <app.simple.felicity.decorations.views.FlipPlayPauseView
+        <app.simple.felicity.decorations.views.PlayButton
             android:id="@+id/play"
             android:layout_width="@dimen/button_size"
             android:layout_height="@dimen/button_size"
