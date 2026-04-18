@@ -37,7 +37,7 @@ import app.simple.felicity.theme.models.Theme
  *   [skip previous] [rewind] [play / pause] [forward] [skip next]
  *
  * Relative sizes (play = 1.0 baseline):
- *   - Play          → 1.00×
+ *   - Play           → 1.00×
  *   - Skip prev/next → 0.70×
  *   - Rewind/forward → 0.60×
  *
@@ -46,6 +46,7 @@ import app.simple.felicity.theme.models.Theme
  * The play/pause icon is crossfaded (alpha) between the two drawables.
  *
  * The outer rewind/forward pair can be hidden at runtime via [showSeekButtons].
+ * You can also dial down the overall button size with [buttonsSizePercent].
  *
  * Click and seek callbacks must be wired by the caller via [setMediaControlListener].
  *
@@ -62,12 +63,28 @@ class FelicityMediaControls @JvmOverloads constructor(
 
     /**
      * When false, the two outer rewind/forward seek buttons are hidden and only
-     * the three core buttons (previous, play, next) are drawn.
+     * the three core buttons (previous, play, next) are drawn. Changing this at
+     * runtime will trigger a layout pass so the view resizes correctly — no orphaned
+     * empty space left behind!
      */
     var showSeekButtons: Boolean = true
         set(value) {
             if (field == value) return
             field = value
+            requestLayout()
+            invalidate()
+        }
+
+    /**
+     * A uniform scale multiplier for all button sizes. Think of it like a zoom knob:
+     * 1.0 renders everything at full natural size, while anything lower (say 0.75) makes
+     * every button proportionally smaller. Values outside [0.0, 1.0] are clamped.
+     */
+    var buttonsSizePercent: Float = 1.0f
+        set(value) {
+            val clamped = value.coerceIn(0f, 1f)
+            if (field == clamped) return
+            field = clamped
             requestLayout()
             invalidate()
         }
@@ -107,14 +124,14 @@ class FelicityMediaControls @JvmOverloads constructor(
              * forward button is held. The caller should seek the player forward by its
              * preferred step amount each time this fires.
              */
-            fun onForwardStep()
+            fun onForwardStep() {}
 
             /**
              * Called once per seek step — both on a quick tap and repeatedly while the
              * rewind button is held. The caller should seek the player backward by its
              * preferred step amount each time this fires.
              */
-            fun onRewindStep()
+            fun onRewindStep() {}
         }
     }
 
@@ -175,6 +192,15 @@ class FelicityMediaControls @JvmOverloads constructor(
     init {
         isClickable = true
         isFocusable = true
+
+        // Pull any XML attributes the layout author may have set for us
+        if (attrs != null) {
+            val a = context.obtainStyledAttributes(attrs, R.styleable.FelicityMediaControls, defStyleAttr, 0)
+            showSeekButtons = a.getBoolean(R.styleable.FelicityMediaControls_showSeekButtons, true)
+            buttonsSizePercent = a.getFloat(R.styleable.FelicityMediaControls_buttonsSizePercent, 1.0f).coerceIn(0f, 1f)
+            a.recycle()
+        }
+
         if (!isInEditMode) {
             pullTheme()
             loadIcons()
@@ -240,19 +266,27 @@ class FelicityMediaControls @JvmOverloads constructor(
     // ── Layout ────────────────────────────────────────────────────────────────
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        // Natural height = play button diameter, which equals one unit of baseSize
-        val desired = resources.getDimensionPixelSize(R.dimen.play_button_size) +
+        // Natural height = play button diameter scaled by the size percent
+        val desired = (resources.getDimensionPixelSize(R.dimen.play_button_size) * buttonsSizePercent).toInt() +
                 paddingTop + paddingBottom
         val h = resolveSize(desired, heightMeasureSpec)
         val w = MeasureSpec.getSize(widthMeasureSpec).coerceAtLeast(suggested5ButtonWidth())
         setMeasuredDimension(w, h)
     }
 
-    /** Fallback minimum width when the parent gives no width constraint. */
+    /**
+     * Fallback minimum width when the parent gives no width constraint. This respects both
+     * [showSeekButtons] (so the view doesn't claim extra space for hidden buttons) and
+     * [buttonsSizePercent] (so the claimed width shrinks when buttons are scaled down).
+     */
     private fun suggested5ButtonWidth(): Int {
-        val ref = resources.getDimensionPixelSize(R.dimen.play_button_size)
-        return (ref * (PLAY_RATIO + 2 * PREV_NEXT_RATIO + 2 * FWD_REW_RATIO) + 4 * GAP_DP *
-                resources.displayMetrics.density).toInt()
+        val ref = resources.getDimensionPixelSize(R.dimen.play_button_size) * buttonsSizePercent
+        val density = resources.displayMetrics.density
+        return if (showSeekButtons) {
+            (ref * (PLAY_RATIO + 2 * PREV_NEXT_RATIO + 2 * FWD_REW_RATIO) + 4 * GAP_DP * density).toInt()
+        } else {
+            (ref * (PLAY_RATIO + 2 * PREV_NEXT_RATIO) + 2 * GAP_DP * density).toInt()
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -265,6 +299,9 @@ class FelicityMediaControls @JvmOverloads constructor(
      * The horizontal centers are NOT stored here — they're recalculated every draw frame
      * by [computeDynamicCenters] so that the gap between buttons stays exactly [gapPx]
      * even as button scales animate.
+     *
+     * The [buttonsSizePercent] multiplier is baked in here so every slot naturally
+     * respects it without any extra math at draw time.
      */
     private fun computeLayout(w: Int, h: Int) {
         gapPx = GAP_DP * resources.displayMetrics.density
@@ -277,7 +314,7 @@ class FelicityMediaControls @JvmOverloads constructor(
             // 5 slots — total weight = 0.6 + 0.7 + 1.0 + 0.7 + 0.6 = 3.6
             val totalWeight = FWD_REW_RATIO + PREV_NEXT_RATIO + PLAY_RATIO + PREV_NEXT_RATIO + FWD_REW_RATIO
             val totalGaps = 4 * gapPx
-            val base = minOf(contentH, (contentW - totalGaps) / totalWeight)
+            val base = minOf(contentH, (contentW - totalGaps) / totalWeight) * buttonsSizePercent
 
             btnHalf[BTN_REWIND] = base * FWD_REW_RATIO / 2f
             btnHalf[BTN_PREVIOUS] = base * PREV_NEXT_RATIO / 2f
@@ -285,14 +322,15 @@ class FelicityMediaControls @JvmOverloads constructor(
             btnHalf[BTN_NEXT] = base * PREV_NEXT_RATIO / 2f
             btnHalf[BTN_FORWARD] = base * FWD_REW_RATIO / 2f
         } else {
-            // 3 slots — total weight = 0.7 + 1.0 + 0.7 = 2.4
+            // 3 slots — total weight = 0.7 + 1.0 + 0.7 = 2.4; seek buttons take zero space
             val totalWeight = PREV_NEXT_RATIO + PLAY_RATIO + PREV_NEXT_RATIO
             val totalGaps = 2 * gapPx
-            val base = minOf(contentH, (contentW - totalGaps) / totalWeight)
+            val base = minOf(contentH, (contentW - totalGaps) / totalWeight) * buttonsSizePercent
 
             btnHalf[BTN_PREVIOUS] = base * PREV_NEXT_RATIO / 2f
             btnHalf[BTN_PLAY] = base * PLAY_RATIO / 2f
             btnHalf[BTN_NEXT] = base * PREV_NEXT_RATIO / 2f
+            // Zero them out so they contribute no width to the dynamic center calculation
             btnHalf[BTN_REWIND] = 0f
             btnHalf[BTN_FORWARD] = 0f
         }

@@ -386,6 +386,19 @@
         </attr>
     </declare-styleable>
 
+    <!--
+        FelicityMediaControls: the five-button media control bar (previous, rewind, play/pause, forward, next).
+
+        showSeekButtons   – when false the two outer rewind/forward buttons are completely hidden
+                            and the view shrinks to fit only the three core buttons. Default: true.
+        buttonsSizePercent – a multiplier from 0.0 to 1.0 that uniformly scales the size of every
+                             button down from its natural size. 1.0 = full size (default), 0.5 = half size.
+    -->
+    <declare-styleable name="FelicityMediaControls">
+        <attr name="showSeekButtons" format="boolean" />
+        <attr name="buttonsSizePercent" format="float" />
+    </declare-styleable>
+
     <!-- Attributes for PipelineArrowView -->
     <declare-styleable name="PipelineArrowView">
 
