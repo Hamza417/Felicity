@@ -111,6 +111,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         when (nextTransitionType) {
             TransitionType.SHARED_AXIS -> setTransitions()
             TransitionType.SLIDE -> setSlideTransitions()
+            TransitionType.DRIFT -> setDriftTransitions()
         }
 
         // Apply transition to the next fragment
@@ -195,6 +196,14 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         exitTransition = SeekableSlideTransition(true)
         reenterTransition = SeekableSlideTransition(false)
         returnTransition = SeekableSlideTransition(false)
+    }
+
+    open fun setDriftTransitions() {
+        clearTransitions()
+        enterTransition = SeekableSharedAxisXTransition(true)
+        exitTransition = SeekableSharedAxisXTransition(true)
+        reenterTransition = SeekableSharedAxisXTransition(false)
+        returnTransition = SeekableSharedAxisXTransition(false)
     }
 
     protected fun getInteger(@IntegerRes resId: Int): Int {
@@ -416,6 +425,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         when (getTransitionType()) {
             TransitionType.SHARED_AXIS -> setTransitions()
             TransitionType.SLIDE -> setSlideTransitions()
+            TransitionType.DRIFT -> setDriftTransitions()
         }
     }
 
@@ -428,7 +438,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
     }
 
     enum class TransitionType {
-        SHARED_AXIS, SLIDE
+        SHARED_AXIS, SLIDE, DRIFT
     }
 
     companion object {

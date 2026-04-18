@@ -81,7 +81,7 @@ class BlacklistFolders : MediaFragment() {
         adapter?.submitList(LibraryPreferences.getExcludedFolders().toList().sorted())
     }
 
-    override fun getTransitionType(): TransitionType = TransitionType.SLIDE
+    override fun getTransitionType(): TransitionType = TransitionType.DRIFT
 
     override val wantsMiniPlayerVisible: Boolean get() = false
 

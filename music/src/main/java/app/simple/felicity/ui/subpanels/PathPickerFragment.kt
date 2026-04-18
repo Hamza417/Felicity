@@ -119,7 +119,7 @@ class PathPickerFragment : MediaFragment() {
         goBack()
     }
 
-    override fun getTransitionType(): TransitionType = TransitionType.SLIDE
+    override fun getTransitionType(): TransitionType = TransitionType.DRIFT
 
     override val wantsMiniPlayerVisible: Boolean get() = false
 

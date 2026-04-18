@@ -42,7 +42,7 @@ class Language : MediaFragment() {
     }
 
     override fun getTransitionType(): TransitionType {
-        return TransitionType.SLIDE
+        return TransitionType.DRIFT
     }
 
     override val wantsMiniPlayerVisible: Boolean

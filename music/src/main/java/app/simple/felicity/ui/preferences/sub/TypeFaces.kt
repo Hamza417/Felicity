@@ -12,7 +12,7 @@ class TypeFaces : MediaFragment() {
 
     private lateinit var binding: FragmentGenericRecyclerViewBinding
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentGenericRecyclerViewBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -29,7 +29,7 @@ class TypeFaces : MediaFragment() {
     }
 
     override fun getTransitionType(): TransitionType {
-        return TransitionType.SLIDE
+        return TransitionType.DRIFT
     }
 
     override val wantsMiniPlayerVisible: Boolean
