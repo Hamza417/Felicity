@@ -77,7 +77,8 @@ import kotlin.math.min
  *  - Rounded card background with optional stroke border
  *  - Album-art bitmaps clipped to a square slot on the left
  *  - Two-line title + artist text with automatic ellipsis
- *  - Morphing play/pause icon on the right (via [MiniPlayerPlayPauseDrawer])
+ *  - Play/pause icon on the right (via [MiniPlayerPlayPauseDrawer]) with a circular
+ *    highlight ring behind it; state changes cross-fade rather than morph
  *  - Optional edge-fade gradient that appears during swipe gestures
  *
  * Paging is handled by [MiniPlayerScrollEngine], which provides the same
@@ -188,11 +189,6 @@ class MiniPlayer @JvmOverloads constructor(
         /** Edge-fade dissolves slowly after drag ends. */
         private const val EDGE_FADE_OUT_MS = 540L
 
-        /** Play button slides off-screen fast. */
-        private const val PP_SLIDE_OUT_MS = 130L
-
-        /** Play button slides back in leisurely. */
-        private const val PP_SLIDE_IN_MS = 280L
 
         // Layout constants — change these to retune the look without touching logic
 
@@ -206,7 +202,7 @@ class MiniPlayer @JvmOverloads constructor(
         private const val BTN_HEIGHT_FACTOR = 0.55f
 
         /** Horizontal padding on each side of the button zone, in dp. */
-        private const val BTN_HORIZ_PADDING_DP = 12f
+        private const val BTN_HORIZ_PADDING_DP = 10f
 
         /** Padding between the art slot and the text block, in dp. */
         private const val TEXT_PADDING_DP = 8f
@@ -524,7 +520,7 @@ class MiniPlayer @JvmOverloads constructor(
                         scrollEngine.notifyScrollState(SCROLL_STATE_DRAGGING)
                         parent?.requestDisallowInterceptTouchEvent(true)
                         animateEdgeFade(show = true)
-                        animatePlayPauseSlide(slideOut = true)
+                        animatePlayPauseFade(fadeOut = true)
                         // Drag canceled the tap — fade progress bar out
                         animateProgressAlpha(0f)
                     }
@@ -562,7 +558,7 @@ class MiniPlayer @JvmOverloads constructor(
                 velocityTracker = null
                 isBeingDragged = false
                 animateEdgeFade(show = false)
-                animatePlayPauseSlide(slideOut = false)
+                animatePlayPauseFade(fadeOut = false)
                 // Safety catch: cancel any pending auto-release and release immediately
                 // in case the finger lifts before the 80 ms timer fires.
                 rippleAutoReleaseHandler.removeCallbacks(rippleAutoReleaseRunnable)
@@ -1471,22 +1467,29 @@ class MiniPlayer @JvmOverloads constructor(
     }
 
     // -------------------------------------------------------------------------
-    // Play/pause button slide animation
+    // Play/pause button swipe fade animation
     // -------------------------------------------------------------------------
 
-    private var ppSlideOut = 0f
-    private var ppSlideAnimator: ValueAnimator? = null
+    /**
+     * Fades the play/pause button in or out during a swipe gesture.
+     * When the user starts swiping through tracks the button fades away so it
+     * doesn't feel like it's floating detached from the rest of the content.
+     * Once the swipe settles it gently fades back in.
+     *
+     * @param fadeOut `true` to hide the button, `false` to reveal it again
+     */
+    private var ppSwipeAnimator: ValueAnimator? = null
 
-    private fun animatePlayPauseSlide(slideOut: Boolean) {
-        val target = if (slideOut) 1f else 0f
-        if (ppSlideOut == target && ppSlideAnimator == null) return
-        ppSlideAnimator?.cancel()
-        ppSlideAnimator = ValueAnimator.ofFloat(ppSlideOut, target).apply {
-            duration = if (slideOut) PP_SLIDE_OUT_MS else PP_SLIDE_IN_MS
-            interpolator = if (slideOut) AccelerateInterpolator() else DecelerateInterpolator()
+    private fun animatePlayPauseFade(fadeOut: Boolean) {
+        val target = if (fadeOut) 0f else 1f
+        val current = playPauseDrawer.alpha / 255f
+        if (current == target && ppSwipeAnimator == null) return
+        ppSwipeAnimator?.cancel()
+        ppSwipeAnimator = ValueAnimator.ofFloat(current, target).apply {
+            duration = if (fadeOut) 130L else 280L
+            interpolator = if (fadeOut) AccelerateInterpolator() else DecelerateInterpolator()
             addUpdateListener {
-                ppSlideOut = it.animatedValue as Float
-                playPauseDrawer.slideOut = ppSlideOut
+                playPauseDrawer.alpha = ((it.animatedValue as Float) * 255f).toInt()
                 invalidate()
             }
             start()
@@ -1636,6 +1639,7 @@ class MiniPlayer @JvmOverloads constructor(
         titlePaint.color = titleColor
         artistPaint.color = artistColor
         playPauseDrawer.color = iconColor
+
         refreshRippleTheme()
         refreshProgressColors()
 
@@ -1682,9 +1686,9 @@ class MiniPlayer @JvmOverloads constructor(
         edgeFadeWidth = (w * EDGE_FADE_WIDTH_FRACTION).coerceAtLeast(dp(EDGE_FADE_MIN_WIDTH_DP))
         rebuildEdgeFadeRects(w, cardH)
 
-        playPauseDrawer.btnZoneWidth = btnZoneWidth
         playPauseDrawer.centerX = w - btnZoneWidth / 2f
         playPauseDrawer.centerY = cardH / 2f
+        playPauseDrawer.circleRadius = cornerRadiusPx
         playPauseDrawer.updateGeometry(btnSz)
 
         // Re-anchor the scroll position to the current page whenever the view width
@@ -1834,32 +1838,50 @@ class MiniPlayer @JvmOverloads constructor(
     // Play/pause state
     // -------------------------------------------------------------------------
 
-    private val playPauseDrawer = MiniPlayerPlayPauseDrawer()
+    private val playPauseDrawer = MiniPlayerPlayPauseDrawer(context)
     private var ppIsPlaying = false
     private var ppAnimator: ValueAnimator? = null
 
     /**
-     * Reflect the current playback state in the icon.
-     * Pass `animate = false` to jump immediately (e.g., on state restore).
+     * Updates the play/pause icon to reflect the current playback state.
+     *
+     * When [animate] is `true` the icon does a quick fade-out, swaps to the
+     * new state, then fades back in — a clean and obvious transition.
+     * When [animate] is `false` the swap happens instantly (good for state restore).
      */
     fun setPlaying(playing: Boolean, animate: Boolean = true) {
         if (ppIsPlaying == playing) return
         ppIsPlaying = playing
-        val target = if (playing) 0f else 1f
         ppAnimator?.cancel()
-        if (animate) {
-            ppAnimator = ValueAnimator.ofFloat(playPauseDrawer.progress, target).apply {
-                duration = 300L
-                interpolator = DecelerateInterpolator()
-                addUpdateListener {
-                    playPauseDrawer.progress = it.animatedValue as Float
-                    invalidate()
-                }
-                start()
-            }
-        } else {
-            playPauseDrawer.progress = target
+        if (!animate) {
+            playPauseDrawer.isPlaying = playing
             invalidate()
+            return
+        }
+        // Fade out, flip the icon state while invisible, then fade back in.
+        val fromAlpha = playPauseDrawer.alpha / 255f
+        ppAnimator = ValueAnimator.ofFloat(fromAlpha, 0f).apply {
+            duration = 110L
+            interpolator = AccelerateInterpolator()
+            addUpdateListener {
+                playPauseDrawer.alpha = ((it.animatedValue as Float) * 255f).toInt()
+                invalidate()
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    playPauseDrawer.isPlaying = playing
+                    ppAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                        duration = 200L
+                        interpolator = DecelerateInterpolator()
+                        addUpdateListener {
+                            playPauseDrawer.alpha = ((it.animatedValue as Float) * 255f).toInt()
+                            invalidate()
+                        }
+                        start()
+                    }
+                }
+            })
+            start()
         }
     }
 
@@ -1984,7 +2006,10 @@ class MiniPlayer @JvmOverloads constructor(
             titleColor = newTitle; titlePaint.color = newTitle
             artistColor = newArtist; artistPaint.color = newArtist
             iconColor = newIcon; playPauseDrawer.color = newIcon
-            invalidate(); return
+
+            invalidate()
+
+            return
         }
         val oldTitle = titleColor
         val oldArtist = artistColor
@@ -2824,7 +2849,7 @@ class MiniPlayer @JvmOverloads constructor(
         rippleAutoReleaseHandler.removeCallbacks(rippleAutoReleaseRunnable)
         releaseAllRipples()
         ppAnimator?.cancel()
-        ppSlideAnimator?.cancel()
+        ppSwipeAnimator?.cancel()
         bgColorAnimator?.cancel()
         accentColorAnimator?.cancel()
         elevationAnimator?.cancel()
@@ -2866,7 +2891,7 @@ class MiniPlayer @JvmOverloads constructor(
             if (state.isTransparent) makeTransparent(animated = false)
             scrollEngine.jumpToPage(state.currentPage.coerceAtLeast(0))
             ppIsPlaying = state.isPlaying
-            playPauseDrawer.progress = if (ppIsPlaying) 0f else 1f
+            playPauseDrawer.isPlaying = ppIsPlaying
             applyPendingTy()
         } else {
             super.onRestoreInstanceState(state)

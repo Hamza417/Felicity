@@ -1,137 +1,112 @@
 package app.simple.felicity.decorations.miniplayer
 
+import android.content.Context
 import android.graphics.Canvas
-import android.graphics.CornerPathEffect
-import android.graphics.Paint
-import android.graphics.Path
+import android.graphics.Color
+import android.graphics.Rect
 import androidx.annotation.ColorInt
-import androidx.core.graphics.withTranslation
-import com.google.android.material.math.MathUtils.lerp
-import kotlin.math.sqrt
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.DrawableCompat
+import app.simple.felicity.decoration.R
 
 /**
- * Encapsulates the morphing play/pause icon geometry and drawing.
+ * Draws the play/pause icon for the mini player using the same [R.drawable.ic_play] and
+ * [R.drawable.ic_pause] resources that the rest of the app uses, so the button style stays
+ * consistent across every screen.
  *
- * The icon morphs between a play triangle (progress = 0) and two pause bars
- * (progress = 1), matching the geometry of FlipPlayPauseView exactly.
+ * The [MiniPlayer] cross-fades between states by animating [alpha] to 0, flipping [isPlaying],
+ * then animating [alpha] back to 255 — quick, clean, and obviously intentional.
  *
- * Call [updateGeometry] whenever the button zone size changes, then call
- * [draw] inside [android.view.View.onDraw].
+ * A circular highlight is drawn behind the icon. Its radius is set via [circleRadius] to
+ * match the card's own corner radius, so the two curves feel like they belong together
+ * rather than competing for attention.
+ *
+ * @author Hamza417
  */
-internal class MiniPlayerPlayPauseDrawer {
+internal class MiniPlayerPlayPauseDrawer(private val context: Context) {
 
-    /** Tint color for the icon paths. */
+    /** Tint color applied to whichever drawable is currently shown. */
     @ColorInt
-    var color: Int = 0
+    var color: Int = Color.WHITE
         set(value) {
             field = value
-            paint.color = value
+            retintDrawables()
         }
 
-    /** 0f = play triangle, 1f = pause bars. Drive this with a [android.animation.ValueAnimator]. */
-    var progress: Float = 1f
+    /**
+     * The radius of the circular highlight in pixels.
+     * Set this to the card's [MiniPlayer.cornerRadiusPx] so the two curves look related —
+     * a small radius matches a subtly-rounded card, a large one a pill-shaped card.
+     */
+    var circleRadius: Float = 0f
 
     /**
-     * Slide-out fraction: 0f = normal, 1f = fully off-screen to the right.
-     * Set this during drag to hide the button while the user scrolls.
+     * Whether the player is currently in the playing state.
+     * Flip this while [alpha] is 0 so the drawable swap is invisible to the user.
      */
-    var slideOut: Float = 0f
+    var isPlaying: Boolean = false
 
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        pathEffect = CornerPathEffect(10f)
-    }
+    /**
+     * Overall opacity of the button (icon + highlight) in [0, 255].
+     * Driven externally for both swipe-gesture fades and play/pause state transitions.
+     */
+    var alpha: Int = 255
 
-    private val leftPath = Path()
-    private val rightPath = Path()
+    // Reusable bounds rect so we don't allocate inside draw().
+    private val iconBounds = Rect()
 
-    // Geometry fields — set by updateGeometry()
+    // Load both drawables once and keep them tinted — never allocate inside draw().
+    private val icPlay = ContextCompat.getDrawable(context, R.drawable.ic_play)!!.mutate()
+    private val icPause = ContextCompat.getDrawable(context, R.drawable.ic_pause)!!.mutate()
+
+    /** Geometry — populated by [updateGeometry], read only inside [draw]. */
     private var halfHeight = 0f
-    private var barWidth = 0f
-    private var barGap = 0f
-    private var triHeight = 0f
 
-    /** The total horizontal width of the button zone; used to compute the slide-out offset. */
-    var btnZoneWidth: Float = 0f
-
-    /** Horizontal center of the button zone in the view coordinate space. */
+    /** Horizontal center of the button zone in view coordinates. */
     var centerX: Float = 0f
 
-    /** Vertical center of the button zone in the view coordinate space. */
+    /** Vertical center of the button zone in view coordinates. */
     var centerY: Float = 0f
 
+    init {
+        retintDrawables()
+    }
+
     /**
-     * Recomputes all geometry from the button square side [btnSize].
-     * Must be called from [android.view.View.onSizeChanged].
+     * Updates the icon layout geometry from the button square's side length.
+     * Call this from [android.view.View.onSizeChanged] whenever the view resizes.
+     *
+     * @param btnSize side length of the button zone square in pixels
      */
     fun updateGeometry(btnSize: Float) {
         halfHeight = btnSize * 0.5f
-        barWidth = halfHeight / 2.5f
-        barGap = barWidth / 1.5f
-        triHeight = (sqrt(3.0) / 2.0 * halfHeight).toFloat()
+    }
+
+    /** Applies the current [color] tint to both drawables so [draw] never has to allocate. */
+    private fun retintDrawables() {
+        for (d in listOf(icPlay, icPause)) {
+            DrawableCompat.setTint(DrawableCompat.wrap(d), color)
+        }
     }
 
     /**
-     * Draws the icon onto [canvas] at the pre-configured [centerX]/[centerY].
-     * Returns immediately if the icon is fully slid out (alpha would be 0).
+     * Draws the highlight circle and the current icon onto [canvas].
+     * Nothing is drawn when [alpha] is 0 — saves a GPU round-trip on every frame.
      */
     fun draw(canvas: Canvas) {
-        val h = halfHeight
-        val bw = barWidth
-        val gap = barGap
-        val tri = triHeight
-        val p = progress
+        if (alpha == 0) return
 
-        val buttonAlpha = ((1f - slideOut) * 255f).toInt().coerceIn(0, 255)
-        if (buttonAlpha == 0) return
-
-        leftPath.rewind()
-        rightPath.rewind()
-
-        // Right pause bar (fades out toward play)
-        val rightBarX = bw + gap
-        rightPath.moveTo(rightBarX, 0f)
-        rightPath.lineTo(rightBarX + bw, 0f)
-        rightPath.lineTo(rightBarX + bw, h)
-        rightPath.lineTo(rightBarX, h)
-        rightPath.close()
-
-        // Left shape — morphs between bar (p=1) and triangle tip (p=0)
-        if (p >= 0.9f) {
-            leftPath.moveTo(0f, 0f)
-            leftPath.lineTo(tri, h / 2f)
-            leftPath.lineTo(0f, h)
-            leftPath.close()
-        } else {
-            val tipX = lerp(bw, tri, p)
-            val topY = lerp(0f, h / 2f, p)
-            val bottomY = lerp(h, h / 2f, p)
-            leftPath.moveTo(0f, 0f)
-            leftPath.lineTo(tipX, topY)
-            leftPath.lineTo(tipX, bottomY)
-            leftPath.lineTo(0f, h)
-            leftPath.close()
-        }
-
-        val slideOffsetPx = slideOut * btnZoneWidth
-        val totalPauseWidth = bw * 2f + gap
-        val offsetPause = -totalPauseWidth / 2f
-        val offsetPlay = -tri / 2f + bw * 0.1f
-        val offsetX = lerp(offsetPause, offsetPlay, p)
-
-        canvas.withTranslation(centerX + slideOffsetPx, centerY) {
-            withTranslation(offsetX, -h / 2f) {
-                paint.alpha = buttonAlpha
-                drawPath(leftPath, paint)
-
-                if (p < 1f) {
-                    paint.alpha = ((1f - p) * buttonAlpha).toInt().coerceIn(0, 255)
-                    drawPath(rightPath, paint)
-                }
-
-                paint.alpha = 255
-            }
-        }
+        // Pick the drawable for the current state and set its bounds centered on the button zone.
+        val drawable = if (isPlaying) icPause else icPlay
+        val r = halfHeight.toInt()
+        iconBounds.set(
+                (centerX - r).toInt(),
+                (centerY - r).toInt(),
+                (centerX + r).toInt(),
+                (centerY + r).toInt()
+        )
+        drawable.bounds = iconBounds
+        drawable.alpha = alpha
+        drawable.draw(canvas)
     }
 }
-
