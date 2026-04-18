@@ -4,7 +4,7 @@ import android.util.Log
 import app.simple.felicity.preferences.LibraryPreferences
 import java.io.File
 
-class AudioScanner() {
+class AudioScanner {
 
     companion object {
         private const val TAG = "AudioScanner"

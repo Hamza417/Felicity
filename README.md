@@ -125,8 +125,6 @@ bumptech/glide#5657
 
 ## Screenshots
 
-Last Updated: 11 April 2026
-
 |                                                                      |                                                                      |                                                                      |
 |----------------------------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------|
 | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/01.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/02.png) | ![](/fastlane/metadata/android/en-US/images/phoneScreenshots/03.png) |
