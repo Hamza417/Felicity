@@ -404,4 +404,6 @@
     <string name="path_added">Path added successfully.</string>
     <string name="path_removed">Path removed.</string>
     <string name="storage_root">Storage Root</string>
+    <string name="dividers">Dividers</string>
+    <string name="dividers_summary">Add divider lines in the lists.</string>
 </resources>
