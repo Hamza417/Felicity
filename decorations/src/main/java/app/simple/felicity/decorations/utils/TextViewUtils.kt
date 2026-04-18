@@ -40,6 +40,10 @@ object TextViewUtils {
         this.setCompoundDrawablesWithIntrinsicBounds(resourceId, 0, 0, 0)
     }
 
+    fun AppCompatTextView.setEndDrawable(resourceId: Int) {
+        this.setCompoundDrawablesWithIntrinsicBounds(0, 0, resourceId, 0)
+    }
+
     fun TextView.makeLinks(vararg links: Pair<String, View.OnClickListener>) {
         val spannableString = SpannableString(this.text)
         var startIndexOfLink = -1

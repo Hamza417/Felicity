@@ -33,6 +33,7 @@ import app.simple.felicity.decorations.corners.DynamicCornersNestedScrollView
 import app.simple.felicity.decorations.ripple.RippleUtils
 import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.typeface.TypefaceStyle
+import app.simple.felicity.decorations.utils.TextViewUtils.setEndDrawable
 import app.simple.felicity.theme.managers.ThemeManager
 import com.google.android.material.transition.MaterialContainerTransform
 import kotlin.math.abs
@@ -256,7 +257,14 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
                 setTextColor(ThemeManager.theme.textViewTheme.primaryTextColor)
                 setText(item.title)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                setDrawableTineMode(TypeFaceTextView.DRAWABLE_ACCENT)
+                compoundDrawablePadding = (5 * density).toInt()
+
+                if (item.isExperimental) {
+                    setEndDrawable(R.drawable.ic_beta_12dp)
+                }
             }
+
             textColumn.addView(titleView)
 
             if (!item.summary.isNullOrBlank()) {
