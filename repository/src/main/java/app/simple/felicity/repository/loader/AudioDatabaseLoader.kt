@@ -14,12 +14,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
@@ -62,8 +63,31 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         )
     }
 
+    /**
+     * Carries a parsed audio object from a producer coroutine to the single
+     * database-writer consumer. Using a sealed class makes the insert/update
+     * distinction explicit without needing a separate boolean flag.
+     */
+    private sealed class PendingWrite {
+        abstract val audio: Audio
+        abstract val path: String
+        abstract val indexedFile: IndexedFile
+
+        data class Insert(
+                override val audio: Audio,
+                override val path: String,
+                override val indexedFile: IndexedFile
+        ) : PendingWrite()
+
+        data class Update(
+                override val audio: Audio,
+                override val path: String,
+                override val indexedFile: IndexedFile
+        ) : PendingWrite()
+    }
+
     /** Per-instance index of paths we have already seen in the database. */
-    private val indexedMap: HashMap<String, IndexedFile> = hashMapOf()
+    private val indexedMap: ConcurrentHashMap<String, IndexedFile> = ConcurrentHashMap()
 
     /**
      * Each scan gets its own scope. When a scan is canceled, we swap in a fresh
@@ -134,10 +158,6 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
             Log.d(TAG, "Indexing complete. Found ${indexedMap.size} existing audio files in the database.")
 
-            val insertBatchList = mutableListOf<Audio>()
-            val updateBatchList = mutableListOf<Audio>()
-            val batchMutex = Mutex()
-
             // Phase 1 — collect every audio file from all storage volumes.
             // We do this upfront so we know the grand total and can show a proper
             // fill-level progress bar instead of an infinite spinner.
@@ -163,23 +183,68 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             val processedCount = AtomicInteger(0)
 
             /**
-             * A plain local list of every job we launch during Phase 2. No locking
-             * needed here — only the sequential loop below ever touches this list
-             * (the launched coroutines never write to it), so there is no contention.
-             * Previously this was a shared field with synchronized blocks on every
-             * iteration, which caused a 252ms monitor stall and "Canceling 1180 jobs"
-             * at cancel time. Jobs no longer need individual cancellation because
-             * cancelling [scanScope] already cancels every child automatically.
+             * The fan-in channel. Every parallel producer coroutine sends one
+             * [PendingWrite] here after extracting metadata. A single dedicated
+             * consumer coroutine on the other end collects them into batches and
+             * writes to Room — no Mutex, no shared mutable state between producers.
+             * Channel.BUFFERED gives us a small built-in queue so fast producers
+             * don't stall waiting for slower DB writes.
              */
-            val pendingJobs = mutableListOf<Job>()
+            val dbChannel = Channel<PendingWrite>(capacity = Channel.BUFFERED)
+
+            // The consumer — exactly one coroutine that owns the insert/update lists.
+            // Because it is the only writer, no locking is needed at all.
+            val consumerJob = scanScope.launch {
+                val insertBatch = mutableListOf<Audio>()
+                val updateBatch = mutableListOf<Audio>()
+
+                for (write in dbChannel) {
+                    // Mirror the indexedMap update here so the map stays consistent
+                    // without needing concurrent writes from the producer coroutines.
+                    indexedMap[write.path] = write.indexedFile
+
+                    when (write) {
+                        is PendingWrite.Insert -> {
+                            insertBatch.add(write.audio)
+                            if (insertBatch.size >= BATCH_SIZE) {
+                                val batch = insertBatch.toList()
+                                insertBatch.clear()
+                                Log.d(TAG, "Inserting batch of ${batch.size} audio items")
+                                dao?.insertBatch(batch)
+                            }
+                        }
+                        is PendingWrite.Update -> {
+                            updateBatch.add(write.audio)
+                            if (updateBatch.size >= BATCH_SIZE) {
+                                val batch = updateBatch.toList()
+                                updateBatch.clear()
+                                Log.d(TAG, "Updating batch of ${batch.size} audio items")
+                                dao?.update(batch)
+                            }
+                        }
+                    }
+                }
+
+                // The channel is closed — flush whatever is left in the partial batches.
+                if (insertBatch.isNotEmpty()) {
+                    Log.d(TAG, "Inserting final batch of ${insertBatch.size} audio items")
+                    dao?.insertBatch(insertBatch)
+                }
+                if (updateBatch.isNotEmpty()) {
+                    Log.d(TAG, "Updating final batch of ${updateBatch.size} audio items")
+                    dao?.update(updateBatch)
+                }
+            }
 
             // Phase 2 — process each file. The loop is sequential; the heavy lifting
             // (metadata extraction) happens inside parallel coroutines on the scanScope.
+            val pendingJobs = mutableListOf<Job>()
+
             allAudioFiles.forEach { file ->
                 scanScope.coroutineContext.ensureActive()
 
                 if (shouldProcess(file)) {
-                    val processingJob = scanScope.launch {
+                    val producerJob = scanScope.launch {
                         semaphore.acquire()
                         try {
                             ensureActive()
@@ -191,52 +256,29 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
                             if (audio == null) {
                                 Log.w(TAG, "Failed to extract metadata for: ${file.name}")
-                            } else {
-                                Log.d(TAG, "Metadata extracted for ${file.name}: size=${audio.size}, dateModified=${audio.dateModified}")
-
-                                batchMutex.lock()
-                                try {
-                                    val storedId = pathToStoredId[file.absolutePath]
-
-                                    // Read the stored record BEFORE overwriting the index entry
-                                    // so we can recover user-set flags like isFavorite.
-                                    val stored = indexedMap[file.absolutePath]
-
-                                    if (storedId != null && storedId != 0L) {
-                                        // The file already has a row in the database — reuse its
-                                        // stable primary key so Room's @Update hits the right row
-                                        // and no orphaned entry is left behind.
-                                        audio.id = storedId
-                                        audio.isFavorite = stored?.isFavorite ?: false
-                                        audio.isAlwaysSkip = stored?.alwaysSkip ?: false
-                                        Log.d(TAG, "Updating existing entry (id=$storedId) for: ${file.name}")
-                                        updateBatchList.add(audio)
-                                        indexedMap[file.absolutePath] = IndexedFile(audio.dateModified, audio.size)
-                                    } else {
-                                        // Brand-new file — each file path produces its own unique hash
-                                        // (content hash XOR path hash), so even exact audio copies at
-                                        // different locations get their own row and show up in the library.
-                                        insertBatchList.add(audio)
-                                        indexedMap[file.absolutePath] = IndexedFile(audio.dateModified, audio.size)
-                                    }
-
-                                    if (insertBatchList.size >= BATCH_SIZE) {
-                                        val batchToInsert = insertBatchList.toList()
-                                        insertBatchList.clear()
-                                        Log.d(TAG, "Inserting batch of ${batchToInsert.size} audio items")
-                                        dao?.insertBatch(batchToInsert)
-                                    }
-
-                                    if (updateBatchList.size >= BATCH_SIZE) {
-                                        val batchToUpdate = updateBatchList.toList()
-                                        updateBatchList.clear()
-                                        Log.d(TAG, "Updating batch of ${batchToUpdate.size} audio items")
-                                        dao?.update(batchToUpdate)
-                                    }
-                                } finally {
-                                    batchMutex.unlock()
-                                }
+                                return@launch
                             }
+
+                            Log.d(TAG, "Metadata extracted for ${file.name}: size=${audio.size}, dateModified=${audio.dateModified}")
+
+                            val storedId = pathToStoredId[file.absolutePath]
+                            val stored = indexedMap[file.absolutePath]
+                            val newIndexEntry = IndexedFile(audio.dateModified, audio.size)
+
+                            val write = if (storedId != null && storedId != 0L) {
+                                // The file already has a row — reuse its stable primary key
+                                // so Room's @Update hits the right row without creating a duplicate.
+                                audio.id = storedId
+                                audio.isFavorite = stored?.isFavorite ?: false
+                                audio.isAlwaysSkip = stored?.alwaysSkip ?: false
+                                Log.d(TAG, "Updating existing entry (id=$storedId) for: ${file.name}")
+                                PendingWrite.Update(audio, file.absolutePath, newIndexEntry)
+                            } else {
+                                // Brand-new file — insert it with its own generated id.
+                                PendingWrite.Insert(audio, file.absolutePath, newIndexEntry)
+                            }
+
+                            dbChannel.send(write)
 
                             // Bump the real progress counter and refresh the notification.
                             // We do this here — inside the coroutine, after the heavy work —
@@ -256,23 +298,17 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                         }
                     }
 
-                    pendingJobs.add(processingJob)
+                    pendingJobs.add(producerJob)
                 }
             }
 
+            // Wait for all producer coroutines to finish sending their results.
             pendingJobs.joinAll()
 
-            if (insertBatchList.isNotEmpty()) {
-                Log.d(TAG, "Inserting final batch of ${insertBatchList.size} audio items")
-                dao?.insertBatch(insertBatchList)
-                insertBatchList.clear()
-            }
-
-            if (updateBatchList.isNotEmpty()) {
-                Log.d(TAG, "Updating final batch of ${updateBatchList.size} audio items")
-                dao?.update(updateBatchList)
-                updateBatchList.clear()
-            }
+            // Signal the consumer that there is nothing more coming. It will drain
+            // whatever is left in its partial batches and then complete.
+            dbChannel.close()
+            consumerJob.join()
 
             // Push one last update so the bar shows 100% before it disappears.
             notification.updateProgress(allAudioFiles.size)
@@ -313,9 +349,6 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     private suspend fun reconcileDatabase(mountedStorages: List<RemovableStorageDetector.StorageInfo?>) {
         val dao = audioDatabase.audioDao() ?: return
 
-        // Clean up any duplicate rows that share the same path — these can build up
-        // when a tag editor changes file content (which shifts the hash) before the
-        // dedup logic in this loader was in place.
         dao.deleteStalePathDuplicates()
         Log.d(TAG, "Stale path-duplicate purge complete.")
 
@@ -326,6 +359,14 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         val skipHiddenFiles = LibraryPreferences.isSkipHiddenFiles()
         val skipHiddenFolders = LibraryPreferences.isSkipHiddenFolders()
         val excludedFolders = LibraryPreferences.getExcludedFolders()
+
+        /**
+         * Caches whether a given directory path is excluded. Walking up to the root
+         * for every file in the database is expensive disk I/O. Once we have checked a
+         * directory (and all of its ancestors), we remember the result here so every
+         * subsequent file in that same folder is just an O(1) map lookup.
+         */
+        val dirExclusionCache = HashMap<String, Boolean>()
 
         val toDelete = mutableListOf<Audio>()
         val toUpdate = mutableListOf<Audio>()
@@ -342,24 +383,20 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                     when {
                         !file.exists() -> {
                             if (audio.isAvailable) {
-                                // The file is genuinely gone — delete it from the library.
                                 Log.d(TAG, "File missing on mounted storage. Deleting: ${audio.path}")
                                 toDelete.add(audio)
                                 indexedMap.remove(audio.path)
                             } else {
-                                // Ghost entry from a playlist import — leave it alone.
                                 Log.d(TAG, "Ghost entry (file missing, already unavailable) — keeping: ${audio.path}")
                             }
                         }
-                        isExcludedByFilter(file, skipNomedia, skipHiddenFiles, skipHiddenFolders) ||
+                        isExcludedByFilter(file, skipNomedia, skipHiddenFiles, skipHiddenFolders, dirExclusionCache) ||
                                 isInExcludedFolder(file, excludedFolders) -> {
-                            // The user toggled a filter (like .nomedia) — respect their wishes.
                             Log.d(TAG, "File excluded by current filter settings. Removing: ${audio.path}")
                             toDelete.add(audio)
                             indexedMap.remove(audio.path)
                         }
                         !audio.isAvailable -> {
-                            // File is back! Welcome home, little song.
                             Log.d(TAG, "Restoring available file: ${audio.path}")
                             audio.isAvailable = true
                             toUpdate.add(audio)
@@ -369,7 +406,6 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                 }
                 else -> {
                     if (audio.isAvailable) {
-                        // Storage volume is not mounted — mark the track as temporarily unavailable.
                         Log.d(TAG, "Marking unavailable (storage ejected): ${audio.path}")
                         audio.isAvailable = false
                         toUpdate.add(audio)
@@ -403,12 +439,18 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
      * Returns true if the file should be excluded from the library based on the
      * current filter preferences. Walks up the directory tree to check every
      * ancestor folder for .nomedia and hidden-folder rules.
+     *
+     * The [dirCache] map remembers the result for every directory we visit so that
+     * the next file inside the same folder skips all the disk I/O and just does a
+     * single map lookup. For a library with 500 songs in the same folder, this
+     * turns 500 x (depth) disk reads into just depth reads total — a big win.
      */
     private fun isExcludedByFilter(
             file: File,
             skipNomedia: Boolean,
             skipHiddenFiles: Boolean,
-            skipHiddenFolders: Boolean
+            skipHiddenFolders: Boolean,
+            dirCache: HashMap<String, Boolean> = HashMap()
     ): Boolean {
         if (skipHiddenFiles && file.name.startsWith(".")) {
             Log.d(TAG, "Excluded (hidden file): ${file.absolutePath}")
@@ -417,14 +459,25 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
         var dir = file.parentFile
         while (dir != null) {
+            val dirPath = dir.absolutePath
+
+            // Cache hit — we already know whether this directory (and everything
+            // above it) is excluded, so skip the disk trip entirely.
+            dirCache[dirPath]?.let { return it }
+
             if (skipNomedia && File(dir, ".nomedia").exists()) {
-                Log.d(TAG, "Excluded (.nomedia in ${dir.absolutePath}): ${file.absolutePath}")
+                Log.d(TAG, "Excluded (.nomedia in $dirPath): ${file.absolutePath}")
+                dirCache[dirPath] = true
                 return true
             }
             if (skipHiddenFolders && dir.name.startsWith(".")) {
-                Log.d(TAG, "Excluded (hidden folder ${dir.absolutePath}): ${file.absolutePath}")
+                Log.d(TAG, "Excluded (hidden folder $dirPath): ${file.absolutePath}")
+                dirCache[dirPath] = true
                 return true
             }
+
+            // This level is clean — cache the result so future files here are free.
+            dirCache[dirPath] = false
             dir = dir.parentFile
         }
         return false
