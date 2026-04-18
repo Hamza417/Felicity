@@ -1,10 +1,6 @@
 package app.simple.felicity.core.utils
 
-import android.util.Log
-import net.jpountz.xxhash.XXHashFactory
 import java.io.File
-import java.io.FileInputStream
-import java.nio.ByteBuffer
 import java.security.MessageDigest
 
 object FileUtils {
@@ -23,26 +19,6 @@ object FileUtils {
         }
 
         return digest.digest().joinToString("") { "%02x".format(it) }
-    }
-
-    fun generateXXHash64(file: File, seed: Long = 0): Long {
-        val factory = XXHashFactory.fastestInstance()
-        val hasher = factory.newStreamingHash64(seed)
-
-        FileInputStream(file).use { fis ->
-            val channel = fis.channel
-
-            while (true) {
-                val bytes = ByteArray(8192)
-                val bytesRead = channel.read(ByteBuffer.wrap(bytes))
-                if (bytesRead == -1) break
-                hasher.update(bytes, 0, bytesRead)
-            }
-        }
-
-        Log.i("FileUtils", "XXHash64 for file ${file.name}: ${hasher.value}")
-
-        return hasher.value
     }
 
     fun String.toFile(): File {

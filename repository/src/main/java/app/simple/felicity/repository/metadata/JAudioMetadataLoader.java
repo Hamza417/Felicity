@@ -13,7 +13,6 @@ import org.jaudiotagger.tag.TagException;
 import java.io.File;
 import java.io.IOException;
 
-import app.simple.felicity.core.utils.FileUtils;
 import app.simple.felicity.repository.models.Audio;
 
 public class JAudioMetadataLoader {
@@ -99,10 +98,10 @@ public class JAudioMetadataLoader {
         audio.setYear(getYear());
         audio.setSamplingRate(getSamplingRate());
         audio.setBitPerSample(getBitPerSample());
-        audio.setHash(generateId());
         audio.setSize(file.length());
         audio.setDateModified(file.lastModified());
         audio.setDateAdded(System.currentTimeMillis());
+        audio.setHash(MetaDataHelper.INSTANCE.generateStableHash(audio));
     }
     
     private String getAudioFileTag(FieldKey tag) {
@@ -209,9 +208,5 @@ public class JAudioMetadataLoader {
             () {
         Log.d("JAudioMetadataLoader", "Bits per sample: " + audioFile.getAudioHeader().getBitsPerSample());
         return audioFile.getAudioHeader().getBitsPerSample();
-    }
-    
-    private long generateId() {
-        return FileUtils.INSTANCE.generateXXHash64(file, Integer.MAX_VALUE);
     }
 }

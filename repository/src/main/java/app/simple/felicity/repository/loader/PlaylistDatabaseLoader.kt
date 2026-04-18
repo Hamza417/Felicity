@@ -11,8 +11,9 @@ import app.simple.felicity.repository.models.PlaylistSongCrossRef
 import app.simple.felicity.repository.scanners.AudioScanner
 import app.simple.felicity.shared.storage.RemovableStorageDetector
 import app.simple.felicity.shared.utils.ProcessUtils.checkNotMainThread
-import net.jpountz.xxhash.XXHashFactory
 import java.io.File
+import java.nio.ByteBuffer
+import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -250,22 +251,25 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
     }
 
     /**
-     * Produces a deterministic 64-bit hash from a file path string using XXHash64.
+     * Produces a deterministic 64-bit hash from a file path string.
      *
-     * <p>We intentionally use seed {@code 0} here, which is different from the
-     * seed the audio scanner uses for real content hashes. This keeps the two
-     * hash spaces separate so a ghost entry and a real library entry will never
-     * collide — which would be a very awkward situation.</p>
+     * <p>We intentionally prefix the path with a unique identifier ("ghost:")
+     * before hashing. This guarantees that the hash space for file paths is
+     * completely isolated from the real metadata hashes, preventing any accidental
+     * collisions between a ghost entry and a real library entry.</p>
      *
      * @param path The absolute file path to hash.
      * @return A 64-bit hash value for use as [Audio.hash].
      */
     private fun hashPath(path: String): Long {
-        val factory = XXHashFactory.fastestInstance()
-        val hasher = factory.newStreamingHash64(0L)
-        val bytes = path.toByteArray(Charsets.UTF_8)
-        hasher.update(bytes, 0, bytes.size)
-        return hasher.value
+        // The prefix acts as our "seed" to separate the hash spaces
+        val saltedPath = "ghost:$path"
+
+        // Generate the fast, native 128-bit MD5 hash
+        val digest = MessageDigest.getInstance("MD5").digest(saltedPath.toByteArray(Charsets.UTF_8))
+
+        // Extract the first 8 bytes directly into a 64-bit Long
+        return ByteBuffer.wrap(digest).long
     }
 }
 

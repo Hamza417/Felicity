@@ -5,7 +5,6 @@ import android.os.Build;
 
 import java.io.File;
 
-import app.simple.felicity.core.utils.FileUtils;
 import app.simple.felicity.repository.models.Audio;
 
 public class MediaMetadataLoader {
@@ -94,14 +93,10 @@ public class MediaMetadataLoader {
         } else {
             audio.setBitPerSample(0);
         }
-        
-        audio.setHash(generateId());
         audio.setSize(file.length());
         audio.setDateModified(file.lastModified());
         audio.setDateAdded(System.currentTimeMillis());
-    }
-    
-    private long generateId() {
-        return FileUtils.INSTANCE.generateXXHash64(file, Integer.MAX_VALUE);
+        
+        audio.setHash(MetaDataHelper.INSTANCE.generateStableHash(audio));
     }
 }

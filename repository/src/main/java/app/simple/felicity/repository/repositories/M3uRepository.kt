@@ -12,8 +12,9 @@ import app.simple.felicity.repository.models.PlaylistSongCrossRef
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import net.jpountz.xxhash.XXHashFactory
 import java.io.File
+import java.nio.ByteBuffer
+import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -301,14 +302,17 @@ class M3uRepository @Inject constructor(
      * a ghost entry and a real library entry are astronomically unlikely.</p>
      *
      * @param path The absolute file path to hash.
-     * @return A 64-bit hash value suitable for use as the {@code Audio.hash} field.
+     * @return A 64-bit hash value suitable for use as the {@code Audio.Hash} field.
      */
     private fun hashPath(path: String): Long {
-        val factory = XXHashFactory.fastestInstance()
-        val hasher = factory.newStreamingHash64(0L)
-        val bytes = path.toByteArray(Charsets.UTF_8)
-        hasher.update(bytes, 0, bytes.size)
-        return hasher.value
+        // The prefix acts as our "seed" to separate the hash spaces
+        val saltedPath = "ghost:$path"
+
+        // Generate the fast, native 128-bit MD5 hash
+        val digest = MessageDigest.getInstance("MD5").digest(saltedPath.toByteArray(Charsets.UTF_8))
+
+        // Extract the first 8 bytes directly into a 64-bit Long
+        return ByteBuffer.wrap(digest).long
     }
 
     companion object {
