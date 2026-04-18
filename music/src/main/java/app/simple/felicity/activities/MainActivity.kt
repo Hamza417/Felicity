@@ -1,18 +1,14 @@
 package app.simple.felicity.activities
 
 import android.app.SearchManager
-import android.content.ComponentName
 import android.content.Intent
-import android.content.ServiceConnection
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.os.IBinder
 import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.core.app.ShareCompat
@@ -75,9 +71,6 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
     private lateinit var binding: ActivityMainBinding
 
-    private var serviceConnection: ServiceConnection? = null
-    private var audioDatabaseService: AudioDatabaseService? = null
-
     private val permissionViewModel by viewModels<PermissionViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -129,15 +122,17 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             }
         }
 
-        // Keep screen on
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
         if (savedInstanceState.isNull()) {
             // Cold start: push the miniplayer off-screen immediately so it is not
             // visible before the song queue and themes are fully restored.
             // onStateReady() will reveal it once everything is ready.
             binding.miniPlayer.hide(animated = false)
             setHomePanel()
+
+            /**
+             * Refresh the audio database on cold start to ensure the latest songs are loaded.
+             */
+            refreshScan()
         }
 
         lifecycleScope.launch {
@@ -246,22 +241,22 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             showSelectionMenu()
         }
 
-        serviceConnection = object : ServiceConnection {
-            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                val binder = service as? AudioDatabaseService.AudioDatabaseBinder
-                audioDatabaseService = binder?.getService() ?: return
-                audioDatabaseService?.refreshAudioFiles()
-            }
-
-            override fun onServiceDisconnected(name: ComponentName?) {
-                audioDatabaseService = null
-            }
-        }
-
         permissionViewModel.getManageFilesPermissionState().observe(this) { granted ->
             if (granted) {
-                audioDatabaseService?.refreshAudioFiles()
+                startAudioDatabaseService()
             }
+        }
+    }
+
+    private fun startAudioDatabaseService() {
+        if (applicationContext.isManageExternalStoragePermissionGranted()) {
+            AudioDatabaseService.startScan(applicationContext)
+        }
+    }
+
+    private fun refreshScan() {
+        if (applicationContext.isManageExternalStoragePermissionGranted()) {
+            AudioDatabaseService.refreshScan(applicationContext)
         }
     }
 
@@ -325,20 +320,6 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                     .replace(R.id.fragment_container, SimpleHome.newInstance(), SimpleHome.TAG)
                     .commit()
             }
-        }
-    }
-
-    private fun startAudioDatabaseService() {
-        if (audioDatabaseService.isNull()) {
-            val intent = Intent(this, AudioDatabaseService::class.java)
-            bindService(intent, serviceConnection!!, BIND_AUTO_CREATE)
-        }
-    }
-
-    private fun stopAudioDatabaseService() {
-        if (audioDatabaseService.isNotNull()) {
-            unbindService(serviceConnection!!)
-            audioDatabaseService = null
         }
     }
 

@@ -132,10 +132,17 @@ class LoaderNotification(private val context: Context) {
     /**
      * Force-dismisses the notification regardless of the current generation.
      * Use this for hard-stop situations like service shutdown, where you are
-     * absolutely sure nothing is running anymore and you just want it gone.
+     * absolutely sure nothing is running anymore, and you just want it gone.
      */
     fun dismissForce() {
         notificationManager.cancel(SCAN_NOTIFICATION_ID)
+    }
+
+    fun isShowing(): Boolean {
+        // There's no official API to check if a notification is currently showing,
+        // but we can infer it by checking if the current generation has been dismissed.
+        // If the generation is 0, it means no scan has started yet, so we return false.
+        return currentGeneration.get() > 0
     }
 
     private fun setupChannel() {

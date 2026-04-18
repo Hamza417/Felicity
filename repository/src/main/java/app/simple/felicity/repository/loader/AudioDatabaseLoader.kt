@@ -265,6 +265,14 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             // the most recent scan, we properly clean up after ourselves.
             notification.dismiss(generation)
 
+            /**
+             * Check if we are still showing the notification.
+             * If yes, force dismiss
+             */
+            if (notification.isShowing()) {
+                notification.dismissForce()
+            }
+
             try {
                 scanMutex.unlock()
             } catch (_: IllegalStateException) {
