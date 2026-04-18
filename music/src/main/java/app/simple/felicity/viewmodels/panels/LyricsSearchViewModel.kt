@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.managers.LyricsManager
 import app.simple.felicity.repository.models.LrcLibResponse
 import app.simple.felicity.repository.repositories.LrcRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,7 +35,8 @@ import javax.inject.Inject
 class LyricsSearchViewModel @Inject constructor(
         application: Application,
         private val savedStateHandle: SavedStateHandle,
-        private val lrcRepository: LrcRepository
+        private val lrcRepository: LrcRepository,
+        private val lyricsManager: LyricsManager
 ) : WrappedViewModel(application) {
 
     private val _searchResults = MutableLiveData<List<LrcLibResponse>>(emptyList())
@@ -160,7 +162,12 @@ class LyricsSearchViewModel @Inject constructor(
      * Downloads the `syncedLyrics` content from [lrcResponse] and saves it as a `.lrc`
      * sidecar file next to the currently playing audio file using [LrcRepository].
      *
-     * On success, posts `true` to [lrcSaved] signaling the UI to navigate back.
+     * Any pre-existing .lrc or .txt sidecar files are removed first so the freshly
+     * downloaded content is guaranteed to be what loads next — no stale file will
+     * sneak in ahead of the new one.
+     *
+     * On success, posts `true` to [lrcSaved] signaling the UI to navigate back, and
+     * tells [LyricsManager] to reload so every screen immediately shows the new lyrics.
      * On failure, posts an error message to [warning].
      *
      * @param lrcResponse the chosen search result to save.
@@ -182,10 +189,17 @@ class LyricsSearchViewModel @Inject constructor(
             _isLoading.postValue(true)
             Log.d(TAG, "Saving LRC for: ${audio.title} -> ${audio.path}")
 
+            // Wipe out whatever was there before so the fresh download is the only
+            // source of truth going forward — no accidental fallback to old files.
+            lrcRepository.deleteLrcFile(audio.path)
+
             val saveResult = lrcRepository.saveLrcToFile(syncedLyrics, audio.path)
 
             saveResult.onSuccess {
                 Log.d(TAG, "LRC saved successfully to ${it.absolutePath}")
+                // Tell the manager to drop its cache and reload so every
+                // screen — player, lyrics panel, etc. — gets the new lyrics right away.
+                lyricsManager.reloadLrcData()
                 _lrcSaved.postValue(true)
             }.onFailure { exception ->
                 Log.e(TAG, "Failed to save LRC", exception)

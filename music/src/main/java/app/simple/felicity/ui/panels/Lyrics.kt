@@ -146,7 +146,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
                     Log.d(TAG, "No lyrics found for the current song.")
                 } else {
                     Log.d(TAG, "Loaded lyrics with ${lrcData.size()} lines.")
-                    binding.lrc.setLrcDataWithPosition(
+                    binding.lrc.setLrcData(
                             lrcData, MediaPlaybackManager.getSeekPosition() + lyricsViewModel.syncOffset)
                 }
             }

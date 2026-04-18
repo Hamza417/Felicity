@@ -225,6 +225,23 @@ class LyricsManager @Inject constructor(
     }
 
     /**
+     * Triggers a fresh lyrics lookup only when the current song has no lyrics yet.
+     *
+     * This is the right thing to call when the app comes back to the foreground — if
+     * the user already has lyrics loaded, there is nothing to do. But if they stepped
+     * away, dropped an .lrc file into the right folder, and came back, this will pick
+     * it up without forcing a wasteful full reload every time.
+     */
+    fun refreshIfNoLyrics() {
+        val currentLrc = _lrcData.value
+        // Only do anything if we have an empty result (i.e. no lyrics were found last time).
+        // null means a load is already in progress, so we leave that alone too.
+        if (currentLrc != null && currentLrc.isEmpty) {
+            reloadLrcData()
+        }
+    }
+
+    /**
      * Tries to fetch synced lyrics from LrcLib for the given track and saves them alongside
      * the audio file so future loads are instant.
      */
@@ -283,11 +300,15 @@ class LyricsManager @Inject constructor(
     }
 
     /**
-     * Bakes the accumulated sync offset into the .lrc file on disk.
+     * Bakes the accumulated sync offset into the .lrc file on disk and updates
+     * the in-memory [_lrcData] to use the corrected timestamps.
      *
-     * We intentionally do NOT update [_lrcData] here to avoid triggering a scroll reset
-     * in the view — the file is already corrected for the next load. The sync offset also
-     * resets to zero so the next updateTime call doesn't double-apply it.
+     * Previously we skipped updating [_lrcData] to avoid a scroll reset, but that
+     * caused the highlight to jump in the wrong direction right after the debounce
+     * fired — the offset was removed from [_syncOffsetMs] while the timestamps in
+     * memory were still the originals, making the lyrics appear to shift by twice
+     * the intended amount. Updating [_lrcData] here keeps the view's timestamps in
+     * sync with what is on disk, and the zero offset then has nothing to undo.
      */
     private fun persistSyncAdjustment() {
         val delta = pendingSyncDeltaMs
@@ -296,8 +317,8 @@ class LyricsManager @Inject constructor(
         val base = bakedLrcData ?: _lrcData.value ?: return
         val currentSong = MediaPlaybackManager.getCurrentSong() ?: return
 
-        // Subtract the offset because a positive offset means "show a later line" which
-        // requires the stored timestamps to be smaller (earlier).
+        // A positive offset means "show a later line", which requires stored timestamps
+        // to be smaller (earlier). So we subtract the delta from every timestamp.
         val baked = base.shiftTimestamps(-delta)
 
         scope.launch(Dispatchers.IO) {
@@ -312,7 +333,13 @@ class LyricsManager @Inject constructor(
         bakedLrcData = baked
         pendingSyncDeltaMs = 0L
 
-        // Let the view know it should stop adding the offset to updateTime.
+        // Push the corrected LrcData into the flow so every collector immediately
+        // sees the right timestamps. Without this the view would lose the offset
+        // correction the moment _syncOffsetMs resets to zero below.
+        _lrcData.value = baked
+
+        // Zero out the additive offset — the timestamps in _lrcData are already correct
+        // so the view no longer needs to compensate.
         _syncOffsetMs.value = 0L
         syncOffset = 0L
     }

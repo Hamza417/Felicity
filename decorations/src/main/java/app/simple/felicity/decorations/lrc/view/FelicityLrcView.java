@@ -1153,7 +1153,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Trigger the ripple-from-highlight curtain when {@link #setLrcDataWithPosition} is used.
+     * Trigger the ripple-from-highlight curtain when {@link #setLrcData} is used.
      * Lines radiate outward from {@code anchorLine}:
      * - Lines at/below anchor stagger downward (anchorLine first, then anchor+1, anchor+2 …)
      * - Lines above anchor stagger upward   (anchor-1, anchor-2 …)
@@ -1272,7 +1272,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
      * @param data         the {@link LrcData} to display
      * @param timeInMillis current playback position in milliseconds
      */
-    public void setLrcDataWithPosition(LrcData data, long timeInMillis) {
+    public void setLrcData(LrcData data, long timeInMillis) {
         // ── Reset all state (same as setLrcData but skip the normal curtain trigger) ──
         this.lrcData = data;
         this.currentLineIndex = -1;

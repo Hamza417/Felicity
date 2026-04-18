@@ -39,6 +39,7 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtIntoBitmap
 import app.simple.felicity.interfaces.MiniPlayerPolicy
+import app.simple.felicity.managers.LyricsManager
 import app.simple.felicity.preferences.TrialPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
@@ -65,6 +66,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : BaseActivity(), MiniPlayerCallbacks {
@@ -72,6 +74,15 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     private lateinit var binding: ActivityMainBinding
 
     private val permissionViewModel by viewModels<PermissionViewModel>()
+
+    /**
+     * The central lyrics coordinator. Injected here so we can ask it to do a
+     * re-lookup whenever the app comes back to the foreground and the current
+     * song still has no lyrics — handy when the user manually dropped an .lrc
+     * file into the right folder while Felicity was in the background.
+     */
+    @Inject
+    lateinit var lyricsManager: LyricsManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -602,6 +613,14 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     override fun onStart() {
         super.onStart()
         startAudioDatabaseService()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // If the user stepped away, placed an .lrc file next to a song, and came back,
+        // we want the lyrics to show up immediately without forcing a full song reload.
+        // refreshIfNoLyrics() is smart enough to skip this when lyrics are already loaded.
+        lyricsManager.refreshIfNoLyrics()
     }
 
     override fun onStop() {
