@@ -10,7 +10,6 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.dashboard.AdapterDashboardPanels
 import app.simple.felicity.adapters.home.dashboard.AdapterDashboardPanels.Companion.AdapterDashboardPanelsCallbacks
@@ -32,6 +31,10 @@ import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.viewmodels.panels.DashboardViewModel
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
+import com.google.android.flexbox.AlignItems
+import com.google.android.flexbox.FlexDirection
+import com.google.android.flexbox.FlexboxLayoutManager
+import com.google.android.flexbox.JustifyContent
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -39,7 +42,7 @@ import kotlinx.coroutines.launch
  * Dashboard home screen fragment.
  *
  * Displays a scrollable dashboard composed of:
- *  - A header with the app name, search, WiFi server, and settings buttons.
+ *  - A header with the app name, search, Wi-Fi server, and settings buttons.
  *  - A spanned art grid of recommended songs loaded once per app session. The user can
  *    request a new random selection at any time via the shuffle button next to the section title.
  *  - A horizontal carousel of recently played songs.
@@ -107,7 +110,11 @@ class Dashboard : BaseHomeFragment() {
 
     private fun setupPanelsGrid() {
         val adapter = AdapterDashboardPanels(panels = dashboardViewModel.allPanelPanels)
-        binding.panelsRecyclerView.layoutManager = GridLayoutManager(requireContext(), PANEL_SPAN_COUNT)
+        binding.panelsRecyclerView.layoutManager = FlexboxLayoutManager(requireContext()).apply {
+            flexDirection = FlexDirection.ROW
+            justifyContent = JustifyContent.FLEX_START
+            alignItems = AlignItems.FLEX_START
+        }
         binding.panelsRecyclerView.adapter = adapter
         adapter.setCallbacks(object : AdapterDashboardPanelsCallbacks {
             override fun onPanelClicked(panel: Panel) {

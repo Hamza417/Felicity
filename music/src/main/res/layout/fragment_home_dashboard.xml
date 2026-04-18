@@ -122,7 +122,7 @@
                 android:id="@+id/panels_recycler_view"
                 android:layout_height="wrap_content"
                 android:layout_width="match_parent"
-                android:paddingHorizontal="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
                 android:nestedScrollingEnabled="false"
                 android:overScrollMode="never" />
 

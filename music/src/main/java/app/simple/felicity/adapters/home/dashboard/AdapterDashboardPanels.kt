@@ -3,8 +3,9 @@ package app.simple.felicity.adapters.home.dashboard
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import app.simple.felicity.databinding.AdapterHomeSimpleGridBinding
+import app.simple.felicity.databinding.AdapterDashboardPanelBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 
 /**
@@ -24,7 +25,7 @@ class AdapterDashboardPanels(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PanelHolder {
         return PanelHolder(
-                AdapterHomeSimpleGridBinding.inflate(
+                AdapterDashboardPanelBinding.inflate(
                         LayoutInflater.from(parent.context), parent, false))
     }
 
@@ -32,9 +33,9 @@ class AdapterDashboardPanels(
 
     override fun onBindViewHolder(holder: PanelHolder, position: Int) {
         val panel = panels[position]
-        holder.binding.icon.setImageResource(panel.iconResId)
+        holder.binding.title.setStartDrawable(panel.iconResId)
         holder.binding.title.text = holder.itemView.context.getString(panel.titleResId)
-        holder.binding.container.setOnClickListener {
+        holder.binding.title.setOnClickListener {
             callbacks?.onPanelClicked(panels[holder.bindingAdapterPosition])
         }
     }
@@ -48,7 +49,7 @@ class AdapterDashboardPanels(
         this.callbacks = callbacks
     }
 
-    inner class PanelHolder(val binding: AdapterHomeSimpleGridBinding) :
+    inner class PanelHolder(val binding: AdapterDashboardPanelBinding) :
             VerticalListViewHolder(binding.root)
 
     companion object {

@@ -78,20 +78,20 @@ class DashboardViewModel @Inject constructor(
      * The complete list of all panel navigation elements displayed in the browse grid.
      */
     val allPanelPanels: List<Panel> = listOf(
-            Panel(R.string.songs, R.drawable.ic_song),
-            Panel(R.string.albums, R.drawable.ic_album),
-            Panel(R.string.artists, R.drawable.ic_people),
-            Panel(R.string.album_artists, R.drawable.ic_artist),
-            Panel(R.string.genres, R.drawable.ic_piano),
-            Panel(R.string.year, R.drawable.ic_date_range),
-            Panel(R.string.playlists, R.drawable.ic_list),
-            Panel(R.string.playing_queue, R.drawable.ic_queue),
-            Panel(R.string.recently_added, R.drawable.ic_recently_added),
-            Panel(R.string.recently_played, R.drawable.ic_history),
-            Panel(R.string.most_played, R.drawable.ic_equalizer),
-            Panel(R.string.favorites, R.drawable.ic_favorite_filled),
-            Panel(R.string.folders, R.drawable.ic_folder),
-            Panel(R.string.folders_hierarchy, R.drawable.ic_tree),
+            Panel(R.string.songs, R.drawable.ic_song_16dp),
+            Panel(R.string.albums, R.drawable.ic_album_16dp),
+            Panel(R.string.artists, R.drawable.ic_people_16dp),
+            Panel(R.string.album_artists, R.drawable.ic_artist_16dp),
+            Panel(R.string.genres, R.drawable.ic_piano_16dp),
+            Panel(R.string.year, R.drawable.ic_date_range_16dp),
+            Panel(R.string.playlists, R.drawable.ic_list_16dp),
+            Panel(R.string.playing_queue, R.drawable.ic_queue_16dp),
+            Panel(R.string.recently_added, R.drawable.ic_recently_added_16dp),
+            Panel(R.string.recently_played, R.drawable.ic_history_16dp),
+            Panel(R.string.most_played, R.drawable.ic_equalizer_16dp),
+            Panel(R.string.favorites, R.drawable.ic_favorite_filled_16dp),
+            Panel(R.string.folders, R.drawable.ic_folder_16dp),
+            Panel(R.string.folders_hierarchy, R.drawable.ic_tree_16dp),
     )
 
     init {
