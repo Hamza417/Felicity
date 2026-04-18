@@ -29,6 +29,18 @@ class AudioDatabaseService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var currentStartId: Int = -1
 
+    /**
+     * This flag is set to true BEFORE we launch a scan coroutine, and cleared when
+     * the coroutine finishes. Because [onStartCommand] always runs on the main thread,
+     * checking and flipping this flag here is effectively race-free — no two
+     * [onStartCommand] calls can overlap. This prevents the situation where two rapid
+     * start commands both see the scan as idle (the coroutine from the first command
+     * hasn't had a chance to run and flip the scan-running flag yet), both launch coroutines,
+     * and the second one's empty finally block calls [stopSelfResult] with a high ID —
+     * which kills the service and cancels the real scan that the first coroutine started.
+     */
+    private var scanCoroutineLaunched = false
+
     companion object {
         private const val TAG = "AudioDatabaseService"
         private const val ACTION_START_SCAN = "app.simple.felicity.ACTION_START_SCAN"
@@ -71,16 +83,18 @@ class AudioDatabaseService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand called with action: ${intent?.action}, startId: $startId")
+
+        // Always track the latest startId. The running scan's finally block uses
+        // currentStartId (not the captured startId) so it always stops the service
+        // with the most recent ID — guaranteeing the service actually stops.
         currentStartId = startId
 
         when (intent?.action) {
             ACTION_REFRESH_SCAN -> {
-                // Cancel whatever is running and force a fresh scan
-                startForcedScan(startId)
+                startForcedScan()
             }
             else -> {
-                // ACTION_START_SCAN or no action – only run if nothing is in progress
-                startScanIfIdle(startId)
+                startScanIfIdle()
             }
         }
 
@@ -88,14 +102,21 @@ class AudioDatabaseService : Service() {
     }
 
     /**
-     * Run a scan only when no scan is already active.
-     * Silently drops the request if one is already running.
+     * Only starts a scan if no scan coroutine is currently running. The key detail
+     * here is that [scanCoroutineLaunched] is set to true BEFORE the coroutine is
+     * dispatched — not inside it. Since [onStartCommand] runs on the main thread
+     * sequentially, a second call will always see the flag as true and bail out,
+     * even if the first coroutine hasn't started executing on the IO thread yet.
+     * This closes the race window that previously allowed two coroutines to both
+     * think the scan slot was free.
      */
-    private fun startScanIfIdle(startId: Int) {
-        if (audioDatabaseLoader.isScanInProgress()) {
-            Log.w(TAG, "Scan already in progress, ignoring duplicate start request")
+    private fun startScanIfIdle() {
+        if (scanCoroutineLaunched) {
+            Log.w(TAG, "Scan coroutine already launched, ignoring startId=$currentStartId")
             return
         }
+
+        scanCoroutineLaunched = true
         serviceScope.launch {
             try {
                 Log.d(TAG, "Starting audio database scan (idle path)…")
@@ -106,16 +127,23 @@ class AudioDatabaseService : Service() {
             } catch (e: Exception) {
                 Log.e(TAG, "Error during scan", e)
             } finally {
-                stopSelfResult(startId)
+                scanCoroutineLaunched = false
+                // Use currentStartId here, not the captured startId from the lambda.
+                // If more start commands arrived while the scan was running, currentStartId
+                // will be the highest one — which is exactly what stopSelfResult needs to
+                // see in order to actually stop the service.
+                stopSelfResult(currentStartId)
             }
         }
     }
 
     /**
-     * Cancel the current scan (if any) and immediately start a new one.
-     * This is the path used on app resume – it is guaranteed to run.
+     * Cancels any running scan and immediately starts a fresh one. The [scanCoroutineLaunched]
+     * flag is set synchronously here (still on the main thread) so any concurrent
+     * [startScanIfIdle] call that might sneak in is blocked right away.
      */
-    private fun startForcedScan(startId: Int) {
+    private fun startForcedScan() {
+        scanCoroutineLaunched = true
         serviceScope.launch {
             try {
                 Log.d(TAG, "Forced refresh: cancelling existing scan and starting fresh…")
@@ -126,7 +154,8 @@ class AudioDatabaseService : Service() {
             } catch (e: Exception) {
                 Log.e(TAG, "Error during forced scan", e)
             } finally {
-                stopSelfResult(startId)
+                scanCoroutineLaunched = false
+                stopSelfResult(currentStartId)
             }
         }
     }
@@ -141,11 +170,12 @@ class AudioDatabaseService : Service() {
      */
     fun refreshAudioFiles() {
         Log.d(TAG, "Manual refresh requested via binder")
-        startForcedScan(currentStartId)
+        startForcedScan()
     }
 
     override fun onDestroy() {
         Log.d(TAG, "Service destroyed - cleaning up")
+        scanCoroutineLaunched = false
         audioDatabaseLoader.cleanup()
         serviceScope.coroutineContext.cancel()
         super.onDestroy()
@@ -153,6 +183,7 @@ class AudioDatabaseService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         Log.d(TAG, "Task removed - cleaning up and stopping service")
+        scanCoroutineLaunched = false
         audioDatabaseLoader.cleanup()
         stopSelf()
         super.onTaskRemoved(rootIntent)

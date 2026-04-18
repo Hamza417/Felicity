@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import app.simple.felicity.repository.R
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -50,6 +51,15 @@ class LoaderNotification(private val context: Context) {
     private val currentGeneration = AtomicInteger(0)
 
     /**
+     * Tracks whether the notification is currently visible on screen. We manage
+     * this ourselves because Android does not give us a reliable API to ask the
+     * NotificationManager "hey, is this still showing?". Setting it to false in
+     * both dismiss paths means the old scan can never accidentally nuke the new
+     * scan's notification by falling through to the force-dismiss below.
+     */
+    private val isNotificationActive = AtomicBoolean(false)
+
+    /**
      * Total number of audio files found on the device. Once this is set (non-zero),
      * the progress bar switches from the spinning indeterminate style to a proper
      * fill-level bar.
@@ -69,6 +79,7 @@ class LoaderNotification(private val context: Context) {
         setupChannel()
         totalFiles = 0
         val generation = currentGeneration.incrementAndGet()
+        isNotificationActive.set(true)
         postIndeterminate()
         return generation
     }
@@ -125,6 +136,7 @@ class LoaderNotification(private val context: Context) {
      */
     fun dismiss(generation: Int) {
         if (generation == currentGeneration.get()) {
+            isNotificationActive.set(false)
             notificationManager.cancel(SCAN_NOTIFICATION_ID)
         }
     }
@@ -135,15 +147,17 @@ class LoaderNotification(private val context: Context) {
      * absolutely sure nothing is running anymore, and you just want it gone.
      */
     fun dismissForce() {
+        isNotificationActive.set(false)
         notificationManager.cancel(SCAN_NOTIFICATION_ID)
     }
 
-    fun isShowing(): Boolean {
-        // There's no official API to check if a notification is currently showing,
-        // but we can infer it by checking if the current generation has been dismissed.
-        // If the generation is 0, it means no scan has started yet, so we return false.
-        return currentGeneration.get() > 0
-    }
+    /**
+     * Returns true when the notification is currently visible on screen.
+     * We track this ourselves with a simple boolean flag rather than asking
+     * the system, since Android's NotificationManager has no reliable "is it
+     * showing?" API for the app's own notifications.
+     */
+    fun isShowing(): Boolean = isNotificationActive.get()
 
     private fun setupChannel() {
         val channel = NotificationChannel(

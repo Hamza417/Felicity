@@ -20,6 +20,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.cancellation.CancellationException
@@ -63,17 +65,21 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     /** Per-instance index of paths we have already seen in the database. */
     private val indexedMap: HashMap<String, IndexedFile> = hashMapOf()
 
-    /** Tracks all active file-processing jobs so we can cancel or wait on them cleanly. */
-    private val activeJobs = mutableListOf<Job>()
-
     /**
      * Each scan gets its own scope. When a scan is canceled, we swap in a fresh
      * scope so the next scan can start clean without inheriting a dead Job.
      */
     private var scanScope: CoroutineScope = newScanScope()
 
-    /** Prevents two scans from running in parallel — a second caller just backs off. */
-    private val scanMutex = Mutex()
+    /**
+     * Guards against two scans running at the same time. We use an AtomicBoolean
+     * instead of a coroutine Mutex because a Mutex can only be unlocked by the
+     * coroutine that locked it — trying to unlock from a different coroutine
+     * (e.g. during a forced cancel) throws silently and leaves the lock stuck
+     * forever, which is exactly the bug that caused the first-launch scan to stop.
+     * An AtomicBoolean has no such restriction and can be reset from anywhere.
+     */
+    private val isScanRunning = AtomicBoolean(false)
 
     /** Limits how many files we process in parallel so we don't overwhelm the CPU. */
     private val semaphore = Semaphore(max(MIN_SEMAPHORE_PERMITS, Runtime.getRuntime().availableProcessors()))
@@ -90,7 +96,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     suspend fun processAudioFiles() {
         checkNotMainThread()
 
-        if (!scanMutex.tryLock()) {
+        if (!isScanRunning.compareAndSet(false, true)) {
             Log.w(TAG, "Scan already in progress, skipping...")
             return
         }
@@ -128,8 +134,6 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
             Log.d(TAG, "Indexing complete. Found ${indexedMap.size} existing audio files in the database.")
 
-            synchronized(activeJobs) { activeJobs.clear() }
-
             val insertBatchList = mutableListOf<Audio>()
             val updateBatchList = mutableListOf<Audio>()
             val batchMutex = Mutex()
@@ -148,17 +152,31 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             notification.setTotal(allAudioFiles.size)
             Log.d(TAG, "Total audio files to evaluate: ${allAudioFiles.size}")
 
+            /**
+             * This counter tracks how many files have actually *finished* being
+             * processed (metadata extracted, DB written), not just how many times
+             * the loop has ticked. The old approach used the loop index, which
+             * races way ahead of the parallel coroutines and made the notification
+             * show "1200 files done" while the library was still loading its 200th
+             * song — pretty confusing for anyone watching the progress bar.
+             */
+            val processedCount = AtomicInteger(0)
+
+            /**
+             * A plain local list of every job we launch during Phase 2. No locking
+             * needed here — only the sequential loop below ever touches this list
+             * (the launched coroutines never write to it), so there is no contention.
+             * Previously this was a shared field with synchronized blocks on every
+             * iteration, which caused a 252ms monitor stall and "Canceling 1180 jobs"
+             * at cancel time. Jobs no longer need individual cancellation because
+             * cancelling [scanScope] already cancels every child automatically.
+             */
+            val pendingJobs = mutableListOf<Job>()
+
             // Phase 2 — process each file. The loop is sequential; the heavy lifting
             // (metadata extraction) happens inside parallel coroutines on the scanScope.
-            allAudioFiles.forEachIndexed { index, file ->
+            allAudioFiles.forEach { file ->
                 scanScope.coroutineContext.ensureActive()
-
-                // Nudge the progress bar forward every N files so the user can see
-                // the scan is still alive and moving along.
-                val scannedSoFar = index + 1
-                if (scannedSoFar % LoaderNotification.NOTIFICATION_UPDATE_INTERVAL == 0) {
-                    notification.updateProgress(scannedSoFar)
-                }
 
                 if (shouldProcess(file)) {
                     val processingJob = scanScope.launch {
@@ -219,6 +237,15 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                                     batchMutex.unlock()
                                 }
                             }
+
+                            // Bump the real progress counter and refresh the notification.
+                            // We do this here — inside the coroutine, after the heavy work —
+                            // so the count reflects files that are genuinely done, not just
+                            // files whose coroutine was *launched* (those two can be far apart).
+                            val done = processedCount.incrementAndGet()
+                            if (done % LoaderNotification.NOTIFICATION_UPDATE_INTERVAL == 0) {
+                                notification.updateProgress(done)
+                            }
                         } catch (e: CancellationException) {
                             Log.d(TAG, "Processing canceled for: ${file.name}")
                             throw e
@@ -229,12 +256,11 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                         }
                     }
 
-                    synchronized(activeJobs) { activeJobs.add(processingJob) }
+                    pendingJobs.add(processingJob)
                 }
             }
 
-            val jobsToWait = synchronized(activeJobs) { activeJobs.toList() }
-            jobsToWait.joinAll()
+            pendingJobs.joinAll()
 
             if (insertBatchList.isNotEmpty()) {
                 Log.d(TAG, "Inserting final batch of ${insertBatchList.size} audio items")
@@ -258,26 +284,24 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Error during audio file processing", e)
         } finally {
-            synchronized(activeJobs) { activeJobs.clear() }
-
             // Pass our generation token — if a newer scan has already started, this
             // is a no-op and the new scan's notification stays on screen. If we are
             // the most recent scan, we properly clean up after ourselves.
             notification.dismiss(generation)
 
-            /**
-             * Check if we are still showing the notification.
-             * If yes, force dismiss
-             */
+            // Only force-dismiss if the notification is still marked as active after
+            // the generation-aware dismiss above. Without this guard the old scan's
+            // finally block would blow away the new scan's notification even when the
+            // generation check correctly decided to leave it alone.
             if (notification.isShowing()) {
                 notification.dismissForce()
             }
 
-            try {
-                scanMutex.unlock()
-            } catch (_: IllegalStateException) {
-                Log.w(TAG, "Mutex unlock skipped in finally block – not locked by current owner")
-            }
+            // Signal that the scan is done. Any coroutine can flip this safely
+            // because AtomicBoolean has no ownership concept — unlike Mutex, which
+            // would throw if the wrong coroutine tried to unlock it (the root cause
+            // of first-launch scans silently dropping).
+            isScanRunning.set(false)
         }
     }
 
@@ -434,7 +458,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     }
 
     /** Returns true when a scan is currently running. */
-    fun isScanInProgress(): Boolean = scanMutex.isLocked
+    fun isScanInProgress(): Boolean = isScanRunning.get()
 
     /**
      * Cancels whatever scan is in progress and immediately kicks off a fresh one.
@@ -452,25 +476,22 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
      * start cleanly. Unlike [cleanup], this leaves the loader fully operational.
      */
     private fun cancelCurrentScan() {
-        synchronized(activeJobs) {
-            Log.d(TAG, "Canceling ${activeJobs.size} active jobs")
-            activeJobs.forEach { it.cancel() }
-            activeJobs.clear()
-        }
-
+        // Cancelling the scope automatically cancels every coroutine child that was
+        // launched within it — no need to track or cancel individual jobs. The old
+        // approach kept a synchronized list of all 1000+ jobs and iterated over it,
+        // which caused a noticeable main-thread monitor stall when cancel was called.
+        Log.d(TAG, "Canceling scanScope (all child coroutines will be cancelled automatically)")
         scanScope.coroutineContext[Job]?.cancel()
         scanScope = newScanScope()
 
         indexedMap.clear()
 
-        if (scanMutex.isLocked) {
-            try {
-                scanMutex.unlock()
-                Log.d(TAG, "Mutex released after cancel")
-            } catch (_: IllegalStateException) {
-                Log.w(TAG, "Mutex unlock skipped – not locked by current owner")
-            }
-        }
+        // Reset the running flag so the next scan can start immediately.
+        // This is safe to call from any coroutine — AtomicBoolean has no
+        // owner restriction, which is exactly why we chose it over Mutex here.
+        isScanRunning.set(false)
+
+        notification.dismissForce()
     }
 
     /**
