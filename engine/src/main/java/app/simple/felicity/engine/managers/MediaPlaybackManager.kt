@@ -842,11 +842,18 @@ object MediaPlaybackManager {
         }
         if (position in songs.indices) {
             if (pendingSeekPositions.remove(position)) {
-                // User-initiated seek confirmed by ExoPlayer.
-                // The position was already emitted by the setter when the seek was initiated
-                // (in setSongs or updatePosition), so no second emit is needed here.
-                // If currentSongPosition has since moved on the user already chose a different
-                // song and this stale confirmation is simply discarded by doing nothing.
+                // ExoPlayer just confirmed a position that was pre-registered as a pending seek.
+                // This covers two cases:
+                //  1. A real user-initiated seek (updatePosition / setSongs) — the position was
+                //     already written to currentSongPosition before the seekTo call, so the setter
+                //     won't fire again. No harm done.
+                //  2. A guard added by addToQueue / playNext to absorb the spurious STATE_ENDED
+                //     callback that ExoPlayer emits when a new item is added to a finished queue.
+                //     In this case currentSongPosition was NOT updated yet, so we must sync it now
+                //     so the UI correctly shows the newly-playing song.
+                if (currentSongPosition != position) {
+                    currentSongPosition = position
+                }
             } else {
                 // Natural ExoPlayer advance (end of track, auto-next, gapless, etc.).
                 // Honor the always-skip flag only here, in the auto-queue path.
