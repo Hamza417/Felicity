@@ -179,7 +179,7 @@ class PurchaseViewModel @Inject constructor(
 
     /**
      * Checks the Play Store for any purchases the user already completed —
-     * useful if they reinstalled the app and we need to restore their access.
+     * useful if they reinstalled the app, and we need to restore their access.
      */
     private fun restoreExistingPurchases() {
         val params = QueryPurchasesParams.newBuilder()

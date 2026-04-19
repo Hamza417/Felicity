@@ -6,13 +6,9 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
-import app.simple.felicity.adapters.preference.GenericPreferencesAdapter
 import app.simple.felicity.databinding.FragmentPurchaseBinding
 import app.simple.felicity.databinding.HeaderPreferencesGenericBinding
-import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.extensions.fragments.PreferenceFragment
-import app.simple.felicity.models.Preference
 import app.simple.felicity.preferences.TrialPreferences
 import app.simple.felicity.viewmodels.PurchaseViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -53,12 +49,22 @@ class Purchase : PreferenceFragment() {
         headerBinding.title.text = getString(R.string.purchase)
         headerBinding.icon.setImageResource(R.drawable.ic_sell)
         binding.header.setContentView(headerBinding.root)
-        binding.recyclerView.setHasFixedSize(false)
-        binding.recyclerView.adapter = GenericPreferencesAdapter(buildInfoPanel())
-        binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
 
+        refreshTrialStatus()
         observeBillingState()
         setupBuyButton()
+    }
+
+    /**
+     * Fills in the trial status text at the top of the screen.
+     * If the user already purchased, we swap it out for a celebratory message instead.
+     */
+    private fun refreshTrialStatus() {
+        binding.trialStatus.text = when {
+            TrialPreferences.isFullVersion() -> getString(R.string.already_purchased)
+            TrialPreferences.isWithinTrialPeriod() -> getString(R.string.trial_period_summary, TrialPreferences.getDaysLeft())
+            else -> getString(R.string.trial_expired_short)
+        }
     }
 
     /**
@@ -90,8 +96,7 @@ class Purchase : PreferenceFragment() {
                     binding.buyButton.text = getString(R.string.already_purchased)
                     binding.buyButton.isEnabled = false
                     binding.buyButton.alpha = 0.6f
-                    // Refresh the info panel to reflect the updated full-version status.
-                    binding.recyclerView.adapter = GenericPreferencesAdapter(buildInfoPanel())
+                    refreshTrialStatus()
                 }
 
                 is PurchaseViewModel.BillingState.Error -> {
@@ -110,8 +115,7 @@ class Purchase : PreferenceFragment() {
 
         purchaseViewModel.purchaseSuccess.observe(viewLifecycleOwner) { success ->
             if (success == true) {
-                // Let the user know they're now a proud owner of the full version!
-                binding.recyclerView.adapter = GenericPreferencesAdapter(buildInfoPanel())
+                refreshTrialStatus()
             }
         }
     }
@@ -130,59 +134,6 @@ class Purchase : PreferenceFragment() {
 
     override val wantsMiniPlayerVisible: Boolean
         get() = false
-
-    /**
-     * Builds the list of info cards shown at the top of the screen.
-     * These show the trial status so the user understands why they're here
-     * and how many days they have left before things get awkward.
-     */
-    private fun buildInfoPanel(): MutableList<Preference> {
-        val preferences = mutableListOf<Preference>()
-
-        preferences.add(Preference(title = R.string.trial, type = PreferenceType.SUB_HEADER))
-
-        if (TrialPreferences.isFullVersion()) {
-            preferences.add(
-                    Preference(
-                            title = R.string.full_version_active,
-                            summary = getString(R.string.already_purchased),
-                            icon = R.drawable.ic_sell,
-                            type = PreferenceType.NORMAL
-                    )
-            )
-        } else {
-            val trialIcon = if (TrialPreferences.isWithinTrialPeriod()) {
-                R.drawable.ic_hourglass_top
-            } else {
-                R.drawable.ic_hourglass_bottom
-            }
-
-            preferences.add(
-                    Preference(
-                            title = R.string.trial_period,
-                            summary = if (TrialPreferences.isWithinTrialPeriod()) {
-                                getString(R.string.trial_period_summary, TrialPreferences.getDaysLeft())
-                            } else {
-                                getString(R.string.trial_expired_short)
-                            },
-                            icon = trialIcon,
-                            type = PreferenceType.NORMAL
-                    )
-            )
-        }
-
-        preferences.add(Preference(title = R.string.purchase, type = PreferenceType.SUB_HEADER))
-        preferences.add(
-                Preference(
-                        title = R.string.buy_full_version,
-                        summary = R.string.play_store_purchase_summary,
-                        icon = R.drawable.ic_sell,
-                        type = PreferenceType.NORMAL
-                )
-        )
-
-        return preferences
-    }
 
     override fun onDestroyView() {
         super.onDestroyView()

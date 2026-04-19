@@ -134,7 +134,7 @@ dependencies {
 
     // Google
     implementation 'com.google.android.flexbox:flexbox:3.0.0'
-    playImplementation 'com.android.billingclient:billing:8.3.0'
+    playImplementation 'com.android.billingclient:billing-ktx:8.3.0'
 
     // Third party
 

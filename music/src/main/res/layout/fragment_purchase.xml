@@ -1,28 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.theme.ThemeFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.padding.PaddingAwareLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    app:navigationPaddingRequired="true"
+    app:statusPaddingRequired="false">
 
     <!--
-        The recycler view holds the trial status info cards at the top.
-        The bottom padding leaves room for the big buy button below it.
-    -->
-    <app.simple.felicity.decorations.views.SpacingRecyclerView
-        android:id="@+id/recycler_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layoutAnimation="@anim/list_animation_controller"
-        android:clipToPadding="false"
-        android:paddingBottom="96dp"
-        android:paddingTop="8dp"
-        android:scrollbars="none"
-        app:navigationPaddingRequired="true"
-        app:statusPaddingRequired="false" />
-
-    <!--
-        The header floats over the recycler view and hides as the user scrolls down,
-        so they can see more content without losing navigation context.
+        The header sits at the very top and stays put while the content below scrolls.
+        A classic combo — like peanut butter and jelly.
     -->
     <app.simple.felicity.decorations.views.AppHeader
         android:id="@+id/header"
@@ -31,19 +18,199 @@
         app:headerContentLayout="@layout/header_preferences_generic" />
 
     <!--
-        This is the big, friendly "Buy" button anchored to the bottom of the screen.
-        We anchor it to the bottom so users always know where to tap, no scrolling required.
+        Everything between the header and the buy button lives inside this scroll view,
+        so it all stays reachable even on smaller screens.
+    -->
+    <app.simple.felicity.decorations.padding.PaddingAwareNestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp"
+        app:navigationPaddingRequired="false"
+        app:statusPaddingRequired="false">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="16dp">
+
+            <!-- Trial status section — lets the user know how much free time is left. -->
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:id="@+id/section_trial"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/trial"
+                android:textSize="@dimen/text_size_12"
+                android:letterSpacing="0.12"
+                android:textAllCaps="true"
+                app:appFontStyle="bold"
+                app:textColorStyle="accent" />
+
+            <!--
+                Shows the actual trial countdown — or a polite note that time's up.
+                Populated at runtime from TrialPreferences.
+            -->
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:id="@+id/trial_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="24dp"
+                android:textSize="@dimen/text_size_16"
+                app:appFontStyle="medium"
+                app:textColorStyle="secondary" />
+
+            <!-- What's in the box — a friendly rundown of what the full version unlocks. -->
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:id="@+id/section_features"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/purchase"
+                android:textSize="@dimen/text_size_12"
+                android:letterSpacing="0.12"
+                android:textAllCaps="true"
+                app:appFontStyle="bold"
+                app:textColorStyle="accent" />
+
+            <!-- Feature bullet list — because everyone loves knowing what they're paying for. -->
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/all_features_summary"
+                android:textSize="@dimen/text_size_14"
+                android:gravity="center_vertical"
+                android:drawablePadding="@dimen/padding_5"
+                app:appFontStyle="medium"
+                app:drawableStartCompat="@drawable/ic_dot_12dp"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="secondary" />
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/feature_unlimited_playback"
+                android:textSize="@dimen/text_size_14"
+                android:gravity="center_vertical"
+                android:drawablePadding="@dimen/padding_5"
+                app:appFontStyle="medium"
+                app:drawableStartCompat="@drawable/ic_dot_12dp"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="secondary" />
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/feature_equalizer"
+                android:textSize="@dimen/text_size_14"
+                android:gravity="center_vertical"
+                android:drawablePadding="@dimen/padding_5"
+                app:appFontStyle="medium"
+                app:drawableStartCompat="@drawable/ic_dot_12dp"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="secondary" />
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/feature_milkdrop"
+                android:textSize="@dimen/text_size_14"
+                android:gravity="center_vertical"
+                android:drawablePadding="@dimen/padding_5"
+                app:appFontStyle="medium"
+                app:drawableStartCompat="@drawable/ic_dot_12dp"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="secondary" />
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/feature_themes"
+                android:textSize="@dimen/text_size_14"
+                android:gravity="center_vertical"
+                android:drawablePadding="@dimen/padding_5"
+                app:appFontStyle="medium"
+                app:drawableStartCompat="@drawable/ic_dot_12dp"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="secondary" />
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/feature_lyrics"
+                android:textSize="@dimen/text_size_14"
+                android:gravity="center_vertical"
+                android:drawablePadding="@dimen/padding_5"
+                app:appFontStyle="medium"
+                app:drawableStartCompat="@drawable/ic_dot_12dp"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="secondary" />
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/feature_wifi_server"
+                android:textSize="@dimen/text_size_14"
+                android:gravity="center_vertical"
+                android:drawablePadding="@dimen/padding_5"
+                app:appFontStyle="medium"
+                app:drawableStartCompat="@drawable/ic_dot_12dp"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="secondary" />
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/feature_no_subscription"
+                android:textSize="@dimen/text_size_14"
+                android:gravity="center_vertical"
+                android:drawablePadding="@dimen/padding_5"
+                app:appFontStyle="medium"
+                app:drawableStartCompat="@drawable/ic_dot_12dp"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="secondary" />
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/feature_updates"
+                android:textSize="@dimen/text_size_14"
+                android:gravity="center_vertical"
+                android:drawablePadding="@dimen/padding_5"
+                app:appFontStyle="medium"
+                app:drawableStartCompat="@drawable/ic_dot_12dp"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="secondary" />
+
+        </LinearLayout>
+
+    </app.simple.felicity.decorations.padding.PaddingAwareNestedScrollView>
+
+    <!--
+        The big buy button always stays at the bottom — no scrolling required to find it.
+        When billing is loading, it's dimmed and disabled so nothing weird happens.
     -->
     <LinearLayout
-        android:id="@+id/purchase_button_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
         android:orientation="vertical"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:paddingBottom="16dp"
-        app:navigationPaddingRequired="true">
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp">
 
         <app.simple.felicity.decorations.highlight.HighlightTextView
             android:id="@+id/buy_button"
@@ -52,9 +219,10 @@
             android:gravity="center"
             android:textSize="@dimen/text_size_18"
             android:textStyle="bold"
-            android:text="@string/purchase_now" />
+            android:text="@string/purchase_now"
+            app:highlightMode="both" />
 
     </LinearLayout>
 
-</app.simple.felicity.decorations.theme.ThemeFrameLayout>
+</app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>
 

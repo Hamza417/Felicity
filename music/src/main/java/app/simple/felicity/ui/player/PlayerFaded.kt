@@ -36,7 +36,7 @@ class PlayerFaded : BasePlayerFragment() {
         get() = binding.count
 
     override val mediaControls: FelicityMediaControls
-        get() = binding.mediaControls!!
+        get() = binding.mediaControls
 
     override val queue: View
         get() = binding.queue
