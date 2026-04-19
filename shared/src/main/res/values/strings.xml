@@ -409,4 +409,17 @@
     <string name="dividers_summary">Add divider lines in the lists.</string>
     <string name="like_icon">Like Icon</string>
     <string name="like_icon_summary">Replace the heart icon for favorites with a thumbs up icon in the app.</string>
+    <string name="buy_full_version">Buy Full Version</string>
+
+    <!-- Billing screen strings for the Play Store flavor -->
+    <string name="play_store_purchase_summary">Complete your purchase securely through Google Play.</string>
+    <string name="billing_connecting">Connecting to Google Play\u2026</string>
+    <string name="billing_unavailable">Google Play Billing is not available on this device.</string>
+    <string name="billing_error">Something went wrong: %1$s</string>
+    <string name="purchase_complete">You\'re all set! Welcome to the full version of Felicity.</string>
+    <string name="already_purchased">You already own this — enjoy the full version!</string>
+    <string name="purchase_restored">Your purchase has been restored. Welcome back!</string>
+    <string name="days_left">%1$d days left</string>
+    <string name="trial_expired_short">Trial expired</string>
+    <string name="full_version_active">Full version active</string>
 </resources>
