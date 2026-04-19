@@ -62,12 +62,17 @@ class AudioDatabaseService : Service() {
          */
         @Keep
         fun refreshScan(context: Context) {
-            val intent = Intent(context, AudioDatabaseService::class.java).apply {
-                action = ACTION_REFRESH_SCAN
-            }
+            runCatching {
+                val intent = Intent(context, AudioDatabaseService::class.java).apply {
+                    action = ACTION_REFRESH_SCAN
+                }
 
-            // TODO: catch the exception here
-            context.startService(intent)
+                context.startService(intent)
+            }.getOrElse {
+                it.printStackTrace()
+                Log.i(TAG, "Failed to start AudioDatabaseService for refreshScan: ${it.message}")
+                Log.v(TAG, "We can safely ignore this, the user can manually scan if required.")
+            }
         }
     }
 
