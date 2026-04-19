@@ -20,7 +20,8 @@
 - Added **Refresh Library** in **Library Preferences**.
 - Added **Dividers** accessibility toggle to add divider lines in the whole app.
 - Updated **Dashboard** interface with smaller buttons for ideal spacing.
-- Added a **Selections** panel to view currently selected songs.
+- Added **Selections** panel to view currently selected songs.
+- Added toggle to replace **Heart** icon with **Thumbs Up** icon for favorites.
 
 ### Bug Fixes
 

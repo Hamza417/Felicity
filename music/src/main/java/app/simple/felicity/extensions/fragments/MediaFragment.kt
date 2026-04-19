@@ -35,6 +35,7 @@ import app.simple.felicity.databinding.DialogSongMenuBinding
 import app.simple.felicity.databinding.DialogSureBinding
 import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
+import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.dialogs.app.AudioInformation.Companion.showAudioInfo
 import app.simple.felicity.dialogs.lyrics.Lyrics.Companion.showLyrics
 import app.simple.felicity.dialogs.playlists.AddToPlaylistDialog.Companion.showAddToPlaylistDialog
@@ -501,6 +502,21 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 binding.addToSelection.setCompoundDrawablesWithIntrinsicBounds(
                         AppCompatResources.getDrawable(requireContext(), R.drawable.ic_cross_16dp),
                         null, null, null)
+            }
+
+            // --------------- Favorites icon logic ---------------
+            if (UserInterfacePreferences.isLikeIconInsteadOfThumb()) {
+                if (audio.isFavorite) {
+                    binding.addToFavorites.setStartDrawable(R.drawable.ic_thumb_up_16dp)
+                } else {
+                    binding.addToFavorites.setStartDrawable(R.drawable.ic_thumb_up_off_16dp)
+                }
+            } else {
+                if (audio.isFavorite) {
+                    binding.addToFavorites.setStartDrawable(R.drawable.ic_favorite_filled_16dp)
+                } else {
+                    binding.addToFavorites.setStartDrawable(R.drawable.ic_favorite_border_16dp)
+                }
             }
         }
 

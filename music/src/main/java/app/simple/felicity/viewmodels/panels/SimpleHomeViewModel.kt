@@ -1,11 +1,13 @@
 package app.simple.felicity.viewmodels.panels
 
 import android.app.Application
+import android.content.SharedPreferences
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.preferences.UserInterfacePreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -31,29 +33,38 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
 
     private fun setHomeData() {
         viewModelScope.launch(Dispatchers.IO) {
-            val defaultPanels = listOf(
-                    Group(R.string.library),
-                    Panel(R.string.songs, R.drawable.ic_song),
-                    Panel(R.string.albums, R.drawable.ic_album),
-                    Panel(R.string.artists, R.drawable.ic_people),
-                    Panel(R.string.album_artists, R.drawable.ic_artist),
-                    Panel(R.string.genres, R.drawable.ic_piano),
-                    Panel(R.string.year, R.drawable.ic_date_range),
-                    Panel(R.string.playlists, R.drawable.ic_list),
-                    Group(R.string.activity),
-                    Panel(R.string.playing_queue, R.drawable.ic_queue),
-                    Panel(R.string.recently_added, R.drawable.ic_recently_added),
-                    Panel(R.string.recently_played, R.drawable.ic_history),
-                    Panel(R.string.most_played, R.drawable.ic_equalizer),
-                    Panel(R.string.favorites, R.drawable.ic_favorite_filled),
-                    Group(R.string.files),
-                    Panel(R.string.folders, R.drawable.ic_folder),
-                    Panel(R.string.folders_hierarchy, R.drawable.ic_tree),
-                    // Group(R.string.general),
-                    // Panel(R.string.preferences, R.drawable.ic_settings)
-            )
+            val defaultPanels = mutableListOf<Any>()
+
+            defaultPanels.add(Group(R.string.library))
+            defaultPanels.add(Panel(R.string.songs, R.drawable.ic_song))
+            defaultPanels.add(Panel(R.string.albums, R.drawable.ic_album))
+            defaultPanels.add(Panel(R.string.artists, R.drawable.ic_people))
+            defaultPanels.add(Panel(R.string.album_artists, R.drawable.ic_artist))
+            defaultPanels.add(Panel(R.string.genres, R.drawable.ic_piano))
+            defaultPanels.add(Panel(R.string.year, R.drawable.ic_date_range))
+            defaultPanels.add(Panel(R.string.playlists, R.drawable.ic_list))
+            defaultPanels.add(Group(R.string.activity))
+            defaultPanels.add(Panel(R.string.playing_queue, R.drawable.ic_queue))
+            defaultPanels.add(Panel(R.string.recently_added, R.drawable.ic_recently_added))
+            defaultPanels.add(Panel(R.string.recently_played, R.drawable.ic_history))
+            defaultPanels.add(Panel(R.string.most_played, R.drawable.ic_equalizer))
+            if (UserInterfacePreferences.isLikeIconInsteadOfThumb()) {
+                defaultPanels.add(Panel(R.string.favorites, R.drawable.ic_thumb_up))
+            } else {
+                defaultPanels.add(Panel(R.string.favorites, R.drawable.ic_favorite_filled))
+            }
+            defaultPanels.add(Group(R.string.files))
+            defaultPanels.add(Panel(R.string.folders, R.drawable.ic_folder))
+            defaultPanels.add(Panel(R.string.folders_hierarchy, R.drawable.ic_tree))
 
             homeData.postValue(defaultPanels.toMutableList())
+        }
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            UserInterfacePreferences.LIKE_ICON_INSTEAD_OF_HEART -> setHomeData()
         }
     }
 

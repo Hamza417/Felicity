@@ -407,4 +407,6 @@
     <string name="storage_root">Storage Root</string>
     <string name="dividers">Dividers</string>
     <string name="dividers_summary">Add divider lines in the lists.</string>
+    <string name="like_icon">Like Icon</string>
+    <string name="like_icon_summary">Replace the heart icon for favorites with a thumbs up icon in the app.</string>
 </resources>

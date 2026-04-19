@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.SongStatRepository
@@ -89,7 +90,11 @@ class DashboardViewModel @Inject constructor(
             Panel(R.string.recently_added, R.drawable.ic_recently_added_16dp),
             Panel(R.string.recently_played, R.drawable.ic_history_16dp),
             Panel(R.string.most_played, R.drawable.ic_equalizer_16dp),
-            Panel(R.string.favorites, R.drawable.ic_favorite_filled_16dp),
+            if (UserInterfacePreferences.isLikeIconInsteadOfThumb()) {
+                Panel(R.string.favorites, R.drawable.ic_thumb_up_16dp)
+            } else {
+                Panel(R.string.favorites, R.drawable.ic_favorite_filled_16dp)
+            },
             Panel(R.string.folders, R.drawable.ic_folder_16dp),
             Panel(R.string.folders_hierarchy, R.drawable.ic_tree_16dp),
     )

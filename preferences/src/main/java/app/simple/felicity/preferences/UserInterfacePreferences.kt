@@ -15,6 +15,8 @@ import app.simple.felicity.preferences.UserInterfacePreferences.PLAYER_INTERFACE
  */
 object UserInterfacePreferences {
 
+    const val LIKE_ICON_INSTEAD_OF_HEART = "like_icon_instead_of_heart"
+
     const val MARGIN_AROUND_MINIPLAYER = "margin_around_miniplayer"
     const val HOME_INTERFACE = "home_interface_"
     const val PLAYER_INTERFACE = "player_interface_"
@@ -26,6 +28,14 @@ object UserInterfacePreferences {
 
     const val PLAYER_INTERFACE_DEFAULT = 0
     const val PLAYER_INTERFACE_FADED = 1
+
+    fun setLikeIconInsteadOfThumb(value: Boolean) {
+        getSharedPreferences().edit { putBoolean(LIKE_ICON_INSTEAD_OF_HEART, value) }
+    }
+
+    fun isLikeIconInsteadOfThumb(): Boolean {
+        return getSharedPreferences().getBoolean(LIKE_ICON_INSTEAD_OF_HEART, false)
+    }
 
     fun setMarginAroundMiniplayer(value: Boolean) {
         getSharedPreferences().edit { putBoolean(MARGIN_AROUND_MINIPLAYER, value) }

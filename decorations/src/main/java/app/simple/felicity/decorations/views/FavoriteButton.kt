@@ -6,9 +6,11 @@ import android.os.Parcelable
 import android.util.AttributeSet
 import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
+import androidx.annotation.DrawableRes
 import androidx.core.os.BundleCompat
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
@@ -19,6 +21,20 @@ class FavoriteButton : DynamicRippleImageButton {
     private var WAS_FAVORITE = false
     private var isFavorite = false
 
+    @DrawableRes
+    private var favoriteIconRes = if (UserInterfacePreferences.isLikeIconInsteadOfThumb()) {
+        R.drawable.ic_thumb_up
+    } else {
+        R.drawable.ic_favorite_filled
+    }
+
+    @DrawableRes
+    private var notFavoriteIconRes = if (UserInterfacePreferences.isLikeIconInsteadOfThumb()) {
+        R.drawable.ic_thumb_up_off
+    } else {
+        R.drawable.ic_favorite_border
+    }
+
     constructor(context: Context?, attrs: AttributeSet?) : super(context, attrs) {
         init()
     }
@@ -28,7 +44,7 @@ class FavoriteButton : DynamicRippleImageButton {
     }
 
     private fun init() {
-        setImageResource(R.drawable.ic_favorite_border)
+        setImageResource(notFavoriteIconRes)
     }
 
     fun setFavorite(isFavorite: Boolean, animate: Boolean) {
@@ -47,20 +63,16 @@ class FavoriteButton : DynamicRippleImageButton {
             clearAnimation()
 
             animate()
-                .scaleX(0f)
-                .scaleY(0f)
                 .alpha(0f)
                 .setDuration(150)
                 .setInterpolator(AccelerateInterpolator())
                 .withEndAction {
                     if (isFavorite) {
-                        setImageResource(R.drawable.ic_favorite_filled)
+                        setImageResource(favoriteIconRes)
                     } else {
-                        setImageResource(R.drawable.ic_favorite_border)
+                        setImageResource(notFavoriteIconRes)
                     }
                     animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
                         .alpha(1f)
                         .setDuration(DURATION)
                         .setInterpolator(DecelerateInterpolator())
@@ -68,9 +80,9 @@ class FavoriteButton : DynamicRippleImageButton {
                 }.start()
         } else {
             if (isFavorite) {
-                setImageResource(R.drawable.ic_favorite_filled)
+                setImageResource(favoriteIconRes)
             } else {
-                setImageResource(R.drawable.ic_favorite_border)
+                setImageResource(notFavoriteIconRes)
             }
         }
     }

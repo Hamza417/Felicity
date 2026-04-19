@@ -331,12 +331,29 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val applicationHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.application)
+
+        val likeButton = Preference(
+                title = R.string.like_icon,
+                summary = R.string.like_icon_summary,
+                icon = R.drawable.ic_thumb_up,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    UserInterfacePreferences.setLikeIconInsteadOfThumb((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    UserInterfacePreferences.isLikeIconInsteadOfThumb()
+                }
+        )
+
         preferences.add(homeHeader)
         preferences.add(homeInterface)
         preferences.add(playerHeader)
         preferences.add(playerInterface)
         preferences.add(miniPlayerHeader)
         preferences.add(marginAroundMiniplayerToggle)
+        preferences.add(applicationHeader)
+        preferences.add(likeButton)
 
         return preferences
     }
