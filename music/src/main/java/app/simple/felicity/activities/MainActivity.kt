@@ -58,6 +58,7 @@ import app.simple.felicity.ui.home.SpannedHome
 import app.simple.felicity.ui.launcher.Setup
 import app.simple.felicity.ui.launcher.TrialExpired
 import app.simple.felicity.ui.panels.Equalizer
+import app.simple.felicity.ui.panels.Selections
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.ui.player.PlayerFaded
 import app.simple.felicity.viewmodels.setup.PermissionViewModel
@@ -139,11 +140,6 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             // onStateReady() will reveal it once everything is ready.
             binding.miniPlayer.hide(animated = false)
             setHomePanel()
-
-            /**
-             * Refresh the audio database on cold start to ensure the latest songs are loaded.
-             */
-            refreshScan()
         }
 
         lifecycleScope.launch {
@@ -235,7 +231,6 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
         // Wire up the three action bar buttons — delete, share, and the three-dots more menu.
         // HighlightImageButton automatically handles its own icon tinting, so no manual tint needed.
-
         binding.actionDelete.setOnClickListener {
             deleteSelectedSongs()
         }
@@ -249,7 +244,10 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         }
 
         binding.selectionCount.setOnClickListener {
-            showSelectionMenu()
+            // Open the full selections panel so the user can see and manage
+            // every song in the basket — much more comfortable than a tiny dialog.
+            val topFragment = supportFragmentManager.fragments.lastOrNull() as? ScopedFragment
+            topFragment?.openFragment(Selections.newInstance(), Selections.TAG)
         }
 
         permissionViewModel.getManageFilesPermissionState().observe(this) { granted ->
