@@ -162,3 +162,8 @@ Felicity now supports localization. If you want to translate it into your own la
 **Felicity Music Player** is released as open source software under
 the [GNU AGPL v3](https://www.gnu.org/licenses/agpl-3.0.en.html)
 license, see the [LICENSE](./LICENSE) file in the project root for the full license text.
+
+## History
+
+Felicity as a whole project is a continuation of my first ever programming project [Beatz](https://github.com/Hamza417/Beatz) which I
+tried to do back then solely for learning and getting used to building.
