@@ -263,12 +263,6 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         }
     }
 
-    private fun refreshScan() {
-        if (applicationContext.isManageExternalStoragePermissionGranted()) {
-            AudioDatabaseService.refreshScan(applicationContext)
-        }
-    }
-
     private fun setHomePanel() {
         // Check if all required permissions are granted
         val allPermissionsGranted = isManageExternalStoragePermissionGranted() &&
@@ -610,7 +604,11 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
     override fun onStart() {
         super.onStart()
-        startAudioDatabaseService()
+        // Intentionally not starting the scan here — the scan is already kicked off
+        // from onCreate() via the permission observer, and running it again on every
+        // onStart() would re-trigger a full scan every time the user switches back to
+        // the app from any other screen. That is the exact behavior that was causing
+        // "why does the library refresh every time I resume?" — mystery solved!
     }
 
     override fun onResume() {

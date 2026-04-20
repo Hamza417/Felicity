@@ -320,18 +320,16 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Error during audio file processing", e)
         } finally {
-            // Pass our generation token — if a newer scan has already started, this
-            // is a no-op and the new scan's notification stays on screen. If we are
-            // the most recent scan, we properly clean up after ourselves.
+            // Pass our generation token so only the most recent scan can close its own
+            // notification. If a newer scan already called begin() and bumped the counter,
+            // this is a no-op — the new scan's notification stays safely on screen.
+            // We deliberately do NOT call dismissForce() here because that would
+            // unconditionally kill the notification even when it belongs to a newer scan
+            // that is still happily running. The force path is reserved for hard shutdowns
+            // (cleanup / cancelCurrentScan) where we are absolutely sure nothing else is
+            // using the notification anymore.
             notification.dismiss(generation)
 
-            // Only force-dismiss if the notification is still marked as active after
-            // the generation-aware dismiss above. Without this guard the old scan's
-            // finally block would blow away the new scan's notification even when the
-            // generation check correctly decided to leave it alone.
-            if (notification.isShowing()) {
-                notification.dismissForce()
-            }
 
             // Signal that the scan is done. Any coroutine can flip this safely
             // because AtomicBoolean has no ownership concept — unlike Mutex, which
