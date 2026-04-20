@@ -140,6 +140,8 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             // onStateReady() will reveal it once everything is ready.
             binding.miniPlayer.hide(animated = false)
             setHomePanel()
+
+            startAudioDatabaseService()
         }
 
         lifecycleScope.launch {
