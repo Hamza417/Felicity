@@ -57,7 +57,7 @@ class Purchase : PreferenceFragment() {
         }
 
         val trialPeriod = Preference(
-                title = R.string.trial,
+                title = R.string.trial_period,
                 summary = getString(R.string.trial_period_summary, TrialPreferences.getDaysLeft()),
                 icon = trialIcon,
                 type = PreferenceType.NORMAL
