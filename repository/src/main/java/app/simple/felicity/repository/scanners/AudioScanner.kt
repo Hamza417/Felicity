@@ -59,9 +59,8 @@ class AudioScanner {
 
         val skipHiddenFiles = LibraryPreferences.isSkipHiddenFiles()
         val skipHiddenFolders = LibraryPreferences.isSkipHiddenFolders()
-        val excludedFolders = LibraryPreferences.getExcludedFolders()
 
-        return collectAudio(root, skipHiddenFiles, skipHiddenFolders, excludedFolders)
+        return collectAudio(root, skipHiddenFiles, skipHiddenFolders)
     }
 
     fun getM3uFiles(root: File): List<File> {
@@ -73,9 +72,8 @@ class AudioScanner {
 
         val skipHiddenFiles = LibraryPreferences.isSkipHiddenFiles()
         val skipHiddenFolders = LibraryPreferences.isSkipHiddenFolders()
-        val excludedFolders = LibraryPreferences.getExcludedFolders()
 
-        return collectM3u(root, skipHiddenFiles, skipHiddenFolders, excludedFolders)
+        return collectM3u(root, skipHiddenFiles, skipHiddenFolders)
     }
 
     // SAF-based scanning — one ContentResolver.query() per directory instead of
@@ -150,17 +148,12 @@ class AudioScanner {
     private fun collectAudio(
             root: File,
             skipHiddenFiles: Boolean,
-            skipHiddenFolders: Boolean,
-            excludedFolders: Set<String>
+            skipHiddenFolders: Boolean
     ): List<File> {
         val result = mutableListOf<File>()
 
         root.walkTopDown()
             .onEnter { dir ->
-                if (excludedFolders.any { dir.absolutePath.startsWith(it) }) {
-                    Log.d(TAG, "Skipping excluded folder: ${dir.absolutePath}")
-                    return@onEnter false
-                }
                 if (skipHiddenFolders && dir.name.startsWith(".")) {
                     Log.d(TAG, "Skipping hidden folder: ${dir.absolutePath}")
                     return@onEnter false
@@ -183,14 +176,12 @@ class AudioScanner {
     private fun collectM3u(
             root: File,
             skipHiddenFiles: Boolean,
-            skipHiddenFolders: Boolean,
-            excludedFolders: Set<String>
+            skipHiddenFolders: Boolean
     ): List<File> {
         val result = mutableListOf<File>()
 
         root.walkTopDown()
             .onEnter { dir ->
-                if (excludedFolders.any { dir.absolutePath.startsWith(it) }) return@onEnter false
                 if (skipHiddenFolders && dir.name.startsWith(".")) return@onEnter false
                 return@onEnter true
             }
