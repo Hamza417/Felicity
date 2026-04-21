@@ -1,17 +1,22 @@
 package app.simple.felicity.repository.metadata
 
+import android.content.Context
+import android.net.Uri
+import android.os.ParcelFileDescriptor
 import android.util.Log
 import app.simple.felicity.repository.metadata.MetadataWriter.write
-import org.jaudiotagger.audio.AudioFileIO
-import org.jaudiotagger.tag.FieldKey
-import org.jaudiotagger.tag.images.ArtworkFactory
 import java.io.File
 
 /**
- * Writes audio tag metadata to a file on disk using JAudioTagger.
+ * Writes audio tag metadata to a file using TagLib through JNI.
  *
- * Call [write] to apply a set of field updates and optional embedded artwork to an
- * existing audio file. The file is modified in-place; a backup is not created.
+ * This replaces the old JAudioTagger implementation. TagLib works
+ * directly with raw file descriptors, so it can write through both
+ * regular files on disk and SAF content:// URIs without needing to
+ * know anything about the actual path.
+ *
+ * Call [write] with a [Uri] (for SAF) or a [File] (for internal storage)
+ * along with a [Fields] object describing what to change.
  *
  * @author Hamza417
  */
@@ -21,6 +26,9 @@ object MetadataWriter {
 
     /**
      * Holds all editable metadata fields for a single audio track.
+     *
+     * Any field set to null will be left exactly as it is in the file.
+     * Setting a field to an empty string ("") will erase it from the tag.
      *
      * @param title       Song title.
      * @param artist      Primary artist name.
@@ -36,7 +44,6 @@ object MetadataWriter {
      * @param compilation Compilation flag ("1" or "").
      * @param comment     Free-form comment embedded in the file.
      * @param lyrics      Unsynchronised lyrics embedded in the file.
-     * @param artworkFile Optional image file to embed as album artwork.
      */
     data class Fields(
             val title: String?,
@@ -52,66 +59,88 @@ object MetadataWriter {
             val writer: String?,
             val compilation: String?,
             val comment: String?,
-            val lyrics: String?,
-            val artworkFile: File? = null
+            val lyrics: String?
     )
 
     /**
-     * Writes the supplied [fields] to [targetFile] on disk.
+     * Writes [fields] into the audio file pointed to by a SAF [uri].
      *
-     * Each field that is null is left unchanged in the tag. Each non-null
-     * field (including an empty string) will overwrite the existing value.
+     * This is the preferred path for files the user picked with the system
+     * folder picker — Android gives us a content:// URI, and we open it
+     * for read/write so TagLib can both read the existing tag structure and
+     * then write the updated fields back in one go.
      *
-     * @param targetFile  The audio file whose embedded tags will be updated.
-     * @param fields      The [Fields] data to write into the file.
-     * @throws Exception  Any JAudioTagger exception if the file cannot be read or written.
+     * @param context Used to access the ContentResolver.
+     * @param uri     The content:// URI of the audio file to update.
+     * @param fields  The metadata changes to apply.
+     * @return `true` if the write succeeded, `false` otherwise.
      */
-    fun write(targetFile: File, fields: Fields) {
-        val audioFile = AudioFileIO.read(targetFile)
-        var tag = audioFile.tag
-
-        if (tag == null) {
-            audioFile.createDefaultTag()
-            tag = audioFile.tag
+    fun write(context: Context, uri: Uri, fields: Fields): Boolean {
+        return try {
+            // Open "rw" so TagLib can both read the current tag structure
+            // and write the updated fields back to the same file.
+            context.contentResolver.openFileDescriptor(uri, "rw")?.use { pfd ->
+                callNativeSave(pfd.fd, fields).also {
+                    if (it) Log.d(TAG, "Tags saved via SAF: $uri")
+                    else Log.w(TAG, "TagLib save returned false for: $uri")
+                }
+            } ?: run {
+                Log.e(TAG, "ContentResolver returned null pfd for: $uri")
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write tags to URI: $uri", e)
+            false
         }
+    }
 
-        fun setField(key: FieldKey, value: String?) {
-            if (value != null) {
-                runCatching {
-                    tag?.setField(key, value)
-                }.onFailure {
-                    Log.w(TAG, "Failed to set field $key: ${it.message}")
+    /**
+     * Writes [fields] into a plain [File] on internal or external storage.
+     *
+     * Opens the file via [ParcelFileDescriptor] in read/write mode so the
+     * same TagLib code path is used regardless of whether we have a File or
+     * a URI — consistency is nice, even if the file is just sitting on disk.
+     *
+     * @param targetFile The audio file whose embedded tags will be updated.
+     * @param fields     The metadata changes to apply.
+     * @return `true` if the write succeeded, `false` otherwise.
+     */
+    fun write(targetFile: File, fields: Fields): Boolean {
+        return try {
+            ParcelFileDescriptor.open(targetFile, ParcelFileDescriptor.MODE_READ_WRITE).use { pfd ->
+                callNativeSave(pfd.fd, fields).also {
+                    if (it) Log.d(TAG, "Tags saved to file: ${targetFile.absolutePath}")
+                    else Log.w(TAG, "TagLib save returned false for: ${targetFile.name}")
                 }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write tags to file: ${targetFile.absolutePath}", e)
+            false
         }
+    }
 
-        setField(FieldKey.TITLE, fields.title)
-        setField(FieldKey.ARTIST, fields.artist)
-        setField(FieldKey.ALBUM, fields.album)
-        setField(FieldKey.ALBUM_ARTIST, fields.albumArtist)
-        setField(FieldKey.YEAR, fields.year)
-        setField(FieldKey.TRACK, fields.trackNumber)
-        setField(FieldKey.TRACK_TOTAL, fields.numTracks)
-        setField(FieldKey.DISC_NO, fields.discNumber)
-        setField(FieldKey.GENRE, fields.genre)
-        setField(FieldKey.COMPOSER, fields.composer)
-        setField(FieldKey.LYRICIST, fields.writer)
-        setField(FieldKey.IS_COMPILATION, fields.compilation)
-        setField(FieldKey.COMMENT, fields.comment)
-        setField(FieldKey.LYRICS, fields.lyrics)
-
-        fields.artworkFile?.let { artFile ->
-            runCatching {
-                val artwork = ArtworkFactory.createArtworkFromFile(artFile)
-                tag?.deleteArtworkField()
-                tag?.setField(artwork)
-            }.onFailure {
-                Log.w(TAG, "Failed to embed artwork: ${it.message}")
-            }
-        }
-
-        AudioFileIO.write(audioFile)
-        Log.d(TAG, "Metadata written successfully to: ${targetFile.absolutePath}")
+    /**
+     * Hands the open file descriptor and all the individual field strings off
+     * to TagLib via JNI. Extracted into its own little function to avoid
+     * repeating the same long argument list in both [write] overloads above.
+     */
+    private fun callNativeSave(fd: Int, fields: Fields): Boolean {
+        return TagLibBridge.nativeSaveToFd(
+                fd = fd,
+                title = fields.title,
+                artist = fields.artist,
+                album = fields.album,
+                albumArtist = fields.albumArtist,
+                year = fields.year,
+                trackNumber = fields.trackNumber,
+                numTracks = fields.numTracks,
+                discNumber = fields.discNumber,
+                genre = fields.genre,
+                composer = fields.composer,
+                lyricist = fields.writer,
+                compilation = fields.compilation,
+                comment = fields.comment,
+                lyrics = fields.lyrics
+        )
     }
 }
-

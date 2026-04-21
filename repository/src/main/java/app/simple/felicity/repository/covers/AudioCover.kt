@@ -2,7 +2,7 @@ package app.simple.felicity.repository.covers
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.net.Uri
+import androidx.core.net.toUri
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.covers.MediaStoreCover.loadCoverFromMediaStore
 import app.simple.felicity.repository.covers.MediaStoreCover.uriToBitmap
@@ -60,7 +60,7 @@ object AudioCover {
             if (embeddedArtwork != null) return embeddedArtwork
         } else {
             // SAF path — use the context-aware embedded artwork extractor.
-            val embeddedArtwork = BaseCoverLoader.loadEmbeddedArtwork(context, Uri.parse(audioPath))
+            val embeddedArtwork = BaseCoverLoader.loadEmbeddedArtwork(context, audioPath.toUri())
             if (embeddedArtwork != null) return embeddedArtwork
         }
 
