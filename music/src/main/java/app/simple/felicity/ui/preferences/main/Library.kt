@@ -42,11 +42,12 @@ class Library : PreferenceFragment() {
         when (key) {
             LibraryPreferences.MINIMUM_AUDIO_SIZE,
             LibraryPreferences.MINIMUM_AUDIO_LENGTH,
-            LibraryPreferences.SKIP_NOMEDIA,
             LibraryPreferences.SKIP_HIDDEN_FILES,
             LibraryPreferences.SKIP_HIDDEN_FOLDERS -> {
-                // Any scanner-related preference change requires a fresh scan
-                AudioDatabaseService.refreshScan(requireContext())
+                postDelayed {
+                    // Any scanner-related preference change requires a fresh scan
+                    AudioDatabaseService.refreshScan(requireContext())
+                }
             }
             LibraryPreferences.ALBUM_ARTIST_OVER_ARTIST -> {
                 AudioUtils.albumArtistOverArtist = LibraryPreferences.isAlbumArtistOverArtist()

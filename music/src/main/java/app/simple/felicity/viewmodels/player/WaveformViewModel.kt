@@ -51,27 +51,27 @@ class WaveformViewModel @Inject constructor(
         }
 
         // Prevent redundant loading
-        if (audio.path == currentPath && waveformData.value?.isNotEmpty() == true) return
+        if (audio.uri == currentPath && waveformData.value?.isNotEmpty() == true) return
 
         // Track the current request to handle stale extractions
-        currentPath = audio.path
+        currentPath = audio.uri
 
         viewModelScope.launch(Dispatchers.IO) {
-            if (currentPath != audio.path) return@launch
+            if (currentPath != audio.uri) return@launch
 
             postFlatData(audio) // Show the ghost waveform immediately while we load the real one in the background
 
             try {
                 val rawAmplitudes = amplitudaInstance!!
                     .processAudio(
-                            audio.path,
+                            audio.uri,
                             Compress.withParams(Compress.AVERAGE, BARS_PER_SECOND),
                             Cache.withParams(Cache.REUSE, audio.hash.toString())
                     )
                     .get() // Blocking call
                     .amplitudesAsList()
 
-                if (currentPath != audio.path) return@launch
+                if (currentPath != audio.uri) return@launch
 
                 if (rawAmplitudes.isEmpty()) {
                     waveformData.postValue(getRandomGhostData(audio.duration)) // Fallback to ghost data if extraction yields nothing
@@ -114,7 +114,7 @@ class WaveformViewModel @Inject constructor(
 
             } catch (e: Exception) {
                 Log.e(TAG, "Amplituda extraction failed on IO thread for ${audio.title}", e)
-                if (currentPath == audio.path) {
+                if (currentPath == audio.uri) {
                     postFlatData(audio) // Show the ghost waveform if extraction fails
                 }
             }

@@ -122,7 +122,7 @@ class LyricsManager @Inject constructor(
      * load begins.
      */
     fun loadLrcData() {
-        val currentSongPath = MediaPlaybackManager.getCurrentSong()?.path
+        val currentSongPath = MediaPlaybackManager.getCurrentSong()?.uri
 
         if (currentSongPath != null && currentSongPath == lastLoadedPath) {
             if (loadingJob?.isActive == true) {
@@ -161,7 +161,7 @@ class LyricsManager @Inject constructor(
                 }
 
                 val loadResult = withContext(Dispatchers.IO) {
-                    lrcRepository.loadLrcFromFile(currentSong.path)
+                    lrcRepository.loadLrcFromFile(currentSong.uri)
                 }
 
                 loadResult.onSuccess { lrcContent ->
@@ -179,7 +179,7 @@ class LyricsManager @Inject constructor(
                     } else {
                         Log.d(TAG, "No LRC found for ${currentSong.title}, checking for a TXT sidecar.")
                         val txtResult = withContext(Dispatchers.IO) {
-                            lrcRepository.loadTxtFromFile(currentSong.path)
+                            lrcRepository.loadTxtFromFile(currentSong.uri)
                         }
                         val txtContent = txtResult.getOrNull()
                         if (!txtContent.isNullOrBlank()) {
@@ -198,7 +198,7 @@ class LyricsManager @Inject constructor(
                             fetchAndSaveLrc(
                                     trackName = currentSong.title ?: currentSong.name,
                                     artistName = currentSong.artist ?: "",
-                                    audioPath = currentSong.path
+                                    audioPath = currentSong.uri
                             )
                         }
                     }
@@ -304,7 +304,7 @@ class LyricsManager @Inject constructor(
      * the in-memory [_lrcData] to use the corrected timestamps.
      *
      * Previously we skipped updating [_lrcData] to avoid a scroll reset, but that
-     * caused the highlight to jump in the wrong direction right after the debounce
+     * caused the highlight to jump in the wrong direction right after to debounce
      * fired — the offset was removed from [_syncOffsetMs] while the timestamps in
      * memory were still the originals, making the lyrics appear to shift by twice
      * the intended amount. Updating [_lrcData] here keeps the view's timestamps in
@@ -322,7 +322,7 @@ class LyricsManager @Inject constructor(
         val baked = base.shiftTimestamps(-delta)
 
         scope.launch(Dispatchers.IO) {
-            val result = lrcRepository.saveLrcToFile(baked.toLrcString(), currentSong.path)
+            val result = lrcRepository.saveLrcToFile(baked.toLrcString(), currentSong.uri)
             result.onSuccess {
                 Log.d(TAG, "Sync offset ${delta}ms baked and saved to ${it.absolutePath}.")
             }.onFailure {
@@ -354,7 +354,7 @@ class LyricsManager @Inject constructor(
 
         scope.launch {
             withContext(Dispatchers.IO) {
-                lrcRepository.deleteLrcFile(currentSong.path)
+                lrcRepository.deleteLrcFile(currentSong.uri)
             }
 
             // Clear in-memory state so the view goes blank immediately.

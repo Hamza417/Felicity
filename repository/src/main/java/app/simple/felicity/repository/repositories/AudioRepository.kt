@@ -108,7 +108,7 @@ class AudioRepository @Inject constructor(
                     val firstSong = songs.firstOrNull() ?: return@mapNotNull null
 
                     // Aggregate data from all songs in the album
-                    val songPaths = songs.map { it.path }
+                    val songPaths = songs.map { it.uri }
                     val years = songs.mapNotNull { it.year?.toLongOrNull() }.filter { it > 0 }
 
                     // Generate unique ID based on album name and artist to avoid collisions
@@ -146,7 +146,7 @@ class AudioRepository @Inject constructor(
                     val uniqueAlbums = songs.mapNotNull { it.album }.distinct().size
 
                     // Aggregate song paths from all songs by the artist
-                    val songPaths = songs.map { it.path }
+                    val songPaths = songs.map { it.uri }
 
                     // Generate unique ID based on artist name
                     val uniqueId = artistName.hashCode().toLong()
@@ -182,7 +182,7 @@ class AudioRepository @Inject constructor(
                     val uniqueAlbums = songs.mapNotNull { it.album }.distinct().size
 
                     // Gather all song file paths so we can play/shuffle from a menu later
-                    val songPaths = songs.map { it.path }
+                    val songPaths = songs.map { it.uri }
 
                     // Use a hash of the album artist name as a stable unique ID
                     val uniqueId = albumArtistName.hashCode().toLong()
@@ -226,7 +226,7 @@ class AudioRepository @Inject constructor(
                             artist = albumArtist.name ?: "",
                             artistId = albumArtist.id,
                             songCount = albumSongs.size,
-                            songPaths = albumSongs.map { it.path }
+                            songPaths = albumSongs.map { it.uri }
                     )
                 }
 
@@ -240,7 +240,7 @@ class AudioRepository @Inject constructor(
                     Genre(
                             id = genreName.hashCode().toLong(),
                             name = genreName,
-                            songPaths = genreAllSongs.map { it.path },
+                            songPaths = genreAllSongs.map { it.uri },
                             songCount = genreAllSongs.size
                     )
                 }
@@ -267,7 +267,7 @@ class AudioRepository @Inject constructor(
                     if (genreName.isNullOrEmpty()) return@mapNotNull null
 
                     // Aggregate song paths from all songs in the genre
-                    val songPaths = songs.map { it.path }
+                    val songPaths = songs.map { it.uri }
 
                     // Generate unique ID based on genre name
                     val uniqueId = genreName.hashCode().toLong()
@@ -292,7 +292,7 @@ class AudioRepository @Inject constructor(
     fun getAllFoldersWithAggregation(): Flow<List<Folder>> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
             audioList.groupBy { audio ->
-                val filePath = audio.path ?: return@groupBy ""
+                val filePath = audio.uri ?: return@groupBy ""
                 val lastSlash = filePath.lastIndexOf('/')
                 if (lastSlash > 0) filePath.substring(0, lastSlash) else filePath
             }.mapNotNull { (folderPath, songs) ->
@@ -300,7 +300,7 @@ class AudioRepository @Inject constructor(
 
                 val folderName = folderPath.substringAfterLast('/')
                     .ifEmpty { folderPath }
-                val songPaths = songs.map { it.path }
+                val songPaths = songs.map { it.uri }
                 val uniqueId = folderPath.hashCode().toLong()
 
                 Folder(
@@ -333,7 +333,7 @@ class AudioRepository @Inject constructor(
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
             // All unique parent-directory paths (the folder that directly contains each file)
             val allFolderPaths = audioList.mapNotNull { audio ->
-                val filePath = audio.path ?: return@mapNotNull null
+                val filePath = audio.uri ?: return@mapNotNull null
                 val lastSlash = filePath.lastIndexOf('/')
                 if (lastSlash > 0) filePath.substring(0, lastSlash) else null
             }.toSet()
@@ -356,14 +356,14 @@ class AudioRepository @Inject constructor(
 
             topLevelPaths.map { topPath ->
                 val songsUnder = audioList.filter { audio ->
-                    val p = audio.path ?: return@filter false
+                    val p = audio.uri ?: return@filter false
                     p.startsWith("$topPath/") || p.substringBeforeLast('/') == topPath
                 }
                 Folder(
                         id = topPath.hashCode().toLong(),
                         path = topPath,
                         name = topPath.substringAfterLast('/').ifEmpty { topPath },
-                        songPaths = songsUnder.map { it.path },
+                        songPaths = songsUnder.map { it.uri },
                         songCount = songsUnder.size
                 )
             }.sortedBy { it.name.lowercase() }
@@ -402,18 +402,18 @@ class AudioRepository @Inject constructor(
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
             // Songs directly inside this folder (not in a sub-folder)
             val directSongs = audioList.filter { audio ->
-                val path = audio.path ?: return@filter false
+                val path = audio.uri ?: return@filter false
                 path.substringBeforeLast('/') == folderPath
             }
 
             // All audio files inside sub-folders (path starts with folderPath/)
             val allSongsUnder = audioList.filter { audio ->
-                audio.path?.startsWith("$folderPath/") == true
+                audio.uri?.startsWith("$folderPath/") == true
             }
 
             // Compute immediate sub-folder paths
             val subFolderPaths = allSongsUnder.mapNotNull { audio ->
-                val path = audio.path ?: return@mapNotNull null
+                val path = audio.uri ?: return@mapNotNull null
                 val relative = path.removePrefix("$folderPath/")
                 val firstSlash = relative.indexOf('/')
                 if (firstSlash > 0) "$folderPath/${relative.substring(0, firstSlash)}" else null
@@ -422,14 +422,14 @@ class AudioRepository @Inject constructor(
             // Build Folder objects for each immediate sub-folder
             val subFolders = subFolderPaths.map { subPath ->
                 val subSongs = audioList.filter { audio ->
-                    val p = audio.path ?: return@filter false
+                    val p = audio.uri ?: return@filter false
                     p.startsWith("$subPath/") || p.substringBeforeLast('/') == subPath
                 }
                 Folder(
                         id = subPath.hashCode().toLong(),
                         path = subPath,
                         name = subPath.substringAfterLast('/'),
-                        songPaths = subSongs.map { it.path },
+                        songPaths = subSongs.map { it.uri },
                         songCount = subSongs.size
                 )
             }.sortedBy { it.name.lowercase() }
@@ -498,7 +498,7 @@ class AudioRepository @Inject constructor(
                         name = artistName,
                         albumCount = uniqueAlbums,
                         trackCount = artistAllSongs.size,
-                        songPaths = artistAllSongs.map { it.path }
+                        songPaths = artistAllSongs.map { it.uri }
                 )
             }.sortedBy { it.name?.lowercase() }
 
@@ -513,7 +513,7 @@ class AudioRepository @Inject constructor(
                     Genre(
                             id = genreName.hashCode().toLong(),
                             name = genreName,
-                            songPaths = genreAllSongs.map { it.path },
+                            songPaths = genreAllSongs.map { it.uri },
                             songCount = genreAllSongs.size
                     )
                 }
@@ -549,7 +549,7 @@ class AudioRepository @Inject constructor(
                             artist = artist.name ?: "",
                             artistId = artist.id,
                             songCount = albumSongs.size,
-                            songPaths = albumSongs.map { it.path }
+                            songPaths = albumSongs.map { it.uri }
                     )
                 }
 
@@ -564,7 +564,7 @@ class AudioRepository @Inject constructor(
                     Genre(
                             id = genreName.hashCode().toLong(),
                             name = genreName,
-                            songPaths = genreAllSongs.map { it.path },
+                            songPaths = genreAllSongs.map { it.uri },
                             songCount = genreAllSongs.size
                     )
                 }
@@ -601,7 +601,7 @@ class AudioRepository @Inject constructor(
                             name = artistName,
                             albumCount = uniqueAlbums,
                             trackCount = artistAllSongs.size,
-                            songPaths = artistAllSongs.map { it.path }
+                            songPaths = artistAllSongs.map { it.uri }
                     )
                 }
 
@@ -619,7 +619,7 @@ class AudioRepository @Inject constructor(
                             artist = primaryArtist,
                             artistId = primaryArtist.hashCode().toLong(),
                             songCount = albumSongs.size,
-                            songPaths = albumSongs.map { it.path }
+                            songPaths = albumSongs.map { it.uri }
                     )
                 }
 
@@ -642,7 +642,7 @@ class AudioRepository @Inject constructor(
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
             // Filter songs whose path starts with the folder path
             val folderAudios = audioList.filter { audio ->
-                val parent = audio.path?.let {
+                val parent = audio.uri?.let {
                     val idx = it.lastIndexOf('/')
                     if (idx > 0) it.substring(0, idx) else it
                 }
@@ -660,7 +660,7 @@ class AudioRepository @Inject constructor(
                             artist = primaryArtist,
                             artistId = primaryArtist.hashCode().toLong(),
                             songCount = albumSongs.size,
-                            songPaths = albumSongs.map { it.path }
+                            songPaths = albumSongs.map { it.uri }
                     )
                 }
 
@@ -675,7 +675,7 @@ class AudioRepository @Inject constructor(
                             name = artistName,
                             albumCount = uniqueAlbums,
                             trackCount = artistAllSongs.size,
-                            songPaths = artistAllSongs.map { it.path }
+                            songPaths = artistAllSongs.map { it.uri }
                     )
                 }
 
@@ -687,7 +687,7 @@ class AudioRepository @Inject constructor(
                     Genre(
                             id = genreName.hashCode().toLong(),
                             name = genreName,
-                            songPaths = genreAllSongs.map { it.path },
+                            songPaths = genreAllSongs.map { it.uri },
                             songCount = genreAllSongs.size
                     )
                 }
@@ -713,7 +713,7 @@ class AudioRepository @Inject constructor(
             audioList.groupBy { audio ->
                 audio.year?.takeIf { it.isNotBlank() } ?: "Unknown"
             }.map { (year, songs) ->
-                val songPaths = songs.map { it.path }
+                val songPaths = songs.map { it.uri }
                 val uniqueId = year.hashCode().toLong()
                 YearGroup(
                         id = uniqueId,
@@ -750,7 +750,7 @@ class AudioRepository @Inject constructor(
                             artist = primaryArtist,
                             artistId = primaryArtist.hashCode().toLong(),
                             songCount = albumSongs.size,
-                            songPaths = albumSongs.map { it.path }
+                            songPaths = albumSongs.map { it.uri }
                     )
                 }
 
@@ -764,7 +764,7 @@ class AudioRepository @Inject constructor(
                             name = artistName,
                             albumCount = uniqueAlbums,
                             trackCount = artistAllSongs.size,
-                            songPaths = artistAllSongs.map { it.path }
+                            songPaths = artistAllSongs.map { it.uri }
                     )
                 }
 

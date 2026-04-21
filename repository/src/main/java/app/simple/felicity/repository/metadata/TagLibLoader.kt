@@ -47,6 +47,17 @@ object TagLibBridge {
      *
      * @return `true` if the tags were saved successfully, `false` otherwise.
      */
+    /**
+     * Asks TagLib to pull the embedded lyrics text out of the audio file
+     * pointed to by [fd]. This covers USLT frames (MP3), the ©lyr atom (M4A),
+     * LYRICS Vorbis comments (FLAC/OGG), and any other format TagLib
+     * recognizes — all in one call, no JAudioTagger required.
+     *
+     * @param fd A readable POSIX file descriptor pointing at an audio file.
+     * @return The embedded lyrics string, or null if none were found.
+     */
+    external fun nativeExtractLyricsFromFd(fd: Int): String?
+
     external fun nativeSaveToFd(
             fd: Int,
             title: String?,
@@ -151,7 +162,7 @@ object TagLibLoader {
     ): Audio {
         val audio = Audio()
         audio.name = name
-        audio.path = path
+        audio.uri = path
         audio.setTitle(title)
         audio.artist = artist
         audio.album = album

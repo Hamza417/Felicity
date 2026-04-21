@@ -2,8 +2,8 @@ package app.simple.felicity.repository.scanners
 
 import android.content.Context
 import android.net.Uri
+import android.provider.DocumentsContract
 import android.util.Log
-import androidx.documentfile.provider.DocumentFile
 import app.simple.felicity.preferences.LibraryPreferences
 import java.io.File
 
@@ -11,6 +11,13 @@ import java.io.File
  * Finds audio and playlist files on the device. Supports both the traditional
  * file-system approach and the Storage Access Framework (SAF) approach, where
  * the user has granted access to specific folders via the system folder picker.
+ *
+ * The SAF path now uses [ContentResolver.query] with
+ * [DocumentsContract.buildChildDocumentsUriUsingTree] instead of the old
+ * [androidx.documentfile.provider.DocumentFile.listFiles] approach. The old way
+ * fired a separate Binder IPC call for every single child in every directory —
+ * that's why scanning 1333 files took 43 seconds. The new way fetches every
+ * child of a directory in one round-trip, which is orders of magnitude faster.
  *
  * @author Hamza417
  */
@@ -27,6 +34,18 @@ class AudioScanner {
 
         /** Extensions we recognize as M3U playlist files. */
         private val M3U_EXTENSIONS = hashSetOf("m3u", "m3u8")
+
+        /**
+         * The columns we ask for when listing SAF directory children.
+         * Fetching exactly what we need keeps the query lean and fast.
+         */
+        private val SAF_PROJECTION = arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_MIME_TYPE,
+                DocumentsContract.Document.COLUMN_SIZE,
+                DocumentsContract.Document.COLUMN_LAST_MODIFIED
+        )
     }
 
     // File-based scanning (legacy / internal storage)
@@ -38,12 +57,11 @@ class AudioScanner {
         }
         Log.d(TAG, "Scanning for audio files in: ${root.absolutePath}")
 
-        val skipNomedia = LibraryPreferences.isSkipNomedia()
         val skipHiddenFiles = LibraryPreferences.isSkipHiddenFiles()
         val skipHiddenFolders = LibraryPreferences.isSkipHiddenFolders()
         val excludedFolders = LibraryPreferences.getExcludedFolders()
 
-        return collectAudio(root, skipNomedia, skipHiddenFiles, skipHiddenFolders, excludedFolders)
+        return collectAudio(root, skipHiddenFiles, skipHiddenFolders, excludedFolders)
     }
 
     fun getM3uFiles(root: File): List<File> {
@@ -53,62 +71,50 @@ class AudioScanner {
         }
         Log.d(TAG, "Scanning for M3U files in: ${root.absolutePath}")
 
-        val skipNomedia = LibraryPreferences.isSkipNomedia()
         val skipHiddenFiles = LibraryPreferences.isSkipHiddenFiles()
         val skipHiddenFolders = LibraryPreferences.isSkipHiddenFolders()
         val excludedFolders = LibraryPreferences.getExcludedFolders()
 
-        return collectM3u(root, skipNomedia, skipHiddenFiles, skipHiddenFolders, excludedFolders)
+        return collectM3u(root, skipHiddenFiles, skipHiddenFolders, excludedFolders)
     }
 
-    // SAF-based scanning — uses DocumentFile to walk the folder tree the
-    // user granted us via the system folder picker.
+    // SAF-based scanning — one ContentResolver.query() per directory instead of
+    // one Binder IPC per child attribute. This is the fast path.
 
     /**
-     * Walks a SAF tree URI and collects every non-empty audio file it contains.
-     * Applies the same filter rules (hidden files, .nomedia, excluded folders)
-     * as the regular file scanner so behavior is consistent across both paths.
+     * Walks a SAF tree URI and returns a list of every matching audio file it contains.
+     * All file attributes (size, lastModified) are fetched in the same bulk query that
+     * lists the directory, so there are zero extra Binder calls once we have the list.
      *
      * @param context Needed to talk to the ContentResolver.
      * @param treeUri The tree URI returned by the SAF folder picker.
-     * @return A flat list of [DocumentFile] entries for every matching audio file.
+     * @return A flat list of [SAFFile] entries for every matching audio file.
      */
-    fun getAudioFiles(context: Context, treeUri: Uri): List<DocumentFile> {
-        val root = DocumentFile.fromTreeUri(context, treeUri) ?: run {
-            Log.e(TAG, "Could not open tree URI: $treeUri")
-            return emptyList()
-        }
-        Log.d(TAG, "SAF scan for audio in: ${root.uri}")
+    fun getAudioFiles(context: Context, treeUri: Uri): List<SAFFile> {
+        val rootDocId = DocumentsContract.getTreeDocumentId(treeUri)
+        Log.d(TAG, "SAF audio scan starting from tree: $treeUri (rootDocId=$rootDocId)")
 
-        val skipNomedia = LibraryPreferences.isSkipNomedia()
         val skipHiddenFiles = LibraryPreferences.isSkipHiddenFiles()
         val skipHiddenFolders = LibraryPreferences.isSkipHiddenFolders()
-        val excludedFolders = LibraryPreferences.getExcludedFolders()
 
-        return collectAudioSAF(context, root, skipNomedia, skipHiddenFiles, skipHiddenFolders, excludedFolders)
+        return collectAudioSAF(context, treeUri, rootDocId, skipHiddenFiles, skipHiddenFolders)
     }
 
     /**
-     * Walks a SAF tree URI and collects every M3U/M3U8 file it contains,
-     * applying the same visibility filters as the audio scanner.
+     * Walks a SAF tree URI and returns every M3U/M3U8 file it contains.
      *
      * @param context Needed to talk to the ContentResolver.
      * @param treeUri The tree URI returned by the SAF folder picker.
-     * @return A flat list of [DocumentFile] entries for every matching playlist file.
+     * @return A flat list of [SAFFile] entries for every matching playlist file.
      */
-    fun getM3uFiles(context: Context, treeUri: Uri): List<DocumentFile> {
-        val root = DocumentFile.fromTreeUri(context, treeUri) ?: run {
-            Log.e(TAG, "Could not open tree URI for M3U scan: $treeUri")
-            return emptyList()
-        }
-        Log.d(TAG, "SAF scan for M3U in: ${root.uri}")
+    fun getM3uFiles(context: Context, treeUri: Uri): List<SAFFile> {
+        val rootDocId = DocumentsContract.getTreeDocumentId(treeUri)
+        Log.d(TAG, "SAF M3U scan starting from tree: $treeUri (rootDocId=$rootDocId)")
 
-        val skipNomedia = LibraryPreferences.isSkipNomedia()
         val skipHiddenFiles = LibraryPreferences.isSkipHiddenFiles()
         val skipHiddenFolders = LibraryPreferences.isSkipHiddenFolders()
-        val excludedFolders = LibraryPreferences.getExcludedFolders()
 
-        return collectM3uSAF(context, root, skipNomedia, skipHiddenFiles, skipHiddenFolders, excludedFolders)
+        return collectM3uSAF(context, treeUri, rootDocId, skipHiddenFiles, skipHiddenFolders)
     }
 
     // Extension helpers for file-type detection.
@@ -125,14 +131,16 @@ class AudioScanner {
         return M3U_EXTENSIONS.contains(ext.lowercase())
     }
 
-    private fun DocumentFile.isAudioFile(): Boolean {
-        val ext = name?.substringAfterLast('.', "") ?: return false
+    /** Returns true if this file name's extension belongs to the audio set. */
+    private fun String.isAudioFile(): Boolean {
+        val ext = substringAfterLast('.', "")
         if (ext.isEmpty()) return false
         return AUDIO_EXTENSIONS.contains(ext.lowercase())
     }
 
-    private fun DocumentFile.isM3uFile(): Boolean {
-        val ext = name?.substringAfterLast('.', "") ?: return false
+    /** Returns true if this file name's extension belongs to the M3U set. */
+    private fun String.isM3uFile(): Boolean {
+        val ext = substringAfterLast('.', "")
         if (ext.isEmpty()) return false
         return M3U_EXTENSIONS.contains(ext.lowercase())
     }
@@ -141,7 +149,6 @@ class AudioScanner {
 
     private fun collectAudio(
             root: File,
-            skipNomedia: Boolean,
             skipHiddenFiles: Boolean,
             skipHiddenFolders: Boolean,
             excludedFolders: Set<String>
@@ -152,10 +159,6 @@ class AudioScanner {
             .onEnter { dir ->
                 if (excludedFolders.any { dir.absolutePath.startsWith(it) }) {
                     Log.d(TAG, "Skipping excluded folder: ${dir.absolutePath}")
-                    return@onEnter false
-                }
-                if (skipNomedia && File(dir, ".nomedia").exists()) {
-                    Log.d(TAG, "Skipping .nomedia folder: ${dir.absolutePath}")
                     return@onEnter false
                 }
                 if (skipHiddenFolders && dir.name.startsWith(".")) {
@@ -179,7 +182,6 @@ class AudioScanner {
 
     private fun collectM3u(
             root: File,
-            skipNomedia: Boolean,
             skipHiddenFiles: Boolean,
             skipHiddenFolders: Boolean,
             excludedFolders: Set<String>
@@ -189,7 +191,6 @@ class AudioScanner {
         root.walkTopDown()
             .onEnter { dir ->
                 if (excludedFolders.any { dir.absolutePath.startsWith(it) }) return@onEnter false
-                if (skipNomedia && File(dir, ".nomedia").exists()) return@onEnter false
                 if (skipHiddenFolders && dir.name.startsWith(".")) return@onEnter false
                 return@onEnter true
             }
@@ -203,47 +204,77 @@ class AudioScanner {
         return result
     }
 
-    // SAF-based recursive walk — uses DocumentFile.listFiles() since we cannot
-    // use java.io.File on URIs that came from the folder picker.
+    // SAF recursive walk — one ContentResolver.query() per directory level.
+    // Each query returns ALL children of that directory in a single IPC call,
+    // including their document IDs, MIME types, sizes, and timestamps.
 
+    /**
+     * Recursively collects audio files from a SAF directory using fast bulk queries.
+     *
+     * The trick here is [DocumentsContract.buildChildDocumentsUriUsingTree] —
+     * it gives us a URI we can pass to [ContentResolver.query] that returns every
+     * child of [dirDocumentId] in one network/Binder round-trip. No looping,
+     * no per-file IPC, just one query per directory level.
+     *
+     * Hidden file/folder filtering is still applied here since that is just a
+     * name check — no File objects needed.
+     */
     private fun collectAudioSAF(
             context: Context,
-            dir: DocumentFile,
-            skipNomedia: Boolean,
+            treeUri: Uri,
+            dirDocumentId: String,
             skipHiddenFiles: Boolean,
-            skipHiddenFolders: Boolean,
-            excludedFolders: Set<String>
-    ): List<DocumentFile> {
-        val result = mutableListOf<DocumentFile>()
-        val children = dir.listFiles()
+            skipHiddenFolders: Boolean
+    ): List<SAFFile> {
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, dirDocumentId)
 
-        // Check for a .nomedia marker inside this directory before descending.
-        if (skipNomedia && children.any { it.isFile && it.name == ".nomedia" }) {
-            Log.d(TAG, "SAF: Skipping .nomedia directory: ${dir.uri}")
-            return result
+        data class Row(
+                val docId: String,
+                val name: String,
+                val mimeType: String,
+                val size: Long,
+                val lastModified: Long
+        )
+
+        val rows = mutableListOf<Row>()
+
+        context.contentResolver.query(childrenUri, SAF_PROJECTION, null, null, null)?.use { cursor ->
+            val idxDocId = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+            val idxName = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+            val idxMime = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE)
+            val idxSize = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_SIZE)
+            val idxMod = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+
+            while (cursor.moveToNext()) {
+                val name = cursor.getString(idxName) ?: continue
+                rows.add(Row(
+                        cursor.getString(idxDocId) ?: continue,
+                        name,
+                        cursor.getString(idxMime) ?: "",
+                        cursor.getLong(idxSize),
+                        cursor.getLong(idxMod)
+                ))
+            }
         }
 
-        for (child in children) {
-            val name = child.name ?: continue
+        val result = mutableListOf<SAFFile>()
 
-            if (child.isDirectory) {
-                // Skip hidden folders (names starting with a dot) if the user wants that.
-                if (skipHiddenFolders && name.startsWith(".")) {
-                    Log.d(TAG, "SAF: Skipping hidden folder: $name")
+        for (row in rows) {
+            if (row.mimeType == DocumentsContract.Document.MIME_TYPE_DIR) {
+                if (skipHiddenFolders && row.name.startsWith(".")) {
+                    Log.d(TAG, "SAF: Skipping hidden folder: ${row.name}")
                     continue
                 }
-                // Skip folders the user has explicitly blacklisted.
-                if (excludedFolders.any { child.uri.toString().contains(it) }) {
-                    Log.d(TAG, "SAF: Skipping excluded folder: ${child.uri}")
+                result.addAll(collectAudioSAF(context, treeUri, row.docId, skipHiddenFiles, skipHiddenFolders))
+            } else {
+                if (row.size <= 0) continue
+                if (!row.name.isAudioFile()) continue
+                if (skipHiddenFiles && row.name.startsWith(".")) {
+                    Log.d(TAG, "SAF: Skipping hidden audio file: ${row.name}")
                     continue
                 }
-                result.addAll(collectAudioSAF(context, child, skipNomedia, skipHiddenFiles, skipHiddenFolders, excludedFolders))
-            } else if (child.isFile && child.length() > 0 && child.isAudioFile()) {
-                if (skipHiddenFiles && name.startsWith(".")) {
-                    Log.d(TAG, "SAF: Skipping hidden audio file: $name")
-                    continue
-                }
-                result.add(child)
+                val docUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, row.docId)
+                result.add(SAFFile(docUri, row.name, row.size, row.lastModified))
             }
         }
 
@@ -252,29 +283,54 @@ class AudioScanner {
 
     private fun collectM3uSAF(
             context: Context,
-            dir: DocumentFile,
-            skipNomedia: Boolean,
+            treeUri: Uri,
+            dirDocumentId: String,
             skipHiddenFiles: Boolean,
-            skipHiddenFolders: Boolean,
-            excludedFolders: Set<String>
-    ): List<DocumentFile> {
-        val result = mutableListOf<DocumentFile>()
-        val children = dir.listFiles()
+            skipHiddenFolders: Boolean
+    ): List<SAFFile> {
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, dirDocumentId)
 
-        if (skipNomedia && children.any { it.isFile && it.name == ".nomedia" }) {
-            return result
+        data class Row(
+                val docId: String,
+                val name: String,
+                val mimeType: String,
+                val size: Long,
+                val lastModified: Long
+        )
+
+        val rows = mutableListOf<Row>()
+
+        context.contentResolver.query(childrenUri, SAF_PROJECTION, null, null, null)?.use { cursor ->
+            val idxDocId = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+            val idxName = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+            val idxMime = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE)
+            val idxSize = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_SIZE)
+            val idxMod = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+
+            while (cursor.moveToNext()) {
+                val name = cursor.getString(idxName) ?: continue
+                rows.add(Row(
+                        cursor.getString(idxDocId) ?: continue,
+                        name,
+                        cursor.getString(idxMime) ?: "",
+                        cursor.getLong(idxSize),
+                        cursor.getLong(idxMod)
+                ))
+            }
         }
 
-        for (child in children) {
-            val name = child.name ?: continue
+        val result = mutableListOf<SAFFile>()
 
-            if (child.isDirectory) {
-                if (skipHiddenFolders && name.startsWith(".")) continue
-                if (excludedFolders.any { child.uri.toString().contains(it) }) continue
-                result.addAll(collectM3uSAF(context, child, skipNomedia, skipHiddenFiles, skipHiddenFolders, excludedFolders))
-            } else if (child.isFile && child.length() > 0 && child.isM3uFile()) {
-                if (skipHiddenFiles && name.startsWith(".")) continue
-                result.add(child)
+        for (row in rows) {
+            if (row.mimeType == DocumentsContract.Document.MIME_TYPE_DIR) {
+                if (skipHiddenFolders && row.name.startsWith(".")) continue
+                result.addAll(collectM3uSAF(context, treeUri, row.docId, skipHiddenFiles, skipHiddenFolders))
+            } else {
+                if (row.size <= 0) continue
+                if (!row.name.isM3uFile()) continue
+                if (skipHiddenFiles && row.name.startsWith(".")) continue
+                val docUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, row.docId)
+                result.add(SAFFile(docUri, row.name, row.size, row.lastModified))
             }
         }
 

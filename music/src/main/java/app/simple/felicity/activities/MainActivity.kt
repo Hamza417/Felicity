@@ -408,13 +408,13 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                 val db = AudioDatabase.getInstance(applicationContext)
                 songs.forEach { audio ->
                     runCatching {
-                        val file = File(audio.path)
+                        val file = File(audio.uri)
                         if (file.exists()) file.delete()
 
                         db.audioDao()?.delete(audio)
 
                         if (deleteLyrics) {
-                            val basePath = audio.path.substringBeforeLast('.')
+                            val basePath = audio.uri.substringBeforeLast('.')
                             listOf(
                                     File("$basePath.txt"),
                                     File("$basePath.lrc")

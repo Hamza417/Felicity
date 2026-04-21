@@ -1516,7 +1516,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     val mediaItems = songs.map { audio ->
                         MediaItem.Builder()
                             .setMediaId(audio.id.toString())
-                            .setUri(audio.path)
+                            .setUri(audio.uri)
                             .setMediaMetadata(
                                     MediaMetadata.Builder()
                                         .setTitle(audio.title ?: "Unknown Title")
@@ -1576,7 +1576,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                         // Return the fully populated MediaItem with URI
                         MediaItem.Builder()
                             .setMediaId(audio.id.toString())
-                            .setUri(audio.path)
+                            .setUri(audio.uri)
                             .setMediaMetadata(
                                     MediaMetadata.Builder()
                                         .setTitle(audio.title ?: "Unknown Title")
@@ -1609,7 +1609,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                                 Log.d(TAG, "Resolved media ID $mediaId to audio: ${audio.title}")
                                 MediaItem.Builder()
                                     .setMediaId(audio.id.toString())
-                                    .setUri(audio.path)
+                                    .setUri(audio.uri)
                                     .setMediaMetadata(
                                             MediaMetadata.Builder()
                                                 .setTitle(audio.title)

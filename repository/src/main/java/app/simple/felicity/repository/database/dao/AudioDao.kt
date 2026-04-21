@@ -35,12 +35,12 @@ interface AudioDao {
         DELETE FROM audio
         WHERE id NOT IN (
             SELECT id FROM audio
-            GROUP BY path
+            GROUP BY uri
             HAVING id = MAX(id)
         )
-        AND path IN (
-            SELECT path FROM audio
-            GROUP BY path
+        AND uri IN (
+            SELECT uri FROM audio
+            GROUP BY uri
             HAVING COUNT(*) > 1
         )
     """)
@@ -119,13 +119,13 @@ interface AudioDao {
     @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND composer LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
     fun searchByComposerFiltered(query: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
 
-    @Query("SELECT id FROM audio WHERE path = :path AND is_available = 1")
+    @Query("SELECT id FROM audio WHERE uri = :path AND is_available = 1")
     fun getAudioIdByPath(path: String): Long
 
     @Query("SELECT * FROM audio WHERE id = :id LIMIT 1")
     suspend fun getAudioById(id: Long): Audio?
 
-    @Query("SELECT * FROM audio WHERE path = :path LIMIT 1")
+    @Query("SELECT * FROM audio WHERE uri = :path LIMIT 1")
     fun getAudioByPath(path: String): Audio?
 
     // Favorite / always-skip flag queries

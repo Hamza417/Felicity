@@ -21,7 +21,7 @@ object AudioUtils {
     }
 
     fun Audio.hasLrc(): Boolean {
-        val path = this.path
+        val path = this.uri
         val lrcPath = path.substringBeforeLast('.').plus(".lrc")
         return lrcPath.toFile().exists()
     }

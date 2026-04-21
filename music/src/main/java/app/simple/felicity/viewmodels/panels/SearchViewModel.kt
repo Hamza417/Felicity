@@ -121,7 +121,7 @@ class SearchViewModel @Inject constructor(
                             artist = firstSong.artist,
                             artistId = firstSong.artist?.hashCode()?.toLong() ?: 0L,
                             songCount = songs.size,
-                            songPaths = songs.map { it.path }
+                            songPaths = songs.map { it.uri }
                     )
                 }
                 .sortedBy { it.name?.lowercase() }
@@ -139,7 +139,7 @@ class SearchViewModel @Inject constructor(
                             name = artistName,
                             albumCount = uniqueAlbums,
                             trackCount = songs.size,
-                            songPaths = songs.map { it.path }
+                            songPaths = songs.map { it.uri }
                     )
                 }
                 .sortedBy { it.name?.lowercase() }
@@ -154,7 +154,7 @@ class SearchViewModel @Inject constructor(
                     Genre(
                             id = genreName.hashCode().toLong(),
                             name = genreName,
-                            songPaths = songs.map { it.path },
+                            songPaths = songs.map { it.uri },
                             songCount = songs.size
                     )
                 }

@@ -1,17 +1,16 @@
 package app.simple.felicity.repository.loader
 
 import android.content.Context
-import android.net.Uri
 import android.util.Log
 import androidx.annotation.WorkerThread
-import androidx.documentfile.provider.DocumentFile
+import androidx.core.net.toUri
 import app.simple.felicity.core.m3u.M3uParser
-import app.simple.felicity.preferences.SAFPreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Playlist
 import app.simple.felicity.repository.models.PlaylistSongCrossRef
 import app.simple.felicity.repository.scanners.AudioScanner
+import app.simple.felicity.repository.scanners.SAFFile
 import app.simple.felicity.shared.utils.ProcessUtils.checkNotMainThread
 import java.io.File
 import java.nio.ByteBuffer
@@ -62,7 +61,13 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
         val startTime = System.currentTimeMillis()
         Log.d(TAG, "Starting M3U playlist processing...")
 
-        val treeUriStrings = SAFPreferences.getTreeUris()
+        // Read the live list of granted tree URIs directly from the system instead
+        // of a separate preferences store — this way revoked permissions are noticed
+        // immediately without any stale state to worry about.
+        val treeUriStrings = context.contentResolver.persistedUriPermissions
+            .filter { it.isReadPermission }
+            .map { it.uri.toString() }
+
         val playlistDao = audioDatabase.playlistDao()
         val audioDao = audioDatabase.audioDao() ?: run {
             Log.e(TAG, "AudioDao is unavailable — skipping M3U processing.")
@@ -70,13 +75,13 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
         }
 
         // Gather every M3U file from all SAF tree URIs the user has granted.
-        val m3uDocFiles = mutableListOf<DocumentFile>()
+        val m3uSAFFiles = mutableListOf<SAFFile>()
         val scanner = AudioScanner()
         for (uriStr in treeUriStrings) {
-            val treeUri = Uri.parse(uriStr)
+            val treeUri = uriStr.toUri()
             val found = scanner.getM3uFiles(context, treeUri)
             Log.d(TAG, "Found ${found.size} M3U file(s) in $uriStr")
-            m3uDocFiles.addAll(found)
+            m3uSAFFiles.addAll(found)
         }
 
         // Map existing M3U playlists by their stored source URI for O(1) lookup.
@@ -85,22 +90,22 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
 
         val visitedPaths = mutableSetOf<String>()
 
-        for (m3uDoc in m3uDocFiles) {
-            val uriKey = m3uDoc.uri.toString()
+        for (m3uFile in m3uSAFFiles) {
+            val uriKey = m3uFile.uri.toString()
             visitedPaths.add(uriKey)
 
             val existing = existingByPath[uriKey]
-            val fileLastModified = m3uDoc.lastModified()
+            val fileLastModified = m3uFile.lastModified
 
             if (existing != null && existing.dateModified >= fileLastModified) {
-                Log.d(TAG, "M3U playlist unchanged, skipping: ${m3uDoc.name}")
+                Log.d(TAG, "M3U playlist unchanged, skipping: ${m3uFile.name}")
                 continue
             }
 
             // Read the M3U content via the ContentResolver — this is the SAF way of
             // opening a file we don't have a direct file-system path to.
             val content = runCatching {
-                context.contentResolver.openInputStream(m3uDoc.uri)
+                context.contentResolver.openInputStream(m3uFile.uri)
                     ?.bufferedReader(Charsets.UTF_8)
                     ?.readText()
             }.getOrNull() ?: run {
@@ -111,7 +116,7 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
             val m3uPlaylist = M3uParser.parse(content)
 
             val playlistName = m3uPlaylist.name?.takeIf { it.isNotBlank() }
-                ?: m3uDoc.name?.substringBeforeLast('.') ?: "Unnamed Playlist"
+                ?: m3uFile.name.substringBeforeLast('.').ifBlank { "Unnamed Playlist" }
 
             val playlistId: Long
 
@@ -125,7 +130,7 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
                                 dateModified = fileLastModified
                         )
                 )
-                Log.d(TAG, "Created M3U playlist '$playlistName' (id=$playlistId) from: ${m3uDoc.name}")
+                Log.d(TAG, "Created M3U playlist '$playlistName' (id=$playlistId) from: ${m3uFile.name}")
             } else {
                 playlistId = existing.id
                 playlistDao.removeAllSongsFromPlaylist(playlistId)
@@ -135,12 +140,9 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
                                 dateModified = fileLastModified
                         )
                 )
-                Log.d(TAG, "Refreshing M3U playlist '$playlistName' (id=$playlistId) from: ${m3uDoc.name}")
+                Log.d(TAG, "Refreshing M3U playlist '$playlistName' (id=$playlistId) from: ${m3uFile.name}")
             }
 
-            // SAF playlists store the tree URI as their "base directory" context.
-            // Relative paths inside an M3U file can't be resolved to other SAF URIs
-            // easily, so we do a best-effort match against known audio paths in the DB.
             val crossRefs = mutableListOf<PlaylistSongCrossRef>()
 
             for ((index, entry) in m3uPlaylist.entries.withIndex()) {
@@ -150,7 +152,6 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
                 val audioHash = if (existingAudio != null) {
                     existingAudio.hash
                 } else {
-                    // Insert a ghost placeholder so the playlist slot is never empty.
                     val ghost = buildGhostAudio(entry.path, entry.title)
                     val insertedRowId = audioDao.insertOrIgnore(ghost)
                     if (insertedRowId == -1L) {
@@ -187,7 +188,7 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
         }
 
         Log.d(TAG, "M3U playlist processing done in ${(System.currentTimeMillis() - startTime) / 1000}s. " +
-                "Processed ${m3uDocFiles.size} file(s), removed ${stalePlaylists.size} stale playlist(s).")
+                "Processed ${m3uSAFFiles.size} file(s), removed ${stalePlaylists.size} stale playlist(s).")
     }
 
     /**
@@ -207,7 +208,7 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
         val audio = Audio()
         audio.name = file.name
         audio.setTitle(displayTitle ?: file.nameWithoutExtension)
-        audio.path = rawPath
+        audio.uri = rawPath
         audio.mimeType = file.extension.lowercase()
         audio.hash = hashPath(rawPath)
         audio.size = 0L
@@ -246,4 +247,3 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
         return ByteBuffer.wrap(digest).long
     }
 }
-

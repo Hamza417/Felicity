@@ -1,16 +1,16 @@
 package app.simple.felicity.repository.loader
 
 import android.content.Context
+import android.provider.DocumentsContract
 import android.util.Log
 import androidx.annotation.WorkerThread
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
-import app.simple.felicity.preferences.LibraryPreferences
-import app.simple.felicity.preferences.SAFPreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.metadata.MetaDataHelper.extractMetadata
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.scanners.AudioScanner
+import app.simple.felicity.repository.scanners.SAFFile
 import app.simple.felicity.shared.utils.ProcessUtils.checkNotMainThread
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -118,6 +118,18 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
     private fun newScanScope() = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    /**
+     * Returns the set of SAF tree URIs the user has actively granted access to,
+     * reading directly from the system's persisted permission list rather than
+     * a separate preferences store — this way the list always reflects reality.
+     */
+    private fun getGrantedTreeUriStrings(): Set<String> {
+        return context.contentResolver.persistedUriPermissions
+            .filter { it.isReadPermission }
+            .map { it.uri.toString() }
+            .toSet()
+    }
+
     suspend fun processAudioFiles() {
         checkNotMainThread()
 
@@ -139,7 +151,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
             val dao = audioDatabase.audioDao()
 
-            val treeUriStrings = SAFPreferences.getTreeUris()
+            val treeUriStrings = getGrantedTreeUriStrings()
             if (treeUriStrings.isEmpty()) {
                 Log.w(TAG, "No SAF tree URIs granted. Nothing to scan — ask the user to pick a folder first.")
                 return
@@ -152,25 +164,26 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
             val pathToStoredId = HashMap<String, Long>()
             dao?.getAllAudioListAll()?.forEach { audio ->
-                indexedMap[audio.path] = IndexedFile(audio.dateModified, audio.size, audio.id, audio.isFavorite, audio.isAlwaysSkip)
-                pathToStoredId[audio.path] = audio.id
+                indexedMap[audio.uri] = IndexedFile(audio.dateModified, audio.size, audio.id, audio.isFavorite, audio.isAlwaysSkip)
+                pathToStoredId[audio.uri] = audio.id
             }
 
             Log.d(TAG, "Indexing complete. Found ${indexedMap.size} existing entries in the database.")
 
             // Phase 1 — collect every audio file from all SAF tree URIs.
-            val allDocFiles = mutableListOf<DocumentFile>()
+            val allSAFFiles = mutableListOf<SAFFile>()
             val scanner = AudioScanner()
             for (uriStr in treeUriStrings) {
                 scanScope.coroutineContext.ensureActive()
                 val treeUri = uriStr.toUri()
+                val collectStart = System.currentTimeMillis()
                 val files = scanner.getAudioFiles(context, treeUri)
-                Log.d(TAG, "Found ${files.size} audio files in $uriStr")
-                allDocFiles.addAll(files)
+                Log.d(TAG, "Found ${files.size} audio files in $uriStr (collected in ${System.currentTimeMillis() - collectStart}ms)")
+                allSAFFiles.addAll(files)
             }
 
-            notification.setTotal(allDocFiles.size)
-            Log.d(TAG, "Total audio files to evaluate: ${allDocFiles.size}")
+            notification.setTotal(allSAFFiles.size)
+            Log.d(TAG, "Total audio files to evaluate: ${allSAFFiles.size}")
 
             val processedCount = AtomicInteger(0)
 
@@ -215,30 +228,28 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                 }
             }
 
-            // Phase 2 — process each DocumentFile in parallel coroutines.
+            // Phase 2 — process each SAFFile in parallel coroutines.
             val pendingJobs = mutableListOf<Job>()
 
-            allDocFiles.forEach { docFile ->
+            allSAFFiles.forEach { safFile ->
                 scanScope.coroutineContext.ensureActive()
 
-                val uriKey = docFile.uri.toString()
-                if (shouldProcess(docFile)) {
+                val uriKey = safFile.uri.toString()
+                if (shouldProcess(safFile)) {
                     val producerJob = scanScope.launch {
                         semaphore.acquire()
                         try {
                             ensureActive()
 
                             Log.d(TAG, "Processing: $uriKey")
-                            val audio = docFile.extractMetadata(context)
+                            val audio = safFile.extractMetadata(context)
 
                             ensureActive()
 
                             if (audio == null) {
-                                Log.w(TAG, "Failed to extract metadata for: ${docFile.name}")
+                                Log.w(TAG, "Failed to extract metadata for: ${safFile.name}")
                                 return@launch
                             }
-
-                            Log.d(TAG, "Metadata extracted for ${docFile.name}: size=${audio.size}, dateModified=${audio.dateModified}")
 
                             val storedId = pathToStoredId[uriKey]
                             val stored = indexedMap[uriKey]
@@ -248,7 +259,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                                 audio.id = storedId
                                 audio.isFavorite = stored?.isFavorite ?: false
                                 audio.isAlwaysSkip = stored?.alwaysSkip ?: false
-                                Log.d(TAG, "Updating existing entry (id=$storedId) for: ${docFile.name}")
+                                Log.d(TAG, "Updating existing entry (id=$storedId) for: ${safFile.name}")
                                 PendingWrite.Update(audio, uriKey, newIndexEntry)
                             } else {
                                 PendingWrite.Insert(audio, uriKey, newIndexEntry)
@@ -261,7 +272,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                                 notification.updateProgress(done)
                             }
                         } catch (e: CancellationException) {
-                            Log.d(TAG, "Processing canceled for: ${docFile.name}")
+                            Log.d(TAG, "Processing canceled for: ${safFile.name}")
                             throw e
                         } catch (e: Exception) {
                             Log.e(TAG, "Error processing $uriKey", e)
@@ -278,7 +289,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             dbChannel.close()
             consumerJob.join()
 
-            notification.updateProgress(allDocFiles.size)
+            notification.updateProgress(allSAFFiles.size)
 
             Log.d(TAG, "Audio file processing complete in ${(System.currentTimeMillis() - startTime) / 1000} seconds.")
         } catch (e: CancellationException) {
@@ -309,24 +320,26 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
         val allAudio = dao.getAllAudioListAll()
 
-        val skipNomedia = LibraryPreferences.isSkipNomedia()
-        val skipHiddenFiles = LibraryPreferences.isSkipHiddenFiles()
-        val skipHiddenFolders = LibraryPreferences.isSkipHiddenFolders()
-        val excludedFolders = LibraryPreferences.getExcludedFolders()
-
         val toDelete = mutableListOf<Audio>()
         val toUpdate = mutableListOf<Audio>()
 
         allAudio.forEach { audio ->
-            val path = audio.path
+            val path = audio.uri
 
             if (path.startsWith("content://")) {
-                // SAF content URI — check whether the document still physically exists.
                 val docFile = DocumentFile.fromSingleUri(context, path.toUri())
 
-                // Check if the tree that covers this file is still in our granted list.
+                // Check if the tree that was covering this file is still in our granted list.
+                // We compare the tree document IDs directly using DocumentsContract so that
+                // encoding differences (e.g. %3A vs :) can never cause a false mismatch.
                 val isTreeStillGranted = grantedTreeUriStrings.any { treeUriStr ->
-                    path.contains(treeUriStr.toUri().lastPathSegment ?: "")
+                    try {
+                        val docTreeId = DocumentsContract.getTreeDocumentId(path.toUri())
+                        val grantedTreeId = DocumentsContract.getTreeDocumentId(treeUriStr.toUri())
+                        docTreeId == grantedTreeId
+                    } catch (e: Exception) {
+                        false
+                    }
                 }
 
                 when {
@@ -342,12 +355,6 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                             indexedMap.remove(path)
                         }
                     }
-                    isHiddenBySAFFilter(docFile, skipHiddenFiles, skipHiddenFolders) ||
-                            isInExcludedFolderSAF(docFile, excludedFolders) -> {
-                        Log.d(TAG, "SAF file excluded by current filter, removing: $path")
-                        toDelete.add(audio)
-                        indexedMap.remove(path)
-                    }
                     !audio.isAvailable -> {
                         Log.d(TAG, "Restoring available SAF file: $path")
                         audio.isAvailable = true
@@ -355,8 +362,6 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                     }
                 }
             }
-            // Legacy file-path entries are left alone — they'll simply never match
-            // any SAF scan and will age out naturally if the user rescans the library.
         }
 
         if (toDelete.isNotEmpty()) dao.delete(toDelete)
@@ -365,53 +370,27 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         Log.d(TAG, "Reconcile complete: Deleted ${toDelete.size}, Updated status for ${toUpdate.size}")
     }
 
-    /**
-     * Returns true if the document's own name suggests it should be hidden
-     * under the current filter preferences.
-     */
-    private fun isHiddenBySAFFilter(
-            doc: DocumentFile,
-            skipHiddenFiles: Boolean,
-            skipHiddenFolders: Boolean
-    ): Boolean {
-        val name = doc.name ?: return false
-        if (skipHiddenFiles && name.startsWith(".")) return true
-        if (skipHiddenFolders && doc.isDirectory && name.startsWith(".")) return true
-        return false
-    }
 
     /**
-     * Returns true if the document's URI string contains any of the excluded folder
-     * URI fragments. It's a simple string containment check — good enough for this use case.
-     */
-    private fun isInExcludedFolderSAF(doc: DocumentFile, excludedFolders: Set<String>): Boolean {
-        if (excludedFolders.isEmpty()) return false
-        val uriStr = doc.uri.toString()
-        return excludedFolders.any { uriStr.contains(it) }
-    }
-
-    /**
-     * Returns true when a DocumentFile needs fresh metadata extraction — either because
+     * Returns true when a [SAFFile] needs fresh metadata extraction — either because
      * it's brand new to the library, or because its size or last-modified timestamp
-     * changed since we last indexed it.
+     * changed since we last indexed it. Because [SAFFile] already carries size and
+     * lastModified from the bulk scan query, this check costs zero extra IPC calls.
      */
-    private fun shouldProcess(docFile: DocumentFile): Boolean {
-        val key = docFile.uri.toString()
+    private fun shouldProcess(safFile: SAFFile): Boolean {
+        val key = safFile.uri.toString()
         val existing = indexedMap[key] ?: run {
-            Log.d(TAG, "New SAF file (not in index): ${docFile.name}")
+            Log.d(TAG, "New SAF file (not in index): ${safFile.name}")
             return true
         }
 
-        val fileSize = docFile.length()
-        val fileModified = docFile.lastModified()
-
-        if (existing.size != fileSize) {
-            Log.d(TAG, "Size changed for ${docFile.name}: DB=${existing.size}, File=$fileSize")
+        if (existing.size != safFile.size) {
+            Log.d(TAG, "Size changed for ${safFile.name}: DB=${existing.size}, File=${safFile.size}")
             return true
         }
 
-        if (existing.lastModified != fileModified) {
-            Log.d(TAG, "Modified time changed for ${docFile.name}: DB=${existing.lastModified}, File=$fileModified")
+        if (existing.lastModified != safFile.lastModified) {
+            Log.d(TAG, "Modified time changed for ${safFile.name}: DB=${existing.lastModified}, File=${safFile.lastModified}")
             return true
         }
 
@@ -437,19 +416,12 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
      * start cleanly. Unlike [cleanup], this leaves the loader fully operational.
      */
     private fun cancelCurrentScan() {
-        // Cancelling the scope automatically cancels every coroutine child that was
-        // launched within it — no need to track or cancel individual jobs. The old
-        // approach kept a synchronized list of all 1000+ jobs and iterated over it,
-        // which caused a noticeable main-thread monitor stall when cancel was called.
         Log.d(TAG, "Canceling scanScope (all child coroutines will be cancelled automatically)")
         scanScope.coroutineContext[Job]?.cancel()
         scanScope = newScanScope()
 
         indexedMap.clear()
 
-        // Reset the running flag so the next scan can start immediately.
-        // This is safe to call from any coroutine — AtomicBoolean has no
-        // owner restriction, which is exactly why we chose it over Mutex here.
         isScanRunning.set(false)
 
         notification.dismissForce()
@@ -462,8 +434,6 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
      */
     fun cleanup() {
         Log.d(TAG, "Cleanup called - canceling all operations")
-        // Force-dismiss first so there is no zombie notification lingering
-        // after the service shuts down, regardless of any in-flight finally blocks.
         notification.dismissForce()
         cancelCurrentScan()
         Log.d(TAG, "Cleanup complete - all operations canceled")

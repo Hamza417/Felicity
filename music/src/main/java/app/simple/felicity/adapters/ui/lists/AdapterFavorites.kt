@@ -60,7 +60,7 @@ class AdapterFavorites(initial: List<Audio>) : FastScrollAdapter<VerticalListVie
                     oldItem.artist == newItem.artist &&
                     oldItem.album == newItem.album &&
                     oldItem.duration == newItem.duration &&
-                    oldItem.path == newItem.path
+                    oldItem.uri == newItem.uri
         }
     }
 

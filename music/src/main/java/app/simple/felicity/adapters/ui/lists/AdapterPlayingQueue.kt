@@ -161,7 +161,7 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
                 val a = oldSongs[o];
                 val b = newSongs[n]
                 return a.title == b.title && a.artist == b.artist &&
-                        a.album == b.album && a.duration == b.duration && a.path == b.path
+                        a.album == b.album && a.duration == b.duration && a.uri == b.uri
             }
         })
         songs.clear()

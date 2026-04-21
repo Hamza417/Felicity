@@ -34,7 +34,7 @@ object AudioCover {
      * @return Bitmap of audio cover, or null if no artwork is found.
      */
     fun load(context: Context, audio: Audio): Bitmap? {
-        val audioPath = audio.path ?: return null
+        val audioPath = audio.uri ?: return null
         val isSAFPath = audioPath.startsWith("content://")
 
         if (LibraryPreferences.isUseMediaStoreArtwork()) {

@@ -11,7 +11,6 @@ object LibraryPreferences {
     const val MINIMUM_AUDIO_LENGTH = "minimum_audio_length"
     const val MINIMUM_AUDIO_SIZE = "minimum_audio_size"
 
-    const val SKIP_NOMEDIA = "skip_nomedia_folders"
     const val SKIP_HIDDEN_FILES = "skip_hidden_files"
     const val SKIP_HIDDEN_FOLDERS = "skip_hidden_folders"
 
@@ -54,16 +53,6 @@ object LibraryPreferences {
 
     fun setMinimumAudioSize(size: Int) {
         SharedPreferences.getSharedPreferences().edit { putInt(MINIMUM_AUDIO_SIZE, size) }
-    }
-
-    // ----------------------------------------------------------------------------------------------------- //
-
-    fun isSkipNomedia(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(SKIP_NOMEDIA, true)
-    }
-
-    fun setSkipNomedia(skip: Boolean) {
-        SharedPreferences.getSharedPreferences().edit { putBoolean(SKIP_NOMEDIA, skip) }
     }
 
     // ----------------------------------------------------------------------------------------------------- //

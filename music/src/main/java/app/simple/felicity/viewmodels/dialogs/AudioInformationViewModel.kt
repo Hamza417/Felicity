@@ -38,13 +38,13 @@ class AudioInformationViewModel @AssistedInject constructor(
 
     private fun loadInfo() {
         viewModelScope.launch(Dispatchers.IO) {
-            val hasEmbeddedArt = checkEmbeddedArt(audio.path)
-            val hasLrc = lrcRepository.lrcFileExists(audio.path)
+            val hasEmbeddedArt = checkEmbeddedArt(audio.uri)
+            val hasLrc = lrcRepository.lrcFileExists(audio.uri)
 
             val list = buildList {
                 // ── Full-span rows (wide data) ──────────────────────────────
                 add(data(R.string.title, audio.title ?: audio.name ?: "–", fullSpan = true))
-                add(data(R.string.path, audio.path ?: "–", fullSpan = true))
+                add(data(R.string.path, audio.uri ?: "–", fullSpan = true))
                 add(data(R.string.album, audio.album ?: "–", fullSpan = true))
 
                 // ── Half-span rows (2-column grid) ──────────────────────────
@@ -56,7 +56,7 @@ class AudioInformationViewModel @AssistedInject constructor(
                 add(data(R.string.sample_rate, "${audio.samplingRate} Hz"))
                 add(data(R.string.bit_depth, if (audio.bitPerSample > 0) "${audio.bitPerSample}-bit" else "–"))
                 add(data(R.string.mime_type, audio.mimeType ?: "–"))
-                add(data(R.string.format, audio.path.getAudioFormat() ?: "–"))
+                add(data(R.string.format, audio.uri.getAudioFormat() ?: "–"))
                 add(data(R.string.genre, audio.genre ?: "–"))
                 add(data(R.string.year, audio.year ?: "–"))
                 add(data(R.string.track, if (audio.track > 0) audio.track.toString() else "–"))

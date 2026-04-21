@@ -95,7 +95,7 @@ class PlaylistRepository @Inject constructor(
                             artist = primaryArtist,
                             artistId = primaryArtist.hashCode().toLong(),
                             songCount = albumSongs.size,
-                            songPaths = albumSongs.map { it.path }
+                            songPaths = albumSongs.map { it.uri }
                     )
                 }
 
@@ -108,7 +108,7 @@ class PlaylistRepository @Inject constructor(
                             name = artistName,
                             albumCount = uniqueAlbums,
                             trackCount = artistSongs.size,
-                            songPaths = artistSongs.map { it.path }
+                            songPaths = artistSongs.map { it.uri }
                     )
                 }
 
@@ -118,7 +118,7 @@ class PlaylistRepository @Inject constructor(
                     Genre(
                             id = genreName.hashCode().toLong(),
                             name = genreName,
-                            songPaths = genreSongs.map { it.path },
+                            songPaths = genreSongs.map { it.uri },
                             songCount = genreSongs.size
                     )
                 }

@@ -66,7 +66,7 @@ class MetadataEditorViewModel @AssistedInject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _isSaving.emit(true)
             try {
-                val path = updatedAudio.path
+                val path = updatedAudio.uri
                     ?: throw IllegalStateException("Audio path must not be null.")
                 val file = File(path)
 

@@ -116,7 +116,7 @@ public class MediaMetadataLoader {
         
         if (file != null) {
             audio.setName(file.getName());
-            audio.setPath(file.getAbsolutePath());
+            audio.setUri(file.getAbsolutePath());
             audio.setSize(file.length());
             audio.setDateModified(file.lastModified());
         } else {
@@ -132,7 +132,7 @@ public class MediaMetadataLoader {
                         : uriString;
             }
             audio.setName(displayName);
-            audio.setPath(uriString);
+            audio.setUri(uriString);
             audio.setSize(cachedSize);
             audio.setDateModified(cachedLastModified);
         }

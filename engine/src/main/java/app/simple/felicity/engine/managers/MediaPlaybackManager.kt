@@ -237,7 +237,7 @@ object MediaPlaybackManager {
             scope.launch {
                 val mediaItems = withContext(Dispatchers.Default) {
                     audios.map { audio ->
-                        val uri = audio.path.toPlaybackUri()
+                        val uri = audio.uri.toPlaybackUri()
                         MediaItem.Builder()
                             .setMediaId(audio.id.toString())
                             .setUri(uri)
@@ -690,7 +690,7 @@ object MediaPlaybackManager {
             val addedAt = newList.size - 1
             pendingSeekPositions.add(addedAt)
             scope.launch {
-                val uri = audio.path.toPlaybackUri()
+                val uri = audio.uri.toPlaybackUri()
                 val mediaItem = MediaItem.Builder()
                     .setMediaId(audio.id.toString())
                     .setUri(uri)
@@ -747,7 +747,7 @@ object MediaPlaybackManager {
             pendingSeekPositions.add(insertAt)
 
             scope.launch {
-                val uri = audio.path.toPlaybackUri()
+                val uri = audio.uri.toPlaybackUri()
                 val mediaItem = MediaItem.Builder()
                     .setMediaId(audio.id.toString())
                     .setUri(uri)
@@ -811,7 +811,7 @@ object MediaPlaybackManager {
             pendingSeekPositions.add(insertAt)
 
             scope.launch {
-                val uri = audio.path.toPlaybackUri()
+                val uri = audio.uri.toPlaybackUri()
                 val mediaItem = MediaItem.Builder()
                     .setMediaId(audio.id.toString())
                     .setUri(uri)

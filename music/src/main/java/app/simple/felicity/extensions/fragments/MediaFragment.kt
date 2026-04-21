@@ -795,11 +795,11 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 }
 
                 // Step 2: Delete the physical file.
-                val file = File(audio.path)
+                val file = File(audio.uri)
                 val deleted = if (file.exists()) {
                     file.delete()
                 } else {
-                    Log.w(TAG, "File does not exist: ${audio.path}")
+                    Log.w(TAG, "File does not exist: ${audio.uri}")
                     true // Consider it deleted if it doesn't exist.
                 }
 
@@ -812,8 +812,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
                     if (lyrics) {
                         // Also delete associated lyrics file if it exists.
-                        val lyricsFile = File(audio.path.substringBeforeLast('.'), "${audio.title}.txt")
-                        val lrcFile = File(audio.path.substringBeforeLast('.'), "${audio.title}.lrc")
+                        val lyricsFile = File(audio.uri.substringBeforeLast('.'), "${audio.title}.txt")
+                        val lrcFile = File(audio.uri.substringBeforeLast('.'), "${audio.title}.lrc")
 
                         if (lyricsFile.exists()) {
                             val lyricsDeleted = lyricsFile.delete()
@@ -834,7 +834,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                         }
                     }
                 } else {
-                    Log.e(TAG, "Failed to delete file: ${audio.path}")
+                    Log.e(TAG, "Failed to delete file: ${audio.uri}")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error deleting song: ${e.message}", e)
@@ -943,7 +943,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 FileProvider.getUriForFile(
                         requireContext(),
                         "${requireContext().packageName}.provider",
-                        File(audio.path)
+                        File(audio.uri)
                 )
             }.getOrNull()
         }
@@ -1224,7 +1224,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 FileProvider.getUriForFile(
                         requireContext(),
                         "${requireContext().packageName}.provider",
-                        File(audio.path)
+                        File(audio.uri)
                 )
             }.getOrNull()
         }

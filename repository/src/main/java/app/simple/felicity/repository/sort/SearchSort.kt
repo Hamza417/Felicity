@@ -26,8 +26,8 @@ object SearchSort {
                 else -> this
             }
             CommonPreferencesConstants.BY_PATH -> when (SearchPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ASCENDING -> sortedBy { it.path }
-                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.path }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.uri }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.uri }
                 else -> this
             }
             CommonPreferencesConstants.BY_DATE_ADDED -> when (SearchPreferences.getSortingStyle()) {

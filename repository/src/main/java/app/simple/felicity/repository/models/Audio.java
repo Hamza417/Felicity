@@ -29,7 +29,7 @@ import androidx.room.PrimaryKey;
         tableName = "audio",
         indices = {
                 @Index (value = {"hash"}),
-                @Index (value = {"path"}, unique = true)
+                @Index (value = {"uri"}, unique = true)
         }
 )
 public class Audio implements Parcelable {
@@ -65,8 +65,8 @@ public class Audio implements Parcelable {
     @ColumnInfo (name = "artist")
     @Nullable
     private String artist;
-    @ColumnInfo (name = "path")
-    private String path;
+    @ColumnInfo (name = "uri")
+    private String uri;
     @ColumnInfo (name = "track")
     private int track;
     @ColumnInfo (name = "album")
@@ -141,7 +141,7 @@ public class Audio implements Parcelable {
         title = in.readString();
         artist = in.readString();
         album = in.readString();
-        path = in.readString();
+        uri = in.readString();
         track = in.readInt();
         author = in.readString();
         size = in.readInt();
@@ -171,7 +171,7 @@ public class Audio implements Parcelable {
         dest.writeString(title);
         dest.writeString(artist);
         dest.writeString(album);
-        dest.writeString(path);
+        dest.writeString(uri);
         dest.writeInt(track);
         dest.writeString(author);
         dest.writeLong(size);
@@ -260,12 +260,12 @@ public class Audio implements Parcelable {
         this.duration = duration;
     }
     
-    public String getPath() {
-        return path;
+    public String getUri() {
+        return uri;
     }
     
-    public void setPath(String path) {
-        this.path = path;
+    public void setUri(String uri) {
+        this.uri = uri;
     }
     
     public long getId() {
@@ -488,7 +488,7 @@ public class Audio implements Parcelable {
                 ", title='" + title + '\'' +
                 ", artist='" + artist + '\'' +
                 ", album='" + album + '\'' +
-                ", path='" + path + '\'' +
+                ", path='" + uri + '\'' +
                 ", track=" + track +
                 ", author='" + author + '\'' +
                 ", size=" + size +
@@ -576,7 +576,7 @@ public class Audio implements Parcelable {
         if (album != null ? !album.equals(audio.album) : audio.album != null) {
             return false;
         }
-        if (path != null ? !path.equals(audio.path) : audio.path != null) {
+        if (uri != null ? !uri.equals(audio.uri) : audio.uri != null) {
             return false;
         }
         if (author != null ? !author.equals(audio.author) : audio.author != null) {
@@ -633,7 +633,7 @@ public class Audio implements Parcelable {
         result = 31 * result + (title != null ? title.hashCode() : 0);
         result = 31 * result + (artist != null ? artist.hashCode() : 0);
         result = 31 * result + (album != null ? album.hashCode() : 0);
-        result = 31 * result + (path != null ? path.hashCode() : 0);
+        result = 31 * result + (uri != null ? uri.hashCode() : 0);
         result = 31 * result + track;
         result = 31 * result + (author != null ? author.hashCode() : 0);
         result = 31 * result + Long.hashCode(size);
@@ -671,7 +671,7 @@ public class Audio implements Parcelable {
         audio.setTitle(getTitle());
         audio.setArtist(getArtist());
         audio.setAlbum(getAlbum());
-        audio.setPath(getPath());
+        audio.setUri(getUri());
         audio.setTrack(getTrack());
         audio.setAuthor(getAuthor());
         audio.setSize(getSize());
@@ -743,6 +743,6 @@ public class Audio implements Parcelable {
      * @return a File object representing the audio file.
      */
     public File getFile() {
-        return new File(path);
+        return new File(uri);
     }
 }

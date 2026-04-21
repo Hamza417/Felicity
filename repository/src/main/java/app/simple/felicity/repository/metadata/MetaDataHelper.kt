@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import app.simple.felicity.core.utils.FileUtils.toFile
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.scanners.SAFFile
 import java.io.File
 import java.nio.ByteBuffer
 import java.security.MessageDigest
@@ -67,6 +68,30 @@ object MetaDataHelper {
         } ?: runCatching {
             Log.d(TAG, "Falling back to MediaMetadataLoader for SAF URI: $uri")
             MediaMetadataLoader.loadFromUri(context, uri, length(), lastModified())
+        }.getOrElse {
+            Log.e(TAG, "MediaMetadataLoader also failed for SAF URI: $uri", it)
+            null
+        }
+    }
+
+    /**
+     * Reads metadata from a [SAFFile] whose attributes (size, lastModified) were
+     * already captured during the fast bulk directory scan. This avoids the extra
+     * IPC calls that [DocumentFile.length] and [DocumentFile.lastModified] would
+     * otherwise trigger individually.
+     *
+     * @param context Android context needed to open the content URI stream.
+     * @return A populated [Audio] object, or null if both loaders failed.
+     */
+    fun SAFFile.extractMetadata(context: Context): Audio? {
+        return runCatching {
+            TagLibLoader.loadFromUri(context, uri, size, lastModified)
+        }.getOrElse {
+            Log.e(TAG, "TagLib failed for SAF URI: $uri", it)
+            null
+        } ?: runCatching {
+            Log.d(TAG, "Falling back to MediaMetadataLoader for SAF URI: $uri")
+            MediaMetadataLoader.loadFromUri(context, uri, size, lastModified)
         }.getOrElse {
             Log.e(TAG, "MediaMetadataLoader also failed for SAF URI: $uri", it)
             null

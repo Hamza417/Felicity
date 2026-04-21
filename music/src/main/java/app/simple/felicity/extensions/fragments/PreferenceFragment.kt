@@ -862,19 +862,6 @@ abstract class PreferenceFragment : MediaFragment() {
 
         val filtersHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.filters)
 
-        val skipNomediaToggle = Preference(
-                title = R.string.skip_nomedia_folders,
-                summary = R.string.skip_nomedia_folders_summary,
-                icon = R.drawable.ic_hide,
-                type = PreferenceType.SWITCH,
-                onPreferenceAction = { view, callback ->
-                    LibraryPreferences.setSkipNomedia((view as FelicitySwitch).isChecked)
-                },
-                valueProvider = Supplier {
-                    LibraryPreferences.isSkipNomedia()
-                }
-        )
-
         val skipHiddenFilesToggle = Preference(
                 title = R.string.skip_hidden_files,
                 summary = R.string.skip_hidden_files_summary,
@@ -913,7 +900,6 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(minimumAudioLength)
         preferences.add(minimumAudioSize)
         preferences.add(filtersHeader)
-        preferences.add(skipNomediaToggle)
         preferences.add(skipHiddenFilesToggle)
         preferences.add(skipHiddenFoldersToggle)
 
