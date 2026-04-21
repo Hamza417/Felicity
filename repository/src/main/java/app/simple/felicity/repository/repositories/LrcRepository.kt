@@ -1,6 +1,7 @@
 package app.simple.felicity.repository.repositories
 
 import android.content.Context
+import android.net.Uri
 import android.util.Base64
 import android.util.Log
 import app.simple.felicity.repository.metadata.LyricsMetaHelper
@@ -206,8 +207,13 @@ class LrcRepository @Inject constructor(
     }
 
     /**
-     * Load LRC content for the given audio URI. Checks the internal sidecar file first,
-     * then falls back to any lyrics embedded directly in the audio file's tags.
+     * Load LRC content for the given audio URI. Checks three places in order:
+     *
+     * 1. Our app-private internal storage (where we save downloaded/edited LRC files).
+     * 2. A sibling `.lrc` file sitting next to the audio file inside the same SAF tree
+     *    (the user may have placed it there manually — we try to open it via the content
+     *    resolver by swapping the audio extension for ".lrc" in the URI).
+     * 3. Lyrics embedded directly in the audio file's tags as a last resort.
      *
      * @param audioUri The content URI (or path) of the audio file.
      * @return [Result] wrapping the LRC string if found, null if none exists, or
@@ -216,13 +222,31 @@ class LrcRepository @Inject constructor(
     suspend fun loadLrcFromFile(audioUri: String): Result<String?> {
         return withContext(Dispatchers.IO) {
             try {
+                // Check 1: our internal private store — fastest path for anything we've saved before.
                 val lrcFile = File(lyricsDir, uriToFileName(audioUri, "lrc"))
                 if (lrcFile.exists()) {
-                    val content = lrcFile.readText()
-                    return@withContext Result.success(content)
+                    return@withContext Result.success(lrcFile.readText())
                 }
 
-                // Nothing in our private store — try the embedded tags as a last resort.
+                // Check 2: sibling .lrc file in the SAF tree. This lets users drop an .lrc
+                // file next to their music and have it picked up automatically — very handy!
+                // We build the sibling URI by replacing the audio extension with ".lrc".
+                if (audioUri.startsWith("content://")) {
+                    val siblingUri = audioUri.substringBeforeLast('.') + ".lrc"
+                    try {
+                        context.contentResolver.openInputStream(Uri.parse(siblingUri))?.use { stream ->
+                            val content = stream.bufferedReader().readText()
+                            if (content.isNotBlank()) {
+                                return@withContext Result.success(content)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // The sibling does not exist or isn't accessible — totally normal, keep going.
+                        Log.d(TAG, "No sibling .lrc found in SAF tree for: $audioUri")
+                    }
+                }
+
+                // Check 3: embedded lyrics tags in the audio file itself.
                 val embedded = LyricsMetaHelper.extractEmbeddedLyrics(audioUri)
                 if (!embedded.isNullOrBlank()) {
                     return@withContext Result.success(embedded)
@@ -297,6 +321,27 @@ class LrcRepository @Inject constructor(
     companion object {
         private const val TAG = "LrcRepository"
         private const val USER_AGENT = "Felicity Music Player (https://github.com/Hamza417/Felicity)"
+        private const val LYRICS_DIR = "lyrics"
+
+        /**
+         * Deletes any internally-stored LRC and TXT sidecar files for the given
+         * [audioUri] without needing a Hilt-injected instance. Useful from places
+         * like a delete confirmation flow where you just want to clean up sidecar
+         * files on the fly without wiring up the full repository.
+         *
+         * @param context  Any context — we only need [Context.filesDir] from it.
+         * @param audioUri The content URI (or path) of the audio file.
+         */
+        fun deleteSidecarsStatic(context: Context, audioUri: String) {
+            val lyricsDir = File(context.filesDir, LYRICS_DIR)
+            if (!lyricsDir.exists()) return
+            val encoded = Base64.encodeToString(
+                    audioUri.toByteArray(Charsets.UTF_8),
+                    Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
+            )
+            File(lyricsDir, "$encoded.lrc").delete()
+            File(lyricsDir, "$encoded.txt").delete()
+        }
     }
 }
 

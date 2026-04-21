@@ -3,7 +3,9 @@ package app.simple.felicity.activities
 import android.app.SearchManager
 import android.content.Intent
 import android.content.SharedPreferences
+import android.net.Uri
 import android.os.Bundle
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
@@ -12,7 +14,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.core.app.ShareCompat
-import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import androidx.core.view.isVisible
 import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
@@ -46,6 +48,7 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.managers.SelectionManager
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
@@ -66,7 +69,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -383,18 +385,18 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
      * Does the actual heavy lifting of deleting every song in [songs].
      * For each song we:
      *   1. Pull it out of the playback queue (or skip forward if it is playing right now).
-     *   2. Delete the file from storage.
+     *   2. Delete the file via SAF using DocumentsContract — because the URI is a
+     *      content:// address, not a file-system path, so File.delete() won't work.
      *   3. Remove its record from the database.
-     *   4. Optionally nuke the associated lyrics file too.
-     * Everything file- and database-related runs on the IO thread so the UI stays snappy.
+     *   4. Optionally nuke the associated internally-stored lyrics sidecar files too.
      *
      * @param songs        The batch of tracks to permanently delete.
-     * @param deleteLyrics Whether to also remove any .txt / .lrc sidecar lyrics files.
+     * @param deleteLyrics Whether to also remove any .lrc / .txt sidecar lyrics files.
      */
     private fun performBulkDelete(songs: List<Audio>, deleteLyrics: Boolean) {
         lifecycleScope.launch {
             // Step 1: Kick every song out of the queue on the main thread first, so playback
-            // never tries to read a path we are about to delete.
+            // never tries to read a URI we are about to delete.
             songs.forEach { audio ->
                 val queueIndex = MediaPlaybackManager.getSongs().indexOfFirst { it.id == audio.id }
                 when {
@@ -403,22 +405,17 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                 }
             }
 
-            // Step 2: Delete files + database rows on the IO thread in one go.
+            // Step 2: Delete files + database rows on the IO thread.
             withContext(Dispatchers.IO) {
                 val db = AudioDatabase.getInstance(applicationContext)
                 songs.forEach { audio ->
                     runCatching {
-                        val file = File(audio.uri)
-                        if (file.exists()) file.delete()
-
+                        // Use DocumentsContract.deleteDocument for SAF content URIs.
+                        DocumentsContract.deleteDocument(contentResolver, audio.uri.toUri())
                         db.audioDao()?.delete(audio)
 
                         if (deleteLyrics) {
-                            val basePath = audio.uri.substringBeforeLast('.')
-                            listOf(
-                                    File("$basePath.txt"),
-                                    File("$basePath.lrc")
-                            ).filter { it.exists() }.forEach { it.delete() }
+                            LrcRepository.deleteSidecarsStatic(applicationContext, audio.uri)
                         }
                     }.onFailure { e ->
                         Log.e("MainActivity", "Failed to delete ${audio.title}: ${e.message}", e)
@@ -475,18 +472,14 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     }
 
     /**
-     * Fires an Android share sheet containing all of the [songs] files at once.
-     * Each file is added as a separate stream so the receiving app can handle all of them.
-     * Any file that can't be wrapped in a FileProvider URI is silently skipped.
+     * Fires an Android share sheet containing all of the [songs] at once.
+     * Each audio URI is already a SAF content:// address with a persisted permission grant,
+     * so we pass them directly to the chooser — no FileProvider detour required.
      *
      * @param songs The tracks to share.
      */
     private fun shareSelectedAudios(songs: List<Audio>) {
-        val uris = songs.mapNotNull { audio ->
-            runCatching {
-                FileProvider.getUriForFile(this, "$packageName.provider", audio.file)
-            }.getOrNull()
-        }
+        val uris = songs.map { Uri.parse(it.uri) } as ArrayList<Uri>
         if (uris.isEmpty()) return
 
         val intent = ShareCompat.IntentBuilder(this)

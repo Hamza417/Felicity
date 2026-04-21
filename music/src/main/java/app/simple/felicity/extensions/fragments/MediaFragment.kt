@@ -1,8 +1,11 @@
 package app.simple.felicity.extensions.fragments
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Bundle
+import android.provider.DocumentsContract
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
@@ -15,7 +18,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.app.ShareCompat
-import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
@@ -51,6 +54,7 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.PlaylistWithSongs
+import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.repository.shuffle.Shuffle.shuffle
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.shared.utils.ViewUtils.cancelTouch
@@ -67,7 +71,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 import kotlin.math.abs
 
 open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
@@ -598,16 +601,12 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             }
 
             binding.share.setOnClickListener {
-                val file = audio.file
-                val uri = FileProvider.getUriForFile(
-                        requireContext(),
-                        "${requireContext().packageName}.provider",
-                        file
-                )
+                // The audio URI is already a content:// URI with a persisted SAF grant,
+                // so we can pass it directly to the share sheet. No FileProvider detour needed.
+                val audioUri = Uri.parse(audio.uri)
                 ShareCompat.IntentBuilder(requireContext())
-                    .setType("audio/*")
-                    .setText(audio.title)
-                    .setStream(uri)
+                    .setType(audio.mimeType ?: "audio/*")
+                    .setStream(audioUri)
                     .startChooser()
                 dismiss()
             }
@@ -778,63 +777,37 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     private fun deleteSong(audio: Audio, lyrics: Boolean) {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // Step 1: Skip to the next song (or remove from queue) BEFORE touching the
-                // file, so playback continues smoothly without ever trying to read a deleted path.
+                // Step 1: Remove the song from the playback queue on the main thread so playback
+                // never tries to open a URI we are about to delete.
                 withContext(Dispatchers.Main) {
                     val queueIndex = MediaPlaybackManager.getSongs().indexOfFirst { it.id == audio.id }
                     when {
-                        queueIndex != -1 -> {
-                            // removeQueueItemSilently advances playback if this song is current.
-                            MediaPlaybackManager.removeQueueItemSilently(queueIndex)
-                        }
-                        MediaPlaybackManager.getCurrentSong()?.id == audio.id -> {
-                            // Song is playing but is not in the tracked queue list — just skip.
-                            MediaPlaybackManager.next()
-                        }
+                        queueIndex != -1 -> MediaPlaybackManager.removeQueueItemSilently(queueIndex)
+                        MediaPlaybackManager.getCurrentSong()?.id == audio.id -> MediaPlaybackManager.next()
                     }
                 }
 
-                // Step 2: Delete the physical file.
-                val file = File(audio.uri)
-                val deleted = if (file.exists()) {
-                    file.delete()
-                } else {
-                    Log.w(TAG, "File does not exist: ${audio.uri}")
-                    true // Consider it deleted if it doesn't exist.
+                // Step 2: Delete the audio file itself. Audio is stored as a SAF content URI,
+                // so we use DocumentsContract.deleteDocument instead of File.delete().
+                val audioUri = audio.uri.toUri()
+                val deleted = try {
+                    DocumentsContract.deleteDocument(requireContext().contentResolver, audioUri)
+                } catch (e: Exception) {
+                    Log.w(TAG, "DocumentsContract.deleteDocument failed: ${e.message}", e)
+                    false
                 }
 
                 if (deleted) {
-                    // Step 3: Remove from the database.
-                    val audioDatabase = AudioDatabase.getInstance(requireContext())
-                    audioDatabase.audioDao()?.delete(audio)
-
+                    // Step 3: Remove the row from the database.
+                    AudioDatabase.getInstance(requireContext()).audioDao()?.delete(audio)
                     Log.d(TAG, "Song deleted successfully: ${audio.title}")
 
                     if (lyrics) {
-                        // Also delete associated lyrics file if it exists.
-                        val lyricsFile = File(audio.uri.substringBeforeLast('.'), "${audio.title}.txt")
-                        val lrcFile = File(audio.uri.substringBeforeLast('.'), "${audio.title}.lrc")
-
-                        if (lyricsFile.exists()) {
-                            val lyricsDeleted = lyricsFile.delete()
-                            if (lyricsDeleted) {
-                                Log.d(TAG, "Associated lyrics file deleted: ${lyricsFile.absolutePath}")
-                            } else {
-                                Log.e(TAG, "Failed to delete associated lyrics file: ${lyricsFile.absolutePath}")
-                            }
-                        }
-
-                        if (lrcFile.exists()) {
-                            val lrcDeleted = lrcFile.delete()
-                            if (lrcDeleted) {
-                                Log.d(TAG, "Associated LRC file deleted: ${lrcFile.absolutePath}")
-                            } else {
-                                Log.e(TAG, "Failed to delete associated LRC file: ${lrcFile.absolutePath}")
-                            }
-                        }
+                        // Clean up the internally-stored LRC/TXT sidecar files.
+                        LrcRepository.deleteSidecarsStatic(requireContext(), audio.uri)
                     }
                 } else {
-                    Log.e(TAG, "Failed to delete file: ${audio.uri}")
+                    Log.e(TAG, "DocumentsContract could not delete: ${audio.uri}")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error deleting song: ${e.message}", e)
@@ -932,28 +905,21 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     /**
-     * Shares all songs in [item] as a multi-file send intent using [FileProvider] URIs.
-     * Silently skips any file whose URI cannot be resolved.
+     * Shares all songs in [item] as a multi-file send intent.
+     * Audio files are already SAF content URIs, so we pass them straight to the
+     * chooser with [Intent.FLAG_GRANT_READ_URI_PERMISSION] — no FileProvider needed.
      *
      * @param item The [PlaylistWithSongs] whose songs will be shared.
      */
     private fun sharePlaylistSongs(item: PlaylistWithSongs) {
-        val uris = item.songs.mapNotNull { audio ->
-            runCatching {
-                FileProvider.getUriForFile(
-                        requireContext(),
-                        "${requireContext().packageName}.provider",
-                        File(audio.uri)
-                )
-            }.getOrNull()
-        }
+        val uris = item.songs.map { Uri.parse(it.uri) } as ArrayList<Uri>
         if (uris.isEmpty()) return
-        val intent = android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
+        val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
             type = "audio/*"
-            putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, ArrayList(uris))
-            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        startActivity(android.content.Intent.createChooser(intent, getString(R.string.send)))
+        startActivity(Intent.createChooser(intent, getString(R.string.send)))
     }
 
     /**
@@ -1213,28 +1179,21 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     /**
-     * Shares all [audios] as a multi-file send intent using [FileProvider] URIs.
-     * Silently skips any file whose URI cannot be resolved.
+     * Shares all [audios] as a multi-file send intent.
+     * Audio files are already SAF content URIs, so we pass them straight to the
+     * chooser with [Intent.FLAG_GRANT_READ_URI_PERMISSION] — no FileProvider needed.
      *
      * @param audios The list of [Audio] tracks to share.
      */
     private fun shareAudioList(audios: List<Audio>) {
-        val uris = audios.mapNotNull { audio ->
-            runCatching {
-                FileProvider.getUriForFile(
-                        requireContext(),
-                        "${requireContext().packageName}.provider",
-                        File(audio.uri)
-                )
-            }.getOrNull()
-        }
+        val uris = audios.map { Uri.parse(it.uri) } as ArrayList<Uri>
         if (uris.isEmpty()) return
-        val intent = android.content.Intent(android.content.Intent.ACTION_SEND_MULTIPLE).apply {
+        val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
             type = "audio/*"
-            putParcelableArrayListExtra(android.content.Intent.EXTRA_STREAM, ArrayList(uris))
-            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        startActivity(android.content.Intent.createChooser(intent, getString(R.string.send)))
+        startActivity(Intent.createChooser(intent, getString(R.string.send)))
     }
 
     override val wantsMiniPlayerVisible: Boolean
