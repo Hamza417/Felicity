@@ -5,10 +5,12 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.activityViewModels
 import app.simple.felicity.R
 import app.simple.felicity.activities.MainActivity
@@ -60,10 +62,11 @@ class Setup : MediaFragment() {
             // when you call this — without it, the grant expires with the process).
             requireContext().contentResolver.takePersistableUriPermission(
                     uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             )
             SAFPreferences.addTreeUri(uri.toString())
         }
+
         updateSAFPermissionStatus()
     }
 
@@ -162,6 +165,27 @@ class Setup : MediaFragment() {
         updateStartButtonState()
     }
 
+    private fun setGrantedFoldersText() {
+        val uris = requireContentResolver().persistedUriPermissions.map { it.uri }
+
+        Log.d(TAG, "Persisted URI permissions: $uris")
+
+        binding.folders.text = if (uris.isEmpty()) {
+            getString(R.string.no_folders_granted)
+        } else {
+            buildString {
+                uris.forEach { uri ->
+                    if (isNotEmpty()) {
+                        append("\n")
+                    }
+
+                    append("• ")
+                    append(DocumentFile.fromTreeUri(requireContext(), uri)?.name ?: "Unknown")
+                }
+            }
+        }
+    }
+
     private fun updateSAFPermissionStatus() {
         val granted = isSAFAccessGranted()
         if (granted) {
@@ -172,6 +196,7 @@ class Setup : MediaFragment() {
         // Keep the PermissionViewModel in sync so other screens that observe it still work.
         permissionViewModel.setManageFilesPermissionState(granted)
         updateStartButtonState()
+        setGrantedFoldersText()
     }
 
     override val wantsMiniPlayerVisible: Boolean
