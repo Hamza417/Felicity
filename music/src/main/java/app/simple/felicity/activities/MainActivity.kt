@@ -26,8 +26,8 @@ import app.simple.felicity.databinding.DialogSelectionMenuBinding
 import app.simple.felicity.decorations.miniplayer.MiniPlayer
 import app.simple.felicity.decorations.miniplayer.MiniPlayerItem
 import app.simple.felicity.decorations.popups.SimpleDialog
-import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
+import app.simple.felicity.decorations.utils.PermissionUtils.isSAFAccessGranted
 import app.simple.felicity.dialogs.app.VolumeKnob
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.dialogs.playlists.AddMultipleToPlaylistDialog.Companion.showAddMultipleToPlaylistDialog
@@ -260,14 +260,14 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     }
 
     private fun startAudioDatabaseService() {
-        if (applicationContext.isManageExternalStoragePermissionGranted()) {
+        // SAF access (at least one folder granted) is enough to start the scan.
+        if (applicationContext.isSAFAccessGranted()) {
             AudioDatabaseService.startScan(applicationContext)
         }
     }
 
     private fun setHomePanel() {
-        // Check if all required permissions are granted
-        val allPermissionsGranted = isManageExternalStoragePermissionGranted() &&
+        val allPermissionsGranted = isSAFAccessGranted() &&
                 isPostNotificationsPermissionGranted()
 
         when {

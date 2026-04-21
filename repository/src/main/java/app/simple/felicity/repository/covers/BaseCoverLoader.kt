@@ -1,8 +1,10 @@
 package app.simple.felicity.repository.covers
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.util.Log
 import java.io.File
 
@@ -111,12 +113,91 @@ internal object BaseCoverLoader {
     }
 
     /**
+     * Extracts embedded artwork from an audio file referenced by a SAF content URI.
+     * Use this instead of the path-based version when the audio was scanned via the
+     * folder picker — content URIs don't map to real file paths on disk.
+     *
+     * @param context Android context needed to open the content URI.
+     * @param audioUri The content:// URI of the audio file.
+     * @return Bitmap or null if no embedded artwork is found.
+     */
+    fun loadEmbeddedArtwork(context: Context, audioUri: Uri): Bitmap? {
+        val retriever = MediaMetadataRetriever()
+
+        try {
+            retriever.setDataSource(context, audioUri)
+
+            val embeddedPicture = retriever.embeddedPicture
+            if (embeddedPicture != null && embeddedPicture.isNotEmpty()) {
+                val bitmap = BitmapFactory.decodeByteArray(embeddedPicture, 0, embeddedPicture.size)
+                if (bitmap != null) {
+                    Log.d(TAG, "Extracted embedded art via SAF URI")
+                    return bitmap
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to extract artwork from SAF URI: $audioUri", e)
+        } finally {
+            try {
+                retriever.release()
+            } catch (e: Exception) {
+                Log.w(TAG, "Error releasing MediaMetadataRetriever", e)
+            }
+        }
+
+        return null
+    }
+
+    /**
      * Extracts embedded artwork from multiple audio files.
      * Checks files in order and returns the first one with embedded artwork.
+     * Handles both regular file paths and SAF content URIs transparently.
      *
-     * @param songPaths List of audio file paths to check
-     * @param maxFiles Maximum number of files to check (default: 5)
-     * @return Bitmap or null if not found
+     * @param context  Android context needed for SAF URI resolution.
+     * @param songPaths List of audio file paths or content URI strings to check.
+     * @param maxFiles Maximum number of files to check (default: 5).
+     * @return Bitmap or null if not found.
+     */
+    fun loadEmbeddedArtworkFromPaths(context: Context, songPaths: List<String>, maxFiles: Int = 5): Bitmap? {
+        val retriever = MediaMetadataRetriever()
+
+        try {
+            for (path in songPaths.take(maxFiles)) {
+                try {
+                    if (path.startsWith("content://")) {
+                        retriever.setDataSource(context, Uri.parse(path))
+                    } else {
+                        val file = File(path)
+                        if (!file.exists() || !file.canRead()) continue
+                        retriever.setDataSource(path)
+                    }
+
+                    val embeddedPicture = retriever.embeddedPicture
+                    if (embeddedPicture != null && embeddedPicture.isNotEmpty()) {
+                        val bitmap = BitmapFactory.decodeByteArray(embeddedPicture, 0, embeddedPicture.size)
+                        if (bitmap != null) {
+                            Log.d(TAG, "Extracted embedded art from: $path")
+                            return bitmap
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to extract artwork from: $path", e)
+                }
+            }
+        } finally {
+            try {
+                retriever.release()
+            } catch (e: Exception) {
+                Log.w(TAG, "Error releasing MediaMetadataRetriever", e)
+            }
+        }
+
+        return null
+    }
+
+    /**
+     * Overload kept for backward compatibility with callers that don't have a [Context] handy.
+     * Only works for regular file paths — SAF URIs will be skipped silently.
      */
     fun loadEmbeddedArtworkFromPaths(songPaths: List<String>, maxFiles: Int = 5): Bitmap? {
         val retriever = MediaMetadataRetriever()
@@ -124,6 +205,9 @@ internal object BaseCoverLoader {
         try {
             // Check each audio file (up to maxFiles for efficiency)
             for (path in songPaths.take(maxFiles)) {
+                // Skip SAF content URIs — we can't open those without a Context.
+                if (path.startsWith("content://")) continue
+
                 try {
                     val file = File(path)
                     if (!file.exists() || !file.canRead()) {

@@ -1,6 +1,7 @@
 package app.simple.felicity.engine.managers
 
 import android.animation.ValueAnimator
+import android.net.Uri
 import android.util.Log
 import androidx.annotation.MainThread
 import androidx.core.net.toUri
@@ -40,10 +41,25 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.max
 
+/**
+ * Converts an audio path string to a URI that ExoPlayer can open for playback.
+ *
+ * When the path is already a content:// URI (from a SAF-scanned file), we parse
+ * it directly. Otherwise we wrap it as a file:// URI the old-fashioned way.
+ */
+private fun String.toPlaybackUri(): Uri {
+    return if (this.startsWith("content://")) {
+        Uri.parse(this)
+    } else {
+        File(this).toUri()
+    }
+}
+
 // TODO - move to engine module
 object MediaPlaybackManager {
 
     private const val TAG = "MediaPlaybackManager"
+
 
     // Single app-scoped Main dispatcher scope to avoid leaking ad-hoc scopes
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -221,7 +237,7 @@ object MediaPlaybackManager {
             scope.launch {
                 val mediaItems = withContext(Dispatchers.Default) {
                     audios.map { audio ->
-                        val uri = File(audio.path).toUri()
+                        val uri = audio.path.toPlaybackUri()
                         MediaItem.Builder()
                             .setMediaId(audio.id.toString())
                             .setUri(uri)
@@ -674,7 +690,7 @@ object MediaPlaybackManager {
             val addedAt = newList.size - 1
             pendingSeekPositions.add(addedAt)
             scope.launch {
-                val uri = File(audio.path).toUri()
+                val uri = audio.path.toPlaybackUri()
                 val mediaItem = MediaItem.Builder()
                     .setMediaId(audio.id.toString())
                     .setUri(uri)
@@ -731,7 +747,7 @@ object MediaPlaybackManager {
             pendingSeekPositions.add(insertAt)
 
             scope.launch {
-                val uri = File(audio.path).toUri()
+                val uri = audio.path.toPlaybackUri()
                 val mediaItem = MediaItem.Builder()
                     .setMediaId(audio.id.toString())
                     .setUri(uri)
@@ -795,7 +811,7 @@ object MediaPlaybackManager {
             pendingSeekPositions.add(insertAt)
 
             scope.launch {
-                val uri = File(audio.path).toUri()
+                val uri = audio.path.toPlaybackUri()
                 val mediaItem = MediaItem.Builder()
                     .setMediaId(audio.id.toString())
                     .setUri(uri)

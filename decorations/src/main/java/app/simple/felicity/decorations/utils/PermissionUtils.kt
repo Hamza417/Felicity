@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Environment
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import app.simple.felicity.preferences.SAFPreferences
 
 object PermissionUtils {
 
@@ -38,5 +39,17 @@ object PermissionUtils {
 
     fun Fragment.isManageExternalStoragePermissionGranted(): Boolean {
         return requireContext().isManageExternalStoragePermissionGranted()
+    }
+
+    /**
+     * Returns true when the user has granted access to at least one folder via SAF.
+     * This is the check we use to decide whether the app is ready to scan music.
+     */
+    fun Context.isSAFAccessGranted(): Boolean {
+        return SAFPreferences.hasAnyTreeUri()
+    }
+
+    fun Fragment.isSAFAccessGranted(): Boolean {
+        return requireContext().isSAFAccessGranted()
     }
 }

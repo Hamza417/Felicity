@@ -22,6 +22,10 @@ dependencies {
     implementation project(':core')
     implementation project(':shared')
 
+    // DocumentFile gives us the SAF-friendly DocumentFile API for scanning
+    // folders that the user picked via the system folder picker.
+    implementation 'androidx.documentfile:documentfile:1.1.0'
+
     // Room
     api "androidx.room:room-ktx:2.8.4"
     ksp "androidx.room:room-compiler:2.8.4"
