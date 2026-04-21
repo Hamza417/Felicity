@@ -156,6 +156,45 @@
 
             </app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>
 
+            <app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout
+                android:id="@+id/grant_read_media_audio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/panel_item_padding">
+
+                <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:drawablePadding="5dp"
+                    android:gravity="center_vertical"
+                    android:text="@string/read_media_audio"
+                    android:textSize="@dimen/text_size_14"
+                    app:appFontStyle="bold"
+                    app:drawableTintStyle="accent"
+                    app:textColorStyle="primary" />
+
+                <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                    android:id="@+id/status_read_media_audio"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="@string/not_granted"
+                    android:textSize="@dimen/text_size_12"
+                    app:appFontStyle="regular"
+                    app:textColorStyle="accent" />
+
+                <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="@string/desc_read_media_audio"
+                    android:textSize="@dimen/text_size_12"
+                    app:appFontStyle="regular"
+                    app:textColorStyle="tertiary" />
+
+            </app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>
+
         </LinearLayout>
 
     </app.simple.felicity.decorations.padding.PaddingAwareNestedScrollView>

@@ -53,7 +53,7 @@ class LyricsMenu : MediaBottomDialogFragment() {
         }
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Default) {
-            val hasLrc = audio?.hasLrc() ?: false
+            val hasLrc = audio?.hasLrc(requireContext()) ?: false
             launch(Dispatchers.Main) {
                 if (hasLrc) {
                     binding.edit.visible()

@@ -29,6 +29,7 @@ import app.simple.felicity.decorations.miniplayer.MiniPlayer
 import app.simple.felicity.decorations.miniplayer.MiniPlayerItem
 import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
+import app.simple.felicity.decorations.utils.PermissionUtils.isReadMediaAudioPermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isSAFAccessGranted
 import app.simple.felicity.dialogs.app.VolumeKnob
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
@@ -270,7 +271,8 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
     private fun setHomePanel() {
         val allPermissionsGranted = isSAFAccessGranted() &&
-                isPostNotificationsPermissionGranted()
+                isPostNotificationsPermissionGranted() &&
+                isReadMediaAudioPermissionGranted()
 
         when {
             !allPermissionsGranted -> {

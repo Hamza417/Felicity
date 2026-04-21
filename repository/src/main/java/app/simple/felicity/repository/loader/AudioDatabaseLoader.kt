@@ -6,6 +6,8 @@ import android.util.Log
 import androidx.annotation.WorkerThread
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
+import app.simple.felicity.repository.covers.MediaStorePaths.buildMediaStorePathMap
+import app.simple.felicity.repository.database.dao.AudioDao
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.metadata.MetaDataHelper.extractMetadata
 import app.simple.felicity.repository.models.Audio
@@ -185,6 +187,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             notification.setTotal(allSAFFiles.size)
             Log.d(TAG, "Total audio files to evaluate: ${allSAFFiles.size}")
 
+
             val processedCount = AtomicInteger(0)
 
             val dbChannel = Channel<PendingWrite>(capacity = Channel.BUFFERED)
@@ -251,6 +254,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                                 return@launch
                             }
 
+
                             val storedId = pathToStoredId[uriKey]
                             val stored = indexedMap[uriKey]
                             val newIndexEntry = IndexedFile(audio.dateModified, audio.size)
@@ -290,6 +294,12 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             consumerJob.join()
 
             notification.updateProgress(allSAFFiles.size)
+
+            // Post-processing: fill in real filesystem paths for any audio rows that are missing one.
+            // We query each content URI directly for the DATA column — same way MediaStoreCover
+            // fetches album IDs — and batch-update the rows in one final write.
+            Log.d(TAG, "Resolving filesystem paths from MediaStore...")
+            resolveAndUpdatePaths(dao)
 
             Log.d(TAG, "Audio file processing complete in ${(System.currentTimeMillis() - startTime) / 1000} seconds.")
         } catch (e: CancellationException) {
@@ -370,6 +380,47 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         Log.d(TAG, "Reconcile complete: Deleted ${toDelete.size}, Updated status for ${toUpdate.size}")
     }
 
+    /**
+     * Goes through every audio row that has no filesystem path yet and fills it in by
+     * matching title + artist + album against a single bulk MediaStore query.
+     * Rows that already have a path are skipped so subsequent scans stay fast.
+     */
+    private suspend fun resolveAndUpdatePaths(dao: AudioDao?) {
+        if (dao == null) return
+
+        // One MediaStore query covers the whole library — no per-file ContentResolver calls.
+        val pathMap = context.buildMediaStorePathMap()
+        if (pathMap.isEmpty()) {
+            Log.w(TAG, "MediaStore path map is empty — READ_MEDIA_AUDIO may not be granted yet.")
+            return
+        }
+
+        val allAudio = dao.getAllAudioListAll()
+        val toUpdate = mutableListOf<Audio>()
+
+        allAudio.forEach { audio ->
+            if (audio.path == null) {
+                // Lower-case all three tags to match the case-insensitive map keys.
+                val key = Triple(
+                        audio.rawTitle?.lowercase() ?: "",
+                        audio.artist?.lowercase() ?: "",
+                        audio.album?.lowercase() ?: ""
+                )
+                val resolved = pathMap[key]
+                if (resolved != null) {
+                    audio.path = resolved
+                    toUpdate.add(audio)
+                }
+            }
+        }
+
+        if (toUpdate.isNotEmpty()) {
+            Log.d(TAG, "Resolved paths for ${toUpdate.size} audio entries")
+            dao.update(toUpdate)
+        } else {
+            Log.d(TAG, "All paths already resolved, nothing to update")
+        }
+    }
 
     /**
      * Returns true when a [SAFFile] needs fresh metadata extraction — either because

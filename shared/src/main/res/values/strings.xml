@@ -159,6 +159,8 @@
     <string name="desc_manage_all_files">Required to delete, rename, or modify audio files and their metadata. Also needed to access sidecar files like subtitles (.srt), lyrics (.lrc), and cue sheets (.cue). Without this, modification features will be limited.</string>
     <string name="storage_folder_access">Storage Folder Access</string>
     <string name="desc_storage_folder_access">Tap to pick the music folder(s) you want Felicity to scan. You can add more folders later from Library settings. No broad storage permission is required — only the folders you choose.</string>
+    <string name="read_media_audio">Read Media Audio</string>
+    <string name="desc_read_media_audio">Allows Felicity to read audio files from MediaStore so it can resolve real folder paths for the folder browser. Without this, folders will not show up properly on Android 13 and above.</string>
     <string name="add_folder">Add Folder</string>
     <string name="granted_folders">Granted Folders</string>
     <string name="no_folders_granted">No folders added yet. Tap above to pick a music folder.</string>

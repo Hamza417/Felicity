@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Environment
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import app.simple.felicity.preferences.SAFPreferences
@@ -22,23 +21,8 @@ object PermissionUtils {
         }
     }
 
-    fun Context.isManageExternalStoragePermissionGranted(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Environment.isExternalStorageManager()
-        } else {
-            ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
-        }
-    }
-
     fun Fragment.isPostNotificationsPermissionGranted(): Boolean {
         return requireContext().isPostNotificationsPermissionGranted()
-    }
-
-    fun Fragment.isManageExternalStoragePermissionGranted(): Boolean {
-        return requireContext().isManageExternalStoragePermissionGranted()
     }
 
     /**
@@ -51,5 +35,27 @@ object PermissionUtils {
 
     fun Fragment.isSAFAccessGranted(): Boolean {
         return requireContext().isSAFAccessGranted()
+    }
+
+    /**
+     * Checks whether the READ_MEDIA_AUDIO permission has been granted.
+     *
+     * On Android 13 (Tiramisu) and above this is a real runtime permission that the user
+     * has to accept. On older versions MediaStore audio access is always available so we
+     * just return true — no need to bug the user about something they already have.
+     */
+    fun Context.isReadMediaAudioPermissionGranted(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.READ_MEDIA_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true // Already accessible on Android 12 and below — lucky us!
+        }
+    }
+
+    fun Fragment.isReadMediaAudioPermissionGranted(): Boolean {
+        return requireContext().isReadMediaAudioPermissionGranted()
     }
 }

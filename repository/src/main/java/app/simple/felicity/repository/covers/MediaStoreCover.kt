@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
+import androidx.core.net.toUri
 
 object MediaStoreCover {
 
@@ -28,7 +29,8 @@ object MediaStoreCover {
         if (path.startsWith("content://")) {
             // The path is already a content URI — query it directly so we don't
             // have to rely on the deprecated DATA column at all.
-            val audioUri = Uri.parse(path)
+            val audioUri = path.toUri()
+
             try {
                 contentResolver.query(audioUri, projection, null, null, null)?.use { cursor ->
                     if (cursor.moveToFirst()) {
@@ -53,7 +55,7 @@ object MediaStoreCover {
 
         // Turn the album ID into the well-known album art content URI.
         return albumId?.let { id ->
-            val artworkUri = Uri.parse("content://media/external/audio/albumart")
+            val artworkUri = "content://media/external/audio/albumart".toUri()
             ContentUris.withAppendedId(artworkUri, id)
         }
     }

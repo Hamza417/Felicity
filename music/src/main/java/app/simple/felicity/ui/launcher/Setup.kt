@@ -14,6 +14,7 @@ import app.simple.felicity.R
 import app.simple.felicity.activities.MainActivity
 import app.simple.felicity.databinding.FragmentSetupBinding
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
+import app.simple.felicity.decorations.utils.PermissionUtils.isReadMediaAudioPermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isSAFAccessGranted
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.SAFPreferences
@@ -38,6 +39,12 @@ class Setup : MediaFragment() {
             ActivityResultContracts.RequestPermission()
     ) { _ ->
         updateNotificationPermissionStatus()
+    }
+
+    private val readMediaAudioPermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        updateReadMediaAudioPermissionStatus()
     }
 
     /**
@@ -71,6 +78,7 @@ class Setup : MediaFragment() {
 
         updateNotificationPermissionStatus()
         updateSAFPermissionStatus()
+        updateReadMediaAudioPermissionStatus()
 
         binding.grantPostNotifications.setOnClickListener {
             requestNotificationPermission()
@@ -79,6 +87,10 @@ class Setup : MediaFragment() {
         // The second row now opens the SAF folder picker instead of the All Files settings page.
         binding.grantManageAllFiles.setOnClickListener {
             safFolderPickerLauncher.launch(null)
+        }
+
+        binding.grantReadMediaAudio.setOnClickListener {
+            requestReadMediaAudioPermission()
         }
 
         binding.startAppNow.setOnClickListener {
@@ -94,15 +106,16 @@ class Setup : MediaFragment() {
         super.onResume()
         updateNotificationPermissionStatus()
         updateSAFPermissionStatus()
+        updateReadMediaAudioPermissionStatus()
         updateStartButtonState()
     }
 
     /**
-     * The app is ready to go when the user has granted both notifications
-     * and access to at least one music folder.
+     * The app is ready to go when the user has granted notifications, folder access,
+     * and read media audio (needed for the folder hierarchy to work on Android 13+).
      */
     private fun areRequiredPermissionsGranted(): Boolean {
-        return isPostNotificationsPermissionGranted() && isSAFAccessGranted()
+        return isPostNotificationsPermissionGranted() && isSAFAccessGranted() && isReadMediaAudioPermissionGranted()
     }
 
     private fun updateStartButtonState() {
@@ -121,6 +134,23 @@ class Setup : MediaFragment() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+
+    private fun requestReadMediaAudioPermission() {
+        if (isReadMediaAudioPermissionGranted()) return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            readMediaAudioPermissionLauncher.launch(Manifest.permission.READ_MEDIA_AUDIO)
+        }
+    }
+
+    private fun updateReadMediaAudioPermissionStatus() {
+        if (isReadMediaAudioPermissionGranted()) {
+            binding.statusReadMediaAudio.setText(R.string.granted)
+        } else {
+            binding.statusReadMediaAudio.setText(R.string.not_granted)
+        }
+        updateStartButtonState()
     }
 
     private fun updateNotificationPermissionStatus() {

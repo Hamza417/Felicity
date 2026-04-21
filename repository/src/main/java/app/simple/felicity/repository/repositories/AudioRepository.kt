@@ -1,6 +1,8 @@
 package app.simple.felicity.repository.repositories
 
 import android.content.Context
+import android.provider.DocumentsContract
+import androidx.core.net.toUri
 import androidx.sqlite.db.SimpleSQLiteQuery
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
@@ -284,85 +286,88 @@ class AudioRepository @Inject constructor(
     }
 
     /**
+     * Extracts the document ID from a SAF document URI stored as the audio's URI string.
+     * For example, "content://.../document/primary%3AMusic%2Fsong.mp3" → "primary:Music/song.mp3".
+     * Returns null if the URI is not a proper SAF document URI (shouldn't happen in practice).
+     */
+    private fun docIdOf(uri: String): String? {
+        return try {
+            DocumentsContract.getDocumentId(uri.toUri())
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
      * Get all unique folders that contain audio files, with aggregated data.
-     * This method groups audio files by their parent directory path.
+     * Groups audio files by their parent directory using the document ID from the SAF URI.
      * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
      * @return Flow of folders with complete metadata
      */
     fun getAllFoldersWithAggregation(): Flow<List<Folder>> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
             audioList.groupBy { audio ->
-                val filePath = audio.uri ?: return@groupBy ""
-                val lastSlash = filePath.lastIndexOf('/')
-                if (lastSlash > 0) filePath.substring(0, lastSlash) else filePath
-            }.mapNotNull { (folderPath, songs) ->
-                if (folderPath.isEmpty()) return@mapNotNull null
+                // The document ID is "primary:Music/Artist/Album/song.mp3" —
+                // the parent folder is everything up to the last slash.
+                val docId = docIdOf(audio.uri) ?: return@groupBy ""
+                val lastSlash = docId.lastIndexOf('/')
+                if (lastSlash > 0) docId.substring(0, lastSlash) else docId
+            }.mapNotNull { (folderDocId, songs) ->
+                if (folderDocId.isEmpty()) return@mapNotNull null
 
-                val folderName = folderPath.substringAfterLast('/')
-                    .ifEmpty { folderPath }
-                val songPaths = songs.map { it.uri }
-                val uniqueId = folderPath.hashCode().toLong()
+                // The display name is the segment after the last slash (or after ":" for roots).
+                val folderName = folderDocId.substringAfterLast('/').let {
+                    if (it.contains(':')) it.substringAfter(':') else it
+                }.ifEmpty { folderDocId }
 
                 Folder(
-                        id = uniqueId,
-                        path = folderPath,
+                        id = folderDocId.hashCode().toLong(),
+                        path = folderDocId,
                         name = folderName,
-                        songPaths = songPaths,
+                        songPaths = songs.map { it.uri },
                         songCount = songs.size
                 )
             }.sortedBy { it.name.lowercase() }
         } ?: throw IllegalStateException("AudioDao is null")
     }
 
-    //    /**
-    //     * Get the root-level folders for the file-tree browser.
-    //     *
-    //     * Algorithm:
-    //     *  1. Collect every unique parent-directory path of all audio files.
-    //     *  2. Find the longest common path prefix shared by ALL of those directories
-    //     *     (the true root of the tree — e.g. "/storage/emulated/0").
-    //     *  3. Return the immediate children of that common root so the user starts
-    //     *     drilling from the topmost meaningful directory.
-    //     *
-    //     * Example: if all audio lives under /storage/emulated/0/Music/** the root
-    //     * returned is [/storage/emulated/0/Music].  If audio spans both
-    //     * /storage/emulated/0/Music and /storage/emulated/0/Downloads the root
-    //     * returned is [/storage/emulated/0/Music, /storage/emulated/0/Downloads].
-    //     */
+    /**
+     * Returns the top-level granted folders directly from the system's persisted SAF
+     * permissions — no path math needed. Each entry in [persistedUriPermissions] IS
+     * a top-level folder the user handed us. We just decode the tree document ID
+     * (e.g. "primary:Music") and count how many songs live under each tree.
+     */
     fun getTopLevelFolders(): Flow<List<Folder>> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            // All unique parent-directory paths (the folder that directly contains each file)
-            val allFolderPaths = audioList.mapNotNull { audio ->
-                val filePath = audio.uri ?: return@mapNotNull null
-                val lastSlash = filePath.lastIndexOf('/')
-                if (lastSlash > 0) filePath.substring(0, lastSlash) else null
-            }.toSet()
 
-            if (allFolderPaths.isEmpty()) return@map emptyList()
-
-            // Compute the longest common path prefix across all folder paths
-            val commonRoot = findCommonPathPrefix(allFolderPaths)
-
-            // Immediate children of the common root:
-            // For each folder path, take only the first segment beyond commonRoot.
-            val topLevelPaths = allFolderPaths.mapNotNull { path ->
-                val relative = if (commonRoot.isEmpty()) path else path.removePrefix("$commonRoot/")
-                // If relative == path the path IS the commonRoot (songs directly inside it)
-                if (relative == path && commonRoot.isNotEmpty()) return@mapNotNull commonRoot
-                val firstSegment = relative.substringBefore('/')
-                if (firstSegment.isEmpty()) null
-                else if (commonRoot.isEmpty()) "/$firstSegment" else "$commonRoot/$firstSegment"
-            }.toSet()
-
-            topLevelPaths.map { topPath ->
-                val songsUnder = audioList.filter { audio ->
-                    val p = audio.uri ?: return@filter false
-                    p.startsWith("$topPath/") || p.substringBeforeLast('/') == topPath
+            // Grab the document IDs of all trees the user has granted read access to.
+            val grantedTreeDocIds = context.contentResolver.persistedUriPermissions
+                .filter { it.isReadPermission }
+                .mapNotNull { perm ->
+                    try {
+                        DocumentsContract.getTreeDocumentId(perm.uri)
+                    } catch (_: Exception) {
+                        null
+                    }
                 }
+                .toSet()
+
+            grantedTreeDocIds.mapNotNull { treeDocId ->
+                // The display name is whatever comes after the last "/" or after the ":" for roots.
+                val folderName = treeDocId.substringAfterLast('/').let {
+                    if (it.contains(':')) it.substringAfter(':') else it
+                }.ifEmpty { treeDocId }
+
+                // Every audio file whose document ID starts with this tree belongs here.
+                val songsUnder = audioList.filter { audio ->
+                    val docId = docIdOf(audio.uri) ?: return@filter false
+                    docId.startsWith("$treeDocId/") || docId == treeDocId
+                }
+
                 Folder(
-                        id = topPath.hashCode().toLong(),
-                        path = topPath,
-                        name = topPath.substringAfterLast('/').ifEmpty { topPath },
+                        id = treeDocId.hashCode().toLong(),
+                        path = treeDocId,
+                        name = folderName,
                         songPaths = songsUnder.map { it.uri },
                         songCount = songsUnder.size
                 )
@@ -370,66 +375,53 @@ class AudioRepository @Inject constructor(
         } ?: throw IllegalStateException("AudioDao is null")
     }
 
-    /**
-     * Finds the longest common path prefix for a set of absolute paths.
-     * Returns the common ancestor directory path, e.g.:
-     *   {"/a/b/c", "/a/b/d"} → "/a/b"
-     *   {"/a/b/c"} → "/a/b/c"  (single path is its own prefix)
-     */
-    private fun findCommonPathPrefix(paths: Set<String>): String {
-        if (paths.size == 1) return paths.first()
-        val segmentLists = paths.map { path -> path.split('/').filter { seg -> seg.isNotEmpty() } }
-        val minLen = segmentLists.minOf { segs -> segs.size }
-        val commonSegments = mutableListOf<String>()
-        for (index in 0 until minLen) {
-            val segment = segmentLists[0][index]
-            if (segmentLists.all { segs -> segs[index] == segment }) {
-                commonSegments.add(segment)
-            } else {
-                break
-            }
-        }
-        return if (commonSegments.isEmpty()) "" else "/${commonSegments.joinToString("/")}"
-    }
 
     /**
-     * Get the contents of a folder at the given path: immediate sub-folders and direct audio files.
+     * Get the contents of a folder at the given document-ID path: immediate sub-folders
+     * and the audio files sitting directly inside it (not in a sub-folder).
+     *
+     * [folderPath] is a SAF document ID like "primary:Music/Artist/Album". We extract the
+     * document ID from each audio's URI and compare — no filesystem paths needed at all.
+     *
      * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
-     * @param folderPath The folder path to explore
+     * @param folderPath The folder's document ID (as stored in [Folder.path]).
      * @return Flow of [FolderContents] with subFolders and songs
      */
     fun getFolderContents(folderPath: String): Flow<FolderContents> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            // Songs directly inside this folder (not in a sub-folder)
-            val directSongs = audioList.filter { audio ->
-                val path = audio.uri ?: return@filter false
-                path.substringBeforeLast('/') == folderPath
+
+            // Pair each audio with its parsed document ID once so we don't repeat the work.
+            data class AudioEntry(val audio: Audio, val docId: String)
+
+            val entries = audioList.mapNotNull { audio ->
+                val docId = docIdOf(audio.uri) ?: return@mapNotNull null
+                AudioEntry(audio, docId)
             }
 
-            // All audio files inside sub-folders (path starts with folderPath/)
-            val allSongsUnder = audioList.filter { audio ->
-                audio.uri?.startsWith("$folderPath/") == true
-            }
+            // Songs sitting directly in this folder — their parent docId == folderPath.
+            val directSongs = entries
+                .filter { it.docId.substringBeforeLast('/') == folderPath }
+                .map { it.audio }
 
-            // Compute immediate sub-folder paths
-            val subFolderPaths = allSongsUnder.mapNotNull { audio ->
-                val path = audio.uri ?: return@mapNotNull null
-                val relative = path.removePrefix("$folderPath/")
+            // Everything deeper (used only for sub-folder discovery).
+            val allUnder = entries.filter { it.docId.startsWith("$folderPath/") }
+
+            // Immediate sub-folder document IDs — take only the first path segment below us.
+            val subFolderDocIds = allUnder.mapNotNull { entry ->
+                val relative = entry.docId.removePrefix("$folderPath/")
                 val firstSlash = relative.indexOf('/')
                 if (firstSlash > 0) "$folderPath/${relative.substring(0, firstSlash)}" else null
             }.toSet()
 
-            // Build Folder objects for each immediate sub-folder
-            val subFolders = subFolderPaths.map { subPath ->
-                val subSongs = audioList.filter { audio ->
-                    val p = audio.uri ?: return@filter false
-                    p.startsWith("$subPath/") || p.substringBeforeLast('/') == subPath
+            val subFolders = subFolderDocIds.map { subDocId ->
+                val subSongs = entries.filter {
+                    it.docId.startsWith("$subDocId/") || it.docId.substringBeforeLast('/') == subDocId
                 }
                 Folder(
-                        id = subPath.hashCode().toLong(),
-                        path = subPath,
-                        name = subPath.substringAfterLast('/'),
-                        songPaths = subSongs.map { it.uri },
+                        id = subDocId.hashCode().toLong(),
+                        path = subDocId,
+                        name = subDocId.substringAfterLast('/'),
+                        songPaths = subSongs.map { it.audio.uri },
                         songCount = subSongs.size
                 )
             }.sortedBy { it.name.lowercase() }
@@ -640,13 +632,11 @@ class AudioRepository @Inject constructor(
      */
     fun getFolderPageData(folder: Folder): Flow<PageData> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            // Filter songs whose path starts with the folder path
+            // Filter songs whose parent document ID matches the folder's path.
+            // folder.path is a document ID like "primary:Music/Artist/Album".
             val folderAudios = audioList.filter { audio ->
-                val parent = audio.uri?.let {
-                    val idx = it.lastIndexOf('/')
-                    if (idx > 0) it.substring(0, idx) else it
-                }
-                parent == folder.path
+                val docId = docIdOf(audio.uri) ?: return@filter false
+                docId.substringBeforeLast('/') == folder.path
             }
 
             // Extract unique albums from folder songs

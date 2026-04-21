@@ -130,6 +130,15 @@ public class Audio implements Parcelable {
     private boolean isFavorite = false;
     @ColumnInfo (name = "always_skip", defaultValue = "0")
     private boolean alwaysSkip = false;
+    /**
+     * The real filesystem path to this audio file, resolved from MediaStore
+     * (e.g. "/storage/emulated/0/Music/song.mp3"). This is what we use for folder
+     * hierarchy since the SAF content URI looks like "content://..." and has no
+     * meaningful path segments. May be null if MediaStore hasn't seen the file yet.
+     */
+    @ColumnInfo (name = "path")
+    @Nullable
+    private String path;
     
     public Audio() {
     }
@@ -161,6 +170,7 @@ public class Audio implements Parcelable {
         isAvailable = in.readByte() != 0;
         isFavorite = in.readByte() != 0;
         alwaysSkip = in.readByte() != 0;
+        path = in.readString();
     }
     
     @Override
@@ -191,6 +201,7 @@ public class Audio implements Parcelable {
         dest.writeByte((byte) (isAvailable ? 1 : 0));
         dest.writeByte((byte) (isFavorite ? 1 : 0));
         dest.writeByte((byte) (alwaysSkip ? 1 : 0));
+        dest.writeString(path);
     }
     
     @Override
@@ -478,6 +489,23 @@ public class Audio implements Parcelable {
         this.alwaysSkip = alwaysSkip;
     }
     
+    /**
+     * Returns the real filesystem path resolved from MediaStore, or null if it hasn't
+     * been populated yet. Use this for folder hierarchy browsing instead of the SAF URI.
+     */
+    @Nullable
+    public String getPath() {
+        return path;
+    }
+    
+    /**
+     * Sets the real filesystem path for this audio file. Normally populated by
+     * {@code MediaStorePaths} during the scan, not something you'd set manually.
+     */
+    public void setPath(@Nullable String path) {
+        this.path = path;
+    }
+    
     @NonNull
     @Override
     public String toString() {
@@ -514,6 +542,7 @@ public class Audio implements Parcelable {
                 ", isAvailable=" + isAvailable +
                 ", isFavorite=" + isFavorite +
                 ", alwaysSkip=" + alwaysSkip +
+                ", path='" + path + '\'' +
                 '}';
     }
     
@@ -696,6 +725,7 @@ public class Audio implements Parcelable {
         audio.setWriter(getWriter());
         audio.setFavorite(isFavorite());
         audio.setAlwaysSkip(isAlwaysSkip());
+        audio.setPath(getPath());
         return audio;
     }
     
