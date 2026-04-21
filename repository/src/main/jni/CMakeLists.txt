@@ -13,7 +13,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(FetchContent)
 
 # Force the debug postfix to be completely empty
-# set(CMAKE_DEBUG_POSTFIX "")
+set(CMAKE_DEBUG_POSTFIX "")
 
 FetchContent_Declare(
     taglib
@@ -36,10 +36,27 @@ add_library(taglib_jni SHARED taglib_jni.cpp)
 
 target_compile_features(taglib_jni PRIVATE cxx_std_17)
 
-# Explicitly forward TagLib's own include directories to our target so
-# clangd can resolve every #include <taglib/...> without running a full build.
+# ---------------------------------------------------------------------------
+# The "Flatten" Hack for TagLib headers
+# ---------------------------------------------------------------------------
+# 1. Create a virtual 'taglib' directory inside the build cache
+set(TAGLIB_FLAT_DIR ${CMAKE_CURRENT_BINARY_DIR}/taglib_flat_includes/taglib)
+file(MAKE_DIRECTORY ${TAGLIB_FLAT_DIR})
+
+# 2. Scrape every single header file from TagLib's scattered subdirectories
+file(GLOB_RECURSE TAGLIB_HEADERS
+    "${taglib_SOURCE_DIR}/taglib/*.h"
+    "${taglib_SOURCE_DIR}/taglib/*.tcc"
+)
+
+# 3. Copy them all into our flat virtual directory so they sit side-by-side
+file(COPY ${TAGLIB_HEADERS} DESTINATION ${TAGLIB_FLAT_DIR})
+
+# 4. Point the JNI target to the parent of the flat directory,
+#    and keep the binary dir for generated config headers.
 target_include_directories(taglib_jni PRIVATE
-    $<TARGET_PROPERTY:tag,INTERFACE_INCLUDE_DIRECTORIES>
+    ${CMAKE_CURRENT_BINARY_DIR}/taglib_flat_includes
+    ${taglib_BINARY_DIR}
 )
 
 target_link_libraries(taglib_jni

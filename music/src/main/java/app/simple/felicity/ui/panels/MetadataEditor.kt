@@ -201,7 +201,6 @@ class MetadataEditor : MediaFragment() {
                 compilation = binding.compilationInput.text?.toString()?.trim(),
                 comment = binding.commentInput.text?.toString()?.trim(),
                 lyrics = binding.lyricsInput.text?.toString()?.trim(),
-                artworkFile = pendingArtworkFile
         )
 
         val updatedAudio = audio.copy().apply {

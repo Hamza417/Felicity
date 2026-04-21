@@ -32,6 +32,7 @@
 #include <taglib/tvariant.h>
 
 #include <string>
+#include "taglib/tstring.h"
 
 #define LOG_TAG "TagLibJNI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
@@ -90,7 +91,7 @@ extern "C" {
  */
 JNIEXPORT jobject JNICALL
 Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
-        JNIEnv *env, jclass /*cls*/, jint fd) {
+        JNIEnv *env, jobject thiz, jint fd) {
 
     // Duplicate the fd so TagLib can own its copy and close it at the end of
     // the stream's lifetime, while the caller's fd stays valid and closeable.
@@ -102,10 +103,14 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
 
     // Wrap the duplicated fd in a TagLib stream.
     // true = TagLib closes the fd when the stream is destroyed.
-    TagLib::FileDescriptorStream stream(dupFd, true);
+    TagLib::FileStream stream(dupFd, true);
 
     // Ask TagLib to figure out the format from the file's magic bytes.
-    TagLib::FileRef fileRef(&stream, true, TagLib::AudioProperties::Fast);
+    TagLib::FileRef fileRef(
+            static_cast<TagLib::IOStream *>(&stream),
+            true,
+            TagLib::AudioProperties::ReadStyle::Fast
+    );
     if (fileRef.isNull()) {
         LOGE("FileRef is null for fd=%d — unsupported format or corrupt file", fd);
         return nullptr;
@@ -149,7 +154,6 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
     jlong duration = ap ? static_cast<jlong>(ap->lengthInMilliseconds()) : 0L;
     jlong bitrate = ap ? static_cast<jlong>(ap->bitrate()) : 0L;
     jlong sampleRate = ap ? static_cast<jlong>(ap->sampleRate()) : 0L;
-    jlong bitsPerSample = ap ? static_cast<jlong>(ap->bitsPerSample()) : 0L;
 
     // Find the TagLibMetadata Kotlin data class and call its constructor.
     jclass metaClass = env->FindClass(
@@ -188,7 +192,7 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
             metaClass, ctor,
             title, artist, album, genre, year, comment,
             albumArtist, composer, lyricist, discNumber, trackNumber, numTracks, compilation,
-            duration, bitrate, sampleRate, bitsPerSample);
+            duration, bitrate, sampleRate, 0L);
 }
 
 /**
@@ -221,7 +225,7 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeSaveToFd(
     }
 
     // true = TagLib closes the dup'd fd when the stream is destroyed.
-    TagLib::FileDescriptorStream stream(dupFd, true);
+    TagLib::FileStream stream(dupFd, true);
 
     // readAudioProperties=false here — we just want to write tags,
     // no need to decode audio to gather properties (saves time).
