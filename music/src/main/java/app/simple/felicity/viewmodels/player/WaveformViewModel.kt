@@ -2,6 +2,7 @@ package app.simple.felicity.viewmodels.player
 
 import android.app.Application
 import android.util.Log
+import androidx.core.net.toUri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
@@ -35,7 +36,7 @@ class WaveformViewModel @Inject constructor(
 ) : WrappedViewModel(application) {
 
     private val waveformData: MutableLiveData<FloatArray> = MutableLiveData()
-    private var currentPath: String? = null
+    private var currentUri: String? = null
     private var loadJob: Job? = null
     private var amplitudaInstance: Amplituda? = null
 
@@ -51,71 +52,91 @@ class WaveformViewModel @Inject constructor(
         }
 
         // Prevent redundant loading
-        if (audio.uri == currentPath && waveformData.value?.isNotEmpty() == true) return
+        if (audio.uri == currentUri && waveformData.value?.isNotEmpty() == true) return
 
         // Track the current request to handle stale extractions
-        currentPath = audio.uri
+        currentUri = audio.uri
 
         viewModelScope.launch(Dispatchers.IO) {
-            if (currentPath != audio.uri) return@launch
+            runCatching {
+                if (currentUri != audio.uri) return@launch
 
-            postFlatData(audio) // Show the ghost waveform immediately while we load the real one in the background
+                postFlatData(audio) // Show the ghost waveform immediately while we load the real one in the background
 
-            try {
-                val rawAmplitudes = amplitudaInstance!!
-                    .processAudio(
-                            audio.uri,
-                            Compress.withParams(Compress.AVERAGE, BARS_PER_SECOND),
-                            Cache.withParams(Cache.REUSE, audio.hash.toString())
-                    )
-                    .get() // Blocking call
-                    .amplitudesAsList()
+                val parcelFileDescriptor = getApplication<Application>()
+                    .contentResolver.openFileDescriptor(audio.uri.toUri(), "r")
+                    ?: throw IllegalArgumentException("Unable to open URI: ${audio.uri}")
 
-                if (currentPath != audio.uri) return@launch
+                try {
 
-                if (rawAmplitudes.isEmpty()) {
-                    waveformData.postValue(getRandomGhostData(audio.duration)) // Fallback to ghost data if extraction yields nothing
-                    return@launch
-                }
+                    val rawAmplitudes = amplitudaInstance!!
+                        .processAudio(
+                                parcelFileDescriptor,
+                                Compress.withParams(Compress.AVERAGE, BARS_PER_SECOND),
+                                Cache.withParams(Cache.REUSE, audio.hash.toString())
+                        )
+                        .get() // Blocking call
+                        .amplitudesAsList()
 
-                // --- Deterministic Time-Based Downsampling ---
+                    parcelFileDescriptor.close()
 
-                val expectedBars = ((audio.duration / 1000f) * BARS_PER_SECOND).toInt().coerceAtLeast(1)
+                    if (currentUri != audio.uri) return@launch
 
-                val chunkedAmplitudes = FloatArray(expectedBars)
-                val chunkSize = rawAmplitudes.size.toFloat() / expectedBars
+                    if (rawAmplitudes.isEmpty()) {
+                        waveformData.postValue(getRandomGhostData(audio.duration)) // Fallback to ghost data if extraction yields nothing
+                        return@launch
+                    }
 
-                for (i in 0 until expectedBars) {
-                    val start = (i * chunkSize).toInt()
-                    val end = ((i + 1) * chunkSize).toInt().coerceAtMost(rawAmplitudes.size)
+                    // --- Deterministic Time-Based Downsampling ---
 
-                    var peakInChunk = 0
-                    for (j in start until end) {
-                        if (rawAmplitudes[j] > peakInChunk) {
-                            peakInChunk = rawAmplitudes[j]
+                    val expectedBars = ((audio.duration / 1000f) * BARS_PER_SECOND).toInt().coerceAtLeast(1)
+
+                    val chunkedAmplitudes = FloatArray(expectedBars)
+                    val chunkSize = rawAmplitudes.size.toFloat() / expectedBars
+
+                    for (i in 0 until expectedBars) {
+                        val start = (i * chunkSize).toInt()
+                        val end = ((i + 1) * chunkSize).toInt().coerceAtMost(rawAmplitudes.size)
+
+                        var peakInChunk = 0
+                        for (j in start until end) {
+                            if (rawAmplitudes[j] > peakInChunk) {
+                                peakInChunk = rawAmplitudes[j]
+                            }
                         }
+                        chunkedAmplitudes[i] = peakInChunk.toFloat()
                     }
-                    chunkedAmplitudes[i] = peakInChunk.toFloat()
-                }
 
-                // --- Final Normalization ---
+                    // --- Final Normalization ---
 
-                val maxPeak = chunkedAmplitudes.maxOrNull() ?: 1f
-                val sampled = if (maxPeak > 0f) {
-                    FloatArray(expectedBars) { i ->
-                        chunkedAmplitudes[i] / maxPeak
+                    val maxPeak = chunkedAmplitudes.maxOrNull() ?: 1f
+                    val sampled = if (maxPeak > 0f) {
+                        FloatArray(expectedBars) { i ->
+                            chunkedAmplitudes[i] / maxPeak
+                        }
+                    } else {
+                        getRandomGhostData(audio.duration) // If all peaks are zero, return random ghost data to avoid a flatline
                     }
-                } else {
-                    getRandomGhostData(audio.duration) // If all peaks are zero, return random ghost data to avoid a flatline
+
+                    // Push the perfectly scaled array safely to the UI thread
+                    waveformData.postValue(sampled)
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "Amplituda extraction failed on IO thread for ${audio.title}", e)
+                    if (currentUri == audio.uri) {
+                        postFlatData(audio) // Show the ghost waveform if extraction fails
+                    }
+                } finally {
+                    try {
+                        parcelFileDescriptor.close()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to close ParcelFileDescriptor for ${audio.uri}", e)
+                    }
                 }
-
-                // Push the perfectly scaled array safely to the UI thread
-                waveformData.postValue(sampled)
-
-            } catch (e: Exception) {
-                Log.e(TAG, "Amplituda extraction failed on IO thread for ${audio.title}", e)
-                if (currentPath == audio.uri) {
-                    postFlatData(audio) // Show the ghost waveform if extraction fails
+            }.getOrElse {
+                Log.e(TAG, "Unexpected error in loadWaveform for ${audio.title}", it)
+                if (currentUri == audio.uri) {
+                    postFlatData(audio) // Show the ghost waveform on any unexpected error
                 }
             }
         }
@@ -127,7 +148,7 @@ class WaveformViewModel @Inject constructor(
      */
     fun resetWaveform() {
         loadJob?.cancel()
-        currentPath = null
+        currentUri = null
         waveformData.postValue(FloatArray(0))
     }
 
