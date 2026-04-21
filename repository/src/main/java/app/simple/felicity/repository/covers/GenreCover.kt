@@ -7,7 +7,6 @@ import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.covers.MediaStoreCover.loadCoverFromMediaStore
 import app.simple.felicity.repository.covers.MediaStoreCover.uriToBitmap
 import app.simple.felicity.repository.models.Genre
-import java.io.File
 
 /**
  * Cover art loader for Genre collections.
@@ -18,44 +17,32 @@ object GenreCover {
     private const val TAG = "GenreCover"
 
     /**
-     * Loads genre cover bitmap from multiple sources in order of preference:
-     * 1. MediaStore album art cache (when [LibraryPreferences.isUseMediaStoreArtwork] is true)
-     * 2. External image files in the audio directory (folder.jpg, cover.jpg, etc.)
-     * 3. Embedded artwork extracted from the first matching audio file
+     * Loads the cover art for a genre, trying sources in order until one works.
      *
-     * The first song path in [Genre.songPaths] is used for the MediaStore query since MediaStore
-     * does not natively index artwork by genre — the first song is a reliable representative.
+     * The lookup order is:
+     * 1. MediaStore's album art cache — pre-indexed by the system, super fast.
+     * 2. Artwork embedded inside one of the genre's audio files.
      *
-     * @param context Android context used for MediaStore queries
-     * @param genre Genre model with [Genre.songPaths]
-     * @return Bitmap of genre cover, or null if no artwork is found
+     * MediaStore doesn't index artwork by genre, so the first song in the list
+     * stands in as the genre representative. Folder images are skipped because
+     * song paths are content URIs and we can't navigate parent directories from them.
+     *
+     * @param context Android context used for MediaStore and SAF queries.
+     * @param genre Genre model whose [Genre.songPaths] drive the lookup.
+     * @return Bitmap of genre cover, or a placeholder if no artwork is found.
      */
     fun load(context: Context, genre: Genre): Bitmap {
         if (genre.songPaths.isNotEmpty()) {
             if (LibraryPreferences.isUseMediaStoreArtwork()) {
-                // Primary: resolve from MediaStore using the first song path.
                 val uri = context.loadCoverFromMediaStore(genre.songPaths.first())
                 val mediaStoreBitmap = uri?.let { context.uriToBitmap(it) }
                 if (mediaStoreBitmap != null) {
                     Log.d(TAG, "Loaded genre art from MediaStore for: ${genre.name}")
                     return mediaStoreBitmap
                 }
-                // Fall through to file-based sources if MediaStore yielded nothing.
             }
 
-            // Source 1: External image files in the audio directory.
-            val directory = File(genre.songPaths.first()).parentFile
-            if (directory != null && directory.exists()) {
-                val customNames = BaseCoverLoader.generateCustomArtworkNames(genre.name)
-                val externalArtwork = BaseCoverLoader.loadExternalArtwork(directory, customNames)
-                if (externalArtwork != null) {
-                    Log.d(TAG, "Loaded genre art from external file for: ${genre.name}")
-                    return externalArtwork
-                }
-            }
-
-            // Source 2: Artwork embedded in the audio file tags.
-            val embeddedArtwork = BaseCoverLoader.loadEmbeddedArtworkFromPaths(genre.songPaths)
+            val embeddedArtwork = BaseCoverLoader.loadEmbeddedArtworkFromPaths(context, genre.songPaths)
             if (embeddedArtwork != null) {
                 Log.d(TAG, "Loaded genre art from embedded metadata for: ${genre.name}")
                 return embeddedArtwork

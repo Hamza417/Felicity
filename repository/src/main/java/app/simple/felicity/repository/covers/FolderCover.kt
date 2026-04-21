@@ -18,43 +18,46 @@ object FolderCover {
     private const val TAG = "FolderCover"
 
     /**
-     * Loads folder cover bitmap from multiple sources in order of preference:
-     * 1. MediaStore album art cache (when [LibraryPreferences.isUseMediaStoreArtwork] is true)
-     * 2. External image files in the folder directory (folder.jpg, cover.jpg, etc.)
-     * 3. Embedded artwork extracted from the first matching audio file
+     * Loads the cover art for a folder, trying sources in order until one works.
      *
-     * The first song path in [Folder.songPaths] is used for the MediaStore lookup, giving the
-     * system-cached art for the album that physically resides in this folder.
+     * The lookup order is:
+     * 1. MediaStore's album art cache — system-indexed and very fast.
+     * 2. External image files sitting in the folder (folder.jpg, cover.jpg, etc.)
+     *    — only attempted when [Folder.path] is a real file path, not a URI.
+     * 3. Artwork embedded inside one of the folder's audio files.
      *
-     * @param context Android context used for MediaStore queries
-     * @param folder Folder model with [Folder.path] and [Folder.songPaths]
-     * @return Bitmap of folder cover, or null if no artwork is found
+     * The external file check is skipped when the folder path is a content URI
+     * because we can't list files in an arbitrary content URI directory.
+     *
+     * @param context Android context used for MediaStore and SAF queries.
+     * @param folder Folder model with [Folder.path] and [Folder.songPaths].
+     * @return Bitmap of folder cover, or null if no artwork is found.
      */
     fun load(context: Context, folder: Folder): Bitmap? {
         if (folder.songPaths.isNotEmpty() && LibraryPreferences.isUseMediaStoreArtwork()) {
-            // Primary: resolve from MediaStore using the first song path in this folder.
             val uri = context.loadCoverFromMediaStore(folder.songPaths.first())
             val mediaStoreBitmap = uri?.let { context.uriToBitmap(it) }
             if (mediaStoreBitmap != null) {
                 Log.d(TAG, "Loaded folder art from MediaStore for: ${folder.name}")
                 return mediaStoreBitmap
             }
-            // Fall through to file-based sources if MediaStore yielded nothing.
         }
 
-        // Source 1: External image files directly in the folder directory.
-        val directory = File(folder.path)
-        if (directory.exists()) {
-            val externalArtwork = BaseCoverLoader.loadExternalArtwork(directory, emptyList())
-            if (externalArtwork != null) {
-                Log.d(TAG, "Loaded folder art from external file for: ${folder.name}")
-                return externalArtwork
+        // Try folder images only when the path is a real file path (not a content URI),
+        // since we can't peek inside a content URI directory for image files.
+        if (!folder.path.startsWith("content://")) {
+            val directory = File(folder.path)
+            if (directory.exists()) {
+                val externalArtwork = BaseCoverLoader.loadExternalArtwork(directory, emptyList())
+                if (externalArtwork != null) {
+                    Log.d(TAG, "Loaded folder art from external file for: ${folder.name}")
+                    return externalArtwork
+                }
             }
         }
 
-        // Source 2: Artwork embedded in the audio file tags.
         if (folder.songPaths.isNotEmpty()) {
-            val embeddedArtwork = BaseCoverLoader.loadEmbeddedArtworkFromPaths(folder.songPaths)
+            val embeddedArtwork = BaseCoverLoader.loadEmbeddedArtworkFromPaths(context, folder.songPaths)
             if (embeddedArtwork != null) {
                 Log.d(TAG, "Loaded folder art from embedded metadata for: ${folder.name}")
                 return embeddedArtwork
