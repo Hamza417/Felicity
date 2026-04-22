@@ -140,6 +140,33 @@
             android:layout_marginVertical="@dimen/padding_10"
             android:layout_height="1px" />
 
+        <!-- Toggle that lets the user decide whether the app should go online to fetch lyrics. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:padding="@dimen/padding_15"
+            android:orientation="horizontal">
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="@string/auto_download_lyrics"
+                android:layout_gravity="center_vertical"
+                android:layout_marginEnd="@dimen/padding_15"
+                android:textSize="@dimen/text_size_14"
+                app:appFontStyle="bold"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.toggles.FelicitySwitch
+                android:id="@+id/auto_download_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical" />
+
+        </LinearLayout>
+
         <app.simple.felicity.decorations.ripple.DynamicRippleTextView
             android:id="@+id/add_lyrics"
             android:layout_width="match_parent"

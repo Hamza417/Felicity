@@ -1,9 +1,9 @@
 package app.simple.felicity.repository.repositories
 
 import android.content.Context
-import android.net.Uri
 import android.util.Base64
 import android.util.Log
+import androidx.core.net.toUri
 import app.simple.felicity.repository.metadata.LyricsMetaHelper
 import app.simple.felicity.repository.models.LrcLibResponse
 import com.google.gson.Gson
@@ -234,21 +234,32 @@ class LrcRepository @Inject constructor(
                 if (audioUri.startsWith("content://")) {
                     val siblingUri = audioUri.substringBeforeLast('.') + ".lrc"
                     try {
-                        context.contentResolver.openInputStream(Uri.parse(siblingUri))?.use { stream ->
+                        context.contentResolver.openInputStream(siblingUri.toUri())?.use { stream ->
                             val content = stream.bufferedReader().readText()
                             if (content.isNotBlank()) {
                                 return@withContext Result.success(content)
                             }
                         }
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         // The sibling does not exist or isn't accessible — totally normal, keep going.
                         Log.d(TAG, "No sibling .lrc found in SAF tree for: $audioUri")
                     }
                 }
 
-                // Check 3: embedded lyrics tags in the audio file itself.
-                val embedded = LyricsMetaHelper.extractEmbeddedLyrics(audioUri)
+                // Check 3: lyrics baked right into the audio file's tags (USLT, ©lyr, etc.).
+                // If we find them we also write a sidecar so the next play skips this scan entirely.
+                val embedded = LyricsMetaHelper.extractEmbeddedLyrics(context, audioUri)
                 if (!embedded.isNullOrBlank()) {
+                    // Save as a .lrc sidecar so future loads hit Check 1 and return instantly.
+                    try {
+                        val lrcFile = File(lyricsDir, uriToFileName(audioUri, "lrc"))
+                        lrcFile.writeText(embedded)
+                        Log.d(TAG, "Embedded lyrics cached as sidecar for: $audioUri")
+                    } catch (cacheEx: Exception) {
+                        // Caching is best-effort — not finding it next time is a minor annoyance,
+                        // not a catastrophe. We still return the embedded lyrics right now.
+                        Log.w(TAG, "Could not cache embedded lyrics to disk: ${cacheEx.message}")
+                    }
                     return@withContext Result.success(embedded)
                 }
 

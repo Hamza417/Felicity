@@ -282,5 +282,49 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeSaveToFd(
     return JNI_TRUE;
 }
 
+/**
+ * Extracts the embedded lyrics text (plain or synced LRC) from an audio file
+ * using TagLib's unified property map. This covers USLT frames in MP3s, the
+ * ©lyr atom in M4A files, LYRICS Vorbis comments in FLAC/OGG, and every other
+ * format TagLib knows about — all from one call, no extra libraries needed.
+ *
+ * We check "LYRICS" first (the most common key), then fall back to
+ * "UNSYNCEDLYRICS" which some taggers use for plain-text lyrics.
+ *
+ * @param fd A readable POSIX file descriptor pointing at an audio file.
+ * @return The embedded lyrics string, or null if none were found.
+ */
+JNIEXPORT jstring JNICALL
+Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeExtractLyricsFromFd(
+        JNIEnv *env, jobject thiz, jint fd) {
+
+    int dupFd = dup(static_cast<int>(fd));
+    if (dupFd < 0) {
+        LOGE("dup() failed for fd=%d — cannot extract lyrics", fd);
+        return nullptr;
+    }
+
+    // We only need to read here, so skip the audio properties scan for speed.
+    TagLib::FileStream stream(dupFd, true);
+    TagLib::FileRef fileRef(&stream, false);
+    if (fileRef.isNull()) {
+        LOGE("FileRef is null for fd=%d — unsupported format", fd);
+        return nullptr;
+    }
+
+    TagLib::Tag *tag = fileRef.tag();
+    if (!tag) return nullptr;
+
+    TagLib::PropertyMap props = tag->properties();
+
+    // "LYRICS" is the standard key across ID3v2 (USLT), M4A (©lyr), and Vorbis.
+    jstring lyrics = getProperty(env, props, "LYRICS");
+    if (lyrics) return lyrics;
+
+    // Some taggers (e.g., older foobar2000 versions) write plain lyrics under
+    // "UNSYNCEDLYRICS" — worth a quick look before giving up.
+    return getProperty(env, props, "UNSYNCEDLYRICS");
+}
+
 } // extern "C"
 

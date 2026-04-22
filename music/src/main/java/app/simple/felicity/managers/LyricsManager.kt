@@ -11,6 +11,7 @@ import app.simple.felicity.decorations.lrc.parser.TxtParser
 import app.simple.felicity.decorations.lrc.parser.WordLrcParser
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.managers.LyricsManager.Companion.SYNC_SAVE_DEBOUNCE_MS
+import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.repositories.LrcRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +59,16 @@ class LyricsManager @Inject constructor(
      * Screens collect from this — there is no need to call load manually.
      */
     val lrcData: StateFlow<LrcData?> = _lrcData.asStateFlow()
+
+    private val _loadingStatus = MutableStateFlow<LyricsLoadingStatus>(LyricsLoadingStatus.Idle)
+
+    /**
+     * A live stream of what the lyrics loader is up to right now. Collect this in
+     * the UI to show things like "Searching online…" or "Downloading…" banners
+     * instead of leaving the user staring at a blank screen wondering if anything
+     * is happening. Think of it as the lyrics loader's status bar.
+     */
+    val loadingStatus: StateFlow<LyricsLoadingStatus> = _loadingStatus.asStateFlow()
 
     private val _syncOffsetMs = MutableStateFlow(0L)
 
@@ -149,6 +160,9 @@ class LyricsManager @Inject constructor(
         bakedLrcData = null
         syncSaveHandler.removeCallbacks(syncSaveRunnable)
 
+        // Reset the status banner so the UI goes back to its quiet state for this new song.
+        _loadingStatus.value = LyricsLoadingStatus.Idle
+
         // Signal to collectors that lyrics are being loaded (null = loading in progress).
         _lrcData.value = null
 
@@ -195,12 +209,19 @@ class LyricsManager @Inject constructor(
                             }
                         } else {
                             Log.d(TAG, "Nothing local found for ${currentSong.title}, trying to fetch online.")
+                            if (LyricsPreferences.isAutoDownloadLyrics()) {
                             fetchAndSaveLrc(
                                     trackName = currentSong.title ?: currentSong.name,
                                     artistName = currentSong.artist ?: "",
                                     audioPath = currentSong.uri
                             )
+                            } else {
+                                // Auto-download is off — let the user know we tried but stopped there.
+                                Log.d(TAG, "Auto-download disabled, skipping online fetch for ${currentSong.title}.")
+                                _loadingStatus.value = LyricsLoadingStatus.Idle
+                                _lrcData.value = LrcData()
                         }
+                    }
                     }
                 }.onFailure { exception ->
                     exception.printStackTrace()
@@ -244,14 +265,22 @@ class LyricsManager @Inject constructor(
     /**
      * Tries to fetch synced lyrics from LrcLib for the given track and saves them alongside
      * the audio file so future loads are instant.
+     *
+     * The loading status flow gets updated at each step so any UI listening in
+     * can display a friendly progress message instead of just a blank screen.
      */
     private suspend fun fetchAndSaveLrc(trackName: String, artistName: String, audioPath: String) {
+        // Let the UI know we're about to knock on LrcLib's door.
+        _loadingStatus.value = LyricsLoadingStatus.Searching(trackName)
+
         val result = lrcRepository.searchLyrics(trackName, artistName)
 
         result.onSuccess { results ->
             val bestMatch = results.firstOrNull()
             val syncedLyrics = bestMatch?.syncedLyrics
             if (bestMatch != null && !syncedLyrics.isNullOrBlank()) {
+                // Found a match — now download and save it.
+                _loadingStatus.value = LyricsLoadingStatus.Downloading(trackName)
                 try {
                     val parsed = withContext(Dispatchers.Default) {
                         LrcParser().parse(syncedLyrics)
@@ -260,16 +289,20 @@ class LyricsManager @Inject constructor(
                         lrcRepository.saveLrcToFile(syncedLyrics, audioPath)
                     }
                     Log.d(TAG, "Fetched and saved synced lyrics for $trackName by $artistName.")
+                    _loadingStatus.value = LyricsLoadingStatus.Idle
                     _lrcData.value = parsed
                 } catch (e: LyricsParseException) {
                     e.printStackTrace()
+                    _loadingStatus.value = LyricsLoadingStatus.Idle
                     _lrcData.value = LrcData()
                 }
             } else {
+                _loadingStatus.value = LyricsLoadingStatus.Idle
                 _lrcData.value = LrcData()
             }
         }.onFailure { exception ->
             exception.printStackTrace()
+            _loadingStatus.value = LyricsLoadingStatus.Idle
             _lrcData.value = LrcData()
         }
     }
@@ -372,5 +405,31 @@ class LyricsManager @Inject constructor(
     companion object {
         private const val SYNC_SAVE_DEBOUNCE_MS = 1500L
     }
+}
+
+/**
+ * Describes what the lyrics loader is doing at any given moment so the UI
+ * can show friendly progress messages instead of a blank screen.
+ *
+ * [Idle] is the quiet state — nothing happening, nothing to show.
+ * [Searching] means we sent a search request to LrcLib and are waiting for results.
+ * [Downloading] means we found a match and are saving it to disk.
+ */
+sealed class LyricsLoadingStatus {
+
+    /** Everything is calm — no network activity in progress. */
+    data object Idle : LyricsLoadingStatus()
+
+    /**
+     * The app is asking LrcLib if it has lyrics for this track.
+     * @param trackName The name of the song being searched so the UI can display it.
+     */
+    data class Searching(val trackName: String) : LyricsLoadingStatus()
+
+    /**
+     * A match was found and the lyrics are being written to disk as a sidecar.
+     * @param trackName The name of the song whose lyrics are being saved.
+     */
+    data class Downloading(val trackName: String) : LyricsLoadingStatus()
 }
 
