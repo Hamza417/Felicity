@@ -79,7 +79,7 @@ class AlbumPage : BasePageFragment() {
                             R.string.shuffle -> shuffleMediaItems(currentData.songs)
                             R.string.send -> {
                                 val audioUris = currentData.songs.map { audio ->
-                                    java.io.File(audio.path).toUri()
+                                    java.io.File(audio.uri).toUri()
                                 }
                                 val shareIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
                                     setType("audio/*")

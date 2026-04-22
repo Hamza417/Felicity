@@ -225,7 +225,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
 
     private fun updateState() {
         val audio = MediaPlaybackManager.getCurrentSong() ?: return
-        currentAudioPath = audio.path
+        currentAudioPath = audio.uri
         binding.name.text = audio.title
         binding.artist.text = audio.getArtists()
         binding.lrc.setDuration(audio.duration)
@@ -294,8 +294,8 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
     override fun onAudio(audio: Audio) {
         super.onAudio(audio)
 
-        val isSameSong = audio.path == currentAudioPath
-        currentAudioPath = audio.path
+        val isSameSong = audio.uri == currentAudioPath
+        currentAudioPath = audio.uri
 
         if (!isSameSong) {
             // Real song change — reset the view and kick off a fresh lyrics load.

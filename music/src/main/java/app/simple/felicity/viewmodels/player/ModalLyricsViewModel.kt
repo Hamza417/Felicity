@@ -106,7 +106,7 @@ class ModalLyricsViewModel @AssistedInject constructor(
     }
 
     fun loadLrcData() {
-        val currentSongPath = (audio ?: MediaPlaybackManager.getCurrentSong())?.path
+        val currentSongPath = (audio ?: MediaPlaybackManager.getCurrentSong())?.uri
 
         if (currentSongPath != null && currentSongPath == lastLoadedPath) {
             if (loadingJob?.isActive == true) {
@@ -140,7 +140,7 @@ class ModalLyricsViewModel @AssistedInject constructor(
                     return@launch
                 }
 
-                val loadResult = lrcRepository.loadLrcFromFile(currentSong.path)
+                val loadResult = lrcRepository.loadLrcFromFile(currentSong.uri)
 
                 loadResult.onSuccess { lrcContent ->
                     if (lrcContent != null) {
@@ -154,7 +154,7 @@ class ModalLyricsViewModel @AssistedInject constructor(
                         }
                     } else {
                         Log.d(TAG, "No existing LRC file found for ${currentSong.title}, checking for TXT sidecar.")
-                        val txtResult = lrcRepository.loadTxtFromFile(currentSong.path)
+                        val txtResult = lrcRepository.loadTxtFromFile(currentSong.uri)
                         val txtContent = txtResult.getOrNull()
                         if (!txtContent.isNullOrBlank()) {
                             Log.d(TAG, "TXT sidecar found for ${currentSong.title}, loading plain-text lyrics.")
@@ -170,7 +170,7 @@ class ModalLyricsViewModel @AssistedInject constructor(
                             fetchAndSaveLrc(
                                     trackName = currentSong.title ?: currentSong.name,
                                     artistName = currentSong.artist ?: "",
-                                    audioPath = currentSong.path
+                                    audioPath = currentSong.uri
                             )
                         }
                     }
@@ -269,7 +269,7 @@ class ModalLyricsViewModel @AssistedInject constructor(
         val baked = base.shiftTimestamps(-delta)
 
         viewModelScope.launch(Dispatchers.IO) {
-            val result = lrcRepository.saveLrcToFile(baked.toLrcString(), currentSong.path)
+            val result = lrcRepository.saveLrcToFile(baked.toLrcString(), currentSong.uri)
             result.onSuccess {
                 Log.d(TAG, "Sync ${delta}ms baked and saved to ${it.absolutePath}")
             }.onFailure {
@@ -297,7 +297,7 @@ class ModalLyricsViewModel @AssistedInject constructor(
         val currentSong = audio ?: MediaPlaybackManager.getCurrentSong() ?: return
 
         viewModelScope.launch(Dispatchers.IO) {
-            lrcRepository.deleteLrcFile(currentSong.path)
+            lrcRepository.deleteLrcFile(currentSong.uri)
 
             withContext(Dispatchers.Main) {
                 // Clear the view immediately

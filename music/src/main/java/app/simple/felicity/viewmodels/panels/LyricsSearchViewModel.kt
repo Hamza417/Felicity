@@ -187,13 +187,13 @@ class LyricsSearchViewModel @Inject constructor(
 
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.postValue(true)
-            Log.d(TAG, "Saving LRC for: ${audio.title} -> ${audio.path}")
+            Log.d(TAG, "Saving LRC for: ${audio.title} -> ${audio.uri}")
 
             // Wipe out whatever was there before so the fresh download is the only
             // source of truth going forward — no accidental fallback to old files.
-            lrcRepository.deleteLrcFile(audio.path)
+            lrcRepository.deleteLrcFile(audio.uri)
 
-            val saveResult = lrcRepository.saveLrcToFile(syncedLyrics, audio.path)
+            val saveResult = lrcRepository.saveLrcToFile(syncedLyrics, audio.uri)
 
             saveResult.onSuccess {
                 Log.d(TAG, "LRC saved successfully to ${it.absolutePath}")

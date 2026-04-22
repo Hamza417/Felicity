@@ -1,14 +1,17 @@
 package app.simple.felicity.repository.covers
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.util.Log
 import java.io.File
 
 /**
  * Core cover art loading functionality shared across all media types.
- * Provides common methods for loading external and embedded artwork.
+ * Think of this as the Swiss Army knife for finding album art — it tries
+ * every trick in the book before giving up.
  *
  * @author Hamza417
  */
@@ -24,7 +27,7 @@ internal object BaseCoverLoader {
 
     /**
      * Hardcoded list of the most common album art filenames used by music rippers,
-     * media players, and tagging tools.  Ordered by real-world prevalence so the
+     * media players, and tagging tools. Ordered by real-world prevalence so the
      * most likely match is found with the fewest [File.exists] calls.
      */
     private val COMMON_ARTWORK_NAMES = listOf(
@@ -43,13 +46,14 @@ internal object BaseCoverLoader {
     )
 
     /**
-     * Checks each hardcoded artwork filename directly via [File.exists] — no directory
-     * scan or traversal.  Skipping [File.canRead] avoids an extra [android.system.Os.access]
-     * syscall per candidate; a failed [BitmapFactory.decodeFile] is caught gracefully instead.
+     * Looks for common image files (folder.jpg, cover.jpg, etc.) directly inside
+     * a given directory. This is only useful when we have an actual [File] reference
+     * to the folder — SAF URIs can't be navigated this way, so callers should skip
+     * this method when the audio path is a content URI.
      *
-     * @param directory Directory to search for artwork files
-     * @param customNames Optional additional filenames to check (e.g., album/artist name variants)
-     * @return Bitmap of the first matching artwork file, or null if none is found
+     * @param directory Directory to search for artwork files.
+     * @param customNames Optional extra filenames to check (e.g., album or artist name variants).
+     * @return Bitmap of the first matching artwork file, or null if none is found.
      */
     fun loadExternalArtwork(directory: File, customNames: List<String> = emptyList()): Bitmap? {
         val allNames = COMMON_ARTWORK_NAMES + customNames
@@ -73,32 +77,30 @@ internal object BaseCoverLoader {
     }
 
     /**
-     * Extracts embedded artwork from a single audio file using MediaMetadataRetriever.
+     * Pulls the embedded artwork out of an audio file using [MediaMetadataRetriever].
+     * Works with both content:// URIs (SAF) and plain file paths — just pass the
+     * right one and this method figures out how to open it.
      *
-     * @param audioPath Path to the audio file
-     * @return Bitmap or null if not found
+     * @param context Android context needed to open content URIs.
+     * @param audioUri The content:// URI of the audio file.
+     * @return Bitmap or null if no embedded artwork is found.
      */
-    fun loadEmbeddedArtwork(audioPath: String): Bitmap? {
+    fun loadEmbeddedArtwork(context: Context, audioUri: Uri): Bitmap? {
         val retriever = MediaMetadataRetriever()
 
         try {
-            val file = File(audioPath)
-            if (!file.exists() || !file.canRead()) {
-                return null
-            }
+            retriever.setDataSource(context, audioUri)
 
-            retriever.setDataSource(audioPath)
-
-            // Extract embedded picture
             val embeddedPicture = retriever.embeddedPicture
             if (embeddedPicture != null && embeddedPicture.isNotEmpty()) {
                 val bitmap = BitmapFactory.decodeByteArray(embeddedPicture, 0, embeddedPicture.size)
                 if (bitmap != null) {
+                    Log.d(TAG, "Extracted embedded art via URI: $audioUri")
                     return bitmap
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to extract artwork from: $audioPath", e)
+            Log.w(TAG, "Failed to extract artwork from URI: $audioUri", e)
         } finally {
             try {
                 retriever.release()
@@ -111,39 +113,35 @@ internal object BaseCoverLoader {
     }
 
     /**
-     * Extracts embedded artwork from multiple audio files.
-     * Checks files in order and returns the first one with embedded artwork.
+     * Scans through a list of song paths (or URIs — both are fine) and returns the
+     * embedded artwork from the first file that actually has one. Stops early once
+     * artwork is found to avoid unnecessary work.
      *
-     * @param songPaths List of audio file paths to check
-     * @param maxFiles Maximum number of files to check (default: 5)
-     * @return Bitmap or null if not found
+     * @param context Android context needed to open content URIs via SAF.
+     * @param songPaths List of audio file paths or content URI strings to check.
+     * @param maxFiles Maximum number of files to check before giving up (default: 5).
+     * @return Bitmap or null if none of the checked files had embedded artwork.
      */
-    fun loadEmbeddedArtworkFromPaths(songPaths: List<String>, maxFiles: Int = 5): Bitmap? {
+    fun loadEmbeddedArtworkFromPaths(context: Context, songPaths: List<String>, maxFiles: Int = 5): Bitmap? {
         val retriever = MediaMetadataRetriever()
 
         try {
-            // Check each audio file (up to maxFiles for efficiency)
             for (path in songPaths.take(maxFiles)) {
                 try {
-                    val file = File(path)
-                    if (!file.exists() || !file.canRead()) {
-                        continue
-                    }
+                    // Both content:// URIs and file paths go through setDataSource(context, uri)
+                    // because MediaMetadataRetriever handles both just fine that way.
+                    retriever.setDataSource(context, Uri.parse(path))
 
-                    retriever.setDataSource(path)
-
-                    // Extract embedded picture
                     val embeddedPicture = retriever.embeddedPicture
                     if (embeddedPicture != null && embeddedPicture.isNotEmpty()) {
                         val bitmap = BitmapFactory.decodeByteArray(embeddedPicture, 0, embeddedPicture.size)
                         if (bitmap != null) {
-                            Log.d(TAG, "Extracted embedded art from: ${file.name}")
+                            Log.d(TAG, "Extracted embedded art from: $path")
                             return bitmap
                         }
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to extract artwork from: $path", e)
-                    // Continue to next file
                 }
             }
         } finally {
@@ -159,9 +157,10 @@ internal object BaseCoverLoader {
 
     /**
      * Generate custom artwork filename variants based on a name.
+     * Useful for looking up folder.jpg alternatives named after the album or artist.
      *
-     * @param name Name to generate variants for (e.g., album or artist name)
-     * @return List of filename variants
+     * @param name Name to generate variants for (e.g., album or artist name).
+     * @return List of filename variants.
      */
     fun generateCustomArtworkNames(name: String?): List<String> {
         if (name.isNullOrEmpty()) return emptyList()
@@ -175,9 +174,12 @@ internal object BaseCoverLoader {
         )
     }
 
+    /**
+     * Returns the built-in placeholder artwork when no cover art can be found anywhere.
+     * It's not glamorous, but it's better than a crash or a blank space.
+     */
     fun loadEmptyAudioCover(): Bitmap {
         val stream = BaseCoverLoader::class.java.getResourceAsStream(ALBUM_ART_PATH)
         return BitmapFactory.decodeStream(stream)
     }
 }
-

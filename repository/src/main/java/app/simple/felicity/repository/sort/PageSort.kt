@@ -61,7 +61,7 @@ object PageSort {
             CommonPreferencesConstants.BY_TITLE -> if (ascending) sortedBy { it.title } else sortedByDescending { it.title }
             CommonPreferencesConstants.BY_ARTIST -> if (ascending) sortedBy { it.artist } else sortedByDescending { it.artist }
             CommonPreferencesConstants.BY_ALBUM -> if (ascending) sortedBy { it.album } else sortedByDescending { it.album }
-            CommonPreferencesConstants.BY_PATH -> if (ascending) sortedBy { it.path } else sortedByDescending { it.path }
+            CommonPreferencesConstants.BY_PATH -> if (ascending) sortedBy { it.uri } else sortedByDescending { it.uri }
             CommonPreferencesConstants.BY_DATE_ADDED -> if (ascending) sortedBy { it.dateAdded } else sortedByDescending { it.dateAdded }
             CommonPreferencesConstants.BY_DATE_MODIFIED -> if (ascending) sortedBy { it.dateModified } else sortedByDescending { it.dateModified }
             CommonPreferencesConstants.BY_DURATION -> if (ascending) sortedBy { it.duration } else sortedByDescending { it.duration }

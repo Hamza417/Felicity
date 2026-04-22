@@ -190,7 +190,7 @@ class LrcEditorViewModel @AssistedInject constructor(
                 entries.sortedBy { it.timestampMs }.forEach { model ->
                     lrcData.addEntry(LrcEntry(model.timestampMs, model.text))
                 }
-                val result = lrcRepository.saveLrcToFile(lrcData.toLrcString(), audio.path)
+                val result = lrcRepository.saveLrcToFile(lrcData.toLrcString(), audio.uri)
                 withContext(Dispatchers.Main) {
                     if (result.isSuccess) {
                         _saved.value = true
@@ -207,7 +207,7 @@ class LrcEditorViewModel @AssistedInject constructor(
 
     private fun initLocalPlayer() {
         localPlayer = ExoPlayer.Builder(getApplication()).build().also { player ->
-            player.setMediaItem(MediaItem.fromUri(audio.path.toUri()))
+            player.setMediaItem(MediaItem.fromUri(audio.uri.toUri()))
             player.prepare()
             player.addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -227,7 +227,7 @@ class LrcEditorViewModel @AssistedInject constructor(
 
     private fun loadLrcEntries() {
         viewModelScope.launch(Dispatchers.IO) {
-            val result = lrcRepository.loadLrcFromFile(audio.path)
+            val result = lrcRepository.loadLrcFromFile(audio.uri)
             val lrcContent = result.getOrNull()
             if (!lrcContent.isNullOrBlank()) {
                 try {

@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.core.graphics.scale
+import androidx.core.net.toUri
 import app.simple.felicity.R
 import app.simple.felicity.repository.covers.AudioCover
 import app.simple.felicity.repository.database.instances.AudioDatabase
@@ -15,8 +16,8 @@ import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.io.FileInputStream
 import java.io.IOException
+import java.io.InputStream
 
 /**
  * Local WiFi HTTP server that exposes the device music library as a fully-featured
@@ -144,13 +145,23 @@ class MusicHttpServer(
         val id = DELETE_REGEX.find(uri)!!.groupValues[1].toLongOrNull()
             ?: return badRequest("Invalid song ID")
         val audio = findAudio(id) ?: return notFound("Song not found")
-        val file = audio.file
-        return if (file.exists() && file.delete()) {
-            audioCache = audioCache - id
-            Log.i(TAG, "Deleted: ${file.absolutePath}")
-            newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, "Deleted")
-        } else {
-            Log.w(TAG, "Failed to delete: ${file.absolutePath}")
+        val audioUri = audio.uri.toUri()
+        return try {
+            // Ask the system to delete the file through its own content provider.
+            // This works for both MediaStore and SAF URIs, so no raw File tricks needed.
+            val deleted = context.contentResolver.delete(audioUri, null, null)
+            if (deleted > 0) {
+                audioCache = audioCache - id
+                Log.i(TAG, "Deleted audio with URI: ${audio.uri}")
+                newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, "Deleted")
+            } else {
+                Log.w(TAG, "ContentResolver reported 0 rows deleted for URI: ${audio.uri}")
+                newFixedLengthResponse(
+                        Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Could not delete file"
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete URI: ${audio.uri}", e)
             newFixedLengthResponse(
                     Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, "Could not delete file"
             )
@@ -260,37 +271,59 @@ class MusicHttpServer(
     }
 
     /**
-     * Streams the raw audio file with HTTP Range support so the browser
-     * `<audio>` element can seek without re-downloading the entire file.
+     * Streams the audio file through the SAF ContentResolver with HTTP Range support,
+     * so the browser `<audio>` element can seek to any position without downloading
+     * the whole track first. Think of it as a responsible librarian — you can ask for
+     * just the chapter you want instead of borrowing the whole book.
      */
     private fun streamAudio(id: Long, session: IHTTPSession): Response {
         val audio = findAudio(id) ?: return notFound("Song not found")
-        val file = audio.file
-        if (!file.exists()) return notFound("File not found on disk")
 
-        val fileLength = file.length()
+        // Parse the stored SAF URI string back into an Android Uri so we can ask
+        // the ContentResolver to open it for us — no raw file path needed.
+        val audioUri = audio.uri.toUri()
         val mimeType = audio.mimeType?.takeIf { it.isNotBlank() } ?: "audio/*"
         val range = session.headers["range"]
+
+        // Ask the system how large the file is without fully opening it.
+        // openFileDescriptor gives us a handle we can query for the size.
+        val fileLength = try {
+            context.contentResolver.openFileDescriptor(audioUri, "r")?.use { it.statSize } ?: -1L
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not stat file descriptor for URI: ${audio.uri}", e)
+            -1L
+        }
 
         return if (range != null && range.startsWith("bytes=")) {
             val parts = range.removePrefix("bytes=").split("-")
             val start = parts[0].toLongOrNull() ?: 0L
-            val end = if (parts.size > 1 && parts[1].isNotBlank()) parts[1].toLong() else fileLength - 1
+            val end = if (fileLength > 0 && parts.size > 1 && parts[1].isNotBlank()) {
+                parts[1].toLong()
+            } else if (fileLength > 0) {
+                fileLength - 1
+            } else {
+                // File size unknown — just skip and stream the remainder blindly.
+                Long.MAX_VALUE / 2
+            }
             val length = end - start + 1
-            newFixedLengthResponse(
-                    Response.Status.PARTIAL_CONTENT, mimeType,
-                    FileInputStream(file).also { it.skip(start) }, length
-            ).apply {
+
+            // Open a fresh stream and skip ahead to where the browser wants to start.
+            val stream: InputStream = context.contentResolver.openInputStream(audioUri)
+                ?: return notFound("Could not open audio stream")
+            stream.skip(start)
+
+            newFixedLengthResponse(Response.Status.PARTIAL_CONTENT, mimeType, stream, length).apply {
                 addHeader("Content-Range", "bytes $start-$end/$fileLength")
                 addHeader("Accept-Ranges", "bytes")
-                addHeader("Content-Length", length.toString())
+                if (fileLength > 0) addHeader("Content-Length", length.toString())
             }
         } else {
-            newFixedLengthResponse(
-                    Response.Status.OK, mimeType, FileInputStream(file), fileLength
-            ).apply {
+            val stream: InputStream = context.contentResolver.openInputStream(audioUri)
+                ?: return notFound("Could not open audio stream")
+
+            newFixedLengthResponse(Response.Status.OK, mimeType, stream, fileLength).apply {
                 addHeader("Accept-Ranges", "bytes")
-                addHeader("Content-Length", fileLength.toString())
+                if (fileLength > 0) addHeader("Content-Length", fileLength.toString())
             }
         }
     }

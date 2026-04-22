@@ -107,7 +107,7 @@ class LrcSearchViewModel @Inject constructor(
                 // Save to file as sidecar
                 val saveResult = lrcRepository.saveLrcToFile(
                         syncedLyrics,
-                        audio.path
+                        audio.uri
                 )
 
                 saveResult.onSuccess {
@@ -139,7 +139,7 @@ class LrcSearchViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
 
-            val result = lrcRepository.loadLrcFromFile(audio.path)
+            val result = lrcRepository.loadLrcFromFile(audio.uri)
 
             result.onSuccess { lrcContent ->
                 if (lrcContent != null) {
@@ -168,7 +168,7 @@ class LrcSearchViewModel @Inject constructor(
      */
     fun lrcExists(): Boolean {
         val audio = currentAudio ?: return false
-        return lrcRepository.lrcFileExists(audio.path)
+        return lrcRepository.lrcFileExists(audio.uri)
     }
 
     /**

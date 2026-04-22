@@ -30,7 +30,7 @@ class Preferences : MediaFragment() {
 
     private var adapter: AdapterPreference? = null
 
-    private val preferencesViewModel: PreferencesViewModel by viewModels({ requireActivity() })
+    private val preferencesViewModel: PreferencesViewModel by viewModels({ this })
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
 

@@ -27,3 +27,4 @@ local.properties
 /music/release/music-release.apk
 /music/release/output-metadata.json
 /music/play/release/*
+/music/foss/release/*

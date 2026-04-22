@@ -81,7 +81,7 @@ class AudioInformation : ScopedBottomSheetFragment() {
                         }
                         binding.recyclerView.adapter = adapter
                     } else {
-                        Log.w(TAG, "No information to display for audio: ${audio.path}")
+                        Log.w(TAG, "No information to display for audio: ${audio.uri}")
                     }
                 }
             }

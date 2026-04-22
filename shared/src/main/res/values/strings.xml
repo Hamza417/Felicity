@@ -157,6 +157,14 @@
     <string name="desc_post_notifications">Required to show media player and other necessary notifications.</string>
     <string name="manage_all_files">Manage All Files</string>
     <string name="desc_manage_all_files">Required to delete, rename, or modify audio files and their metadata. Also needed to access sidecar files like subtitles (.srt), lyrics (.lrc), and cue sheets (.cue). Without this, modification features will be limited.</string>
+    <string name="storage_folder_access">Storage Folder Access</string>
+    <string name="desc_storage_folder_access">Tap to pick the music folder(s) you want Felicity to scan. You can add more folders later from Library settings. No broad storage permission is required, only the folders you choose.</string>
+    <string name="read_media_audio">Read Media Audio</string>
+    <string name="desc_read_media_audio">Allows Felicity to read audio files from MediaStore.</string>
+    <string name="add_folder">Add Folder</string>
+    <string name="granted_folders">Granted Folders</string>
+    <string name="no_folders_granted">No folders added yet. Tap above to pick a music folder.</string>
+    <string name="saf_folders_summary">Folders the app is allowed to scan for music.</string>
     <string name="start_app_now">Start App Now</string>
     <string name="audio">Audio</string>
     <string name="audio_desc">Configure decoder, audio engine, and output quality.</string>
@@ -204,8 +212,6 @@
     <string name="minimum_audio_size">Minimum Audio Size</string>
     <string name="minimum_audio_size_summary">Minimum audio file size required to be scanned and shown in the app.</string>
     <string name="filters">Filters</string>
-    <string name="skip_nomedia_folders">Skip .nomedia Folders</string>
-    <string name="skip_nomedia_folders_summary">Exclude folders that contain a .nomedia file from the library scan.</string>
     <string name="skip_hidden_files">Skip Hidden Files</string>
     <string name="skip_hidden_files_summary">Exclude dot-prefixed audio files (e.g. .song.mp3) from the library scan.</string>
     <string name="skip_hidden_folders">Skip Hidden Folders</string>
@@ -397,8 +403,6 @@
     <string name="add_lyrics">Add Lyrics</string>
     <string name="refresh_library">Refresh Library</string>
     <string name="refresh_library_summary">Refresh the library by performing a full rescan of the audio files.</string>
-    <string name="excluded_folders">Excluded Folders</string>
-    <string name="excluded_folders_summary">Skip these folders during scans.</string>
     <string name="select_path">Select Path</string>
     <string name="no_folders_added">No folders added yet. Tap the + button to add one.</string>
     <string name="path_added">Path added successfully.</string>

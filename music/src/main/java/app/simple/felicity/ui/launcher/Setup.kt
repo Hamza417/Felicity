@@ -2,23 +2,35 @@ package app.simple.felicity.ui.launcher
 
 import android.Manifest
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.net.toUri
+import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.activityViewModels
 import app.simple.felicity.R
 import app.simple.felicity.activities.MainActivity
 import app.simple.felicity.databinding.FragmentSetupBinding
-import app.simple.felicity.decorations.utils.PermissionUtils.isManageExternalStoragePermissionGranted
 import app.simple.felicity.decorations.utils.PermissionUtils.isPostNotificationsPermissionGranted
+import app.simple.felicity.decorations.utils.PermissionUtils.isReadMediaAudioPermissionGranted
+import app.simple.felicity.decorations.utils.PermissionUtils.isSAFAccessGranted
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.preferences.SAFPreferences
 import app.simple.felicity.viewmodels.setup.PermissionViewModel
 
+/**
+ * The first screen the user sees after installing the app.
+ *
+ * Instead of asking for the nuclear "Manage All Files" permission,
+ * we now ask the user to pick a music folder using the system's
+ * Storage Access Framework folder picker. Much friendlier and Play Store approved.
+ *
+ * @author Hamza417
+ */
 class Setup : MediaFragment() {
 
     private lateinit var binding: FragmentSetupBinding
@@ -31,21 +43,35 @@ class Setup : MediaFragment() {
         updateNotificationPermissionStatus()
     }
 
-    private val manageExternalStorageLauncher = registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult()
-    ) { _ ->
-        updateManageAllFilesPermissionStatus()
-    }
-
-    private val writeStoragePermissionLauncher = registerForActivityResult(
+    private val readMediaAudioPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestPermission()
     ) { _ ->
-        updateManageAllFilesPermissionStatus()
+        updateReadMediaAudioPermissionStatus()
+    }
+
+    /**
+     * Opens the system folder picker and waits for the user to choose a directory.
+     * Once they pick one, we lock in the persistent read permission and save the URI.
+     */
+    private val safFolderPickerLauncher = registerForActivityResult(
+            ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            // Lock in a persistent read permission so we can still access the
+            // folder after the app restarts (SAF permissions survive reboots only
+            // when you call this — without it, the grant expires with the process).
+            requireContext().contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            SAFPreferences.addTreeUri(uri.toString())
+        }
+
+        updateSAFPermissionStatus()
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentSetupBinding.inflate(inflater, container, false)
-
         return binding.root
     }
 
@@ -54,14 +80,20 @@ class Setup : MediaFragment() {
         requireHiddenMiniPlayer()
 
         updateNotificationPermissionStatus()
-        updateManageAllFilesPermissionStatus()
+        updateSAFPermissionStatus()
+        updateReadMediaAudioPermissionStatus()
 
         binding.grantPostNotifications.setOnClickListener {
             requestNotificationPermission()
         }
 
+        // The second row now opens the SAF folder picker instead of the All Files settings page.
         binding.grantManageAllFiles.setOnClickListener {
-            requestManageAllFilesPermission()
+            safFolderPickerLauncher.launch(null)
+        }
+
+        binding.grantReadMediaAudio.setOnClickListener {
+            requestReadMediaAudioPermission()
         }
 
         binding.startAppNow.setOnClickListener {
@@ -76,12 +108,17 @@ class Setup : MediaFragment() {
     override fun onResume() {
         super.onResume()
         updateNotificationPermissionStatus()
-        updateManageAllFilesPermissionStatus()
+        updateSAFPermissionStatus()
+        updateReadMediaAudioPermissionStatus()
         updateStartButtonState()
     }
 
+    /**
+     * The app is ready to go when the user has granted notifications, folder access,
+     * and read media audio (needed for the folder hierarchy to work on Android 13+).
+     */
     private fun areRequiredPermissionsGranted(): Boolean {
-        return isPostNotificationsPermissionGranted() && isManageExternalStoragePermissionGranted()
+        return isPostNotificationsPermissionGranted() && isSAFAccessGranted() && isReadMediaAudioPermissionGranted()
     }
 
     private fun updateStartButtonState() {
@@ -95,13 +132,28 @@ class Setup : MediaFragment() {
     }
 
     private fun requestNotificationPermission() {
-        if (isPostNotificationsPermissionGranted()) {
-            return
-        }
+        if (isPostNotificationsPermissionGranted()) return
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+
+    private fun requestReadMediaAudioPermission() {
+        if (isReadMediaAudioPermissionGranted()) return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            readMediaAudioPermissionLauncher.launch(Manifest.permission.READ_MEDIA_AUDIO)
+        }
+    }
+
+    private fun updateReadMediaAudioPermissionStatus() {
+        if (isReadMediaAudioPermissionGranted()) {
+            binding.statusReadMediaAudio.setText(R.string.granted)
+        } else {
+            binding.statusReadMediaAudio.setText(R.string.not_granted)
+        }
+        updateStartButtonState()
     }
 
     private fun updateNotificationPermissionStatus() {
@@ -113,29 +165,38 @@ class Setup : MediaFragment() {
         updateStartButtonState()
     }
 
-    private fun requestManageAllFilesPermission() {
-        if (isManageExternalStoragePermissionGranted()) {
-            return
-        }
+    private fun setGrantedFoldersText() {
+        val uris = requireContentResolver().persistedUriPermissions.map { it.uri }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                data = "package:${requireContext().packageName}".toUri()
-            }
-            manageExternalStorageLauncher.launch(intent)
+        Log.d(TAG, "Persisted URI permissions: $uris")
+
+        binding.folders.text = if (uris.isEmpty()) {
+            getString(R.string.no_folders_granted)
         } else {
-            writeStoragePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            buildString {
+                uris.forEach { uri ->
+                    if (isNotEmpty()) {
+                        append("\n")
+                    }
+
+                    append("• ")
+                    append(DocumentFile.fromTreeUri(requireContext(), uri)?.name ?: "Unknown")
+                }
+            }
         }
     }
 
-    private fun updateManageAllFilesPermissionStatus() {
-        if (isManageExternalStoragePermissionGranted()) {
+    private fun updateSAFPermissionStatus() {
+        val granted = isSAFAccessGranted()
+        if (granted) {
             binding.statusManageAllFiles.setText(R.string.granted)
         } else {
             binding.statusManageAllFiles.setText(R.string.not_granted)
         }
-
-        permissionViewModel.setManageFilesPermissionState(isManageExternalStoragePermissionGranted())
+        // Keep the PermissionViewModel in sync so other screens that observe it still work.
+        permissionViewModel.setManageFilesPermissionState(granted)
+        updateStartButtonState()
+        setGrantedFoldersText()
     }
 
     override val wantsMiniPlayerVisible: Boolean

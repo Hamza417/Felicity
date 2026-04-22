@@ -26,8 +26,8 @@ object SongSort {
                 else -> this
             }
             CommonPreferencesConstants.BY_PATH -> when (SongsPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ASCENDING -> sortedBy { it.path }
-                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.path }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.uri }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.uri }
                 else -> this
             }
             CommonPreferencesConstants.BY_DATE_ADDED -> when (SongsPreferences.getSortingStyle()) {

@@ -42,7 +42,7 @@ object YearCover {
             }
 
             // Source 1: Artwork embedded in the audio file tags.
-            val embeddedArtwork = BaseCoverLoader.loadEmbeddedArtworkFromPaths(yearGroup.songPaths)
+            val embeddedArtwork = BaseCoverLoader.loadEmbeddedArtworkFromPaths(context, yearGroup.songPaths)
             if (embeddedArtwork != null) {
                 Log.d(TAG, "Loaded cover from embedded metadata for year: ${yearGroup.year}")
                 return embeddedArtwork

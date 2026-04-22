@@ -55,7 +55,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun providesLrcRepository(): LrcRepository {
-        return LrcRepository()
+    fun providesLrcRepository(@ApplicationContext context: Context): LrcRepository {
+        return LrcRepository(context)
     }
 }

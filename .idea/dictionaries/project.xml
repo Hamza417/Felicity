@@ -12,6 +12,7 @@
       <w>chargebacked</w>
       <w>coeffs</w>
       <w>diffusors</w>
+      <w>externalstorage</w>
       <w>gumroad</w>
       <w>jlong</w>
       <w>jpountz</w>
@@ -19,6 +20,7 @@
       <w>layouted</w>
       <w>mediastore</w>
       <w>playhead</w>
+      <w>unsynchronized</w>
     </words>
   </dictionary>
 </component>

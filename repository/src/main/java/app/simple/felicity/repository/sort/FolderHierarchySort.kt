@@ -38,8 +38,8 @@ object FolderHierarchySort {
                 else -> this
             }
             CommonPreferencesConstants.BY_PATH -> when (FolderHierarchyPreferences.getSortOrder()) {
-                CommonPreferencesConstants.ASCENDING -> sortedBy { it.path.lowercase() }
-                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.path.lowercase() }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.uri.lowercase() }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.uri.lowercase() }
                 else -> this
             }
             else -> sortedBy { it.title?.lowercase() ?: "" }

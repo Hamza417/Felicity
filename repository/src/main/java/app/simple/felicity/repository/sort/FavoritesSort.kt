@@ -36,8 +36,8 @@ object FavoritesSort {
                 else -> this
             }
             CommonPreferencesConstants.BY_PATH -> when (FavoritesPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ASCENDING -> sortedBy { it.path }
-                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.path }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.uri }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.uri }
                 else -> this
             }
             CommonPreferencesConstants.BY_DATE_ADDED -> when (FavoritesPreferences.getSortingStyle()) {

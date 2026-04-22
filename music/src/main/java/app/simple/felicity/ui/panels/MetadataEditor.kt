@@ -30,7 +30,7 @@ import java.io.FileOutputStream
  * Full-screen panel that allows the user to view and edit the embedded tag
  * metadata of a single audio track. Supported fields are title, artist,
  * album, album artist, year, genre, track number, total tracks, disc number,
- * compilation, composer, writer/lyricist, comment, and unsynchronised lyrics.
+ * compilation, composer, writer/lyricist, comment, and unsynchronized lyrics.
  *
  * Album artwork can be replaced by tapping the art thumbnail, which opens the
  * system image picker. The chosen image is copied to a temporary file and
@@ -201,7 +201,6 @@ class MetadataEditor : MediaFragment() {
                 compilation = binding.compilationInput.text?.toString()?.trim(),
                 comment = binding.commentInput.text?.toString()?.trim(),
                 lyrics = binding.lyricsInput.text?.toString()?.trim(),
-                artworkFile = pendingArtworkFile
         )
 
         val updatedAudio = audio.copy().apply {

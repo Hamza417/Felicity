@@ -59,7 +59,11 @@ class FoldersHierarchy : BasePanelFragment() {
         if (folderPath == null) {
             headerBinding.headerTitle.text = getString(R.string.folders_hierarchy)
         } else {
-            headerBinding.headerTitle.text = folderPath?.substringAfterLast('/')
+            // folderPath is a document ID like "primary:Music/Artist" or "primary:Music".
+            // substringAfterLast('/') gives us "Artist" for sub-folders, or "primary:Music"
+            // for the root — in that case we strip the volume prefix after the colon.
+            val segment = folderPath!!.substringAfterLast('/')
+            headerBinding.headerTitle.text = if (segment.contains(':')) segment.substringAfter(':') else segment
         }
 
         binding.header.setContentView(headerBinding.root)

@@ -46,7 +46,7 @@ class Song(val binding: AdapterStyleListBinding) : VerticalListViewHolder(bindin
             }
             container.setAudioID(audio.id)
             cover.loadArtCoverWithPayload(audio)
-            cover.transitionName = audio.path
+            cover.transitionName = audio.uri
         }
     }
 }

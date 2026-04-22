@@ -63,7 +63,7 @@ class AddLyricsViewModel @AssistedInject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _isSaving.emit(true)
             try {
-                val audioPath = audio.path ?: run {
+                val audioPath = audio.uri ?: run {
                     _saveResult.emit(SaveResult.Error("Audio path is null."))
                     return@launch
                 }

@@ -275,7 +275,7 @@ class M3uRepository @Inject constructor(
 
         audio.name = file.name
         audio.setTitle(displayTitle ?: file.nameWithoutExtension)
-        audio.path = absolutePath
+        audio.uri = absolutePath
         audio.mimeType = file.extension.lowercase()
         audio.hash = hashPath(absolutePath)
         audio.size = 0L

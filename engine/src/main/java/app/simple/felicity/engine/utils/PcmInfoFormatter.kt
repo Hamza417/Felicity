@@ -47,7 +47,7 @@ object PcmInfoFormatter {
                     append("${audio.bitrate} kbit/s")
                 }
 
-                val ext = audio.path?.substringAfterLast('.', "")?.uppercase()
+                val ext = audio.uri?.substringAfterLast('.', "")?.uppercase()
                 if (!ext.isNullOrEmpty()) {
                     if (isNotEmpty()) append(" ")
                     append(ext)
