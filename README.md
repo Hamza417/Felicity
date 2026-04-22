@@ -23,9 +23,16 @@ future.
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Hamza417/Felicity/build_preview.yml?branch=master&logo=github&logoColor=white&label=build%20(preview)&color=white)](https://github.com/Hamza417/Felicity/actions/workflows/build_preview.yml)
 [![Crowdin](https://badges.crowdin.net/felicity/localized.svg)](https://crowdin.com/project/felicity)
 
+## Download
+
+[![](https://img.shields.io/badge/Play%20Store-05acff?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=app.simple.felicity)
+[![](https://img.shields.io/github/v/release/Hamza417/Felicity?color=181717&logo=github&label=GitHub%20Release)](https://github.com/Hamza417/Felicity/releases/latest)
+
 ## Purchase
 
 [![](https://img.shields.io/badge/License%20Key%20(GumRoad)-Purchase-23a094?logo=gumroad&logoColor=white)](https://hamza417.gumroad.com/l/Felicity/EARLY_ACCESS)
+
+Play Store users can buy full version directly from the app itself.
 
 ## Features
 
