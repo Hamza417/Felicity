@@ -128,6 +128,14 @@ interface AudioDao {
     @Query("SELECT * FROM audio WHERE uri = :path LIMIT 1")
     fun getAudioByPath(path: String): Audio?
 
+    /**
+     * Looks up an audio row by its real POSIX filesystem path (the path column,
+     * which holds the MediaStore DATA value like /storage/emulated/0/Music/song.mp3).
+     * This is the right query to use when matching against M3U entry paths.
+     */
+    @Query("SELECT * FROM audio WHERE path = :posixPath LIMIT 1")
+    fun getAudioByPosixPath(posixPath: String): Audio?
+
     // Favorite / always-skip flag queries
     @Query("SELECT * FROM audio WHERE is_favorite = 1 AND is_available = 1 ORDER BY title COLLATE NOCASE ASC")
     fun getFavoriteAudio(): Flow<MutableList<Audio>>

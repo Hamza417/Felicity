@@ -44,7 +44,7 @@ class AudioInformationViewModel @AssistedInject constructor(
             val list = buildList {
                 // ── Full-span rows (wide data) ──────────────────────────────
                 add(data(R.string.title, audio.title ?: audio.name ?: "–", fullSpan = true))
-                add(data(R.string.path, audio.uri ?: "–", fullSpan = true))
+                add(data(R.string.path, audio.path ?: "–", fullSpan = true))
                 add(data(R.string.album, audio.album ?: "–", fullSpan = true))
 
                 // ── Half-span rows (2-column grid) ──────────────────────────

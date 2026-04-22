@@ -21,6 +21,54 @@ object MediaStorePaths {
     private const val TAG = "MediaStorePaths"
 
     /**
+     * Queries MediaStore for every audio file and returns two useful lookups bundled
+     * together as a [Pair]:
+     * - First: full absolute path → full absolute path (for exact path matching)
+     * - Second: lowercase filename → full absolute path (for filename-only matching)
+     *
+     * Having both maps means we can handle any flavor of M3U path — whether the
+     * playlist was created on another machine with a different root, or it just uses
+     * a bare filename assuming all tracks live in the same folder.
+     */
+    @Suppress("DEPRECATION")
+    fun Context.buildMediaStoreFilenameMap(): Pair<Map<String, String>, Map<String, String>> {
+        val fullPathMap = HashMap<String, String>()
+        val filenameMap = HashMap<String, String>()
+
+        val projection = arrayOf(MediaStore.Audio.Media.DATA)
+
+        try {
+            contentResolver.query(
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    projection,
+                    null,
+                    null,
+                    null
+            )?.use { cursor ->
+                val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+
+                while (cursor.moveToNext()) {
+                    val data = cursor.getString(dataCol) ?: continue
+                    fullPathMap[data] = data
+
+                    // The filename is the last segment — great for matching relative-path entries.
+                    val filename = data.substringAfterLast('/').lowercase()
+                    if (filename.isNotEmpty()) {
+                        // First match wins, which handles duplicate filenames across folders gracefully.
+                        filenameMap.putIfAbsent(filename, data)
+                    }
+                }
+
+                Log.d(TAG, "Built MediaStore filename map with ${filenameMap.size} entries.")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to build MediaStore filename map.", e)
+        }
+
+        return fullPathMap to filenameMap
+    }
+
+    /**
      * Queries MediaStore for every audio file and returns a map of
      * (title, artist, album) → absolute filesystem path.
      *
@@ -56,7 +104,7 @@ object MediaStorePaths {
                     val title = cursor.getString(titleCol)?.lowercase() ?: ""
                     val artist = cursor.getString(artistCol)?.lowercase() ?: ""
                     val album = cursor.getString(albumCol)?.lowercase() ?: ""
-                    val data = cursor.getString(dataCol) ?: continue
+                    val data = cursor.getString(dataCol) ?: ""
 
                     Log.d(TAG, "MediaStore entry: title='$title', artist='$artist', album='$album', path='$data'")
 
