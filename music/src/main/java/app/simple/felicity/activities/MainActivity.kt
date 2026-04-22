@@ -12,7 +12,6 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import androidx.activity.viewModels
 import androidx.core.app.ShareCompat
 import androidx.core.net.toUri
 import androidx.core.view.isVisible
@@ -65,7 +64,6 @@ import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.panels.Selections
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.ui.player.PlayerFaded
-import app.simple.felicity.viewmodels.setup.PermissionViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -76,8 +74,6 @@ import javax.inject.Inject
 class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
     private lateinit var binding: ActivityMainBinding
-
-    private val permissionViewModel by viewModels<PermissionViewModel>()
 
     /**
      * The central lyrics coordinator. Injected here so we can ask it to do a
@@ -253,12 +249,6 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             // every song in the basket — much more comfortable than a tiny dialog.
             val topFragment = supportFragmentManager.fragments.lastOrNull() as? ScopedFragment
             topFragment?.openFragment(Selections.newInstance(), Selections.TAG)
-        }
-
-        permissionViewModel.getManageFilesPermissionState().observe(this) { granted ->
-            if (granted) {
-                startAudioDatabaseService()
-            }
         }
     }
 

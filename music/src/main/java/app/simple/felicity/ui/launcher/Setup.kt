@@ -11,7 +11,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
-import androidx.fragment.app.activityViewModels
 import app.simple.felicity.R
 import app.simple.felicity.activities.MainActivity
 import app.simple.felicity.databinding.FragmentSetupBinding
@@ -20,7 +19,7 @@ import app.simple.felicity.decorations.utils.PermissionUtils.isReadMediaAudioPer
 import app.simple.felicity.decorations.utils.PermissionUtils.isSAFAccessGranted
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.SAFPreferences
-import app.simple.felicity.viewmodels.setup.PermissionViewModel
+import app.simple.felicity.repository.services.AudioDatabaseService
 
 /**
  * The first screen the user sees after installing the app.
@@ -34,8 +33,6 @@ import app.simple.felicity.viewmodels.setup.PermissionViewModel
 class Setup : MediaFragment() {
 
     private lateinit var binding: FragmentSetupBinding
-
-    private val permissionViewModel by activityViewModels<PermissionViewModel>()
 
     private val notificationPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestPermission()
@@ -98,6 +95,7 @@ class Setup : MediaFragment() {
 
         binding.startAppNow.setOnClickListener {
             if (areRequiredPermissionsGranted()) {
+                AudioDatabaseService.startScan(requireContext())
                 proceedToHome()
             }
         }
@@ -193,8 +191,7 @@ class Setup : MediaFragment() {
         } else {
             binding.statusManageAllFiles.setText(R.string.not_granted)
         }
-        // Keep the PermissionViewModel in sync so other screens that observe it still work.
-        permissionViewModel.setManageFilesPermissionState(granted)
+
         updateStartButtonState()
         setGrantedFoldersText()
     }
