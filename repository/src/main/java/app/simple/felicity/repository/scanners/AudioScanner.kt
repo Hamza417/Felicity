@@ -29,7 +29,7 @@ class AudioScanner {
         private val AUDIO_EXTENSIONS = hashSetOf(
                 "mp3", "m4a", "aac", "ts", "flac", "mid", "xmf", "mxmf",
                 "rtttl", "rtx", "ota", "imy", "ogg", "opus", "wav", "alac",
-                "aiff", "wma", "ape", "dsd", "pcm", "dsf"
+                "aiff", "wma", "ape", "pcm"
         )
 
         /** Extensions we recognize as M3U playlist files. */

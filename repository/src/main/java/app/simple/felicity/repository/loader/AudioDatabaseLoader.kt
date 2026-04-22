@@ -6,9 +6,9 @@ import android.util.Log
 import androidx.annotation.WorkerThread
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
-import app.simple.felicity.repository.covers.MediaStorePaths.buildMediaStorePathMap
 import app.simple.felicity.repository.database.dao.AudioDao
 import app.simple.felicity.repository.database.instances.AudioDatabase
+import app.simple.felicity.repository.loader.MediaStorePaths.buildMediaStorePathMap
 import app.simple.felicity.repository.metadata.MetaDataHelper.extractMetadata
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.notifications.LoaderNotification

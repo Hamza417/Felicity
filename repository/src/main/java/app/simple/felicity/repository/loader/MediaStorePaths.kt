@@ -1,4 +1,4 @@
-package app.simple.felicity.repository.covers
+package app.simple.felicity.repository.loader
 
 import android.content.Context
 import android.provider.MediaStore
@@ -57,6 +57,8 @@ object MediaStorePaths {
                     val artist = cursor.getString(artistCol)?.lowercase() ?: ""
                     val album = cursor.getString(albumCol)?.lowercase() ?: ""
                     val data = cursor.getString(dataCol) ?: continue
+
+                    Log.d(TAG, "MediaStore entry: title='$title', artist='$artist', album='$album', path='$data'")
 
                     map[Triple(title, artist, album)] = data
                 }
