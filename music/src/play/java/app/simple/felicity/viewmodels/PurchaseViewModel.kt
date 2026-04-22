@@ -15,7 +15,6 @@ import com.android.billingclient.api.BillingResult
 import com.android.billingclient.api.PendingPurchasesParams
 import com.android.billingclient.api.ProductDetails
 import com.android.billingclient.api.Purchase
-import com.android.billingclient.api.PurchasesResponseListener
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
@@ -46,6 +45,12 @@ class PurchaseViewModel @Inject constructor(
     private val productId = "felicity_full_version"
 
     /**
+     * The offer IDs we recognize. We check both and apply whichever gives the
+     * lowest price — we want users to always get the best deal available.
+     */
+    private val offers = listOf("early-access", "sale-discount")
+
+    /**
      * All the possible states our purchase screen can be in, so the UI
      * always knows what to show without us having to guess.
      */
@@ -54,7 +59,24 @@ class PurchaseViewModel @Inject constructor(
         data object Connecting : BillingState()
 
         /** Connected and we have product details ready to show. */
-        data class Ready(val productDetails: ProductDetails) : BillingState()
+        data class Ready(
+                val productDetails: ProductDetails,
+                /**
+                 * The normal price before any offer is applied.
+                 * Always present — this is what you'd pay without any deal.
+                 */
+                val basePrice: String,
+                /**
+                 * The discounted price if any of our recognized offers are active, or
+                 * null when the full price is the only option. Absence = no deal today.
+                 */
+                val offerPrice: String?,
+                /**
+                 * The offer token needed to actually apply the deal when launching the
+                 * billing flow. Null when no offer is available.
+                 */
+                val offerToken: String?
+        ) : BillingState()
 
         /** The user already owns the app — we just need to acknowledge it. */
         data object AlreadyPurchased : BillingState()
@@ -81,20 +103,17 @@ class PurchaseViewModel @Inject constructor(
      * This is the callback that tells us whether the user actually paid or hit "Back."
      */
     private val purchasesUpdatedListener = PurchasesUpdatedListener { billingResult, purchases ->
-        when {
-            billingResult.responseCode == BillingClient.BillingResponseCode.OK && !purchases.isNullOrEmpty() -> {
+        when (billingResult.responseCode) {
+            BillingClient.BillingResponseCode.OK if !purchases.isNullOrEmpty() -> {
                 purchases.forEach { handlePurchase(it) }
             }
-
-            billingResult.responseCode == BillingClient.BillingResponseCode.USER_CANCELED -> {
+            BillingClient.BillingResponseCode.USER_CANCELED -> {
                 Log.d(TAG, "User canceled the purchase flow — maybe next time!")
             }
-
-            billingResult.responseCode == BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> {
+            BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> {
                 // They already own it — let's make sure the app knows that.
                 restoreExistingPurchases()
             }
-
             else -> {
                 Log.w(TAG, "Billing update failed: ${billingResult.debugMessage}")
                 _billingState.postValue(BillingState.Error(billingResult.debugMessage))
@@ -162,9 +181,27 @@ class PurchaseViewModel @Inject constructor(
                 val details: ProductDetails? = productDetailsList.productDetailsList.firstOrNull()
                 if (details != null) {
                     productDetails = details
-                    // Only update to Ready if we are not already showing AlreadyPurchased.
+
+                    // The regular price — always available, no strings attached.
+                    val basePrice = details.oneTimePurchaseOfferDetails?.formattedPrice ?: ""
+
+                    // Look for the best (lowest) offer among the ones we recognize.
+                    val bestOffer = details.oneTimePurchaseOfferDetailsList
+                        ?.filter { it.offerId in offers }
+                        ?.minByOrNull { it.priceAmountMicros }
+
+                    val offerPrice = bestOffer?.formattedPrice
+                    val offerToken = bestOffer?.offerToken
+
+                    if (offerPrice != null) {
+                        Log.d(TAG, "Active offer found: '$offerPrice' (offer: ${bestOffer.offerId})")
+                    } else {
+                        Log.d(TAG, "No recognized offer active — showing base price.")
+                    }
+
+                    // Only switch to Ready if the user hasn't already purchased.
                     if (_billingState.value !is BillingState.AlreadyPurchased) {
-                        _billingState.postValue(BillingState.Ready(details))
+                        _billingState.postValue(BillingState.Ready(details, basePrice, offerPrice, offerToken))
                     }
                 } else {
                     Log.w(TAG, "No product details found for '$productId'. Check Play Console.")
@@ -186,7 +223,7 @@ class PurchaseViewModel @Inject constructor(
             .setProductType(BillingClient.ProductType.INAPP)
             .build()
 
-        billingClient?.queryPurchasesAsync(params, PurchasesResponseListener { _, purchases ->
+        billingClient?.queryPurchasesAsync(params) { _, purchases ->
             val ownedPurchase = purchases.firstOrNull { purchase ->
                 purchase.products.contains(productId)
             }
@@ -194,7 +231,7 @@ class PurchaseViewModel @Inject constructor(
             if (ownedPurchase != null) {
                 handlePurchase(ownedPurchase)
             }
-        })
+        }
     }
 
     /**
@@ -233,6 +270,9 @@ class PurchaseViewModel @Inject constructor(
      * Kicks off the Play Store purchase sheet for the user to complete their purchase.
      * Call this when the big buy button is tapped.
      *
+     * If an offer is currently active, the offer token is attached automatically so the
+     * user gets the discounted price — no extra taps needed on their end.
+     *
      * @param activity The currently visible Activity — the billing sheet needs it to attach to.
      */
     fun launchPurchaseFlow(activity: Activity) {
@@ -250,14 +290,25 @@ class PurchaseViewModel @Inject constructor(
             return
         }
 
-        val productDetailsParamsList = listOf(
-                BillingFlowParams.ProductDetailsParams.newBuilder()
-                    .setProductDetails(details)
-                    .build()
-        )
+        val productDetailsParamsBuilder = BillingFlowParams.ProductDetailsParams.newBuilder()
+            .setProductDetails(details)
+
+        // Grab the offer token we already computed when the product details came in.
+        // If the Ready state has one, use it; otherwise fall back to the first available offer.
+        val readyState = _billingState.value as? BillingState.Ready
+        val offerToken = readyState?.offerToken
+            ?: details.oneTimePurchaseOfferDetailsList
+                ?.filter { it.offerId in offers }
+                ?.minByOrNull { it.priceAmountMicros }
+                ?.offerToken
+
+        if (!offerToken.isNullOrEmpty()) {
+            Log.d(TAG, "Attaching offer token to purchase flow.")
+            productDetailsParamsBuilder.setOfferToken(offerToken)
+        }
 
         val billingFlowParams = BillingFlowParams.newBuilder()
-            .setProductDetailsParamsList(productDetailsParamsList)
+            .setProductDetailsParamsList(listOf(productDetailsParamsBuilder.build()))
             .build()
 
         val billingResult = client.launchBillingFlow(activity, billingFlowParams)

@@ -340,6 +340,12 @@
         </attr>
         <attr name="highlightCustomColor" format="color|reference" />
         <attr name="highlightStrokeWidth" format="dimension" />
+        <!--
+            When true, the accent color is used for both the fill and the stroke,
+            so the button really pops out and screams "I am important, click me!"
+            This overrides highlightCustomColor and always tracks the active accent.
+        -->
+        <attr name="useAccentColor" format="boolean" />
     </declare-styleable>
 
     <!--

@@ -73,6 +73,10 @@ public class HighlightTextView extends TypeFaceTextView {
     
     private int highlightMode = MODE_FLAT;
     private boolean useCustomColor = false;
+    /**
+     * When true the accent color drives both fill and stroke, ignoring any custom color.
+     */
+    private boolean useAccentColor = false;
     @ColorInt
     private int customColor = Color.TRANSPARENT;
     private float strokeWidth;
@@ -104,7 +108,8 @@ public class HighlightTextView extends TypeFaceTextView {
             try {
                 highlightMode = a.getInt(R.styleable.HighlightTextView_highlightMode, MODE_FLAT);
                 strokeWidth = a.getDimension(R.styleable.HighlightTextView_highlightStrokeWidth, strokeWidth);
-                if (a.hasValue(R.styleable.HighlightTextView_highlightCustomColor)) {
+                useAccentColor = a.getBoolean(R.styleable.HighlightTextView_useAccentColor, false);
+                if (!useAccentColor && a.hasValue(R.styleable.HighlightTextView_highlightCustomColor)) {
                     customColor = a.getColor(R.styleable.HighlightTextView_highlightCustomColor, Color.TRANSPARENT);
                     useCustomColor = true;
                 }
@@ -166,20 +171,29 @@ public class HighlightTextView extends TypeFaceTextView {
     }
     
     /**
-     * Returns the fill color: the custom color when pinned, or the theme highlight color.
+     * Returns the fill color based on priority:
+     * useAccentColor wins first (the view really wants to stand out),
+     * then a custom color if one was pinned, and finally the regular theme highlight color.
      */
     @ColorInt
     private int resolveFillColor() {
+        if (useAccentColor) {
+            return ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
+        }
         return useCustomColor
                 ? customColor
                 : ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor();
     }
     
     /**
-     * Returns the stroke color: the custom color when pinned, or the active accent color.
+     * Returns the stroke color using the same priority as fill — accent first,
+     * then custom color, then the regular accent from the theme.
      */
     @ColorInt
     private int resolveStrokeColor() {
+        if (useAccentColor) {
+            return ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
+        }
         return useCustomColor
                 ? customColor
                 : ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
@@ -221,7 +235,7 @@ public class HighlightTextView extends TypeFaceTextView {
     @Override
     public void onThemeChanged(@NonNull Theme theme, boolean animate) {
         super.onThemeChanged(theme, animate);
-        if (!useCustomColor) {
+        if (!useCustomColor || useAccentColor) {
             applyChipBackground();
             applyRippleForeground();
         }
@@ -230,7 +244,7 @@ public class HighlightTextView extends TypeFaceTextView {
     @Override
     public void onAccentChanged(@NonNull Accent accent) {
         super.onAccentChanged(accent);
-        if (!useCustomColor) {
+        if (!useCustomColor || useAccentColor) {
             applyChipBackground();
             applyRippleForeground();
         }
@@ -243,7 +257,7 @@ public class HighlightTextView extends TypeFaceTextView {
         if (Objects.equals(key, AppearancePreferences.APP_CORNER_RADIUS)) {
             applyChipBackground();
             applyRippleForeground();
-        } else if (!useCustomColor && Objects.equals(key, AppearancePreferences.ACCENT_COLOR)) {
+        } else if ((!useCustomColor || useAccentColor) && Objects.equals(key, AppearancePreferences.ACCENT_COLOR)) {
             applyChipBackground();
             applyRippleForeground();
         }
@@ -281,6 +295,19 @@ public class HighlightTextView extends TypeFaceTextView {
             }
         }
         return super.onTouchEvent(event);
+    }
+    
+    /**
+     * Switches the view into accent-color mode at runtime — both fill and stroke will
+     * track the active accent color from that point on. Pass {@code false} to go back
+     * to the normal theme-driven or custom-color behavior.
+     *
+     * @param useAccent {@code true} to use accent color for everything.
+     */
+    public void setUseAccentColor(boolean useAccent) {
+        this.useAccentColor = useAccent;
+        applyChipBackground();
+        applyRippleForeground();
     }
     
     @Override

@@ -1,5 +1,6 @@
 package app.simple.felicity.ui.preferences.main
 
+import android.graphics.Paint
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -79,15 +80,22 @@ class Purchase : PreferenceFragment() {
                     binding.buyButton.text = getString(R.string.billing_connecting)
                     binding.buyButton.isEnabled = false
                     binding.buyButton.alpha = 0.6f
+                    hidePriceRow()
                 }
 
                 is PurchaseViewModel.BillingState.Ready -> {
-                    // Show the real price straight from the Play Store — no guessing.
-                    val price = state.productDetails
-                        .oneTimePurchaseOfferDetails
-                        ?.formattedPrice
-                        ?: getString(R.string.purchase_now)
-                    binding.buyButton.text = price
+                    if (state.offerPrice != null) {
+                        // There is an active deal — show the struck-through original price
+                        // alongside the shiny discounted offer price.
+                        showPriceRow(basePrice = state.basePrice, offerPrice = state.offerPrice)
+                        // The button itself shows the offer price so there is no confusion
+                        // about what the user will actually be charged.
+                        binding.buyButton.text = state.offerPrice
+                    } else {
+                        // No offer today — just show the normal price on the button.
+                        hidePriceRow()
+                        binding.buyButton.text = state.basePrice.ifEmpty { getString(R.string.purchase_now) }
+                    }
                     binding.buyButton.isEnabled = true
                     binding.buyButton.alpha = 1f
                 }
@@ -96,6 +104,7 @@ class Purchase : PreferenceFragment() {
                     binding.buyButton.text = getString(R.string.already_purchased)
                     binding.buyButton.isEnabled = false
                     binding.buyButton.alpha = 0.6f
+                    hidePriceRow()
                     refreshTrialStatus()
                 }
 
@@ -103,12 +112,14 @@ class Purchase : PreferenceFragment() {
                     binding.buyButton.text = getString(R.string.billing_error, state.message)
                     binding.buyButton.isEnabled = true
                     binding.buyButton.alpha = 0.8f
+                    hidePriceRow()
                 }
 
                 is PurchaseViewModel.BillingState.Unavailable -> {
                     binding.buyButton.text = getString(R.string.billing_unavailable)
                     binding.buyButton.isEnabled = false
                     binding.buyButton.alpha = 0.5f
+                    hidePriceRow()
                 }
             }
         }
@@ -118,6 +129,30 @@ class Purchase : PreferenceFragment() {
                 refreshTrialStatus()
             }
         }
+    }
+
+    /**
+     * Shows the price row with the original price crossed out and the offer price highlighted.
+     * The strikethrough + grey combo makes it crystal clear that you're getting a deal.
+     *
+     * @param basePrice The regular price to display with a strikethrough.
+     * @param offerPrice The discounted price shown in the accent-colored badge.
+     */
+    private fun showPriceRow(basePrice: String, offerPrice: String) {
+        binding.originalPrice.text = basePrice
+        // Apply a strikethrough so it looks properly "crossed out" — classic sale style.
+        binding.originalPrice.paintFlags =
+            binding.originalPrice.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
+        binding.offerPriceBadge.text = offerPrice
+        binding.priceRow.visibility = View.VISIBLE
+    }
+
+    /**
+     * Hides the entire price row — called when there is no active offer and
+     * we just want to show a plain price on the button without any extra fuss.
+     */
+    private fun hidePriceRow() {
+        binding.priceRow.visibility = View.GONE
     }
 
     /**
