@@ -54,7 +54,9 @@ import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.managers.ThemeUtils
 import app.simple.felicity.theme.models.Theme
 import app.simple.felicity.theme.themes.dark.AlbumArtDark
+import app.simple.felicity.theme.themes.dark.DarkTheme
 import app.simple.felicity.theme.themes.light.AlbumArtLight
+import app.simple.felicity.theme.themes.light.LightTheme
 import app.simple.felicity.theme.tools.MonetPalette
 import app.simple.felicity.utils.DateUtils.toDate
 import com.google.common.util.concurrent.ListenableFuture
@@ -284,7 +286,23 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
         if (!isAlbumArtAccent && !isAlbumArtTheme) return
 
-        val audio = MediaPlaybackManager.getCurrentSong() ?: return
+        val audio = MediaPlaybackManager.getCurrentSong()
+
+        if (audio == null) {
+            Log.w(TAG, "No current song for palette generation")
+            // Set default theme
+            if (ThemeUtils.isDarkMode(resources)) {
+                ThemeManager.theme = DarkTheme()
+            } else {
+                ThemeManager.theme = LightTheme()
+            }
+
+            if (isAlbumArtAccent) {
+                ThemeManager.accent = Felicity()
+            }
+
+            return
+        }
 
         // Skip re-extraction when the same track is already applied.
         if (audio.id == lastPaletteSongId) return
