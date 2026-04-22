@@ -80,7 +80,7 @@ class AddLyricsViewModel @AssistedInject constructor(
 
                 result.fold(
                         onSuccess = { file ->
-                            _saveResult.emit(SaveResult.Success(file.absolutePath, hasTimestamps(text)))
+                            _saveResult.emit(SaveResult.Success(file.path ?: "", hasTimestamps(text)))
                         },
                         onFailure = { e ->
                             _saveResult.emit(SaveResult.Error(e.message ?: "Unknown error"))

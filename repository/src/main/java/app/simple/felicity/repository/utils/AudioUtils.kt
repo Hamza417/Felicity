@@ -1,14 +1,16 @@
 package app.simple.felicity.repository.utils
 
 import android.content.Context
-import androidx.core.net.toUri
-import androidx.documentfile.provider.DocumentFile
+import android.net.Uri
+import android.provider.DocumentsContract
 import app.simple.felicity.core.utils.StringUtils.ifNullOrBlank
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.models.Audio
 
 /**
  * Utility functions for audio-related operations.
+ *
+ * @author Hamza417
  */
 object AudioUtils {
 
@@ -23,23 +25,37 @@ object AudioUtils {
     }
 
     /**
-     * Returns true when the app has a saved LRC sidecar file for this audio track.
+     * Returns true when a `.lrc` sidecar file exists right next to this audio track
+     * in the same SAF directory.
      *
-     * Lyrics are stored in app-private storage (not next to the audio file) using a
-     * Base64-encoded version of the audio URI as the filename — so we can't derive the
-     * path from the URI string directly like the old File-based approach tried to do.
+     * We derive the expected sidecar document ID by replacing the audio file's
+     * extension in the SAF document ID with ".lrc", build the URI directly, and
+     * then ask the document provider for just one column on that URI. The provider
+     * returns an empty cursor when the file is absent — no directory listing needed,
+     * no traversal, just a single targeted query.
      *
-     * We replicate the same filename logic used by [LrcRepository] here so we don't
-     * need to inject the whole repository just for a boolean check.
-     *
-     * @param context Any context — only [Context.filesDir] is needed.
+     * @param context Any Android context — only [Context.contentResolver] is needed.
      */
     fun Audio.hasLrc(context: Context): Boolean {
-        val uri = uri.replaceAfterLast(".", "lrc").toUri()
-        DocumentFile.fromSingleUri(context, uri)?.let { docFile ->
-            if (docFile.exists()) return true
-        }
+        return try {
+            val audioUri = uri ?: return false
+            val parsed = Uri.parse(audioUri)
+            if (!DocumentsContract.isDocumentUri(context, parsed)) return false
 
-        return false
+            val treeDocId = DocumentsContract.getTreeDocumentId(parsed) ?: return false
+            val docId = DocumentsContract.getDocumentId(parsed)
+            val lrcDocId = docId.substringBeforeLast('.') + ".lrc"
+
+            val treeUri = DocumentsContract.buildTreeDocumentUri(parsed.authority!!, treeDocId)
+            val lrcUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, lrcDocId)
+
+            context.contentResolver.query(
+                    lrcUri,
+                    arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
+                    null, null, null
+            )?.use { cursor -> cursor.count > 0 } ?: false
+        } catch (_: Exception) {
+            false
+        }
     }
 }

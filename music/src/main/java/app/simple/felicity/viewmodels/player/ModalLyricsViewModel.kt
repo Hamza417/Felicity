@@ -271,7 +271,7 @@ class ModalLyricsViewModel @AssistedInject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             val result = lrcRepository.saveLrcToFile(baked.toLrcString(), currentSong.uri)
             result.onSuccess {
-                Log.d(TAG, "Sync ${delta}ms baked and saved to ${it.absolutePath}")
+                Log.d(TAG, "Sync ${delta}ms baked and saved to ${it.path}")
             }.onFailure {
                 Log.e(TAG, "Failed to persist sync adjustment", it)
             }

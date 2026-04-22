@@ -89,6 +89,7 @@ class LyricsMenu : MediaBottomDialogFragment() {
                     binding.edit.gone()
                     binding.delete.gone()
                     binding.syncAdjustLayout.gone()
+                    binding.addLyrics.visible()
 
                     binding.addLyrics.setOnClickListener {
                         menuListener?.onAddLyrics()

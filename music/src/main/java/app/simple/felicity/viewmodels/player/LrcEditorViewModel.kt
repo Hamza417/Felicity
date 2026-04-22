@@ -194,7 +194,7 @@ class LrcEditorViewModel @AssistedInject constructor(
                 withContext(Dispatchers.Main) {
                     if (result.isSuccess) {
                         _saved.value = true
-                        Log.d(TAG, "LRC saved to ${result.getOrNull()?.absolutePath}")
+                        Log.d(TAG, "LRC saved to ${result.getOrNull()?.path}")
                     } else {
                         Log.e(TAG, "Failed to save LRC", result.exceptionOrNull())
                     }

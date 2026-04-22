@@ -196,7 +196,7 @@ class LyricsSearchViewModel @Inject constructor(
             val saveResult = lrcRepository.saveLrcToFile(syncedLyrics, audio.uri)
 
             saveResult.onSuccess {
-                Log.d(TAG, "LRC saved successfully to ${it.absolutePath}")
+                Log.d(TAG, "LRC saved successfully to ${it.path}")
                 // Tell the manager to drop its cache and reload so every
                 // screen — player, lyrics panel, etc. — gets the new lyrics right away.
                 lyricsManager.reloadLrcData()
