@@ -1,4 +1,4 @@
-package app.simple.felicity.repository.loader
+package app.simple.felicity.repository.notifications
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -185,4 +185,3 @@ class LoaderNotification(private val context: Context) {
         notificationManager.notify(SCAN_NOTIFICATION_ID, notification)
     }
 }
-

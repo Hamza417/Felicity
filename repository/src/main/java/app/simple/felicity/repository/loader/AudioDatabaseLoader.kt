@@ -11,6 +11,7 @@ import app.simple.felicity.repository.database.dao.AudioDao
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.metadata.MetaDataHelper.extractMetadata
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.notifications.LoaderNotification
 import app.simple.felicity.repository.scanners.AudioScanner
 import app.simple.felicity.repository.scanners.SAFFile
 import app.simple.felicity.shared.utils.ProcessUtils.checkNotMainThread
@@ -36,7 +37,7 @@ import kotlin.math.max
  * device storage, extracting their metadata, and keeping the local Room
  * database in sync with what is actually on disk.
  *
- * All notification concerns live in [LoaderNotification] so this class can
+ * All notification concerns live in [app.simple.felicity.repository.notifications.LoaderNotification] so this class can
  * stay focused on the actual scanning work without getting distracted.
  *
  * @author Hamza417
