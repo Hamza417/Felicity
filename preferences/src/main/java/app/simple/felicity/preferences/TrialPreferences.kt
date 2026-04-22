@@ -12,7 +12,7 @@ object TrialPreferences {
     private const val MAX_TRIAL_DAYS = 0xE
 
     private const val FIRST_LAUNCH = "first_launch_"
-    const val IS_APP_FULL_VERSION_ENABLED = "is_full_version_"
+    const val IS_FULL_VERSION_ENABLED = "is_full_version_"
     private const val LAST_VERIFICATION_DATE = "last_verification_date_"
     private const val IS_EARLY_ACCESS_USER = "is_early_access_user_"
     private const val IS_SUPPORTER = "is_supporter_"
@@ -56,11 +56,11 @@ object TrialPreferences {
 
     @SuppressLint("UseKtx")
     fun setFullVersion(value: Boolean): Boolean {
-        return SharedPreferences.getEncryptedSharedPreferences().edit().putBoolean(IS_APP_FULL_VERSION_ENABLED, value).commit()
+        return SharedPreferences.getEncryptedSharedPreferences().edit().putBoolean(IS_FULL_VERSION_ENABLED, value).commit()
     }
 
     fun isAppFullVersionEnabled(): Boolean {
-        return SharedPreferences.getEncryptedSharedPreferences().getBoolean(IS_APP_FULL_VERSION_ENABLED, false) ||
+        return SharedPreferences.getEncryptedSharedPreferences().getBoolean(IS_FULL_VERSION_ENABLED, false) ||
                 CalendarUtils.getDaysBetweenTwoDates(Date(getFirstLaunchDate()), CalendarUtils.getToday()) <= MAX_TRIAL_DAYS
     }
 
@@ -74,7 +74,7 @@ object TrialPreferences {
     }
 
     fun isFullVersion(): Boolean {
-        return SharedPreferences.getEncryptedSharedPreferences().getBoolean(IS_APP_FULL_VERSION_ENABLED, false)
+        return SharedPreferences.getEncryptedSharedPreferences().getBoolean(IS_FULL_VERSION_ENABLED, false)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //

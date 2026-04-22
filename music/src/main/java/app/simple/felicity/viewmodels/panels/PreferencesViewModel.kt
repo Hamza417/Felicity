@@ -106,7 +106,7 @@ class PreferencesViewModel(application: Application) : WrappedViewModel(applicat
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
-            TrialPreferences.IS_APP_FULL_VERSION_ENABLED -> {
+            TrialPreferences.IS_FULL_VERSION_ENABLED -> {
                 loadPreferences()
             }
         }
