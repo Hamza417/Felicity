@@ -36,6 +36,55 @@ object ThemeUtils {
         WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightNavigationBars = false
     }
 
+    fun isDarkMode(resources: Resources): Boolean {
+        when (AppearancePreferences.getTheme()) {
+            ThemeConstants.DARK_THEME,
+            ThemeConstants.AMOLED,
+            ThemeConstants.HIGH_CONTRAST_DARK,
+            ThemeConstants.SLATE,
+            ThemeConstants.OIL,
+            ThemeConstants.MATERIAL_YOU_DARK,
+            ThemeConstants.ALBUM_ART_DARK -> {
+                return true
+            }
+
+            ThemeConstants.LIGHT_THEME,
+            ThemeConstants.SOAPSTONE,
+            ThemeConstants.MATERIAL_YOU_LIGHT,
+            ThemeConstants.HIGH_CONTRAST_LIGHT,
+            ThemeConstants.ALBUM_ART_LIGHT -> {
+                return false
+            }
+
+            ThemeConstants.FOLLOW_SYSTEM -> {
+                when (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) {
+                    Configuration.UI_MODE_NIGHT_YES -> {
+                        return true
+                    }
+
+                    Configuration.UI_MODE_NIGHT_NO -> {
+                        return false
+                    }
+
+                    Configuration.UI_MODE_NIGHT_UNDEFINED -> {
+                        return false
+                    }
+                }
+            }
+
+            ThemeConstants.DAY_NIGHT -> {
+                val calendar = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+                return calendar !in 7..18
+            }
+
+            else -> {
+                return false
+            }
+        }
+
+        return false
+    }
+
     fun setLightBars(lifecycleOwner: LifecycleOwner, window: Window, resources: Resources) {
         lifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onCreate(owner: LifecycleOwner) {
