@@ -1,6 +1,7 @@
 package app.simple.felicity.engine.services
 
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -54,6 +55,7 @@ import app.simple.felicity.engine.model.AudioPipelineSnapshot
 import app.simple.felicity.engine.notifications.PlaybackErrorNotifier
 import app.simple.felicity.manager.SharedPreferences.initRegisterSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.preferences.PlayerPreferences
@@ -125,6 +127,16 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var periodicStateSaveJob: Job? = null
+
+    /**
+     * An in-memory copy of the full audio library, kept fresh by collecting the Room
+     * Flow in [onCreate]. Using a Flow means we never need to hit the database on every
+     * [onGetChildren] call — the list is always ready and up to date.
+     *
+     * Populated asynchronously on first launch; empty list is the safe default while
+     * the first DB emission is still on its way.
+     */
+    private var cachedSongList: List<app.simple.felicity.repository.models.Audio> = emptyList()
 
     /**
      * Tracks whether we are currently in a silent FFmpeg fallback retry for a failed track.
@@ -308,6 +320,15 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         serviceScope.launch(Dispatchers.Main.immediate) {
             AudioPipelineManager.refreshRequestFlow.collect {
                 buildAndPushSnapshot()
+            }
+        }
+
+        // Keep an up-to-date song list in memory. Room emits a fresh list every time the
+        // library changes (scan, delete, etc.) so onGetChildren always returns current data
+        // without a blocking database call.
+        serviceScope.launch {
+            audioRepository.getAllAudio().collect { list ->
+                cachedSongList = list
             }
         }
     }
@@ -702,11 +723,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 startPeriodicStateSaving()
                 startSnapshotPulse()
                 buildAndPushSnapshot()
+                broadcastWidgetUpdate()
             } else if (player.playbackState == Player.STATE_READY) {
                 MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
                 stopPeriodicStateSaving()
                 stopSnapshotPulse()
                 savePlaybackStateToDatabase() // Save immediately when paused
+                broadcastWidgetUpdate()
             }
         }
 
@@ -860,6 +883,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             MediaPlaybackManager.notifyCurrentPosition(player.currentMediaItemIndex)
             savePlaybackStateToDatabase() // Save when track changes
             buildAndPushSnapshot()
+            broadcastWidgetUpdate()
         }
 
         override fun onPositionDiscontinuity(
@@ -961,6 +985,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 val repeatMode = PlayerPreferences.getRepeatMode()
                 Log.d(TAG, "Repeat mode preference changed to: $repeatMode")
                 applyRepeatMode(repeatMode)
+            }
+            AppearancePreferences.THEME,
+            AppearancePreferences.ACCENT_COLOR -> {
+                // Theme or accent color changed — nudge the widget so it redraws
+                // with the fresh colors without waiting for the next song event.
+                broadcastWidgetUpdate()
             }
             EqualizerPreferences.BALANCE -> {
                 val pan = EqualizerPreferences.getBalance()
@@ -1072,6 +1102,38 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         serviceScope.launch {
             PlaybackStateManager.saveCurrentPlaybackState(applicationContext, TAG)
         }
+    }
+
+    /**
+     * Sends a broadcast to the home screen widget so it can redraw itself with the
+     * latest song info and play/pause icon — no polling required.
+     *
+     * The broadcast is targeted directly at [FelicityWidgetProvider] so it never
+     * leaks to other apps. The song metadata is attached as Intent extras; the
+     * widget saves them to [WidgetStatePrefs] on receipt so the next cold draw
+     * (days later) still shows the correct song title.
+     *
+     * Called from the player listener whenever the song or isPlaying state changes.
+     */
+    private fun broadcastWidgetUpdate() {
+        val mediaItem = player.currentMediaItem ?: return
+        val metadata = mediaItem.mediaMetadata
+        val title = metadata.title?.toString()
+        val artist = metadata.artist?.toString()
+        val isPlaying = player.isPlaying
+        val songId = mediaItem.mediaId.toLongOrNull() ?: -1L
+
+        val intent = Intent("app.simple.felicity.ACTION_WIDGET_UPDATE").apply {
+            component = ComponentName(
+                    applicationContext.packageName,
+                    "app.simple.felicity.widget.FelicityWidgetProvider"
+            )
+            putExtra("extra_title", title)
+            putExtra("extra_artist", artist)
+            putExtra("extra_is_playing", isPlaying)
+            putExtra("extra_song_id", songId)
+        }
+        sendBroadcast(intent)
     }
 
     /**
@@ -1509,8 +1571,14 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
             when (parentId) {
                 "root" -> {
-                    // Fetch all songs from AudioRepository
-                    val songs = audioRepository.getAllAudioList()
+                    // Use the cached list that Room keeps fresh via a Flow — no blocking DB call
+                    // needed here, and no risk of an outdated list after a library rescan.
+                    val songs = if (cachedSongList.isNotEmpty()) {
+                        cachedSongList
+                    } else {
+                        // Cache hasn't populated yet on the very first call — fetch once as fallback.
+                        audioRepository.getAllAudioList()
+                    }
 
                     // Convert Audio models to MediaItems
                     val mediaItems = songs.map { audio ->

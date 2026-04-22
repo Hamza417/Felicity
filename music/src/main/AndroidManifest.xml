@@ -56,6 +56,30 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- Home screen widget — the AppWidgetProvider that draws the 2×4 player tile. -->
+        <receiver
+            android:name=".widget.FelicityWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="app.simple.felicity.ACTION_WIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_player_info" />
+        </receiver>
+
+        <!-- Handles the actual button taps (play/pause, next, prev) from the widget. -->
+        <receiver
+            android:name=".widget.WidgetActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="app.simple.felicity.ACTION_WIDGET_PLAY_PAUSE" />
+                <action android:name="app.simple.felicity.ACTION_WIDGET_NEXT" />
+                <action android:name="app.simple.felicity.ACTION_WIDGET_PREV" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

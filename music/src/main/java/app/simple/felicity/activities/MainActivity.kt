@@ -113,7 +113,11 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             }
 
             override fun onPlayPauseClick() {
-                MediaPlaybackManager.flipState()
+                // Restart the service if it died while the app was in the foreground,
+                // then perform the play/pause action once the connection is back.
+                ensureServiceRunning {
+                    MediaPlaybackManager.flipState()
+                }
             }
 
             override fun onItemClick(position: Int) {

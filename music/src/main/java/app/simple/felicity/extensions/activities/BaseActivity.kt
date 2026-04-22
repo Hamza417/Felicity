@@ -164,11 +164,56 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
             Log.d(TAG, "MediaController created successfully")
             mediaController = controllerFuture?.get()
             MediaPlaybackManager.setMediaController(mediaController!!)
+
+            // Watch for a disconnection so we can restart the service the moment the
+            // user tries to interact with the player again — no stale controller left behind.
+            mediaController?.addListener(serviceDisconnectListener)
+
             restoreLastSongStateFromDatabase()
             generateAlbumArtPalette()
         }
 
         controllerFuture?.addListener(listener, MoreExecutors.directExecutor())
+    }
+
+    /**
+     * Detects when the [FelicityPlayerService] has been killed while the app is still
+     * on screen. The next time the user taps play/pause or any other control,
+     * [ensureServiceRunning] will reconnect and hand the fresh controller back to
+     * [MediaPlaybackManager] before the command is dispatched.
+     */
+    private val serviceDisconnectListener = object : androidx.media3.common.Player.Listener {
+        override fun onEvents(player: androidx.media3.common.Player, events: androidx.media3.common.Player.Events) {
+            if (mediaController?.isConnected == false) {
+                Log.w(TAG, "MediaController disconnected — service likely died. Clearing stale reference.")
+                MediaPlaybackManager.clearMediaController()
+                mediaController = null
+            }
+        }
+    }
+
+    /**
+     * Reconnects to [FelicityPlayerService] if the current [mediaController] is gone or
+     * disconnected, then runs [onReady] once the new connection is established.
+     *
+     * Use this whenever the user triggers a playback command from a button inside the
+     * app — it guarantees the service is alive before the command lands.
+     */
+    fun ensureServiceRunning(onReady: (MediaController) -> Unit) {
+        val current = mediaController
+        if (current != null && current.isConnected) {
+            onReady(current)
+            return
+        }
+
+        Log.d(TAG, "Service not connected — restarting FelicityPlayerService…")
+        initMediaController()
+
+        // Attach a one-shot callback that fires once the fresh controller is ready.
+        controllerFuture?.addListener(Runnable {
+            val fresh = controllerFuture?.get() ?: return@Runnable
+            onReady(fresh)
+        }, MoreExecutors.directExecutor())
     }
 
     private fun restoreLastSongStateFromDatabase() {

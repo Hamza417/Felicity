@@ -217,7 +217,17 @@ abstract class BasePlayerFragment : MediaFragment() {
             }
 
             override fun onPlayClick() {
-                MediaPlaybackManager.flipState()
+                // If the service was killed while the app was open, reconnect first
+                // then flip the play state — nobody wants to tap play and get silence.
+                val baseActivity = activity as? app.simple.felicity.extensions.activities.BaseActivity
+                if (baseActivity != null && !MediaPlaybackManager.isPlaying()
+                        && baseActivity.mediaController == null) {
+                    baseActivity.ensureServiceRunning {
+                        MediaPlaybackManager.flipState()
+                    }
+                } else {
+                    MediaPlaybackManager.flipState()
+                }
             }
 
             override fun onForwardStep() {

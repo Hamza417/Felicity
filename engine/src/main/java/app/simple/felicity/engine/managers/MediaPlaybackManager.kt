@@ -45,17 +45,16 @@ import kotlin.math.max
  * Converts an audio path string to a URI that ExoPlayer can open for playback.
  *
  * When the path is already a content:// URI (from a SAF-scanned file), we parse
- * it directly. Otherwise we wrap it as a file:// URI the old-fashioned way.
+ * it directly. Otherwise, we wrap it as a file:// URI the old-fashioned way.
  */
 private fun String.toPlaybackUri(): Uri {
     return if (this.startsWith("content://")) {
-        Uri.parse(this)
+        this.toUri()
     } else {
         File(this).toUri()
     }
 }
 
-// TODO - move to engine module
 object MediaPlaybackManager {
 
     private const val TAG = "MediaPlaybackManager"
@@ -120,7 +119,7 @@ object MediaPlaybackManager {
     /**
      * Returns `true` when the player has reached [MediaConstants.PLAYBACK_READY],
      * [MediaConstants.PLAYBACK_PLAYING], or [MediaConstants.PLAYBACK_PAUSED] — i.e., whenever
-     * the decoder has finished its initial buffering phase and it is safe to open the audio
+     * the decoder has finished its initial buffering phase, and it is safe to open the audio
      * file concurrently (for example for waveform extraction).
      */
     fun isPlayerReady(): Boolean {
