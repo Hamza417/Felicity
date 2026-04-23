@@ -1,5 +1,6 @@
 package app.simple.felicity.repository.metadata
 
+import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.ParcelFileDescriptor
@@ -105,16 +106,16 @@ object MetadataWriter {
      * @param fields     The metadata changes to apply.
      * @return `true` if the write succeeded, `false` otherwise.
      */
-    fun write(targetFile: File, fields: Fields): Boolean {
+    fun write(uri: Uri, fields: Fields, contentResolver: ContentResolver): Boolean {
         return try {
-            ParcelFileDescriptor.open(targetFile, ParcelFileDescriptor.MODE_READ_WRITE).use { pfd ->
-                callNativeSave(pfd.fd, fields).also {
-                    if (it) Log.d(TAG, "Tags saved to file: ${targetFile.absolutePath}")
-                    else Log.w(TAG, "TagLib save returned false for: ${targetFile.name}")
+            contentResolver.openFileDescriptor(uri, "rw").use { pfd ->
+                callNativeSave(pfd!!.fd, fields).also {
+                    if (it) Log.d(TAG, "Tags saved to file: $uri")
+                    else Log.w(TAG, "TagLib save returned false for: $uri")
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to write tags to file: ${targetFile.absolutePath}", e)
+            Log.e(TAG, "Failed to write tags to file: $uri", e)
             false
         }
     }

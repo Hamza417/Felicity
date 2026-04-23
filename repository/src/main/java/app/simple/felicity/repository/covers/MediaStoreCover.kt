@@ -65,8 +65,8 @@ object MediaStoreCover {
             contentResolver.openInputStream(uri)?.use { inputStream ->
                 BitmapFactory.decodeStream(inputStream)
             }
-        } catch (e: Exception) {
-            Log.e("MediaStoreCover", "Failed to load bitmap from URI: $uri", e)
+        } catch (_: Exception) {
+            Log.e("MediaStoreCover", "Failed to load bitmap from URI: $uri")
             null
         }
     }

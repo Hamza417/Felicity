@@ -225,7 +225,7 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeSaveToFd(
     }
 
     // true = TagLib closes the dup'd fd when the stream is destroyed.
-    TagLib::FileStream stream(dupFd, true);
+    TagLib::FileStream stream(dupFd, false);
 
     // readAudioProperties=false here — we just want to write tags,
     // no need to decode audio to gather properties (saves time).

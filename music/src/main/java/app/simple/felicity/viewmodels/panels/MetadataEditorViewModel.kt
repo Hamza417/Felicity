@@ -3,8 +3,9 @@ package app.simple.felicity.viewmodels.panels
 import android.app.Application
 import android.media.MediaScannerConnection
 import android.util.Log
-import androidx.lifecycle.AndroidViewModel
+import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
+import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.metadata.MetadataWriter
 import app.simple.felicity.repository.models.Audio
@@ -20,7 +21,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.io.File
 
 /**
  * ViewModel for the [app.simple.felicity.ui.panels.MetadataEditor] panel.
@@ -39,7 +39,7 @@ import java.io.File
 class MetadataEditorViewModel @AssistedInject constructor(
         application: Application,
         @Assisted val audio: Audio
-) : AndroidViewModel(application) {
+) : WrappedViewModel(application) {
 
     private val _isSaving = MutableStateFlow(false)
 
@@ -68,11 +68,10 @@ class MetadataEditorViewModel @AssistedInject constructor(
             try {
                 val path = updatedAudio.uri
                     ?: throw IllegalStateException("Audio path must not be null.")
-                val file = File(path)
 
-                MetadataWriter.write(file, fields)
+                MetadataWriter.write(path.toUri(), fields, contentResolver)
 
-                updatedAudio.setDateModified(file.lastModified())
+                updatedAudio.dateModified = System.currentTimeMillis() / 1000L
 
                 AudioDatabase.getInstance(getApplication())
                     .audioDao()
