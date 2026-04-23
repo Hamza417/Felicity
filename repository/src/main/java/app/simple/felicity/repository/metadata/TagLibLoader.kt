@@ -75,6 +75,22 @@ object TagLibBridge {
             comment: String?,
             lyrics: String?
     ): Boolean
+
+    /**
+     * Embeds raw image bytes into the audio file as front cover art.
+     *
+     * Uses TagLib 2.x's complex properties API under the hood, so it works
+     * for MP3 (ID3v2 APIC), M4A (covr atom), FLAC/OGG (METADATA_BLOCK_PICTURE),
+     * and every other format TagLib knows about — all from this one call.
+     *
+     * The fd must be open for both reading and writing.
+     *
+     * @param fd          Read/write POSIX file descriptor of the audio file.
+     * @param artworkData Raw bytes of the image to embed (JPEG or PNG).
+     * @param mimeType    MIME type of the image, e.g. "image/jpeg".
+     * @return `true` if the artwork was saved, `false` otherwise.
+     */
+    external fun nativeSaveArtworkToFd(fd: Int, artworkData: ByteArray, mimeType: String): Boolean
 }
 
 /**

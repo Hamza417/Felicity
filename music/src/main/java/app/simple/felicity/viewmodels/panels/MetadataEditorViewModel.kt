@@ -60,8 +60,10 @@ class MetadataEditorViewModel @AssistedInject constructor(
      * @param updatedAudio A copy of the original [Audio] row with all mutable
      *                    string fields already set to the new values so the
      *                    database update reflects the editor's state.
+     * @param artworkFile  An optional image [File] to embed as the new cover art,
+     *                    or null to leave the existing artwork alone.
      */
-    fun saveMetadata(fields: MetadataWriter.Fields, updatedAudio: Audio) {
+    fun saveMetadata(fields: MetadataWriter.Fields, updatedAudio: Audio, artworkFile: java.io.File? = null) {
         if (_isSaving.value) return
         viewModelScope.launch(Dispatchers.IO) {
             _isSaving.emit(true)
@@ -69,7 +71,11 @@ class MetadataEditorViewModel @AssistedInject constructor(
                 val path = updatedAudio.uri
                     ?: throw IllegalStateException("Audio path must not be null.")
 
-                MetadataWriter.write(path.toUri(), fields, contentResolver)
+                // Attach the artwork file (if any) into the fields so MetadataWriter
+                // can handle both the tag write and the picture write in one go.
+                val fieldsWithArt = if (artworkFile != null) fields.copy(artworkFile = artworkFile) else fields
+
+                MetadataWriter.write(path.toUri(), fieldsWithArt, contentResolver)
 
                 updatedAudio.dateModified = System.currentTimeMillis() / 1000L
 

@@ -45,6 +45,8 @@ object MetadataWriter {
      * @param compilation Compilation flag ("1" or "").
      * @param comment     Free-form comment embedded in the file.
      * @param lyrics      Unsynchronised lyrics embedded in the file.
+     * @param artworkFile A [File] containing the new cover image to embed, or
+     *                    null to leave the existing artwork untouched.
      */
     data class Fields(
             val title: String?,
@@ -60,7 +62,8 @@ object MetadataWriter {
             val writer: String?,
             val compilation: String?,
             val comment: String?,
-            val lyrics: String?
+            val lyrics: String?,
+            val artworkFile: File? = null
     )
 
     /**
@@ -108,14 +111,56 @@ object MetadataWriter {
      */
     fun write(uri: Uri, fields: Fields, contentResolver: ContentResolver): Boolean {
         return try {
-            contentResolver.openFileDescriptor(uri, "rw").use { pfd ->
+            val tagsOk = contentResolver.openFileDescriptor(uri, "rw").use { pfd ->
                 callNativeSave(pfd!!.fd, fields).also {
                     if (it) Log.d(TAG, "Tags saved to file: $uri")
                     else Log.w(TAG, "TagLib save returned false for: $uri")
                 }
             }
+
+            // If the user picked new artwork, write it in a second pass so that
+            // the tag write and the picture write each get a clean file descriptor.
+            val artworkOk = if (fields.artworkFile != null) {
+                writeArtwork(uri, fields.artworkFile, contentResolver)
+            } else {
+                true // nothing to do, that's perfectly fine
+            }
+
+            tagsOk && artworkOk
         } catch (e: Exception) {
             Log.e(TAG, "Failed to write tags to file: $uri", e)
+            false
+        }
+    }
+
+    /**
+     * Reads the artwork file into memory and passes the raw bytes to the native
+     * TagLib function that embeds cover art. A separate fd is opened here so
+     * the tag-write pass and the picture-write pass don't interfere with each
+     * other's file position.
+     *
+     * @param uri             The audio file to update.
+     * @param artworkFile     The image file whose bytes will be embedded.
+     * @param contentResolver Used to open the audio file for read/write.
+     * @return `true` if the artwork was embedded, `false` otherwise.
+     */
+    private fun writeArtwork(uri: Uri, artworkFile: File, contentResolver: ContentResolver): Boolean {
+        return try {
+            val imageBytes = artworkFile.readBytes()
+            // Guess the MIME type from the file extension — JPEG is the safe default
+            // since virtually every player and tagger understands it.
+            val mimeType = when (artworkFile.extension.lowercase()) {
+                "png" -> "image/png"
+                else -> "image/jpeg"
+            }
+            contentResolver.openFileDescriptor(uri, "rw").use { pfd ->
+                TagLibBridge.nativeSaveArtworkToFd(pfd!!.fd, imageBytes, mimeType).also {
+                    if (it) Log.d(TAG, "Artwork saved to file: $uri")
+                    else Log.w(TAG, "TagLib artwork save returned false for: $uri")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write artwork to file: $uri", e)
             false
         }
     }

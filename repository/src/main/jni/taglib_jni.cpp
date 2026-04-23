@@ -283,6 +283,69 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeSaveToFd(
 }
 
 /**
+ * Replaces (or sets for the first time) the embedded cover art in an audio
+ * file. This uses TagLib 2.x's unified "complex properties" API, which
+ * handles all the format-specific plumbing (ID3v2 APIC for MP3, covr atom
+ * for MP4/M4A, METADATA_BLOCK_PICTURE for FLAC/OGG) behind one clean call.
+ *
+ * The fd must be open for both reading and writing. The artwork bytes should
+ * be a valid JPEG or PNG image — we just embed whatever you pass in.
+ *
+ * @param fd          Read/write file descriptor pointing at the audio file.
+ * @param artworkData The raw image bytes to embed as front cover art.
+ * @param mimeType    MIME type string ("image/jpeg" or "image/png").
+ * @return JNI_TRUE if the artwork was saved, JNI_FALSE if anything failed.
+ */
+JNIEXPORT jboolean JNICALL
+Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeSaveArtworkToFd(
+        JNIEnv *env, jobject thiz, jint fd,
+        jbyteArray artworkData, jstring mimeType) {
+
+    int dupFd = dup(static_cast<int>(fd));
+    if (dupFd < 0) {
+        LOGE("dup() failed for fd=%d — cannot write artwork", fd);
+        return JNI_FALSE;
+    }
+
+    TagLib::FileStream stream(dupFd, false);
+    TagLib::FileRef fileRef(&stream, false);
+    if (fileRef.isNull() || !fileRef.file()) {
+        LOGE("FileRef is null for fd=%d — unsupported format", fd);
+        return JNI_FALSE;
+    }
+
+    // Grab the raw image bytes from the Java byte array.
+    jsize dataLen = env->GetArrayLength(artworkData);
+    jbyte *dataPtr = env->GetByteArrayElements(artworkData, nullptr);
+    TagLib::ByteVector imageData(reinterpret_cast<const char *>(dataPtr),
+                                 static_cast<unsigned int>(dataLen));
+    env->ReleaseByteArrayElements(artworkData, dataPtr, JNI_ABORT);
+
+    // Build the picture map using TagLib 2.x complex properties format.
+    // "pictureType" 3 = Front Cover, which is what every music app expects.
+    TagLib::VariantMap pic;
+    pic["data"] = TagLib::Variant(imageData);
+    pic["mimeType"] = TagLib::Variant(fromJString(env, mimeType));
+    pic["description"] = TagLib::Variant(TagLib::String());
+    pic["pictureType"] = TagLib::Variant(3); // 3 = Front Cover
+
+    TagLib::List<TagLib::VariantMap> pictures;
+    pictures.append(pic);
+
+    // setComplexProperties with "PICTURE" replaces ALL existing pictures,
+    // which is exactly what we want when the user picks a new cover image.
+    fileRef.file()->setComplexProperties("PICTURE", pictures);
+
+    if (!fileRef.save()) {
+        LOGE("TagLib save() failed while writing artwork for fd=%d", fd);
+        return JNI_FALSE;
+    }
+
+    LOGI("Artwork saved successfully for fd=%d (%d bytes)", fd, dataLen);
+    return JNI_TRUE;
+}
+
+/**
  * Extracts the embedded lyrics text (plain or synced LRC) from an audio file
  * using TagLib's unified property map. This covers USLT frames in MP3s, the
  * ©lyr atom in M4A files, LYRICS Vorbis comments in FLAC/OGG, and every other

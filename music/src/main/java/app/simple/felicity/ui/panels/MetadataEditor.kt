@@ -218,7 +218,7 @@ class MetadataEditor : MediaFragment() {
             setCompilation(fields.compilation)
         }
 
-        viewModel.saveMetadata(fields, updatedAudio)
+        viewModel.saveMetadata(fields, updatedAudio, pendingArtworkFile)
     }
 
     override fun onDestroyView() {
