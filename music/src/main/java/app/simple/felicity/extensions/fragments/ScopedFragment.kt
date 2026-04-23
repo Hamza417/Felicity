@@ -13,6 +13,7 @@ import android.view.WindowInsetsAnimation
 import androidx.activity.BackEventCompat
 import androidx.annotation.IntegerRes
 import androidx.annotation.RequiresApi
+import androidx.annotation.StringRes
 import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
@@ -24,6 +25,7 @@ import app.simple.felicity.decorations.transitions.SeekableSharedAxisFadeTransit
 import app.simple.felicity.decorations.transitions.SeekableSharedAxisXTransition
 import app.simple.felicity.decorations.transitions.SeekableSharedAxisZTransition
 import app.simple.felicity.decorations.transitions.SeekableSlideTransition
+import app.simple.felicity.dialogs.app.Warning.Companion.showWarning
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.BehaviourPreferences
@@ -256,15 +258,12 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-    open fun setupBackPressedCallback(view: ViewGroup) {
-        // This method is preserved for subclasses that need to intercept the back press
-        // (e.g., to show a confirmation dialog before allowing navigation back).
-        // NOTE: Registering an enabled OnBackPressedCallback intercepts the gesture before
-        // FragmentManager processes it, which disables the seekable transition seeking.
-        // If you only need to observe predictive back events without intercepting, override
-        // onStartPredictiveBack / onProgressPredictiveBack / onCancelPredictiveBack instead,
-        // which are driven by FragmentManager.OnBackStackChangedListener and do not break seeking.
+    open fun showWarning(warning: String) {
+        requireActivity().supportFragmentManager.showWarning(warning)
+    }
+
+    open fun showWarning(@StringRes warning: Int) {
+        requireActivity().supportFragmentManager.showWarning(warning)
     }
 
     /**
