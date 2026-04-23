@@ -60,7 +60,7 @@ import kotlinx.coroutines.withContext
  *
  * @author Hamza417
  */
-class FelicityWidgetProvider : AppWidgetProvider(), ThemeChangedListener {
+class FelicityWidgetProvider : AppWidgetProvider() {
 
     /**
      * Holds the most recently received [Theme] from [ThemeManager].
@@ -80,16 +80,6 @@ class FelicityWidgetProvider : AppWidgetProvider(), ThemeChangedListener {
      */
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    // ThemeChangedListener callbacks — called synchronously by ThemeManager when we are registered.
-
-    override fun onThemeChanged(theme: Theme, animate: Boolean) {
-        currentTheme = theme
-    }
-
-    override fun onAccentChanged(accent: Accent) {
-        currentAccent = accent
-    }
-
     override fun onReceive(context: Context, intent: Intent) {
         // goAsync() keeps the broadcast alive long enough for our coroutine (and Glide) to finish.
         val pendingResult = goAsync()
@@ -101,21 +91,6 @@ class FelicityWidgetProvider : AppWidgetProvider(), ThemeChangedListener {
                 pendingResult.finish()
             }
         }
-    }
-
-    override fun onEnabled(context: Context?) {
-        super.onEnabled(context)
-        ThemeManager.addListener(this)
-    }
-
-    override fun onDeleted(context: Context?, appWidgetIds: IntArray?) {
-        super.onDeleted(context, appWidgetIds)
-        ThemeManager.removeListener(this)
-    }
-
-    override fun onDisabled(context: Context?) {
-        super.onDisabled(context)
-        ThemeManager.removeListener(this)
     }
 
     /**
