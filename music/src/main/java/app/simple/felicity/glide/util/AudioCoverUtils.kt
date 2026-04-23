@@ -103,9 +103,9 @@ object AudioCoverUtils {
                         .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE)
             )
         }
-        if (blur) transformations.add(Blur(24))
+        if (blur) transformations.add(Blur(16))
         if (greyscale) transformations.add(Greyscale())
-        if (darken) transformations.add(Darken(0.5F))
+        if (darken) transformations.add(Darken(0.6F))
 
         val glideRequest = Glide.with(this)
             .asBitmap()
