@@ -78,6 +78,44 @@ object AudioCoverUtils {
             .into(this)
     }
 
+    fun Context.getArtCover(
+            item: Any,
+            size: Int,
+            shadow: Boolean = false,
+            roundedCorners: Boolean = false,
+            blur: Boolean = false,
+            greyscale: Boolean = false,
+            darken: Boolean = false,
+            crop: Boolean = true
+    ): Bitmap {
+        val transformations = mutableListOf<Transformation<Bitmap>>()
+
+        if (crop) transformations.add(CenterCrop())
+        if (roundedCorners) transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt()))
+        if (shadow) {
+            transformations.add(Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()))
+
+            transformations.add(
+                    BlurShadow(this)
+                        .setElevation(25F)
+                        .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE)
+            )
+        }
+        if (blur) transformations.add(Blur(72))
+        if (greyscale) transformations.add(Greyscale())
+        if (darken) transformations.add(Darken(0.3F))
+
+        val glideRequest = Glide.with(this)
+            .asBitmap()
+            .dontTransform() // This way we can apply our own transformations and skip the module specific ones
+            .transform(*transformations.toTypedArray())
+            .load(item)
+            .diskCacheStrategy(DiskCacheStrategy.ALL)
+            .error(R.drawable.ic_felicity)
+
+        return glideRequest.submit(size, size).get()
+    }
+
     /**
      * Loads album art for [item] into a plain [Bitmap] delivered via [onBitmap].
      * Designed for canvas-drawn views such as [MiniPlayerView] that do not hold

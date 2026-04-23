@@ -8,12 +8,20 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
+import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.util.TypedValue
 import android.widget.RemoteViews
 import androidx.core.graphics.createBitmap
+import androidx.core.graphics.toColorInt
 import app.simple.felicity.R
+import app.simple.felicity.glide.util.AudioCoverUtils.getArtCover
 import app.simple.felicity.manager.SharedPreferences
+import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
@@ -21,10 +29,7 @@ import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.managers.ThemeUtils
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
-import com.bumptech.glide.request.RequestOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -167,17 +172,8 @@ class FelicityWidgetProvider : AppWidgetProvider(), ThemeChangedListener {
         // Boot the shared-preferences singleton if the widget was drawn before the app opened.
         SharedPreferences.init(context)
 
-        // Register as a ThemeChangedListener, trigger a fresh theme read, then unregister.
-        // ThemeManager fires onThemeChanged() synchronously inside setAppTheme(), so by the
-        // time setAppTheme() returns, currentTheme and currentAccent are already up to date.
-        withContext(Dispatchers.Main) {
-            ThemeManager.addListener(this@FelicityWidgetProvider)
-            ThemeUtils.setAppTheme(context.resources)
-            ThemeManager.removeListener(this@FelicityWidgetProvider)
-        }
-
         // Read colors from the freshly loaded theme.
-        val backgroundColor = currentTheme.viewGroupTheme?.backgroundColor ?: Color.parseColor("#171717")
+        val backgroundColor = currentTheme.viewGroupTheme?.backgroundColor ?: "#171717".toColorInt()
         val primaryTextColor = currentTheme.textViewTheme?.primaryTextColor ?: Color.WHITE
         val secondaryTextColor = currentTheme.textViewTheme?.secondaryTextColor ?: Color.LTGRAY
         val iconColor = currentTheme.iconTheme?.regularIconColor ?: Color.WHITE
@@ -221,7 +217,7 @@ class FelicityWidgetProvider : AppWidgetProvider(), ThemeChangedListener {
         manager.updateAppWidget(widgetId, views)
 
         // Phase 2 — load album art via Glide, then push a second update.
-        val artBitmap = loadArtWithGlide(context, songId)
+        val artBitmap = loadArtWithGlide(context, manager, widgetId, songId)
         if (artBitmap != null) {
             views.setImageViewBitmap(R.id.widget_album_art, artBitmap)
         } else {
@@ -262,7 +258,7 @@ class FelicityWidgetProvider : AppWidgetProvider(), ThemeChangedListener {
 
         // Corner radius in pixels — mirror exactly what AppearancePreferences drives elsewhere.
         val cornerRadiusPx = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP,
+                TypedValue.COMPLEX_UNIT_PX,
                 AppearancePreferences.getCornerRadius(),
                 context.resources.displayMetrics
         )
@@ -300,7 +296,7 @@ class FelicityWidgetProvider : AppWidgetProvider(), ThemeChangedListener {
      *
      * Returns null on any failure; the caller shows the app icon as a placeholder.
      */
-    private suspend fun loadArtWithGlide(context: Context, songId: Long): Bitmap? =
+    private suspend fun loadArtWithGlide(context: Context, manager: AppWidgetManager, widgetId: Int, songId: Long): Bitmap? =
         withContext(Dispatchers.IO) {
             if (songId == -1L) return@withContext null
             try {
@@ -309,22 +305,63 @@ class FelicityWidgetProvider : AppWidgetProvider(), ThemeChangedListener {
                     ?.getAudioById(songId)
                     ?: return@withContext null
 
-                val sizePx = context.resources.getDimensionPixelSize(R.dimen.widget_album_art_size)
+                val options = manager.getAppWidgetOptions(widgetId)
+                val widgetHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 50)
 
-                Glide.with(context.applicationContext)
-                    .asBitmap()
-                    .load(audio)
-                    .apply(
-                            RequestOptions()
-                                .transform(CenterCrop())
-                                .diskCacheStrategy(DiskCacheStrategy.ALL)
-                    )
-                    .submit(sizePx, sizePx)
-                    .get()
+                val albumArt = context.getArtCover(
+                        audio,
+                        size = widgetHeight, // Glide will downsample to this size to save memory
+                        shadow = false,
+                        blur = false,
+                        greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
+                        darken = false,
+                        crop = true,
+                        roundedCorners = AlbumArtPreferences.isRoundedCornersEnabled())
+
+                getLeftRoundedBitmap(albumArt, context)
             } catch (_: Exception) {
                 null
             }
         }
+
+    private fun getLeftRoundedBitmap(bitmap: Bitmap, context: Context): Bitmap {
+        val output = createBitmap(bitmap.width, bitmap.height)
+        val canvas = Canvas(output)
+
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+        }
+
+        // Corner radius in pixels — mirror exactly what AppearancePreferences drives elsewhere.
+        val cornerRadiusPx = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_PX,
+                AppearancePreferences.getCornerRadius(),
+                context.resources.displayMetrics
+        )
+
+        // Define the rounding for each corner: [Top-Left, Top-Right, Bottom-Right, Bottom-Left]
+        // Each corner takes 2 values (X and Y radius).
+        val radii = floatArrayOf(
+                cornerRadiusPx, cornerRadiusPx, // Top-Left
+                0f, 0f,                         // Top-Right
+                0f, 0f,                         // Bottom-Right
+                cornerRadiusPx, cornerRadiusPx  // Bottom-Left
+        )
+
+        val rect = RectF(0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat())
+        val path = Path().apply {
+            addRoundRect(rect, radii, Path.Direction.CW)
+        }
+
+        // Draw the rounded shape
+        canvas.drawPath(path, paint)
+
+        // Apply the Xfermode to keep only the album art pixels that intersect with the shape
+        paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+        canvas.drawBitmap(bitmap, 0f, 0f, paint)
+
+        return output
+    }
 
     /**
      * Wraps a widget button action string in a [android.app.PendingIntent] targeting
