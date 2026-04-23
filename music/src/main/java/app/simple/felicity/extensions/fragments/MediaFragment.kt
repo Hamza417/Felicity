@@ -1,6 +1,5 @@
 package app.simple.felicity.extensions.fragments
 
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri
@@ -11,10 +10,7 @@ import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
 import android.util.Log
-import android.view.MotionEvent
 import android.view.View
-import android.view.ViewConfiguration
-import android.widget.ImageButton
 import android.widget.ImageView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.app.ShareCompat
@@ -28,7 +24,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
-import app.simple.felicity.core.maths.Number.toNegative
 import app.simple.felicity.databinding.DialogAlbumMenuBinding
 import app.simple.felicity.databinding.DialogArtistMenuBinding
 import app.simple.felicity.databinding.DialogDeleteSongBinding
@@ -57,7 +52,6 @@ import app.simple.felicity.repository.models.PlaylistWithSongs
 import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.repository.shuffle.Shuffle.shuffle
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
-import app.simple.felicity.shared.utils.ViewUtils.cancelTouch
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.pages.AlbumPage
@@ -256,119 +250,6 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
             if (wantsMiniPlayerVisible.not()) {
                 hideMiniPlayer()
-            }
-        }
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    protected fun ImageButton.setupFastForwardButton() {
-        var isPulsing = false
-
-        val pulseRunnable = object : Runnable {
-            override fun run() {
-                val currentPosition = MediaPlaybackManager.getSeekPosition()
-                val totalDuration = MediaPlaybackManager.getDuration()
-
-                // Check if the next pulse will push us past the end of the song
-                if (currentPosition + SEEK_PER_PULSE_MS >= totalDuration) {
-                    // Stop the pulse
-                    isPulsing = false
-                    handler.removeCallbacks(this)
-                    cancelTouch()
-                    return
-                }
-
-                // Otherwise, continue pulsing as normal
-                isPulsing = true
-                MediaPlaybackManager.seekRelative(SEEK_PER_PULSE_MS)
-                handler.postDelayed(this, SEEK_INTERVAL_MS)
-            }
-        }
-
-        setOnTouchListener { view, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    isPulsing = false
-                    // Wait for the standard long-press timeout before starting the pulses
-                    handler.postDelayed(pulseRunnable, ViewConfiguration.getLongPressTimeout().toLong())
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    handler.removeCallbacks(pulseRunnable)
-
-                    // If the user lifted their finger before it started pulsing,
-                    // treat it as a standard click.
-                    if (!isPulsing) {
-                        view.performClick()
-                        MediaPlaybackManager.next()
-                    }
-
-                    isPulsing = false
-                    true
-                }
-                MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_MOVE -> {
-                    // Catches cases where the finger slides off the button
-                    handler.removeCallbacks(pulseRunnable)
-                    isPulsing = true
-                    true
-                }
-                else -> false
-            }
-        }
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    protected fun ImageButton.setupFastRewindButton() {
-        var isPulsing = false
-
-        val pulseRunnable = object : Runnable {
-            override fun run() {
-                val currentPosition = MediaPlaybackManager.getSeekPosition()
-
-                // Check if the next pulse will push us before the start of the song
-                if (currentPosition + SEEK_PER_PULSE_MS.toNegative() <= 0) {
-                    // Stop the pulse
-                    isPulsing = false
-                    handler.removeCallbacks(this)
-                    cancelTouch()
-                    return
-                }
-
-                // Otherwise, continue pulsing as normal
-                isPulsing = true
-                MediaPlaybackManager.seekRelative(SEEK_PER_PULSE_MS.toNegative())
-                handler.postDelayed(this, SEEK_INTERVAL_MS)
-            }
-        }
-
-        setOnTouchListener { view, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    isPulsing = false
-                    // Wait for the standard long-press timeout before starting the pulses
-                    handler.postDelayed(pulseRunnable, ViewConfiguration.getLongPressTimeout().toLong())
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    handler.removeCallbacks(pulseRunnable)
-
-                    // If the user lifted their finger before it started pulsing,
-                    // treat it as a standard click.
-                    if (!isPulsing) {
-                        view.performClick()
-                        MediaPlaybackManager.previous()
-                    }
-
-                    isPulsing = false
-                    true
-                }
-                MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_MOVE -> {
-                    // Catches cases where the finger slides off the button
-                    handler.removeCallbacks(pulseRunnable)
-                    isPulsing = true
-                    true
-                }
-                else -> false
             }
         }
     }
@@ -603,7 +484,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             binding.share.setOnClickListener {
                 // The audio URI is already a content:// URI with a persisted SAF grant,
                 // so we can pass it directly to the share sheet. No FileProvider detour needed.
-                val audioUri = Uri.parse(audio.uri)
+                val audioUri = audio.uri.toUri()
                 ShareCompat.IntentBuilder(requireContext())
                     .setType(audio.mimeType ?: "audio/*")
                     .setStream(audioUri)
@@ -754,7 +635,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         SimpleDialog.Builder(
                 container = requireContainerView(),
                 inflateBinding = DialogSureBinding::inflate)
-            .onViewCreated { binding ->
+            .onViewCreated { _ ->
                 /* no-op */
             }.onDialogInflated { binding, dismiss, _ ->
                 binding.sure.setOnClickListener {
@@ -912,7 +793,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
      * @param item The [PlaylistWithSongs] whose songs will be shared.
      */
     private fun sharePlaylistSongs(item: PlaylistWithSongs) {
-        val uris = item.songs.map { Uri.parse(it.uri) } as ArrayList<Uri>
+        val uris = item.songs.map { it.uri.toUri() } as ArrayList<Uri>
         if (uris.isEmpty()) return
         val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
             type = "audio/*"
@@ -1186,7 +1067,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
      * @param audios The list of [Audio] tracks to share.
      */
     private fun shareAudioList(audios: List<Audio>) {
-        val uris = audios.map { Uri.parse(it.uri) } as ArrayList<Uri>
+        val uris = audios.map { it.uri.toUri() } as ArrayList<Uri>
         if (uris.isEmpty()) return
         val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
             type = "audio/*"
