@@ -78,9 +78,11 @@ object AudioCoverUtils {
             .into(this)
     }
 
-    fun Context.getArtCover(
+    fun Context.getArtCoverForWidget(
             item: Any,
-            size: Int,
+            height: Int,
+            width: Int,
+            roundedTimes: Int = 1,
             shadow: Boolean = false,
             roundedCorners: Boolean = false,
             blur: Boolean = false,
@@ -91,7 +93,7 @@ object AudioCoverUtils {
         val transformations = mutableListOf<Transformation<Bitmap>>()
 
         if (crop) transformations.add(CenterCrop())
-        if (roundedCorners) transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt()))
+        if (roundedCorners) transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt().times(roundedTimes)))
         if (shadow) {
             transformations.add(Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()))
 
@@ -101,9 +103,9 @@ object AudioCoverUtils {
                         .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE)
             )
         }
-        if (blur) transformations.add(Blur(72))
+        if (blur) transformations.add(Blur(24))
         if (greyscale) transformations.add(Greyscale())
-        if (darken) transformations.add(Darken(0.3F))
+        if (darken) transformations.add(Darken(0.5F))
 
         val glideRequest = Glide.with(this)
             .asBitmap()
@@ -113,7 +115,7 @@ object AudioCoverUtils {
             .diskCacheStrategy(DiskCacheStrategy.ALL)
             .error(R.drawable.ic_felicity)
 
-        return glideRequest.submit(size, size).get()
+        return glideRequest.submit(width, height).get()
     }
 
     /**

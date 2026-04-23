@@ -9,30 +9,27 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:importantForAccessibility="no"
-        android:scaleType="fitXY" />
+        android:scaleType="centerCrop" />
 
     <LinearLayout
         android:id="@+id/widget_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="vertical"
+        android:padding="16dp">
 
         <ImageView
             android:id="@+id/widget_album_art"
-            android:layout_width="84dp"
-            android:layout_height="match_parent"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
             android:contentDescription="@string/album_art"
             android:scaleType="centerCrop" />
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="8dp"
-            android:layout_weight="1"
-            android:gravity="center_vertical"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:layout_marginVertical="8dp">
 
             <TextView
                 android:id="@+id/widget_title"
@@ -41,7 +38,8 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:text="@string/unknown_title"
-                android:textSize="15sp"
+                android:textColor="@android:color/white"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -53,45 +51,44 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:text="@string/unknown_artist"
-                android:textSize="13sp" />
-
+                android:textColor="@android:color/white"
+                android:textSize="14sp" />
         </LinearLayout>
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
-            android:layout_marginEnd="@dimen/padding_15"
             android:orientation="horizontal">
 
             <ImageButton
                 android:id="@+id/widget_prev"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
                 android:background="@null"
                 android:contentDescription="@string/previous"
-                android:padding="8dp"
-                android:scaleType="fitCenter"
+                android:scaleType="centerInside"
                 android:src="@drawable/ic_skip_previous" />
 
             <ImageButton
                 android:id="@+id/widget_play_pause"
-                android:layout_width="48dp"
+                android:layout_width="0dp"
                 android:layout_height="48dp"
+                android:layout_weight="1"
                 android:background="@null"
                 android:contentDescription="@string/play_pause"
-                android:padding="8dp"
-                android:scaleType="fitCenter"
+                android:scaleType="centerInside"
                 android:src="@drawable/ic_play" />
 
             <ImageButton
                 android:id="@+id/widget_next"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
                 android:background="@null"
                 android:contentDescription="@string/next"
-                android:padding="8dp"
-                android:scaleType="fitCenter"
+                android:scaleType="centerInside"
                 android:src="@drawable/ic_skip_next" />
         </LinearLayout>
 

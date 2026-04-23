@@ -8,18 +8,12 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.util.TypedValue
 import android.widget.RemoteViews
 import androidx.core.graphics.createBitmap
-import androidx.core.graphics.toColorInt
 import app.simple.felicity.R
-import app.simple.felicity.glide.util.AudioCoverUtils.getArtCover
+import app.simple.felicity.glide.util.AudioCoverUtils.getArtCoverForWidget
 import app.simple.felicity.manager.SharedPreferences
 import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AppearancePreferences
@@ -173,10 +167,9 @@ class FelicityWidgetProvider : AppWidgetProvider(), ThemeChangedListener {
         SharedPreferences.init(context)
 
         // Read colors from the freshly loaded theme.
-        val backgroundColor = currentTheme.viewGroupTheme?.backgroundColor ?: "#171717".toColorInt()
-        val primaryTextColor = currentTheme.textViewTheme?.primaryTextColor ?: Color.WHITE
-        val secondaryTextColor = currentTheme.textViewTheme?.secondaryTextColor ?: Color.LTGRAY
-        val iconColor = currentTheme.iconTheme?.regularIconColor ?: Color.WHITE
+        val primaryTextColor = Color.WHITE
+        val secondaryTextColor = Color.LTGRAY
+        val iconColor = Color.WHITE
 
         // Read the last-saved song metadata.
         val title = WidgetStatePrefs.getTitle(context).ifEmpty { context.getString(R.string.unknown_title) }
@@ -187,7 +180,7 @@ class FelicityWidgetProvider : AppWidgetProvider(), ThemeChangedListener {
         val views = RemoteViews(context.packageName, R.layout.widget_player)
 
         // Build the themed background bitmap programmatically — no XML drawable involved.
-        val bgBitmap = buildBackgroundBitmap(context, manager, widgetId, backgroundColor)
+        val bgBitmap = loadBGArtWithGlide(context, manager, widgetId, songId)
         views.setImageViewBitmap(R.id.widget_background_view, bgBitmap)
 
         // Text.
@@ -217,7 +210,7 @@ class FelicityWidgetProvider : AppWidgetProvider(), ThemeChangedListener {
         manager.updateAppWidget(widgetId, views)
 
         // Phase 2 — load album art via Glide, then push a second update.
-        val artBitmap = loadArtWithGlide(context, manager, widgetId, songId)
+        val artBitmap = loadArtWithGlide(context, songId)
         if (artBitmap != null) {
             views.setImageViewBitmap(R.id.widget_album_art, artBitmap)
         } else {
@@ -296,7 +289,7 @@ class FelicityWidgetProvider : AppWidgetProvider(), ThemeChangedListener {
      *
      * Returns null on any failure; the caller shows the app icon as a placeholder.
      */
-    private suspend fun loadArtWithGlide(context: Context, manager: AppWidgetManager, widgetId: Int, songId: Long): Bitmap? =
+    private suspend fun loadArtWithGlide(context: Context, songId: Long): Bitmap? =
         withContext(Dispatchers.IO) {
             if (songId == -1L) return@withContext null
             try {
@@ -305,63 +298,58 @@ class FelicityWidgetProvider : AppWidgetProvider(), ThemeChangedListener {
                     ?.getAudioById(songId)
                     ?: return@withContext null
 
-                val options = manager.getAppWidgetOptions(widgetId)
-                val widgetHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 50)
+                val size = context.resources.getDimensionPixelSize(R.dimen.widget_album_art_size)
 
-                val albumArt = context.getArtCover(
+                context.getArtCoverForWidget(
                         audio,
-                        size = widgetHeight, // Glide will downsample to this size to save memory
+                        height = size,
+                        width = size,
                         shadow = false,
                         blur = false,
                         greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
                         darken = false,
                         crop = true,
                         roundedCorners = AlbumArtPreferences.isRoundedCornersEnabled())
-
-                getLeftRoundedBitmap(albumArt, context)
             } catch (_: Exception) {
                 null
             }
         }
 
-    private fun getLeftRoundedBitmap(bitmap: Bitmap, context: Context): Bitmap {
-        val output = createBitmap(bitmap.width, bitmap.height)
-        val canvas = Canvas(output)
+    private suspend fun loadBGArtWithGlide(context: Context, manager: AppWidgetManager, widgetId: Int, songId: Long): Bitmap? =
+        withContext(Dispatchers.IO) {
+            if (songId == -1L) return@withContext null
 
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.BLACK
+            try {
+                val audio = AudioDatabase.getInstance(context.applicationContext)
+                    .audioDao()
+                    ?.getAudioById(songId)
+                    ?: return@withContext null
+
+                val density = context.resources.displayMetrics.density
+                val options = manager.getAppWidgetOptions(widgetId)
+
+                // Use the minimum width and maximum height since that is the size the launcher
+                // actually allocates for this widget in portrait orientation.
+                val widthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 294)
+                val heightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 50)
+                val widthPx = (widthDp * density).toInt().coerceAtLeast(8)
+                val heightPx = (heightDp * density).toInt().coerceAtLeast(8)
+
+                context.getArtCoverForWidget(
+                        audio,
+                        height = heightPx,
+                        width = widthPx,
+                        roundedTimes = 3,
+                        shadow = false,
+                        blur = true,
+                        greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
+                        darken = true,
+                        crop = true,
+                        roundedCorners = AlbumArtPreferences.isRoundedCornersEnabled())
+            } catch (_: Exception) {
+                null
+            }
         }
-
-        // Corner radius in pixels — mirror exactly what AppearancePreferences drives elsewhere.
-        val cornerRadiusPx = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_PX,
-                AppearancePreferences.getCornerRadius(),
-                context.resources.displayMetrics
-        )
-
-        // Define the rounding for each corner: [Top-Left, Top-Right, Bottom-Right, Bottom-Left]
-        // Each corner takes 2 values (X and Y radius).
-        val radii = floatArrayOf(
-                cornerRadiusPx, cornerRadiusPx, // Top-Left
-                0f, 0f,                         // Top-Right
-                0f, 0f,                         // Bottom-Right
-                cornerRadiusPx, cornerRadiusPx  // Bottom-Left
-        )
-
-        val rect = RectF(0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat())
-        val path = Path().apply {
-            addRoundRect(rect, radii, Path.Direction.CW)
-        }
-
-        // Draw the rounded shape
-        canvas.drawPath(path, paint)
-
-        // Apply the Xfermode to keep only the album art pixels that intersect with the shape
-        paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-        canvas.drawBitmap(bitmap, 0f, 0f, paint)
-
-        return output
-    }
 
     /**
      * Wraps a widget button action string in a [android.app.PendingIntent] targeting
