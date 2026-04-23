@@ -7,6 +7,7 @@ import android.text.format.DateUtils
 import android.view.View
 import android.widget.TextView
 import androidx.core.net.toUri
+import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.BuildConfig
 import app.simple.felicity.R
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
@@ -33,6 +34,10 @@ import app.simple.felicity.ui.preferences.sub.AccentColors
 import app.simple.felicity.ui.preferences.sub.Language
 import app.simple.felicity.ui.preferences.sub.Themes
 import app.simple.felicity.ui.preferences.sub.TypeFaces
+import com.bumptech.glide.Glide
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 import java.util.function.Supplier
 
@@ -877,6 +882,29 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val cacheHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.cache)
+
+        val clearImageCache = Preference(
+                title = R.string.clear_image_cache,
+                summary = R.string.clear_image_cache_summary,
+                icon = R.drawable.ic_image,
+                type = PreferenceType.NORMAL,
+                onPreferenceAction = { view, callback ->
+                    withSureDialog {
+                        if (it) {
+                            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Default) {
+                                Glide.get(requireContext()).clearDiskCache() // Requires bg thread
+
+                                withContext(Dispatchers.Main) {
+                                    Glide.get(requireContext()).clearMemory() // Requires main thread
+                                    showWarning(R.string.done) // Obviously main thread as well
+                                }
+                            }
+                        }
+                    }
+                }
+        )
+
         preferences.add(refreshLibrary)
         preferences.add(shuffleHeader)
         preferences.add(currentShuffle)
@@ -890,6 +918,8 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(filtersHeader)
         preferences.add(skipHiddenFilesToggle)
         preferences.add(skipHiddenFoldersToggle)
+        preferences.add(cacheHeader)
+        preferences.add(clearImageCache)
 
         return preferences
     }
