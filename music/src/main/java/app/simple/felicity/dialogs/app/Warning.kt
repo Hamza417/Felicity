@@ -30,10 +30,6 @@ class Warning : ScopedBottomSheetFragment() {
         } else if (warning is Int) {
             binding.warning.setText(warning)
         }
-
-        binding.close.setOnClickListener {
-            dismiss()
-        }
     }
 
     companion object {

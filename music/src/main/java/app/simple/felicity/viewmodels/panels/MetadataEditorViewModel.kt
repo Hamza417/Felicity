@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel for the [app.simple.felicity.ui.panels.MetadataEditor] panel.
+ * ViewModel for the [app.simple.felicity.ui.subpanels.MetadataEditor] panel.
  *
  * Handles writing all edited tag fields to the audio file on disk via
  * [MetadataWriter], updating the Room database row via [AudioDatabase], and

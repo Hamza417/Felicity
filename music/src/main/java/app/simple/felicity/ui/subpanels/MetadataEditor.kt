@@ -1,4 +1,4 @@
-package app.simple.felicity.ui.panels
+package app.simple.felicity.ui.subpanels
 
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -7,7 +7,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -34,9 +33,9 @@ import java.io.FileOutputStream
  *
  * Album artwork can be replaced by tapping the art thumbnail, which opens the
  * system image picker. The chosen image is copied to a temporary file and
- * passed to [MetadataWriter] for embedding.
+ * passed to [app.simple.felicity.repository.metadata.MetadataWriter] for embedding.
  *
- * On save, [MetadataEditorViewModel] writes the changes to disk via
+ * On save, [app.simple.felicity.viewmodels.panels.MetadataEditorViewModel] writes the changes to disk via
  * JAudioTagger, updates the Room database, and triggers a MediaStore rescan
  * so the changes are reflected in the app immediately.
  *
@@ -169,11 +168,11 @@ class MetadataEditor : MediaFragment() {
             viewModel.saveResult.collect { result ->
                 when (result) {
                     is MetadataEditorViewModel.SaveResult.Success -> {
-                        Toast.makeText(requireContext(), getString(R.string.metadata_saved), Toast.LENGTH_SHORT).show()
+                        showWarning(R.string.metadata_saved)
                         popBackStack()
                     }
                     is MetadataEditorViewModel.SaveResult.Error -> {
-                        Toast.makeText(requireContext(), result.message, Toast.LENGTH_LONG).show()
+                        showWarning(result.message)
                     }
                 }
             }
@@ -181,7 +180,7 @@ class MetadataEditor : MediaFragment() {
     }
 
     /**
-     * Reads all input fields, builds a [MetadataWriter.Fields] instance, applies
+     * Reads all input fields, builds a [app.simple.felicity.repository.metadata.MetadataWriter.Fields] instance, applies
      * it to a copy of the original [Audio] to keep the Room row consistent, then
      * delegates to [MetadataEditorViewModel.saveMetadata].
      */
@@ -245,4 +244,3 @@ class MetadataEditor : MediaFragment() {
         }
     }
 }
-
