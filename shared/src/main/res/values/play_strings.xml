@@ -22,4 +22,9 @@
     <string name="feature_no_subscription">One-time purchase. Pay once, own it, no recurring charges.</string>
     <string name="feature_updates">All future updates included at no extra cost.</string>
     <string name="all_features_summary">Get the full app with no restrictions.</string>
+
+    <!-- Restore purchase button and result messages -->
+    <string name="restore_purchase">Restore Purchase</string>
+    <string name="restore_purchase_failed">No purchase found on this account.\n\nIf you bought Felicity with a different Google account, please switch to that account in the Play Store and try again. If you believe this is a mistake, contact support.</string>
+    <string name="restore_purchase_restoring">Restoring\u2026</string>
 </resources>

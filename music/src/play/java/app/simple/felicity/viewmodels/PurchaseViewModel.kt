@@ -215,6 +215,45 @@ class PurchaseViewModel @Inject constructor(
     }
 
     /**
+     * Fires a one-time event when a manual restore attempt finds no purchase.
+     * The UI uses this to show the "wrong account" warning dialog.
+     */
+    private val _restoreFailed = MutableLiveData<Boolean>()
+    val restoreFailed: LiveData<Boolean> = _restoreFailed
+
+    /**
+     * Called when the user taps the "Restore Purchase" button.
+     * Reconnects to billing if needed, then queries the Play Store for existing
+     * purchases on the current account. If nothing is found we let the user know
+     * that their purchase might be sitting on a different Google account.
+     */
+    fun restorePurchase() {
+        val client = billingClient
+        if (client == null || !client.isReady) {
+            // Not connected yet — reconnect first and let the normal restore
+            // that runs after connection handle the result.
+            connectToBillingService()
+            return
+        }
+
+        val params = QueryPurchasesParams.newBuilder()
+            .setProductType(BillingClient.ProductType.INAPP)
+            .build()
+
+        client.queryPurchasesAsync(params) { _, purchases ->
+            val ownedPurchase = purchases.firstOrNull { it.products.contains(productId) }
+            if (ownedPurchase != null) {
+                // Found it — handle it the same way a fresh purchase would be handled.
+                handlePurchase(ownedPurchase)
+            } else {
+                // Nothing found on this account — the user might have used a different one.
+                Log.w(TAG, "Restore failed — no matching purchase on this account.")
+                _restoreFailed.postValue(true)
+            }
+        }
+    }
+
+    /**
      * Checks the Play Store for any purchases the user already completed —
      * useful if they reinstalled the app, and we need to restore their access.
      */

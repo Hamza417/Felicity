@@ -261,6 +261,25 @@
             android:text="@string/purchase_now"
             app:highlightMode="both" />
 
+        <!--
+            A quieter secondary button for users who already paid but the app
+            doesn't know it yet — reinstalls, new phones, that kind of thing.
+            Tapping this asks the Play Store to check their purchase history.
+        -->
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/restore_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="@string/restore_purchase"
+            android:textSize="@dimen/text_size_14"
+            android:alpha="0.7"
+            app:appFontStyle="medium"
+            app:textColorStyle="secondary" />
+
     </LinearLayout>
 
 </app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>

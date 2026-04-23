@@ -5,12 +5,14 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentPurchaseBinding
 import app.simple.felicity.databinding.HeaderPreferencesGenericBinding
 import app.simple.felicity.extensions.fragments.PreferenceFragment
 import app.simple.felicity.preferences.TrialPreferences
+import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.viewmodels.PurchaseViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -54,6 +56,7 @@ class Purchase : PreferenceFragment() {
         refreshTrialStatus()
         observeBillingState()
         setupBuyButton()
+        setupRestoreButton()
     }
 
     /**
@@ -104,6 +107,8 @@ class Purchase : PreferenceFragment() {
                     binding.buyButton.text = getString(R.string.already_purchased)
                     binding.buyButton.isEnabled = false
                     binding.buyButton.alpha = 0.6f
+                    binding.restoreButton.isEnabled = false
+                    binding.restoreButton.gone()
                     hidePriceRow()
                     refreshTrialStatus()
                 }
@@ -127,6 +132,17 @@ class Purchase : PreferenceFragment() {
         purchaseViewModel.purchaseSuccess.observe(viewLifecycleOwner) { success ->
             if (success == true) {
                 refreshTrialStatus()
+            }
+        }
+
+        /**
+         * When a manual restore attempt finds nothing, we show a friendly warning.
+         * The message explains the "wrong account" scenario so the user knows exactly
+         * what to do instead of staring blankly at the screen wondering what went wrong.
+         */
+        purchaseViewModel.restoreFailed.observe(viewLifecycleOwner) { failed ->
+            if (failed == true) {
+                showRestoreFailedWarning()
             }
         }
     }
@@ -164,6 +180,48 @@ class Purchase : PreferenceFragment() {
             activity?.let { act ->
                 purchaseViewModel.launchPurchaseFlow(act)
             }
+        }
+    }
+
+    /**
+     * Wires up the quieter "Restore Purchase" link below the main button.
+     * This is for users who already paid but the app forgot — reinstalls,
+     * new phones, or just the app having a bad memory day.
+     *
+     * The button dims itself while the restore is in progress so the user
+     * knows something is happening and doesn't tap it seventeen times.
+     */
+    private fun setupRestoreButton() {
+        binding.restoreButton.setOnClickListener {
+            binding.restoreButton.isEnabled = false
+            binding.restoreButton.text = getString(R.string.restore_purchase_restoring)
+            purchaseViewModel.restorePurchase()
+        }
+
+        // Re-enable the button whenever the billing state settles, so the user
+        // can try again if needed — no stuck buttons allowed.
+        purchaseViewModel.billingState.observe(viewLifecycleOwner) {
+            if (it !is PurchaseViewModel.BillingState.AlreadyPurchased) {
+                binding.restoreButton.isEnabled = true
+                binding.restoreButton.text = getString(R.string.restore_purchase)
+            }
+        }
+    }
+
+    /**
+     * Shows an alert dialog when a restore attempt comes back empty-handed.
+     *
+     * We explicitly mention the "wrong account" scenario because that's by far
+     * the most common reason someone's purchase doesn't show up — and without
+     * that hint, they'd probably email support immediately (fair enough, honestly).
+     */
+    private fun showRestoreFailedWarning() {
+        context?.let { ctx ->
+            AlertDialog.Builder(ctx)
+                .setTitle(R.string.restore_purchase)
+                .setMessage(R.string.restore_purchase_failed)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
         }
     }
 
