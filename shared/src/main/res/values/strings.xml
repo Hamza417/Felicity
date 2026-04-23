@@ -417,4 +417,8 @@
     <string name="like_icon_summary">Replace the heart icon for favorites with a thumbs up icon in the app.</string>
     <string name="buy_full_version">Buy Full Version</string>
     <string name="trial_period">Trial Period</string>
+    <string name="cache">Cache</string>
+    <string name="clear_image_cache">Clear Image Cache</string>
+    <string name="clear_image_cache_summary">Clear all image caches created by the app. Cache will be recreated, use this option only if you are seeing wrong album arts for songs.</string>
+    <string name="done">Done</string>
 </resources>
