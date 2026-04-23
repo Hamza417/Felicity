@@ -310,6 +310,27 @@ object MediaPlaybackManager {
         scope.launch {
             _songListFlow.emit(this@MediaPlaybackManager.songs)
         }
+
+        // Update the media controller's queue in the background without prepare() to avoid interrupting playback.
+        scope.launch {
+            val mediaItems = withContext(Dispatchers.Default) {
+                audios.map { audio ->
+                    val uri = audio.uri.toPlaybackUri()
+                    MediaItem.Builder()
+                        .setMediaId(audio.id.toString())
+                        .setUri(uri)
+                        .setMediaMetadata(
+                                MediaMetadata.Builder()
+                                    .setArtist(audio.artist)
+                                    .setTitle(audio.title)
+                                    .build())
+                        .build()
+
+                }
+            }
+
+            mediaController?.setMediaItems(mediaItems, clampedPosition, getSeekPosition())
+        }
     }
 
     /**
