@@ -38,8 +38,12 @@ import app.simple.felicity.theme.models.Theme;
  * nothing less. No scrolling, no animations, no drama.
  *
  * <p>It supports both plain LRC (whole-line highlight) and word-by-word LRC
- * (each word lights up as it's sung). It also handles RTL and LTR text
- * automatically, so it works for any language without extra setup.</p>
+ * (each word lights up as it's sung). Word-by-word mode uses the app's accent color
+ * so the active word really pops. Line-by-line mode uses the theme's primary text color
+ * for a clean, readable look.</p>
+ *
+ * <p>It also handles RTL and LTR text automatically, so it works for any language
+ * without extra setup.</p>
  *
  * <p>Usage is simple: call {@link #setLrcData(LrcData)} to load your lyrics,
  * then keep calling {@link #updateTime(long)} as the song plays and this view
@@ -94,20 +98,33 @@ public class LrcLineView extends View implements ThemeChangedListener {
      */
     @ColorInt
     private int highlightColor = Color.WHITE;
+    /**
+     * The color used to highlight the active word in word-by-word mode. This is
+     * pulled from the app's accent color so it matches buttons, sliders, and other
+     * interactive elements — giving the karaoke effect a cohesive look.
+     */
+    @ColorInt
+    private int accentColor = Color.WHITE;
     // Text shown when there's nothing to display
     private String emptyText = DEFAULT_EMPTY_TEXT;
     /**
-     * When true, a rounded pill is drawn behind the lyrics text. Useful on screens
+     * When true, a rounded rectangle is drawn behind the lyrics text. Useful on screens
      * where the album art can be both very light and very dark, making white or black
-     * text equally problematic — the pill gives the text its own readable backdrop.
+     * text equally problematic — the background gives the text its own readable backdrop.
      */
-    private boolean showBackgroundPill = false;
+    private boolean showBackground = false;
     /**
-     * The fill color of the rounded pill background. Pulled from the theme's highlight
-     * color automatically, but can be overridden via {@link #setBackgroundPillColor(int)}.
+     * The fill color of the background rectangle. Pulled from the theme's highlight
+     * color automatically, but can be overridden via {@link #setLyricsBackgroundColor(int)}.
      */
     @ColorInt
-    private int backgroundPillColor = Color.BLACK; // updated from theme in onAttachedToWindow
+    private int backgroundColor = Color.BLACK; // updated from theme in onAttachedToWindow
+    /**
+     * Alpha value (0–255) for the background rectangle. 255 is fully opaque.
+     * Dialing this down lets the album art show through a little — a nice middle
+     * ground between full contrast and no background at all.
+     */
+    private int backgroundAlpha = 180;
     
     public LrcLineView(@NonNull Context context) {
         this(context, null);
@@ -130,8 +147,7 @@ public class LrcLineView extends View implements ThemeChangedListener {
         float textSizePx = TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_SP,
                 DEFAULT_TEXT_SIZE_SP,
-                context.getResources().getDisplayMetrics()
-                                                    );
+                context.getResources().getDisplayMetrics());
         textPaint.setTextSize(textSizePx);
         textPaint.setColor(highlightColor);
         if (!isInEditMode()) {
@@ -148,8 +164,9 @@ public class LrcLineView extends View implements ThemeChangedListener {
             ThemeManager.INSTANCE.addListener(this);
             // Apply the current theme right away so the first draw looks correct
             highlightColor = ThemeManager.INSTANCE.getTheme().getTextViewTheme().getPrimaryTextColor();
-            backgroundPillColor = ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor();
-            pillPaint.setColor(backgroundPillColor);
+            accentColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
+            backgroundColor = ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor();
+            applyBackgroundAlpha();
         }
         invalidateCache();
     }
@@ -165,16 +182,18 @@ public class LrcLineView extends View implements ThemeChangedListener {
     public void onThemeChanged(@NonNull Theme theme, boolean animate) {
         // The user switched themes — grab the new primary text color and repaint
         highlightColor = theme.getTextViewTheme().getPrimaryTextColor();
-        backgroundPillColor = theme.getViewGroupTheme().getHighlightColor();
-        pillPaint.setColor(backgroundPillColor);
+        backgroundColor = theme.getViewGroupTheme().getHighlightColor();
+        applyBackgroundAlpha();
         invalidateCache();
         invalidate();
     }
     
     @Override
     public void onAccentChanged(@NonNull Accent accent) {
-        // We don't use the accent color directly, but the interface requires this.
-        // Nothing to do here — move along.
+        // The accent color is used for word-by-word highlights, so update it here
+        accentColor = accent.getPrimaryAccentColor();
+        invalidateCache();
+        invalidate();
     }
     
     /**
@@ -335,21 +354,35 @@ public class LrcLineView extends View implements ThemeChangedListener {
         int width = getWidth();
         int height = getHeight();
         
-        // Draw the rounded rectangle background first so it sits behind the text.
-        // It spans the full view width and height, minus the view's own padding on each
-        // side — exactly the same area that HighlightTextView's MaterialShapeDrawable covers.
-        if (showBackgroundPill) {
+        // Draw the background rectangle sized to match only the actual text width,
+        // not the full screen. Nobody wants a thick colored bar stretching edge-to-edge
+        // when the lyric is just a short phrase.
+        if (showBackground) {
             float themeRadius = isInEditMode()
                     ? TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8f,
                     getResources().getDisplayMetrics())
                     : AppearancePreferences.INSTANCE.getCornerRadius();
             
+            // Find the widest line in the layout so the background fits snugly
+            float maxLineWidth = 0f;
+            for (int i = 0; i < layout.getLineCount(); i++) {
+                maxLineWidth = Math.max(maxLineWidth, layout.getLineWidth(i));
+            }
+            
+            // Clamp to the available content width so it never overflows the view
+            int contentWidth = width - getPaddingLeft() - getPaddingRight();
+            float bgWidth = Math.min(maxLineWidth, contentWidth);
+            
+            // Center the background horizontally within the padded area
+            float centerX = getPaddingLeft() + contentWidth / 2f;
+            float halfBgWidth = bgWidth / 2f;
+
             pillRect.set(
-                    getPaddingLeft(),
+                    centerX - halfBgWidth - getPaddingLeft(),
                     getPaddingTop(),
-                    width - getPaddingRight(),
-                    height - getPaddingBottom()
-                        );
+                    centerX + halfBgWidth + getPaddingRight(),
+                    height - getPaddingBottom());
+
             canvas.drawRoundRect(pillRect, themeRadius, themeRadius, pillPaint);
         }
         
@@ -427,8 +460,8 @@ public class LrcLineView extends View implements ThemeChangedListener {
      * Assembles the text (and optional color spans) for the current moment in the song.
      *
      * <p>For plain LRC, the whole line is returned in the theme's primary text color.
-     * For word-by-word LRC, sung words are highlighted and future words stay dimmer —
-     * like a tiny karaoke prompt right on the album art.</p>
+     * For word-by-word LRC, sung words are highlighted using the accent color so the
+     * active word really stands out — like a tiny karaoke prompt right on the album art.</p>
      */
     @Nullable
     private CharSequence buildDisplayText() {
@@ -439,7 +472,7 @@ public class LrcLineView extends View implements ThemeChangedListener {
         LrcEntry entry = lrcData.getEntries().get(currentLineIndex);
         
         if (!entry.hasWordSync()) {
-            // Plain line mode — paint the whole line with the theme's text color
+            // Plain line mode — use the theme's primary text color, nothing fancy
             textPaint.setColor(highlightColor);
             return entry.getText();
         }
@@ -450,7 +483,8 @@ public class LrcLineView extends View implements ThemeChangedListener {
             return entry.getText();
         }
         
-        // Word-by-word mode — build a spannable so each word can have its own color
+        // Word-by-word karaoke mode — sung words get the accent color, upcoming
+        // words stay dimmer so the active word is impossible to miss
         SpannableStringBuilder builder = new SpannableStringBuilder();
         for (int i = 0; i < words.size(); i++) {
             String wordText = words.get(i).getText();
@@ -458,14 +492,12 @@ public class LrcLineView extends View implements ThemeChangedListener {
             builder.append(wordText);
             int end = builder.length();
             
-            // Already-sung and current words get the full highlight; upcoming words
-            // get the dimmer normal color so the active word stands out clearly
-            @ColorInt int color = (i <= currentWordIndex) ? highlightColor : normalColor;
+            @ColorInt int color = (i <= currentWordIndex) ? accentColor : normalColor;
             builder.setSpan(new ForegroundColorSpan(color), start, end,
                     android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         
-        textPaint.setColor(highlightColor);
+        textPaint.setColor(accentColor);
         return builder;
     }
     
@@ -528,43 +560,55 @@ public class LrcLineView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Turns the rounded pill background on or off. When on, a filled rounded rectangle is
-     * drawn behind the lyrics text using the theme's highlight color. This is handy on
-     * player screens where album art contrast is unpredictable — the pill ensures the
-     * text is always readable regardless of what's behind it.
+     * Turns the background rectangle on or off. When on, a filled rounded rectangle is
+     * drawn behind the lyrics text using the theme's highlight color. This helps when
+     * album art contrast is unpredictable — the background ensures the text is always
+     * readable regardless of what's behind it.
      *
-     * @param show true to show the pill, false to hide it (default is false)
+     * @param show true to show the background, false to hide it (default is false)
      */
-    public void setShowBackgroundPill(boolean show) {
-        this.showBackgroundPill = show;
+    public void setShowBackground(boolean show) {
+        this.showBackground = show;
         invalidate();
     }
     
     /**
-     * Overrides the pill background color. Normally this is kept in sync with the theme's
+     * Overrides the background color. Normally this is kept in sync with the theme's
      * highlight color automatically, but you can pin it to any color you like here.
      *
-     * @param color the ARGB color to use for the pill fill
+     * @param color the ARGB color to use for the background fill
      */
-    public void setBackgroundPillColor(@ColorInt int color) {
-        this.backgroundPillColor = color;
-        pillPaint.setColor(color);
-        if (showBackgroundPill) {
+    public void setLyricsBackgroundColor(@ColorInt int color) {
+        this.backgroundColor = color;
+        applyBackgroundAlpha();
+        if (showBackground) {
             invalidate();
         }
     }
     
     /**
-     * Sets the text to show when no lyrics are available or when we're in a gap between lines.
-     * Pass an empty string (or null) to show nothing at all — which is the default.
+     * Sets the transparency of the background rectangle. Use a value between 0 (fully
+     * transparent — basically invisible) and 255 (fully opaque). Values around 150–200
+     * tend to look great — enough to make the text pop without completely hiding the
+     * album art underneath.
      *
-     * @param text the fallback text
+     * @param alpha the alpha value from 0 to 255
      */
-    public void setEmptyText(@Nullable String text) {
-        this.emptyText = text != null ? text : "";
-        if (currentLineIndex < 0) {
-            invalidateCache();
+    public void setBackgroundAlpha(int alpha) {
+        this.backgroundAlpha = Math.max(0, Math.min(255, alpha));
+        applyBackgroundAlpha();
+        if (showBackground) {
             invalidate();
         }
+    }
+    
+    /**
+     * Applies the current {@link #backgroundAlpha} to the background paint. We keep
+     * alpha separate from the color so you can change either one independently without
+     * losing the other setting.
+     */
+    private void applyBackgroundAlpha() {
+        pillPaint.setColor(backgroundColor);
+        pillPaint.setAlpha(backgroundAlpha);
     }
 }

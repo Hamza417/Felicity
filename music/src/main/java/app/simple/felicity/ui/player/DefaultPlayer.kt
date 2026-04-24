@@ -14,7 +14,6 @@ import app.simple.felicity.decorations.views.FavoriteButton
 import app.simple.felicity.decorations.views.FelicityMediaControls
 import app.simple.felicity.decorations.views.FelicityVisualizer
 import app.simple.felicity.extensions.fragments.BasePlayerFragment
-import app.simple.felicity.theme.managers.ThemeManager
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -93,8 +92,7 @@ class DefaultPlayer : BasePlayerFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        lrc.setShowBackgroundPill(true)
-        lrc.setNormalColor(ThemeManager.theme.textViewTheme.tertiaryTextColor)
+        lrc.setShowBackground(true)
     }
 
     companion object {
