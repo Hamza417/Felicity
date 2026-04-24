@@ -164,7 +164,6 @@
     <string name="add_folder">Add Folder</string>
     <string name="granted_folders">Granted Folders</string>
     <string name="no_folders_granted">No folders added yet. Tap above to pick a music folder.</string>
-    <string name="saf_folders_summary">Folders the app is allowed to scan for music.</string>
     <string name="start_app_now">Start App Now</string>
     <string name="audio">Audio</string>
     <string name="audio_desc">Configure decoder, audio engine, and output quality.</string>
@@ -421,4 +420,6 @@
     <string name="clear_image_cache">Clear Image Cache</string>
     <string name="clear_image_cache_summary">Clear all image caches created by the app. Cache will be recreated, use this option only if you are seeing wrong album arts for songs.</string>
     <string name="done">Done</string>
+    <string name="manage_music_folders">Manage Music Folders</string>
+    <string name="manage_music_folders_desc">Manage local directories for library indexing.</string>
 </resources>

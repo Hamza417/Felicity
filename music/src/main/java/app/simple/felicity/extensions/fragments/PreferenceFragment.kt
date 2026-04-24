@@ -32,6 +32,7 @@ import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.ui.preferences.sub.AccentColors
 import app.simple.felicity.ui.preferences.sub.Language
+import app.simple.felicity.ui.preferences.sub.MusicFolders
 import app.simple.felicity.ui.preferences.sub.Themes
 import app.simple.felicity.ui.preferences.sub.TypeFaces
 import com.bumptech.glide.Glide
@@ -721,6 +722,30 @@ abstract class PreferenceFragment : MediaFragment() {
     protected fun createLibraryPanel(): List<Preference> {
         val preferences = mutableListOf<Preference>()
 
+        val folders = Preference(
+                title = R.string.manage_music_folders,
+                summary = R.string.manage_music_folders_desc,
+                icon = R.drawable.ic_folder_open_outline,
+                type = PreferenceType.PANEL,
+                onPreferenceAction = { view, callback ->
+                    openFragment(MusicFolders.newInstance(), MusicFolders.TAG)
+                }
+        )
+
+        val refreshLibrary = Preference(
+                title = R.string.refresh_library,
+                summary = R.string.refresh_library_summary,
+                icon = R.drawable.ic_refresh,
+                type = PreferenceType.NORMAL,
+                onPreferenceAction = { view, callback ->
+                    withSureDialog {
+                        if (it) {
+                            AudioDatabaseService.refreshScan(requireContext())
+                        }
+                    }
+                }
+        )
+
         val shuffleHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.shuffle)
 
         val currentShuffle = Preference(
@@ -793,20 +818,6 @@ abstract class PreferenceFragment : MediaFragment() {
         )
 
         val scannerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.scanner)
-
-        val refreshLibrary = Preference(
-                title = R.string.refresh_library,
-                summary = R.string.refresh_library_summary,
-                icon = R.drawable.ic_refresh,
-                type = PreferenceType.NORMAL,
-                onPreferenceAction = { view, callback ->
-                    withSureDialog {
-                        if (it) {
-                            AudioDatabaseService.refreshScan(requireContext())
-                        }
-                    }
-                }
-        )
 
         val minimumAudioLength = Preference(
                 title = R.string.minimum_audio_length,
@@ -905,6 +916,7 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        preferences.add(folders)
         preferences.add(refreshLibrary)
         preferences.add(shuffleHeader)
         preferences.add(currentShuffle)
