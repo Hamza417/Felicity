@@ -94,9 +94,53 @@ jobs:
                 env:
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            -   name: Archive APKs
+            ### Separate Upload Steps for Each Architecture Artifact ###
+
+            -   name: Archive arm64-v8a APK
                 uses: actions/upload-artifact@v4
                 with:
-                    name: ${{ env.VERSION_NAME }}-APKs
+                    name: ${{ env.VERSION_NAME }}-arm64-v8a
+                    path: ${{ runner.temp }}/apks/*arm64-v8a*.apk
+                    if-no-files-found: ignore
+
+            -   name: Archive armeabi-v7a APK
+                uses: actions/upload-artifact@v4
+                with:
+                    name: ${{ env.VERSION_NAME }}-armeabi-v7a
+                    path: ${{ runner.temp }}/apks/*armeabi-v7a*.apk
+                    if-no-files-found: ignore
+
+            -   name: Archive x86_64 APK
+                uses: actions/upload-artifact@v4
+                with:
+                    name: ${{ env.VERSION_NAME }}-x86_64
+                    path: ${{ runner.temp }}/apks/*x86_64*.apk
+                    if-no-files-found: ignore
+
+            -   name: Archive x86 APK
+                uses: actions/upload-artifact@v4
+                with:
+                    name: ${{ env.VERSION_NAME }}-x86
+                    path: ${{ runner.temp }}/apks/*x86*.apk
+                    if-no-files-found: ignore
+
+            -   name: Archive Universal APK
+                uses: actions/upload-artifact@v4
+                with:
+                    name: ${{ env.VERSION_NAME }}-universal
+                    path: ${{ runner.temp }}/apks/*universal*.apk
+                    if-no-files-found: ignore
+
+            # Catch-all in case ABI splits aren't enabled and a standard non-arch APK is generated
+            -   name: Archive Base APK
+                uses: actions/upload-artifact@v4
+                with:
+                    name: ${{ env.VERSION_NAME }}-Base
                     path: |
                         ${{ runner.temp }}/apks/*.apk
+                        !${{ runner.temp }}/apks/*arm64-v8a*.apk
+                        !${{ runner.temp }}/apks/*armeabi-v7a*.apk
+                        !${{ runner.temp }}/apks/*x86*.apk
+                        !${{ runner.temp }}/apks/*x86_64*.apk
+                        !${{ runner.temp }}/apks/*universal*.apk
+                    if-no-files-found: ignore
