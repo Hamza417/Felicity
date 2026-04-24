@@ -52,8 +52,14 @@ android {
                 signingConfig = signingConfigs.release
             }
 
-            ndk {
-                abiFilters "arm64-v8a", "x86_64" // 64bit only
+            splits {
+                // github builds should support all ABIs and generate a universal APK for simplicity.
+                abi {
+                    enable true
+                    reset()
+                    include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+                    universalApk true
+                }
             }
         }
         play { // Play Store build
@@ -62,6 +68,7 @@ android {
                 signingConfig = signingConfigs.release
             }
 
+            // 64bit only for playstore
             ndk {
                 abiFilters "arm64-v8a", "x86_64" // 64bit only
             }

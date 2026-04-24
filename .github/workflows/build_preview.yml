@@ -56,15 +56,23 @@ jobs:
                     SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
                     SIGNING_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
 
-            -   name: Move APK to Temporary Directory
+            -   name: Move APKs to Temporary Directory
                 run: |
-                    mkdir -p ${{ runner.temp }}
-                    ## Find apk first, then move it and append the version name to the file
-                    find music/ -name "*.apk" -exec mv {} ${{ runner.temp }}/music-release-${{ env.VERSION_NAME }}.apk \;
+                    # Create a dedicated directory for the APKs
+                    mkdir -p ${{ runner.temp }}/apks
+                    
+                    # Find all APKs, preserve their architecture prefix/name, and append the version name
+                    find music/ -name "*.apk" | while read -r apk; do
+                        filename=$(basename "$apk")
+                        name_without_ext="${filename%.*}"
+                        new_filename="${name_without_ext}-${{ env.VERSION_NAME }}.apk"
+                    
+                        echo "Moving $filename to $new_filename"
+                        mv "$apk" "${{ runner.temp }}/apks/$new_filename"
+                    done
 
             -   name: Archive APKs
                 uses: actions/upload-artifact@v4
                 with:
-                    name: ${{ env.VERSION_NAME }} APKs
-                    path: |
-                        ${{ runner.temp }}/music-release-${{ env.VERSION_NAME }}.apk
+                    name: ${{ env.VERSION_NAME }}-APKs
+                    path: ${{ runner.temp }}/apks/*.apk
