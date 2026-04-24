@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <app.simple.felicity.decorations.padding.PaddingAwareLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:orientation="horizontal"
     android:layout_height="match_parent"
@@ -38,6 +39,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
+            android:layout_marginBottom="@dimen/padding_10"
             android:layout_marginTop="@dimen/padding_10">
 
             <app.simple.felicity.decorations.highlight.HighlightTextView
@@ -88,28 +90,59 @@
 
         </LinearLayout>
 
-        <app.simple.felicity.decorations.typeface.TypeFaceTextView
-            android:id="@+id/name"
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="@dimen/text_size_22"
-            android:marqueeRepeatLimit="marquee_forever"
-            android:ellipsize="marquee"
-            android:layout_marginTop="@dimen/padding_5"
-            android:singleLine="true"
-            app:appFontStyle="black"
-            app:textColorStyle="heading" />
+            android:clipChildren="false"
+            android:clipToPadding="false">
 
-        <app.simple.felicity.decorations.typeface.TypeFaceTextView
-            android:id="@+id/artist"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="@dimen/text_size_14"
-            android:marqueeRepeatLimit="marquee_forever"
-            android:ellipsize="end"
-            android:singleLine="true"
-            app:appFontStyle="regular"
-            app:textColorStyle="secondary" />
+            <ImageView
+                android:id="@+id/cover"
+                android:layout_width="@dimen/small_album_art"
+                android:layout_height="@dimen/small_album_art"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:ignore="ContentDescription" />
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:id="@+id/title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="10dp"
+                android:layout_marginTop="8dp"
+                android:drawablePadding="@dimen/padding_5"
+                android:ellipsize="end"
+                android:gravity="center_vertical"
+                android:maxLines="1"
+                android:textSize="@dimen/text_size_18"
+                app:appFontStyle="bold"
+                app:drawableTintStyle="custom"
+                app:layout_constraintBottom_toTopOf="@+id/artists"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@id/cover"
+                app:layout_constraintTop_toTopOf="@+id/cover"
+                app:layout_constraintVertical_chainStyle="packed"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:id="@+id/artists"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="10dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textSize="@dimen/text_size_14"
+                android:layout_marginBottom="8dp"
+                app:appFontStyle="medium"
+                app:layout_constraintBottom_toBottomOf="@+id/cover"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@id/cover"
+                app:layout_constraintTop_toBottomOf="@+id/title"
+                app:textColorStyle="accent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
         <app.simple.felicity.decorations.seekbars.WaveformSeekbar
             android:id="@+id/seekbar"

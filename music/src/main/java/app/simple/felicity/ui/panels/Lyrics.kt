@@ -22,6 +22,7 @@ import app.simple.felicity.dialogs.lyrics.LyricsMenu
 import app.simple.felicity.dialogs.lyrics.LyricsMenu.Companion.showLyricsMenu
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.models.Audio
@@ -227,8 +228,9 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
     private fun updateState() {
         val audio = MediaPlaybackManager.getCurrentSong() ?: return
         currentAudioPath = audio.uri
-        binding.name.text = audio.title
-        binding.artist.text = audio.getArtists()
+        binding.title.text = audio.title
+        binding.artists.text = audio.getArtists()
+        binding.cover.loadArtCoverWithPayload(audio)
         binding.lrc.setDuration(audio.duration)
         binding.seekbar.setDuration(audio.duration)
         binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = false)
@@ -301,8 +303,9 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
         if (!isSameSong) {
             lyricsViewModel.loadLrcData()
             val forward = MediaPlaybackManager.lastNavigationDirection
-            binding.name.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
-            binding.artist.setTextWithEffect(audio.getArtists(), forward, 50L)
+            binding.title.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
+            binding.artists.setTextWithEffect(audio.getArtists(), forward, 50L)
+            binding.cover.loadArtCoverWithPayload(audio)
             binding.lrc.setDuration(audio.duration)
             binding.seekbar.setDurationWithReset(audio.duration)
         }
