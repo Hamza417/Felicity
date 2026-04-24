@@ -4,6 +4,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import app.simple.felicity.decorations.lrc.model.LrcData
+import app.simple.felicity.decorations.lrc.model.LrcEntry
 import app.simple.felicity.decorations.lrc.parser.ILyricsParser
 import app.simple.felicity.decorations.lrc.parser.LrcParser
 import app.simple.felicity.decorations.lrc.parser.LyricsParseException
@@ -12,6 +13,7 @@ import app.simple.felicity.decorations.lrc.parser.WordLrcParser
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.managers.LyricsManager.Companion.SYNC_SAVE_DEBOUNCE_MS
 import app.simple.felicity.preferences.LyricsPreferences
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.LrcRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,11 +30,9 @@ import javax.inject.Singleton
 /**
  * A single place where all lyrics data lives for the currently playing song.
  *
- * Before this existed, each screen (player, lyrics panel) had its own [LyricsViewModel]
- * instance that independently loaded lyrics. When the song changed on one screen the other
- * would still show stale data. This manager fixes that — it watches the playback queue and
- * reloads lyrics automatically whenever the song changes, then all ViewModels just read from
- * the same [StateFlow] here.
+ * Every screen that needs lyrics just collects [lrcData] — no manual loading required.
+ * The manager watches the playback queue and reloads automatically on song changes,
+ * so the Lyrics panel and the player screen always see the same data.
  *
  * Think of it as the one lyrics DJ that everyone in the app is tuned into.
  *
@@ -45,6 +45,10 @@ class LyricsManager @Inject constructor(
 
     private val TAG = "LyricsManager"
 
+    private val EMPTY_LRC_DATA = LrcData().apply {
+        addEntry(LrcEntry(0L, "No lyrics found for this song."))
+    }
+
     /**
      * App-wide coroutine scope. A [SupervisorJob] is used so that a failed lyrics
      * fetch does not cancel the song-change observer or any other running job.
@@ -54,34 +58,35 @@ class LyricsManager @Inject constructor(
     private val _lrcData = MutableStateFlow<LrcData?>(null)
 
     /**
-     * The parsed lyrics for the currently playing song, or `null` while still loading.
-     * An empty [LrcData] (i.e. [LrcData.isEmpty] == true) means the song has no lyrics.
-     * Screens collect from this — there is no need to call load manually.
+     * The parsed lyrics for the currently playing song.
+     * - `null`      → a load is in progress (first start only; during song changes
+     *                  the previous song's data stays until the new one is ready).
+     * - empty [LrcData] → load finished but no lyrics were found.
+     * - non-empty   → lyrics are ready to display.
      */
     val lrcData: StateFlow<LrcData?> = _lrcData.asStateFlow()
 
     private val _loadingStatus = MutableStateFlow<LyricsLoadingStatus>(LyricsLoadingStatus.Idle)
 
     /**
-     * A live stream of what the lyrics loader is up to right now. Collect this in
-     * the UI to show things like "Searching online…" or "Downloading…" banners
-     * instead of leaving the user staring at a blank screen wondering if anything
-     * is happening. Think of it as the lyrics loader's status bar.
+     * Only emits non-[LyricsLoadingStatus.Idle] values when the manager is actively
+     * talking to the internet (searching or downloading). Local file reads are fast
+     * enough that showing a loading indicator would just be noise.
      */
     val loadingStatus: StateFlow<LyricsLoadingStatus> = _loadingStatus.asStateFlow()
 
     private val _syncOffsetMs = MutableStateFlow(0L)
 
     /**
-     * The current sync offset in milliseconds that must be added to the playback position
-     * before passing it to the lyrics view. Positive = highlight a later line (fixes lagging
-     * lyrics), negative = highlight an earlier line (fixes lyrics that are ahead).
+     * The current sync offset in milliseconds to add to the playback position before
+     * passing it to the lyrics view. Positive = highlight a later line (fixes lagging
+     * lyrics), negative = highlight an earlier line (fixes lyrics running ahead).
      */
     val syncOffsetMs: StateFlow<Long> = _syncOffsetMs.asStateFlow()
 
     /**
-     * Accumulated sync offset that callers add to each [updateTime] call on the view.
-     * Updated via [seekBy].
+     * Accumulated sync offset that callers can read synchronously from the seek listener
+     * without needing a coroutine collector.
      */
     var syncOffset: Long = 0L
         private set
@@ -96,16 +101,18 @@ class LyricsManager @Inject constructor(
     private val syncSaveHandler = Handler(Looper.getMainLooper())
     private val syncSaveRunnable = Runnable { persistSyncAdjustment() }
 
-    /** Prevents redundant network/disk fetches when the same song emits more than once. */
+    /**
+     * Path of the song whose lyrics the current [loadingJob] was started for.
+     * Used to discard stale results when the song changes mid-load.
+     */
     @Volatile
     private var lastLoadedPath: String? = null
 
-    /** Reference to the currently running load job so we can cancel it if the song changes mid-load. */
+    /** Reference to the currently running load job so we can cancel it if the song changes. */
     private var loadingJob: Job? = null
 
     init {
-        // Whenever the playback queue moves to a different song, automatically reload lyrics
-        // so every screen that collects [lrcData] gets fresh data without needing to ask.
+        // Watch the playback queue — whenever a new song starts, reload lyrics automatically.
         scope.launch {
             MediaPlaybackManager.songPositionFlow.collect {
                 loadLrcData()
@@ -114,10 +121,8 @@ class LyricsManager @Inject constructor(
     }
 
     /**
-     * Picks the best parser for the raw lyrics string.
-     *
-     * Word-by-word LRC wins if it can handle the content, then standard LRC,
-     * and plain text is the fallback so nothing ever goes unhandled.
+     * Picks the best parser for the given raw lyrics string.
+     * Word-sync LRC wins first, then standard LRC, then plain text as a last resort.
      */
     private fun selectParser(content: String): ILyricsParser = when {
         WordLrcParser().canParse(content) -> WordLrcParser()
@@ -126,113 +131,159 @@ class LyricsManager @Inject constructor(
     }
 
     /**
-     * Starts (or skips) a lyrics load for the currently playing song.
+     * Loads lyrics for the currently playing song, or skips if they are already loaded.
      *
-     * If we already have data for the same song path and a load is not already running,
-     * this is a no-op — nice and cheap. Otherwise the old job is cancelled and a fresh
-     * load begins.
+     * The song reference is captured at the call site so that a fast song change cannot
+     * trick the coroutine into loading the wrong file. Every emission into [_lrcData] is
+     * guarded by a stale-check — if the song changed before the result was ready, the
+     * result is silently discarded and the next [loadLrcData] call wins.
      */
     fun loadLrcData() {
-        val currentSongPath = MediaPlaybackManager.getCurrentSong()?.uri
+        // Capture both the song and its path NOW — do not re-read them inside the coroutine.
+        val currentSong = MediaPlaybackManager.getCurrentSong()
+        val currentSongPath = currentSong?.uri
 
+        // Already loaded (or loading) this exact song — nothing to do.
         if (currentSongPath != null && currentSongPath == lastLoadedPath) {
             if (loadingJob?.isActive == true) {
-                Log.d(TAG, "loadLrcData() skipped – still loading the same song.")
+                Log.d(TAG, "loadLrcData() skipped – already loading '${currentSong.title}'.")
                 return
             }
             if (_lrcData.value != null) {
-                Log.d(TAG, "loadLrcData() skipped – lyrics already available for this song.")
+                Log.d(TAG, "loadLrcData() skipped – lyrics already ready for '${currentSong.title}'.")
                 return
             }
         }
 
-        // Before loading new lyrics, flush any unsaved sync adjustment for the previous song.
+        // If the path is null we can't do anything meaningful — bail here so doLoad
+        // never receives a null path and we don't need the non-null assertion below.
+
+        // Bake any unsaved sync adjustment for the outgoing song before resetting state.
         persistSyncAdjustment()
 
-        // Cancel any in-flight job for a different song.
+        // Cancel the in-flight job for the previous song (cooperative cancellation).
         loadingJob?.cancel()
+
+        // Plant our flag — any result that arrives after this for a different path is stale.
         lastLoadedPath = currentSongPath
 
-        // Reset sync state so the new song starts with a clean slate.
+        // Fresh slate for sync state on the new song.
         syncOffset = 0L
         pendingSyncDeltaMs = 0L
         _syncOffsetMs.value = 0L
         bakedLrcData = null
         syncSaveHandler.removeCallbacks(syncSaveRunnable)
 
-        // Reset the status banner so the UI goes back to its quiet state for this new song.
-        _loadingStatus.value = LyricsLoadingStatus.Idle
+        // No song is playing at all — mark empty and stop here.
+        if (currentSong == null) {
+            _lrcData.value = LrcData()
+            return
+        }
 
-        // Signal to collectors that lyrics are being loaded (null = loading in progress).
-        _lrcData.value = null
+        // currentSongPath is guaranteed non-null at this point because currentSong is non-null above.
+        val path = currentSongPath ?: return
 
         loadingJob = scope.launch {
             try {
-                val currentSong = MediaPlaybackManager.getCurrentSong()
-                if (currentSong == null) {
-                    _lrcData.value = LrcData()
-                    return@launch
-                }
-
-                val loadResult = withContext(Dispatchers.IO) {
-                    lrcRepository.loadLrcFromFile(currentSong.uri)
-                }
-
-                loadResult.onSuccess { lrcContent ->
-                    if (lrcContent != null) {
-                        Log.d(TAG, "Found an existing LRC file for ${currentSong.title}.")
-                        try {
-                            val parsed = withContext(Dispatchers.Default) {
-                                selectParser(lrcContent).parse(lrcContent)
-                            }
-                            _lrcData.value = parsed
-                        } catch (e: LyricsParseException) {
-                            e.printStackTrace()
-                            _lrcData.value = LrcData()
-                        }
-                    } else {
-                        Log.d(TAG, "No LRC found for ${currentSong.title}, checking for a TXT sidecar.")
-                        val txtResult = withContext(Dispatchers.IO) {
-                            lrcRepository.loadTxtFromFile(currentSong.uri)
-                        }
-                        val txtContent = txtResult.getOrNull()
-                        if (!txtContent.isNullOrBlank()) {
-                            Log.d(TAG, "TXT sidecar found for ${currentSong.title}, loading plain-text lyrics.")
-                            try {
-                                val parsed = withContext(Dispatchers.Default) {
-                                    TxtParser().parse(txtContent)
-                                }
-                                _lrcData.value = parsed
-                            } catch (e: LyricsParseException) {
-                                e.printStackTrace()
-                                _lrcData.value = LrcData()
-                            }
-                        } else {
-                            Log.d(TAG, "Nothing local found for ${currentSong.title}, trying to fetch online.")
-                            if (LyricsPreferences.isAutoDownloadLyrics()) {
-                            fetchAndSaveLrc(
-                                    trackName = currentSong.title ?: currentSong.name,
-                                    artistName = currentSong.artist ?: "",
-                                    audioPath = currentSong.uri
-                            )
-                            } else {
-                                // Auto-download is off — let the user know we tried but stopped there.
-                                Log.d(TAG, "Auto-download disabled, skipping online fetch for ${currentSong.title}.")
-                                _loadingStatus.value = LyricsLoadingStatus.Idle
-                                _lrcData.value = LrcData()
-                        }
-                    }
-                    }
-                }.onFailure { exception ->
-                    exception.printStackTrace()
-                    _lrcData.value = LrcData()
-                }
+                doLoad(currentSong, path)
             } catch (e: Exception) {
                 e.printStackTrace()
-                _lrcData.value = LrcData()
+                emitIfStillRelevant(path, LrcData())
             }
         }
     }
+
+    /**
+     * Runs the actual file-read / network-fetch sequence for [song].
+     * [songPath] is used as the "load token" — every [_lrcData] emission is guarded
+     * so that a late-arriving result for an old song never stomps on the current one.
+     */
+    private suspend fun doLoad(song: Audio, songPath: String) {
+        // Step 1: Try the .lrc sidecar (fastest — local disk).
+        val lrcContent = withContext(Dispatchers.IO) {
+            lrcRepository.loadLrcFromFile(song.uri).getOrNull()
+        }
+
+        if (!isStillRelevant(songPath)) return
+
+        if (lrcContent != null) {
+            Log.d(TAG, "LRC sidecar found for '${song.title}'.")
+            parseThenEmit(lrcContent, songPath, fallback = LrcData()) { content ->
+                selectParser(content).parse(content)
+            }
+            return
+        }
+
+        // Step 2: Try the .txt sidecar (plain-text lyrics, also local).
+        val txtContent = withContext(Dispatchers.IO) {
+            lrcRepository.loadTxtFromFile(song.uri).getOrNull()
+        }
+
+        if (!isStillRelevant(songPath)) return
+
+        if (!txtContent.isNullOrBlank()) {
+            Log.d(TAG, "TXT sidecar found for '${song.title}'.")
+            parseThenEmit(txtContent, songPath, fallback = LrcData()) { content ->
+                TxtParser().parse(content)
+            }
+            return
+        }
+
+        // Step 3: Nothing local — try the internet if the user opted in.
+        if (LyricsPreferences.isAutoDownloadLyrics()) {
+            Log.d(TAG, "No local lyrics for '${song.title}', fetching online.")
+
+            // post an empty data first
+            emitIfStillRelevant(songPath, LrcData())
+
+            fetchAndSaveLrc(
+                    trackName = song.title ?: song.name,
+                    artistName = song.artist ?: "",
+                    audioPath = song.uri,
+                    songPath = songPath
+            )
+        } else {
+            Log.d(TAG, "No local lyrics and auto-download is off for '${song.title}'.")
+            emitIfStillRelevant(songPath, LrcData())
+        }
+    }
+
+    /**
+     * Parses [content] on the default dispatcher, then emits the result — or [fallback]
+     * if parsing blows up — provided [songPath] is still the active load target.
+     */
+    private suspend fun parseThenEmit(
+            content: String,
+            songPath: String,
+            fallback: LrcData,
+            parse: suspend (String) -> LrcData
+    ) {
+        try {
+            val parsed = withContext(Dispatchers.Default) { parse(content) }
+            emitIfStillRelevant(songPath, parsed)
+        } catch (e: LyricsParseException) {
+            e.printStackTrace()
+            emitIfStillRelevant(songPath, fallback)
+        }
+    }
+
+    /**
+     * Emits [data] into [_lrcData] only if [songPath] still matches [lastLoadedPath].
+     * Stale results from cancelled-but-not-yet-dead coroutines are quietly dropped here.
+     */
+    private fun emitIfStillRelevant(songPath: String?, data: LrcData) {
+        if (isStillRelevant(songPath)) {
+            _lrcData.value = data
+        } else {
+            Log.d(TAG, "Discarding stale lyrics result for path='$songPath' (current='$lastLoadedPath').")
+        }
+    }
+
+    /**
+     * Returns true when [songPath] is still the song we should be loading for.
+     * False means the song changed while we were busy — our result is garbage now.
+     */
+    private fun isStillRelevant(songPath: String?): Boolean = (songPath == lastLoadedPath)
 
     /**
      * Forces a fresh load even when the same song is already loaded.
@@ -246,79 +297,75 @@ class LyricsManager @Inject constructor(
     }
 
     /**
-     * Triggers a fresh lyrics lookup only when the current song has no lyrics yet.
-     *
-     * This is the right thing to call when the app comes back to the foreground — if
-     * the user already has lyrics loaded, there is nothing to do. But if they stepped
-     * away, dropped an .lrc file into the right folder, and came back, this will pick
-     * it up without forcing a wasteful full reload every time.
+     * Triggers a fresh load only when the current song genuinely has no lyrics.
+     * Handy when the app returns to the foreground — if lyrics are already loaded,
+     * there's nothing to do; if not, we give it another shot.
      */
     fun refreshIfNoLyrics() {
         val currentLrc = _lrcData.value
-        // Only do anything if we have an empty result (i.e. no lyrics were found last time).
-        // null means a load is already in progress, so we leave that alone too.
         if (currentLrc != null && currentLrc.isEmpty) {
             reloadLrcData()
         }
     }
 
     /**
-     * Tries to fetch synced lyrics from LrcLib for the given track and saves them alongside
-     * the audio file so future loads are instant.
+     * Fetches synced lyrics from LrcLib, saves them as a sidecar, and emits the result.
+     * This is the only place that updates [loadingStatus] — local reads are too fast
+     * to be worth announcing.
      *
-     * The loading status flow gets updated at each step so any UI listening in
-     * can display a friendly progress message instead of just a blank screen.
+     * [songPath] is the load token; the result is discarded if the song has changed
+     * by the time the network round-trip finishes.
      */
-    private suspend fun fetchAndSaveLrc(trackName: String, artistName: String, audioPath: String) {
-        // Let the UI know we're about to knock on LrcLib's door.
+    private suspend fun fetchAndSaveLrc(
+            trackName: String,
+            artistName: String,
+            audioPath: String,
+            songPath: String
+    ) {
         _loadingStatus.value = LyricsLoadingStatus.Searching(trackName)
 
         val result = lrcRepository.searchLyrics(trackName, artistName)
 
+        if (!isStillRelevant(songPath)) {
+            _loadingStatus.value = LyricsLoadingStatus.Idle
+            return
+        }
+
         result.onSuccess { results ->
-            val bestMatch = results.firstOrNull()
-            val syncedLyrics = bestMatch?.syncedLyrics
-            if (bestMatch != null && !syncedLyrics.isNullOrBlank()) {
-                // Found a match — now download and save it.
+            val syncedLyrics = results.firstOrNull()?.syncedLyrics
+            if (!syncedLyrics.isNullOrBlank()) {
                 _loadingStatus.value = LyricsLoadingStatus.Downloading(trackName)
                 try {
-                    val parsed = withContext(Dispatchers.Default) {
-                        LrcParser().parse(syncedLyrics)
-                    }
-                    withContext(Dispatchers.IO) {
-                        lrcRepository.saveLrcToFile(syncedLyrics, audioPath)
-                    }
-                    Log.d(TAG, "Fetched and saved synced lyrics for $trackName by $artistName.")
-                    _loadingStatus.value = LyricsLoadingStatus.Idle
-                    _lrcData.value = parsed
+                    val parsed = withContext(Dispatchers.Default) { LrcParser().parse(syncedLyrics) }
+                    withContext(Dispatchers.IO) { lrcRepository.saveLrcToFile(syncedLyrics, audioPath) }
+                    Log.d(TAG, "Downloaded and saved lyrics for '$trackName'.")
+                    emitIfStillRelevant(songPath, parsed)
                 } catch (e: LyricsParseException) {
                     e.printStackTrace()
-                    _loadingStatus.value = LyricsLoadingStatus.Idle
-                    _lrcData.value = LrcData()
+                    emitIfStillRelevant(songPath, LrcData())
                 }
             } else {
-                _loadingStatus.value = LyricsLoadingStatus.Idle
-                _lrcData.value = LrcData()
+                Log.d(TAG, "No match found online for '$trackName'.")
+                emitIfStillRelevant(songPath, LrcData())
             }
         }.onFailure { exception ->
             exception.printStackTrace()
-            _loadingStatus.value = LyricsLoadingStatus.Idle
-            _lrcData.value = LrcData()
+            emitIfStillRelevant(songPath, LrcData())
         }
+
+        _loadingStatus.value = LyricsLoadingStatus.Idle
     }
 
     /**
      * Shifts the lyrics sync by [deltaMs] milliseconds so the highlighted line
      * catches up to — or backs off from — the music.
      *
-     * After [SYNC_SAVE_DEBOUNCE_MS] milliseconds of silence the accumulated offset is
-     * baked into the .lrc file on disk and the in-memory offset resets to zero,
-     * keeping the next load clean.
+     * After [SYNC_SAVE_DEBOUNCE_MS] ms of silence the accumulated offset is baked
+     * into the .lrc file on disk and the in-memory offset resets to zero so the
+     * next load starts clean.
      *
      * Positive = later line highlights (fixes lagging lyrics).
-     * Negative = earlier line highlights (fixes lyrics that run ahead).
-     *
-     * @param deltaMs how much to shift, in milliseconds.
+     * Negative = earlier line highlights (fixes lyrics running ahead).
      */
     fun seekBy(deltaMs: Long) {
         val current = _lrcData.value
@@ -336,12 +383,9 @@ class LyricsManager @Inject constructor(
      * Bakes the accumulated sync offset into the .lrc file on disk and updates
      * the in-memory [_lrcData] to use the corrected timestamps.
      *
-     * Previously we skipped updating [_lrcData] to avoid a scroll reset, but that
-     * caused the highlight to jump in the wrong direction right after to debounce
-     * fired — the offset was removed from [_syncOffsetMs] while the timestamps in
-     * memory were still the originals, making the lyrics appear to shift by twice
-     * the intended amount. Updating [_lrcData] here keeps the view's timestamps in
-     * sync with what is on disk, and the zero offset then has nothing to undo.
+     * Updating [_lrcData] here is intentional — without it the view would lose
+     * the correction the moment [_syncOffsetMs] resets to zero, making the
+     * lyrics jump by twice the intended amount.
      */
     private fun persistSyncAdjustment() {
         val delta = pendingSyncDeltaMs
@@ -350,47 +394,33 @@ class LyricsManager @Inject constructor(
         val base = bakedLrcData ?: _lrcData.value ?: return
         val currentSong = MediaPlaybackManager.getCurrentSong() ?: return
 
-        // A positive offset means "show a later line", which requires stored timestamps
-        // to be smaller (earlier). So we subtract the delta from every timestamp.
+        // Positive offset means "show a later line" → timestamps must move earlier.
         val baked = base.shiftTimestamps(-delta)
 
         scope.launch(Dispatchers.IO) {
             val result = lrcRepository.saveLrcToFile(baked.toLrcString(), currentSong.uri)
-            result.onSuccess {
-                Log.d(TAG, "Sync offset ${delta}ms baked and saved to ${it.path}.")
-            }.onFailure {
-                Log.e(TAG, "Failed to persist the sync adjustment.", it)
-            }
+            result.onSuccess { Log.d(TAG, "Sync offset ${delta}ms baked and saved to ${it.path}.") }
+                .onFailure { Log.e(TAG, "Failed to persist sync adjustment.", it) }
         }
 
         bakedLrcData = baked
         pendingSyncDeltaMs = 0L
-
-        // Push the corrected LrcData into the flow so every collector immediately
-        // sees the right timestamps. Without this the view would lose the offset
-        // correction the moment _syncOffsetMs resets to zero below.
         _lrcData.value = baked
-
-        // Zero out the additive offset — the timestamps in _lrcData are already correct
-        // so the view no longer needs to compensate.
         _syncOffsetMs.value = 0L
         syncOffset = 0L
     }
 
     /**
-     * Deletes the .lrc sidecar file for the currently playing song and clears the lyrics view.
+     * Deletes the .lrc sidecar for the currently playing song and clears the lyrics view.
      *
-     * @param onSuccess optional callback that runs on the main thread after deletion succeeds.
+     * @param onSuccess optional callback that fires on the main thread after deletion.
      */
     fun deleteLrc(onSuccess: (() -> Unit)? = null) {
         val currentSong = MediaPlaybackManager.getCurrentSong() ?: return
 
         scope.launch {
-            withContext(Dispatchers.IO) {
-                lrcRepository.deleteLrcFile(currentSong.uri)
-            }
+            withContext(Dispatchers.IO) { lrcRepository.deleteLrcFile(currentSong.uri) }
 
-            // Clear in-memory state so the view goes blank immediately.
             _lrcData.value = LrcData()
             pendingSyncDeltaMs = 0L
             syncOffset = 0L
@@ -408,28 +438,25 @@ class LyricsManager @Inject constructor(
 }
 
 /**
- * Describes what the lyrics loader is doing at any given moment so the UI
- * can show friendly progress messages instead of a blank screen.
+ * Describes what the lyrics loader is doing at any given moment.
  *
- * [Idle] is the quiet state — nothing happening, nothing to show.
- * [Searching] means we sent a search request to LrcLib and are waiting for results.
- * [Downloading] means we found a match and are saving it to disk.
+ * [Idle] is the quiet default — nothing happening, nothing to show.
+ * [Searching] and [Downloading] only appear when talking to the internet.
  */
 sealed class LyricsLoadingStatus {
 
-    /** Everything is calm — no network activity in progress. */
+    /** Calm and quiet — no network activity in progress. */
     data object Idle : LyricsLoadingStatus()
 
     /**
-     * The app is asking LrcLib if it has lyrics for this track.
-     * @param trackName The name of the song being searched so the UI can display it.
+     * Asking LrcLib whether it has lyrics for this track.
+     * @param trackName the song being searched, so the UI can display it.
      */
     data class Searching(val trackName: String) : LyricsLoadingStatus()
 
     /**
-     * A match was found and the lyrics are being written to disk as a sidecar.
-     * @param trackName The name of the song whose lyrics are being saved.
+     * A match was found and the lyrics are being written to disk.
+     * @param trackName the song whose lyrics are being saved.
      */
     data class Downloading(val trackName: String) : LyricsLoadingStatus()
 }
-

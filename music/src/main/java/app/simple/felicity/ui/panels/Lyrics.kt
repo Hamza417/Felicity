@@ -144,6 +144,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
             lyricsViewModel.lrcData.collect { lrcData ->
                 if (lrcData == null || lrcData.isEmpty) {
                     Log.d(TAG, "No lyrics found for the current song.")
+                    binding.lrc.setEmptyLrcData()
                 } else {
                     Log.d(TAG, "Loaded lyrics with ${lrcData.size()} lines.")
                     binding.lrc.setLrcData(
@@ -298,8 +299,6 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
         currentAudioPath = audio.uri
 
         if (!isSameSong) {
-            // Real song change — reset the view and kick off a fresh lyrics load.
-            binding.lrc.reset()
             lyricsViewModel.loadLrcData()
             val forward = MediaPlaybackManager.lastNavigationDirection
             binding.name.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
