@@ -57,7 +57,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     
     // Default values
     private static final float DEFAULT_TEXT_SIZE = 22f; // sp
-    private static final float DEFAULT_CURRENT_TEXT_SIZE = 28f; // sp
     private static final float DEFAULT_LINE_SPACING = 16f; // dp
     public static final float DEFAULT_FADE_LENGTH = 140f; // dp - length of vertical fade
     private static final float DEFAULT_SCROLL_MULTIPLIER = 1f; // Accelerated scroll multiplier
@@ -66,8 +65,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private static final float SPRING_STIFFNESS = SpringForce.STIFFNESS_LOW; // Spring stiffness for overscroll
     private static final float SPRING_DAMPING_RATIO = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Spring damping
     private static final float FLING_FRICTION = 1.5f; // Friction for fling animation
-    private static final float TEXT_SIZE_SPRING_STIFFNESS = SpringForce.STIFFNESS_MEDIUM; // Text size animation stiffness
-    private static final float TEXT_SIZE_SPRING_DAMPING = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Text size animation damping
+    // TEXT_SIZE_SPRING constants removed — all lines share the same text size now.
     private static final float MAX_BLUR_RADIUS = 15f; // Maximum blur radius at edges (in pixels)
     private static final int DEFAULT_NORMAL_COLOR = Color.GRAY;
     private static final int DEFAULT_CURRENT_COLOR = Color.WHITE;
@@ -100,23 +98,8 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
      */
     private int wordSyncLayoutLineIndex = -1;
     
-    // Cache for wrapped text layouts at normal size
+    // Cache for wrapped text layouts — one pass, one cache, no drama.
     private final HashMap <Integer, StaticLayout> normalLayoutCache = new HashMap <>();
-    
-    // Cache for wrapped text layouts at current (highlighted) size
-    private final HashMap <Integer, StaticLayout> currentLayoutCache = new HashMap <>();
-    
-    // Cache for layout heights (to properly calculate spacing)
-    private final HashMap <Integer, Float> layoutHeights = new HashMap <>();
-    
-    // Cache for animated heights (smoothly interpolated values for positioning)
-    private final HashMap <Integer, Float> animatedHeights = new HashMap <>();
-    
-    // Height animations
-    private final HashMap <Integer, SpringAnimation> heightAnimations = new HashMap <>();
-    
-    // Text size animation
-    private final java.util.HashMap <Integer, Float> animatedTextSizes = new java.util.HashMap <>();
     
     // Curtain reveal animation: per-line blur radius (X -> 0), scale (1.2 -> 1), alpha (0 -> 1)
     private final java.util.HashMap <Integer, Float> curtainBlur = new java.util.HashMap <>();
@@ -132,7 +115,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private final HashMap <Float, BlurMaskFilter> blurMaskFilters = new HashMap <>();
     // Styling properties
     private float normalTextSize;
-    private float currentTextSize;
     private float lineSpacing;
     private int normalTextColor;
     private int currentTextColor;
@@ -143,7 +125,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private String emptyText;
     private float fadeLength;
     private boolean enableFade = true;
-    private final HashMap <Integer, SpringAnimation> textSizeAnimations = new java.util.HashMap <>();
     private int previousLineIndex = -1;
     // Scrolling
     private OverScroller scroller;
@@ -236,7 +217,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private void init(Context context, @Nullable AttributeSet attrs) {
         // Initialize default values
         normalTextSize = sp2px(context, DEFAULT_TEXT_SIZE);
-        currentTextSize = sp2px(context, DEFAULT_CURRENT_TEXT_SIZE);
         lineSpacing = dp2px(context, DEFAULT_LINE_SPACING);
         fadeLength = dp2px(context, DEFAULT_FADE_LENGTH);
         scrollMultiplier = DEFAULT_SCROLL_MULTIPLIER;
@@ -248,11 +228,11 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         
         // Read attributes if provided
         if (attrs != null) {
-            TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.ModernLrcView);
+            TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.FelicityLrcView);
             try {
-                normalTextSize = a.getDimension(R.styleable.ModernLrcView_lrcTextSize, normalTextSize);
-                normalTextColor = a.getColor(R.styleable.ModernLrcView_lrcNormalTextColor, normalTextColor);
-                currentTextColor = a.getColor(R.styleable.ModernLrcView_lrcCurrentTextColor, currentTextColor);
+                normalTextSize = a.getDimension(R.styleable.FelicityLrcView_lrcTextSize, normalTextSize);
+                normalTextColor = a.getColor(R.styleable.FelicityLrcView_lrcNormalTextColor, normalTextColor);
+                currentTextColor = a.getColor(R.styleable.FelicityLrcView_lrcCurrentTextColor, currentTextColor);
             } finally {
                 a.recycle();
             }
@@ -267,11 +247,11 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         }
         
         currentPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        currentPaint.setTextSize(currentTextSize);
+        currentPaint.setTextSize(normalTextSize);
         currentPaint.setColor(currentTextColor);
         currentPaint.setFakeBoldText(true);
         if (!isInEditMode()) {
-            currentPaint.setTypeface(TypeFace.INSTANCE.getBoldTypeFace(context));
+            currentPaint.setTypeface(TypeFace.INSTANCE.getBlackTypeFace(context));
         }
         
         // Initialize fade paint for vertical gradient effect
@@ -368,174 +348,23 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Get animated text size for a line
-     */
-    private float getAnimatedTextSize(int lineIndex) {
-        // In static (plain-text) mode, all lines have the same normal size.
-        if (isStaticMode()) {
-            return normalTextSize;
-        }
-        
-        // Return animated size if it exists, otherwise return default size
-        Float animatedSize = animatedTextSizes.get(lineIndex);
-        if (animatedSize != null) {
-            return animatedSize;
-        }
-        
-        // Check if this line is empty - empty lines should never be highlighted
-        if (lrcData != null && lineIndex >= 0 && lineIndex < lrcData.size()) {
-            LrcEntry entry = lrcData.getEntries().get(lineIndex);
-            String text = entry.getText();
-            if (text == null || text.trim().isEmpty()) {
-                return normalTextSize;
-            }
-        }
-        
-        // No animation in progress, return static size based on current state
-        // Only the current line should be highlighted
-        if (lineIndex == currentLineIndex) {
-            return currentTextSize;
-        }
-        
-        // For all other cases, return normal size
-        return normalTextSize;
-    }
-    
-    /**
-     * Animate text size change for a line
-     */
-    private void animateTextSize(int lineIndex, float targetSize) {
-        // Get current size (either animated or default)
-        float currentSize = getAnimatedTextSize(lineIndex);
-        
-        // Skip animation if we're already at the target size
-        if (Math.abs(currentSize - targetSize) < 0.1f) {
-            animatedTextSizes.put(lineIndex, targetSize);
-            return;
-        }
-        
-        // Cancel any existing animation for this line
-        SpringAnimation existingAnimation = textSizeAnimations.get(lineIndex);
-        if (existingAnimation != null && existingAnimation.isRunning()) {
-            existingAnimation.cancel();
-        }
-        
-        // Create holder for text size animation
-        FloatValueHolder holder = new FloatValueHolder();
-        holder.setValue(currentSize);
-        
-        // Create spring animation for text size
-        SpringAnimation animation = new SpringAnimation(holder, holder.getProperty());
-        animation.setSpring(new SpringForce(targetSize)
-                .setStiffness(TEXT_SIZE_SPRING_STIFFNESS)
-                .setDampingRatio(TEXT_SIZE_SPRING_DAMPING));
-        
-        animation.addUpdateListener((anim, value, velocity) -> {
-            animatedTextSizes.put(lineIndex, value);
-            invalidate();
-        });
-        
-        animation.addEndListener((anim, canceled, value, velocity) -> {
-            // Always set final value and clean up
-            animatedTextSizes.put(lineIndex, targetSize);
-            textSizeAnimations.remove(lineIndex);
-            
-            // If we're animating to normal size, and we're done, remove from cache entirely
-            // This ensures fresh state next time
-            if (Math.abs(targetSize - normalTextSize) < 0.1f && lineIndex != currentLineIndex) {
-                animatedTextSizes.remove(lineIndex);
-            }
-            
-            invalidate();
-        });
-        
-        // Store animation reference
-        textSizeAnimations.put(lineIndex, animation);
-        animation.start();
-    }
-    
-    /**
-     * Animate height change smoothly
-     */
-    private void animateHeight(int lineIndex, float fromHeight, float toHeight) {
-        // Cancel any existing height animation for this line
-        SpringAnimation existingAnimation = heightAnimations.get(lineIndex);
-        if (existingAnimation != null && existingAnimation.isRunning()) {
-            existingAnimation.cancel();
-        }
-        
-        // Create holder for height animation
-        FloatValueHolder holder = new FloatValueHolder();
-        holder.setValue(fromHeight);
-        
-        // Create spring animation for height with very low stiffness for smooth, slow transition
-        SpringAnimation animation = new SpringAnimation(holder, holder.getProperty());
-        animation.setSpring(new SpringForce(toHeight)
-                .setStiffness(SpringForce.STIFFNESS_VERY_LOW) // Very slow, smooth transition
-                .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY));
-        
-        animation.addUpdateListener((anim, value, velocity) -> {
-            // Update animated height - this affects positioning
-            animatedHeights.put(lineIndex, value);
-            invalidate();
-        });
-        
-        animation.addEndListener((anim, canceled, value, velocity) -> {
-            animatedHeights.put(lineIndex, toHeight);
-            heightAnimations.remove(lineIndex);
-            invalidate();
-        });
-        
-        // Store animation reference
-        heightAnimations.put(lineIndex, animation);
-        animation.start();
-    }
-    
-    /**
-     * Calculate cumulative Y offset for a given line
-     * Uses animated heights for smooth positioning
+     * Calculate cumulative Y offset for a given line.
+     * Since all lines share the same text size, we just look up the cached layout height
+     * (which is stable once measured) and sum them up — no per-frame recalculation needed.
      */
     private float getLineOffset(int lineIndex) {
         float offset = 0f;
         
         for (int i = 0; i < lineIndex; i++) {
-            // Use animated height for smooth positioning
-            Float animHeight = animatedHeights.get(i);
-            if (animHeight != null) {
-                offset += animHeight + lineSpacing;
-            } else {
-                // Fallback to cached height or text size
-                Float cachedHeight = layoutHeights.get(i);
-                if (cachedHeight != null) {
-                    offset += cachedHeight + lineSpacing;
-                } else {
-                    // Ultimate fallback to text size if height not cached yet
-                    if (i == currentLineIndex) {
-                        offset += currentTextSize + lineSpacing;
-                    } else {
-                        offset += normalTextSize + lineSpacing;
-                    }
-                }
-            }
+            StaticLayout layout = normalLayoutCache.get(i);
+            float height = (layout != null) ? layout.getHeight() : normalTextSize;
+            offset += height + lineSpacing;
         }
         
-        // Add half height of current line to center it
-        Float animCurrentHeight = animatedHeights.get(lineIndex);
-        if (animCurrentHeight != null) {
-            offset += animCurrentHeight / 2f;
-        } else {
-            Float currentHeight = layoutHeights.get(lineIndex);
-            if (currentHeight != null) {
-                offset += currentHeight / 2f;
-            } else {
-                // Fallback to text size
-                if (lineIndex == currentLineIndex) {
-                    offset += currentTextSize / 2f;
-                } else {
-                    offset += normalTextSize / 2f;
-                }
-            }
-        }
+        // Add half height of the target line so the view centers on that line.
+        StaticLayout targetLayout = normalLayoutCache.get(lineIndex);
+        float targetHeight = (targetLayout != null) ? targetLayout.getHeight() : normalTextSize;
+        offset += targetHeight / 2f;
         
         return offset;
     }
@@ -564,32 +393,19 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             LrcEntry entry = lrcData.getEntries().get(i);
             String text = entry.getText();
             
-            // Get animated text size for this line
-            float animatedSize = getAnimatedTextSize(i);
-            
             // Calculate Y position for this line
             float y = offsetY + getLineOffset(i);
             
-            // Choose paint and set animated size
-            TextPaint paint;
-            // Don't highlight empty lines; in static mode all lines use the normal paint
-            if (!isStaticMode() && i == currentLineIndex && text != null && !text.trim().isEmpty()) {
-                paint = currentPaint;
-            } else {
-                paint = normalPaint;
-            }
-            
-            // Apply animated text size
-            paint.setTextSize(animatedSize);
-            
-            // Get or create StaticLayout for this line.
-            // Word-sync lines on the active row get a specially colored spannable
-            // so each word lights up individually; everything else uses the normal path.
+            // All layouts are always built with normalPaint so every line has identical font
+            // metrics and there is zero vertical shift between normal and highlighted lines.
+            // The highlight color is applied at draw time (see below), not baked into the layout.
+            // This also fixes a caching bug where accent-colored layouts would linger on lines
+            // that had already moved past the highlight.
             StaticLayout layout;
             if (!isStaticMode() && i == currentLineIndex && entry.hasWordSync()) {
-                layout = getOrCreateWordSyncLayout(entry, paint, i);
+                layout = getOrCreateWordSyncLayout(entry, normalPaint, i);
             } else {
-                layout = getOrCreateLayout(text, paint, i);
+                layout = getOrCreateLayout(text, normalPaint, i);
             }
             
             // Skip lines that are completely off-screen (accounting for multi-line height)
@@ -603,26 +419,21 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             Float cBlur = curtainBlur.get(i);
             if (enableFade) {
                 float blurAmount = calculateBlurAmount(y, getHeight());
-                // Add curtain blur on top of edge blur (during reveal animation)
                 if (cBlur != null) {
                     blurAmount = Math.max(blurAmount, cBlur);
                 }
-                if (blurAmount > 0.5f) { // Only apply blur if significant
-                    // Round to nearest 0.5 to reduce unique filter instances
+                if (blurAmount > 0.5f) {
                     float roundedBlur = Math.round(blurAmount * 2f) / 2f;
-                    
-                    // Get or create cached blur filter
                     BlurMaskFilter blurFilter = blurMaskFilters.get(roundedBlur);
                     if (blurFilter == null) {
                         blurFilter = new BlurMaskFilter(roundedBlur, BlurMaskFilter.Blur.NORMAL);
                         blurMaskFilters.put(roundedBlur, blurFilter);
                     }
-                    paint.setMaskFilter(blurFilter);
+                    normalPaint.setMaskFilter(blurFilter);
                 } else {
-                    paint.setMaskFilter(null);
+                    normalPaint.setMaskFilter(null);
                 }
             } else {
-                // Even without edge-fade, still apply curtain blur if active
                 if (cBlur != null && cBlur > 0.5f) {
                     float roundedBlur = Math.round(cBlur * 2f) / 2f;
                     BlurMaskFilter blurFilter = blurMaskFilters.get(roundedBlur);
@@ -630,9 +441,9 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                         blurFilter = new BlurMaskFilter(roundedBlur, BlurMaskFilter.Blur.NORMAL);
                         blurMaskFilters.put(roundedBlur, blurFilter);
                     }
-                    paint.setMaskFilter(blurFilter);
+                    normalPaint.setMaskFilter(blurFilter);
                 } else {
-                    paint.setMaskFilter(null);
+                    normalPaint.setMaskFilter(null);
                 }
             }
             
@@ -643,7 +454,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 int paddingRight = getPaddingRight();
                 int availableWidth = getWidth() - paddingLeft - paddingRight;
                 
-                // Set ripple bounds to cover the full width of the text area
                 rippleDrawable.setBounds(
                         paddingLeft,
                         (int) yOffset,
@@ -656,7 +466,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             canvas.save();
             
             // Calculate X position for the layout based on alignment
-            float x = calculateXPositionForLayout(layout, paint, i);
+            float x = calculateXPositionForLayout(layout, normalPaint, i);
             
             // Position the text vertically (centered on y position)
             float yOffset = y - (lineHeight / 2f);
@@ -670,30 +480,44 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 canvas.scale(cScale, cScale, halfW, halfH);
             }
             
+            // For the current highlighted line, switch normalPaint to the accent color and
+            // fake-bold before drawing, then restore so other lines are unaffected.
+            // Using fake-bold (stroke thickening) instead of a separate typeface guarantees
+            // zero change in font metrics — the text won't shift even a single pixel.
+            boolean isCurrentHighlight = !isStaticMode()
+                    && i == currentLineIndex
+                    && text != null && !text.trim().isEmpty();
+            
+            int savedColor = normalPaint.getColor();
+            boolean savedFakeBold = normalPaint.isFakeBoldText();
+            if (isCurrentHighlight) {
+                normalPaint.setColor(currentTextColor);
+                normalPaint.setFakeBoldText(true);
+            }
+            
             // Apply curtain reveal alpha (0 -> 1 spawn-in effect)
             Float cAlpha = curtainAlpha.get(i);
-            int savedAlpha = paint.getAlpha();
+            int savedAlpha = normalPaint.getAlpha();
             if (cAlpha != null) {
-                paint.setAlpha(Math.round(savedAlpha * cAlpha));
+                normalPaint.setAlpha(Math.round(savedAlpha * cAlpha));
             }
             
             layout.draw(canvas);
             
-            // Restore paint alpha
+            // Restore paint state so nothing leaks between lines
             if (cAlpha != null) {
-                paint.setAlpha(savedAlpha);
+                normalPaint.setAlpha(savedAlpha);
+            }
+            if (isCurrentHighlight) {
+                normalPaint.setColor(savedColor);
+                normalPaint.setFakeBoldText(savedFakeBold);
             }
             
             canvas.restore();
         }
         
-        // Clear mask filters
+        // Clear mask filter so the paint is clean for the next draw pass
         normalPaint.setMaskFilter(null);
-        currentPaint.setMaskFilter(null);
-        
-        // Restore original paint sizes
-        normalPaint.setTextSize(normalTextSize);
-        currentPaint.setTextSize(currentTextSize);
         
         // Restore canvas state
         canvas.restore();
@@ -728,13 +552,8 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                     Layout.Alignment.ALIGN_NORMAL;
         };
         
-        // Determine which size we're rendering at by checking the paint's actual size
-        float currentPaintSize = paint.getTextSize();
-        boolean isUsingCurrentSize = Math.abs(currentPaintSize - currentTextSize) < 1f;
-        
-        // Try to use cached layout for the correct size
-        HashMap <Integer, StaticLayout> cache = isUsingCurrentSize ? currentLayoutCache : normalLayoutCache;
-        StaticLayout cachedLayout = cache.get(lineIndex);
+        // All lines are laid out at normalTextSize now, so one cache covers everything.
+        StaticLayout cachedLayout = normalLayoutCache.get(lineIndex);
         
         // Use cached layout if it exists and was created at the same text size
         if (cachedLayout != null) {
@@ -765,31 +584,8 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                     .build();
         }
         
-        // Cache it
-        cache.put(lineIndex, layout);
-        
-        // Update height tracking
-        float newHeight = (float) layout.getHeight();
-        Float previousHeight = layoutHeights.get(lineIndex);
-        
-        // If layoutHeights was cleared, but we still have an animated height, use that as the "previous"
-        if (previousHeight == null) {
-            previousHeight = animatedHeights.get(lineIndex);
-        }
-        
-        if (previousHeight != null && Math.abs(previousHeight - newHeight) > 1f) {
-            // Height changed - animate the transition
-            animateHeight(lineIndex, previousHeight, newHeight);
-        } else if (previousHeight == null) {
-            // First time - set directly without animation
-            animatedHeights.put(lineIndex, newHeight);
-        } else {
-            // Height hasn't changed significantly
-            animatedHeights.put(lineIndex, newHeight);
-        }
-        
-        // Update cached height
-        layoutHeights.put(lineIndex, newHeight);
+        // Cache it — one layout per line, stable for the lifetime of this lyrics data.
+        normalLayoutCache.put(lineIndex, layout);
         
         return layout;
     }
@@ -984,19 +780,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                     .build();
         }
         
-        // Keep height tracking in sync so line spacing and scroll positions stay accurate.
-        float newHeight = layout.getHeight();
-        Float previousHeight = layoutHeights.get(lineIndex);
-        if (previousHeight == null) {
-            previousHeight = animatedHeights.get(lineIndex);
-        }
-        if (previousHeight != null && Math.abs(previousHeight - newHeight) > 1f) {
-            animateHeight(lineIndex, previousHeight, newHeight);
-        } else {
-            animatedHeights.put(lineIndex, newHeight);
-        }
-        layoutHeights.put(lineIndex, newHeight);
-        
+        // Keep word-sync layout cached so we don't rebuild it on every frame.
         wordSyncCurrentLayout = layout;
         wordSyncLayoutLineIndex = lineIndex;
         return layout;
@@ -1025,13 +809,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         int newLineIndex = findLineIndexByTime(timeInMillis + (data != null ? data.getOffset() : 0));
         
         if (newLineIndex != currentLineIndex) {
-            // Animate the previous line back to normal size (same as updateTime())
-            if (previousLineIndex >= 0 && lrcData != null && previousLineIndex < lrcData.size()) {
-                animateTextSize(previousLineIndex, normalTextSize);
-                normalLayoutCache.remove(previousLineIndex);
-                currentLayoutCache.remove(previousLineIndex);
-            }
-
             previousLineIndex = currentLineIndex;
             currentLineIndex = newLineIndex;
             
@@ -1039,16 +816,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             currentWordIndex = -1;
             wordSyncCurrentLayout = null;
             wordSyncLayoutLineIndex = -1;
-            
-            // Prime the new highlight line's text size so it is correct from frame 0
-            if (currentLineIndex >= 0 && lrcData != null && currentLineIndex < lrcData.size()) {
-                LrcEntry entry = lrcData.getEntries().get(currentLineIndex);
-                String txt = entry.getText();
-                float targetSize = (txt != null && !txt.trim().isEmpty()) ? currentTextSize : normalTextSize;
-                animatedTextSizes.put(currentLineIndex, targetSize);
-                normalLayoutCache.remove(currentLineIndex);
-                currentLayoutCache.remove(currentLineIndex);
-            }
         }
         
         invalidate();
@@ -1082,30 +849,10 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         this.scrollY = 0f;
         this.targetScrollY = 0f;
         this.normalLayoutCache.clear();
-        this.currentLayoutCache.clear();
-        this.layoutHeights.clear();
-        this.animatedHeights.clear();
-        this.animatedTextSizes.clear();
         this.blurMaskFilters.clear();
         this.currentWordIndex = -1;
         this.wordSyncCurrentLayout = null;
         this.wordSyncLayoutLineIndex = -1;
-        
-        // Cancel all height animations - create a copy to avoid ConcurrentModificationException
-        for (SpringAnimation animation : new java.util.ArrayList <>(heightAnimations.values())) {
-            if (animation != null && animation.isRunning()) {
-                animation.cancel();
-            }
-        }
-        heightAnimations.clear();
-        
-        // Cancel all text size animations - create a copy to avoid ConcurrentModificationException
-        for (SpringAnimation animation : new java.util.ArrayList <>(textSizeAnimations.values())) {
-            if (animation != null && animation.isRunning()) {
-                animation.cancel();
-            }
-        }
-        textSizeAnimations.clear();
         
         // Cancel any running curtain animations
         for (android.animation.Animator anim : curtainAnimators) {
@@ -1280,28 +1027,10 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         this.scrollY = 0f;
         this.targetScrollY = 0f;
         this.normalLayoutCache.clear();
-        this.currentLayoutCache.clear();
-        this.layoutHeights.clear();
-        this.animatedHeights.clear();
-        this.animatedTextSizes.clear();
         this.blurMaskFilters.clear();
         this.currentWordIndex = -1;
         this.wordSyncCurrentLayout = null;
         this.wordSyncLayoutLineIndex = -1;
-        
-        for (SpringAnimation animation : new java.util.ArrayList <>(heightAnimations.values())) {
-            if (animation != null && animation.isRunning()) {
-                animation.cancel();
-            }
-        }
-        heightAnimations.clear();
-        
-        for (SpringAnimation animation : new java.util.ArrayList <>(textSizeAnimations.values())) {
-            if (animation != null && animation.isRunning()) {
-                animation.cancel();
-            }
-        }
-        textSizeAnimations.clear();
         
         for (android.animation.Animator anim : curtainAnimators) {
             if (anim != null && anim.isRunning()) {
@@ -1318,18 +1047,10 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             return;
         }
         
-        // ── Apply position immediately (no animation) ──
+        // All lines share normalTextSize, so no per-line size priming is needed here.
         if (!isStaticMode()) {
             long adjustedTime = timeInMillis + data.getOffset();
             currentLineIndex = findLineIndexByTime(adjustedTime);
-            
-            // Prime text sizes directly so the highlighted line is correct from frame 0
-            if (currentLineIndex >= 0 && currentLineIndex < data.size()) {
-                LrcEntry entry = data.getEntries().get(currentLineIndex);
-                String txt = entry.getText();
-                float targetSize = (txt != null && !txt.trim().isEmpty()) ? currentTextSize : normalTextSize;
-                animatedTextSizes.put(currentLineIndex, targetSize);
-            }
         } else if (durationMs > 0) {
             float maxScroll = getMaxScrollY();
             if (maxScroll > 0) {
@@ -1395,23 +1116,8 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         
         // Apply line change immediately (same logic as updateTime but synchronous)
         if (newLineIndex != currentLineIndex) {
-            if (previousLineIndex >= 0 && previousLineIndex < lrcData.size()) {
-                animatedTextSizes.put(previousLineIndex, normalTextSize);
-                normalLayoutCache.remove(previousLineIndex);
-                currentLayoutCache.remove(previousLineIndex);
-            }
-            
             previousLineIndex = currentLineIndex;
             currentLineIndex = newLineIndex;
-            
-            if (currentLineIndex >= 0 && currentLineIndex < lrcData.size()) {
-                LrcEntry entry = lrcData.getEntries().get(currentLineIndex);
-                String text = entry.getText();
-                float targetSize = (text != null && !text.trim().isEmpty()) ? currentTextSize : normalTextSize;
-                animatedTextSizes.put(currentLineIndex, targetSize);
-                normalLayoutCache.remove(currentLineIndex);
-                currentLayoutCache.remove(currentLineIndex);
-            }
         }
         
         invalidate();
@@ -1490,30 +1196,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             wordSyncCurrentLayout = null;
             wordSyncLayoutLineIndex = -1;
             
-            // Animate text size changes
-            if (previousLineIndex >= 0 && previousLineIndex < lrcData.size()) {
-                // Animate previous line to normal size
-                animateTextSize(previousLineIndex, normalTextSize);
-                // Clear cached layouts for the previous line to force recalculation at new size
-                normalLayoutCache.remove(previousLineIndex);
-                currentLayoutCache.remove(previousLineIndex);
-            }
-            
-            if (currentLineIndex >= 0 && currentLineIndex < lrcData.size()) {
-                // Animate current line to large size (only if not empty)
-                LrcEntry currentEntry = lrcData.getEntries().get(currentLineIndex);
-                String currentText = currentEntry.getText();
-                if (currentText != null && !currentText.trim().isEmpty()) {
-                    animateTextSize(currentLineIndex, currentTextSize);
-                } else {
-                    // For empty lines, keep normal text size
-                    animateTextSize(currentLineIndex, normalTextSize);
-                }
-                // Clear cached layouts for the current line to force recalculation at new size
-                normalLayoutCache.remove(currentLineIndex);
-                currentLayoutCache.remove(currentLineIndex);
-            }
-            
             // Only auto-scroll if not user scrolling, auto-scroll is enabled, and not from a tap seek
             if (!isUserScrolling && isAutoScrollEnabled && !isTapSeek) {
                 scrollToLine(currentLineIndex);
@@ -1581,9 +1263,8 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             float lineY = offsetY + getLineOffset(i);
             
             // Get layout height for this line
-            Float cachedHeight = layoutHeights.get(i);
-            float lineHeight = cachedHeight != null ? cachedHeight :
-                    (i == currentLineIndex ? currentTextSize : normalTextSize);
+            StaticLayout layout = normalLayoutCache.get(i);
+            float lineHeight = (layout != null) ? layout.getHeight() : normalTextSize;
             
             float topBound = lineY - (lineHeight / 2f);
             float bottomBound = lineY + (lineHeight / 2f);
@@ -1872,7 +1553,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         
         // Clear layout caches so new layouts are built with the correct StaticLayout alignment
         normalLayoutCache.clear();
-        currentLayoutCache.clear();
         wordSyncCurrentLayout = null;
         wordSyncLayoutLineIndex = -1;
         
@@ -1921,69 +1601,35 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
      * @param normalSizeSp  new normal-line text size in <b>sp</b>
      * @param currentSizeSp new highlighted-line text size in <b>sp</b>
      */
-    public void setTextSizes(float normalSizeSp, float currentSizeSp) {
+    public void setTextSizes(float normalSizeSp, @SuppressWarnings ("unused") float currentSizeSp) {
         float newNormal = sp2px(getContext(), normalSizeSp);
-        float newCurrent = sp2px(getContext(), currentSizeSp);
         
-        boolean normalChanged = Math.abs(newNormal - normalTextSize) > 0.1f;
-        boolean currentChanged = Math.abs(newCurrent - currentTextSize) > 0.1f;
-        if (!normalChanged && !currentChanged) {
+        if (Math.abs(newNormal - normalTextSize) < 0.1f) {
             return;
         }
         
         normalTextSize = newNormal;
-        currentTextSize = newCurrent;
         
-        // Update the base paint sizes so new layouts are built at the right size.
+        // Both paints use the same size — only the color and boldness differ.
         normalPaint.setTextSize(normalTextSize);
-        currentPaint.setTextSize(currentTextSize);
+        currentPaint.setTextSize(normalTextSize);
         
-        // Clear layout caches — stale layouts have wrong heights/wrapping for the new sizes.
+        // Clear the layout cache so every line gets remeasured at the new size.
         normalLayoutCache.clear();
-        currentLayoutCache.clear();
-        // The word-sync layout also depends on text size, so drop it too.
         wordSyncCurrentLayout = null;
         wordSyncLayoutLineIndex = -1;
-        
-        // Cancel any in-flight text-size springs and re-kick them toward the new targets.
-        // This makes the font scale animate elastically instead of snapping.
-        for (SpringAnimation anim : new java.util.ArrayList <>(textSizeAnimations.values())) {
-            if (anim != null && anim.isRunning()) {
-                anim.cancel();
-            }
-        }
-        textSizeAnimations.clear();
-        
-        // Re-animate every line to its new target size so the font grows/shrinks smoothly.
-        if (lrcData != null) {
-            for (int i = 0; i < lrcData.size(); i++) {
-                float target = (i == currentLineIndex) ? currentTextSize : normalTextSize;
-                // Only animate if there's a meaningful difference from the currently stored size.
-                Float current = animatedTextSizes.get(i);
-                float from = (current != null) ? current : target;
-                if (Math.abs(from - target) > 0.1f) {
-                    animateTextSize(i, target);
-                } else {
-                    animatedTextSizes.put(i, target);
-                }
-            }
-        } else {
-            animatedTextSizes.clear();
-        }
         
         invalidate();
     }
     
     public void setNormalTextSize(float size) {
-        float newCurrent = (currentTextSize / (normalTextSize > 0 ? normalTextSize : 1f)) *
-                sp2px(getContext(), size);
-        setTextSizes(size, newCurrent / getResources().getDisplayMetrics().scaledDensity);
+        setTextSizes(size, size);
     }
     
     // Public API
     
     public void setCurrentTextSize(float size) {
-        setTextSizes(normalTextSize / getResources().getDisplayMetrics().scaledDensity, size);
+        setTextSizes(size, size);
     }
     
     public void setLineSpacing(float spacing) {
@@ -2092,30 +1738,10 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         this.isUserScrolling = false;
         this.durationMs = 0L;
         this.normalLayoutCache.clear();
-        this.currentLayoutCache.clear();
-        this.layoutHeights.clear();
-        this.animatedHeights.clear();
-        this.animatedTextSizes.clear();
         this.blurMaskFilters.clear();
         this.currentWordIndex = -1;
         this.wordSyncCurrentLayout = null;
         this.wordSyncLayoutLineIndex = -1;
-        
-        // Cancel all height animations - create a copy to avoid ConcurrentModificationException
-        for (SpringAnimation animation : new java.util.ArrayList <>(heightAnimations.values())) {
-            if (animation != null && animation.isRunning()) {
-                animation.cancel();
-            }
-        }
-        heightAnimations.clear();
-        
-        // Cancel all text size animations - create a copy to avoid ConcurrentModificationException
-        for (SpringAnimation animation : new java.util.ArrayList <>(textSizeAnimations.values())) {
-            if (animation != null && animation.isRunning()) {
-                animation.cancel();
-            }
-        }
-        textSizeAnimations.clear();
         
         removeCallbacks(autoScrollRunnable);
         if (blurAnimator != null && blurAnimator.isRunning()) {
