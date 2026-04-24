@@ -77,6 +77,23 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private static final float CURTAIN_INITIAL_SCALE = 1.2f; // Starting scale for curtain effect
     private static final long CURTAIN_STAGGER_MS = 40; // Delay between each line (ms)
     private static final long CURTAIN_DURATION_MS = 450; // Duration of each line's animation
+    /**
+     * Duration used for the plain fade-in animation that runs on subsequent lyric loads
+     * (i.e., after the first curtain has already played). We keep this short so the new
+     * song's lyrics appear quickly without a jarring swap.
+     */
+    private static final long FADE_IN_DURATION_MS = 300;
+    /**
+     * Extra overscroll room (in pixels, derived from dp) that the fling animation is allowed
+     * to enter before the spring pulls everything back. This prevents the abrupt hard-stop
+     * that happens when a fling hits the min/max boundary.
+     */
+    private static final float FLING_OVERSCROLL_DP = 100f;
+    /**
+     * Spring stiffness used specifically for snapping back from an overscroll position.
+     * Higher than the auto-scroll stiffness so the rubber-band feel is snappy but not jarring.
+     */
+    private static final float OVERSCROLL_SPRING_STIFFNESS = 400f;
     // Data
     private LrcData lrcData;
     private int currentLineIndex = -1;
@@ -913,14 +930,20 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 }
             });
         }
-        
-        triggerRippleCurtainAnimation(currentLineIndex);
+        // No curtain or ripple here — this method is called during normal playback
+        // (e.g. when the sync offset is nudged) and should be completely invisible to the user.
     }
     
     /**
-     * Set lyrics data
+     * Set lyrics data. The first time this is called with actual lyrics (coming from an empty
+     * or null state), it plays the full curtain reveal animation — blur, scale, stagger and all.
+     * For every subsequent song change it just fades lines in smoothly so nobody gets a seizure
+     * from the constant motion overload.
      */
     public void setLrcData(LrcData data) {
+        // Remember whether we had any lyrics before so we know which animation to play.
+        boolean wasEmpty = (this.lrcData == null || this.lrcData.isEmpty());
+
         this.lrcData = data;
         this.currentLineIndex = -1;
         this.scrollY = 0f;
@@ -930,7 +953,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         this.currentWordIndex = -1;
         this.wordSyncCurrentLayout = null;
         this.wordSyncLayoutLineIndex = -1;
-        
+
         // Cancel any running curtain animations
         for (android.animation.Animator anim : curtainAnimators) {
             if (anim != null && anim.isRunning()) {
@@ -942,12 +965,30 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         curtainScale.clear();
         curtainAlpha.clear();
         
-        invalidate();
-        
-        // Trigger curtain reveal after data is set (post so layout heights are available)
+        // Pre-populate curtainAlpha = 0 for every line BEFORE we call invalidate(),
+        // so the very first drawn frame already shows transparent lines rather than
+        // a flash of fully-visible text that disappears once the animation kicks in.
         if (data != null && !data.isEmpty()) {
-            post(this :: triggerCurtainAnimation);
+            for (int i = 0; i < data.size(); i++) {
+                curtainAlpha.put(i, 0f);
+            }
         }
+
+        invalidate();
+
+        if (data != null && !data.isEmpty()) {
+            if (wasEmpty) {
+                // First arrival of lyrics — play the grand curtain entrance.
+                post(this :: triggerCurtainAnimation);
+            } else {
+                // Song changed while we already had lyrics — a subtle fade is plenty.
+                post(this :: triggerFadeInAnimation);
+            }
+        }
+    }
+    
+    public void setEmptyLrcData() {
+        setLrcData(new LrcData());
     }
     
     /**
@@ -1013,7 +1054,58 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Animate a single line's curtain reveal (alpha 0→1, blur X→0, scale 1.2→1) after {@code startDelay}.
+     * A lighter alternative to the full curtain that runs when switching songs after the
+     * first load. Every line simply fades from invisible to fully visible at once — no blur,
+     * no scale, no staggered chaos. It is fast, calm, and friendly to people who are sensitive
+     * to heavy motion effects.
+     */
+    private void triggerFadeInAnimation() {
+        if (lrcData == null || lrcData.isEmpty()) {
+            return;
+        }
+        
+        for (android.animation.Animator anim : curtainAnimators) {
+            if (anim != null && anim.isRunning()) {
+                anim.cancel();
+            }
+        }
+        curtainAnimators.clear();
+        
+        // Make sure every line starts at 0 (they should already be from setLrcData, but
+        // defensive programming never hurt anyone).
+        int count = lrcData.size();
+        for (int i = 0; i < count; i++) {
+            curtainAlpha.put(i, 0f);
+        }
+        
+        android.animation.ValueAnimator fadeAnim = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        fadeAnim.setDuration(FADE_IN_DURATION_MS);
+        fadeAnim.setInterpolator(new DecelerateInterpolator(1.5f));
+        fadeAnim.addUpdateListener(anim -> {
+            float alpha = (float) anim.getAnimatedValue();
+            for (int i = 0; i < count; i++) {
+                curtainAlpha.put(i, alpha);
+            }
+            invalidate();
+        });
+        fadeAnim.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                // Lines are fully visible now — remove the per-line alpha entries so
+                // normal rendering (no extra alpha multiplier) takes over.
+                curtainAlpha.clear();
+                invalidate();
+            }
+        });
+        
+        curtainAnimators.add(fadeAnim);
+        fadeAnim.start();
+    }
+
+    /**
+     * Animate a single line's curtain reveal (alpha 0→1, blur X→0, scale 1.2→1) after the given delay.
+     * Each line blooms into view on its own schedule, which is what gives the curtain effect its
+     * satisfying cascade feel.
      */
     private void animateCurtainLine(int index, long startDelay) {
         // Set initial state
@@ -1097,7 +1189,9 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
      * @param timeInMillis current playback position in milliseconds
      */
     public void setLrcData(LrcData data, long timeInMillis) {
-        // ── Reset all state (same as setLrcData but skip the normal curtain trigger) ──
+        // Remember if we had lyrics before so we know which animation to use afterward.
+        boolean wasEmpty = (this.lrcData == null || this.lrcData.isEmpty());
+
         this.lrcData = data;
         this.currentLineIndex = -1;
         this.previousLineIndex = -1;
@@ -1108,7 +1202,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         this.currentWordIndex = -1;
         this.wordSyncCurrentLayout = null;
         this.wordSyncLayoutLineIndex = -1;
-        
+
         for (android.animation.Animator anim : curtainAnimators) {
             if (anim != null && anim.isRunning()) {
                 anim.cancel();
@@ -1118,12 +1212,18 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         curtainBlur.clear();
         curtainScale.clear();
         curtainAlpha.clear();
-        
+
         if (data == null || data.isEmpty()) {
             invalidate();
             return;
         }
         
+        // Pre-populate curtainAlpha = 0 so the very first frame shows invisible lines
+        // rather than a flash of opaque text that vanishes once the animation begins.
+        for (int i = 0; i < data.size(); i++) {
+            curtainAlpha.put(i, 0f);
+        }
+
         // All lines share normalTextSize, so no per-line size priming is needed here.
         if (!isStaticMode()) {
             long adjustedTime = timeInMillis + data.getOffset();
@@ -1136,13 +1236,14 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 targetScrollY = scrollY;
             }
         }
-        
+
         invalidate();
         
-        // ── Post ripple curtain so layout heights are ready ──
+        // Post so layout heights are measured before we snap the scroll or animate.
         final int anchorLine = currentLineIndex;
+        final boolean firstLoad = wasEmpty;
         post(() -> {
-            // Now that a draw pass has happened, layout heights are cached → snap scroll
+            // Snap scroll to the active line now that heights are known.
             if (anchorLine >= 0) {
                 float targetY = getLineOffset(anchorLine);
                 scrollY = targetY;
@@ -1151,7 +1252,13 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                     scrollSpringAnimation.cancel();
                 }
             }
-            triggerRippleCurtainAnimation(anchorLine);
+            if (firstLoad) {
+                // Grand entrance — ripple outward from the current line.
+                triggerRippleCurtainAnimation(anchorLine);
+            } else {
+                // Just fade everything in quietly; the scroll already moved to the right spot.
+                triggerFadeInAnimation();
+            }
         });
     }
     
@@ -1499,31 +1606,52 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     
     /**
      * When the finger lifts while the content is stretched past its natural boundary,
-     * we snap it back instantly — right where the finger stopped. No spring, no
-     * momentum, no flying off in some direction. The user said stop; we stop.
+     * we spring it back smoothly — like a rubber band gently releasing rather than
+     * a door slamming shut. Nobody likes abrupt stops.
      */
     private void snapBackFromOverscroll() {
         float maxScroll = getMaxScrollY();
         float targetY = scrollY;
-        
+
         if (scrollY < 0) {
             targetY = 0;
         } else if (scrollY > maxScroll) {
             targetY = maxScroll;
         }
         
-        // Only do anything if we are actually outside the valid range.
+        // Only spring back if we are actually past the valid range.
         if (targetY != scrollY) {
             isInOverscroll = false;
             
-            // Cancel any pending fling that might fight the snap.
-            if (flingAnimation != null) {
+            // Cancel any pending fling so they don't fight the spring.
+            if (flingAnimation != null && flingAnimation.isRunning()) {
                 flingAnimation.cancel();
             }
+            if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
+                scrollSpringAnimation.cancel();
+            }
             
-            // Snap directly to the boundary — no extra motion needed.
-            scrollY = targetY;
-            invalidate();
+            // Use a snappy spring so the rubber-band release feels quick but not jarring.
+            final float snapTarget = targetY;
+            FloatValueHolder holder = new FloatValueHolder();
+            holder.setValue(scrollY);
+            
+            scrollSpringAnimation = new SpringAnimation(holder, holder.getProperty());
+            scrollSpringAnimation.setSpring(new SpringForce(snapTarget)
+                    .setStiffness(OVERSCROLL_SPRING_STIFFNESS)
+                    .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY));
+            
+            scrollSpringAnimation.addUpdateListener((anim, value, velocity) -> {
+                scrollY = value;
+                invalidate();
+            });
+            scrollSpringAnimation.addEndListener((anim, canceled, value, velocity) -> {
+                if (!canceled) {
+                    scrollY = snapTarget;
+                    invalidate();
+                }
+            });
+            scrollSpringAnimation.start();
         }
     }
     
@@ -2006,43 +2134,53 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         
         @Override
         public boolean onFling(MotionEvent e1, @NonNull MotionEvent e2, float velocityX, float velocityY) {
-            // If we're in overscroll when the fling fires, the snap-back spring is already
-            // running. Let it finish; don't start a fling that would fight against it.
-            if (isInOverscroll) {
-                return true;
-            }
-            
-            // Cancel any existing fling animations (springAnimation handles overscroll, keep it)
+            // Cancel any existing fling before starting a fresh one.
             if (flingAnimation != null && flingAnimation.isRunning()) {
                 flingAnimation.cancel();
             }
             
-            // Apply scroll multiplier to fling velocity
+            // Apply scroll multiplier to fling velocity.
             float acceleratedVelocity = -velocityY * scrollMultiplier;
             
-            // Create fling animation with custom friction
-            FloatValueHolder holder = new FloatValueHolder();
-            holder.setValue(scrollY);
+            float maxScroll = getMaxScrollY();
+            // Use the full drag-overscroll range as fling bounds so that a fling started
+            // while the content is already stretched (e.g. user swiped past the edge then
+            // flicked) never puts the starting value outside the allowed range — that would
+            // cause an IllegalArgumentException inside DynamicAnimation.
+            float flingBoundExtra = maxOverscrollDistance;
+            float flingMin = -flingBoundExtra;
+            float flingMax = maxScroll + flingBoundExtra;
             
+            // Make sure scrollY itself is inside the bounds we're about to hand the animator.
+            // It could be just slightly past them due to floating-point drift during dragging.
+            float clampedStart = Math.max(flingMin, Math.min(flingMax, scrollY));
+            scrollY = clampedStart;
+
+            FloatValueHolder holder = new FloatValueHolder();
+            holder.setValue(clampedStart);
+
             flingAnimation = new FlingAnimation(holder, holder.getProperty());
             flingAnimation.setStartVelocity(acceleratedVelocity);
             flingAnimation.setFriction(FLING_FRICTION);
             
-            // Clamp the fling strictly to the valid scroll range so it never shoots
-            // into overscroll territory — the rubber-band stretch is a drag-only feel.
-            float maxScroll = getMaxScrollY();
-            flingAnimation.setMinValue(0f);
-            flingAnimation.setMaxValue(maxScroll);
-            
+            flingAnimation.setMinValue(flingMin);
+            flingAnimation.setMaxValue(flingMax);
+
             flingAnimation.addUpdateListener((animation, value, velocity) -> {
                 scrollY = value;
                 invalidate();
             });
             
             flingAnimation.addEndListener((animation, canceled, value, velocity) -> {
-                // Fling is bounded to [0, maxScroll] so overscroll can't happen here,
-                // but we reset the flag just to keep state consistent.
-                isInOverscroll = false;
+                if (!canceled) {
+                    // If the fling coasted into overscroll territory, spring it back gently.
+                    if (scrollY < 0 || scrollY > getMaxScrollY()) {
+                        isInOverscroll = true;
+                        snapBackFromOverscroll();
+                    } else {
+                        isInOverscroll = false;
+                    }
+                }
             });
             
             flingAnimation.start();
