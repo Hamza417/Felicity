@@ -31,7 +31,7 @@
             android:singleLine="true"
             android:marqueeRepeatLimit="marquee_forever"
             android:layout_gravity="center_vertical"
-            app:appFontStyle="regular"
+            app:appFontStyle="bold"
             app:textColorStyle="heading" />
 
     </LinearLayout>
@@ -61,7 +61,7 @@
             android:singleLine="true"
             android:marqueeRepeatLimit="marquee_forever"
             android:layout_gravity="center_vertical"
-            app:appFontStyle="regular"
+            app:appFontStyle="bold"
             app:textColorStyle="heading" />
 
     </LinearLayout>
@@ -92,7 +92,7 @@
             android:singleLine="true"
             android:marqueeRepeatLimit="marquee_forever"
             android:layout_gravity="center_vertical"
-            app:appFontStyle="regular"
+            app:appFontStyle="bold"
             app:textColorStyle="heading" />
 
     </LinearLayout>
@@ -126,7 +126,7 @@
             android:singleLine="true"
             android:marqueeRepeatLimit="marquee_forever"
             android:layout_gravity="center_vertical"
-            app:appFontStyle="regular"
+            app:appFontStyle="bold"
             app:textColorStyle="heading" />
 
     </LinearLayout>
