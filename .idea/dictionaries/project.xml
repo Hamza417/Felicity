@@ -8,10 +8,12 @@
       <w>Hant</w>
       <w>Musepack</w>
       <w>aaudio</w>
+      <w>albumartist</w>
       <w>amplituda's</w>
       <w>chargebacked</w>
       <w>coeffs</w>
       <w>diffusors</w>
+      <w>discnumber</w>
       <w>externalstorage</w>
       <w>gumroad</w>
       <w>jlong</w>
@@ -21,6 +23,9 @@
       <w>mediastore</w>
       <w>playhead</w>
       <w>rasterizing</w>
+      <w>totaltracks</w>
+      <w>tracknumber</w>
+      <w>tracktotal</w>
       <w>truncatable</w>
       <w>unsynchronized</w>
     </words>

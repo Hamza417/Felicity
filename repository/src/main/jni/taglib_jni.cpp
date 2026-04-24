@@ -33,6 +33,10 @@
 
 #include <string>
 #include "taglib/tstring.h"
+#include "taglib/flacproperties.h"
+#include "taglib/wavproperties.h"
+#include "taglib/aiffproperties.h"
+#include "taglib/apeproperties.h"
 
 #define LOG_TAG "TagLibJNI"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
@@ -58,7 +62,7 @@ static jstring getProperty(JNIEnv *env, const TagLib::PropertyMap &props, const 
 // Converts a jstring to a TagLib::String (UTF-8). Returns an empty TagLib
 // string if the jstring is null, so callers don't have to guard every call.
 static TagLib::String fromJString(JNIEnv *env, jstring js) {
-    if (!js) return TagLib::String();
+    if (!js) return {};
     const char *chars = env->GetStringUTFChars(js, nullptr);
     TagLib::String s(chars, TagLib::String::UTF8);
     env->ReleaseStringUTFChars(js, chars);
@@ -154,6 +158,34 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
     jlong duration = ap ? static_cast<jlong>(ap->lengthInMilliseconds()) : 0L;
     jlong bitrate = ap ? static_cast<jlong>(ap->bitrate()) : 0L;
     jlong sampleRate = ap ? static_cast<jlong>(ap->sampleRate()) : 0L;
+    jint channels = ap ? ap->channels() : 0;
+    jlong bitsPerSample = 0;
+
+    if (ap) {
+        // Try casting to known lossless formats that expose bitsPerSample()
+        if (auto flacProps = dynamic_cast<TagLib::FLAC::Properties *>(ap)) {
+            bitsPerSample = static_cast<jlong>(flacProps->bitsPerSample());
+        } else if (auto wavProps = dynamic_cast<TagLib::RIFF::WAV::Properties *>(ap)) {
+            bitsPerSample = static_cast<jlong>(wavProps->bitsPerSample());
+        } else if (auto aiffProps = dynamic_cast<TagLib::RIFF::AIFF::Properties *>(ap)) {
+            bitsPerSample = static_cast<jlong>(aiffProps->bitsPerSample());
+        } else if (auto apeProps = dynamic_cast<TagLib::APE::Properties *>(ap)) {
+            bitsPerSample = static_cast<jlong>(apeProps->bitsPerSample());
+        }
+            // The Universal Fallback Calculation for lossy/unknown formats
+        else if (sampleRate > 0 && channels > 0) {
+            // We multiply by 1000 to get bits per second.
+            // We add (sampleRate * channels) / 2 to the numerator to perform integer rounding
+            // instead of truncation.
+            bitsPerSample =
+                    ((bitrate * 1000) + (sampleRate * channels) / 2) / (sampleRate * channels);
+
+            // Clamp bizarre lossy math to standard 16-bit presentation
+            if (bitsPerSample > 0 && bitsPerSample < 16) {
+                bitsPerSample = 16;
+            }
+        }
+    }
 
     // Find the TagLibMetadata Kotlin data class and call its constructor.
     jclass metaClass = env->FindClass(
@@ -192,7 +224,7 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
             metaClass, ctor,
             title, artist, album, genre, year, comment,
             albumArtist, composer, lyricist, discNumber, trackNumber, numTracks, compilation,
-            duration, bitrate, sampleRate, 0L);
+            duration, bitrate, sampleRate, bitsPerSample);
 }
 
 /**
@@ -253,8 +285,7 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeSaveToFd(
     // like a plain four-digit year; otherwise store it via the property map below.
     if (year) {
         TagLib::String yearStr = fromJString(env, year);
-        unsigned int yearUint = static_cast<unsigned int>(std::strtoul(yearStr.toCString(), nullptr,
-                                                                       10));
+        auto yearUint = static_cast<unsigned int>(std::strtoul(yearStr.toCString(), nullptr, 10));
         if (yearUint > 0) tag->setYear(yearUint);
     }
 
