@@ -98,7 +98,9 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
                     reverbMix = EqualizerPreferences.getReverbMix(),
                     reverbDecay = EqualizerPreferences.getReverbDecay(),
                     reverbSize = EqualizerPreferences.getReverbSize(),
-                    reverbDamp = EqualizerPreferences.getReverbDamp()
+                    reverbDamp = EqualizerPreferences.getReverbDamp(),
+                    pitch = EqualizerPreferences.getPitch(),
+                    playbackSpeed = EqualizerPreferences.getPlaybackSpeed()
             )
         }
     }
@@ -180,6 +182,8 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
      * @property reverbDecay Reverb decay time in [0 .. 1].
      * @property reverbSize Reverb room size in [0 .. 1].
      * @property reverbDamp Reverb high-frequency damping in [0 .. 1].
+     * @property pitch Playback pitch multiplier in [0.25 .. 4.0]. 1.0 = normal.
+     * @property playbackSpeed Playback speed multiplier in [0.25 .. 4.0]. 1.0 = normal.
      */
     data class EqualizerInitialState(
             val isEqEnabled: Boolean,
@@ -193,7 +197,9 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             val reverbMix: Float,
             val reverbDecay: Float,
             val reverbSize: Float,
-            val reverbDamp: Float
+            val reverbDamp: Float,
+            val pitch: Float,
+            val playbackSpeed: Float
     ) {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -210,6 +216,8 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
                     && reverbDecay == other.reverbDecay
                     && reverbSize == other.reverbSize
                     && reverbDamp == other.reverbDamp
+                    && pitch == other.pitch
+                    && playbackSpeed == other.playbackSpeed
         }
 
         override fun hashCode(): Int {
@@ -225,6 +233,8 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             result = 31 * result + reverbDecay.hashCode()
             result = 31 * result + reverbSize.hashCode()
             result = 31 * result + reverbDamp.hashCode()
+            result = 31 * result + pitch.hashCode()
+            result = 31 * result + playbackSpeed.hashCode()
             return result
         }
     }

@@ -372,6 +372,56 @@ class Equalizer : MediaFragment() {
                 return if (drive < 0.05f) "Off" else "%.1f".format(drive)
             }
         })
+
+        // Pitch knob — shifts the perceived musical pitch of the audio up or down.
+        // Knob value 0-100 maps to pitch multiplier 0.25 (very low) ... 1.0 (normal) ... 4.0 (very high).
+        // The center snap at 50 corresponds to normal pitch (1.0x), which is the most common setting.
+        binding.speakerScreen.pitchKnob.centerSnapEnabled = true
+        binding.speakerScreen.pitchKnob.setTickTexts("0.25x", "4x")
+        binding.speakerScreen.pitchKnob.divisionCount = 100
+        binding.speakerScreen.pitchKnob.setKnobPosition(pitchToKnobValue(state.pitch), animate = false)
+        binding.speakerScreen.pitchKnob.setListener(object : RotaryKnobListener {
+            override fun onIncrement(value: Float) {}
+
+            override fun onRotate(value: Float) {
+                val pitch = knobValueToPitch(value)
+                EqualizerPreferences.setPitch(pitch)
+                Log.d(TAG, "Pitch updated: ${pitch}x")
+            }
+
+            override fun onLabel(value: Float): String {
+                val pitch = knobValueToPitch(value)
+                return when {
+                    pitch in 0.99f..1.01f -> getString(R.string.normal)
+                    else -> "${"%.2f".format(pitch)}x"
+                }
+            }
+        })
+
+        // Speed knob — changes how fast or slow the audio plays back, independent of pitch.
+        // Knob value 0-100 maps to speed multiplier 0.25 (very slow) ... 1.0 (normal) ... 4.0 (very fast).
+        // The center snap at 50 corresponds to normal speed (1.0x) so it is easy to return to default.
+        binding.speakerScreen.speedKnob.centerSnapEnabled = true
+        binding.speakerScreen.speedKnob.setTickTexts("0.25x", "4x")
+        binding.speakerScreen.speedKnob.divisionCount = 100
+        binding.speakerScreen.speedKnob.setKnobPosition(speedToKnobValue(state.playbackSpeed), animate = false)
+        binding.speakerScreen.speedKnob.setListener(object : RotaryKnobListener {
+            override fun onIncrement(value: Float) {}
+
+            override fun onRotate(value: Float) {
+                val speed = knobValueToSpeed(value)
+                EqualizerPreferences.setPlaybackSpeed(speed)
+                Log.d(TAG, "Playback speed updated: ${speed}x")
+            }
+
+            override fun onLabel(value: Float): String {
+                val speed = knobValueToSpeed(value)
+                return when {
+                    speed in 0.99f..1.01f -> getString(R.string.normal)
+                    else -> "${"%.2f".format(speed)}x"
+                }
+            }
+        })
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -566,6 +616,44 @@ class Equalizer : MediaFragment() {
 
         /** Maps reverb high-frequency damping [0..1] to knob position [0..100]. */
         fun reverbDampToKnob(damp: Float): Float = (damp * 100f).coerceIn(0f, 100f)
+
+        /**
+         * Maps knob position [0..100] to pitch multiplier [0.25..4.0].
+         *
+         * The mapping uses a logarithmic curve so the knob feels natural — small turns
+         * near the center (normal pitch) produce fine adjustments, while large turns
+         * toward the extremes reach the more dramatic pitch shifts.
+         */
+        fun knobValueToPitch(knobValue: Float): Float {
+            // Center (50) = 1.0x; use log2 scale: pitch = 2^((knob-50)/50 * 2)
+            // Range: 2^(-2) = 0.25 at 0, 2^0 = 1.0 at 50, 2^2 = 4.0 at 100
+            val normalized = (knobValue - 50f) / 50f  // -1 to +1
+            return Math.pow(2.0, (normalized * 2.0)).toFloat().coerceIn(0.25f, 4.0f)
+        }
+
+        /** Maps pitch multiplier [0.25..4.0] to knob position [0..100]. */
+        fun pitchToKnobValue(pitch: Float): Float {
+            // Inverse of knobValueToPitch: knob = (log2(pitch) / 2 * 50) + 50
+            val log2pitch = (Math.log(pitch.toDouble()) / Math.log(2.0)).toFloat()
+            return ((log2pitch / 2f) * 50f + 50f).coerceIn(0f, 100f)
+        }
+
+        /**
+         * Maps knob position [0..100] to speed multiplier [0.25..4.0].
+         *
+         * Same logarithmic curve as pitch so the two knobs feel consistent when
+         * the user is dialing them in side by side.
+         */
+        fun knobValueToSpeed(knobValue: Float): Float {
+            val normalized = (knobValue - 50f) / 50f
+            return Math.pow(2.0, (normalized * 2.0)).toFloat().coerceIn(0.25f, 4.0f)
+        }
+
+        /** Maps speed multiplier [0.25..4.0] to knob position [0..100]. */
+        fun speedToKnobValue(speed: Float): Float {
+            val log2speed = (Math.log(speed.toDouble()) / Math.log(2.0)).toFloat()
+            return ((log2speed / 2f) * 50f + 50f).coerceIn(0f, 100f)
+        }
 
         private const val SCREEN_STATE_KEY = "screen_state"
     }

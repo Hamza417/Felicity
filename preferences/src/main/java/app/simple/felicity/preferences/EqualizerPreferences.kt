@@ -106,6 +106,21 @@ object EqualizerPreferences {
      */
     const val REVERB_SIZE = "eq_reverb_size"
 
+    /**
+     * Playback pitch shift stored as a float in [0.25 .. 4.0].
+     * 1.0 = normal pitch (no shift, default). Values below 1.0 lower the pitch
+     * and values above 1.0 raise it. Applied via ExoPlayer's PlaybackParameters.
+     */
+    const val PITCH = "eq_pitch"
+
+    /**
+     * Playback speed stored as a float in [0.25 .. 4.0].
+     * 1.0 = normal playback speed (default). Applied via ExoPlayer's PlaybackParameters.
+     * Pitch follows speed unless it is independently adjusted — ExoPlayer handles that
+     * relationship internally, so both values are stored and applied together.
+     */
+    const val PLAYBACK_SPEED = "eq_playback_speed"
+
     fun setBalance(pan: Float) {
         SharedPreferences.getSharedPreferences().edit { putFloat(BALANCE, pan.coerceIn(-1f, 1f)) }
     }
@@ -346,5 +361,39 @@ object EqualizerPreferences {
      */
     fun getReverbSize(): Float {
         return SharedPreferences.getSharedPreferences().getFloat(REVERB_SIZE, 0.5f)
+    }
+
+    /**
+     * Persists the playback pitch shift, clamped to [0.25 .. 4.0].
+     *
+     * @param pitch Pitch multiplier. 1.0 = normal (no shift).
+     */
+    fun setPitch(pitch: Float) {
+        SharedPreferences.getSharedPreferences().edit { putFloat(PITCH, pitch.coerceIn(0.25f, 4.0f)) }
+    }
+
+    /**
+     * Returns the persisted playback pitch shift.
+     * Defaults to 1.0 (normal pitch) when no value has been saved yet.
+     */
+    fun getPitch(): Float {
+        return SharedPreferences.getSharedPreferences().getFloat(PITCH, 1.0f)
+    }
+
+    /**
+     * Persists the playback speed, clamped to [0.25 .. 4.0].
+     *
+     * @param speed Speed multiplier. 1.0 = normal speed.
+     */
+    fun setPlaybackSpeed(speed: Float) {
+        SharedPreferences.getSharedPreferences().edit { putFloat(PLAYBACK_SPEED, speed.coerceIn(0.25f, 4.0f)) }
+    }
+
+    /**
+     * Returns the persisted playback speed.
+     * Defaults to 1.0 (normal speed) when no value has been saved yet.
+     */
+    fun getPlaybackSpeed(): Float {
+        return SharedPreferences.getSharedPreferences().getFloat(PLAYBACK_SPEED, 1.0f)
     }
 }

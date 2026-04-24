@@ -22,6 +22,7 @@ import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
@@ -400,6 +401,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // Apply saved repeat mode
         applyRepeatMode(PlayerPreferences.getRepeatMode())
 
+        // Restore the saved playback speed and pitch so the user's settings are honored
+        // from the very first song — no need to touch a knob to get it going.
+        applyPlaybackParameters(
+                EqualizerPreferences.getPlaybackSpeed(),
+                EqualizerPreferences.getPitch()
+        )
+
         player.addListener(playerListener)
         player.addAnalyticsListener(analyticsListener)
     }
@@ -644,6 +652,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         setSilenceState()
         configureGaplessPlayback()
         applyRepeatMode(PlayerPreferences.getRepeatMode())
+        applyPlaybackParameters(
+                EqualizerPreferences.getPlaybackSpeed(),
+                EqualizerPreferences.getPitch()
+        )
         player.addListener(playerListener)
         player.addAnalyticsListener(analyticsListener)
     }
@@ -699,9 +711,25 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         audioProcessorManager.applyBalance(pan)
     }
 
+    /**
+     * Applies a new playback speed and pitch shift to the ExoPlayer instance.
+     *
+     * ExoPlayer handles the time-stretching and pitch-shifting internally via its
+     * [PlaybackParameters] — no DSP processor is needed for this.
+     * Both values are applied together in a single call so the engine transitions
+     * smoothly without any intermediate state.
+     *
+     * @param speed Speed multiplier in [0.25 .. 4.0]. 1.0 = normal speed.
+     * @param pitch Pitch multiplier in [0.25 .. 4.0]. 1.0 = normal pitch.
+     */
+    private fun applyPlaybackParameters(speed: Float, pitch: Float) {
+        player.playbackParameters = PlaybackParameters(speed, pitch)
+    }
+
     private val playerListener = object : Player.Listener {
         override fun onAudioSessionIdChanged(audioSessionId: Int) {
             super.onAudioSessionIdChanged(audioSessionId)
+            Log.d(TAG, "Audio session ID changed: $audioSessionId")
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -1046,6 +1074,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 val size = EqualizerPreferences.getReverbSize()
                 Log.d(TAG, "Reverb preference changed — mix=$mix, decay=$decay, damp=$damp, size=$size")
                 audioProcessorManager.applyReverb(mix, decay, damp, size)
+            }
+            EqualizerPreferences.PITCH,
+            EqualizerPreferences.PLAYBACK_SPEED -> {
+                val pitch = EqualizerPreferences.getPitch()
+                val speed = EqualizerPreferences.getPlaybackSpeed()
+                Log.d(TAG, "Playback parameters changed — speed=${speed}x, pitch=${pitch}x")
+                applyPlaybackParameters(speed, pitch)
             }
             else -> {
                 // Handle each individual EQ band preference change
