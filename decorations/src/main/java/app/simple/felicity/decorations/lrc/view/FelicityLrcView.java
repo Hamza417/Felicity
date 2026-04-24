@@ -65,7 +65,11 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private static final float SPRING_STIFFNESS = SpringForce.STIFFNESS_LOW; // Spring stiffness for overscroll
     private static final float SPRING_DAMPING_RATIO = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Spring damping
     private static final float FLING_FRICTION = 1.5f; // Friction for fling animation
-    // TEXT_SIZE_SPRING constants removed — all lines share the same text size now.
+    // How quickly the highlighted line cross-fades its accent color in and out (ms).
+    private static final long HIGHLIGHT_FADE_IN_MS = 350;
+    private static final long HIGHLIGHT_FADE_OUT_MS = 250;
+    // Lower stiffness = more relaxed, unhurried auto-scroll animation.
+    private static final float SCROLL_SPRING_STIFFNESS = 80f;
     private static final float MAX_BLUR_RADIUS = 15f; // Maximum blur radius at edges (in pixels)
     private static final int DEFAULT_NORMAL_COLOR = Color.GRAY;
     private static final int DEFAULT_CURRENT_COLOR = Color.WHITE;
@@ -100,6 +104,14 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     
     // Cache for wrapped text layouts — one pass, one cache, no drama.
     private final HashMap <Integer, StaticLayout> normalLayoutCache = new HashMap <>();
+    
+    // Animated color fractions for smooth highlight cross-fade.
+    // highlightFraction goes 0→1 when a line becomes active (fade in accent color).
+    // dehighlightFraction goes 1→0 when the previously active line moves off (fade back to normal).
+    private float highlightFraction = 0f;
+    private float dehighlightFraction = 0f;
+    private android.animation.ValueAnimator highlightAnimator;
+    private android.animation.ValueAnimator dehighlightAnimator;
     
     // Curtain reveal animation: per-line blur radius (X -> 0), scale (1.2 -> 1), alpha (0 -> 1)
     private final java.util.HashMap <Integer, Float> curtainBlur = new java.util.HashMap <>();
@@ -369,6 +381,68 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         return offset;
     }
     
+    /**
+     * Linearly blend two ARGB colors by a fraction (0 = fully "from", 1 = fully "to").
+     * This is the same math that Android's ArgbEvaluator uses, just inlined here so we
+     * don't need to allocate an object every frame.
+     */
+    private static int blendColors(int from, int to, float fraction) {
+        float inv = 1f - fraction;
+        int a = Math.round(Color.alpha(from) * inv + Color.alpha(to) * fraction);
+        int r = Math.round(Color.red(from) * inv + Color.red(to) * fraction);
+        int g = Math.round(Color.green(from) * inv + Color.green(to) * fraction);
+        int b = Math.round(Color.blue(from) * inv + Color.blue(to) * fraction);
+        return Color.argb(a, r, g, b);
+    }
+    
+    /**
+     * Kick off the color-transition animations when the highlighted line changes.
+     * The new active line fades in to accent color; the old one fades back to normal.
+     */
+    private void startHighlightTransition() {
+        // Fade the new line in from normal → accent
+        if (highlightAnimator != null && highlightAnimator.isRunning()) {
+            highlightAnimator.cancel();
+        }
+        highlightFraction = 0f;
+        highlightAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        highlightAnimator.setDuration(HIGHLIGHT_FADE_IN_MS);
+        highlightAnimator.setInterpolator(new DecelerateInterpolator());
+        highlightAnimator.addUpdateListener(a -> {
+            highlightFraction = (float) a.getAnimatedValue();
+            invalidate();
+        });
+        highlightAnimator.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                highlightFraction = 1f;
+                invalidate();
+            }
+        });
+        highlightAnimator.start();
+        
+        // Fade the old line out from accent → normal (only if there was a previous line)
+        if (dehighlightAnimator != null && dehighlightAnimator.isRunning()) {
+            dehighlightAnimator.cancel();
+        }
+        dehighlightFraction = 1f;
+        dehighlightAnimator = android.animation.ValueAnimator.ofFloat(1f, 0f);
+        dehighlightAnimator.setDuration(HIGHLIGHT_FADE_OUT_MS);
+        dehighlightAnimator.setInterpolator(new DecelerateInterpolator());
+        dehighlightAnimator.addUpdateListener(a -> {
+            dehighlightFraction = (float) a.getAnimatedValue();
+            invalidate();
+        });
+        dehighlightAnimator.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                dehighlightFraction = 0f;
+                invalidate();
+            }
+        });
+        dehighlightAnimator.start();
+    }
+    
     private void drawLyrics(Canvas canvas) {
         float centerY = getHeight() / 2f;
         float offsetY = centerY - scrollY;
@@ -487,12 +561,20 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             boolean isCurrentHighlight = !isStaticMode()
                     && i == currentLineIndex
                     && text != null && !text.trim().isEmpty();
+            boolean isPreviousHighlight = !isStaticMode()
+                    && i == previousLineIndex
+                    && text != null && !text.trim().isEmpty()
+                    && dehighlightFraction > 0f;
             
             int savedColor = normalPaint.getColor();
             boolean savedFakeBold = normalPaint.isFakeBoldText();
             if (isCurrentHighlight) {
-                normalPaint.setColor(currentTextColor);
+                // Blend from normal gray toward accent color as highlightFraction rises (0→1).
+                normalPaint.setColor(blendColors(normalTextColor, currentTextColor, highlightFraction));
                 normalPaint.setFakeBoldText(true);
+            } else if (isPreviousHighlight) {
+                // Blend back from accent color to normal gray as dehighlightFraction falls (1→0).
+                normalPaint.setColor(blendColors(normalTextColor, currentTextColor, dehighlightFraction));
             }
             
             // Apply curtain reveal alpha (0 -> 1 spawn-in effect)
@@ -508,7 +590,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             if (cAlpha != null) {
                 normalPaint.setAlpha(savedAlpha);
             }
-            if (isCurrentHighlight) {
+            if (isCurrentHighlight || isPreviousHighlight) {
                 normalPaint.setColor(savedColor);
                 normalPaint.setFakeBoldText(savedFakeBold);
             }
@@ -1196,6 +1278,9 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             wordSyncCurrentLayout = null;
             wordSyncLayoutLineIndex = -1;
             
+            // Kick off a smooth color cross-fade between the old and new highlighted lines.
+            startHighlightTransition();
+            
             // Only auto-scroll if not user scrolling, auto-scroll is enabled, and not from a tap seek
             if (!isUserScrolling && isAutoScrollEnabled && !isTapSeek) {
                 scrollToLine(currentLineIndex);
@@ -1310,11 +1395,11 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         FloatValueHolder holder = new FloatValueHolder();
         holder.setValue(from);
         
-        // Use Spring animation for natural, smooth scrolling
+        // Use a relaxed spring so the scroll glides in gently rather than rushing.
         scrollSpringAnimation = new SpringAnimation(holder, holder.getProperty());
         scrollSpringAnimation.setSpring(new SpringForce(to)
-                .setStiffness(SpringForce.STIFFNESS_LOW) // Smooth, gentle scroll
-                .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY)); // No bounce for auto-scroll
+                .setStiffness(SCROLL_SPRING_STIFFNESS)
+                .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY));
         
         scrollSpringAnimation.addUpdateListener((animation, value, velocity) -> {
             scrollY = value;
@@ -1744,6 +1829,14 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         this.wordSyncLayoutLineIndex = -1;
         
         removeCallbacks(autoScrollRunnable);
+        if (highlightAnimator != null && highlightAnimator.isRunning()) {
+            highlightAnimator.cancel();
+        }
+        if (dehighlightAnimator != null && dehighlightAnimator.isRunning()) {
+            dehighlightAnimator.cancel();
+        }
+        highlightFraction = 0f;
+        dehighlightFraction = 0f;
         if (blurAnimator != null && blurAnimator.isRunning()) {
             blurAnimator.cancel();
         }
@@ -1963,10 +2056,13 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         
         @Override
         public boolean onFling(MotionEvent e1, @NonNull MotionEvent e2, float velocityX, float velocityY) {
-            // Cancel any existing animations
-            if (springAnimation != null && springAnimation.isRunning()) {
-                springAnimation.cancel();
+            // If we're in overscroll when the fling fires, the snap-back spring is already
+            // running. Let it finish; don't start a fling that would fight against it.
+            if (isInOverscroll) {
+                return true;
             }
+            
+            // Cancel any existing fling animations (springAnimation handles overscroll, keep it)
             if (flingAnimation != null && flingAnimation.isRunning()) {
                 flingAnimation.cancel();
             }
@@ -1989,18 +2085,12 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             
             flingAnimation.addUpdateListener((animation, value, velocity) -> {
                 scrollY = value;
-                
-                // Track if we're in overscroll
-                isInOverscroll = scrollY < 0 || scrollY > maxScroll;
-                
                 invalidate();
             });
             
             flingAnimation.addEndListener((animation, canceled, value, velocity) -> {
-                if (!canceled && isInOverscroll) {
-                    // Snap back from overscroll after fling ends
-                    snapBackFromOverscroll();
-                }
+                // The fling is bounded to [0, maxScroll] so no snap-back needed here.
+                isInOverscroll = false;
             });
             
             flingAnimation.start();
