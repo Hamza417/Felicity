@@ -68,17 +68,26 @@ jobs:
                     SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
                     SIGNING_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
 
-            -   name: Move APK to Temporary Directory
+            -   name: Move APKs to Temporary Directory
                 run: |
-                    mkdir -p ${{ runner.temp }}
-                    ## Find apk first, then move it
-                    find music/ -name "*.apk" -exec mv {} ${{ runner.temp }}/music-foss-release.apk \;
+                    # Create a dedicated directory for the APKs
+                    mkdir -p ${{ runner.temp }}/apks
+                    
+                    # Find all APKs, preserve their architecture prefix/name, and append the version name
+                    find music/ -name "*.apk" | while read -r apk; do
+                        filename=$(basename "$apk")
+                        name_without_ext="${filename%.*}"
+                        new_filename="${name_without_ext}-${{ env.VERSION_NAME }}.apk"
+                    
+                        echo "Moving $filename to $new_filename"
+                        mv "$apk" "${{ runner.temp }}/apks/$new_filename"
+                    done
 
             -   name: Create GitHub Release
                 uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631
                 with:
                     files: |
-                        ${{ runner.temp }}/music-foss-release.apk
+                        ${{ runner.temp }}/apks/*.apk
                     name: ${{ env.VERSION_NAME }} # Use the original case for the release name
                     tag_name: ${{ env.TAG }} # Use lowercase for the tag
                     body_path: changelogs.md
@@ -88,6 +97,6 @@ jobs:
             -   name: Archive APKs
                 uses: actions/upload-artifact@v4
                 with:
-                    name: ${{ env.VERSION_NAME }} APKs
+                    name: ${{ env.VERSION_NAME }}-APKs
                     path: |
-                        ${{ runner.temp }}/music-foss-release.apk
+                        ${{ runner.temp }}/apks/*.apk
