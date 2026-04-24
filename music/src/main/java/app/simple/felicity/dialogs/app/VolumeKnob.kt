@@ -97,11 +97,11 @@ class VolumeKnob : ScopedBottomSheetFragment() {
                 volumeFlow.value = ((value / 100.0f) * maxVolume).roundToInt()
             }
 
-            override fun onUserInteractionStart() {
+            override fun onUserInteractionStart(value: Float) {
                 requireContext().contentResolver.unregisterContentObserver(volumeObserver)
             }
 
-            override fun onUserInteractionEnd() {
+            override fun onUserInteractionEnd(value: Float) {
                 postDelayed(delayMillis = 1000) {
                     requireContext().contentResolver.registerContentObserver(
                             Settings.System.CONTENT_URI, true, volumeObserver)

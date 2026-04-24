@@ -8,10 +8,7 @@ import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
 import app.simple.felicity.R
-import app.simple.felicity.activities.MainActivity
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
@@ -34,10 +31,8 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        requireHiddenMiniPlayer()
 
         dialog?.window?.attributes?.windowAnimations = R.style.BottomDialogAnimation
-
         dialog?.window?.setDimAmount(ViewUtils.DIM_AMOUNT)
 
         dialog?.setOnShowListener { dialog ->
@@ -75,23 +70,6 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
                 }
             })
         }
-    }
-
-    protected fun requireHiddenMiniPlayer() {
-        viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onStart(owner: LifecycleOwner) {
-                super.onStart(owner)
-                (requireActivity() as MainActivity).onHideMiniPlayer()
-            }
-
-            override fun onPause(owner: LifecycleOwner) {
-                super.onPause(owner)
-                // Don't force-show during configuration changes; preserve current state
-                if (requireActivity().isChangingConfigurations.not()) {
-                    (requireActivity() as MainActivity).onShowMiniPlayer()
-                }
-            }
-        })
     }
 
     override fun onResume() {

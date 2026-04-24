@@ -12,9 +12,7 @@ import android.view.Gravity
 import android.view.View
 import android.widget.FrameLayout
 import androidx.fragment.app.DialogFragment
-import androidx.fragment.app.Fragment
 import app.simple.felicity.R
-import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.shared.utils.BarHeight
@@ -86,26 +84,5 @@ open class ScopedDialogFragment : DialogFragment(), SharedPreferences.OnSharedPr
     @Suppress("unused")
     protected fun requireApplication(): Application {
         return requireActivity().application
-    }
-
-    /**
-     * Open fragment using slide animation
-     *
-     * If the fragment does not need to be pushed into backstack
-     * leave the [tag] unattended
-     *
-     * @param fragment [Fragment]
-     * @param tag back stack tag for fragment
-     */
-    protected fun openFragmentSlide(fragment: ScopedFragment, tag: String? = null) {
-        (parentFragment as ScopedFragment).clearReEnterTransition()
-        (parentFragment as ScopedFragment).clearExitTransition()
-
-        requireActivity().supportFragmentManager.beginTransaction()
-            .setReorderingAllowed(true)
-            .setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left, R.anim.enter_from_left, R.anim.exit_to_right)
-            .replace(R.id.app_container, fragment, tag)
-            .addToBackStack(tag)
-            .commit()
     }
 }
