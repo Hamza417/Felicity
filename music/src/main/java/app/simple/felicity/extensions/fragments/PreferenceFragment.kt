@@ -351,6 +351,19 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val immersiveMode = Preference(
+                title = R.string.immersive_mode,
+                summary = R.string.immersive_mode_summary,
+                icon = R.drawable.ic_fullscreen,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    UserInterfacePreferences.setImmersiveMode((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    UserInterfacePreferences.isImmersiveMode()
+                }
+        )
+
         preferences.add(homeHeader)
         preferences.add(homeInterface)
         preferences.add(playerHeader)
@@ -358,6 +371,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(miniPlayerHeader)
         preferences.add(marginAroundMiniplayerToggle)
         preferences.add(applicationHeader)
+        preferences.add(immersiveMode)
         preferences.add(likeButton)
 
         return preferences

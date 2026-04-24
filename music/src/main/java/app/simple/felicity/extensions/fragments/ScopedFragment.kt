@@ -14,6 +14,8 @@ import androidx.activity.BackEventCompat
 import androidx.annotation.IntegerRes
 import androidx.annotation.RequiresApi
 import androidx.annotation.StringRes
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
@@ -29,6 +31,7 @@ import app.simple.felicity.dialogs.app.Warning.Companion.showWarning
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.BehaviourPreferences
+import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.theme.managers.ThemeUtils
@@ -417,6 +420,40 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                 lifecycleOwner = viewLifecycleOwner,
                 window = requireActivity().window,
                 resources = requireContext().resources)
+    }
+
+    /**
+     * Hides the status bar and navigation bar for as long as this fragment is on screen,
+     * but only when the user has immersive mode turned on in settings.
+     *
+     * Think of it as a "do not disturb" sign for the system bars — they vanish when
+     * this fragment shows up and politely come back the moment the user navigates away.
+     * A swipe from any edge temporarily peeks them back in.
+     *
+     * If immersive mode is disabled in settings, this function does nothing, so you can
+     * safely call it unconditionally on any fragment that should go full-screen when the
+     * setting is on.
+     */
+    protected fun requireImmersiveMode() {
+        if (!UserInterfacePreferences.isImmersiveMode()) return
+
+        val window = requireActivity().window
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+
+        viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onResume(owner: LifecycleOwner) {
+                controller.hide(WindowInsetsCompat.Type.systemBars())
+                controller.systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+
+            override fun onPause(owner: LifecycleOwner) {
+                controller.show(WindowInsetsCompat.Type.systemBars())
+                controller.systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+                viewLifecycleOwner.lifecycle.removeObserver(this)
+            }
+        })
     }
 
     protected open fun getTransitionType(): TransitionType = TransitionType.SHARED_AXIS

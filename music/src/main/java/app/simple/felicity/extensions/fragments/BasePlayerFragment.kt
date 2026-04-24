@@ -145,6 +145,7 @@ abstract class BasePlayerFragment : MediaFragment() {
 
         requireView().setOnTouchListener(swipeDownListener)
         requireHiddenMiniPlayer()
+        requireImmersiveMode()
         updateState()
         setVisualizerState()
 

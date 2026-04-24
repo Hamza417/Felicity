@@ -424,4 +424,6 @@
     <string name="done">Done</string>
     <string name="manage_music_folders">Manage Music Folders</string>
     <string name="manage_music_folders_desc">Manage local directories for library indexing.</string>
+    <string name="immersive_mode">Immersive Mode</string>
+    <string name="immersive_mode_summary">Use app in full screen when some visuals heavy screens are active.</string>
 </resources>

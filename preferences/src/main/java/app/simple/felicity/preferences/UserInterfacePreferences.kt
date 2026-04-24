@@ -1,7 +1,6 @@
 package app.simple.felicity.preferences
 
 import androidx.core.content.edit
-import app.simple.felicity.manager.SharedPreferences
 import app.simple.felicity.manager.SharedPreferences.getSharedPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences.PLAYER_INTERFACE_DEFAULT
 import app.simple.felicity.preferences.UserInterfacePreferences.PLAYER_INTERFACE_FADED
@@ -20,6 +19,7 @@ object UserInterfacePreferences {
     const val MARGIN_AROUND_MINIPLAYER = "margin_around_miniplayer"
     const val HOME_INTERFACE = "home_interface_"
     const val PLAYER_INTERFACE = "player_interface_"
+    const val IMMERSIVE_MODE = "immersive_mode"
 
     const val HOME_INTERFACE_DASHBOARD = 1
     const val HOME_INTERFACE_SPANNED = 2
@@ -46,12 +46,12 @@ object UserInterfacePreferences {
     }
 
     fun getHomeInterface(): Int {
-        return SharedPreferences.getSharedPreferences()
+        return getSharedPreferences()
             .getInt(HOME_INTERFACE, HOME_INTERFACE_SIMPLE)
     }
 
     fun setHomeInterface(value: Int) {
-        SharedPreferences.getSharedPreferences()
+        getSharedPreferences()
             .edit {
                 putInt(HOME_INTERFACE, value)
             }
@@ -62,7 +62,7 @@ object UserInterfacePreferences {
      * Defaults to [PLAYER_INTERFACE_DEFAULT] if the preference has not been set yet.
      */
     fun getPlayerInterface(): Int {
-        return SharedPreferences.getSharedPreferences()
+        return getSharedPreferences()
             .getInt(PLAYER_INTERFACE, PLAYER_INTERFACE_DEFAULT)
     }
 
@@ -72,9 +72,21 @@ object UserInterfacePreferences {
      * @param value one of [PLAYER_INTERFACE_DEFAULT] or [PLAYER_INTERFACE_FADED]
      */
     fun setPlayerInterface(value: Int) {
-        SharedPreferences.getSharedPreferences()
+        getSharedPreferences()
             .edit {
                 putInt(PLAYER_INTERFACE, value)
+            }
+    }
+
+    fun isImmersiveMode(): Boolean {
+        return getSharedPreferences()
+            .getBoolean(IMMERSIVE_MODE, false)
+    }
+
+    fun setImmersiveMode(enabled: Boolean) {
+        getSharedPreferences()
+            .edit {
+                putBoolean(IMMERSIVE_MODE, enabled)
             }
     }
 }
