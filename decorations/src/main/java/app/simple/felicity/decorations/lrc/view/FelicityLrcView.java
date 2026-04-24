@@ -62,8 +62,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private static final float DEFAULT_SCROLL_MULTIPLIER = 1f; // Accelerated scroll multiplier
     private static final float DEFAULT_OVERSCROLL_DISTANCE = 250f; // dp - maximum overscroll distance
     private static final float OVERSCROLL_DAMPING = 0.25f; // Rubber band damping factor (0-1)
-    private static final float SPRING_STIFFNESS = SpringForce.STIFFNESS_LOW; // Spring stiffness for overscroll
-    private static final float SPRING_DAMPING_RATIO = SpringForce.DAMPING_RATIO_NO_BOUNCY; // Spring damping
     private static final float FLING_FRICTION = 1.5f; // Friction for fling animation
     // How quickly the highlighted line cross-fades its accent color in and out (ms).
     private static final long HIGHLIGHT_FADE_IN_MS = 350;
@@ -148,7 +146,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private boolean isTapSeek = true; // Flag to prevent auto-scroll after tap seek
     private float scrollMultiplier;
     private float maxOverscrollDistance;
-    private SpringAnimation springAnimation; // For overscroll snap-back
     private SpringAnimation scrollSpringAnimation; // For auto-scroll
     private FlingAnimation flingAnimation;
     private boolean isInOverscroll = false;
@@ -251,17 +248,19 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         }
         
         // Initialize paints
+        // All lyrics lines use the bold typeface — no fake bold tricks needed anywhere.
+        // The highlight is purely a color change, so every line looks consistent and sits
+        // at exactly the same vertical position regardless of whether it's active or not.
         normalPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         normalPaint.setTextSize(normalTextSize);
         normalPaint.setColor(normalTextColor);
         if (!isInEditMode()) {
-            normalPaint.setTypeface(TypeFace.INSTANCE.getMediumTypeFace(context));
+            normalPaint.setTypeface(TypeFace.INSTANCE.getBlackTypeFace(context));
         }
         
         currentPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         currentPaint.setTextSize(normalTextSize);
         currentPaint.setColor(currentTextColor);
-        currentPaint.setFakeBoldText(true);
         if (!isInEditMode()) {
             currentPaint.setTypeface(TypeFace.INSTANCE.getBlackTypeFace(context));
         }
@@ -554,10 +553,9 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 canvas.scale(cScale, cScale, halfW, halfH);
             }
             
-            // For the current highlighted line, switch normalPaint to the accent color and
-            // fake-bold before drawing, then restore so other lines are unaffected.
-            // Using fake-bold (stroke thickening) instead of a separate typeface guarantees
-            // zero change in font metrics — the text won't shift even a single pixel.
+            // Decide whether this line is the current highlight or the one that just stepped down.
+            // Only the color changes here — typeface is the same bold weight for every line,
+            // so nothing shifts vertically as the highlight moves through the lyrics.
             boolean isCurrentHighlight = !isStaticMode()
                     && i == currentLineIndex
                     && text != null && !text.trim().isEmpty();
@@ -567,11 +565,9 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                     && dehighlightFraction > 0f;
             
             int savedColor = normalPaint.getColor();
-            boolean savedFakeBold = normalPaint.isFakeBoldText();
             if (isCurrentHighlight) {
                 // Blend from normal gray toward accent color as highlightFraction rises (0→1).
                 normalPaint.setColor(blendColors(normalTextColor, currentTextColor, highlightFraction));
-                normalPaint.setFakeBoldText(true);
             } else if (isPreviousHighlight) {
                 // Blend back from accent color to normal gray as dehighlightFraction falls (1→0).
                 normalPaint.setColor(blendColors(normalTextColor, currentTextColor, dehighlightFraction));
@@ -592,7 +588,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             }
             if (isCurrentHighlight || isPreviousHighlight) {
                 normalPaint.setColor(savedColor);
-                normalPaint.setFakeBoldText(savedFakeBold);
             }
             
             canvas.restore();
@@ -1383,10 +1378,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             scrollSpringAnimation.cancel();
         }
         
-        // Also cancel spring/fling if they're running (user interaction)
-        if (springAnimation != null && springAnimation.isRunning()) {
-            springAnimation.cancel();
-        }
+        // Also cancel fling if it's running (user interaction)
         if (flingAnimation != null && flingAnimation.isRunning()) {
             flingAnimation.cancel();
         }
@@ -1506,18 +1498,9 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Apply rubber band damping to overscroll distance
-     * Uses a logarithmic damping curve for realistic feel
-     */
-    private float applyOverscrollDamping(float overscroll) {
-        // Use a damping formula: dampedDistance = maxDistance * (1 - e^(-overscroll / dampingFactor))
-        // This creates a logarithmic curve that asymptotically approaches maxOverscrollDistance
-        float dampingFactor = maxOverscrollDistance * OVERSCROLL_DAMPING;
-        return maxOverscrollDistance * (1f - (float) Math.exp(-overscroll / dampingFactor));
-    }
-    
-    /**
-     * Snap back from overscroll to valid bounds using Spring animation
+     * When the finger lifts while the content is stretched past its natural boundary,
+     * we snap it back instantly — right where the finger stopped. No spring, no
+     * momentum, no flying off in some direction. The user said stop; we stop.
      */
     private void snapBackFromOverscroll() {
         float maxScroll = getMaxScrollY();
@@ -1529,42 +1512,18 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             targetY = maxScroll;
         }
         
-        // Only animate if we're actually in overscroll
+        // Only do anything if we are actually outside the valid range.
         if (targetY != scrollY) {
             isInOverscroll = false;
             
-            // Cancel any existing animations
-            if (springAnimation != null) {
-                springAnimation.cancel();
-            }
+            // Cancel any pending fling that might fight the snap.
             if (flingAnimation != null) {
                 flingAnimation.cancel();
             }
             
-            final float finalTargetY = targetY;
-            
-            // Create spring animation for natural bounce-back using FloatPropertyCompat
-            FloatValueHolder holder = new FloatValueHolder();
-            holder.setValue(scrollY);
-            
-            springAnimation = new SpringAnimation(holder, holder.getProperty());
-            springAnimation.setSpring(new SpringForce(finalTargetY)
-                    .setStiffness(SPRING_STIFFNESS)
-                    .setDampingRatio(SPRING_DAMPING_RATIO));
-            
-            springAnimation.addUpdateListener((animation, value, velocity) -> {
-                scrollY = value;
-                invalidate();
-            });
-            
-            springAnimation.addEndListener((animation, canceled, value, velocity) -> {
-                if (!canceled) {
-                    scrollY = finalTargetY;
-                    invalidate();
-                }
-            });
-            
-            springAnimation.start();
+            // Snap directly to the boundary — no extra motion needed.
+            scrollY = targetY;
+            invalidate();
         }
     }
     
@@ -1856,9 +1815,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
             scrollSpringAnimation.cancel();
         }
-        if (springAnimation != null && springAnimation.isRunning()) {
-            springAnimation.cancel();
-        }
         if (flingAnimation != null && flingAnimation.isRunning()) {
             flingAnimation.cancel();
         }
@@ -1952,9 +1908,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
                 scrollSpringAnimation.cancel();
             }
-            if (springAnimation != null && springAnimation.isRunning()) {
-                springAnimation.cancel();
-            }
             if (flingAnimation != null && flingAnimation.isRunning()) {
                 flingAnimation.cancel();
             }
@@ -1972,10 +1925,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         public boolean onScroll(MotionEvent e1, @NonNull MotionEvent e2, float distanceX, float distanceY) {
             isUserScrolling = true;
             
-            // Cancel any ongoing spring or fling animations
-            if (springAnimation != null && springAnimation.isRunning()) {
-                springAnimation.cancel();
-            }
+            // Cancel any ongoing fling animations
             if (flingAnimation != null && flingAnimation.isRunning()) {
                 flingAnimation.cancel();
             }
@@ -2078,10 +2028,11 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             flingAnimation.setStartVelocity(acceleratedVelocity);
             flingAnimation.setFriction(FLING_FRICTION);
             
-            // Set min/max values for fling with overscroll
+            // Clamp the fling strictly to the valid scroll range so it never shoots
+            // into overscroll territory — the rubber-band stretch is a drag-only feel.
             float maxScroll = getMaxScrollY();
-            flingAnimation.setMinValue(-maxOverscrollDistance);
-            flingAnimation.setMaxValue(maxScroll + maxOverscrollDistance);
+            flingAnimation.setMinValue(0f);
+            flingAnimation.setMaxValue(maxScroll);
             
             flingAnimation.addUpdateListener((animation, value, velocity) -> {
                 scrollY = value;
@@ -2089,7 +2040,8 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             });
             
             flingAnimation.addEndListener((animation, canceled, value, velocity) -> {
-                // The fling is bounded to [0, maxScroll] so no snap-back needed here.
+                // Fling is bounded to [0, maxScroll] so overscroll can't happen here,
+                // but we reset the flag just to keep state consistent.
                 isInOverscroll = false;
             });
             
