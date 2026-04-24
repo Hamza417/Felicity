@@ -3,8 +3,8 @@ package app.simple.felicity.decorations.knobs
 interface RotaryKnobListener {
     fun onRotate(value: Float)
     fun onIncrement(value: Float)
-    fun onUserInteractionStart() {}
-    fun onUserInteractionEnd() {}
+    fun onUserInteractionStart(value: Float) {}
+    fun onUserInteractionEnd(value: Float) {}
 
     /**
      * Called whenever the knob value changes to request a display string.

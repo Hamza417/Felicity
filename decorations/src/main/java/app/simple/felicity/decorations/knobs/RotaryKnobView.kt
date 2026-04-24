@@ -75,7 +75,7 @@ class RotaryKnobView @JvmOverloads constructor(
     private val debounceHandler = Handler(Looper.getMainLooper())
     private var debounceRunnable: Runnable? = null
     private var pendingVolume = 0f
-    var value = 130
+    private var value = 130
 
     /** Enable / disable all haptic feedback. Defaults to true. */
     var hapticEnabled: Boolean = true
@@ -816,7 +816,7 @@ class RotaryKnobView @JvmOverloads constructor(
                 lastMoveAngle = calculateAngle(event.x, event.y)
                 hapticAccumulator = 0f
                 vibrateTouchDown()
-                listener?.onUserInteractionStart()
+                listener?.onUserInteractionStart(getKnobPosition())
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
@@ -880,7 +880,7 @@ class RotaryKnobView @JvmOverloads constructor(
                         if (!wasAlreadyAtCentre) vibrateHeavyTick()
                     }
                 }
-                listener?.onUserInteractionEnd()
+                listener?.onUserInteractionEnd(getKnobPosition())
                 return true
             }
         }
@@ -936,6 +936,8 @@ class RotaryKnobView @JvmOverloads constructor(
             invalidate()
         }
     }
+
+    fun getKnobPosition(): Float = angleToValue(knobRotation)
 
     private fun animateTo(targetAngle: Float) {
         val clamped = targetAngle.coerceIn(START, END)

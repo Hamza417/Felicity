@@ -107,17 +107,17 @@ object EqualizerPreferences {
     const val REVERB_SIZE = "eq_reverb_size"
 
     /**
-     * Playback pitch shift stored as a float in [0.25 .. 4.0].
-     * 1.0 = normal pitch (no shift, default). Values below 1.0 lower the pitch
-     * and values above 1.0 raise it. Applied via ExoPlayer's PlaybackParameters.
+     * Playback pitch stored as a semitone offset in [-12 .. +12].
+     * 0 = no shift (default, concert pitch), -12 = one full octave down, +12 = one full
+     * octave up. Converted to an ExoPlayer raw multiplier via the formula 2^(n/12) before
+     * being passed to PlaybackParameters, which keeps the values human-readable in storage.
      */
     const val PITCH = "eq_pitch"
 
     /**
-     * Playback speed stored as a float in [0.25 .. 4.0].
-     * 1.0 = normal playback speed (default). Applied via ExoPlayer's PlaybackParameters.
-     * Pitch follows speed unless it is independently adjusted — ExoPlayer handles that
-     * relationship internally, so both values are stored and applied together.
+     * Playback speed stored as a raw float multiplier in [0.5 .. 2.0].
+     * 1.0 = normal speed (default), 0.5 = half speed, 2.0 = double speed.
+     * Passed directly to ExoPlayer's PlaybackParameters.
      */
     const val PLAYBACK_SPEED = "eq_playback_speed"
 
@@ -364,33 +364,36 @@ object EqualizerPreferences {
     }
 
     /**
-     * Persists the playback pitch shift, clamped to [0.25 .. 4.0].
+     * Persists the playback pitch as a semitone offset, clamped to [-12 .. +12].
      *
-     * @param pitch Pitch multiplier. 1.0 = normal (no shift).
+     * Storing semitones (rather than a raw multiplier) keeps the value human-readable
+     * and maps directly to what the pitch knob displays on screen.
+     *
+     * @param semitones Offset in semitones. 0 = no shift (concert pitch).
      */
-    fun setPitch(pitch: Float) {
-        SharedPreferences.getSharedPreferences().edit { putFloat(PITCH, pitch.coerceIn(0.25f, 4.0f)) }
+    fun setPitch(semitones: Float) {
+        SharedPreferences.getSharedPreferences().edit { putFloat(PITCH, semitones.coerceIn(-12f, 12f)) }
     }
 
     /**
-     * Returns the persisted playback pitch shift.
-     * Defaults to 1.0 (normal pitch) when no value has been saved yet.
+     * Returns the persisted pitch offset in semitones.
+     * Defaults to 0.0 (no shift) when no value has been saved yet.
      */
     fun getPitch(): Float {
-        return SharedPreferences.getSharedPreferences().getFloat(PITCH, 1.0f)
+        return SharedPreferences.getSharedPreferences().getFloat(PITCH, 0f)
     }
 
     /**
-     * Persists the playback speed, clamped to [0.25 .. 4.0].
+     * Persists the playback speed multiplier, clamped to [0.5 .. 2.0].
      *
      * @param speed Speed multiplier. 1.0 = normal speed.
      */
     fun setPlaybackSpeed(speed: Float) {
-        SharedPreferences.getSharedPreferences().edit { putFloat(PLAYBACK_SPEED, speed.coerceIn(0.25f, 4.0f)) }
+        SharedPreferences.getSharedPreferences().edit { putFloat(PLAYBACK_SPEED, speed.coerceIn(0.5f, 2.0f)) }
     }
 
     /**
-     * Returns the persisted playback speed.
+     * Returns the persisted playback speed multiplier.
      * Defaults to 1.0 (normal speed) when no value has been saved yet.
      */
     fun getPlaybackSpeed(): Float {

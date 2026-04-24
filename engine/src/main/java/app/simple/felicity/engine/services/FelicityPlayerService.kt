@@ -76,6 +76,7 @@ import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 /**
@@ -712,18 +713,19 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     }
 
     /**
-     * Applies a new playback speed and pitch shift to the ExoPlayer instance.
+     * Applies playback speed and pitch to the ExoPlayer instance.
      *
-     * ExoPlayer handles the time-stretching and pitch-shifting internally via its
-     * [PlaybackParameters] — no DSP processor is needed for this.
-     * Both values are applied together in a single call so the engine transitions
-     * smoothly without any intermediate state.
+     * Speed is a direct multiplier in [0.5 .. 2.0] (1.0 = normal). Pitch is supplied
+     * as a semitone offset in [-12 .. +12] and is converted here using the standard
+     * equal-temperament formula (multiplier = 2^(n/12)) before being handed off to
+     * ExoPlayer, keeping the math in one place and the stored preferences human-readable.
      *
-     * @param speed Speed multiplier in [0.25 .. 4.0]. 1.0 = normal speed.
-     * @param pitch Pitch multiplier in [0.25 .. 4.0]. 1.0 = normal pitch.
+     * @param speed          Playback speed multiplier in [0.5 .. 2.0]. 1.0 = normal.
+     * @param pitchSemitones Pitch offset in semitones. 0 = concert pitch, ±12 = ±1 octave.
      */
-    private fun applyPlaybackParameters(speed: Float, pitch: Float) {
-        player.playbackParameters = PlaybackParameters(speed, pitch)
+    private fun applyPlaybackParameters(speed: Float, pitchSemitones: Float) {
+        val pitchMultiplier = 2f.pow(pitchSemitones / 12f).coerceIn(0.5f, 2.0f)
+        player.playbackParameters = PlaybackParameters(speed, pitchMultiplier)
     }
 
     private val playerListener = object : Player.Listener {

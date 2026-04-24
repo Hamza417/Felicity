@@ -182,8 +182,8 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
      * @property reverbDecay Reverb decay time in [0 .. 1].
      * @property reverbSize Reverb room size in [0 .. 1].
      * @property reverbDamp Reverb high-frequency damping in [0 .. 1].
-     * @property pitch Playback pitch multiplier in [0.25 .. 4.0]. 1.0 = normal.
-     * @property playbackSpeed Playback speed multiplier in [0.25 .. 4.0]. 1.0 = normal.
+     * @property pitch Pitch offset in semitones [-12 .. +12]. 0 = no shift.
+     * @property playbackSpeed Playback speed multiplier in [0.5 .. 2.0]. 1.0 = normal.
      */
     data class EqualizerInitialState(
             val isEqEnabled: Boolean,
