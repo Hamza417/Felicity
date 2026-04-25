@@ -81,10 +81,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:animateLayoutChanges="true"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
+                    <!-- Library stats chip: shows total track count and total hours -->
                     <app.simple.felicity.decorations.highlight.HighlightTextView
-                        android:id="@+id/currently_playing"
+                        android:id="@+id/library_stats"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:gravity="center_vertical"
@@ -95,12 +97,32 @@
                         android:marqueeRepeatLimit="marquee_forever"
                         android:singleLine="true"
                         android:maxLines="1"
-                        android:drawableStart="@drawable/ic_play_16dp"
+                        android:drawableStart="@drawable/ic_song_16dp"
                         android:drawablePadding="@dimen/padding_5"
                         android:textSize="@dimen/text_size_14"
                         app:appFontStyle="bold"
                         app:drawableTintStyle="accent"
-                        app:highlightMode="both"
+                        app:highlightMode="flat"
+                        app:textColorStyle="secondary" />
+
+                    <!-- Server active chip: only visible while the Wi-Fi server is running -->
+                    <app.simple.felicity.decorations.highlight.HighlightTextView
+                        android:id="@+id/server_active_chip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/padding_8"
+                        android:gravity="center_vertical"
+                        android:paddingVertical="@dimen/padding_5"
+                        android:paddingHorizontal="@dimen/padding_10"
+                        android:drawableStart="@drawable/ic_wifi_16dp"
+                        android:drawablePadding="@dimen/padding_5"
+                        android:text="@string/server_active"
+                        android:textSize="@dimen/text_size_14"
+                        android:singleLine="true"
+                        android:visibility="gone"
+                        app:appFontStyle="bold"
+                        app:drawableTintStyle="accent"
+                        app:highlightMode="flat"
                         app:textColorStyle="secondary" />
 
                 </LinearLayout>
@@ -202,6 +224,66 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/top_artists_section"
+                android:layout_height="wrap_content"
+                android:layout_width="match_parent"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                    android:layout_height="wrap_content"
+                    android:layout_width="match_parent"
+                    android:paddingBottom="@dimen/padding_8"
+                    android:paddingHorizontal="@dimen/padding_20"
+                    android:paddingTop="@dimen/padding_20"
+                    android:text="@string/top_artists"
+                    android:textSize="@dimen/text_size_22"
+                    app:appFontStyle="bold"
+                    app:textColorStyle="primary" />
+
+                <app.simple.felicity.decorations.overscroll.CustomHorizontalRecyclerView
+                    android:id="@+id/top_artists_list"
+                    android:clipToPadding="false"
+                    android:layoutAnimation="@anim/list_animation_controller"
+                    android:layout_height="wrap_content"
+                    android:layout_width="match_parent"
+                    android:paddingHorizontal="@dimen/padding_20"
+                    app:navigationPaddingRequired="false"
+                    app:statusPaddingRequired="false" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/top_albums_section"
+                android:layout_height="wrap_content"
+                android:layout_width="match_parent"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                    android:layout_height="wrap_content"
+                    android:layout_width="match_parent"
+                    android:paddingBottom="@dimen/padding_8"
+                    android:paddingHorizontal="@dimen/padding_20"
+                    android:paddingTop="@dimen/padding_20"
+                    android:text="@string/top_albums"
+                    android:textSize="@dimen/text_size_22"
+                    app:appFontStyle="bold"
+                    app:textColorStyle="primary" />
+
+                <app.simple.felicity.decorations.overscroll.CustomHorizontalRecyclerView
+                    android:id="@+id/top_albums_list"
+                    android:clipToPadding="false"
+                    android:layoutAnimation="@anim/list_animation_controller"
+                    android:layout_height="wrap_content"
+                    android:layout_width="match_parent"
+                    android:paddingHorizontal="@dimen/padding_20"
+                    app:navigationPaddingRequired="false"
+                    app:statusPaddingRequired="false" />
+
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/recently_added_section"
                 android:layout_height="wrap_content"
                 android:layout_width="match_parent"
@@ -253,7 +335,6 @@
                     android:layout_height="wrap_content"
                     android:layout_width="match_parent"
                     android:paddingHorizontal="@dimen/padding_20"
-
                     app:navigationPaddingRequired="false"
                     app:statusPaddingRequired="false" />
 

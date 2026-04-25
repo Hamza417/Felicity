@@ -267,7 +267,6 @@
     <string name="reverb_damp">Damp</string>
     <string name="reverb_size">Size</string>
     <string name="dashboard">Dashboard</string>
-    <string name="now_playing">Now Playing: %1$s</string>
     <string name="equalizer">Equalizer</string>
     <string name="reset">Reset</string>
     <string name="bass">Bass</string>
@@ -426,4 +425,10 @@
     <string name="manage_music_folders_desc">Manage local directories for library indexing.</string>
     <string name="immersive_mode">Immersive Mode</string>
     <string name="immersive_mode_summary">Use app in full screen when some visuals heavy screens are active.</string>
+
+    <!-- Dashboard section titles and chips -->
+    <string name="top_artists">Top Artists</string>
+    <string name="top_albums">Top Albums</string>
+    <string name="library_stats">%1$s Tracks • %2$s Hours</string>
+    <string name="server_active">Server Active</string>
 </resources>
