@@ -1,50 +1,46 @@
 ### Library
 
-- Improved library builder to prevent HASH collisions on duplicate Audio files causing same songs to
-  be rescanned multiple times.
-- Added **Excluded Folders** support to exclude out a folder from the scans.
-- Added new way to generate song identities improving the loading speed significantly.
-    - Songs now loads 5-10x times faster depending on the device. In my tests ~1400 were fully
-      processed in less than 5 seconds. Earlier the speed was over 50 seconds.
+- Migrated app to use SAF instead.
+    - Since SAF is a major change, most of the efforts in the last week went into stabilizing the
+      app over this. You will need to clear app data and start afresh to make sure you don't
+      encounter weird problems.
+- Added TagLib based metadata fetching for better support SAF replacing the JAudioTagger.
+- Scan only when app is launched.
 
-### Players
+## DSP
 
-- Added **Line Lrc View** to show lyrics on the now playing screen itself.
-- Added dedicated **Media Controls** wth better UI and motion feedbacks.
+- Added **Pitch** and **Speed** adjustments in **Equalizer**.
 
 ### User Interface
 
-- Added **Word by Word** LRC support.
-- Added **Album Artists** panel.
-- Added song count in **Genres**.
-- Added **Refresh Library** in **Library Preferences**.
-- Added **Dividers** accessibility toggle to add divider lines in the whole app.
-- Updated **Dashboard** interface with smaller buttons for ideal spacing.
-- Added **Selections** panel to view currently selected songs.
-- Added toggle to replace **Heart** icon with **Thumbs Up** icon for favorites.
+- Added toggle to enable/disable auto lyrics fetching.
+- Added first audio widget.
+- Added option to clear image caches in **Library Preferences**.
+- Replaced toasts with Felicity snack-bars.
+- Revamped **Lyrics** behavior and UI.
+    - Removed text resizing from normal → current → normal causing a clunky scroll behavior.
+    - Uses unified fonts and color based highlighting.
+    - Much smoother scrolling and movement now.
+    - Removed many static layouts and layout calculations to make it very fluid and lightweight
+    - Removed a lot of unnecessary motions to prevent UI flashes that can induce discomfort.
+    - Added album art in the **Lyrics** panel.
+- Minor changes in **Equalizer** UI.
+- Changed _No Album Art_ image to more app appropriate one.
+- Updated **Dashboard** UI.
+    - Added library stats chip in the header instead of currently playing song.
+    - Added **Top Artists** and **Top Albums**.
+    - Added **Server Status** chip.
+- Added **Immersive Mode** toggle for some screens.
 
 ### Bug Fixes
 
-- Fixed song states not saving when the player is paused and user is changing songs.
-- Fixed player starts playing when decoder is changed in the background.
-- Fixed **Folders Hierarchy** list and UI issues.
-- Fixed equalizer button on the volume knob not working.
-- Fixed **Add to Queue** option not moving the positions after the last song leading to inconsistent
-  playback states.
-- Fixed play button tint issues in various panels.
-- Fixed initial stutters in **Typeface** selection panel.
-- Fixed a crash caused by starting scanner service in a wrong app state.
-
-### Improvements
-
-- Improved lyrics menu states based on lyrics availability.
-
-### Changes
-
-- Reduced title font size a bit for the whole app.
+- Fixed empty theme state on app state restored by third parties.
+- Fixed M3U icon tint in **Playlists**.
+- Fixed padding loss in **Dashboard** causing the miniplayer and ui overlap.
+- Fixed a major issue when items are few in the list causing the spacing to be very weird and
+  inconsistent.
 
 ### Removed
 
-- Removed weird hover animations when using in PC or cursor modes.
-- Replaced the morphing play button with a simple play button.
-- Removed file hasher to reduce I/O overhead and slow scan times.
+- Removed **Excluded Folders** preferences since you can manually pick folders to scan now with SAF.
+- Removed corner radius from the **ArtFlow**.
