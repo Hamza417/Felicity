@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.AdapterHomeArtflowBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -40,6 +41,13 @@ class AdapterArtFlowHome(private var data: List<ArtFlowData<Any>>) : RecyclerVie
             val sliderAdapter = SliderAdapter(item)
 
             holder.binding.title.text = holder.binding.title.context.getString(item.title)
+
+            if (item.title == R.string.recommended) {
+                holder.binding.title.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0)
+            } else {
+                holder.binding.title.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, R.drawable.ic_for_arrow_12dp, 0)
+            }
+
             holder.binding.felicitySlider.setAdapter(sliderAdapter)
             holder.binding.felicitySlider.start()
 
