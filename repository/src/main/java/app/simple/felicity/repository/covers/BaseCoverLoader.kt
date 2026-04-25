@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
+import androidx.core.net.toUri
 import java.io.File
 
 /**
@@ -17,7 +18,7 @@ import java.io.File
  */
 internal object BaseCoverLoader {
     private const val TAG = "BaseCoverLoader"
-    private const val ALBUM_ART_PATH = "/album_art.png"
+    private const val ALBUM_ART_PATH = "/no_album_art.png"
 
     /**
      * Pre-compiled regex for sanitizing names into filesystem-safe filenames.
@@ -46,6 +47,7 @@ internal object BaseCoverLoader {
     )
 
     /**
+     * TODO - migrate to SAF
      * Looks for common image files (folder.jpg, cover.jpg, etc.) directly inside
      * a given directory. This is only useful when we have an actual [File] reference
      * to the folder — SAF URIs can't be navigated this way, so callers should skip
@@ -130,7 +132,7 @@ internal object BaseCoverLoader {
                 try {
                     // Both content:// URIs and file paths go through setDataSource(context, uri)
                     // because MediaMetadataRetriever handles both just fine that way.
-                    retriever.setDataSource(context, Uri.parse(path))
+                    retriever.setDataSource(context, path.toUri())
 
                     val embeddedPicture = retriever.embeddedPicture
                     if (embeddedPicture != null && embeddedPicture.isNotEmpty()) {
