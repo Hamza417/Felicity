@@ -66,7 +66,8 @@ public class Utils {
      * Convenience overload with no extra bottom padding — keeps all existing call sites
      * working without any changes.
      */
-    public static void applySystemBarPadding(ViewGroup viewGroup, boolean statusPaddingRequired, boolean navigationPaddingRequired) {
+    public static void applySystemBarPadding(
+            ViewGroup viewGroup, boolean statusPaddingRequired, boolean navigationPaddingRequired) {
         applySystemBarPadding(viewGroup, statusPaddingRequired, navigationPaddingRequired, () -> 0);
     }
 }
