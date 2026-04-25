@@ -42,7 +42,6 @@ import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.graphics.withClip
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.marginBottom
 import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decorations.itemdecorations.FooterSpacingItemDecoration
@@ -52,6 +51,7 @@ import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.DEFAULT_E
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.PAINT_SHADOW_DY_DP
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.PAINT_SHADOW_RADIUS_DP
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.TITLE_TEXT_SIZE_SP
+import app.simple.felicity.decorations.padding.PaddingAwareNestedScrollView
 import app.simple.felicity.decorations.ripple.FelicityRippleDrawable
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.decorations.utils.VibrateUtils.vibrateEffect
@@ -2627,15 +2627,27 @@ class MiniPlayer @JvmOverloads constructor(
      * @param scrollView The [NestedScrollView] to update.
      */
     private fun applyScrollViewPadding(scrollView: NestedScrollView) {
-        val orig = scrollViewOriginalPaddings[scrollView] ?: return
         val spacing = getRequiredFooterSpacing()
-        scrollView.setPadding(
-                scrollView.paddingLeft,
-                scrollView.paddingTop,
-                scrollView.paddingRight,
-                orig + spacing + marginBottom
-        )
         scrollView.clipToPadding = false
+
+        /**
+         * [PaddingAwareNestedScrollView] manages its own insets listener that uses a
+         * static baseline. If we just call [NestedScrollView.setPadding] here, the next
+         * time the OS re-dispatches window insets (e.g. when returning to this fragment)
+         * it will restore the old baseline and erase our spacing. Instead we hand the
+         * extra pixels to the view so its insets listener bakes them in permanently.
+         */
+        if (scrollView is PaddingAwareNestedScrollView) {
+            scrollView.setExtraBottomPadding(spacing)
+        } else {
+            val orig = scrollViewOriginalPaddings[scrollView] ?: return
+            scrollView.setPadding(
+                    scrollView.paddingLeft,
+                    scrollView.paddingTop,
+                    scrollView.paddingRight,
+                    orig + spacing
+            )
+        }
     }
 
     /**
@@ -2722,14 +2734,20 @@ class MiniPlayer @JvmOverloads constructor(
         attachedScrollViews.remove(scrollView)?.let {
             scrollView.setOnScrollChangeListener(null as NestedScrollView.OnScrollChangeListener?)
         }
-        scrollViewOriginalPaddings.remove(scrollView)?.let { orig ->
-            scrollView.setPadding(
-                    scrollView.paddingLeft,
-                    scrollView.paddingTop,
-                    scrollView.paddingRight,
-                    orig
-            )
+        // Clear our extra bottom padding so the scroll view returns to its natural size.
+        if (scrollView is PaddingAwareNestedScrollView) {
+            scrollView.setExtraBottomPadding(0)
+        } else {
+            scrollViewOriginalPaddings.remove(scrollView)?.let { orig ->
+                scrollView.setPadding(
+                        scrollView.paddingLeft,
+                        scrollView.paddingTop,
+                        scrollView.paddingRight,
+                        orig
+                )
+            }
         }
+        scrollViewOriginalPaddings.remove(scrollView)
     }
 
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
