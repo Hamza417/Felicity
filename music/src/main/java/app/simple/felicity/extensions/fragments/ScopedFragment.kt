@@ -447,11 +447,10 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                     WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
 
-            override fun onPause(owner: LifecycleOwner) {
+            override fun onDestroy(owner: LifecycleOwner) {
                 controller.show(WindowInsetsCompat.Type.systemBars())
                 controller.systemBarsBehavior =
                     WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
-                viewLifecycleOwner.lifecycle.removeObserver(this)
             }
         })
     }
