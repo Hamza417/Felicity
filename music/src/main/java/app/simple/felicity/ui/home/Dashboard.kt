@@ -35,6 +35,8 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.server.ServerModeService
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
+import app.simple.felicity.ui.panels.Albums
+import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.viewmodels.panels.DashboardViewModel
 import app.simple.felicity.viewmodels.panels.DashboardViewModel.LibraryStats
 import app.simple.felicity.viewmodels.panels.DashboardViewModel.RecommendedSpanConfig
@@ -381,17 +383,13 @@ class Dashboard : BaseHomeFragment() {
             topArtistsAdapter!!.setCallbacks(object : AdapterDashboardArtistsCallbacks {
                 override fun onArtistClicked(artist: Artist) {
                     openFragment(
-                            app.simple.felicity.ui.panels.Artists.newInstance(),
-                            app.simple.felicity.ui.panels.Artists.TAG
+                            Artists.newInstance(),
+                            Artists.TAG
                     )
                 }
 
                 override fun onArtistLongClicked(artist: Artist, imageView: ImageView) {
-                    // Artist menu can be wired up later — for now we navigate to artists.
-                    openFragment(
-                            app.simple.felicity.ui.panels.Artists.newInstance(),
-                            app.simple.felicity.ui.panels.Artists.TAG
-                    )
+                    openArtistMenu(artist, imageView)
                 }
             })
             binding.topArtistsList.adapter = topArtistsAdapter
@@ -416,17 +414,11 @@ class Dashboard : BaseHomeFragment() {
             topAlbumsAdapter = AdapterDashboardAlbums(albums)
             topAlbumsAdapter!!.setCallbacks(object : AdapterDashboardAlbumsCallbacks {
                 override fun onAlbumClicked(album: Album) {
-                    openFragment(
-                            app.simple.felicity.ui.panels.Albums.newInstance(),
-                            app.simple.felicity.ui.panels.Albums.TAG
-                    )
+                    openFragment(Albums.newInstance(), Albums.TAG)
                 }
 
                 override fun onAlbumLongClicked(album: Album, imageView: ImageView) {
-                    openFragment(
-                            app.simple.felicity.ui.panels.Albums.newInstance(),
-                            app.simple.felicity.ui.panels.Albums.TAG
-                    )
+                    openAlbumMenu(album, imageView)
                 }
             })
             binding.topAlbumsList.adapter = topAlbumsAdapter
