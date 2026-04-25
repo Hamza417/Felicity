@@ -348,7 +348,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                         val docTreeId = DocumentsContract.getTreeDocumentId(path.toUri())
                         val grantedTreeId = DocumentsContract.getTreeDocumentId(treeUriStr.toUri())
                         docTreeId == grantedTreeId
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         false
                     }
                 }
@@ -410,6 +410,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                 val resolved = pathMap[key]
                 if (resolved != null) {
                     audio.path = resolved
+                    audio.name = resolved.substringAfterLast('/')
                     toUpdate.add(audio)
                 }
             }
