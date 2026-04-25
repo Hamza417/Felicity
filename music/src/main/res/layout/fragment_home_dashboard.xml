@@ -97,12 +97,12 @@
                         android:marqueeRepeatLimit="marquee_forever"
                         android:singleLine="true"
                         android:maxLines="1"
-                        android:drawableStart="@drawable/ic_song_16dp"
+                        android:drawableStart="@drawable/ic_pie_16dp"
                         android:drawablePadding="@dimen/padding_5"
                         android:textSize="@dimen/text_size_14"
                         app:appFontStyle="bold"
                         app:drawableTintStyle="accent"
-                        app:highlightMode="flat"
+                        app:highlightMode="outline"
                         app:textColorStyle="secondary" />
 
                     <!-- Server active chip: only visible while the Wi-Fi server is running -->
@@ -122,7 +122,7 @@
                         android:visibility="gone"
                         app:appFontStyle="bold"
                         app:drawableTintStyle="accent"
-                        app:highlightMode="flat"
+                        app:highlightMode="outline"
                         app:textColorStyle="secondary" />
 
                 </LinearLayout>
