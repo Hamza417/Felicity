@@ -114,27 +114,33 @@ class PlayingQueue : BasePanelFragment() {
          * changes (drag reorder, swipe-to-remove, song change) must NOT trigger a scroll
          * to avoid a feedback loop that floods the RecyclerView with continuous scroll events.
          */
-        if (!hasScrolledToInitialPosition && binding.recyclerView.layoutManager is GridLayoutManager) {
-            hasScrolledToInitialPosition = true
-            val layoutManager = binding.recyclerView.layoutManager as GridLayoutManager
-            val currentPosition = MediaPlaybackManager.getCurrentSongPosition()
-            binding.recyclerView.post {
-                val firstVisible = layoutManager.findFirstVisibleItemPosition()
-                val lastVisible = layoutManager.findLastVisibleItemPosition()
-                if (currentPosition !in firstVisible..lastVisible) {
-                    layoutManager.scrollToPositionWithOffset(
-                            currentPosition,
-                            binding.appHeader.height
-                                    + resources.getDimensionPixelSize(R.dimen.padding_8)
-                                    + binding.recyclerView.paddingTop)
-                    binding.recyclerView.scheduleLayoutAnimation()
+        if (requireArguments().getBoolean(FIRST_LAUNCH_KEY, true)) {
+            if (!hasScrolledToInitialPosition && binding.recyclerView.layoutManager is GridLayoutManager) {
+                hasScrolledToInitialPosition = true
+                val layoutManager = binding.recyclerView.layoutManager as GridLayoutManager
+                val currentPosition = MediaPlaybackManager.getCurrentSongPosition()
+                binding.recyclerView.post {
+                    val firstVisible = layoutManager.findFirstVisibleItemPosition()
+                    val lastVisible = layoutManager.findLastVisibleItemPosition()
+                    if (currentPosition !in firstVisible..lastVisible) {
+                        layoutManager.scrollToPositionWithOffset(
+                                currentPosition,
+                                binding.appHeader.height
+                                        + resources.getDimensionPixelSize(R.dimen.padding_8)
+                                        + binding.recyclerView.paddingTop)
+                        binding.recyclerView.scheduleLayoutAnimation()
+                    }
                 }
             }
+
+            requireArguments().putBoolean(FIRST_LAUNCH_KEY, false)
         }
     }
 
     companion object {
         const val TAG = "PlayingQueue"
+
+        private const val FIRST_LAUNCH_KEY = "first_launch"
 
         fun newInstance(): PlayingQueue {
             val args = Bundle()
