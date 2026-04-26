@@ -35,8 +35,8 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.server.ServerModeService
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
-import app.simple.felicity.ui.panels.Albums
-import app.simple.felicity.ui.panels.Artists
+import app.simple.felicity.ui.pages.AlbumPage
+import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.viewmodels.panels.DashboardViewModel
 import app.simple.felicity.viewmodels.panels.DashboardViewModel.LibraryStats
 import app.simple.felicity.viewmodels.panels.DashboardViewModel.RecommendedSpanConfig
@@ -382,10 +382,7 @@ class Dashboard : BaseHomeFragment() {
             topArtistsAdapter = AdapterDashboardArtists(artists)
             topArtistsAdapter!!.setCallbacks(object : AdapterDashboardArtistsCallbacks {
                 override fun onArtistClicked(artist: Artist) {
-                    openFragment(
-                            Artists.newInstance(),
-                            Artists.TAG
-                    )
+                    openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
                 }
 
                 override fun onArtistLongClicked(artist: Artist, imageView: ImageView) {
@@ -414,7 +411,7 @@ class Dashboard : BaseHomeFragment() {
             topAlbumsAdapter = AdapterDashboardAlbums(albums)
             topAlbumsAdapter!!.setCallbacks(object : AdapterDashboardAlbumsCallbacks {
                 override fun onAlbumClicked(album: Album) {
-                    openFragment(Albums.newInstance(), Albums.TAG)
+                    openFragment(AlbumPage.newInstance(album), AlbumPage.TAG)
                 }
 
                 override fun onAlbumLongClicked(album: Album, imageView: ImageView) {
