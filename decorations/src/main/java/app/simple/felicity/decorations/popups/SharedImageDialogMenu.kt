@@ -97,9 +97,16 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         binding = inflateBinding(LayoutInflater.from(container.context), null, false)
         targetImageView = targetImageViewProvider(binding)
 
-        // Capture source image position
-        sourceImageView.getGlobalVisibleRect(sourceRect)
+        // Capture the container's screen position first so we can convert everything
+        // into container-relative coordinates.
         container.getGlobalVisibleRect(containerRect)
+
+        // Use getLocationOnScreen + actual view dimensions to get the true full bounds of
+        // the source image, even when it is partially scrolled off the visible area.
+        // getGlobalVisibleRect would only return the clipped (visible) portion of the view,
+        // which would make the animation start from the wrong position when the image is
+        // near the edge of the screen.
+        captureSourceRect(sourceRect)
 
         // Adjust for container offset
         sourceRect.offset(-containerRect.left, -containerRect.top)
@@ -129,6 +136,28 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         onDialogInflated(binding, { dismiss() }, { dismissImmediately() })
         onViewCreated(binding)
         setupBackPressListener()
+    }
+
+    /**
+     * Fills [out] with the true on-screen bounds of [sourceImageView] including any portion
+     * that happens to be scrolled off the visible area.
+     *
+     * [View.getGlobalVisibleRect] clips to the visible viewport, so an image that sits near
+     * the edge of a scroll container returns a smaller, shifted rect — which makes the
+     * morph animation land in the wrong spot. Using [View.getLocationOnScreen] combined with
+     * the view's actual measured dimensions gives us the real bounds every time.
+     *
+     * @param out The [Rect] to write the coordinates into.
+     */
+    private fun captureSourceRect(out: Rect) {
+        val location = IntArray(2)
+        sourceImageView.getLocationOnScreen(location)
+        out.set(
+                location[0],
+                location[1],
+                location[0] + sourceImageView.width,
+                location[1] + sourceImageView.height
+        )
     }
 
     private fun setupScrimView() {
@@ -396,8 +425,11 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         )
 
         if (isSourceReachable()) {
-            // Re-capture source position in case it has scrolled since show() was called.
-            sourceImageView.getGlobalVisibleRect(sourceRect)
+            // Re-capture the source's true full bounds in case it scrolled since show().
+            // We use getLocationOnScreen + actual dimensions rather than getGlobalVisibleRect
+            // so that a partially off-screen image returns to its real position, not the
+            // clipped visible rect, which would cause the animation to land in the wrong spot.
+            captureSourceRect(sourceRect)
             sourceRect.offset(-containerRect.left, -containerRect.top)
 
             animators += ValueAnimator.ofInt(startLeft, sourceRect.left).apply {
