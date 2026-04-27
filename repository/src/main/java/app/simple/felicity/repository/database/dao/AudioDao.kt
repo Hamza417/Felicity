@@ -140,11 +140,25 @@ interface AudioDao {
     @Query("SELECT * FROM audio WHERE is_favorite = 1 AND is_available = 1 ORDER BY title COLLATE NOCASE ASC")
     fun getFavoriteAudio(): Flow<MutableList<Audio>>
 
+    /**
+     * Returns every song that has been flagged as "always skip" as a live Flow.
+     * The list automatically updates whenever a song is added to or removed from the skip list.
+     */
+    @Query("SELECT * FROM audio WHERE always_skip = 1 AND is_available = 1 ORDER BY title COLLATE NOCASE ASC")
+    fun getAlwaysSkippedAudio(): Flow<MutableList<Audio>>
+
     @Query("UPDATE audio SET is_favorite = :isFavorite WHERE id = :id")
     suspend fun setFavorite(id: Long, isFavorite: Boolean)
 
     @Query("UPDATE audio SET always_skip = :alwaysSkip WHERE id = :id")
     suspend fun setAlwaysSkip(id: Long, alwaysSkip: Boolean)
+
+    /**
+     * Marks a whole batch of songs as always-skip (or clears the flag) in a single query.
+     * Much more efficient than calling [setAlwaysSkip] one song at a time.
+     */
+    @Query("UPDATE audio SET always_skip = :alwaysSkip WHERE id IN (:ids)")
+    suspend fun setAlwaysSkipBatch(ids: List<Long>, alwaysSkip: Boolean)
 
     @RawQuery
     fun getQueriedData(query: SupportSQLiteQuery): MutableList<Audio>

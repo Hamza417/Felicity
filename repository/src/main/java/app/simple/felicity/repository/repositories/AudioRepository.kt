@@ -45,6 +45,30 @@ class AudioRepository @Inject constructor(
     }
 
     /**
+     * Returns a live Flow of every song the user has flagged as "always skip".
+     * The list updates automatically whenever a song is added or removed from the skip list —
+     * no manual refresh required, the database just tells us whenever things change.
+     */
+    fun getAlwaysSkippedAudio(): Flow<List<Audio>> {
+        return audioDatabase.audioDao()?.getAlwaysSkippedAudio()?.map { it.toList() }
+            ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    }
+
+    /**
+     * Marks every song in [songs] as always-skip (or clears the flag) in a single
+     * database operation — much faster than doing it one by one.
+     *
+     * @param songs  The list of songs to update.
+     * @param skip   Pass true to flag them all, false to clear the flag.
+     */
+    suspend fun setAlwaysSkipBatch(songs: List<Audio>, skip: Boolean) = withContext(Dispatchers.IO) {
+        val ids = songs.map { it.id }
+        if (ids.isNotEmpty()) {
+            audioDatabase.audioDao()?.setAlwaysSkipBatch(ids, skip)
+        }
+    }
+
+    /**
      * Minimum duration threshold in milliseconds derived from [LibraryPreferences].
      * The preference stores the value in seconds.
      */

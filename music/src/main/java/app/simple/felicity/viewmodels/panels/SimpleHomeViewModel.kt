@@ -56,6 +56,7 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
             defaultPanels.add(Group(R.string.files))
             defaultPanels.add(Panel(R.string.folders, R.drawable.ic_folder))
             defaultPanels.add(Panel(R.string.folders_hierarchy, R.drawable.ic_tree))
+            defaultPanels.add(Panel(R.string.always_skipped, R.drawable.ic_skip_16dp))
 
             homeData.postValue(defaultPanels.toMutableList())
         }

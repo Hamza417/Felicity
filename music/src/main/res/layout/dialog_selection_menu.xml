@@ -90,6 +90,36 @@
             app:drawableTintStyle="regular"
             app:textColorStyle="primary" />
 
+        <!-- Mark every selected song to always be skipped during playback -->
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/always_skip_all"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="@dimen/padding_10"
+            android:gravity="center_vertical"
+            android:padding="@dimen/padding_10"
+            android:text="@string/always_skip"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:drawableStartCompat="@drawable/ic_skip_16dp"
+            app:drawableTintStyle="regular"
+            app:textColorStyle="primary" />
+
+        <!-- Lift the always-skip flag from every selected song so they can play freely again -->
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/never_skip_all"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="@dimen/padding_10"
+            android:gravity="center_vertical"
+            android:padding="@dimen/padding_10"
+            android:text="@string/never_skip"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:drawableStartCompat="@drawable/ic_skip_next_menu_16dp"
+            app:drawableTintStyle="regular"
+            app:textColorStyle="primary" />
+
         <app.simple.felicity.decorations.ripple.DynamicRippleTextView
             android:id="@+id/clear_selection"
             android:layout_width="match_parent"

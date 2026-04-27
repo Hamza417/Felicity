@@ -48,6 +48,7 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.managers.SelectionManager
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.repository.utils.AudioUtils.getArtists
@@ -83,6 +84,9 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
      */
     @Inject
     lateinit var lyricsManager: LyricsManager
+
+    @Inject
+    lateinit var audioRepository: AudioRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -458,6 +462,22 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                     supportFragmentManager.showAddMultipleToPlaylistDialog(selected)
                 }
                 dialogBinding.clearSelection.setOnClickListener {
+                    SelectionManager.clear()
+                    dismiss()
+                }
+                // Flag all selected songs as always-skip so they'll be auto-skipped during playback.
+                dialogBinding.alwaysSkipAll.setOnClickListener {
+                    lifecycleScope.launch {
+                        audioRepository.setAlwaysSkipBatch(selected, skip = true)
+                    }
+                    SelectionManager.clear()
+                    dismiss()
+                }
+                // Remove the always-skip flag from all selected songs — welcome back to the queue!
+                dialogBinding.neverSkipAll.setOnClickListener {
+                    lifecycleScope.launch {
+                        audioRepository.setAlwaysSkipBatch(selected, skip = false)
+                    }
                     SelectionManager.clear()
                     dismiss()
                 }

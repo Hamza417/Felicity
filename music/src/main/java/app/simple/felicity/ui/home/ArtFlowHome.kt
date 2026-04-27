@@ -28,6 +28,7 @@ import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.panels.AlbumArtists
 import app.simple.felicity.ui.panels.Albums
+import app.simple.felicity.ui.panels.AlwaysSkipped
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Favorites
 import app.simple.felicity.ui.panels.Folders
@@ -133,6 +134,7 @@ class ArtFlowHome : MediaFragment() {
                                     R.string.recently_added -> openFragment(RecentlyAdded.newInstance(), RecentlyAdded.TAG)
                                     R.string.recently_played -> openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
                                     R.string.most_played -> openFragment(MostPlayed.newInstance(), MostPlayed.TAG)
+                                    R.string.always_skipped -> openFragment(AlwaysSkipped.newInstance(), AlwaysSkipped.TAG)
                                     else -> Log.w(TAG, "Unknown popup item clicked: $itemResId")
                                 }
                             },

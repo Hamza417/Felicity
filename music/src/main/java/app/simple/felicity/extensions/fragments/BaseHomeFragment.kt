@@ -10,6 +10,7 @@ import app.simple.felicity.shared.utils.ViewUtils.toColorStateList
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.panels.AlbumArtists
 import app.simple.felicity.ui.panels.Albums
+import app.simple.felicity.ui.panels.AlwaysSkipped
 import app.simple.felicity.ui.panels.Artists
 import app.simple.felicity.ui.panels.Favorites
 import app.simple.felicity.ui.panels.Folders
@@ -105,6 +106,7 @@ abstract class BaseHomeFragment : PanelFragment() {
             R.string.year -> openFragment(Year.newInstance(), Year.TAG)
             R.string.playlists -> openFragment(Playlists.newInstance(), Playlists.TAG)
             R.string.preferences -> openFragment(Preferences.newInstance(), Preferences.TAG)
+            R.string.always_skipped -> openFragment(AlwaysSkipped.newInstance(), AlwaysSkipped.TAG)
         }
     }
 }

@@ -155,6 +155,7 @@ class DashboardViewModel @Inject constructor(
             },
             Panel(R.string.folders, R.drawable.ic_folder_16dp),
             Panel(R.string.folders_hierarchy, R.drawable.ic_tree_16dp),
+            Panel(R.string.always_skipped, R.drawable.ic_skip_16dp)
     )
 
     init {
