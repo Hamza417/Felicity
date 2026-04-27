@@ -26,7 +26,7 @@ object UserInterfacePreferences {
     const val HOME_INTERFACE_ARTFLOW = 3
     const val HOME_INTERFACE_SIMPLE = 0
 
-    const val PLAYER_INTERFACE_DEFAULT = 1
+    const val PLAYER_INTERFACE_DEFAULT = 0
     const val PLAYER_INTERFACE_FADED = 1
 
     fun setLikeIconInsteadOfThumb(value: Boolean) {
