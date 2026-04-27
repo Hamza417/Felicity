@@ -147,12 +147,12 @@ class FelicityWidgetProvider : AppWidgetProvider() {
         val iconColor = Color.WHITE
 
         // Read the last-saved song metadata.
-        val title = WidgetStatePrefs.getTitle(context).ifEmpty { context.getString(R.string.unknown_title) }
-        val artist = WidgetStatePrefs.getArtist(context).ifEmpty { context.getString(R.string.unknown_artist) }
+        val title = WidgetStatePrefs.getTitle(context).ifEmpty { context.getString(R.string.unknown) }
+        val artist = WidgetStatePrefs.getArtist(context).ifEmpty { context.getString(R.string.unknown) }
         val isPlaying = WidgetStatePrefs.isPlaying(context)
         val songId = WidgetStatePrefs.getSongId(context)
 
-        val views = RemoteViews(context.packageName, R.layout.widget_player)
+        val views = RemoteViews(context.packageName, R.layout.widget_blurred)
 
         // Build the themed background bitmap programmatically — no XML drawable involved.
         val bgBitmap = loadBGArtWithGlide(context, manager, widgetId, songId)

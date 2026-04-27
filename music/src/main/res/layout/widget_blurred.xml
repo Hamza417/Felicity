@@ -37,7 +37,6 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="@string/unknown_title"
                 android:textColor="@android:color/white"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -50,7 +49,6 @@
                 android:alpha="0.8"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="@string/unknown_artist"
                 android:textColor="@android:color/white"
                 android:textSize="14sp" />
         </LinearLayout>
@@ -67,7 +65,6 @@
                 android:layout_height="48dp"
                 android:layout_weight="1"
                 android:background="@null"
-                android:contentDescription="@string/previous"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_skip_previous" />
 
@@ -77,7 +74,6 @@
                 android:layout_height="48dp"
                 android:layout_weight="1"
                 android:background="@null"
-                android:contentDescription="@string/play_pause"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_play" />
 
@@ -87,7 +83,6 @@
                 android:layout_height="48dp"
                 android:layout_weight="1"
                 android:background="@null"
-                android:contentDescription="@string/next"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_skip_next" />
         </LinearLayout>

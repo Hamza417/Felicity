@@ -66,7 +66,7 @@
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/widget_player_info" />
+                android:resource="@xml/widget_blur_info" />
         </receiver>
 
         <!-- Handles the actual button taps (play/pause, next, prev) from the widget. -->
