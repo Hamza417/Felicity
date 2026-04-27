@@ -67,6 +67,7 @@ class DashboardViewModel @Inject constructor(
      */
     data class RecommendedSpanConfig(val spanCount: Int, val bigCellPositions: List<Int>)
 
+    var recommendedHeight: Int = -1
     private val _recentlyPlayed = MutableStateFlow<List<Audio>>(emptyList())
 
     /** Recently played songs flow ordered by last-played timestamp descending. */

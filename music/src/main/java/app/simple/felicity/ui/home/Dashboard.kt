@@ -177,6 +177,8 @@ class Dashboard : BaseHomeFragment() {
             if (position in spanConfig.bigCellPositions) SpanSize(2, 2) else SpanSize(1, 1)
         }
 
+        binding.recommendedGrid.layoutParams.height = dashboardViewModel.recommendedHeight.takeIf { it != -1 } ?: 0
+
         if (binding.recommendedGrid.adapter != null) {
             binding.recommendedGrid.animate()
                 .alpha(0f)
@@ -198,11 +200,17 @@ class Dashboard : BaseHomeFragment() {
 
         binding.recommendedGrid.post {
             try {
-                binding.recommendedGrid.layoutParams.height =
-                    layoutManager.getTotalHeight() +
-                            binding.recommendedGrid.paddingTop +
-                            binding.recommendedGrid.paddingBottom
-                binding.recommendedGrid.requestLayout()
+                val totalHeight = layoutManager.getTotalHeight() +
+                        binding.recommendedGrid.paddingTop +
+                        binding.recommendedGrid.paddingBottom
+
+                if (dashboardViewModel.recommendedHeight == -1
+                        || totalHeight != dashboardViewModel.recommendedHeight) {
+                    binding.recommendedGrid.layoutParams.height = totalHeight
+                    binding.recommendedGrid.requestLayout()
+                }
+
+                dashboardViewModel.recommendedHeight = binding.recommendedGrid.measuredHeight
             } catch (_: UninitializedPropertyAccessException) {
                 // View was destroyed before the post ran — no worries, nothing to update.
             }
