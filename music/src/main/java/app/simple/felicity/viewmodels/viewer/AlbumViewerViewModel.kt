@@ -22,9 +22,15 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel(assistedFactory = AlbumViewerViewModel.Factory::class)
 class AlbumViewerViewModel @AssistedInject constructor(
-        @Assisted private val album: Album,
+        @Assisted album: Album,
         private val audioRepository: AudioRepository
 ) : ViewModel() {
+
+    /**
+     * The album we're showing. Song paths are cleared right here because they were only
+     * needed for the initial lookup — no point keeping a potentially giant list in memory.
+     */
+    private val album = album.copy(songPaths = emptyList())
 
     private val _data = MutableStateFlow<PageData?>(null)
     val data: StateFlow<PageData?> = _data.asStateFlow()

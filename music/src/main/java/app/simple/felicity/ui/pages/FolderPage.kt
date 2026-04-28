@@ -87,7 +87,10 @@ class FolderPage : BasePageFragment() {
 
         fun newInstance(folder: Folder): FolderPage {
             val args = Bundle()
-            args.putParcelable(BundleConstants.FOLDER, folder)
+            // Strip the song paths before parceling — they can be huge for big libraries
+            // and will blow past the 1 MB Binder transaction limit in no time. The
+            // ViewModel fetches the songs fresh from the repository anyway.
+            args.putParcelable(BundleConstants.FOLDER, folder.copy(songPaths = emptyList()))
             val fragment = FolderPage()
             fragment.arguments = args
             return fragment

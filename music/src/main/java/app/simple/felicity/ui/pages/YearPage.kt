@@ -87,7 +87,10 @@ class YearPage : BasePageFragment() {
 
         fun newInstance(yearGroup: YearGroup): YearPage {
             val args = Bundle()
-            args.putParcelable(BundleConstants.YEAR_GROUP, yearGroup)
+            // Strip the song paths before parceling — they can be huge for big libraries
+            // and will blow past the 1 MB Binder transaction limit in no time. The
+            // ViewModel fetches the songs fresh from the repository anyway.
+            args.putParcelable(BundleConstants.YEAR_GROUP, yearGroup.copy(songPaths = emptyList()))
             val fragment = YearPage()
             fragment.arguments = args
             return fragment

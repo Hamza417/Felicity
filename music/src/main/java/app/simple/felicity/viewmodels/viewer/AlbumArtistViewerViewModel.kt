@@ -29,12 +29,18 @@ import kotlinx.coroutines.launch
  */
 @HiltViewModel(assistedFactory = AlbumArtistViewerViewModel.Factory::class)
 class AlbumArtistViewerViewModel @AssistedInject constructor(
-        @Assisted private val albumArtist: Artist,
+        @Assisted albumArtist: Artist,
         private val audioRepository: AudioRepository
 ) : ViewModel() {
 
     private val _data = MutableStateFlow<PageData?>(null)
     val data: StateFlow<PageData?> = _data.asStateFlow()
+
+    /**
+     * The album artist we're showing. Song paths are cleared right here because they were only
+     * needed for the initial lookup — no point keeping a potentially giant list in memory.
+     */
+    private val albumArtist = albumArtist.copy(songPaths = emptyList())
 
     /** The raw, unsorted song list — cached so re-sorting never touches the database. */
     private var rawSongs: List<Audio> = emptyList()
