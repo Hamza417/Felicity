@@ -22,18 +22,12 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel(assistedFactory = GenreViewerViewModel.Factory::class)
 class GenreViewerViewModel @AssistedInject constructor(
-        @Assisted genre: Genre,
+        @Assisted private val genre: Genre,
         private val audioRepository: AudioRepository,
 ) : ViewModel() {
 
     private val _data = MutableStateFlow<PageData?>(null)
     val data: StateFlow<PageData?> = _data.asStateFlow()
-
-    /**
-     * The genre we're showing. Song paths are cleared right here because they were only
-     * needed for the initial lookup — no point keeping a potentially giant list in memory.
-     */
-    private val genre = genre.copy(songPaths = emptyList())
 
     /** Raw unsorted songs fetched from the repository. Re-sorting does not require a DB trip. */
     private var rawSongs: List<Audio> = emptyList()
