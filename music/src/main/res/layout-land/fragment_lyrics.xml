@@ -51,6 +51,7 @@
                 android:padding="@dimen/padding_10"
                 android:textSize="@dimen/text_size_12"
                 app:appFontStyle="medium"
+                app:highlightMode="auto"
                 app:textColorStyle="primary" />
 
             <app.simple.felicity.decorations.theme.ThemeDivider

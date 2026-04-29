@@ -968,6 +968,34 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val highlightClickedElement = Preference(
+                title = R.string.highlight_clicked_element,
+                summary = R.string.highlight_clicked_element_summary,
+                icon = R.drawable.ic_highlight,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AccessibilityPreferences.setHighlightMode((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    AccessibilityPreferences.isHighlightMode()
+                }
+        )
+
+        val outlineClickableElements = Preference(
+                title = R.string.outline_clickable_elements,
+                summary = R.string.outline_clickable_elements_summary,
+                icon = R.drawable.ic_border_outer,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AccessibilityPreferences.setHighlightStroke((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    AccessibilityPreferences.isHighlightStroke()
+                }
+        )
+
+        val miniPlayerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.miniplayer)
+
         val strokeAroundMiniplayer = Preference(
                 title = R.string.stroke_around_miniplayer,
                 summary = R.string.stroke_around_miniplayer_summary,
@@ -996,6 +1024,9 @@ abstract class PreferenceFragment : MediaFragment() {
 
         preferences.add(userInterfaceHeader)
         preferences.add(divider)
+        preferences.add(highlightClickedElement)
+        preferences.add(outlineClickableElements)
+        preferences.add(miniPlayerHeader)
         preferences.add(strokeAroundMiniplayer)
         preferences.add(darkerMiniplayerShadow)
 

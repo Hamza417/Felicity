@@ -55,6 +55,10 @@ import app.simple.felicity.theme.models.Theme;
 public class HighlightTextView extends TypeFaceTextView {
     
     /**
+     * Automatically selects the display mode based on the current accessibility settings.
+     */
+    public static final int MODE_AUTO = -1;
+    /**
      * Filled pill background using the theme highlight color. This is the default mode.
      */
     public static final int MODE_FLAT = 0;
@@ -139,6 +143,13 @@ public class HighlightTextView extends TypeFaceTextView {
         int strokeColor = resolveStrokeColor();
         
         switch (highlightMode) {
+            case MODE_AUTO:
+                background.setFillColor(ColorStateList.valueOf(fillColor));
+                
+                if (AccessibilityPreferences.INSTANCE.isHighlightStroke()) {
+                    background.setStroke(strokeWidth, strokeColor);
+                }
+                break;
             case MODE_OUTLINE:
                 background.setFillColor(ColorStateList.valueOf(Color.TRANSPARENT));
                 background.setStroke(strokeWidth, strokeColor);

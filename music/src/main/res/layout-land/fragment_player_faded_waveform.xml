@@ -154,6 +154,7 @@
                     android:paddingHorizontal="@dimen/padding_10"
                     android:paddingVertical="@dimen/padding_5"
                     app:appFontStyle="bold"
+                    app:highlightMode="auto"
                     app:textColorStyle="primary" />
 
                 <app.simple.felicity.decorations.highlight.HighlightTextView
@@ -166,6 +167,7 @@
                     android:paddingVertical="@dimen/padding_5"
                     android:text="@string/lyrics"
                     app:appFontStyle="bold"
+                    app:highlightMode="auto"
                     app:textColorStyle="primary" />
 
                 <Space

@@ -32,6 +32,7 @@
             android:layout_height="wrap_content"
             android:padding="@dimen/padding_10"
             android:textSize="@dimen/text_size_12"
+            app:highlightMode="auto"
             app:appFontStyle="medium"
             app:textColorStyle="primary" />
 

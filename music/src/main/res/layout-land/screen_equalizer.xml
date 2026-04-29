@@ -51,6 +51,7 @@
                 android:paddingVertical="@dimen/padding_5"
                 android:text="@string/save_preset"
                 app:appFontStyle="bold"
+                app:highlightMode="auto"
                 app:textColorStyle="secondary" />
 
             <Space
@@ -67,6 +68,7 @@
                 android:paddingHorizontal="@dimen/padding_10"
                 android:paddingVertical="@dimen/padding_5"
                 android:text="@string/reset"
+                app:highlightMode="auto"
                 app:appFontStyle="bold"
                 app:textColorStyle="secondary" />
 
@@ -79,6 +81,7 @@
                 android:paddingHorizontal="@dimen/padding_10"
                 android:paddingVertical="@dimen/padding_5"
                 android:text="@string/presets"
+                app:highlightMode="auto"
                 android:layout_marginEnd="@dimen/padding_10"
                 app:appFontStyle="bold"
                 app:textColorStyle="secondary" />

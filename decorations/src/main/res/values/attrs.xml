@@ -334,6 +334,7 @@
     -->
     <declare-styleable name="HighlightTextView">
         <attr name="highlightMode" format="enum">
+            <enum name="auto" value="-1" />
             <enum name="flat" value="0" />
             <enum name="outline" value="1" />
             <enum name="both" value="2" />
