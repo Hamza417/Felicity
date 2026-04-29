@@ -82,7 +82,6 @@ object AudioCoverUtils {
             item: Any,
             height: Int,
             width: Int,
-            roundedTimes: Int = 1,
             shadow: Boolean = false,
             roundedCorners: Boolean = false,
             blur: Boolean = false,
@@ -93,7 +92,7 @@ object AudioCoverUtils {
         val transformations = mutableListOf<Transformation<Bitmap>>()
 
         if (crop) transformations.add(CenterCrop())
-        if (roundedCorners) transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt().times(roundedTimes)))
+        if (roundedCorners) transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt()))
         if (shadow) {
             transformations.add(Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()))
 

@@ -1,5 +1,6 @@
 package app.simple.felicity.widget
 
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
@@ -273,7 +274,7 @@ class FelicityWidgetProvider : AppWidgetProvider() {
                     ?.getAudioById(songId)
                     ?: return@withContext null
 
-                val size = context.resources.getDimensionPixelSize(R.dimen.widget_album_art_size)
+                val size = context.resources.getDimensionPixelSize(R.dimen.album_art_dimen)
 
                 context.getArtCoverForWidget(
                         audio,
@@ -314,7 +315,6 @@ class FelicityWidgetProvider : AppWidgetProvider() {
                         audio,
                         height = heightPx,
                         width = widthPx,
-                        roundedTimes = 3,
                         shadow = false,
                         blur = true,
                         greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
@@ -327,16 +327,16 @@ class FelicityWidgetProvider : AppWidgetProvider() {
         }
 
     /**
-     * Wraps a widget button action string in a [android.app.PendingIntent] targeting
+     * Wraps a widget button action string in a [PendingIntent] targeting
      * [WidgetActionReceiver]. Each action gets a unique request code from its hash so
      * the three buttons don't silently overwrite each other's intents.
      */
-    private fun buildPendingIntent(context: Context, action: String): android.app.PendingIntent =
-        android.app.PendingIntent.getBroadcast(
+    private fun buildPendingIntent(context: Context, action: String): PendingIntent =
+        PendingIntent.getBroadcast(
                 context,
                 action.hashCode(),
                 Intent(action, null, context, WidgetActionReceiver::class.java),
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
     companion object {

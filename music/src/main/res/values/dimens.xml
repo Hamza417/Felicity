@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!--
-        Album art size for the 1×4 widget.
-        One launcher row is roughly 50dp tall; subtract 8dp padding top+bottom and
-        you get ~42dp of usable content height. The art stays square at that size.
-    -->
-    <dimen name="widget_album_art_size">42dp</dimen>
-</resources>
