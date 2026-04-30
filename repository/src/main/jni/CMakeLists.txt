@@ -1,18 +1,34 @@
 cmake_minimum_required(VERSION 3.22.1)
 project("felicity_taglib")
 
-# Emit a compile_commands.json so clangd (the IDE's C++ language server)
-# can find all the headers — including the ones FetchContent downloads.
-# Without this, the IDE shows "file not found" for every TagLib include
-# even though the actual Gradle build works perfectly fine.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Pull TagLib directly from GitHub and build it as a static library.
-# The first CMake configure step will download the source — make sure
-# your build machine has internet access for that initial fetch.
+# ---------------------------------------------------------------------------
+# REPRODUCIBILITY BLOCK
+# ---------------------------------------------------------------------------
+
+# Strip paths for both YOUR source AND FetchContent's downloaded source
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffile-prefix-map=${CMAKE_SOURCE_DIR}=. -ffile-prefix-map=${CMAKE_BINARY_DIR}=./build")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffile-prefix-map=${CMAKE_SOURCE_DIR}=. -ffile-prefix-map=${CMAKE_BINARY_DIR}=./build")
+
+# Block timestamps
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=date-time")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=date-time")
+
+# Force deterministic static archives (.a files) for TagLib
+# The 'D' flag tells ar to use zero for UIDs, GIDs, and timestamps.
+set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcDT <TARGET> <LINK_FLAGS> <OBJECTS>")
+set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> qcDT <TARGET> <LINK_FLAGS> <OBJECTS>")
+set(CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> qDT <TARGET> <LINK_FLAGS> <OBJECTS>")
+set(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> qDT <TARGET> <LINK_FLAGS> <OBJECTS>")
+
+# Force the linker to strip the final .so (fixing the 19MB vs 2MB issue)
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-s")
+
+# ---------------------------------------------------------------------------
+
 include(FetchContent)
 
-# Force the debug postfix to be completely empty
 set(CMAKE_DEBUG_POSTFIX "")
 
 FetchContent_Declare(
@@ -23,7 +39,6 @@ FetchContent_Declare(
         GIT_SUBMODULES_RECURSE TRUE
 )
 
-# Turn off everything from TagLib's build we don't need.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(TAGLIB_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(TAGLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -31,29 +46,25 @@ set(WITH_ZLIB OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(taglib)
 
-# Our thin JNI shim that bridges Kotlin ↔ TagLib C++.
 add_library(taglib_jni SHARED taglib_jni.cpp)
-
 target_compile_features(taglib_jni PRIVATE cxx_std_17)
 
 # ---------------------------------------------------------------------------
 # The "Flatten" Hack for TagLib headers
 # ---------------------------------------------------------------------------
-# Create a virtual 'taglib' directory inside the build cache
 set(TAGLIB_FLAT_DIR ${CMAKE_CURRENT_BINARY_DIR}/taglib_flat_includes/taglib)
 file(MAKE_DIRECTORY ${TAGLIB_FLAT_DIR})
 
-# Scrape every single header file from TagLib's scattered subdirectories
 file(GLOB_RECURSE TAGLIB_HEADERS
         "${taglib_SOURCE_DIR}/taglib/*.h"
         "${taglib_SOURCE_DIR}/taglib/*.tcc"
 )
 
-# Copy them all into our flat virtual directory so they sit side-by-side
+# Sort the glob to guarantee deterministic ordering
+list(SORT TAGLIB_HEADERS)
+
 file(COPY ${TAGLIB_HEADERS} DESTINATION ${TAGLIB_FLAT_DIR})
 
-# Point the JNI target to the parent of the flat directory,
-# and keep the binary dir for generated config headers.
 target_include_directories(taglib_jni PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}/taglib_flat_includes
         ${taglib_BINARY_DIR}
@@ -61,7 +72,6 @@ target_include_directories(taglib_jni PRIVATE
 
 target_link_libraries(taglib_jni
         PRIVATE
-        tag       # TagLib static library (built by FetchContent above)
-        log       # Android logcat support
+        tag
+        log
 )
-

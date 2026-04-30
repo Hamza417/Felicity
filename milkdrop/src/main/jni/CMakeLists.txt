@@ -23,9 +23,6 @@ set(BUILD_SHARED_LIBS     OFF CACHE BOOL "Static build for JNI bundling"      FO
 # Use the GLM copy that projectM manages itself
 set(PROJECTM_USE_SYSTEM_GLM OFF CACHE BOOL "Use projectM-bundled GLM" FORCE)
 
-# Force the debug postfix to be completely empty
-set(CMAKE_DEBUG_POSTFIX "")
-
 # ---------------------------------------------------------------------------
 # Fetch projectM from the official repository at a pinned release tag.
 # GIT_SHALLOW is set to FALSE so that any git submodules inside the
@@ -39,6 +36,28 @@ FetchContent_Declare(projectm
 )
 
 FetchContent_MakeAvailable(projectm)
+
+# ---------------------------------------------------------------------------
+# REPRODUCIBILITY BLOCK
+# ---------------------------------------------------------------------------
+
+# Strip paths for both YOUR source AND FetchContent's downloaded source
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffile-prefix-map=${CMAKE_SOURCE_DIR}=. -ffile-prefix-map=${CMAKE_BINARY_DIR}=./build")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffile-prefix-map=${CMAKE_SOURCE_DIR}=. -ffile-prefix-map=${CMAKE_BINARY_DIR}=./build")
+
+# Block timestamps
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=date-time")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=date-time")
+
+# Force deterministic static archives (.a files) for TagLib
+# The 'D' flag tells ar to use zero for UIDs, GIDs, and timestamps.
+set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcDT <TARGET> <LINK_FLAGS> <OBJECTS>")
+set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> qcDT <TARGET> <LINK_FLAGS> <OBJECTS>")
+set(CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> qDT <TARGET> <LINK_FLAGS> <OBJECTS>")
+set(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> qDT <TARGET> <LINK_FLAGS> <OBJECTS>")
+
+# Force the linker to strip the final .so (fixing the 19MB vs 2MB issue)
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-s")
 
 # ---------------------------------------------------------------------------
 # Felicity milkdrop JNI bridge
@@ -68,3 +87,5 @@ target_link_libraries(felicity_milkdrop
     ${gles-lib}
     ${egl-lib})
 
+# Force the debug postfix to be completely empty
+set(CMAKE_DEBUG_POSTFIX "")
