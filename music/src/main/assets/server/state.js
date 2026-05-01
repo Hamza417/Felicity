@@ -3,15 +3,14 @@
 /**
  * state.js — Felicity Web Player
  *
- * All shared mutable state and cached DOM references used across every other
- * module. This file must be loaded immediately after helpers.js.
+ * All shared mutable state and cached DOM references used across every other module.
+ * Must be loaded immediately after helpers.js.
  */
 
-/* DOM references — player overlay */
+/* DOM references — player pane */
 const audioEl        = el("audioEl");
-const playerOverlay  = el("playerOverlay");
+const playerPane     = el("playerPane");
 const playerCloseBtn = el("playerCloseBtn");
-const playerBg       = el("playerBg");
 const playerArt      = el("playerArt");
 const nowTitle       = el("nowTitle");
 const nowArtist      = el("nowArtist");
@@ -26,28 +25,14 @@ const volBar         = el("volBar");
 const volIcon        = el("volIcon");
 const waveformCanvas = el("waveformCanvas");
 
-/* DOM references — mini player */
-const miniPlayer    = el("miniPlayer");
-const miniOpen      = el("miniOpen");
-const miniTitle     = el("miniTitle");
-const miniArtist    = el("miniArtist");
-const miniPlayBtn   = el("miniPlayBtn");
-const miniPlayIcon  = el("miniPlayIcon");
-const miniNextBtn   = el("miniNextBtn");
-const miniSeekFill  = el("miniSeekFill");
-const nowArt        = el("nowArt");
-
-/* DOM references — ambient background */
-const ambientA = el("ambientA");
-const ambientB = el("ambientB");
-
 /* DOM references — screens */
 const screenDashboard = el("screenDashboard");
 const screenLibrary   = el("screenLibrary");
 const dashboardBody   = el("dashboardBody");
 const contentBody     = el("contentBody");
 
-/* DOM references — library header controls */
+/* DOM references — library header */
+const homeBtn        = el("homeBtn");
 const searchInput    = el("searchInput");
 const itemCount      = el("itemCount");
 const sectionTitle   = el("sectionTitle");
@@ -56,55 +41,54 @@ const backLabel      = el("backLabel");
 const viewToggle     = el("viewToggle");
 const viewToggleIcon = el("viewToggleIcon");
 
-/* DOM references — other */
+/* DOM references — theme */
 const themeToggle = el("themeToggle");
 const themeIcon   = el("themeIcon");
+
+/* DOM references — floating now-playing FAB */
+const playerFab = el("playerFab");
+
+/* DOM references — context menu */
 const ctxMenu     = el("ctxMenu");
 const ctxPlay     = el("ctxPlay");
 const ctxAddQueue = el("ctxAddQueue");
 const ctxDelete   = el("ctxDelete");
-const navItems    = document.querySelectorAll(".nav-item");
 
 /* ==================== App State ==================== */
 
 /**
- * Per-section data cache — avoids repeated API calls when switching tabs.
- *
+ * Per-section data cache so we don't re-fetch the same data on every tab switch.
  * @type {{ songs: object[]|null, albums: object[]|null, artists: object[]|null, genres: object[]|null }}
  */
 const cache = { songs: null, albums: null, artists: null, genres: null };
 
-/** Currently active section key — can be "dashboard", "songs", "albums", "artists", or "genres". */
+/** Currently active section — "dashboard", "songs", "albums", "artists", or "genres". */
 let section = "dashboard";
 
 /**
- * Drill-down context when the user has navigated into an album, artist, or genre.
- * Null when at the top-level library view.
- *
+ * Active drill-down context (e.g. all songs in an album), or null at the top level.
  * @type {{ type: string, name: string, items: object[] }|null}
  */
 let drillItem = null;
 
-/** Live value of the search input. */
+/** Current value of the search input field. */
 let searchQuery = "";
 
-/** Current playback queue — array of song objects from the API. */
+/** Playback queue — the array of songs the user is navigating with prev/next. */
 let queue    = [];
 
 /** Index of the currently playing song within {@link queue}. */
 let queueIdx = -1;
 
-/** Database ID of the currently playing song, or null when idle. */
+/** Database ID of the currently playing song, or null when nothing is playing. */
 let nowId = null;
 
-/** True while the user is dragging the seek slider. */
+/** True while the user is actively dragging the seek slider. */
 let seeking = false;
 
 /**
- * Per-section view mode preference — "list" or "grid".
- * Albums default to "grid"; everything else defaults to "list".
- *
- * @type {{ songs: string, albums: string, artists: string, genres: string }}
+ * Per-section view mode — "list" or "grid". Albums default to grid because
+ * album art looks much better that way.
  */
 const VIEWMODE_DEFAULTS = { songs: "list", albums: "grid", artists: "list", genres: "list" };
 const viewMode = (() => {
@@ -113,29 +97,29 @@ const viewMode = (() => {
         return (saved && typeof saved === "object")
             ? Object.assign({ ...VIEWMODE_DEFAULTS }, saved)
             : { ...VIEWMODE_DEFAULTS };
-    } catch (_) {
-        return { ...VIEWMODE_DEFAULTS };
-    }
+    } catch (_) { return { ...VIEWMODE_DEFAULTS }; }
 })();
 
-/**
- * View mode used when the user has drilled into an album/artist/genre
- * and is viewing the resulting song list.
- */
+/** View mode for drill-down song lists (e.g. songs inside an album). */
 let drillViewMode = localStorage.getItem("felicity_drillViewMode") || "list";
 
 /**
- * Song targeted by the most recently opened context menu.
- *
+ * Saves the scroll position of each section so when you drill into an album
+ * and come back, you land right where you left off — not at the very top.
+ * @type {{ [section: string]: number }}
+ */
+const scrollState = {};
+
+/**
+ * Song currently targeted by the context menu, or null when the menu is closed.
  * @type {{ song: object, ctx: object[] }|null}
  */
 let ctxSong = null;
 
 /**
- * The bar heights used by the waveform canvas, regenerated each time a new
- * song starts. Each value is between 0.0 and 1.0 and represents the relative
- * height of one bar in the visualization.
- *
+ * Waveform bar heights for the canvas, one value (0.0–1.0) per bar.
+ * Regenerated each time a new song starts — seeded from the song ID so
+ * the same song always looks the same.
  * @type {number[]}
  */
 let waveformBars = [];

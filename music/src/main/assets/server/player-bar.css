@@ -1,295 +1,89 @@
 /*
  * player-bar.css — Felicity Web Player
  *
- * Two player experiences:
+ * The right-side player pane that slides in when a song starts playing.
+ * It occupies roughly 25% of the viewport width and contains:
+ *   - A "Now Playing" header with a close button
+ *   - Large album art (square, rounded)
+ *   - Song title + artist
+ *   - Canvas waveform seekbar
+ *   - Elapsed / remaining time
+ *   - Prev / Play / Next controls
+ *   - Horizontal volume slider
  *
- *   1. Mini player — a compact bar above the bottom nav that shows the
- *      currently playing song. Tap the left side to open the full player.
- *      A thin progress line runs across the very top of the bar.
- *
- *   2. Full player overlay — the PlayerFaded experience. It fills the
- *      entire viewport, blurs the album art as a background, shows a large
- *      centered art image, a canvas waveform seekbar, and big controls.
- *      It slides up from the bottom when you open it.
+ * The pane starts at width 0 and expands to its full size when .open is added.
+ * A left border separates it from the main content area.
  */
 
-/* ==================== Mini Player ==================== */
+/* ==================== Player Pane Outer Shell ==================== */
 
-.mini-player {
-    height: 68px;
+.player-pane {
+    width: 0;
     flex-shrink: 0;
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border-top: 1px solid var(--glass-border);
-    position: relative;
-    z-index: 11;
-    transition: background 0.30s ease, border-color 0.30s ease,
-                transform 0.28s var(--ease), opacity 0.28s ease;
     overflow: hidden;
+    border-left: none;
+    transition: width 0.30s var(--ease), border-color 0.30s ease;
+    background: var(--bg-surface);
 }
 
-/* The mini player hides by sliding down — much nicer than just disappearing. */
-.mini-player.hidden {
-    height: 0;
-    border-top: none;
-    opacity: 0;
-    pointer-events: none;
-    overflow: hidden;
+.player-pane.open {
+    width: clamp(240px, 24vw, 300px);
+    border-left: 1px solid var(--sep-c);
 }
 
-/* Thin accent progress bar at the very top of the mini player. */
-.mini-seek-track {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--track-c);
-}
-
-.mini-seek-fill {
+/*
+ * Inner wrapper has a fixed width matching the pane's open width so the
+ * content doesn't squish while the width animation is running.
+ */
+.player-pane-inner {
+    width: clamp(240px, 24vw, 300px);
     height: 100%;
-    width: 0%;
-    background: var(--accent-gradient);
-    border-radius: 0 2px 2px 0;
-    transition: width 0.90s linear;
+    display: flex;
+    flex-direction: column;
+    padding: 14px 16px 20px;
+    gap: 14px;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
-/* Inner layout: clickable left side + control buttons on the right. */
-.mini-inner {
+.player-pane-inner::-webkit-scrollbar { width: 3px; }
+.player-pane-inner::-webkit-scrollbar-track { background: transparent; }
+.player-pane-inner::-webkit-scrollbar-thumb { background: var(--scrollbar-c); border-radius: 2px; }
+
+/* ==================== Pane Top Bar ==================== */
+
+.player-pane-top {
     display: flex;
     align-items: center;
-    height: 100%;
-    padding: 0 8px 0 12px;
-    margin-top: 3px;
-    gap: 4px;
+    justify-content: space-between;
+    flex-shrink: 0;
 }
 
-/* Tapping this opens the full player overlay. */
-.mini-clickable {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 1;
-    min-width: 0;
-    cursor: pointer;
-    padding: 8px 0;
+.player-pane-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-3);
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
 }
 
-/* Small square album art thumbnail. */
-.mini-art-wrap {
+/* ==================== Album Art ==================== */
+
+.player-art-wrap {
     position: relative;
-    width: 46px;
-    height: 46px;
-    border-radius: var(--r-md);
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: var(--r-lg);
     overflow: hidden;
     flex-shrink: 0;
     background: var(--hover);
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: var(--shadow);
 }
 
-.mini-art-ph { font-size: 20px !important; color: var(--text-3); }
-
-.mini-art {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0;
-    transition: opacity 0.30s ease;
-}
-
-.mini-meta { min-width: 0; flex: 1; }
-
-.mini-title {
-    font-size: 13px;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--text-1);
-}
-
-.mini-artist {
-    font-size: 11px;
-    color: var(--text-2);
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Play/pause and skip-next buttons on the right side of the mini player. */
-.mini-btns {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-}
-
-/* ==================== Shared Control Buttons ==================== */
-
-/* Used in both the mini player and the full player overlay. */
-.ctrl-btn {
-    background: none;
-    border: none;
-    color: var(--text-2);
-    cursor: pointer;
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: color 0.15s, background 0.15s, transform 0.10s;
-    flex-shrink: 0;
-}
-
-.ctrl-btn .material-icons-round { font-size: 26px !important; }
-.ctrl-btn:hover { color: var(--text-1); background: var(--hover); }
-.ctrl-btn:active { transform: scale(0.88); }
-
-/* The big gradient play/pause button — the star of the show. */
-.play-btn {
-    width: 58px;
-    height: 58px;
-    background: var(--accent-gradient) !important;
-    color: #fff !important;
-    box-shadow: 0 4px 22px var(--accent-glow);
-}
-
-.play-btn .material-icons-round { font-size: 30px !important; }
-.play-btn:hover { box-shadow: 0 6px 30px var(--accent-glow); }
-
-/* ==================== Full Player Overlay ==================== */
-
-/*
- * The overlay starts fully off-screen (slid below the bottom) and
- * slides into view when .open is added. No display:none tricks —
- * we use transform so the animation is buttery smooth.
- */
-.player-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    display: flex;
-    flex-direction: column;
-    transform: translateY(100%);
-    transition: transform 0.40s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    overflow: hidden;
-}
-
-.player-overlay.open {
-    transform: translateY(0);
-}
-
-/* Full-bleed blurred album art background. */
-.player-blur-bg {
-    position: absolute;
-    inset: -15%;
-    background-size: cover;
-    background-position: center;
-    filter: blur(60px) brightness(0.22) saturate(2.5);
-    z-index: 0;
-    transition: background-image 0.60s ease;
-}
-
-[data-theme="light"] .player-blur-bg {
-    filter: blur(60px) brightness(0.55) saturate(2.0);
-}
-
-/* Dark scrim on top of the blurred art so text stays readable. */
-.player-blur-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-        to bottom,
-        rgba(0,0,0,0.40) 0%,
-        rgba(0,0,0,0.18) 40%,
-        rgba(0,0,0,0.50) 100%
-    );
-    z-index: 1;
-}
-
-[data-theme="light"] .player-blur-overlay {
-    background: linear-gradient(
-        to bottom,
-        rgba(255,255,255,0.28) 0%,
-        rgba(255,255,255,0.10) 40%,
-        rgba(255,255,255,0.30) 100%
-    );
-}
-
-/* Everything rendered on top of the blurred background. */
-.player-content {
-    position: relative;
-    z-index: 2;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 0 28px 32px;
-    overflow-y: auto;
-    gap: 0;
-}
-
-/* Top bar: close chevron, "Now Playing" label, spacer. */
-.player-top-bar {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 0 8px;
-    flex-shrink: 0;
-}
-
-.player-close-btn {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    border: none;
-    background: rgba(255,255,255,0.10);
-    color: var(--text-1);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s;
-}
-
-.player-close-btn:hover { background: rgba(255,255,255,0.18); }
-.player-close-btn .material-icons-round { font-size: 26px !important; }
-
-.player-now-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: rgba(255,255,255,0.60);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-}
-
-[data-theme="light"] .player-now-label { color: rgba(0,0,0,0.50); }
-
-/* Large centered album art — the visual centerpiece of the PlayerFaded experience. */
-.player-art-wrap {
-    position: relative;
-    width: min(320px, calc(100vw - 80px));
-    aspect-ratio: 1;
-    border-radius: 22px;
-    overflow: hidden;
-    margin: 16px 0 24px;
-    box-shadow: 0 24px 80px rgba(0,0,0,0.70), 0 0 0 1px rgba(255,255,255,0.08);
-    flex-shrink: 0;
-    background: rgba(255,255,255,0.06);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.player-art-ph { font-size: 56px !important; color: rgba(255,255,255,0.20); }
+.player-art-ph { font-size: 40px !important; color: var(--text-3); }
 
 .player-art {
     position: absolute;
@@ -298,51 +92,47 @@
     height: 100%;
     object-fit: cover;
     opacity: 0;
-    transition: opacity 0.40s ease;
+    transition: opacity 0.35s ease;
 }
 
-/* Song title + artist name below the art. */
+/* ==================== Song Metadata ==================== */
+
 .player-meta {
-    text-align: center;
-    width: 100%;
-    margin-bottom: 28px;
     flex-shrink: 0;
+    min-width: 0;
 }
 
 .player-title {
-    font-size: 22px;
+    font-size: 14px;
     font-weight: 700;
-    color: #fff;
-    letter-spacing: -0.4px;
+    color: var(--text-1);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    letter-spacing: -0.2px;
 }
-
-[data-theme="light"] .player-title { color: rgba(8,20,40,0.95); }
 
 .player-artist {
-    font-size: 14px;
-    color: rgba(255,255,255,0.55);
-    margin-top: 5px;
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 3px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-[data-theme="light"] .player-artist { color: rgba(8,20,40,0.55); }
+/* ==================== Waveform Seekbar ==================== */
 
 /*
- * Waveform seekbar container.
- * The canvas draws the decorative bars; the range input sits on top
- * and is made fully transparent so it handles all the interaction.
+ * The canvas draws the bars; the invisible range input sits exactly on top
+ * so all mouse/touch interactions go through it while the canvas provides
+ * the visual display.
  */
 .player-waveform-wrap {
     position: relative;
     width: 100%;
-    height: 64px;
+    height: 52px;
     flex-shrink: 0;
-    margin-bottom: 6px;
 }
 
 .waveform-canvas {
@@ -353,7 +143,6 @@
     pointer-events: none;
 }
 
-/* The range input overlays the canvas and is invisible — just the interaction layer. */
 .seek-slider {
     position: absolute;
     inset: 0;
@@ -368,85 +157,87 @@
 
 .seek-slider:disabled { cursor: default; }
 
-/* Time labels — elapsed on the left, total duration on the right. */
+/* ==================== Time Labels ==================== */
+
 .player-time {
     display: flex;
     justify-content: space-between;
-    width: 100%;
-    font-size: 12px;
-    color: rgba(255,255,255,0.45);
+    font-size: 11px;
+    color: var(--text-3);
     font-variant-numeric: tabular-nums;
-    margin-bottom: 24px;
     flex-shrink: 0;
+    margin-top: -8px;
 }
 
-[data-theme="light"] .player-time { color: rgba(8,20,40,0.45); }
+/* ==================== Playback Controls ==================== */
 
-/* Prev / Play / Next — center-aligned with the play button larger. */
 .player-controls {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    width: 100%;
-    margin-bottom: 28px;
+    gap: 4px;
     flex-shrink: 0;
 }
 
-/* Override ctrl-btn colors in the player overlay for visibility on dark bg. */
-.player-overlay .ctrl-btn { color: rgba(255,255,255,0.75); }
-.player-overlay .ctrl-btn:hover { color: #fff; background: rgba(255,255,255,0.12); }
+.ctrl-btn {
+    background: none;
+    border: none;
+    color: var(--text-2);
+    cursor: pointer;
+    border-radius: 50%;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s, transform 0.10s;
+    flex-shrink: 0;
+}
 
-.player-overlay .ctrl-btn .material-icons-round { font-size: 34px !important; }
+.ctrl-btn .material-icons-round { font-size: 26px !important; }
+.ctrl-btn:hover { color: var(--text-1); background: var(--hover); }
+.ctrl-btn:active { transform: scale(0.88); }
 
-/* Horizontal volume row: small icon, full-width slider, large icon. */
+/* The play/pause button gets the accent gradient treatment. */
+.play-btn {
+    width: 50px;
+    height: 50px;
+    background: var(--accent-gradient) !important;
+    color: #fff !important;
+    box-shadow: 0 3px 16px var(--accent-glow);
+}
+
+.play-btn .material-icons-round { font-size: 28px !important; }
+.play-btn:hover { box-shadow: 0 5px 22px var(--accent-glow); }
+
+/* ==================== Volume Row ==================== */
+
 .player-vol-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    width: 100%;
+    gap: 8px;
     flex-shrink: 0;
 }
 
 .vol-icon {
-    color: rgba(255,255,255,0.40);
-    font-size: 20px !important;
+    color: var(--text-3);
+    font-size: 18px !important;
     flex-shrink: 0;
 }
 
-[data-theme="light"] .vol-icon { color: rgba(8,20,40,0.40); }
-
-/* Horizontal volume slider — same thick thumbless style as everything else. */
+/* Horizontal volume slider — matches the seek slider visual style. */
 .vol-slider-h {
     flex: 1;
     --fill: 100%;
     -webkit-appearance: none;
     appearance: none;
-    height: 6px;
+    height: 5px;
     border-radius: 3px;
     outline: none;
     cursor: pointer;
     border: none;
-    background: linear-gradient(
-        to right,
-        rgba(255,255,255,0.70) var(--fill),
-        rgba(255,255,255,0.18) var(--fill)
-    );
+    background: linear-gradient(to right, var(--accent) var(--fill), var(--track-c) var(--fill));
 }
 
-[data-theme="light"] .vol-slider-h {
-    background: linear-gradient(
-        to right,
-        var(--accent) var(--fill),
-        rgba(0,0,0,0.15) var(--fill)
-    );
-}
-
-.vol-slider-h::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 0; height: 0; opacity: 0;
-}
-
-.vol-slider-h::-moz-range-thumb {
-    width: 0; height: 0; border: none; opacity: 0;
-}
+.vol-slider-h::-webkit-slider-thumb { -webkit-appearance: none; width: 0; height: 0; opacity: 0; }
+.vol-slider-h::-moz-range-thumb     { width: 0; height: 0; border: none; opacity: 0; }

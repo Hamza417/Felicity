@@ -1,16 +1,20 @@
 package app.simple.felicity.server
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.core.graphics.scale
 import androidx.core.net.toUri
 import app.simple.felicity.R
+import app.simple.felicity.core.constants.ThemeConstants
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.repository.covers.AudioCover
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.SongStatRepository
+import app.simple.felicity.theme.managers.ThemeManager
 import com.google.gson.GsonBuilder
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.runBlocking
@@ -29,6 +33,7 @@ import java.io.InputStream
  * - `GET /style.css`                   — Serves the bundled stylesheet.
  * - `GET /player.js`                   — Serves the bundled JavaScript.
  * - `GET /app-icon`                    — Serves the round launcher icon as PNG.
+ * - `GET /api/theme`                   — Current accent color + dark/light mode as JSON.
  * - `GET /api/songs`                   — JSON array of all available songs.
  * - `GET /api/songs/{id}/stream`       — Byte-range-aware audio streaming.
  * - `GET /api/songs/{id}/art`          — Album art for a song, as JPEG.
@@ -87,6 +92,7 @@ class MusicHttpServer(
         return when {
             uri == "/" || uri == "/index.html" -> serveAsset("server/index.html", MIME_HTML)
             uri == "/app-icon" -> serveAppIcon()
+            uri == "/api/theme" -> serveTheme()
             uri == "/api/songs" -> serveSongList()
             uri == "/api/albums" -> serveAlbums()
             uri == "/api/albums/songs" -> serveAlbumSongs(session.parms["name"] ?: "")
@@ -355,6 +361,35 @@ class MusicHttpServer(
 
     private fun jsonOk(data: Any): Response {
         val json = gson.toJson(data)
+        return newFixedLengthResponse(Response.Status.OK, MIME_JSON, json).apply {
+            addHeader("Access-Control-Allow-Origin", "*")
+        }
+    }
+
+    /**
+     * Serves the current app accent color and theme mode so the web page can
+     * style itself to match the Android app exactly — no more generic blue defaults.
+     *
+     * Returns: `{ "accent": "#2980B9", "accentSecondary": "#5499C7", "isDark": true }`
+     */
+    private fun serveTheme(): Response {
+        val accent = ThemeManager.accent
+        val primaryHex = String.format("#%06X", 0xFFFFFF and accent.primaryAccentColor)
+        val secondaryHex = String.format("#%06X", 0xFFFFFF and accent.secondaryAccentColor)
+
+        val isDark = when (AppearancePreferences.getTheme()) {
+            ThemeConstants.LIGHT_THEME,
+            ThemeConstants.HIGH_CONTRAST_LIGHT,
+            ThemeConstants.SOAPSTONE -> false
+            ThemeConstants.FOLLOW_SYSTEM,
+            ThemeConstants.DAY_NIGHT -> {
+                val nightMask = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+                nightMask == Configuration.UI_MODE_NIGHT_YES
+            }
+            else -> true
+        }
+
+        val json = """{"accent":"$primaryHex","accentSecondary":"$secondaryHex","isDark":$isDark}"""
         return newFixedLengthResponse(Response.Status.OK, MIME_JSON, json).apply {
             addHeader("Access-Control-Allow-Origin", "*")
         }

@@ -1,38 +1,12 @@
 /*
  * overlays.css — Felicity Web Player
  *
- * Everything that floats on top of all other content:
- * the ambient background cross-fade layers, the right-click context menu,
- * and the toast notifications that pop up above the mini player.
+ * Floating UI elements that appear on top of everything:
+ * the right-click context menu and toast notifications.
+ *
+ * The ambient background layers from the previous design are gone —
+ * backgrounds are now plain solid colors.
  */
-
-/* Two layered divs that cross-fade when album art changes — gives the
- * background that beautiful moody glow effect. */
-.ambient-bg {
-    position: fixed;
-    inset: -12%;
-    background-size: cover;
-    background-position: center;
-    filter: var(--ambient-filter);
-    z-index: 0;
-    opacity: 0;
-    transition: opacity 0.90s ease, filter 0.30s ease;
-    pointer-events: none;
-    will-change: opacity;
-}
-
-.ambient-bg.visible { opacity: 1; }
-
-.ambient-overlay {
-    position: fixed;
-    inset: 0;
-    background:
-        radial-gradient(ellipse 90% 60% at 50% 0%,   var(--overlay-c) 0%, transparent 70%),
-        radial-gradient(ellipse 100% 80% at 50% 100%, var(--overlay-c) 0%, transparent 70%);
-    z-index: 1;
-    pointer-events: none;
-    transition: background 0.30s ease;
-}
 
 /* Right-click context menu for song rows and cards. */
 .ctx-menu {
@@ -46,6 +20,8 @@
     flex-direction: column;
     gap: 1px;
     animation: ctxIn 0.12s var(--ease);
+    background: var(--bg-elevated);
+    border: 1px solid var(--sep-c);
 }
 
 .ctx-menu.hidden { display: none; }
@@ -85,17 +61,15 @@
     margin: 2px 4px;
 }
 
-/* Toast notification — pops up briefly above the mini player. */
+/* Toast — briefly floats in the lower-center of the screen. */
 .toast {
     position: fixed;
-    bottom: 160px;
+    bottom: 28px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 200;
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--glass-border);
+    background: var(--bg-elevated);
+    border: 1px solid var(--sep-c);
     border-radius: 100px;
     padding: 10px 22px;
     font-size: 13px;

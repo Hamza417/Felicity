@@ -33,7 +33,6 @@ async function goDashboard() {
     screenLibrary.classList.remove("active");
     screenLibrary.classList.add("hidden");
 
-    navItems.forEach(b => b.classList.toggle("active", b.dataset.sec === "dashboard"));
 
     /* Kick off loading all library data so the dashboard is fully populated. */
     await Promise.all([
@@ -94,7 +93,6 @@ async function goSection(sec) {
     screenDashboard.classList.remove("active");
     screenDashboard.classList.add("hidden");
 
-    navItems.forEach(b => b.classList.toggle("active", b.dataset.sec === sec));
     updateViewToggle();
 
     contentBody.classList.add("fading");
@@ -113,11 +111,19 @@ async function goSection(sec) {
  * @param {string}                      name  Display name of the category.
  */
 async function drillDown(type, name) {
+    /* Save the current scroll position so goBack() can restore it later. */
+    if (section !== "dashboard") {
+        scrollState[section] = contentBody.scrollTop;
+    }
+
     /* Make sure the library screen is visible for the drill-down view. */
     screenLibrary.classList.add("active");
     screenLibrary.classList.remove("hidden");
     screenDashboard.classList.remove("active");
     screenDashboard.classList.add("hidden");
+
+    /* Update section so renderContent knows we're NOT on the dashboard anymore. */
+    section = type;
 
     const url   = `/api/${type}/songs?name=${encodeURIComponent(name)}`;
     const items = await fetchJson(url);
@@ -129,8 +135,6 @@ async function drillDown(type, name) {
     sectionTitle.textContent = name;
     searchInput.placeholder  = "Filter songs…";
 
-    /* Keep the nav item for the parent section highlighted. */
-    navItems.forEach(b => b.classList.toggle("active", b.dataset.sec === type));
 
     updateViewToggle();
     renderContent(true);
@@ -147,17 +151,14 @@ function goBack() {
     sectionTitle.textContent = SECTION_LABELS[section] || section;
     searchInput.placeholder  = SECTION_PLACEHOLDERS[section] || "Search…";
     updateViewToggle();
-    renderContent(true);
+    renderContent(false);
+    /* Put the user back where they were before they drilled in. */
+    const saved = scrollState[section] || 0;
+    requestAnimationFrame(() => { contentBody.scrollTop = saved; });
 }
 
-/* Wire bottom nav buttons. */
-navItems.forEach(btn => {
-    btn.addEventListener("click", () => {
-        const sec = btn.dataset.sec;
-        if (sec === "dashboard") goDashboard();
-        else goSection(sec);
-    });
-});
+/* Home button in the library header does the same thing as the Home nav tab. */
+homeBtn.addEventListener("click", goDashboard);
 
 backBtn.addEventListener("click", goBack);
 

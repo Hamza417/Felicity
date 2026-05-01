@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Felicity</title>
-    <!-- Read the saved theme before the first paint so we never get a flash of wrong theme. -->
+    <!-- Apply theme before first paint to avoid a flash of wrong colors. -->
     <script>
         (function(){var t=localStorage.getItem("felicity_theme");if(t)document.documentElement.setAttribute("data-theme",t);})();
     </script>
@@ -17,176 +17,142 @@
 </head>
 <body>
 
-<!-- Two overlapping div layers that cross-fade to create the ambient album-art background. -->
-<div class="ambient-bg" id="ambientA"></div>
-<div class="ambient-bg" id="ambientB"></div>
-<div class="ambient-overlay"></div>
-
 <!--
-    Full-screen player overlay (the PlayerFaded experience).
-    It lives at z-index 50 and slides up from the bottom when you tap the mini player.
-    It has a blurred copy of the album art as its background, a big centered art image,
-    a canvas waveform seekbar, and the standard playback controls.
+    Root layout: two side-by-side columns.
+    Left column = all navigable screens (grows to fill space).
+    Right column = player pane (fixed width, slides in when a song plays).
 -->
-<div class="player-overlay" id="playerOverlay">
-    <div class="player-blur-bg" id="playerBg"></div>
-    <div class="player-blur-overlay"></div>
-    <div class="player-content">
-        <div class="player-top-bar">
-            <button class="player-close-btn" id="playerCloseBtn" title="Minimize player">
-                <span class="material-icons-round">expand_more</span>
-            </button>
-            <span class="player-now-label">Now Playing</span>
-            <!-- Spacer keeps the label centered without a real right element. -->
-            <div style="width:44px"></div>
-        </div>
-        <div class="player-art-wrap">
-            <span class="material-icons-round player-art-ph">music_note</span>
-            <img alt="" class="player-art" id="playerArt">
-        </div>
-        <div class="player-meta">
-            <h2 class="player-title" id="nowTitle">Nothing playing</h2>
-            <p class="player-artist" id="nowArtist">—</p>
-        </div>
-        <!-- Canvas draws the waveform; the invisible range input sits on top for interaction. -->
-        <div class="player-waveform-wrap">
-            <canvas class="waveform-canvas" id="waveformCanvas"></canvas>
-            <input class="seek-slider" disabled id="seekBar" max="100" min="0"
-                   step="0.1" type="range" value="0">
-        </div>
-        <div class="player-time">
-            <span id="elapsed">0:00</span>
-            <span id="remaining">0:00</span>
-        </div>
-        <div class="player-controls">
-            <button class="ctrl-btn" id="prevBtn">
-                <span class="material-icons-round">skip_previous</span>
-            </button>
-            <button class="ctrl-btn play-btn" id="playBtn">
-                <span class="material-icons-round" id="playIcon">play_arrow</span>
-            </button>
-            <button class="ctrl-btn" id="nextBtn">
-                <span class="material-icons-round">skip_next</span>
-            </button>
-        </div>
-        <!-- Horizontal volume row — no popup needed when you have the whole screen. -->
-        <div class="player-vol-row">
-            <span class="material-icons-round vol-icon" id="volIcon">volume_down</span>
-            <input class="vol-slider-h" id="volBar" max="100" min="0" type="range" value="100">
-            <span class="material-icons-round vol-icon">volume_up</span>
-        </div>
-    </div>
-</div>
-
-<!-- Main application shell — holds all the navigable screens. -->
-<div class="app-shell">
-
-    <!-- Dashboard / Home screen -->
-    <div class="screen active" id="screenDashboard">
-        <div class="dash-header">
-            <div class="dash-header-left">
-                <img alt="Felicity" class="app-icon" onerror="this.style.display='none'"
-                     src="/app-icon">
-                <span class="brand-name">Felicity</span>
-            </div>
-            <button class="theme-btn" id="themeToggle" title="Toggle light / dark">
-                <span class="material-icons-round" id="themeIcon">dark_mode</span>
-            </button>
-        </div>
-        <div class="screen-body" id="dashboardBody">
-            <div class="empty-state">
-                <span class="material-icons-round empty-icon">hourglass_empty</span>
-                <p class="empty-title">Loading library…</p>
-            </div>
-        </div>
-    </div>
+<div class="app-layout">
 
     <!--
-        Shared library screen — used for Songs, Albums, Artists, and Genres.
-        All four sections render into the same contentBody div, just with different data.
+        Left column split into two rows:
+        top row = the screens themselves (grows to fill space),
+        bottom row = persistent navigation tabs.
     -->
-    <div class="screen hidden" id="screenLibrary">
-        <div class="lib-header">
-            <div class="header-left">
+    <div class="screens-container">
+
+        <!-- All screens stack here — only one is visible at a time. -->
+        <div class="screens-stack">
+
+            <!-- Dashboard / Home screen -->
+            <div class="screen active" id="screenDashboard">
+                <div class="dash-header">
+                    <div class="dash-header-left">
+                        <img alt="Felicity" class="app-icon" onerror="this.style.display='none'"
+                             src="/app-icon">
+                        <span class="brand-name">Felicity</span>
+                    </div>
+                    <button class="icon-btn" id="themeToggle" title="Toggle light / dark">
+                        <span class="material-icons-round" id="themeIcon">dark_mode</span>
+                    </button>
+                </div>
+                <div class="screen-body" id="dashboardBody">
+                    <div class="empty-state">
+                        <span class="material-icons-round empty-icon">hourglass_empty</span>
+                        <p class="empty-title">Loading library…</p>
+                    </div>
+                </div>
+            </div>
+
+            <!--
+                Shared library screen — Songs, Albums, Artists, and Genres all use this
+                same screen. The header and content body update per section.
+            -->
+            <div class="screen hidden" id="screenLibrary">
+                <div class="lib-header">
+                    <!-- Home button takes you back to the dashboard. -->
+                    <button class="icon-btn" id="homeBtn" title="Back to Home">
+                        <span class="material-icons-round">home</span>
+                    </button>
                 <button class="back-btn hidden" id="backBtn">
                     <span class="material-icons-round">arrow_back_ios_new</span>
                     <span id="backLabel">Back</span>
                 </button>
                 <span class="section-title" id="sectionTitle">Songs</span>
                 <span class="item-count" id="itemCount"></span>
+                    <div class="search-bar">
+                        <span class="material-icons-round">search</span>
+                        <input autocomplete="off" id="searchInput" placeholder="Search…"
+                               type="text">
+                    </div>
+                    <button class="icon-btn" id="viewToggle" title="Switch to grid view">
+                        <span class="material-icons-round" id="viewToggleIcon">grid_view</span>
+                    </button>
+                </div>
+                <div class="screen-body" id="contentBody">
+                    <div class="empty-state">
+                        <span class="material-icons-round empty-icon">hourglass_empty</span>
+                        <p class="empty-title">Loading…</p>
+                    </div>
+                </div>
             </div>
-            <div class="search-bar">
-                <span class="material-icons-round">search</span>
-                <input autocomplete="off" id="searchInput" placeholder="Search…" type="text">
+
+        </div><!-- end .screens-stack -->
+
+
+    </div><!-- end .screens-container -->
+
+    <!--
+        Right-side player pane.
+        Slides in from the right when a song starts playing.
+        Closed by clicking the × button at the top right.
+        About 25% of the viewport width on desktop.
+    -->
+    <aside class="player-pane" id="playerPane">
+        <div class="player-pane-inner">
+            <div class="player-pane-top">
+                <span class="player-pane-label">Now Playing</span>
+                <button class="icon-btn" id="playerCloseBtn" title="Close player">
+                    <span class="material-icons-round">close</span>
+                </button>
             </div>
-            <button class="view-toggle-btn" id="viewToggle" title="Switch to grid view">
-                <span class="material-icons-round" id="viewToggleIcon">grid_view</span>
-            </button>
+            <div class="player-art-wrap">
+                <span class="material-icons-round player-art-ph">music_note</span>
+                <img alt="" class="player-art" id="playerArt">
+            </div>
+            <div class="player-meta">
+                <p class="player-title" id="nowTitle">Nothing playing</p>
+                <p class="player-artist" id="nowArtist">—</p>
+            </div>
+            <!-- Canvas draws the waveform bars; the range input sits on top for interaction. -->
+            <div class="player-waveform-wrap">
+                <canvas class="waveform-canvas" id="waveformCanvas"></canvas>
+                <input class="seek-slider" disabled id="seekBar" max="100" min="0"
+                       step="0.1" type="range" value="0">
+            </div>
+            <div class="player-time">
+                <span id="elapsed">0:00</span>
+                <span id="remaining">0:00</span>
+            </div>
+            <div class="player-controls">
+                <button class="ctrl-btn" id="prevBtn">
+                    <span class="material-icons-round">skip_previous</span>
+                </button>
+                <button class="ctrl-btn play-btn" id="playBtn">
+                    <span class="material-icons-round" id="playIcon">play_arrow</span>
+                </button>
+                <button class="ctrl-btn" id="nextBtn">
+                    <span class="material-icons-round">skip_next</span>
+                </button>
+            </div>
+            <div class="player-vol-row">
+                <span class="material-icons-round vol-icon" id="volIcon">volume_down</span>
+                <input class="vol-slider-h" id="volBar" max="100" min="0" type="range" value="100">
+                <span class="material-icons-round vol-icon">volume_up</span>
+            </div>
         </div>
-        <div class="screen-body" id="contentBody">
-            <div class="empty-state">
-                <span class="material-icons-round empty-icon">hourglass_empty</span>
-                <p class="empty-title">Loading…</p>
-            </div>
-        </div>
-    </div>
+    </aside>
 
 </div>
 
 <!--
-    Mini player — a compact strip that floats above the bottom nav whenever a song is playing.
-    Tapping the left side (art + meta) opens the full player overlay.
-    The thin line at the very top is the playback progress bar.
+    Floating "Now Playing" button — appears in the bottom-right corner
+    when a song is playing but the player pane has been closed. Tap it to
+    slide the player back in without having to hunt for it.
 -->
-<div class="mini-player hidden" id="miniPlayer">
-    <div class="mini-seek-track">
-        <div class="mini-seek-fill" id="miniSeekFill"></div>
-    </div>
-    <div class="mini-inner">
-        <div class="mini-clickable" id="miniOpen">
-            <div class="mini-art-wrap">
-                <span class="material-icons-round mini-art-ph">music_note</span>
-                <img alt="" class="mini-art" id="nowArt" src="">
-            </div>
-            <div class="mini-meta">
-                <p class="mini-title" id="miniTitle">Nothing playing</p>
-                <p class="mini-artist" id="miniArtist">—</p>
-            </div>
-        </div>
-        <div class="mini-btns">
-            <button class="ctrl-btn" id="miniPlayBtn">
-                <span class="material-icons-round" id="miniPlayIcon">play_arrow</span>
-            </button>
-            <button class="ctrl-btn" id="miniNextBtn">
-                <span class="material-icons-round">skip_next</span>
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Bottom navigation bar — always visible, one button per section. -->
-<nav class="bottom-nav">
-    <button class="nav-item active" data-sec="dashboard">
-        <span class="material-icons-round">home</span>
-        <span>Home</span>
-    </button>
-    <button class="nav-item" data-sec="songs">
-        <span class="material-icons-round">music_note</span>
-        <span>Songs</span>
-    </button>
-    <button class="nav-item" data-sec="albums">
-        <span class="material-icons-round">album</span>
-        <span>Albums</span>
-    </button>
-    <button class="nav-item" data-sec="artists">
-        <span class="material-icons-round">person</span>
-        <span>Artists</span>
-    </button>
-    <button class="nav-item" data-sec="genres">
-        <span class="material-icons-round">piano</span>
-        <span>Genres</span>
-    </button>
-</nav>
+<button class="player-fab hidden" id="playerFab" title="Now Playing">
+    <span class="material-icons-round">queue_music</span>
+</button>
 
 <!-- Right-click context menu for song rows. -->
 <div class="ctx-menu glass hidden" id="ctxMenu">
@@ -207,7 +173,6 @@
 
 <audio id="audioEl" preload="none"></audio>
 
-<!-- Load scripts in dependency order — helpers first, app logic last. -->
 <script src="helpers.js"></script>
 <script src="state.js"></script>
 <script src="theme.js"></script>
