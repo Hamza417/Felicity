@@ -1,9 +1,10 @@
 /*
  * layout.css — Felicity Web Player
  *
- * Global reset, body flex column, the unified main-shell glass panel,
- * the side-by-side app-layout, nav pane, content area, and their dividers.
- * No spacing between panes — divider lines (border) are used instead.
+ * The big-picture plumbing: global reset, body setup, the app shell,
+ * the screen system (each section gets its own full-page "card"),
+ * headers for both the dashboard and the library screens, and the
+ * bottom navigation bar with the mini player sitting above it.
  */
 
 *, *::before, *::after {
@@ -23,14 +24,13 @@ html, body {
     transition: background 0.30s ease, color 0.20s ease;
 }
 
-/* Body is a flex column — shell fills the whole viewport edge-to-edge. */
+/* Body stacks the app shell and the fixed bottom elements (mini player + nav). */
 body {
     display: flex;
     flex-direction: column;
-    padding: 0;
 }
 
-/* Glass frosted-panel mixin */
+/* Glass morphism helper class — a frosted panel look. */
 .glass {
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
@@ -39,75 +39,141 @@ body {
     transition: background 0.30s ease, border-color 0.30s ease;
 }
 
-/* Fallback for browsers without backdrop-filter */
 @supports not (backdrop-filter: blur(1px)) {
     [data-theme="dark"]  .glass { background: rgba(8, 15, 28, 0.96); }
     [data-theme="light"] .glass { background: rgba(240, 248, 255, 0.98); }
 }
 
-/* One outer shell filling the entire viewport — no rounded corners, no border. */
-.main-shell {
+/* The app shell grows to fill all space not claimed by the mini player and bottom nav. */
+.app-shell {
     flex: 1;
     min-height: 0;
-    border-radius: 0;
-    border: none;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
     position: relative;
-    z-index: 2;
-}
-
-/* Horizontal row: nav pane (left) + content area (right) */
-.app-layout {
-    flex: 1;
-    min-height: 0;
-    display: flex;
     overflow: hidden;
+    z-index: 2;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
 }
 
-/* Left navigation pane */
-.nav-pane {
-    width: var(--nav-w);
-    flex-shrink: 0;
+/* Mini player and bottom nav also need to sit above the ambient layers. */
+.mini-player { z-index: 11; }
+.bottom-nav  { z-index: 10; }
+
+/*
+ * Each section is a full-page screen layered on top of each other.
+ * Only the one with .active is visible — the rest are hidden and can't receive clicks.
+ * Transitions give a smooth cross-fade when switching sections.
+ */
+.screen {
+    position: absolute;
+    inset: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    transition: width 0s;
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.22s ease, transform 0.22s var(--ease);
+    z-index: 1;
 }
 
-.nav-header {
+.screen.hidden {
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* The scrollable part of every screen sits below its fixed header. */
+.screen-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Subtle fade so content doesn't hard-clip at the edges. */
+    mask-image: linear-gradient(
+        to bottom,
+        transparent 0px,
+        black 24px,
+        black calc(100% - 16px),
+        transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+        to bottom,
+        transparent 0px,
+        black 24px,
+        black calc(100% - 16px),
+        transparent 100%
+    );
+}
+
+.screen-body.fading { opacity: 0; }
+
+.screen-body::-webkit-scrollbar { width: 4px; }
+.screen-body::-webkit-scrollbar-track { background: transparent; }
+.screen-body::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-c);
+    border-radius: 2px;
+}
+
+/* Dashboard header — app logo on the left, theme toggle on the right. */
+.dash-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 16px 14px 14px;
-    border-bottom: 1px solid var(--sep-c);
+    justify-content: space-between;
+    padding: 18px 20px 14px;
     flex-shrink: 0;
+    border-bottom: 1px solid var(--sep-c);
     transition: border-color 0.30s ease;
 }
 
+.dash-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Library screen header — back button, title, search bar, and view toggle. */
+.lib-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px 12px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--sep-c);
+    transition: border-color 0.30s ease;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* The app icon (circular favicon in the dashboard header). */
 .app-icon {
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.40);
 }
 
-/* App name — plain white in dark mode, plain dark in light mode (no gradient). */
+/* Felicity wordmark. */
 .brand-name {
-    flex: 1;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.4px;
     color: var(--text-1);
     white-space: nowrap;
 }
 
+/* The little moon / sun button in the dashboard header. */
 .theme-btn {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     border: none;
     background: var(--hover);
@@ -121,104 +187,38 @@ body {
 }
 
 .theme-btn:hover { background: var(--active-bg); color: var(--active-text); }
-.theme-btn .material-icons-round { font-size: 18px !important; }
+.theme-btn .material-icons-round { font-size: 20px !important; }
 
-.nav-menu {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    padding: 10px 8px;
-    gap: 2px;
-    overflow-y: auto;
-}
-
-.nav-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border-radius: var(--r-md);
-    border: none;
-    background: transparent;
-    color: var(--text-2);
-    font-size: 13px;
-    font-weight: 500;
-    font-family: inherit;
-    cursor: pointer;
-    text-align: left;
-    transition: background 0.15s, color 0.15s;
-}
-
-.nav-item .material-icons-round {
-    font-size: 20px !important;
-    flex-shrink: 0;
-    transition: transform 0.20s var(--ease);
-}
-
-.nav-item:hover { background: var(--hover); color: var(--text-1); }
-
-.nav-item.active {
-    background: var(--active-bg);
-    color: var(--active-text);
-    font-weight: 600;
-}
-
-.nav-item.active .material-icons-round { transform: scale(1.12); }
-
-/* Right content area */
-.content-area {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.content-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 14px 20px 12px;
-    flex-shrink: 0;
-    /* No divider border — the larger font alone provides visual separation. */
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-    overflow: hidden;
-}
-
+/* Section title in the library header (e.g. "Songs", "Albums"). */
 .section-title {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
-    letter-spacing: -0.4px;
+    letter-spacing: -0.3px;
     white-space: nowrap;
     color: var(--text-1);
+    flex-shrink: 0;
 }
 
+/* Small gray "42 songs" count next to the title. */
 .item-count {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text-3);
     white-space: nowrap;
     flex-shrink: 0;
 }
 
-/* Back button */
+/* Back button — pill shape with a left-pointing arrow and the parent item name. */
 .back-btn {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     background: var(--active-bg);
     border: 1px solid var(--accent-border);
     border-radius: 100px;
     color: var(--active-text);
     font-size: 12px;
     font-weight: 600;
-    padding: 5px 11px 5px 8px;
+    padding: 5px 10px 5px 7px;
     cursor: pointer;
     transition: background 0.15s;
     font-family: inherit;
@@ -227,28 +227,28 @@ body {
 }
 
 .back-btn:hover { background: rgba(5, 174, 254, 0.22); }
-.back-btn .material-icons-round { font-size: 15px !important; }
+.back-btn .material-icons-round { font-size: 14px !important; }
 .back-btn.hidden { display: none; }
 
-/* Search bar */
+/* Search bar — rounded, pill-shaped input with a magnifier icon. */
 .search-bar {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
     background: var(--hover);
     border: 1px solid var(--glass-border);
     border-radius: 100px;
     padding: 7px 14px;
     transition: border-color 0.18s;
-    min-width: 180px;
-    max-width: 300px;
-    flex-shrink: 0;
+    min-width: 140px;
+    max-width: 280px;
+    flex: 1;
 }
 
 .search-bar:focus-within { border-color: var(--accent); }
 
 .search-bar .material-icons-round {
-    font-size: 17px !important;
+    font-size: 16px !important;
     color: var(--text-3);
     flex-shrink: 0;
 }
@@ -266,41 +266,10 @@ body {
 
 .search-bar input::placeholder { color: var(--text-3); }
 
-/* Scrollable content body — vertical fade at both edges */
-.content-body {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    transition: opacity 0.15s ease;
-    mask-image: linear-gradient(
-        to bottom,
-        transparent 0px,
-        black 28px,
-        black calc(100% - 28px),
-        transparent 100%
-    );
-    -webkit-mask-image: linear-gradient(
-        to bottom,
-        transparent 0px,
-        black 28px,
-        black calc(100% - 28px),
-        transparent 100%
-    );
-}
-
-.content-body.fading { opacity: 0; }
-
-.content-body::-webkit-scrollbar { width: 4px; }
-.content-body::-webkit-scrollbar-track { background: transparent; }
-.content-body::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-c);
-    border-radius: 2px;
-}
-
-/* View toggle button (grid ↔ list) in the content header */
+/* List / grid toggle button in the library header. */
 .view-toggle-btn {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: var(--r-sm);
     border: 1px solid var(--glass-border);
     background: var(--hover);
@@ -316,96 +285,77 @@ body {
 .view-toggle-btn:hover { background: var(--active-bg); color: var(--active-text); border-color: var(--accent-border); }
 .view-toggle-btn .material-icons-round { font-size: 18px !important; }
 
-/* Responsive: icon-only nav on small screens */
-@media (max-width: 700px) {
-    :root { --nav-w: 58px; }
-
-    .brand-name { display: none; }
-    .theme-btn  { margin-left: auto; }
-    .nav-item span:last-child { display: none; }
-    .nav-item { padding: 12px; justify-content: center; gap: 0; }
-}
-
 /*
- * Resize handles — Blender-style draggable dividers between panes.
- * They sit in the flex layout as separate elements so they act as both the
- * visual separator and the interaction target.
- * Drag interactions are wired in resize.js and are disabled on mobile.
+ * Bottom navigation bar — lives at the very bottom of the page.
+ * Height is set via a CSS variable so the rest of the layout can
+ * add the right amount of padding.
  */
-.resize-handle {
+.bottom-nav {
+    --nav-h: 64px;
+    height: var(--nav-h);
     flex-shrink: 0;
-    background: transparent;
-    position: relative;
-    z-index: 5;
-    transition: background 0.18s ease;
-}
-
-/* Vertical handle — between nav pane and content area */
-.resize-v {
-    width: 5px;
-    cursor: col-resize;
-    border-left: 1px solid var(--sep-c);
-    transition: background 0.18s ease, border-color 0.30s ease;
-}
-
-/* Horizontal handle — between top layout and player bar */
-.resize-h {
-    height: 5px;
-    cursor: row-resize;
+    display: flex;
+    align-items: stretch;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-top: 1px solid var(--sep-c);
-    transition: background 0.18s ease, border-color 0.30s ease;
+    position: relative;
+    z-index: 10;
+    transition: background 0.30s ease, border-color 0.30s ease;
 }
 
-.resize-handle:hover,
-.resize-handle.dragging {
-    background: var(--accent-dim);
+/* Each nav tab — icon + label stacked vertically. */
+.nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: none;
+    background: transparent;
+    color: var(--text-3);
+    font-size: 10px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 8px 4px;
+    transition: color 0.15s;
+    position: relative;
 }
 
-.resize-handle.dragging {
-    background: rgba(5, 174, 254, 0.22);
+.nav-item .material-icons-round {
+    font-size: 22px !important;
+    transition: transform 0.20s var(--ease), color 0.15s;
 }
 
-/* Grip indicator — a short center line that appears on hover */
-.resize-v::after,
-.resize-h::after {
+.nav-item:hover { color: var(--text-2); }
+
+.nav-item.active {
+    color: var(--active-text);
+    font-weight: 600;
+}
+
+.nav-item.active .material-icons-round {
+    transform: scale(1.12);
+}
+
+/* Active indicator dot below the icon. */
+.nav-item.active::after {
     content: "";
     position: absolute;
-    background: var(--accent);
-    border-radius: 2px;
-    opacity: 0;
-    transition: opacity 0.18s ease;
-    pointer-events: none;
-}
-
-.resize-v::after {
-    width: 2px;
-    height: 28px;
-    top: 50%;
+    bottom: 6px;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--active-text);
 }
 
-.resize-h::after {
-    height: 2px;
-    width: 28px;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-
-.resize-handle:hover::after,
-.resize-handle.dragging::after {
-    opacity: 0.60;
-}
-
-/* On mobile the handles become invisible — borders on original elements
- * already provide the visual separation at that breakpoint. */
-@media (max-width: 700px) {
-    .resize-v { cursor: default; width: 0; border-left: none; }
-    .resize-h { cursor: default; height: 0; border-top: none; }
-    .resize-handle::after { display: none; }
-
-    /* Restore separator borders that the resize handles replace on desktop. */
-    .nav-pane  { border-right: 1px solid var(--sep-c); }
-    .player-bar { border-top: 1px solid var(--sep-c); }
+/* On mobile, hide the text labels if space is really tight. */
+@media (max-width: 400px) {
+    .nav-item span:last-child { display: none; }
+    .bottom-nav { --nav-h: 52px; }
 }

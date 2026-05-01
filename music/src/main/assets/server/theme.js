@@ -9,13 +9,13 @@
 
 const THEME_KEY = "felicity_theme";
 
-/** Which ambient layer div (A or B) is currently fully opaque. */
+/** Tracks which ambient layer is currently showing (A or B). */
 let ambientActive  = "A";
 let lastAmbientUrl = "";
 
 /**
- * Applies a theme to the document root element and persists the choice so it
- * survives page reloads.
+ * Applies a theme to the document root and persists the choice in localStorage
+ * so the next page load starts with the right colors instead of flashing.
  *
  * @param {"dark"|"light"} theme  The theme to activate.
  */
@@ -23,12 +23,17 @@ function applyTheme(theme) {
     document.documentElement.setAttribute("data-theme", theme);
     themeIcon.textContent = theme === "dark" ? "dark_mode" : "light_mode";
     localStorage.setItem(THEME_KEY, theme);
+    /* Waveform uses CSS colors, so redraw it whenever the theme changes. */
+    if (waveformBars.length > 0) {
+        const progress = audioEl.duration ? audioEl.currentTime / audioEl.duration : 0;
+        drawWaveform(progress);
+    }
 }
 
 /**
- * Cross-fades the full-screen ambient background to a new album artwork URL.
- * Alternates between two overlapping `div` layers so there is never a visible
- * blank gap during the transition.
+ * Cross-fades the ambient background to a new album artwork URL by alternating
+ * between two overlapping div layers. This avoids any ugly blank-background flash
+ * during the transition — it's all smooth and pretty.
  *
  * @param {string} artUrl  URL of the album artwork image to display.
  */
@@ -43,13 +48,10 @@ function setAmbient(artUrl) {
     ambientActive = ambientActive === "A" ? "B" : "A";
 }
 
-/* Wire the theme toggle button. */
 themeToggle.addEventListener("click", () => {
     const cur = document.documentElement.getAttribute("data-theme") || "dark";
     applyTheme(cur === "dark" ? "light" : "dark");
 });
 
-/* Initialize from localStorage (the inline <script> in <head> already sets
- * the attribute, but we still need to update the icon and sync the button). */
+/* Sync the icon with whatever theme the inline <head> script already set. */
 applyTheme(localStorage.getItem(THEME_KEY) || "dark");
-
