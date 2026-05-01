@@ -135,29 +135,66 @@ class DashboardViewModel @Inject constructor(
     private var recommendedJob: Job? = null
 
     /**
-     * The complete list of all panel navigation elements displayed in the browse grid.
+     * Builds the list of panel navigation icons that should actually appear in the browse grid,
+     * respecting the user's visibility preferences. Songs, Albums, and Artists are sacred — they
+     * always show up no matter what. Everything else is opt-out.
+     *
+     * Call this every time you set up (or refresh) the panels grid so the list stays in sync
+     * with the latest preferences.
      */
-    val allPanelPanels: List<Panel> = listOf(
-            Panel(R.string.songs, R.drawable.ic_song_16dp),
-            Panel(R.string.albums, R.drawable.ic_album_16dp),
-            Panel(R.string.artists, R.drawable.ic_people_16dp),
-            Panel(R.string.album_artists, R.drawable.ic_artist_16dp),
-            Panel(R.string.genres, R.drawable.ic_piano_16dp),
-            Panel(R.string.year, R.drawable.ic_date_range_16dp),
-            Panel(R.string.playlists, R.drawable.ic_list_16dp),
-            Panel(R.string.playing_queue, R.drawable.ic_queue_16dp),
-            Panel(R.string.recently_added, R.drawable.ic_recently_added_16dp),
-            Panel(R.string.recently_played, R.drawable.ic_history_16dp),
-            Panel(R.string.most_played, R.drawable.ic_equalizer_16dp),
-            if (UserInterfacePreferences.isLikeIconInsteadOfThumb()) {
-                Panel(R.string.favorites, R.drawable.ic_thumb_up_16dp)
-            } else {
-                Panel(R.string.favorites, R.drawable.ic_favorite_filled_16dp)
-            },
-            Panel(R.string.folders, R.drawable.ic_folder_16dp),
-            Panel(R.string.folders_hierarchy, R.drawable.ic_tree_16dp),
-            Panel(R.string.always_skipped, R.drawable.ic_skip_16dp)
-    )
+    fun getVisiblePanelPanels(): List<Panel> {
+        val panels = mutableListOf<Panel>()
+
+        // These three are always present — the holy trinity of the browse grid.
+        panels.add(Panel(R.string.songs, R.drawable.ic_song_16dp))
+        panels.add(Panel(R.string.albums, R.drawable.ic_album_16dp))
+        panels.add(Panel(R.string.artists, R.drawable.ic_people_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_ALBUM_ARTISTS))
+            panels.add(Panel(R.string.album_artists, R.drawable.ic_artist_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_GENRES))
+            panels.add(Panel(R.string.genres, R.drawable.ic_piano_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_YEAR))
+            panels.add(Panel(R.string.year, R.drawable.ic_date_range_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_PLAYLISTS))
+            panels.add(Panel(R.string.playlists, R.drawable.ic_list_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_PLAYING_QUEUE))
+            panels.add(Panel(R.string.playing_queue, R.drawable.ic_queue_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_RECENTLY_ADDED))
+            panels.add(Panel(R.string.recently_added, R.drawable.ic_recently_added_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_RECENTLY_PLAYED))
+            panels.add(Panel(R.string.recently_played, R.drawable.ic_history_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_MOST_PLAYED))
+            panels.add(Panel(R.string.most_played, R.drawable.ic_equalizer_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_FAVORITES)) {
+            panels.add(
+                    if (UserInterfacePreferences.isLikeIconInsteadOfThumb()) {
+                        Panel(R.string.favorites, R.drawable.ic_thumb_up_16dp)
+                    } else {
+                        Panel(R.string.favorites, R.drawable.ic_favorite_filled_16dp)
+                    }
+            )
+        }
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_FOLDERS))
+            panels.add(Panel(R.string.folders, R.drawable.ic_folder_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_FOLDERS_HIERARCHY))
+            panels.add(Panel(R.string.folders_hierarchy, R.drawable.ic_tree_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_ALWAYS_SKIPPED))
+            panels.add(Panel(R.string.always_skipped, R.drawable.ic_skip_16dp))
+
+        return panels
+    }
 
     init {
         startRecentlyPlayedFlow()

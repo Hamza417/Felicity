@@ -42,10 +42,10 @@ class UserInterface : PreferenceFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             UserInterfacePreferences.HOME_INTERFACE -> {
-
+                // Nothing extra to do here — the home switch handles reloading on its own.
             }
             UserInterfacePreferences.PLAYER_INTERFACE -> {
-
+                // Nothing extra to do here either — the player fragment picks up the change.
             }
         }
     }

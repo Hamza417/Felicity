@@ -33,6 +33,7 @@ import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.ui.preferences.sub.AccentColors
 import app.simple.felicity.ui.preferences.sub.Language
 import app.simple.felicity.ui.preferences.sub.MusicFolders
+import app.simple.felicity.ui.preferences.sub.PanelVisibility
 import app.simple.felicity.ui.preferences.sub.Themes
 import app.simple.felicity.ui.preferences.sub.TypeFaces
 import com.bumptech.glide.Glide
@@ -231,6 +232,16 @@ abstract class PreferenceFragment : MediaFragment() {
 
         val homeHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.home)
 
+        val panelVisibility = Preference(
+                title = R.string.panel_visibility,
+                summary = R.string.panel_visibility_summary,
+                icon = R.drawable.ic_carousel,
+                type = PreferenceType.PANEL,
+                onPreferenceAction = { _, _ ->
+                    openFragment(PanelVisibility.newInstance(), PanelVisibility.TAG)
+                }
+        )
+
         val homeInterface = Preference(
                 title = R.string.change_home_interface,
                 summary = R.string.change_home_interface_summary,
@@ -365,6 +376,7 @@ abstract class PreferenceFragment : MediaFragment() {
         )
 
         preferences.add(homeHeader)
+        preferences.add(panelVisibility)
         preferences.add(homeInterface)
         preferences.add(playerHeader)
         preferences.add(playerInterface)

@@ -436,4 +436,6 @@
     <string name="outline_clickable_elements_summary">Draw an outline around the clickable buttons and icons.</string>
     <string name="highlight_clicked_element">Highlight Clickable Elements</string>
     <string name="highlight_clicked_element_summary">Draw flat background behind the clickable icons and buttons.</string>
+    <string name="panel_visibility">Panel Visibility</string>
+    <string name="panel_visibility_summary">Choose which panels show up in the browse lists.</string>
 </resources>

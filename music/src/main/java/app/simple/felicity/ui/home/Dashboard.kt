@@ -29,6 +29,7 @@ import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutMa
 import app.simple.felicity.dialogs.app.AppLabel.Companion.showAppLabel
 import app.simple.felicity.extensions.fragments.BaseHomeFragment
 import app.simple.felicity.preferences.MainPreferences
+import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
@@ -135,7 +136,7 @@ class Dashboard : BaseHomeFragment() {
     }
 
     private fun setupPanelsGrid() {
-        val adapter = AdapterDashboardPanels(panels = dashboardViewModel.allPanelPanels)
+        val adapter = AdapterDashboardPanels(panels = dashboardViewModel.getVisiblePanelPanels())
         binding.panelsRecyclerView.layoutManager = FlexboxLayoutManager(requireContext()).apply {
             flexDirection = FlexDirection.ROW
             justifyContent = JustifyContent.FLEX_START
@@ -320,7 +321,7 @@ class Dashboard : BaseHomeFragment() {
     }
 
     private fun updateRecentlyPlayed(songs: List<Audio>) {
-        if (songs.isEmpty()) {
+        if (songs.isEmpty() || !UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_RECENTLY_PLAYED)) {
             binding.recentlyPlayedSection.gone()
             return
         }
@@ -343,7 +344,7 @@ class Dashboard : BaseHomeFragment() {
     }
 
     private fun updateRecentlyAdded(songs: List<Audio>) {
-        if (songs.isEmpty()) {
+        if (songs.isEmpty() || !UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_RECENTLY_ADDED)) {
             binding.recentlyAddedSection.gone()
             return
         }
@@ -366,7 +367,7 @@ class Dashboard : BaseHomeFragment() {
     }
 
     private fun updateFavorites(songs: List<Audio>) {
-        if (songs.isEmpty()) {
+        if (songs.isEmpty() || !UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_FAVORITES)) {
             binding.favoritesSection.gone()
             return
         }
@@ -466,6 +467,38 @@ class Dashboard : BaseHomeFragment() {
             MainPreferences.APP_LABEL -> {
                 binding.label.setAppLabel()
             }
+            // When any panel visibility preference changes, rebuild the browse grid so it
+            // immediately reflects what the user just toggled — no restart required.
+            in UserInterfacePreferences.ALL_PANEL_VISIBILITY_KEYS -> {
+                setupPanelsGrid()
+                // Also re-evaluate the carousel sections that are tied to panel items.
+                evaluateCarouselSections()
+            }
+        }
+    }
+
+    /**
+     * Hides or shows the carousel sections whose visibility is controlled by panel preferences.
+     * This is called once at startup via [observeData] callbacks, and again whenever the
+     * user changes a panel visibility setting.
+     */
+    private fun evaluateCarouselSections() {
+        if (!UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_RECENTLY_PLAYED)) {
+            binding.recentlyPlayedSection.gone()
+        } else if (recentlyPlayedAdapter?.itemCount ?: 0 > 0) {
+            binding.recentlyPlayedSection.visible(false)
+        }
+
+        if (!UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_RECENTLY_ADDED)) {
+            binding.recentlyAddedSection.gone()
+        } else if (recentlyAddedAdapter?.itemCount ?: 0 > 0) {
+            binding.recentlyAddedSection.visible(false)
+        }
+
+        if (!UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_FAVORITES)) {
+            binding.favoritesSection.gone()
+        } else if (favoritesAdapter?.itemCount ?: 0 > 0) {
+            binding.favoritesSection.visible(false)
         }
     }
 
