@@ -3,6 +3,7 @@
 import android.app.Application
 import app.simple.felicity.decorations.lrc.model.LrcData
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.managers.LyricsLoadingStatus
 import app.simple.felicity.managers.LyricsManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +39,13 @@ class LyricsViewModel @Inject constructor(
      * to the lyrics view. Collect this alongside [lrcData].
      */
     val syncOffsetMs: StateFlow<Long> = lyricsManager.syncOffsetMs
+
+    /**
+     * Tells the UI what the lyrics loader is doing right now — searching the internet,
+     * downloading, or just sitting quietly idle. Use this to update the lrc view's empty
+     * text so users aren't left wondering why nothing is showing up.
+     */
+    val loadingStatus: StateFlow<LyricsLoadingStatus> = lyricsManager.loadingStatus
 
     /**
      * The accumulated sync offset as a plain Long so the seek listener on the view

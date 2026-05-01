@@ -15,6 +15,7 @@ import app.simple.felicity.decorations.lrc.parser.TxtParser
 import app.simple.felicity.decorations.lrc.parser.WordLrcParser
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.managers.LyricsLoadingStatus
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.viewmodels.player.ModalLyricsViewModel.Companion.SYNC_SAVE_DEBOUNCE_MS
@@ -39,6 +40,12 @@ class ModalLyricsViewModel @AssistedInject constructor(
             loadLrcData()
         }
     }
+
+    /**
+     * Tells the UI what the lyrics loader is doing right now — searching, downloading,
+     * or just resting in idle. Observe this to update the empty text on the lrc view.
+     */
+    private val _loadingStatus = MutableLiveData<LyricsLoadingStatus>(LyricsLoadingStatus.Idle)
 
     /**
      * Mirrors what is currently written on disk. Updated silently after every
@@ -88,6 +95,9 @@ class ModalLyricsViewModel @AssistedInject constructor(
     private val syncSaveRunnable = Runnable { persistSyncAdjustment() }
 
     fun getLrcData(): LiveData<LrcData> = lrcData
+
+    /** Current loading state — observe this to drive the empty text on the lrc view. */
+    fun getLoadingStatus(): LiveData<LyricsLoadingStatus> = _loadingStatus
 
     /** Current sync offset to add to every updateTime call. */
     fun getSyncOffsetMs(): LiveData<Long> = syncOffsetMs
@@ -187,12 +197,16 @@ class ModalLyricsViewModel @AssistedInject constructor(
     }
 
     private suspend fun fetchAndSaveLrc(trackName: String, artistName: String, audioPath: String) {
+        // Let the UI know we're reaching out to the internet before blocking on the network call.
+        withContext(Dispatchers.Main) { _loadingStatus.value = LyricsLoadingStatus.Searching(trackName) }
+
         val searchResult = lrcRepository.searchLyrics(trackName, artistName)
 
         searchResult.onSuccess { results ->
             val bestMatch = results.firstOrNull()
             val syncedLyrics = bestMatch?.syncedLyrics
             if (bestMatch != null && !syncedLyrics.isNullOrBlank()) {
+                withContext(Dispatchers.Main) { _loadingStatus.value = LyricsLoadingStatus.Downloading(trackName) }
                 try {
                     val lrcDataLoaded = withContext(Dispatchers.Default) {
                         LrcParser().parse(syncedLyrics)
@@ -212,6 +226,9 @@ class ModalLyricsViewModel @AssistedInject constructor(
             exception.printStackTrace()
             lrcData.postValue(LrcData())
         }
+
+        // Whatever happened, we're no longer actively loading — back to idle.
+        withContext(Dispatchers.Main) { _loadingStatus.value = LyricsLoadingStatus.Idle }
     }
 
     fun reloadLrcData() {

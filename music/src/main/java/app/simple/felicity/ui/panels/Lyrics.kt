@@ -23,6 +23,7 @@ import app.simple.felicity.dialogs.lyrics.LyricsMenu.Companion.showLyricsMenu
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
+import app.simple.felicity.managers.LyricsLoadingStatus
 import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.models.Audio
@@ -82,7 +83,6 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
         setAlignment()
         applyTextSize()
         updateState()
-        binding.lrc.setEmptyText(getString(R.string.no_lyrics_found))
 
         binding.lrc.setOnLrcClickListener { timeInMillis, _ ->
             MediaPlaybackManager.seekTo(timeInMillis)
@@ -152,6 +152,19 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
                     binding.lrc.setLrcData(
                             lrcData, MediaPlaybackManager.getSeekPosition() + lyricsViewModel.syncOffset)
                 }
+            }
+        }
+
+        // Watch the loading status and update the empty-text in the lrc view so the user
+        // knows what is happening while the app is talking to the internet.
+        viewLifecycleOwner.lifecycleScope.launch {
+            lyricsViewModel.loadingStatus.collect { status ->
+                val message = when (status) {
+                    is LyricsLoadingStatus.Searching -> getString(R.string.searching_lyrics)
+                    is LyricsLoadingStatus.Downloading -> getString(R.string.downloading_lyrics)
+                    is LyricsLoadingStatus.Idle -> getString(R.string.no_lyrics_found)
+                }
+                binding.lrc.setEmptyText(message)
             }
         }
 

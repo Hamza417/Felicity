@@ -6,11 +6,13 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.viewModels
+import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogLyricsBinding
 import app.simple.felicity.decorations.lrc.view.FelicityLrcView
 import app.simple.felicity.dialogs.lyrics.AddLyrics.Companion.showAddLyrics
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
+import app.simple.felicity.managers.LyricsLoadingStatus
 import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Audio
@@ -65,6 +67,17 @@ class Lyrics : MediaBottomDialogFragment(), AddLyrics.Companion.OnLyricsCreatedL
                 binding.lrcView.setLrcData(lrcData)
                 binding.addLyrics.gone(animate = true)
             }
+        }
+
+        // Update the empty text in the lrc view to reflect what the loader is doing,
+        // so the user sees "Searching…" instead of a blank screen while waiting.
+        lyricsViewModel.getLoadingStatus().observe(viewLifecycleOwner) { status ->
+            val message = when (status) {
+                is LyricsLoadingStatus.Searching -> getString(R.string.searching_lyrics)
+                is LyricsLoadingStatus.Downloading -> getString(R.string.downloading_lyrics)
+                is LyricsLoadingStatus.Idle -> getString(R.string.no_lyrics_found)
+            }
+            binding.lrcView.setEmptyText(message)
         }
 
         binding.addLyrics.setOnClickListener {
