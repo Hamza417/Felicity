@@ -2,9 +2,14 @@ package app.simple.felicity.theme.managers
 
 import android.os.Build
 import app.simple.felicity.theme.accents.AlbumArt
+import app.simple.felicity.theme.accents.Emerald
 import app.simple.felicity.theme.accents.Felicity
 import app.simple.felicity.theme.accents.GrapeFruit
+import app.simple.felicity.theme.accents.Lavender
 import app.simple.felicity.theme.accents.MaterialYouAccent
+import app.simple.felicity.theme.accents.Midnight
+import app.simple.felicity.theme.accents.Rose
+import app.simple.felicity.theme.accents.Tangerine
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
@@ -57,6 +62,11 @@ object ThemeManager {
                 }
             }
             GrapeFruit.IDENTIFIER -> GrapeFruit()
+            Emerald.IDENTIFIER -> Emerald()
+            Tangerine.IDENTIFIER -> Tangerine()
+            Rose.IDENTIFIER -> Rose()
+            Lavender.IDENTIFIER -> Lavender()
+            Midnight.IDENTIFIER -> Midnight()
             else -> Felicity()
         }
     }
@@ -76,6 +86,11 @@ object ThemeManager {
         }
 
         list.add(GrapeFruit())
+        list.add(Emerald())
+        list.add(Tangerine())
+        list.add(Rose())
+        list.add(Lavender())
+        list.add(Midnight())
 
         return list
     }
