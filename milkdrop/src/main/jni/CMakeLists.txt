@@ -75,7 +75,7 @@ target_link_libraries(felicity_milkdrop
 # ---------------------------------------------------------------------------
 target_link_options(felicity_milkdrop
     PRIVATE
-    "-Wl,--build-id=sha1"
+    "-Wl,--build-id=none"
 )
 
 set(CMAKE_DEBUG_POSTFIX "")
