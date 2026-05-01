@@ -177,7 +177,29 @@ class Dashboard : BaseHomeFragment() {
             if (position in spanConfig.bigCellPositions) SpanSize(2, 2) else SpanSize(1, 1)
         }
 
+        // Set initial/cached height
         binding.recommendedGrid.layoutParams.height = dashboardViewModel.recommendedHeight.takeIf { it != -1 } ?: 0
+
+        // Extract height measurement into a reusable lambda
+        val calculateAndSetHeight = {
+            binding.recommendedGrid.post {
+                try {
+                    val totalHeight = layoutManager.getTotalHeight() +
+                            binding.recommendedGrid.paddingTop +
+                            binding.recommendedGrid.paddingBottom
+
+                    if (dashboardViewModel.recommendedHeight != totalHeight) {
+                        binding.recommendedGrid.layoutParams.height = totalHeight
+                        binding.recommendedGrid.requestLayout()
+
+                        // Cache totalHeight directly to avoid `measuredHeight` race condition
+                        dashboardViewModel.recommendedHeight = totalHeight
+                    }
+                } catch (_: UninitializedPropertyAccessException) {
+                    // View was destroyed before the post ran — no worries, nothing to update.
+                }
+            }
+        }
 
         if (binding.recommendedGrid.adapter != null) {
             binding.recommendedGrid.animate()
@@ -187,6 +209,10 @@ class Dashboard : BaseHomeFragment() {
                 .setDuration(300)
                 .withEndAction {
                     applyRecommendedAdapter(data, layoutManager)
+
+                    // Call this AFTER the new adapter and layout manager are applied
+                    calculateAndSetHeight()
+
                     binding.recommendedGrid.animate()
                         .alpha(1f)
                         .scaleX(1f)
@@ -196,26 +222,14 @@ class Dashboard : BaseHomeFragment() {
                 }.start()
         } else {
             applyRecommendedAdapter(data, layoutManager)
+
+            // Call this immediately for the first load
+            calculateAndSetHeight()
         }
 
-        binding.recommendedGrid.post {
-            try {
-                val totalHeight = layoutManager.getTotalHeight() +
-                        binding.recommendedGrid.paddingTop +
-                        binding.recommendedGrid.paddingBottom
-
-                if (dashboardViewModel.recommendedHeight == -1
-                        || totalHeight != dashboardViewModel.recommendedHeight) {
-                    binding.recommendedGrid.layoutParams.height = totalHeight
-                    binding.recommendedGrid.requestLayout()
-                }
-
-                dashboardViewModel.recommendedHeight = binding.recommendedGrid.measuredHeight
-            } catch (_: UninitializedPropertyAccessException) {
-                // View was destroyed before the post ran — no worries, nothing to update.
-            }
-        }
-
+        // Note: Double check if this is meant to be unconditionally false.
+        // Hiding a view completely (GONE) can sometimes force its measured height to 0
+        // depending on the parent ViewGroup.
         binding.recommendedSection.visible(false)
     }
 
