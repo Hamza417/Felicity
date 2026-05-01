@@ -6,11 +6,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import app.simple.felicity.R
-import app.simple.felicity.adapters.preference.GenericPreferencesAdapter
-import app.simple.felicity.databinding.FragmentPreferenceAppearanceBinding
-import app.simple.felicity.databinding.HeaderPreferencesGenericBinding
+import app.simple.felicity.adapters.preference.AdapterPanelVisibility
+import app.simple.felicity.databinding.FragmentGenericRecyclerViewBinding
 import app.simple.felicity.decorations.toggles.FelicitySwitch
-import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.extensions.fragments.PreferenceFragment
 import app.simple.felicity.models.Preference
@@ -29,24 +27,20 @@ import java.util.function.Supplier
  */
 class PanelVisibility : PreferenceFragment() {
 
-    private lateinit var binding: FragmentPreferenceAppearanceBinding
-    private lateinit var headerBinding: HeaderPreferencesGenericBinding
+    private lateinit var binding: FragmentGenericRecyclerViewBinding
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        binding = FragmentPreferenceAppearanceBinding.inflate(inflater, container, false)
-        headerBinding = HeaderPreferencesGenericBinding.inflate(inflater, container, false)
+        binding = FragmentGenericRecyclerViewBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        headerBinding.title.text = getString(R.string.panel_visibility)
-        headerBinding.icon.setImageResource(R.drawable.ic_carousel)
-        binding.header.setContentView(headerBinding.root)
+        // Hand the full list (header included) straight to the recycler — no external
+        // AppHeader needed here, the first item in the list is the header itself.
         binding.recyclerView.setHasFixedSize(false)
-        binding.recyclerView.adapter = GenericPreferencesAdapter(buildPanelVisibilityList())
-        binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
+        binding.recyclerView.adapter = AdapterPanelVisibility(buildPanelVisibilityList())
     }
 
     /**
@@ -56,14 +50,18 @@ class PanelVisibility : PreferenceFragment() {
     private fun buildPanelVisibilityList(): List<Preference> {
         val prefs = mutableListOf<Preference>()
 
-        // Library sub-section — the optional library panels that sit below the always-visible three.
+        // The header lives right inside the list, just like AccentColors does it —
+        // no separate AppHeader widget floating above the recycler.
+        prefs.add(Preference(type = PreferenceType.HEADER, title = R.string.panel_visibility))
+
+        // Library subsection — the optional library panels that sit below the always-visible three.
         prefs.add(Preference(type = PreferenceType.SUB_HEADER, title = R.string.library))
         prefs.add(makePanelToggle(R.string.album_artists, R.drawable.ic_artist, UserInterfacePreferences.PANEL_VISIBLE_ALBUM_ARTISTS))
         prefs.add(makePanelToggle(R.string.genres, R.drawable.ic_piano, UserInterfacePreferences.PANEL_VISIBLE_GENRES))
         prefs.add(makePanelToggle(R.string.year, R.drawable.ic_date_range, UserInterfacePreferences.PANEL_VISIBLE_YEAR))
         prefs.add(makePanelToggle(R.string.playlists, R.drawable.ic_list, UserInterfacePreferences.PANEL_VISIBLE_PLAYLISTS))
 
-        // Activity sub-section — things you've done with your music lately.
+        // Activity subsection — things you've done with your music lately.
         prefs.add(Preference(type = PreferenceType.SUB_HEADER, title = R.string.activity))
         prefs.add(makePanelToggle(R.string.playing_queue, R.drawable.ic_queue, UserInterfacePreferences.PANEL_VISIBLE_PLAYING_QUEUE))
         prefs.add(makePanelToggle(R.string.recently_added, R.drawable.ic_recently_added, UserInterfacePreferences.PANEL_VISIBLE_RECENTLY_ADDED))
@@ -71,7 +69,7 @@ class PanelVisibility : PreferenceFragment() {
         prefs.add(makePanelToggle(R.string.most_played, R.drawable.ic_equalizer, UserInterfacePreferences.PANEL_VISIBLE_MOST_PLAYED))
         prefs.add(makePanelToggle(R.string.favorites, R.drawable.ic_favorite_filled, UserInterfacePreferences.PANEL_VISIBLE_FAVORITES))
 
-        // Files sub-section — folder-based navigation options.
+        // Files subsection — folder-based navigation options.
         prefs.add(Preference(type = PreferenceType.SUB_HEADER, title = R.string.files))
         prefs.add(makePanelToggle(R.string.folders, R.drawable.ic_folder, UserInterfacePreferences.PANEL_VISIBLE_FOLDERS))
         prefs.add(makePanelToggle(R.string.folders_hierarchy, R.drawable.ic_tree, UserInterfacePreferences.PANEL_VISIBLE_FOLDERS_HIERARCHY))
@@ -104,6 +102,10 @@ class PanelVisibility : PreferenceFragment() {
 
     override val wantsMiniPlayerVisible: Boolean
         get() = false
+
+    override fun getTransitionType(): TransitionType {
+        return TransitionType.DRIFT
+    }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
