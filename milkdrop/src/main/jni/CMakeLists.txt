@@ -70,4 +70,12 @@ target_link_libraries(felicity_milkdrop
     ${gles-lib}
     ${egl-lib})
 
+# ---------------------------------------------------------------------------
+# Force deterministic linker hash for the final shared library
+# ---------------------------------------------------------------------------
+target_link_options(felicity_milkdrop
+    PRIVATE
+    "-Wl,--build-id=sha1"
+)
+
 set(CMAKE_DEBUG_POSTFIX "")
