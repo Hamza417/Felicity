@@ -84,4 +84,8 @@ interface SongStatDao {
 
     @Delete
     suspend fun deleteStat(audioStat: AudioStat)
+
+    /** Wipes the stat row for a given hash without needing to load it first. */
+    @Query("DELETE FROM song_stats WHERE audioHash = :audioHash")
+    suspend fun deleteStatByHash(audioHash: Long)
 }

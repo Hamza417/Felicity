@@ -30,10 +30,29 @@ class SongStatRepository @Inject constructor(
     }
 
     /**
+     * Returns the stat row for the song with the given hash, or null if none exists yet.
+     *
+     * @param audioHash The XXHash64 fingerprint of the audio file.
+     */
+    suspend fun getStatByHash(audioHash: Long): AudioStat? {
+        return database.songStatDao().getStatByHash(audioHash)
+    }
+
+    /**
+     * Wipes all stored stats (play count, skip count, last played) for the given song.
+     * Think of it as giving the song a clean slate — like it was never played before.
+     *
+     * @param audioHash The XXHash64 fingerprint of the audio file.
+     */
+    suspend fun clearStats(audioHash: Long) {
+        database.songStatDao().deleteStatByHash(audioHash)
+    }
+
+    /**
      * Records a play event for the song identified by [audioHash].
      *
      * <p>If no stat row exists for this hash a new one is inserted with a play count of 1.
-     * Otherwise the existing row's play count is incremented by 1 and its last-played
+     * Otherwise, the existing row's play count is incremented by 1 and its last-played
      * timestamp is updated to the current wall-clock time.</p>
      *
      * @param audioHash The XXHash64 fingerprint of the audio file (matches {@code audio.hash}).
