@@ -47,14 +47,14 @@ jobs:
                     echo "TAG=${TAG}" >> $GITHUB_ENV
                     echo "Tag: ${TAG}" # Print tag to console
 
-            #            -   name: Check Fastlane Changelogs
-            #                run: |
-            #                    if [ -f "fastlane/metadata/android/en-US/changelogs/${{ env.VERSION_CODE }}.txt" ]; then
-            #                      echo "Changelog exists for version code ${{ env.VERSION_CODE }}."
-            #                    else
-            #                      echo "Changelog does not exist for version code ${{ env.VERSION_CODE }}."
-            #                      exit 1
-            #                    fi
+            -   name: Check Fastlane Changelogs
+                run: |
+                    if [ -f "fastlane/metadata/android/en-US/changelogs/${{ env.VERSION_CODE }}.txt" ]; then
+                      echo "Changelog exists for version code ${{ env.VERSION_CODE }}."
+                    else
+                      echo "Changelog does not exist for version code ${{ env.VERSION_CODE }}."
+                      exit 1
+                    fi
 
             -   name: Accept Android SDK licenses
                 run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
@@ -73,11 +73,26 @@ jobs:
                     # Create a dedicated directory for the APKs
                     mkdir -p ${{ runner.temp }}/apks
                     
-                    # Find all APKs, preserve their architecture prefix/name, and append the version name
+                    # Define the build flavour (adjust as needed)
+                    FLAVOUR="foss"
+                    
+                    # Find all APKs and rename them to felicity_flavour_arch.apk
                     find music/ -name "*.apk" | while read -r apk; do
                         filename=$(basename "$apk")
-                        name_without_ext="${filename%.*}"
-                        new_filename="${name_without_ext}-${{ env.VERSION_NAME }}.apk"
+                    
+                        if [[ "$filename" == *"arm64-v8a"* ]]; then
+                            new_filename="felicity_${FLAVOUR}_arm64-v8a.apk"
+                        elif [[ "$filename" == *"armeabi-v7a"* ]]; then
+                            new_filename="felicity_${FLAVOUR}_armeabi-v7a.apk"
+                        elif [[ "$filename" == *"x86_64"* ]]; then
+                            new_filename="felicity_${FLAVOUR}_x86_64.apk"
+                        elif [[ "$filename" == *"x86"* ]]; then
+                            new_filename="felicity_${FLAVOUR}_x86.apk"
+                        elif [[ "$filename" == *"universal"* ]]; then
+                            new_filename="felicity_${FLAVOUR}_universal.apk"
+                        else
+                            new_filename="felicity_${FLAVOUR}.apk"
+                        fi
                     
                         echo "Moving $filename to $new_filename"
                         mv "$apk" "${{ runner.temp }}/apks/$new_filename"
@@ -99,48 +114,48 @@ jobs:
             -   name: Archive arm64-v8a APK
                 uses: actions/upload-artifact@v4
                 with:
-                    name: ${{ env.VERSION_NAME }}-arm64-v8a
-                    path: ${{ runner.temp }}/apks/*arm64-v8a*.apk
+                    name: felicity-arm64-v8a
+                    path: ${{ runner.temp }}/apks/*_arm64-v8a.apk
                     if-no-files-found: ignore
 
             -   name: Archive armeabi-v7a APK
                 uses: actions/upload-artifact@v4
                 with:
-                    name: ${{ env.VERSION_NAME }}-armeabi-v7a
-                    path: ${{ runner.temp }}/apks/*armeabi-v7a*.apk
+                    name: felicity-armeabi-v7a
+                    path: ${{ runner.temp }}/apks/*_armeabi-v7a.apk
                     if-no-files-found: ignore
 
             -   name: Archive x86_64 APK
                 uses: actions/upload-artifact@v4
                 with:
-                    name: ${{ env.VERSION_NAME }}-x86_64
-                    path: ${{ runner.temp }}/apks/*x86_64*.apk
+                    name: felicity-x86_64
+                    path: ${{ runner.temp }}/apks/*_x86_64.apk
                     if-no-files-found: ignore
 
             -   name: Archive x86 APK
                 uses: actions/upload-artifact@v4
                 with:
-                    name: ${{ env.VERSION_NAME }}-x86
-                    path: ${{ runner.temp }}/apks/*x86*.apk
+                    name: felicity-x86
+                    path: ${{ runner.temp }}/apks/*_x86.apk
                     if-no-files-found: ignore
 
             -   name: Archive Universal APK
                 uses: actions/upload-artifact@v4
                 with:
-                    name: ${{ env.VERSION_NAME }}-universal
-                    path: ${{ runner.temp }}/apks/*universal*.apk
+                    name: felicity-universal
+                    path: ${{ runner.temp }}/apks/*_universal.apk
                     if-no-files-found: ignore
 
             # Catch-all in case ABI splits aren't enabled and a standard non-arch APK is generated
             -   name: Archive Base APK
                 uses: actions/upload-artifact@v4
                 with:
-                    name: ${{ env.VERSION_NAME }}-Base
+                    name: felicity-base
                     path: |
                         ${{ runner.temp }}/apks/*.apk
-                        !${{ runner.temp }}/apks/*arm64-v8a*.apk
-                        !${{ runner.temp }}/apks/*armeabi-v7a*.apk
-                        !${{ runner.temp }}/apks/*x86*.apk
-                        !${{ runner.temp }}/apks/*x86_64*.apk
-                        !${{ runner.temp }}/apks/*universal*.apk
+                        !${{ runner.temp }}/apks/*_arm64-v8a.apk
+                        !${{ runner.temp }}/apks/*_armeabi-v7a.apk
+                        !${{ runner.temp }}/apks/*_x86.apk
+                        !${{ runner.temp }}/apks/*_x86_64.apk
+                        !${{ runner.temp }}/apks/*_universal.apk
                     if-no-files-found: ignore
