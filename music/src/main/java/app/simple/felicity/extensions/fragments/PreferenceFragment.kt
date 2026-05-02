@@ -251,9 +251,9 @@ abstract class PreferenceFragment : MediaFragment() {
                     when (UserInterfacePreferences.getHomeInterface()) {
                         UserInterfacePreferences.HOME_INTERFACE_DASHBOARD -> getString(R.string.dashboard)
                         UserInterfacePreferences.HOME_INTERFACE_ARTFLOW -> getString(R.string.artflow)
-                        UserInterfacePreferences.HOME_INTERFACE_SPANNED -> getString(R.string.spanned)
+                        UserInterfacePreferences.HOME_INTERFACE_TILED -> getString(R.string.tiled)
                         UserInterfacePreferences.HOME_INTERFACE_SIMPLE -> getString(R.string.simple)
-                        else -> getString(R.string.app_name)
+                        else -> getString(R.string.simple)
                     }
                 },
                 onPreferenceAction = { view, callback ->
@@ -262,7 +262,7 @@ abstract class PreferenceFragment : MediaFragment() {
                             anchorView = view,
                             menuItems = listOf(
                                     PopupMenuItem(title = R.string.dashboard, isExperimental = true),
-                                    PopupMenuItem(title = R.string.spanned, isExperimental = true),
+                                    PopupMenuItem(title = R.string.tiled, isExperimental = true),
                                     PopupMenuItem(title = R.string.artflow, isExperimental = true),
                                     PopupMenuItem(title = R.string.simple)
                             ),
@@ -272,9 +272,9 @@ abstract class PreferenceFragment : MediaFragment() {
                                         UserInterfacePreferences.setHomeInterface(UserInterfacePreferences.HOME_INTERFACE_DASHBOARD)
                                         (view as TextView).text = getString(R.string.dashboard)
                                     }
-                                    R.string.spanned -> {
-                                        UserInterfacePreferences.setHomeInterface(UserInterfacePreferences.HOME_INTERFACE_SPANNED)
-                                        (view as TextView).text = getString(R.string.spanned)
+                                    R.string.tiled -> {
+                                        UserInterfacePreferences.setHomeInterface(UserInterfacePreferences.HOME_INTERFACE_TILED)
+                                        (view as TextView).text = getString(R.string.tiled)
                                     }
                                     R.string.artflow -> {
                                         UserInterfacePreferences.setHomeInterface(UserInterfacePreferences.HOME_INTERFACE_ARTFLOW)

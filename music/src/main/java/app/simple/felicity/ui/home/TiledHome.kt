@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
  *
  * @author Hamza417
  */
-class SpannedHome : BaseHomeFragment() {
+class TiledHome : BaseHomeFragment() {
 
     private lateinit var binding: FragmentHomeSpannedBinding
     private val homeViewModel: HomeViewModel by viewModels({ requireActivity() })
@@ -201,18 +201,18 @@ class SpannedHome : BaseHomeFragment() {
 
     companion object {
         /**
-         * Creates a new instance of [SpannedHome].
+         * Creates a new instance of [TiledHome].
          *
-         * @return A freshly instantiated [SpannedHome] ready to show tiles.
+         * @return A freshly instantiated [TiledHome] ready to show tiles.
          */
-        fun newInstance(): SpannedHome {
+        fun newInstance(): TiledHome {
             val args = Bundle()
-            val fragment = SpannedHome()
+            val fragment = TiledHome()
             fragment.arguments = args
             return fragment
         }
 
-        const val TAG = "SpannedHome"
+        const val TAG = "TiledHome"
 
         /** How many columns the tile grid uses — 3 matches the classic Windows Phone layout. */
         private const val SPAN_COUNT = 3

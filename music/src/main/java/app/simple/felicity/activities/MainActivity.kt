@@ -58,7 +58,7 @@ import app.simple.felicity.shared.utils.UnitUtils.dpToPx
 import app.simple.felicity.ui.home.ArtFlowHome
 import app.simple.felicity.ui.home.Dashboard
 import app.simple.felicity.ui.home.SimpleHome
-import app.simple.felicity.ui.home.SpannedHome
+import app.simple.felicity.ui.home.TiledHome
 import app.simple.felicity.ui.launcher.Setup
 import app.simple.felicity.ui.launcher.TrialExpired
 import app.simple.felicity.ui.panels.Equalizer
@@ -312,9 +312,9 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                     .replace(R.id.fragment_container, Dashboard.newInstance(), Dashboard.TAG)
                     .commit()
             }
-            UserInterfacePreferences.HOME_INTERFACE_SPANNED -> {
+            UserInterfacePreferences.HOME_INTERFACE_TILED -> {
                 supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, SpannedHome.newInstance(), SpannedHome.TAG)
+                    .replace(R.id.fragment_container, TiledHome.newInstance(), TiledHome.TAG)
                     .commit()
             }
             UserInterfacePreferences.HOME_INTERFACE_ARTFLOW -> {

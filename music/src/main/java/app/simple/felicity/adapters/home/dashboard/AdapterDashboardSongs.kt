@@ -77,7 +77,7 @@ class AdapterDashboardSongs(
     /**
      * Randomizes the visible content of [holder] by swapping its displayed song to a
      * randomly chosen entry from the backing list. Intended for use with the
-     * SpannedHome-style periodic shuffle animation in the recently played carousel.
+     * TiledHome-style periodic shuffle animation in the recently played carousel.
      *
      * @param holder The [Holder] whose displayed song should be replaced.
      */

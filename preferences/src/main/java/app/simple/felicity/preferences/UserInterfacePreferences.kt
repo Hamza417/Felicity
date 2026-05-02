@@ -22,7 +22,7 @@ object UserInterfacePreferences {
     const val IMMERSIVE_MODE = "immersive_mode"
 
     const val HOME_INTERFACE_DASHBOARD = 1
-    const val HOME_INTERFACE_SPANNED = 2
+    const val HOME_INTERFACE_TILED = 2
     const val HOME_INTERFACE_ARTFLOW = 3
     const val HOME_INTERFACE_SIMPLE = 0
 

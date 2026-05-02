@@ -31,7 +31,7 @@ import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
  */
 class AdapterSpannedHomeTiles(
         private val tiles: MutableList<SpannedTile>
-) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var callbacks: SpannedHomeTileCallbacks? = null
 
@@ -42,7 +42,7 @@ class AdapterSpannedHomeTiles(
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
             TYPE_SONG -> SongHolder(
                     AdapterGridImageBinding.inflate(LayoutInflater.from(parent.context), parent, false))
@@ -52,7 +52,7 @@ class AdapterSpannedHomeTiles(
         }
     }
 
-    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
         when (val tile = tiles[position]) {
             is SpannedTile.SongTile -> {
                 val songHolder = holder as SongHolder

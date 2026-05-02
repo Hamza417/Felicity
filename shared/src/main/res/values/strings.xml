@@ -61,8 +61,8 @@
     <string name="songs_settings">Songs Settings</string>
     <string name="camera_y">Camera Y</string>
     <string name="change_home_interface">Change Home Interface</string>
-    <string name="spanned">Spanned</string>
     <string name="simple">Simple</string>
+    <string name="tiled">Tiled</string>
     <string name="recommended">Recommended</string>
     <string name="title">Title</string>
     <string name="album">Album</string>
