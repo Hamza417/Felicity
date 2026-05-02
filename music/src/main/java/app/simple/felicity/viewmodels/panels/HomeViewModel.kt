@@ -33,7 +33,7 @@ import javax.inject.Inject
  * Room flow so any addition or deletion in the audio database is immediately forwarded to
  * the UI without requiring a restart.
  *
- * Each section has its own [Job] so flows can be cancelled and restarted independently
+ * Each section has its own [Job] so flows can be canceled and restarted independently
  * when library-filter preferences change.
  *
  * @author Hamza417
@@ -153,8 +153,8 @@ class HomeViewModel @Inject constructor(
      * with [_recommendedRefreshTrigger]. Any change in the audio table, the stats table, or
      * an explicit refresh request will trigger a full recompute of the recommendation list.
      *
-     * The previous collection job is cancelled before a new one starts to avoid duplicate
-     * emissions when [refreshRecommended] is called.
+     * The previous collection job is canceled before a new one starts to avoid duplicate
+     * emissions if the trigger is incremented.
      */
     private fun startRecommendedFlow() {
         recommendedJob?.cancel()
@@ -232,13 +232,17 @@ class HomeViewModel @Inject constructor(
         private const val TAG = "HomeViewModel"
         private const val TAKE_COUNT = 18
 
-        /** Total number of songs shown in the recommended spanned art grid. */
-        private const val RECOMMENDED_MAX_COUNT = 9
+        /**
+         * Total number of songs to include in the recommended pool for the tile grid.
+         * Set generously so there is always enough variety to fill every song tile slot,
+         * even when some panel slots overflow into song slots.
+         */
+        private const val RECOMMENDED_MAX_COUNT = 30
 
         /** Number of slots in the recommended grid filled from the most-played list. */
-        private const val RECOMMENDED_MOST_PLAYED_COUNT = 6
+        private const val RECOMMENDED_MOST_PLAYED_COUNT = 8
 
         /** Number of slots in the recommended grid filled from the recently-played list. */
-        private const val RECOMMENDED_RECENTLY_PLAYED_COUNT = 3
+        private const val RECOMMENDED_RECENTLY_PLAYED_COUNT = 6
     }
 }

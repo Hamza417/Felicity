@@ -6,45 +6,49 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
-import app.simple.felicity.adapters.home.main.AdapterGridHome
-import app.simple.felicity.adapters.home.main.AdapterGridHome.Companion.AdapterSpannedHomeCallbacks
-import app.simple.felicity.adapters.home.sub.AdapterGridArt
+import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles
+import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.SpannedTile
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
-import app.simple.felicity.decorations.utils.RecyclerViewUtils.randomViewHolder
-import app.simple.felicity.extensions.fragments.MediaFragment
-import app.simple.felicity.models.ArtFlowData
-import app.simple.felicity.repository.models.Album
-import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
+import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
+import app.simple.felicity.extensions.fragments.BaseHomeFragment
+import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.ui.pages.AlbumPage
-import app.simple.felicity.ui.pages.ArtistPage
-import app.simple.felicity.ui.panels.Albums
-import app.simple.felicity.ui.panels.Artists
-import app.simple.felicity.ui.panels.Genres
-import app.simple.felicity.ui.panels.PlayingQueue
-import app.simple.felicity.ui.panels.Songs
 import app.simple.felicity.viewmodels.panels.HomeViewModel
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /**
- * Home fragment that presents curated song collections as a spanned art grid with periodic
- * randomization. The four data sources (Favorites, Recently Played, Most Played, Recently Added)
- * are collected as independent [kotlinx.coroutines.flow.StateFlow]s from [HomeViewModel] and
- * combined into a single [AdapterGridHome] data set. Reactive Room flows ensure that any
- * addition or deletion in the library is reflected immediately without a restart.
+ * Home screen that renders a flat Windows Phone-style tile grid using a single
+ * [SpannedGridLayoutManager] — no nesting, no inner RecyclerViews, just clean tiles.
+ *
+ * The grid is 3 columns wide and contains 45 fixed positions:
+ *
+ *  - **Song tiles** — album art + title. Five of these are 2×2 hero tiles; the rest are 1×1.
+ *    The song pool is a curated mix of your most-played, recently-played, and random tracks
+ *    from the full library, so every session feels a little different.
+ *
+ *  - **Panel tiles** — every third position (15 slots total) is reserved for navigation panels.
+ *    They are populated in order from the user's enabled panel list and never move, so
+ *    tapping your favorite shortcut quickly becomes pure muscle memory.
+ *
+ * Data is loaded exactly once per fragment lifecycle. No background shuffling,
+ * no flickering — the grid just sits there looking great.
  *
  * @author Hamza417
  */
-class SpannedHome : MediaFragment() {
+class SpannedHome : BaseHomeFragment() {
 
     private lateinit var binding: FragmentHomeSpannedBinding
     private val homeViewModel: HomeViewModel by viewModels({ requireActivity() })
+
+    /** The adapter that drives the tile grid. Created once and never replaced. */
+    private var tilesAdapter: AdapterSpannedHomeTiles? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentHomeSpannedBinding.inflate(inflater, container, false)
@@ -53,137 +57,155 @@ class SpannedHome : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        postponeEnterTransition()
         requireLightBarIcons()
         binding.recyclerView.setBackgroundColor(Color.BLACK)
         binding.recyclerView.requireAttachedMiniPlayer()
 
-        var adapter: AdapterGridHome? = null
+        setupRecyclerView()
+        observeRecommended()
+    }
 
+    /**
+     * Attaches the [SpannedGridLayoutManager] with a fixed span lookup so the hero tile
+     * positions and the 3-column structure are locked in before any data arrives.
+     */
+    private fun setupRecyclerView() {
+        val layoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, SPAN_COUNT)
+
+        layoutManager.spanSizeLookup = SpannedGridLayoutManager.SpanSizeLookup { position ->
+            // Five hero positions get the big 2×2 treatment; everything else stays compact 1×1.
+            if (position in AdapterSpannedHomeTiles.BIG_TILE_POSITIONS) {
+                SpanSize(2, 2)
+            } else {
+                SpanSize(1, 1)
+            }
+        }
+
+        binding.recyclerView.layoutManager = layoutManager
+        binding.recyclerView.setHasFixedSize(false)
+        binding.recyclerView.itemAnimator = null
+    }
+
+    /**
+     * Waits for the first non-empty emission from [HomeViewModel.recommended] and then
+     * builds the adapter. We only do this once — subsequent emissions are ignored because
+     * the recommended list is stable for the duration of the session. No surprises.
+     */
+    private fun observeRecommended() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                combine(
-                        homeViewModel.favorites,
-                        homeViewModel.recentlyPlayed,
-                        homeViewModel.mostPlayed,
-                        homeViewModel.recentlyAdded
-                ) { favorites, recentlyPlayed, mostPlayed, recentlyAdded ->
-                    buildSections(favorites, recentlyPlayed, mostPlayed, recentlyAdded)
-                }.collect { sections ->
-                    Log.d(TAG, "Data received: ${sections.size} sections")
-                    if (sections.isEmpty()) return@collect
-
-                    if (adapter == null) {
-                        adapter = AdapterGridHome(sections)
-                        binding.recyclerView.setHasFixedSize(false)
-                        binding.recyclerView.adapter = adapter
-                        binding.recyclerView.scheduleLayoutAnimation()
-                        binding.recyclerView.itemAnimator = null
-
-                        adapter.setAdapterSpannedHomeCallbacks(object : AdapterSpannedHomeCallbacks {
-                            override fun onMenuClicked(view: View) {
-                                openPreferencesPanel()
-                            }
-
-                            override fun onItemClicked(items: List<Any>, position: Int) {
-                                when (items.first()) {
-                                    is Audio -> {}
-                                    is Artist -> openFragment(ArtistPage.newInstance(items.filterIsInstance<Artist>()[position]), ArtistPage.TAG)
-                                    is Album -> openFragment(AlbumPage.newInstance(items.filterIsInstance<Album>()[position]), AlbumPage.TAG)
-                                    else -> Log.w(TAG, "onItemClicked: Unsupported item type: ${items.first()::class.java.simpleName}")
-                                }
-                            }
-
-                            override fun onItemLongClicked(item: Any) {}
-
-                            override fun onButtonClicked(title: Int) {
-                                when (title) {
-                                    R.string.songs -> openFragment(Songs.newInstance(), Songs.TAG)
-                                    R.string.albums -> openFragment(Albums.newInstance(), Albums.TAG)
-                                    R.string.artists -> openFragment(Artists.newInstance(), Artists.TAG)
-                                    R.string.genres -> openFragment(Genres.newInstance(), Genres.TAG)
-                                    R.string.playing_queue -> openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
-                                    else -> Log.w(TAG, "onButtonClicked: Unsupported button title: $title")
-                                }
-                            }
-                        })
-
-                        requireView().startTransitionOnPreDraw()
-                    } else {
-                        adapter.updateData(sections)
-                    }
+                homeViewModel.recommended.collect { songs ->
+                    // Only build the adapter on first arrival — we don't shuffle or refresh after that.
+                    if (songs.isEmpty() || tilesAdapter != null) return@collect
+                    Log.d(TAG, "Building tile grid with ${songs.size} songs")
+                    buildAndAttachAdapter(songs)
                 }
             }
         }
     }
 
     /**
-     * Assembles the ordered list of [ArtFlowData] sections passed to [AdapterGridHome].
-     * Sections whose backing list is empty are omitted so the grid never shows an empty row.
+     * Assembles the full tile list, wires up the adapter, and attaches it to the RecyclerView.
+     * This runs exactly once per fragment lifetime.
      *
-     * @param favorites      Latest favorites snapshot.
-     * @param recentlyPlayed Latest recently-played snapshot.
-     * @param mostPlayed     Latest most-played snapshot.
-     * @param recentlyAdded  Latest recently-added snapshot.
-     * @return Ordered list of non-empty [ArtFlowData] sections.
+     * @param songs The recommended song pool from the ViewModel.
      */
-    private fun buildSections(
-            favorites: List<Audio>,
-            recentlyPlayed: List<Audio>,
-            mostPlayed: List<Audio>,
-            recentlyAdded: List<Audio>
-    ): List<ArtFlowData<Any>> {
-        val sections = mutableListOf<ArtFlowData<Any>>()
-        if (favorites.isNotEmpty()) sections.add(ArtFlowData(R.string.favorites, favorites))
-        if (recentlyPlayed.isNotEmpty()) sections.add(ArtFlowData(R.string.recently_played, recentlyPlayed))
-        if (mostPlayed.isNotEmpty()) sections.add(ArtFlowData(R.string.most_played, mostPlayed))
-        if (recentlyAdded.isNotEmpty()) sections.add(ArtFlowData(R.string.recently_added, recentlyAdded))
-        return sections
-    }
+    private fun buildAndAttachAdapter(songs: List<Audio>) {
+        val tiles = AdapterSpannedHomeTiles.buildTiles(songs, buildPanelTiles())
+        tilesAdapter = AdapterSpannedHomeTiles(tiles)
 
-    private val randomizer: Runnable = object : Runnable {
-        override fun run() {
-            try {
-                binding.recyclerView.randomViewHolder<AdapterGridHome.Holder> { holder ->
-                    holder.binding.artGrid.animate()!!
-                        .alpha(0F)
-                        .setDuration(resources.getInteger(android.R.integer.config_longAnimTime).toLong())
-                        .withEndAction {
-                            (holder.binding.artGrid.adapter as AdapterGridArt).randomize()
-                            holder.binding.artGrid.scheduleLayoutAnimation()
-                            holder.binding.artGrid.animate()!!
-                                .alpha(1F)
-                                .setDuration(resources.getInteger(android.R.integer.config_shortAnimTime).toLong())
-                                .start()
-                        }
-                        .start()
-                }
-            } catch (e: NoSuchElementException) {
-                Log.e(TAG, "run: No such element", e)
-            } catch (e: Exception) {
-                Log.e(TAG, "run: Exception", e)
+        tilesAdapter!!.setCallbacks(object : AdapterSpannedHomeTiles.SpannedHomeTileCallbacks {
+            override fun onSongTileClicked(songs: List<Audio>, position: Int) {
+                setMediaItems(songs, position)
             }
 
-            handler.postDelayed(this, DELAY)
+            override fun onSongTileLongClicked(audio: Audio, imageView: ImageView) {
+                val allSongs = tiles
+                    .filterIsInstance<SpannedTile.SongTile>()
+                    .map { it.audio }
+                    .toMutableList()
+                val index = allSongs.indexOfFirst { it.id == audio.id }.coerceAtLeast(0)
+                openSongsMenu(allSongs, index, imageView)
+            }
+
+            override fun onPanelTileClicked(panelTile: SpannedTile.PanelTile) {
+                navigateToPanel(panelTile.getPanel())
+            }
+        })
+
+        binding.recyclerView.adapter = tilesAdapter
+        binding.recyclerView.scheduleLayoutAnimation()
+    }
+
+    /**
+     * Builds the full list of panel tiles that the user currently has enabled,
+     * respecting their visibility preferences exactly like the dashboard does.
+     *
+     * Songs, Albums, and Artists are always included — the rest are opt-in.
+     * The order here is the order they appear in the grid, so it's intentional.
+     *
+     * @return Ordered list of [SpannedTile.PanelTile] items to populate the panel slots.
+     */
+    private fun buildPanelTiles(): List<SpannedTile.PanelTile> {
+        val tiles = mutableListOf<SpannedTile.PanelTile>()
+
+        // These three are sacred — always present, no preference check needed.
+        tiles.add(SpannedTile.PanelTile(R.string.songs, R.drawable.ic_song_16dp))
+        tiles.add(SpannedTile.PanelTile(R.string.albums, R.drawable.ic_album_16dp))
+        tiles.add(SpannedTile.PanelTile(R.string.artists, R.drawable.ic_people_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_ALBUM_ARTISTS))
+            tiles.add(SpannedTile.PanelTile(R.string.album_artists, R.drawable.ic_artist_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_GENRES))
+            tiles.add(SpannedTile.PanelTile(R.string.genres, R.drawable.ic_piano_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_YEAR))
+            tiles.add(SpannedTile.PanelTile(R.string.year, R.drawable.ic_date_range_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_PLAYLISTS))
+            tiles.add(SpannedTile.PanelTile(R.string.playlists, R.drawable.ic_list_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_PLAYING_QUEUE))
+            tiles.add(SpannedTile.PanelTile(R.string.playing_queue, R.drawable.ic_queue_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_RECENTLY_ADDED))
+            tiles.add(SpannedTile.PanelTile(R.string.recently_added, R.drawable.ic_recently_added_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_RECENTLY_PLAYED))
+            tiles.add(SpannedTile.PanelTile(R.string.recently_played, R.drawable.ic_history_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_MOST_PLAYED))
+            tiles.add(SpannedTile.PanelTile(R.string.most_played, R.drawable.ic_equalizer_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_FAVORITES)) {
+            val iconRes = if (UserInterfacePreferences.isLikeIconInsteadOfThumb())
+                R.drawable.ic_thumb_up_16dp else R.drawable.ic_favorite_filled_16dp
+            tiles.add(SpannedTile.PanelTile(R.string.favorites, iconRes))
         }
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_FOLDERS))
+            tiles.add(SpannedTile.PanelTile(R.string.folders, R.drawable.ic_folder_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_FOLDERS_HIERARCHY))
+            tiles.add(SpannedTile.PanelTile(R.string.folders_hierarchy, R.drawable.ic_tree_16dp))
+
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_ALWAYS_SKIPPED))
+            tiles.add(SpannedTile.PanelTile(R.string.always_skipped, R.drawable.ic_skip_16dp))
+
+        return tiles
     }
 
-    override fun onPause() {
-        super.onPause()
-        handler.removeCallbacks(randomizer)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        handler.removeCallbacks(randomizer) // Just to be sure
-        handler.postDelayed(randomizer, DELAY)
+    override fun onDestroyView() {
+        tilesAdapter = null
+        super.onDestroyView()
     }
 
     companion object {
         /**
          * Creates a new instance of [SpannedHome].
          *
-         * @return A freshly instantiated [SpannedHome] fragment.
+         * @return A freshly instantiated [SpannedHome] ready to show tiles.
          */
         fun newInstance(): SpannedHome {
             val args = Bundle()
@@ -193,6 +215,8 @@ class SpannedHome : MediaFragment() {
         }
 
         const val TAG = "SpannedHome"
-        private const val DELAY = 5_000L
+
+        /** How many columns the tile grid uses — 3 matches the classic Windows Phone layout. */
+        private const val SPAN_COUNT = 3
     }
 }

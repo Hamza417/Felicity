@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.square.SquareFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Solid dark background so the tile stands out from song art tiles -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <!-- The icon that identifies which panel this tile navigates to -->
+        <ImageView
+            android:id="@+id/icon"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:importantForAccessibility="no"
+            app:tint="@color/white" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/padding_5"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="@dimen/text_size_12"
+            app:appFontStyle="regular"
+            app:textColorStyle="white" />
+
+    </LinearLayout>
+
+</app.simple.felicity.decorations.square.SquareFrameLayout>
+
