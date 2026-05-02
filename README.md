@@ -28,6 +28,8 @@ future.
 [![](https://img.shields.io/badge/Play%20Store-05acff?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=app.simple.felicity)
 [![](https://img.shields.io/github/v/release/Hamza417/Felicity?color=181717&logo=github&label=GitHub%20Release)](https://github.com/Hamza417/Felicity/releases/latest)
 
+_F-Droid MR has been created [here](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/37503)._
+
 ## Purchase
 
 [![](https://img.shields.io/badge/License%20Key%20(GumRoad)-Purchase-23a094?logo=gumroad&logoColor=white)](https://hamza417.gumroad.com/l/Felicity/EARLY_ACCESS)
@@ -76,8 +78,6 @@ Play Store users can buy full version directly from the app itself.
 
 - **Realtime Library Updates:** The app automatically detects and updates the music library in
   real-time as new tracks are added or removed from the device adapted from Peristyle app.
-- **All Storage Support:** Full support for both internal and external storages including SD cards
-  and USB drives.
 - **Auto Scanning:** The app automatically scans for new music files and updates the library without
   requiring manual refreshes.
 - **Server Mode:** Host Felicity as a local server to create a central music library for all local
@@ -114,22 +114,6 @@ This feature list is not exhaustive and only main features are listed.
 - [x] Reproducible build.
 
 ... and more features will be updated here as development progresses.
-
-#### Development Roadmap
-
-The development release sequence will be like
-
-- Preview release (preview is made available to the early users and have the app available to try in
-  the public domain, there are 10 previews planned).
-- Alpha release (alpha testing will be done after almost every feature I have planned has been
-  added)
-- Beta release (app is stable enough to be moved to pre-release stage, this stage should be where
-  app is released on various app stores.)
-- Release (app should be released for everyone)
-
-F-Droid release is currently not sure, the Glide library is breaking the reproducible build and I
-have submitted a PR to fix that, but it has not been addressed yet at the time of writing this. See
-bumptech/glide#5657
 
 ## Screenshots
 
