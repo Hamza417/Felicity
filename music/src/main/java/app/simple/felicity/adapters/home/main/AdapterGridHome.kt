@@ -101,7 +101,7 @@ class AdapterGridHome(private var data: List<ArtFlowData<Any>>) : RecyclerView.A
 
     inner class Header(val binding: AdapterSpannedHomeHeaderBinding) : VerticalListViewHolder(binding.root) {
         init {
-            binding.menu.setOnClickListener {
+            binding.settings.setOnClickListener {
                 adapterSpannedHomeCallbacks?.onMenuClicked(it)
             }
 
@@ -109,8 +109,9 @@ class AdapterGridHome(private var data: List<ArtFlowData<Any>>) : RecyclerView.A
                 adapterSpannedHomeCallbacks?.onSearchClicked(it)
             }
 
-            // findRandomSongFromData()?.let { binding.headerArt.loadBlurredBWSongCover(it) }
-            binding.subContainer.background = null
+            binding.serverToggle.setOnClickListener {
+                adapterSpannedHomeCallbacks?.onButtonClicked(binding.serverToggle.id)
+            }
         }
     }
 

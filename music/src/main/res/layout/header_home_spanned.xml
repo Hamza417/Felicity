@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.padding.PaddingAwareLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/container"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    app:navigationPaddingRequired="false"
-    app:statusPaddingRequired="true">
+    android:animateLayoutChanges="true"
+    android:orientation="vertical">
 
-    <!-- Main header row: app label + action buttons -->
+    <!-- Main row: app label + action buttons -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -53,26 +51,29 @@
 
     </LinearLayout>
 
-    <!-- Chip strip: library stats and optional server-active indicator -->
+    <!-- Chip strip: library stats + server-active indicator -->
     <HorizontalScrollView
+        android:id="@+id/strip"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/padding_10"
-        android:paddingHorizontal="@dimen/padding_15"
+        android:layout_marginTop="@dimen/padding_5"
+        android:animateLayoutChanges="true"
         android:clipChildren="false"
         android:clipToPadding="false"
         android:fadingEdge="horizontal"
         android:fadingEdgeLength="@dimen/padding_20"
+        android:paddingHorizontal="@dimen/padding_15"
         android:requiresFadingEdge="horizontal"
         android:scrollbars="none">
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:animateLayoutChanges="true"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <!-- Shows total track count and total hours of music -->
+            <!-- Track count chip -->
             <app.simple.felicity.decorations.highlight.HighlightTextView
                 android:id="@+id/library_stats"
                 android:layout_width="wrap_content"
@@ -88,12 +89,13 @@
                 android:paddingVertical="@dimen/padding_5"
                 android:singleLine="true"
                 android:textSize="@dimen/text_size_14"
+                android:visibility="gone"
                 app:appFontStyle="bold"
                 app:drawableTintStyle="accent"
                 app:highlightMode="outline"
                 app:textColorStyle="secondary" />
 
-            <!-- Visible only while the Wi-Fi server is running — hidden otherwise -->
+            <!-- Only visible while the Wi-Fi server is running -->
             <app.simple.felicity.decorations.highlight.HighlightTextView
                 android:id="@+id/server_active_chip"
                 android:layout_width="wrap_content"
@@ -117,4 +119,10 @@
 
     </HorizontalScrollView>
 
-</app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>
+    <app.simple.felicity.decorations.theme.ThemeDivider
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:layout_marginTop="@dimen/padding_10" />
+
+</LinearLayout>
+

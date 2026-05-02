@@ -33,7 +33,7 @@ import javax.inject.Inject
  * Room flow so any addition or deletion in the audio database is immediately forwarded to
  * the UI without requiring a restart.
  *
- * Each section has its own [Job] so flows can be canceled and restarted independently
+ * Each section has its own [Job] so flows can be cancelled and restarted independently
  * when library-filter preferences change.
  *
  * @author Hamza417
@@ -73,6 +73,14 @@ class HomeViewModel @Inject constructor(
      */
     val recommended: StateFlow<List<Audio>> = _recommended.asStateFlow()
 
+    private val _libraryStats = MutableStateFlow<Pair<Int, Long>?>(null)
+
+    /**
+     * A pair of (trackCount, totalDurationMs) so the header chip can show something like
+     * "12,403 Tracks • 840 Hours". Updates automatically whenever the audio table changes.
+     */
+    val libraryStats: StateFlow<Pair<Int, Long>?> = _libraryStats.asStateFlow()
+
     /** Active coroutine job collecting the recommended combined flow. */
     private var recommendedJob: Job? = null
 
@@ -94,6 +102,7 @@ class HomeViewModel @Inject constructor(
         startMostPlayedFlow()
         startRecentlyAddedFlow()
         startRecommendedFlow()
+        startLibraryStatsFlow()
     }
 
     private fun startFavoritesFlow() {
@@ -153,7 +162,7 @@ class HomeViewModel @Inject constructor(
      * with [_recommendedRefreshTrigger]. Any change in the audio table, the stats table, or
      * an explicit refresh request will trigger a full recompute of the recommendation list.
      *
-     * The previous collection job is canceled before a new one starts to avoid duplicate
+     * The previous collection job is cancelled before a new one starts to avoid duplicate
      * emissions if the trigger is incremented.
      */
     private fun startRecommendedFlow() {
@@ -211,6 +220,24 @@ class HomeViewModel @Inject constructor(
                 .millerShuffle()
                 .take(RECOMMENDED_MAX_COUNT - composed.size)
             (composed + filler).shuffled()
+        }
+    }
+
+    /**
+     * Watches the full audio library and keeps the library stats pair up to date.
+     * Runs in the background so a fresh media scan instantly refreshes the header chip
+     * without any manual intervention from the fragment.
+     */
+    private fun startLibraryStatsFlow() {
+        viewModelScope.launch {
+            audioRepository.getAllAudio()
+                .catch { e -> Log.e(TAG, "Error computing library stats", e) }
+                .flowOn(Dispatchers.IO)
+                .collect { audioList ->
+                    val totalMs = audioList.sumOf { it.duration }
+                    _libraryStats.value = Pair(audioList.size, totalMs)
+                    Log.d(TAG, "libraryStats updated: ${audioList.size} tracks")
+                }
         }
     }
 
