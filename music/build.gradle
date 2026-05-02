@@ -64,14 +64,19 @@ android {
     productFlavors {
         foss { // GitHub build
             dimension "type"
-            if (signingConfigs.release != null && signingConfigs.release.storeFile != null) {
-                signingConfig = signingConfigs.release
+
+            def releaseSigning = signingConfigs.findByName("release")
+            if (releaseSigning != null && releaseSigning.storeFile != null) {
+                signingConfig releaseSigning
             }
         }
         play { // Play Store build
             dimension "type"
-            if (signingConfigs.release != null && signingConfigs.release.storeFile != null) {
-                signingConfig = signingConfigs.release
+            versionNameSuffix "-play"
+
+            def releaseSigning = signingConfigs.findByName("release")
+            if (releaseSigning != null && releaseSigning.storeFile != null) {
+                signingConfig releaseSigning
             }
 
             // 64bit only for playstore
@@ -92,15 +97,18 @@ android {
                 includeInBundle false
             }
 
-            if (signingConfigs.release != null && signingConfigs.release.storeFile != null) {
-                signingConfig = signingConfigs.release
+            def releaseSigning = signingConfigs.findByName("release")
+            if (releaseSigning != null && releaseSigning.storeFile != null) {
+                signingConfig releaseSigning
             }
+
         }
         debug {
             versionNameSuffix "-dev"
 
-            if (signingConfigs.release != null && signingConfigs.release.storeFile != null) {
-                signingConfig = signingConfigs.release
+            def releaseSigning = signingConfigs.findByName("release")
+            if (releaseSigning != null && releaseSigning.storeFile != null) {
+                signingConfig releaseSigning
             }
         }
     }
