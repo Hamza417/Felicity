@@ -5,12 +5,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Solid dark background so the tile stands out from song art tiles -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@android:color/black" />
-
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

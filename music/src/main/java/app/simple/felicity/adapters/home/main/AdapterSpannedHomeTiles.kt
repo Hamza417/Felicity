@@ -13,6 +13,7 @@ import app.simple.felicity.databinding.AdapterSpannedPanelTileBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 
 /**
@@ -131,7 +132,12 @@ class AdapterSpannedHomeTiles(
     }
 
     inner class PanelHolder(val binding: AdapterSpannedPanelTileBinding) :
-            VerticalListViewHolder(binding.root)
+            VerticalListViewHolder(binding.root) {
+        init {
+            // Panel tiles have a fixed background color and white text for maximum contrast.
+            binding.container.setBackgroundColor(ThemeManager.accent.primaryAccentColor)
+        }
+    }
 
     /**
      * Represents a single tile in the Windows Phone-style grid. Sealed so we can
