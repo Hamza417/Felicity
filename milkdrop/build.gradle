@@ -7,8 +7,7 @@ apply from: rootProject.file('common.gradle')
 android {
     namespace 'app.simple.felicity.milkdrop'
 
-    // Keep in sync with the engine module so both use the same NDK toolchain.
-    ndkVersion "29.0.14206865"
+    ndkVersion = libs.versions.ndk.get()
 
     defaultConfig {
         externalNativeBuild {

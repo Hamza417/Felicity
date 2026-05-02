@@ -10,7 +10,7 @@ apply from: rootProject.file('common.gradle')
 android {
     namespace 'app.simple.felicity.repository'
 
-    ndkVersion "29.0.14206865"
+    ndkVersion = libs.versions.ndk.get()
 
     buildTypes {
         release {
