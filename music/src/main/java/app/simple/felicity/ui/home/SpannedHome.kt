@@ -1,5 +1,6 @@
 package app.simple.felicity.ui.home
 
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -10,46 +11,40 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.SpannedTile
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
-import app.simple.felicity.databinding.HeaderHomeSpannedBinding
-import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.dialogs.app.AppLabel.Companion.showAppLabel
+import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
+import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.extensions.fragments.BaseHomeFragment
-import app.simple.felicity.preferences.MainPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.server.ServerModeService
-import app.simple.felicity.shared.utils.ViewUtils.gone
-import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.viewmodels.panels.HomeViewModel
 import kotlinx.coroutines.launch
-import java.text.NumberFormat
-import java.util.concurrent.TimeUnit
 
 /**
  * Home screen that renders a flat Windows Phone-style tile grid using a single
- * [GridLayoutManager] with a custom [GridLayoutManager.SpanSizeLookup].
+ * [SpannedGridLayoutManager] — no nesting, no inner RecyclerViews, just clean tiles.
  *
- * The header is managed by [AppHeader] and hides on downward scroll — no adapter
- * trickery needed. [AppHeader] also adds a spacing item decoration so the grid
- * content starts below the header without any padding hacks.
+ * The grid is 3 columns wide and contains 45 fixed positions:
  *
- * The tile grid (45 items, 3 columns) contains:
- *  - Song tiles: most are 1x1, five hero positions are 2-column wide (visually 2×2
- *    because item views are square by nature).
- *  - Panel tiles: fixed at every third position, spread throughout the grid.
- *    Big hero positions are always song art — panels can never land there.
+ *  - **Song tiles** — album art + title. Five of these are 2×2 hero tiles; the rest are 1×1.
+ *    The song pool is a curated mix of your most-played, recently-played, and random tracks
+ *    from the full library, so every session feels a little different.
+ *
+ *  - **Panel tiles** — every third position (15 slots total) is reserved for navigation panels.
+ *    They are populated in order from the user's enabled panel list and never move, so
+ *    tapping your favorite shortcut quickly becomes pure muscle memory.
+ *
+ * Data is loaded exactly once per fragment lifecycle. No background shuffling,
+ * no flickering — the grid just sits there looking great.
  *
  * @author Hamza417
  */
 class SpannedHome : BaseHomeFragment() {
 
     private lateinit var binding: FragmentHomeSpannedBinding
-    private lateinit var headerBinding: HeaderHomeSpannedBinding
     private val homeViewModel: HomeViewModel by viewModels({ requireActivity() })
 
     /** The adapter that drives the tile grid. Created once and never replaced. */
@@ -57,112 +52,61 @@ class SpannedHome : BaseHomeFragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentHomeSpannedBinding.inflate(inflater, container, false)
-        headerBinding = HeaderHomeSpannedBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        setupHeader()
-        setupRecyclerView()
-        observeData()
-
+        postponeEnterTransition()
+        requireLightBarIcons()
+        binding.recyclerView.setBackgroundColor(Color.BLACK)
         binding.recyclerView.requireAttachedMiniPlayer()
+
+        setupRecyclerView()
+        observeRecommended()
     }
 
     /**
-     * Attaches the header content to [AppHeader] and wires up all the action buttons.
-     * [AppHeader] handles the scroll-hide animation and adds a top spacing item
-     * decoration to the RecyclerView automatically via [AppHeader.attachTo].
-     */
-    private fun setupHeader() {
-        binding.appHeader.setContentView(headerBinding.root)
-        binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-
-        headerBinding.label.setAppLabel()
-
-        headerBinding.label.setOnClickListener {
-            childFragmentManager.showAppLabel()
-        }
-
-        headerBinding.search.setOnClickListener {
-            openSearch()
-        }
-
-        headerBinding.settings.setOnClickListener {
-            openPreferencesPanel()
-        }
-
-        setupServerToggle(headerBinding.serverToggle)
-    }
-
-    /**
-     * Creates the [GridLayoutManager] with a span size lookup that makes hero tile positions
-     * span 2 columns. Because tiles are square, 2-column-wide = visually 2×2.
+     * Attaches the [SpannedGridLayoutManager] with a fixed span lookup so the hero tile
+     * positions and the 3-column structure are locked in before any data arrives.
      */
     private fun setupRecyclerView() {
-        val layoutManager = GridLayoutManager(requireContext(), SPAN_COUNT)
+        val layoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, SPAN_COUNT)
 
-        layoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-            override fun getSpanSize(position: Int): Int {
-                // Hero tiles are 2 columns wide; everyone else gets one column.
-                return if (position in AdapterSpannedHomeTiles.BIG_TILE_POSITIONS) 2 else 1
-            }
+        layoutManager.spanSizeLookup = SpannedGridLayoutManager.SpanSizeLookup { position ->
+            // Five hero positions get the big 2×2 treatment; everything else stays compact 1×1.
+            if (position in AdapterSpannedHomeTiles.BIG_TILE_POSITIONS) SpanSize(2, 2) else SpanSize(1, 1)
         }
 
-        layoutManager.spanSizeLookup.isSpanIndexCacheEnabled = true
-
         binding.recyclerView.layoutManager = layoutManager
-        binding.recyclerView.setHasFixedSize(true)
+        binding.recyclerView.setHasFixedSize(false)
         binding.recyclerView.itemAnimator = null
     }
 
     /**
-     * Launches three parallel observations:
-     * - Recommended songs: builds the adapter on the very first non-empty emission.
-     * - Library stats: updates the track count + hours chip in the header.
-     * - Server state: shows or hides the server-active chip in the header.
+     * Waits for the first non-empty emission from [HomeViewModel.recommended] and then
+     * builds the adapter. We only do this once — subsequent emissions are ignored because
+     * the recommended list is stable for the duration of the session. No surprises.
      */
-    private fun observeData() {
+    private fun observeRecommended() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    homeViewModel.recommended.collect { songs ->
-                        // Build the adapter exactly once — no shuffling or refreshing after that.
-                        if (songs.isEmpty() || tilesAdapter != null) return@collect
-                        Log.d(TAG, "Building tile grid with ${songs.size} songs")
-                        buildAndAttachAdapter(songs)
-                    }
-                }
-                launch {
-                    homeViewModel.libraryStats.collect { stats ->
-                        stats ?: return@collect
-                        val (count, totalMs) = stats
-                        val fmt = NumberFormat.getNumberInstance()
-                        val hours = TimeUnit.MILLISECONDS.toHours(totalMs)
-                        headerBinding.libraryStats.text = getString(
-                                R.string.library_stats,
-                                fmt.format(count),
-                                fmt.format(hours))
-                        headerBinding.libraryStats.visible(animate = false)
-                    }
-                }
-                launch {
-                    ServerModeService.isRunning.collect { running ->
-                        if (running) headerBinding.serverActiveChip.visible(animate = true)
-                        else headerBinding.serverActiveChip.gone()
-                    }
+                homeViewModel.recommended.collect { songs ->
+                    // Only build the adapter on first arrival — we don't shuffle or refresh after that.
+                    if (songs.isEmpty() || tilesAdapter != null) return@collect
+                    Log.d(TAG, "Building tile grid with ${songs.size} songs")
+                    buildAndAttachAdapter(songs)
+                    requireView().startTransitionOnPreDraw()
                 }
             }
         }
     }
 
     /**
-     * Assembles the tile list, creates the adapter, attaches callbacks, and hooks it
-     * to the RecyclerView. Runs exactly once per fragment lifetime.
+     * Assembles the full tile list, wires up the adapter, and attaches it to the RecyclerView.
+     * This runs exactly once per fragment lifetime.
      *
-     * @param songs Recommended song pool from [HomeViewModel].
+     * @param songs The recommended song pool from the ViewModel.
      */
     private fun buildAndAttachAdapter(songs: List<Audio>) {
         val tiles = AdapterSpannedHomeTiles.buildTiles(songs, buildPanelTiles())
@@ -192,16 +136,18 @@ class SpannedHome : BaseHomeFragment() {
     }
 
     /**
-     * Returns all navigation panel tiles that the user currently has enabled,
-     * mirroring the Dashboard panel visibility logic exactly.
-     * Songs, Albums, and Artists are always included — the rest are opt-in.
+     * Builds the full list of panel tiles that the user currently has enabled,
+     * respecting their visibility preferences exactly like the dashboard does.
      *
-     * @return Ordered list of [SpannedTile.PanelTile] items.
+     * Songs, Albums, and Artists are always included — the rest are opt-in.
+     * The order here is the order they appear in the grid, so it's intentional.
+     *
+     * @return Ordered list of [SpannedTile.PanelTile] items to populate the panel slots.
      */
     private fun buildPanelTiles(): List<SpannedTile.PanelTile> {
         val tiles = mutableListOf<SpannedTile.PanelTile>()
 
-        // These three are always present — no preference check needed.
+        // These three are sacred — always present, no preference check needed.
         tiles.add(SpannedTile.PanelTile(R.string.songs, R.drawable.ic_song_16dp))
         tiles.add(SpannedTile.PanelTile(R.string.albums, R.drawable.ic_album_16dp))
         tiles.add(SpannedTile.PanelTile(R.string.artists, R.drawable.ic_people_16dp))
@@ -248,20 +194,6 @@ class SpannedHome : BaseHomeFragment() {
         return tiles
     }
 
-    override fun onViewStateRestored(savedInstanceState: Bundle?) {
-        super.onViewStateRestored(savedInstanceState)
-        // Reset the header scroll state so it's always visible when the fragment is
-        // revisited — the grid starts at position 0, so a hidden header would be stuck.
-        binding.appHeader.post { binding.appHeader.resetScrollingState() }
-    }
-
-    override fun onSharedPreferenceChanged(sharedPreferences: android.content.SharedPreferences?, key: String?) {
-        super.onSharedPreferenceChanged(sharedPreferences, key)
-        if (key == MainPreferences.APP_LABEL) {
-            headerBinding.label.setAppLabel()
-        }
-    }
-
     override fun onDestroyView() {
         tilesAdapter = null
         super.onDestroyView()
@@ -282,7 +214,7 @@ class SpannedHome : BaseHomeFragment() {
 
         const val TAG = "SpannedHome"
 
-        /** How many columns the tile grid uses — 3 matches the classic Windows Phone look. */
+        /** How many columns the tile grid uses — 3 matches the classic Windows Phone layout. */
         private const val SPAN_COUNT = 3
     }
 }
