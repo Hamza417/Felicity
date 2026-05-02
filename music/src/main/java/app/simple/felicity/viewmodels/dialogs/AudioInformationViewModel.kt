@@ -6,7 +6,6 @@ import android.text.format.Formatter
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
-import app.simple.felicity.adapters.dialogs.AdapterAudioInformation.Data
 import app.simple.felicity.repository.constants.FileConstants.getAudioFormat
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.LrcRepository
@@ -22,6 +21,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * Loads and prepares all the metadata for a single audio file so the dialog
+ * can display it without doing any heavy work on the UI thread.
+ *
+ * @author Hamza417
+ */
 @HiltViewModel(assistedFactory = AudioInformationViewModel.Factory::class)
 class AudioInformationViewModel @AssistedInject constructor(
         application: Application,
@@ -29,8 +34,9 @@ class AudioInformationViewModel @AssistedInject constructor(
         private val lrcRepository: LrcRepository
 ) : AndroidViewModel(application) {
 
-    private val _info = MutableStateFlow<List<Data>>(emptyList())
-    val info: StateFlow<List<Data>> = _info.asStateFlow()
+    private val _info = MutableStateFlow<AudioInfo?>(null)
+
+    val info: StateFlow<AudioInfo?> = _info.asStateFlow()
 
     init {
         loadInfo()
@@ -40,56 +46,41 @@ class AudioInformationViewModel @AssistedInject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             val hasEmbeddedArt = checkEmbeddedArt(audio.uri)
             val hasLrc = lrcRepository.lrcFileExists(audio.uri)
+            val app = getApplication<Application>()
 
-            val list = buildList {
-                // ── Full-span rows (wide data) ──────────────────────────────
-                add(data(R.string.title, audio.title ?: audio.name ?: "–", fullSpan = true))
-                add(data(R.string.path, audio.path ?: "–", fullSpan = true))
-                add(data(R.string.album, audio.album ?: "–", fullSpan = true))
-
-                // ── Half-span rows (2-column grid) ──────────────────────────
-                add(data(R.string.artist, audio.artist ?: "–"))
-                add(data(R.string.album_artist, audio.albumArtist ?: "–"))
-                add(data(R.string.duration, audio.duration.toDynamicTimeString()))
-                add(data(R.string.size, Formatter.formatShortFileSize(getApplication(), audio.size)))
-                add(data(R.string.bitrate, "${audio.bitrate} kbps"))
-                add(data(R.string.sample_rate, "${audio.samplingRate} Hz"))
-                add(data(R.string.bit_depth, if (audio.bitPerSample > 0) "${audio.bitPerSample}-bit" else "–"))
-                add(data(R.string.mime_type, audio.mimeType ?: "–"))
-                add(data(R.string.format, audio.uri.getAudioFormat() ?: "–"))
-                add(data(R.string.genre, audio.genre ?: "–"))
-                add(data(R.string.year, audio.year ?: "–"))
-                add(data(R.string.track, if (audio.track > 0) audio.track.toString() else "–"))
-                add(data(R.string.track_number, audio.trackNumber ?: "–"))
-                add(data(R.string.num_tracks, audio.numTracks ?: "–"))
-                add(data(R.string.disc, audio.discNumber ?: "–"))
-                add(data(R.string.composer, audio.composer ?: "–"))
-                add(data(R.string.author, audio.author ?: "–"))
-                add(data(R.string.writer, audio.writer ?: "–"))
-                add(data(R.string.compilation, audio.compilation ?: "–"))
-                add(data(R.string.date, audio.date ?: "–"))
-
-                // Dates
-                add(data(R.string.date_added,
-                         if (audio.dateAdded > 0) audio.dateAdded.toDate() else "–"))
-                add(data(R.string.date_modified,
-                         if (audio.dateModified > 0) audio.dateModified.toDate() else "–"))
-                add(data(R.string.date_taken,
-                         if (audio.dateTaken > 0) audio.dateTaken.toDate() else "–"))
-
-                // Metadata presence flags
-                add(data(R.string.has_embedded_art,
-                         getApplication<Application>().getString(
-                                 if (hasEmbeddedArt) R.string.yes else R.string.no)))
-                add(data(R.string.has_lrc_sidecar,
-                         getApplication<Application>().getString(
-                                 if (hasLrc) R.string.yes else R.string.no)))
-
-                // Audio ID
-                add(data(R.string.audio_id, audio.id.toString()))
-            }
-
-            _info.emit(list)
+            _info.emit(
+                    AudioInfo(
+                            title = audio.title ?: audio.name ?: "–",
+                            path = audio.path ?: "–",
+                            album = audio.album ?: "–",
+                            artist = audio.artist ?: "–",
+                            albumArtist = audio.albumArtist ?: "–",
+                            duration = audio.duration.toDynamicTimeString(),
+                            size = Formatter.formatShortFileSize(app, audio.size),
+                            bitrate = "${audio.bitrate} kbps",
+                            sampleRate = "${audio.samplingRate} Hz",
+                            bitDepth = if (audio.bitPerSample > 0) "${audio.bitPerSample}-bit" else "–",
+                            mimeType = audio.mimeType ?: "–",
+                            format = audio.uri.getAudioFormat() ?: "–",
+                            genre = audio.genre ?: "–",
+                            year = audio.year ?: "–",
+                            track = if (audio.track > 0) audio.track.toString() else "–",
+                            trackNumber = audio.trackNumber ?: "–",
+                            numTracks = audio.numTracks ?: "–",
+                            disc = audio.discNumber ?: "–",
+                            composer = audio.composer ?: "–",
+                            author = audio.author ?: "–",
+                            writer = audio.writer ?: "–",
+                            compilation = audio.compilation ?: "–",
+                            date = audio.date ?: "–",
+                            dateAdded = if (audio.dateAdded > 0) audio.dateAdded.toDate() else "–",
+                            dateModified = if (audio.dateModified > 0) audio.dateModified.toDate() else "–",
+                            dateTaken = if (audio.dateTaken > 0) audio.dateTaken.toDate() else "–",
+                            hasEmbeddedArt = app.getString(if (hasEmbeddedArt) R.string.yes else R.string.no),
+                            hasLrc = app.getString(if (hasLrc) R.string.yes else R.string.no),
+                            audioId = audio.id.toString(),
+                    )
+            )
         }
     }
 
@@ -106,15 +97,40 @@ class AudioInformationViewModel @AssistedInject constructor(
         }
     }
 
-    private fun data(type: Int, value: String, fullSpan: Boolean = false) =
-        Data(type = type, value = value, isFullSpan = fullSpan)
+    data class AudioInfo(
+            val title: String,
+            val path: String,
+            val album: String,
+            val artist: String,
+            val albumArtist: String,
+            val duration: String,
+            val size: String,
+            val bitrate: String,
+            val sampleRate: String,
+            val bitDepth: String,
+            val mimeType: String,
+            val format: String,
+            val genre: String,
+            val year: String,
+            val track: String,
+            val trackNumber: String,
+            val numTracks: String,
+            val disc: String,
+            val composer: String,
+            val author: String,
+            val writer: String,
+            val compilation: String,
+            val date: String,
+            val dateAdded: String,
+            val dateModified: String,
+            val dateTaken: String,
+            val hasEmbeddedArt: String,
+            val hasLrc: String,
+            val audioId: String,
+    )
 
     @AssistedFactory
     interface Factory {
         fun create(audio: Audio): AudioInformationViewModel
-    }
-
-    companion object {
-        private const val TAG = "AudioInformationViewModel"
     }
 }
