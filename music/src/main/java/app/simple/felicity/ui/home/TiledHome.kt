@@ -229,6 +229,8 @@ class TiledHome : BaseHomeFragment() {
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_ALWAYS_SKIPPED))
             tiles.add(SpannedTile.PanelTile(R.string.always_skipped, R.drawable.ic_skip_16dp))
 
+        tiles.add(SpannedTile.PanelTile(R.string.preferences, R.drawable.ic_settings_16dp))
+
         return tiles
     }
 

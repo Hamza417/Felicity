@@ -3,9 +3,14 @@ package app.simple.felicity.adapters.home.main
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.BIG_TILE_EVERY_N
+import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.DESIRED_SONG_COUNT
+import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.MAX_PANEL_COUNT
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.PANEL_POSITIONS
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.SONG_TILE_COUNT
+import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.SPAN_COUNT
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.TOTAL_TILE_COUNT
+import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.buildLayoutSpec
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.buildTiles
 import app.simple.felicity.databinding.AdapterGridImageBinding
 import app.simple.felicity.databinding.AdapterSpannedPanelTileBinding
@@ -17,7 +22,7 @@ import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 /**
  * Flat single-level adapter that drives the Windows Phone-inspired tile grid on the Spanned Home screen.
  *
- * Every adapter position maps to exactly one [SpannedTile] — either a song cover tile or a
+ * Every adapter position maps to exactly one [SpannedTile], either a song cover tile or a
  * navigation panel tile. There is no nesting, no inner RecyclerView, no surprises.
  * Panel tiles always live at the same adapter positions so users build reliable muscle memory
  * for where to tap. Song tiles can be swapped out for fresh art without disturbing panel spots.
@@ -99,7 +104,7 @@ class AdapterSpannedHomeTiles(
      * panel tiles completely untouched. This is the safe way to "randomize" the grid
      * without accidentally moving panel tiles to a new address.
      *
-     * @param newSongs The new pool of songs — must be exactly the same count as the
+     * @param newSongs The new pool of songs, must be exactly the same count as the
      *                 current song tiles or extra songs will be silently ignored.
      */
     fun updateSongs(newSongs: List<Audio>) {
@@ -154,7 +159,7 @@ class AdapterSpannedHomeTiles(
     }
 
     /**
-     * Callbacks for tile interactions. Keep it small — there are only two kinds of
+     * Callbacks for tile interactions. Keep it small, there are only two kinds of
      * things you can do in this grid: play a song or open a panel.
      */
     interface SpannedHomeTileCallbacks {
@@ -187,51 +192,161 @@ class AdapterSpannedHomeTiles(
         private const val TYPE_PANEL = 1
 
         /**
-         * The total number of tiles in the grid (songs + panel slots combined).
-         * This is the length of the list [buildTiles] will always produce.
+         * The only number you need to change to get more or fewer song tiles in the grid.
+         * Everything else, hero positions, panel slots, total tile count, adjusts automatically.
          */
-        const val TOTAL_TILE_COUNT = 45
+        const val DESIRED_SONG_COUNT = 30
 
         /**
-         * Fixed adapter positions that are reserved for panel navigation tiles — 15 slots total.
+         * How many panel navigation slots to reserve. Keep this at least as large as the
+         * total number of panels the user can possibly enable. Extra slots become song tiles
+         * when the user has fewer panels enabled than slots available.
+         */
+        const val MAX_PANEL_COUNT = 20
+
+        /**
+         * Roughly how many songs appear between consecutive big (2-span) hero tiles.
+         * Lower = more hero tiles; higher = a more uniform grid of small tiles.
+         */
+        private const val BIG_TILE_EVERY_N = 6
+
+        /**
+         * Grid column count, only used inside [buildLayoutSpec] to lay out rows.
+         * The fragment uses its own orientation-aware span constants for the actual
+         * [androidx.recyclerview.widget.GridLayoutManager].
+         */
+        private const val SPAN_COUNT = 3
+
+        /**
+         * A snapshot of the computed grid layout. Calculated once on first access and
+         * cached forever, no repeated math, no surprises.
+         */
+        private val LAYOUT: LayoutSpec by lazy { buildLayoutSpec() }
+
+        /**
+         * Adapter positions that render as big 2-span hero tiles. Computed from
+         * [DESIRED_SONG_COUNT] and [BIG_TILE_EVERY_N], add more songs and new hero
+         * positions appear automatically.
+         */
+        val BIG_TILE_POSITIONS: Set<Int> get() = LAYOUT.bigTilePositions
+
+        /**
+         * Adapter positions reserved for panel navigation tiles. Every big tile's
+         * row-neighbor is guaranteed to be in this set so no dead vertical space appears
+         * next to a hero tile. Remaining panel slots are spread evenly through the grid.
+         */
+        val PANEL_POSITIONS: Set<Int> get() = LAYOUT.panelPositions
+
+        /**
+         * Total adapter item count, songs plus all panel slots. Derived automatically,
+         * so you never need to update this by hand.
+         */
+        val TOTAL_TILE_COUNT: Int get() = LAYOUT.totalCount
+
+        /**
+         * How many of the total tiles are song tiles (big + small combined).
+         * This equals [DESIRED_SONG_COUNT] as long as there are enough non-panel rows.
+         */
+        val SONG_TILE_COUNT: Int get() = TOTAL_TILE_COUNT - PANEL_POSITIONS.size
+
+        /**
+         * Holds the output of [buildLayoutSpec] so it can be shared across all the
+         * derived properties without recomputing the layout multiple times.
          *
-         * The positions are deliberately chosen so that every big (2-span) hero tile always has
-         * a panel tile as its direct row-neighbor. Because [GridLayoutManager] cannot span rows,
-         * the panel tile uses a full-height layout that fills the row naturally, while a song
-         * cover tile would leave dead empty space below its square art. Keeping panels next to
-         * hero tiles eliminates that gap entirely.
+         * @param bigTilePositions Adapter positions for 2-span hero tiles.
+         * @param panelPositions   Adapter positions for panel navigation tiles.
+         * @param totalCount       Total number of tiles in the adapter.
+         */
+        private data class LayoutSpec(
+                val bigTilePositions: Set<Int>,
+                val panelPositions: Set<Int>,
+                val totalCount: Int
+        )
+
+        /**
+         * Computes the full grid layout from scratch using only [DESIRED_SONG_COUNT],
+         * [MAX_PANEL_COUNT], and [BIG_TILE_EVERY_N].
          *
-         * Neighbors of each big tile: 0→1, 9→8, 19→20, 30→31, 42→41.
-         * All five of those spots are included here. The rest spread evenly through the grid.
+         * The grid is divided into three kinds of rows, all exactly [SPAN_COUNT] columns wide:
+         *
+         *   "Hero row" , [big(2), panel(1)]:  1 song + 1 panel, uses 2 positions
+         *   "Panel row", [song(1), panel(1), song(1)]:  2 songs + 1 panel, uses 3 positions
+         *   "Song row" , [song(1), song(1), song(1)]:  3 songs, uses 3 positions
+         *
+         * Hero rows are placed at even intervals first, then panel rows fill the gaps,
+         * and song rows take whatever is left. The result is a grid where every big tile
+         * always has a panel tile as its immediate row-neighbor, no dead vertical space.
          */
-        val PANEL_POSITIONS: Set<Int> = setOf(1, 5, 8, 11, 14, 17, 20, 23, 26, 29, 31, 35, 38, 41, 44)
+        private fun buildLayoutSpec(): LayoutSpec {
+            val bigTileCount = DESIRED_SONG_COUNT / BIG_TILE_EVERY_N
+            // Clamp extra panels so we never run out of songs to fill their rows.
+            val extraPanelCount = minOf(
+                    MAX_PANEL_COUNT - bigTileCount,
+                    (DESIRED_SONG_COUNT - bigTileCount) / 2
+            ).coerceAtLeast(0)
 
-        /**
-         * Adapter positions that render as large 2×2 hero tiles, giving the grid
-         * that signature Windows Phone "live tile" energy. Placed so they never
-         * land on a panel slot — pure song art only at these spots.
-         */
-        val BIG_TILE_POSITIONS: Set<Int> = setOf(0, 9, 19, 30, 42)
+            val songsInSongRows = DESIRED_SONG_COUNT - bigTileCount - 2 * extraPanelCount
+            val songRowCount = (songsInSongRows + SPAN_COUNT - 1) / SPAN_COUNT  // ceiling
+            val totalRows = bigTileCount + extraPanelCount + songRowCount
 
-        /**
-         * How many song tiles exist in the full grid (total minus the 15 panel slots).
-         * Any panel slot whose panel didn't show up gets filled with a song instead,
-         * so the actual number of songs consumed may be higher than this.
-         */
-        const val SONG_TILE_COUNT = TOTAL_TILE_COUNT - 15 // = 30
+            // Start with all rows as song rows, then carve out hero and panel rows
+            // using evenly spaced indices so the tile types don't all clump together.
+            val rowTypes = Array(totalRows) { 'S' }
+
+            // Distribute hero rows using integer scaling so spacing is perfectly even.
+            for (i in 0 until bigTileCount) {
+                rowTypes[i * totalRows / bigTileCount] = 'B'
+            }
+
+            // Distribute extra panel rows into the remaining 'S' slots.
+            val panelStep = if (extraPanelCount > 0) totalRows.toFloat() / extraPanelCount else Float.MAX_VALUE
+            for (i in 0 until extraPanelCount) {
+                // Find the first 'S' slot at or after the ideal position.
+                var idx = (i * panelStep).toInt()
+                while (idx < totalRows && rowTypes[idx] != 'S') idx++
+                if (idx < totalRows) rowTypes[idx] = 'P'
+            }
+
+            // Walk the row list and assign adapter positions.
+            val bigPositions = mutableSetOf<Int>()
+            val panelPositions = mutableSetOf<Int>()
+            var pos = 0
+
+            for (type in rowTypes) {
+                when (type) {
+                    'B' -> {
+                        // Hero row: big tile first (2 spans), then its panel neighbor (1 span).
+                        bigPositions.add(pos++)
+                        panelPositions.add(pos++)
+                    }
+                    'P' -> {
+                        // Panel row: song, panel, song, panel lands in the middle of the row.
+                        pos++
+                        panelPositions.add(pos++)
+                        pos++
+                    }
+                    else -> {
+                        // Pure song row, advance by the full column count.
+                        pos += SPAN_COUNT
+                    }
+                }
+            }
+
+            return LayoutSpec(bigPositions, panelPositions, pos)
+        }
 
         /**
          * Assembles the ordered tile list used to seed the adapter.
          *
-         * Panel tiles occupy [PANEL_POSITIONS] in order — first enabled panel at the
-         * first panel slot, second at the second, and so on. If the user has fewer
-         * enabled panels than slots, leftover panel slots silently become song tiles.
-         * If more panels than slots exist, the extras are simply not shown.
+         * Panel tiles occupy [PANEL_POSITIONS] in order, first enabled panel at the
+         * first panel slot, second at the second, and so on. If you have fewer panels
+         * than slots, leftover slots silently become song tiles. Extras beyond the slot
+         * count are not shown (raise [MAX_PANEL_COUNT] to fix that).
          *
          * Songs fill every non-panel position, cycling through [songs] if the pool
          * is smaller than the total number of song positions needed.
          *
-         * @param songs  Pool of [Audio] items — aim for at least [SONG_TILE_COUNT].
+         * @param songs  Pool of [Audio] items, aim for at least [SONG_TILE_COUNT].
          * @param panels All enabled [SpannedTile.PanelTile] items in display order.
          * @return A ready-to-use [MutableList] of exactly [TOTAL_TILE_COUNT] tiles.
          */
@@ -246,7 +361,7 @@ class AdapterSpannedHomeTiles(
             for (pos in 0 until TOTAL_TILE_COUNT) {
                 val isReservedForPanel = pos in PANEL_POSITIONS
                 if (isReservedForPanel && panelIndex < panels.size) {
-                    // Reserved slot and we still have a panel to place — perfect match.
+                    // Reserved slot, and we still have a panel to place.
                     result.add(panels[panelIndex++])
                 } else if (songs.isNotEmpty()) {
                     // Either a song slot, or a panel slot whose panel didn't show up.
