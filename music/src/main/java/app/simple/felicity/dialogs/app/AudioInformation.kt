@@ -1,6 +1,7 @@
 package app.simple.felicity.dialogs.app
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,6 +10,8 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.GridLayoutManager
+import app.simple.felicity.adapters.dialogs.AdapterAudioInformation
 import app.simple.felicity.databinding.DialogAudioInfoBinding
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.repository.constants.BundleConstants
@@ -19,9 +22,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
 import kotlinx.coroutines.launch
 
-/**
- * @author Hamza417
- */
 @AndroidEntryPoint
 class AudioInformation : ScopedBottomSheetFragment() {
 
@@ -42,6 +42,7 @@ class AudioInformation : ScopedBottomSheetFragment() {
 
     companion object {
         private const val TAG = "AudioInformation"
+        private const val SPAN_COUNT = 2
 
         fun newInstance(audio: Audio): AudioInformation {
             val args = Bundle()
@@ -65,51 +66,25 @@ class AudioInformation : ScopedBottomSheetFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        val gridLayoutManager = GridLayoutManager(requireContext(), SPAN_COUNT)
+        binding.recyclerView.layoutManager = gridLayoutManager
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.info.collect { info ->
-                    info ?: return@collect
-                    bindInfo(info)
+                viewModel.info.collect { data ->
+                    if (data.isNotEmpty()) {
+                        val adapter = AdapterAudioInformation(data)
+                        gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                            override fun getSpanSize(position: Int): Int {
+                                return adapter.getSpanSize(position, SPAN_COUNT)
+                            }
+                        }
+                        binding.recyclerView.adapter = adapter
+                    } else {
+                        Log.w(TAG, "No information to display for audio: ${audio.uri}")
+                    }
                 }
             }
-        }
-    }
-
-    /**
-     * Takes the fully loaded info snapshot and stuffs each value into the
-     * matching TextView in the layout.
-     */
-    private fun bindInfo(info: AudioInformationViewModel.AudioInfo) {
-        with(binding) {
-            valueTitle.text = info.title
-            valuePath.text = info.path
-            valueAlbum.text = info.album
-            valueArtist.text = info.artist
-            valueAlbumArtist.text = info.albumArtist
-            valueDuration.text = info.duration
-            valueSize.text = info.size
-            valueBitrate.text = info.bitrate
-            valueSampleRate.text = info.sampleRate
-            valueBitDepth.text = info.bitDepth
-            valueMimeType.text = info.mimeType
-            valueFormat.text = info.format
-            valueGenre.text = info.genre
-            valueYear.text = info.year
-            valueTrack.text = info.track
-            valueTrackNumber.text = info.trackNumber
-            valueNumTracks.text = info.numTracks
-            valueDisc.text = info.disc
-            valueComposer.text = info.composer
-            valueAuthor.text = info.author
-            valueWriter.text = info.writer
-            valueCompilation.text = info.compilation
-            valueDate.text = info.date
-            valueDateAdded.text = info.dateAdded
-            valueDateModified.text = info.dateModified
-            valueDateTaken.text = info.dateTaken
-            valueHasEmbeddedArt.text = info.hasEmbeddedArt
-            valueHasLrc.text = info.hasLrc
-            valueAudioId.text = info.audioId
         }
     }
 }
