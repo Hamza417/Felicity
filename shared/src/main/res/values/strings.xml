@@ -431,6 +431,7 @@
     <string name="top_artists">Top Artists</string>
     <string name="top_albums">Top Albums</string>
     <string name="library_stats">%1$s Tracks • %2$s Hours</string>
+    <string name="server">Server</string>
     <string name="server_active">Server Active</string>
     <string name="outline_clickable_elements">Outline Clickable Elements</string>
     <string name="outline_clickable_elements_summary">Draw an outline around the clickable buttons and icons.</string>

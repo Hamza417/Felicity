@@ -69,6 +69,14 @@ abstract class BaseHomeFragment : PanelFragment() {
         }
     }
 
+    protected fun toggleServer() {
+        if (ServerModeService.isRunning.value) {
+            ServerModeService.stop(requireContext())
+        } else {
+            ServerModeService.start(requireContext())
+        }
+    }
+
     /**
      * Applies the accent tint when the server is running, or clears it when stopped.
      *

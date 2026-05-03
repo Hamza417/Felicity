@@ -156,7 +156,14 @@ class TiledHome : BaseHomeFragment() {
             }
 
             override fun onPanelTileClicked(panelTile: SpannedTile.PanelTile) {
-                navigateToPanel(panelTile.getPanel())
+                when (panelTile.titleRes) {
+                    R.string.server -> {
+                        toggleServer()
+                    }
+                    else -> {
+                        navigateToPanel(panelTile.getPanel())
+                    }
+                }
             }
         })
 
@@ -180,6 +187,8 @@ class TiledHome : BaseHomeFragment() {
         tiles.add(SpannedTile.PanelTile(R.string.songs, R.drawable.ic_song_16dp))
         tiles.add(SpannedTile.PanelTile(R.string.albums, R.drawable.ic_album_16dp))
         tiles.add(SpannedTile.PanelTile(R.string.artists, R.drawable.ic_people_16dp))
+
+        tiles.add(SpannedTile.PanelTile(R.string.server, R.drawable.ic_wifi_16dp))
 
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_ALBUM_ARTISTS))
             tiles.add(SpannedTile.PanelTile(R.string.album_artists, R.drawable.ic_artist_16dp))
