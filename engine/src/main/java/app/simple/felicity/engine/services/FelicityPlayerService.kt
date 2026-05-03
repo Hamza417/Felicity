@@ -116,6 +116,26 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     private var previousItemDurationMs: Long = 0L
 
     /**
+     * Whether the player was actively playing audio just before the most recent item transition.
+     * This acts as a gatekeeper so stats are only recorded for songs the user actually heard,
+     * not ones they skipped past while the player was paused or idle.
+     */
+    private var wasPlayingBeforeTransition: Boolean = false
+
+    /**
+     * The duration of the song that is CURRENTLY loaded and ready to play, kept fresh by
+     * reading [player.duration] once the player reaches STATE_READY (the only state where
+     * the duration is guaranteed to be accurate).
+     *
+     * Why do we need this? When the user skips a track, ExoPlayer fires
+     * onPositionDiscontinuity AFTER it has already transitioned its internal state to the
+     * new item. At that point, player.duration already reflects the INCOMING song (or
+     * C.TIME_UNSET if it is still buffering) — not the outgoing one we actually want.
+     * By caching the duration here we always have the correct value ready when we need it.
+     */
+    private var currentItemDurationMs: Long = 0L
+
+    /**
      * Manages the balance and downmix [androidx.media3.common.audio.ChannelMixingAudioProcessor]
      * instances. Extracted to keep audio processing logic out of the service.
      */
@@ -789,6 +809,14 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_READY)
                     if (player.playWhenReady) MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
                     else MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
+                    // STATE_READY is the only moment when player.duration is guaranteed to be
+                    // valid for the current track. We cache it here so that when the user skips
+                    // the song, onPositionDiscontinuity can grab the outgoing track's duration
+                    // from this field instead of asking player.duration (which by then already
+                    // reflects the incoming track and is often C.TIME_UNSET while buffering).
+                    if (player.duration > 0) {
+                        currentItemDurationMs = player.duration
+                    }
                     buildAndPushSnapshot()
                 }
                 Player.STATE_ENDED -> {
@@ -885,28 +913,43 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 restoreDecoderMode(preFallbackDecoder)
             }
 
-            // Record skip for the previous song when the user seeked away early.
+            // Only bother recording anything if the player was actually running before the
+            // transition — there's no point counting stats for songs the user skipped while
+            // the player was sitting paused in the background.
             val prevMediaId = previousItemMediaId
-            if (prevMediaId != null
-                    && reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
-                    && previousItemDurationMs > 0
-                    && previousItemEndPositionMs < previousItemDurationMs * SKIP_THRESHOLD) {
-                serviceScope.launch(Dispatchers.IO) {
-                    val audioId = prevMediaId.toLongOrNull() ?: return@launch
-                    val audio = audioRepository.getAudioById(audioId) ?: return@launch
-                    songStatRepository.recordSkip(audio.hash)
-                    Log.d(TAG, "Skip recorded for: ${audio.title} (pos=${previousItemEndPositionMs}ms / dur=${previousItemDurationMs}ms)")
+            if (wasPlayingBeforeTransition && prevMediaId != null) {
+                // A skip is when the user actively moves away from a song before they've heard
+                // at least 30% of it. Two things can trigger this:
+                //   1. The user taps next / seeks to a different track (REASON_SEEK).
+                //   2. The user swipes the current song out of the queue (REASON_PLAYLIST_CHANGED).
+                // A natural song ending (REASON_AUTO) is never a skip — the song finished!
+                val isManuallySwitched = reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
+                        || reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED
+                if (isManuallySwitched
+                        && previousItemDurationMs > 0
+                        && previousItemEndPositionMs < previousItemDurationMs * SKIP_THRESHOLD) {
+                    serviceScope.launch(Dispatchers.IO) {
+                        val audioId = prevMediaId.toLongOrNull() ?: return@launch
+                        val audio = audioRepository.getAudioById(audioId) ?: return@launch
+                        songStatRepository.recordSkip(audio.hash)
+                        Log.d(TAG, "Skip recorded for: ${audio.title} (pos=${previousItemEndPositionMs}ms / dur=${previousItemDurationMs}ms, reason=$reason)")
+                    }
                 }
             }
 
-            // Record play event for the newly active song.
+            // Record a play event for the newly active song, but only when the player is
+            // actually going to play it — skip this if the queue is being browsed while paused.
             mediaItem?.let { item ->
                 previousItemMediaId = item.mediaId
-                val audioId = item.mediaId.toLongOrNull() ?: return@let
-                serviceScope.launch(Dispatchers.IO) {
-                    val audio = audioRepository.getAudioById(audioId) ?: return@launch
-                    songStatRepository.recordPlay(audio.hash)
-                    Log.d(TAG, "Play recorded for: ${audio.title}")
+                if (player.playWhenReady) {
+                    val audioId = item.mediaId.toLongOrNull() ?: return@let
+                    serviceScope.launch(Dispatchers.IO) {
+                        val audio = audioRepository.getAudioById(audioId) ?: return@launch
+                        songStatRepository.recordPlay(audio.hash)
+                        Log.d(TAG, "Play recorded for: ${audio.title}")
+                    }
+                } else {
+                    Log.d(TAG, "Track changed while paused — skipping play stat for: ${item.mediaMetadata.title}")
                 }
             } ?: run { previousItemMediaId = null }
 
@@ -922,11 +965,31 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 reason: Int
         ) {
             super.onPositionDiscontinuity(oldPosition, newPosition, reason)
-            // Capture position and duration of the outgoing item before ExoPlayer transitions.
-            // This fires BEFORE onMediaItemTransition, so player.duration still reflects the old item.
-            if (oldPosition.mediaItemIndex != newPosition.mediaItemIndex) {
+            // We want to capture the outgoing song's position and duration before ExoPlayer
+            // hands control to the next item. This fires BEFORE onMediaItemTransition, so
+            // player.duration still reflects the old track — perfect timing for us.
+            //
+            // We also handle DISCONTINUITY_REASON_REMOVE here because when the currently
+            // playing song is swiped away from the queue, the new current item can land at
+            // the same index slot (e.g., song 0 removed → song 1 becomes the new index 0),
+            // so checking mediaItemIndex alone would miss that removal entirely.
+            val isItemRemoved = reason == Player.DISCONTINUITY_REASON_REMOVE
+            val isItemSwitch = oldPosition.mediaItemIndex != newPosition.mediaItemIndex
+            if (isItemRemoved || isItemSwitch) {
                 previousItemEndPositionMs = oldPosition.positionMs
-                previousItemDurationMs = player.duration.coerceAtLeast(0L)
+                // Use our cached duration rather than player.duration — by this point
+                // ExoPlayer has already pointed its internal state at the next item, so
+                // player.duration would give us the INCOMING song's length (or C.TIME_UNSET
+                // if it is still buffering), not the outgoing song we actually want to measure.
+                previousItemDurationMs = currentItemDurationMs
+                // Snapshot the playing intent NOW — by the time onMediaItemTransition fires the
+                // player is often already buffering the next track, which makes isPlaying return
+                // false even though the user is absolutely in "play" mode. Using playWhenReady
+                // instead captures what the user actually wants, not a fleeting buffer state.
+                wasPlayingBeforeTransition = player.playWhenReady
+                // Reset the cached duration so it does not bleed into the next track's skip
+                // check in the unlikely event that STATE_READY is delayed for the new item.
+                currentItemDurationMs = 0L
             }
         }
     }
@@ -1113,7 +1176,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         stopSnapshotPulse()
 
         // Unregister the audio-device-change callback so no stale reference is held after teardown.
-        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
 
         // Clear the snapshot so observers know the pipeline is no longer active.
