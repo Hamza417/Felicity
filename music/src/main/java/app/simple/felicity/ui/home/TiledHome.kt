@@ -1,31 +1,33 @@
 package app.simple.felicity.ui.home
 
+import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.SpannedTile
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
-import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
-import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.extensions.fragments.BaseHomeFragment
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.viewmodels.panels.HomeViewModel
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 /**
  * Home screen that renders a flat Windows Phone-style tile grid using a single
- * [SpannedGridLayoutManager] — no nesting, no inner RecyclerViews, just clean tiles.
+ * [GridLayoutManager] — no nesting, no inner RecyclerViews, just clean tiles.
  *
  * The grid is 3 columns wide and contains 45 fixed positions:
  *
@@ -67,15 +69,27 @@ class TiledHome : BaseHomeFragment() {
     }
 
     /**
-     * Attaches the [SpannedGridLayoutManager] with a fixed span lookup so the hero tile
-     * positions and the 3-column structure are locked in before any data arrives.
+     * Wires up the [GridLayoutManager] with the right column count for the current orientation
+     * and a [GridLayoutManager.SpanSizeLookup] that makes hero tiles eat twice as many columns
+     * as regular tiles — giving us that satisfying large-tile-small-tile contrast.
+     *
+     * Portrait uses 3 columns (big tiles span 2, small tiles span 1).
+     * Landscape uses 6 columns (big tiles span 4, small tiles span 2) so the proportions
+     * stay identical regardless of how the user is holding their phone.
      */
     private fun setupRecyclerView() {
-        val layoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, SPAN_COUNT)
+        val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val spanCount = if (isLandscape) SPAN_COUNT_LANDSCAPE else SPAN_COUNT_PORTRAIT
+        val bigTileSpan = if (isLandscape) 4 else 2
+        val smallTileSpan = if (isLandscape) 2 else 1
 
-        layoutManager.spanSizeLookup = SpannedGridLayoutManager.SpanSizeLookup { position ->
-            // Five hero positions get the big 2×2 treatment; everything else stays compact 1×1.
-            if (position in AdapterSpannedHomeTiles.BIG_TILE_POSITIONS) SpanSize(2, 2) else SpanSize(1, 1)
+        val layoutManager = GridLayoutManager(requireContext(), spanCount)
+
+        layoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int): Int {
+                // Hero positions get the wide treatment; everything else stays compact.
+                return if (position in AdapterSpannedHomeTiles.BIG_TILE_POSITIONS) bigTileSpan else smallTileSpan
+            }
         }
 
         binding.recyclerView.layoutManager = layoutManager
@@ -123,7 +137,23 @@ class TiledHome : BaseHomeFragment() {
                     .map { it.audio }
                     .toMutableList()
                 val index = allSongs.indexOfFirst { it.id == audio.id }.coerceAtLeast(0)
-                openSongsMenu(allSongs, index, imageView)
+
+                // Shrink every visible tile to a random scale so the menu feels like it's
+                // "pushing" the grid into the background. Each tile gets its own scale so
+                // the effect looks organic rather than mechanical.
+                animateTilesTo(randomScale = true)
+
+                openSongsMenu(
+                        audios = allSongs,
+                        position = index,
+                        imageView = imageView,
+                        onDismissStart = {
+                            // The dialog has started closing — restore tiles right now so they
+                            // grow back in sync with the image flying home. Much smoother than
+                            // waiting for the whole animation to wrap up before doing anything.
+                            animateTilesTo(randomScale = false)
+                        }
+                )
             }
 
             override fun onPanelTileClicked(panelTile: SpannedTile.PanelTile) {
@@ -194,6 +224,36 @@ class TiledHome : BaseHomeFragment() {
         return tiles
     }
 
+    /**
+     * Animates every currently-visible tile in the grid either to a random shrunken scale
+     * (when the context menu is opening) or back to full size (when it closes).
+     *
+     * Each tile gets an independent random target between 0.5 and 0.8 when shrinking,
+     * which gives the grid a lively, non-robotic appearance. The animation is short and
+     * snappy so it doesn't feel like it's getting in the way of what the user is doing.
+     *
+     * @param randomScale `true` to shrink tiles to random scales, `false` to restore them.
+     */
+    private fun animateTilesTo(randomScale: Boolean) {
+        for (i in 0 until binding.recyclerView.childCount) {
+            val child = binding.recyclerView.getChildAt(i) ?: continue
+
+            val targetScale = if (randomScale) {
+                Random.nextFloat() * 0.8f + 0.1f
+            } else {
+                1f
+            }
+
+            child.animate()
+                .setInterpolator(DecelerateInterpolator(3F))
+                .scaleX(targetScale)
+                .scaleY(targetScale)
+                .setDuration(150)
+                .setStartDelay(i * 20L) // Stagger start times for a cascading effect
+                .start()
+        }
+    }
+
     override fun onDestroyView() {
         tilesAdapter = null
         super.onDestroyView()
@@ -214,7 +274,13 @@ class TiledHome : BaseHomeFragment() {
 
         const val TAG = "TiledHome"
 
-        /** How many columns the tile grid uses — 3 matches the classic Windows Phone layout. */
-        private const val SPAN_COUNT = 3
+        /** Portrait column count — 3 columns matches the classic Windows Phone tile layout. */
+        private const val SPAN_COUNT_PORTRAIT = 3
+
+        /**
+         * Landscape column count — 6 columns so big tiles still take up the same
+         * proportional space (2 out of 6 = 1 out of 3) as they do in portrait.
+         */
+        private const val SPAN_COUNT_LANDSCAPE = 6
     }
 }

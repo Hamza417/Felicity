@@ -1,37 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.square.SquareFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.square.AccentBackgroundSquareLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/container"
     android:layout_width="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
     android:layout_height="match_parent">
 
-    <LinearLayout
+    <!-- The icon that identifies which panel this tile navigates to -->
+    <ImageView
+        android:id="@+id/icon"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:importantForAccessibility="no"
+        app:tint="@color/white" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:gravity="center"
-        android:orientation="vertical">
+        android:layout_marginTop="@dimen/padding_5"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="@dimen/text_size_14"
+        app:appFontStyle="bold"
+        app:textColorStyle="white" />
 
-        <!-- The icon that identifies which panel this tile navigates to -->
-        <ImageView
-            android:id="@+id/icon"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:importantForAccessibility="no"
-            app:tint="@color/white" />
 
-        <app.simple.felicity.decorations.typeface.TypeFaceTextView
-            android:id="@+id/title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/padding_5"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textSize="@dimen/text_size_14"
-            app:appFontStyle="bold"
-            app:textColorStyle="white" />
-
-    </LinearLayout>
-
-</app.simple.felicity.decorations.square.SquareFrameLayout>
+</app.simple.felicity.decorations.square.AccentBackgroundSquareLinearLayout>
 

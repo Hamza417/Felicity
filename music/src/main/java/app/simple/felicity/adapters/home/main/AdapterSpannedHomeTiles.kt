@@ -1,6 +1,5 @@
 package app.simple.felicity.adapters.home.main
 
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -13,7 +12,6 @@ import app.simple.felicity.databinding.AdapterSpannedPanelTileBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 
 /**
@@ -62,14 +60,14 @@ class AdapterSpannedHomeTiles(
                         shadow = false,
                         roundedCorners = false,
                         darken = false)
-                songHolder.binding.title.text = tile.audio.title
-                songHolder.binding.container.setOnClickListener {
+
+                songHolder.binding.art.setOnClickListener {
                     // Pass only the song pool so the caller can queue everything from the grid.
                     val songs = tiles.filterIsInstance<SpannedTile.SongTile>().map { it.audio }
                     val songIndex = songs.indexOfFirst { it.id == tile.audio.id }.coerceAtLeast(0)
                     callbacks?.onSongTileClicked(songs, songIndex)
                 }
-                songHolder.binding.container.setOnLongClickListener {
+                songHolder.binding.art.setOnLongClickListener {
                     callbacks?.onSongTileLongClicked(tile.audio, songHolder.binding.art)
                     true
                 }
@@ -124,20 +122,10 @@ class AdapterSpannedHomeTiles(
     }
 
     inner class SongHolder(val binding: AdapterGridImageBinding) :
-            VerticalListViewHolder(binding.root) {
-        init {
-            // A soft gray title reads nicely over album art without being too harsh.
-            binding.title.setTextColor(Color.LTGRAY)
-        }
-    }
+            VerticalListViewHolder(binding.root)
 
     inner class PanelHolder(val binding: AdapterSpannedPanelTileBinding) :
-            VerticalListViewHolder(binding.root) {
-        init {
-            // Panel tiles have a fixed background color and white text for maximum contrast.
-            binding.container.setBackgroundColor(ThemeManager.accent.primaryAccentColor)
-        }
-    }
+            VerticalListViewHolder(binding.root)
 
     /**
      * Represents a single tile in the Windows Phone-style grid. Sealed so we can
@@ -205,12 +193,18 @@ class AdapterSpannedHomeTiles(
         const val TOTAL_TILE_COUNT = 45
 
         /**
-         * Fixed adapter positions that are reserved for panel navigation tiles.
-         * Every third position (starting at 2) is a panel slot — 15 slots in total.
-         * This supports every possible panel the user can enable, all spread nicely
-         * across the grid so no two panels ever sit side by side.
+         * Fixed adapter positions that are reserved for panel navigation tiles — 15 slots total.
+         *
+         * The positions are deliberately chosen so that every big (2-span) hero tile always has
+         * a panel tile as its direct row-neighbor. Because [GridLayoutManager] cannot span rows,
+         * the panel tile uses a full-height layout that fills the row naturally, while a song
+         * cover tile would leave dead empty space below its square art. Keeping panels next to
+         * hero tiles eliminates that gap entirely.
+         *
+         * Neighbors of each big tile: 0→1, 9→8, 19→20, 30→31, 42→41.
+         * All five of those spots are included here. The rest spread evenly through the grid.
          */
-        val PANEL_POSITIONS: Set<Int> = setOf(2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35, 38, 41, 44)
+        val PANEL_POSITIONS: Set<Int> = setOf(1, 5, 8, 11, 14, 17, 20, 23, 26, 29, 31, 35, 38, 41, 44)
 
         /**
          * Adapter positions that render as large 2×2 hero tiles, giving the grid
