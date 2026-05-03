@@ -3,12 +3,12 @@ package app.simple.felicity.ui.home
 import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
+import androidx.dynamicanimation.animation.DynamicAnimation
+import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -18,6 +18,7 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.SpannedTile
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
+import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolderIndexed
 import app.simple.felicity.extensions.fragments.BaseHomeFragment
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.models.Audio
@@ -51,6 +52,7 @@ class TiledHome : BaseHomeFragment() {
 
     /** The adapter that drives the tile grid. Created once and never replaced. */
     private var tilesAdapter: AdapterSpannedHomeTiles? = null
+    private var tileAnimators: MutableMap<Int, Pair<SpringAnimation, SpringAnimation>> = mutableMapOf()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentHomeSpannedBinding.inflate(inflater, container, false)
@@ -59,7 +61,6 @@ class TiledHome : BaseHomeFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        postponeEnterTransition()
         requireLightBarIcons()
         binding.recyclerView.setBackgroundColor(Color.BLACK)
         binding.recyclerView.requireAttachedMiniPlayer()
@@ -80,8 +81,8 @@ class TiledHome : BaseHomeFragment() {
     private fun setupRecyclerView() {
         val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         val spanCount = if (isLandscape) SPAN_COUNT_LANDSCAPE else SPAN_COUNT_PORTRAIT
-        val bigTileSpan = if (isLandscape) 4 else 2
-        val smallTileSpan = if (isLandscape) 2 else 1
+        val bigTileSpan = 2
+        val smallTileSpan = 1
 
         val layoutManager = GridLayoutManager(requireContext(), spanCount)
 
@@ -106,11 +107,9 @@ class TiledHome : BaseHomeFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 homeViewModel.recommended.collect { songs ->
-                    // Only build the adapter on first arrival — we don't shuffle or refresh after that.
+                    // Only build the adapter on first arrival
                     if (songs.isEmpty() || tilesAdapter != null) return@collect
-                    Log.d(TAG, "Building tile grid with ${songs.size} songs")
                     buildAndAttachAdapter(songs)
-                    requireView().startTransitionOnPreDraw()
                 }
             }
         }
@@ -141,7 +140,7 @@ class TiledHome : BaseHomeFragment() {
                 // Shrink every visible tile to a random scale so the menu feels like it's
                 // "pushing" the grid into the background. Each tile gets its own scale so
                 // the effect looks organic rather than mechanical.
-                animateTilesTo(randomScale = true)
+                animateTilesTo(randomScale = true, imageView)
 
                 openSongsMenu(
                         audios = allSongs,
@@ -151,7 +150,7 @@ class TiledHome : BaseHomeFragment() {
                             // The dialog has started closing — restore tiles right now so they
                             // grow back in sync with the image flying home. Much smoother than
                             // waiting for the whole animation to wrap up before doing anything.
-                            animateTilesTo(randomScale = false)
+                            animateTilesTo(randomScale = false, imageView = imageView)
                         }
                 )
             }
@@ -224,38 +223,48 @@ class TiledHome : BaseHomeFragment() {
         return tiles
     }
 
-    /**
-     * Animates every currently-visible tile in the grid either to a random shrunken scale
-     * (when the context menu is opening) or back to full size (when it closes).
-     *
-     * Each tile gets an independent random target between 0.5 and 0.8 when shrinking,
-     * which gives the grid a lively, non-robotic appearance. The animation is short and
-     * snappy so it doesn't feel like it's getting in the way of what the user is doing.
-     *
-     * @param randomScale `true` to shrink tiles to random scales, `false` to restore them.
-     */
-    private fun animateTilesTo(randomScale: Boolean) {
-        for (i in 0 until binding.recyclerView.childCount) {
-            val child = binding.recyclerView.getChildAt(i) ?: continue
-
-            val targetScale = if (randomScale) {
-                Random.nextFloat() * 0.8f + 0.1f
-            } else {
-                1f
-            }
-
-            child.animate()
-                .setInterpolator(DecelerateInterpolator(3F))
-                .scaleX(targetScale)
-                .scaleY(targetScale)
-                .setDuration(150)
-                .setStartDelay(i * 20L) // Stagger start times for a cascading effect
-                .start()
+    private fun animateTilesTo(randomScale: Boolean, imageView: ImageView) {
+        tileAnimators.values.forEach { (xAnim, yAnim) ->
+            xAnim.cancel()
+            yAnim.cancel()
         }
+
+        binding.recyclerView.forEachViewHolderIndexed<AdapterSpannedHomeTiles.SongHolder> { holder, position ->
+            if (holder.binding.art != imageView) {
+                val targetScale = if (randomScale) Random.nextDouble(0.6, 0.9).toFloat() else 1f
+
+                // Apply the spring animation to the item view
+                holder.itemView.applySpringScale(targetScale)
+            }
+        }
+    }
+
+    // Extension function to handle the boilerplate of X and Y springs
+    private fun View.applySpringScale(targetScale: Float) {
+        // Animate Scale X
+        val xAnimator = SpringAnimation(this, DynamicAnimation.SCALE_X, targetScale).apply {
+            spring.stiffness = TILE_STIFFNESS
+            spring.dampingRatio = TILE_DAMPING_RATIO
+            start()
+        }
+
+        // Animate Scale Y
+        val yAnimator = SpringAnimation(this, DynamicAnimation.SCALE_Y, targetScale).apply {
+            spring.stiffness = TILE_STIFFNESS
+            spring.dampingRatio = TILE_DAMPING_RATIO
+            start()
+        }
+
+        tileAnimators[this.id] = Pair(xAnimator, yAnimator)
     }
 
     override fun onDestroyView() {
         tilesAdapter = null
+        tileAnimators.values.forEach { (xAnim, yAnim) ->
+            xAnim.cancel()
+            yAnim.cancel()
+        }
+        tileAnimators.clear()
         super.onDestroyView()
     }
 
@@ -282,5 +291,8 @@ class TiledHome : BaseHomeFragment() {
          * proportional space (2 out of 6 = 1 out of 3) as they do in portrait.
          */
         private const val SPAN_COUNT_LANDSCAPE = 6
+
+        private const val TILE_STIFFNESS = 150F
+        private const val TILE_DAMPING_RATIO = 1F
     }
 }
