@@ -350,7 +350,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             audios: List<Audio>,
             position: Int,
             imageView: ImageView?,
-            onDismiss: (() -> Unit)? = null) {
+            onDismiss: (() -> Unit)? = null,
+            onDismissStart: (() -> Unit)? = null) {
 
         val audio = audios[position]
 
@@ -538,6 +539,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 .onViewCreated(onViewCreated)
                 .onDialogInflated(onDialogInflated)
                 .onDismiss(onDismissCallback)
+                .onDismissStart { onDismissStart?.invoke() }
                 .setWidthRatio(getDialogWidthRation())
                 .build()
                 .show()
@@ -548,6 +550,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 .onViewCreated(onViewCreated)
                 .onDialogInflated(onDialogInflated)
                 .onDismiss(onDismissCallback)
+                .onDismissStart { onDismissStart?.invoke() }
                 .setWidthRatio(getDialogWidthRation())
                 .build()
                 .show()

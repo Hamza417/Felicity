@@ -39,6 +39,10 @@ import androidx.viewbinding.ViewBinding
  *                         Use the immediate-dismiss lambda when the action navigates to a new screen
  *                         so the source image is not animated back to a view that is no longer visible.
  * @param onDismiss Callback when the dialog is fully dismissed
+ * @param onDismissStart Callback fired at the very beginning of [dismiss], before any animation
+ *                       plays. Use this when you want something to happen simultaneously with
+ *                       the dialog closing — for example, restoring a scaled-down grid while
+ *                       the image flies back to its origin.
  */
 abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor(
         private val container: ViewGroup,
@@ -47,7 +51,8 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         private val targetImageViewProvider: (VB) -> ImageView,
         private val dialogWidthRatio: Float = DEFAULT_WIDTH_RATIO,
         private val onDialogInflated: (VB, () -> Unit, () -> Unit) -> Unit = { _, _, _ -> },
-        private val onDismiss: (() -> Unit)? = null
+        private val onDismiss: (() -> Unit)? = null,
+        private val onDismissStart: (() -> Unit)? = null
 ) {
 
     private lateinit var scrimView: View
@@ -360,7 +365,9 @@ abstract class SharedImageDialogMenu<VB : ViewBinding> @JvmOverloads constructor
         backCallback?.remove()
         backCallback = null
 
-        // Stop the show animation wherever it is. onAnimationEnd will fire but the
+        // Tell the caller that the dismiss sequence is kicking off right now — they can
+        // use this to run their own animations alongside ours without waiting for cleanup.
+        onDismissStart?.invoke()
         // cancelled flag prevents the alpha swap, so we own the view state from here.
         showAnimatorSet?.cancel()
         showAnimatorSet = null

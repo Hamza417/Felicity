@@ -38,6 +38,7 @@ class SimpleSharedImageDialog<VB : ViewBinding> private constructor(
         dialogWidthRatio: Float,
         onDialogInflated: (VB, () -> Unit, () -> Unit) -> Unit,
         onDismiss: (() -> Unit)?,
+        onDismissStart: (() -> Unit)?,
         private val viewCreatedCallback: ((VB) -> Unit)?
 ) : SharedImageDialogMenu<VB>(
         container = container,
@@ -46,7 +47,8 @@ class SimpleSharedImageDialog<VB : ViewBinding> private constructor(
         targetImageViewProvider = targetImageViewProvider,
         dialogWidthRatio = dialogWidthRatio,
         onDialogInflated = onDialogInflated,
-        onDismiss = onDismiss
+        onDismiss = onDismiss,
+        onDismissStart = onDismissStart
 ) {
 
     override fun onViewCreated(binding: VB) {
@@ -65,6 +67,7 @@ class SimpleSharedImageDialog<VB : ViewBinding> private constructor(
         private var onViewCreatedCallback: ((VB) -> Unit)? = null
         private var onDialogInflatedCallback: (VB, () -> Unit, () -> Unit) -> Unit = { _, _, _ -> }
         private var onDismissCallback: (() -> Unit)? = null
+        private var onDismissStartCallback: (() -> Unit)? = null
         private var widthRatio: Float = DEFAULT_WIDTH_RATIO
 
         /**
@@ -97,10 +100,20 @@ class SimpleSharedImageDialog<VB : ViewBinding> private constructor(
         }
 
         /**
-         * Set callback for when the dialog is fully dismissed.
+         * Set callback for when the dialog is fully dismissed (after all animations finish).
          */
         fun onDismiss(callback: () -> Unit): Builder<VB> {
             this.onDismissCallback = callback
+            return this
+        }
+
+        /**
+         * Set callback fired at the very start of the dismiss sequence, before any animation
+         * plays. This lets you kick off your own animations simultaneously with the dialog's
+         * closing animation rather than waiting for everything to finish first.
+         */
+        fun onDismissStart(callback: () -> Unit): Builder<VB> {
+            this.onDismissStartCallback = callback
             return this
         }
 
@@ -116,6 +129,7 @@ class SimpleSharedImageDialog<VB : ViewBinding> private constructor(
                     dialogWidthRatio = widthRatio,
                     onDialogInflated = onDialogInflatedCallback,
                     onDismiss = onDismissCallback,
+                    onDismissStart = onDismissStartCallback,
                     viewCreatedCallback = onViewCreatedCallback
             )
         }

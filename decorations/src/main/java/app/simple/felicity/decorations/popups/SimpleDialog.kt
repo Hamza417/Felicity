@@ -51,6 +51,7 @@ class SimpleDialog<VB : ViewBinding> private constructor(
         private val dialogWidthRatio: Float,
         private val onDialogInflated: (VB, () -> Unit, () -> Unit) -> Unit,
         private val onDismiss: (() -> Unit)?,
+        private val onDismissStart: (() -> Unit)?,
         private val viewCreatedCallback: ((VB) -> Unit)?
 ) {
 
@@ -185,6 +186,9 @@ class SimpleDialog<VB : ViewBinding> private constructor(
         backCallback?.remove()
         backCallback = null
 
+        // Let the caller know the dismiss is starting so they can run things in parallel.
+        onDismissStart?.invoke()
+
         // Scrim fade out
         val scrimAnimator = ValueAnimator.ofArgb(SCRIM_COLOR.toColorInt(), Color.TRANSPARENT).apply {
             duration = DURATION
@@ -263,6 +267,7 @@ class SimpleDialog<VB : ViewBinding> private constructor(
         private var onViewCreatedCallback: ((VB) -> Unit)? = null
         private var onDialogInflatedCallback: (VB, () -> Unit, () -> Unit) -> Unit = { _, _, _ -> }
         private var onDismissCallback: (() -> Unit)? = null
+        private var onDismissStartCallback: (() -> Unit)? = null
         private var widthRatio: Float = DEFAULT_WIDTH_RATIO
 
         /**
@@ -295,10 +300,20 @@ class SimpleDialog<VB : ViewBinding> private constructor(
         }
 
         /**
-         * Set callback for when the dialog is fully dismissed.
+         * Set callback for when the dialog is fully dismissed (after animations finish).
          */
         fun onDismiss(callback: () -> Unit): Builder<VB> {
             this.onDismissCallback = callback
+            return this
+        }
+
+        /**
+         * Set callback fired at the very start of the dismiss sequence, before any animation
+         * plays. Perfect for kicking off parallel animations that should feel simultaneous
+         * with the dialog closing.
+         */
+        fun onDismissStart(callback: () -> Unit): Builder<VB> {
+            this.onDismissStartCallback = callback
             return this
         }
 
@@ -312,6 +327,7 @@ class SimpleDialog<VB : ViewBinding> private constructor(
                     dialogWidthRatio = widthRatio,
                     onDialogInflated = onDialogInflatedCallback,
                     onDismiss = onDismissCallback,
+                    onDismissStart = onDismissStartCallback,
                     viewCreatedCallback = onViewCreatedCallback
             )
         }
