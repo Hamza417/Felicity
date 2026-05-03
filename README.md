@@ -126,7 +126,7 @@ This feature list is not exhaustive and only main features are listed.
 | ![](/screenshots/15.png) | ![](/screenshots/16.png) | ![](/screenshots/17.png) |
 | ![](/screenshots/18.png) | ![](/screenshots/19.png) | ![](/screenshots/20.png) |
 | ![](/screenshots/21.png) | ![](/screenshots/22.png) | ![](/screenshots/23.png) |
-| ![](/screenshots/24.png) | ![](/screenshots/25.png) |                          |
+| ![](/screenshots/24.png) | ![](/screenshots/25.png) | ![](/screenshots/26.gif) |
 
 | Artflow Interface        |
 |--------------------------|
@@ -142,10 +142,10 @@ This feature list is not exhaustive and only main features are listed.
 
 [![Crowdin](https://badges.crowdin.net/felicity/localized.svg)](https://crowdin.com/project/felicity)
 
-Felicity now supports localization. If you want to translate it into your own language(s), you can do so [here on Crowdin](https://crowdin.com/project/felicity).
+Felicity now supports localization. If you want to translate it into your own language(s), you can
+do so [here on Crowdin](https://crowdin.com/project/felicity).
 
 [Contributors](https://crowdin.com/project/felicity/members)
-
 
 ## License
 
@@ -157,5 +157,6 @@ license, see the [LICENSE](./LICENSE) file in the project root for the full lice
 
 ## History
 
-Felicity as a whole project is a continuation of my first ever programming project [Beatz](https://github.com/Hamza417/Beatz) which I
+Felicity as a whole project is a continuation of my first ever programming
+project [Beatz](https://github.com/Hamza417/Beatz) which I
 tried to do back then solely for learning and getting used to building.
