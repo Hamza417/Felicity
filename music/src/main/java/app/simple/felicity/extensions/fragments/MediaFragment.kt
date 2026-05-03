@@ -35,6 +35,7 @@ import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.dialogs.app.AudioInformation.Companion.showAudioInfo
+import app.simple.felicity.dialogs.app.PlaybackInfo.Companion.showPlaybackInfo
 import app.simple.felicity.dialogs.lyrics.Lyrics.Companion.showLyrics
 import app.simple.felicity.dialogs.playlists.AddToPlaylistDialog.Companion.showAddToPlaylistDialog
 import app.simple.felicity.engine.managers.MediaPlaybackManager
@@ -510,6 +511,10 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
             binding.info.setOnClickListener {
                 childFragmentManager.showAudioInfo(audio).also { dismiss() }
+            }
+
+            binding.playbackInfo.setOnClickListener {
+                childFragmentManager.showPlaybackInfo(audio).also { dismiss() }
             }
 
             binding.editMetadata.setOnClickListener {

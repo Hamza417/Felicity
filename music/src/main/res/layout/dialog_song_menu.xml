@@ -326,6 +326,21 @@
 
                 </LinearLayout>
 
+                <!-- Playback stats row — shows play count, skip count and last played time -->
+                <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+                    android:id="@+id/playback_info"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:padding="@dimen/padding_10"
+                    android:text="@string/playback_info"
+                    android:textSize="@dimen/text_size_14"
+                    android:drawablePadding="@dimen/padding_10"
+                    app:appFontStyle="bold"
+                    app:drawableStartCompat="@drawable/ic_history_16dp"
+                    app:drawableTintStyle="regular"
+                    app:textColorStyle="primary" />
+
                 <!-- Lyrics row -->
                 <app.simple.felicity.decorations.ripple.DynamicRippleTextView
                     android:id="@+id/lyrics"
