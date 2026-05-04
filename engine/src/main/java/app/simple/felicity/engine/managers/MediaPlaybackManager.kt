@@ -59,7 +59,6 @@ object MediaPlaybackManager {
 
     private const val TAG = "MediaPlaybackManager"
 
-
     // Single app-scoped Main dispatcher scope to avoid leaking ad-hoc scopes
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -518,6 +517,12 @@ object MediaPlaybackManager {
     }
 
     fun previous() {
+        if (getSeekPosition() > 3000L) {
+            // If we're more than 3 seconds into the song, just seek to the start for a quick restart.
+            mediaController?.seekTo(currentSongPosition, 0L)
+            return
+        }
+
         lastNavigationDirection = false
         if (mediaController?.hasPreviousMediaItem() == true) {
             mediaController?.seekToPreviousMediaItem()
