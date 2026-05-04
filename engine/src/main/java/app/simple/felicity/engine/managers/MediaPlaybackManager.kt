@@ -240,6 +240,13 @@ object MediaPlaybackManager {
             return
         }
 
+        // Set songs eagerly so that any synchronous callers (e.g. onStateReady) that read
+        // getSongs() right after setSongs() see a non-empty list immediately — before the
+        // coroutine below has a chance to run.  The coroutine may later replace this with the
+        // shuffled order, but the important thing is that the queue is never momentarily empty.
+        songs = audios
+        currentSongPosition = position.coerceIn(0, audios.size - 1)
+
         // Launch immediately so the main thread is free. All the heavy work — shuffling
         // the list and building MediaItem objects — happens on the Default dispatcher.
         scope.launch {
