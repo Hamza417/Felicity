@@ -1,104 +1,61 @@
 package app.simple.felicity.repository.shuffle
 
-import android.util.Log
-import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.shuffle.Shuffle.FISHER_YATES
-import app.simple.felicity.repository.shuffle.Shuffle.MILLER
-
 object Shuffle {
 
     /**
-     * Algorithm constants for identifying which shuffle to use.
-     */
-    const val FISHER_YATES = 0
-    const val MILLER = 1
-
-    /**
-     * Fisher-Yates (Knuth) shuffle — true uniform random permutation.
+     * Shuffles [items] while preventing the same artist from appearing back-to-back.
      *
-     * Each element has an equal probability of ending up at any position.
-     * Time: O(n), Space: O(n) (creates a new list copy).
-     */
-    fun List<Audio>.fisherYatesShuffle(): List<Audio> {
-        val result = toMutableList()
-        val random = java.util.Random()
-        for (i in result.indices.reversed()) {
-            val j = random.nextInt(i + 1)
-            val temp = result[i]
-            result[i] = result[j]
-            result[j] = temp
-        }
-        return result
-    }
-
-    /**
-     * Miller shuffle — a deterministic, index-based shuffle algorithm.
+     * Items are grouped by the value returned from [groupBy] (typically the artist name),
+     * then distributed round-robin across buckets so each bucket gets one song from each
+     * artist before any artist repeats. Each bucket is then shuffled independently for
+     * extra randomness, and the results are flattened into the final list.
      *
-     * Produces a permutation based on a seed derived from the list size,
-     * giving reproducible shuffles for the same seed while still
-     * distributing items evenly.
-     * Time: O(n), Space: O(n).
+     * If [currentItem] is provided it is removed from the pool before shuffling and
+     * re-inserted at position 0 at the end, so the currently playing song is never
+     * interrupted mid-queue rebuild.
      *
-     * Reference: Miller, S. (2020). "A practical pseudo-random shuffle".
-     * Time: O(n), Space: O(n).
+     * @param items       The original list to shuffle.
+     * @param groupBy     Selector used to group items — typically returns the artist name.
+     * @param currentItem The item that should stay anchored at position 0, or null.
      */
-    fun List<Audio>.millerShuffle(seed: Long = System.currentTimeMillis()): List<Audio> {
-        val n = size
-        if (n <= 1) return this.toList()
+    fun <T> smartShuffle(
+            items: List<T>,
+            groupBy: (T) -> Any,
+            currentItem: T? = null
+    ): List<T> {
+        if (items.isEmpty()) return emptyList()
 
-        val prime = findNearestPrimeGreaterThan(n)
-
-        // Ensure offset is a positive number within 0 until n
-        val offset = (seed % n).toInt().let { if (it < 0) it + n else it }
-
-        val result = MutableList(n) { this[0] }
-
-        var k = offset
-
-        // Because 'prime' is coprime to 'n', this loop is guaranteed
-        // to visit every index exactly once. No collisions, no infinite loops.
-        for (filled in 0 until n) {
-            val idx = k % n
-            result[filled] = this[idx]
-
-            // Advance k using modulo n
-            k = (k + prime) % n
+        val listToShuffle = if (currentItem != null) {
+            items.filter { it != currentItem }
+        } else {
+            items
         }
 
-        Log.d("Shuffle", "Miller shuffle completed with seed $seed, prime $prime, offset $offset, total results ${result.size}")
+        // Group by the selector, shuffle each group internally, then sort the groups by
+        // descending size so the largest artists are spread out first.
+        val groupedItems = listToShuffle.groupBy(groupBy)
+            .mapValues { it.value.shuffled() }
+            .values
+            .sortedByDescending { it.size }
 
-        return result
-    }
+        if (groupedItems.isEmpty()) return listOfNotNull(currentItem)
 
-    /**
-     * Convenience: shuffle using the currently-preferred algorithm.
-     *
-     * @param algorithm One of [FISHER_YATES] or [MILLER].
-     * @param seed      Optional seed used only by the Miller algorithm.
-     */
-    fun List<Audio>.shuffle(algorithm: Int, seed: Long = System.currentTimeMillis()): List<Audio> {
-        return when (algorithm) {
-            MILLER -> millerShuffle(seed)
-            else -> fisherYatesShuffle()   // FISHER_YATES is default
+        val maxGroupSize = groupedItems.first().size
+        val buckets = Array(maxGroupSize) { mutableListOf<T>() }
+
+        // Distribute one item from each group per bucket in round-robin order.
+        var bucketIndex = 0
+        for (group in groupedItems) {
+            for (item in group) {
+                buckets[bucketIndex].add(item)
+                bucketIndex = (bucketIndex + 1) % maxGroupSize
+            }
         }
-    }
 
-    /** Returns the smallest prime number strictly greater than [n]. */
-    private fun findNearestPrimeGreaterThan(n: Int): Int {
-        var candidate = n + 1
-        while (!isPrime(candidate)) candidate++
-        return candidate
-    }
+        val shuffledResult = buckets.flatMap { it.shuffled() }.toMutableList()
 
-    private fun isPrime(n: Int): Boolean {
-        if (n < 2) return false
-        if (n == 2) return true
-        if (n % 2 == 0) return false
-        var i = 3
-        while (i * i <= n) {
-            if (n % i == 0) return false
-            i += 2
-        }
-        return true
+        currentItem?.let { shuffledResult.add(0, it) }
+
+        return shuffledResult
     }
 }

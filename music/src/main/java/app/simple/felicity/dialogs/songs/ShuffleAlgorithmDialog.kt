@@ -5,9 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
-import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogShuffleAlgorithmBinding
-import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.ShufflePreferences
 
@@ -28,42 +26,14 @@ class ShuffleAlgorithmDialog : ScopedBottomSheetFragment() {
         binding.shuffleSwitch.setOnCheckedChangeListener { _, isChecked ->
             ShufflePreferences.setShuffleEnabled(isChecked)
         }
-
-        updateLyricsAlignmentState()
-    }
-
-    fun updateLyricsAlignmentState() {
-        binding.shuffleAlgorithmGroup.setButtons(
-                listOf(
-                        Button(textResId = R.string.miller),
-                        Button(textResId = R.string.fisher_yates)
-                )
-        )
-
-        when (ShufflePreferences.getShuffleAlgorithm()) {
-            ShufflePreferences.ALGORITHM_MILLER -> binding.shuffleAlgorithmGroup.setSelectedIndex(0)
-            ShufflePreferences.ALGORITHM_FISHER_YATES -> binding.shuffleAlgorithmGroup.setSelectedIndex(1)
-        }
-
-        binding.shuffleAlgorithmGroup.setOnButtonSelectedListener {
-            when (it) {
-                0 -> {
-                    ShufflePreferences.setShuffleAlgorithm(ShufflePreferences.ALGORITHM_MILLER)
-                }
-                1 -> {
-                    ShufflePreferences.setShuffleAlgorithm(ShufflePreferences.ALGORITHM_FISHER_YATES)
-                }
-            }
-        }
     }
 
     companion object {
         private const val TAG = "ShuffleAlgorithmDialog"
 
         fun newInstance(): ShuffleAlgorithmDialog {
-            val args = Bundle()
             val fragment = ShuffleAlgorithmDialog()
-            fragment.arguments = args
+            fragment.arguments = Bundle()
             return fragment
         }
 

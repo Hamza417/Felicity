@@ -54,7 +54,7 @@ import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.PlaylistWithSongs
 import app.simple.felicity.repository.repositories.LrcRepository
-import app.simple.felicity.repository.shuffle.Shuffle.shuffle
+import app.simple.felicity.repository.shuffle.Shuffle.smartShuffle
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.theme.managers.ThemeManager
@@ -196,14 +196,11 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     /**
-     * Shuffle [songs] using the algorithm from [ShufflePreferences], then always start
-     * playing from position 0 of the shuffled list. The shuffled queue replaces the current
-     * queue entirely so the player always starts fresh from the first shuffled song.
+     * Shuffles [songs] using the smart artist-aware algorithm, then starts playing from
+     * position 0. The shuffled queue replaces the current queue entirely.
      */
     protected fun shuffleMediaItems(songs: List<Audio>) {
-        val algorithm = ShufflePreferences.getShuffleAlgorithm()
-        val shuffled = songs.shuffle(algorithm).toMutableList()
-        // Always replace queue and start from position 0, regardless of what is currently playing.
+        val shuffled = smartShuffle(songs, { it.artist ?: "" }).toMutableList()
         MediaPlaybackManager.setSongs(shuffled, 0, autoPlay = true)
         createSongHistoryDatabase(shuffled)
     }

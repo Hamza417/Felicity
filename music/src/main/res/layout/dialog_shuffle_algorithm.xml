@@ -37,31 +37,6 @@
 
         </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:clipChildren="false"
-            android:orientation="horizontal">
-
-            <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                android:layout_width="0dp"
-                android:padding="@dimen/padding_15"
-                android:layout_height="wrap_content"
-                android:text="@string/shuffle_algorithm"
-                android:layout_weight="1"
-                android:layout_gravity="center_vertical"
-                android:textSize="@dimen/text_size_14"
-                app:appFontStyle="bold"
-                app:textColorStyle="primary" />
-
-            <app.simple.felicity.decorations.toggles.FelicityButtonGroup
-                android:id="@+id/shuffle_algorithm_group"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical" />
-
-        </LinearLayout>
-
     </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
 
 </FrameLayout>

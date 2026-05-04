@@ -12,7 +12,6 @@ import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.SongStatRepository
-import app.simple.felicity.repository.shuffle.Shuffle.millerShuffle
 import app.simple.felicity.viewmodels.panels.DashboardViewModel.Companion.RECOMMENDED_MAX_COUNT
 import app.simple.felicity.viewmodels.panels.DashboardViewModel.Companion.RECOMMENDED_MOST_PLAYED_COUNT
 import app.simple.felicity.viewmodels.panels.DashboardViewModel.Companion.RECOMMENDED_RECENTLY_PLAYED_COUNT
@@ -446,7 +445,6 @@ class DashboardViewModel @Inject constructor(
             val existingIds = composed.map { it.id }.toHashSet()
             val filler = allAudio
                 .filterNot { it.id in existingIds }
-                .millerShuffle()
                 .take(RECOMMENDED_MAX_COUNT - composed.size)
             (composed + filler).shuffled()
         }

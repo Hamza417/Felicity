@@ -29,6 +29,7 @@ import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.listeners.MediaStateListener
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.shuffle.Shuffle.smartShuffle
 import app.simple.felicity.shared.utils.ProcessUtils.ensureOnMainThread
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -255,12 +256,9 @@ object MediaPlaybackManager {
                 val newShuffledQueue: List<Audio>
 
                 if (shuffleOn) {
-                    // Put the tapped song at position 0 so it plays first, then shuffle the rest.
+                    // Smart shuffle keeps artists spread out and anchors the tapped song first.
                     val startSong = audios.getOrNull(position)
-                    val rest = audios.toMutableList()
-                        .also { if (startSong != null) it.remove(startSong) }
-                        .shuffled()
-                    val shuffled = if (startSong != null) listOf(startSong) + rest else rest
+                    val shuffled = smartShuffle(audios, { it.artist ?: "" }, startSong)
                     activeQueue = shuffled
                     newShuffledQueue = shuffled
                 } else {
@@ -689,10 +687,7 @@ object MediaPlaybackManager {
 
             val result = withContext(Dispatchers.Default) {
                 if (enabled) {
-                    val rest = originalQueue.toMutableList()
-                        .also { if (currentSong != null) it.remove(currentSong) }
-                        .shuffled()
-                    val shuffled = if (currentSong != null) listOf(currentSong) + rest else rest
+                    val shuffled = smartShuffle(originalQueue, { it.artist ?: "" }, currentSong)
                     QueueResult(active = shuffled, shuffled = shuffled)
                 } else {
                     QueueResult(active = originalQueue, shuffled = emptyList())
