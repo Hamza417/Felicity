@@ -87,6 +87,16 @@ class AudioInformationViewModel @AssistedInject constructor(
 
                 // Audio ID
                 add(data(R.string.audio_id, audio.id.toString()))
+
+                // Replay Gain
+                val replayGainValues = """
+                            ${"Track Gain:".padEnd(13)} ${audio.replayGainTrackGain ?: "–"} dB
+                            ${"Track Peak:".padEnd(13)} ${audio.replayGainTrackPeak ?: "–"}
+                            ${"Album Gain:".padEnd(13)} ${audio.replayGainAlbumGain ?: "–"} dB
+                            ${"Album Peak:".padEnd(13)} ${audio.replayGainAlbumPeak ?: "–"}
+                        """.trimIndent()
+
+                add(data(R.string.replay_gain, replayGainValues, fullSpan = true))
             }
 
             _info.emit(list)
