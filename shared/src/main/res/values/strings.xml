@@ -441,10 +441,14 @@
     <string name="library_stats">%1$s Tracks • %2$s Hours</string>
     <string name="server">Server</string>
     <string name="server_active">Server Active</string>
+
     <string name="outline_clickable_elements">Outline Clickable Elements</string>
     <string name="outline_clickable_elements_summary">Draw an outline around the clickable buttons and icons.</string>
     <string name="highlight_clicked_element">Highlight Clickable Elements</string>
     <string name="highlight_clicked_element_summary">Draw flat background behind the clickable icons and buttons.</string>
     <string name="panel_visibility">Panel Visibility</string>
     <string name="panel_visibility_summary">Choose which panels show up in the browse lists.</string>
+    <string name="reshuffle">No Reshuffle</string>
+    <string name="reshuffle_summary">Do not shuffle the list again if the current list is already shuffled when a new song is selected.</string>
+
 </resources>

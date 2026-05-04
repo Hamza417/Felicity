@@ -5,7 +5,8 @@ import app.simple.felicity.manager.SharedPreferences
 
 object ShufflePreferences {
 
-    const val SHUFFLE = "songs_shuffle"
+    const val SHUFFLE = "shuffle"
+    const val NO_RESHUFFLE = "no_reshuffle"
 
     // --------------------------------------------------------------------------------------------- //
 
@@ -21,5 +22,17 @@ object ShufflePreferences {
 
     fun toggleShuffle() {
         setShuffleEnabled(!isShuffleEnabled())
+    }
+
+    // --------------------------------------------------------------------------------------------- //
+
+    fun isNoReshuffleEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(NO_RESHUFFLE, false)
+    }
+
+    fun setNoReshuffleEnabled(value: Boolean) {
+        SharedPreferences.getSharedPreferences().edit {
+            putBoolean(NO_RESHUFFLE, value)
+        }
     }
 }

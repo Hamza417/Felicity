@@ -69,6 +69,17 @@ class AudioRepository @Inject constructor(
     }
 
     /**
+     * Flips the favorite flag for a single song in the database.
+     * Pass the song's id and whether it should be marked as a favorite or not.
+     *
+     * @param id         The database id of the song to update.
+     * @param isFavorite True to mark as favorite, false to remove it.
+     */
+    suspend fun setFavorite(id: Long, isFavorite: Boolean) = withContext(Dispatchers.IO) {
+        audioDatabase.audioDao()?.setFavorite(id, isFavorite)
+    }
+
+    /**
      * Minimum duration threshold in milliseconds derived from [LibraryPreferences].
      * The preference stores the value in seconds.
      */

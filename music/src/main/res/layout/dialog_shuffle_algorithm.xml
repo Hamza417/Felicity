@@ -37,6 +37,49 @@
 
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/sync_adjust_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:padding="@dimen/padding_15"
+                android:orientation="vertical">
+
+                <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/reshuffle"
+                    android:layout_gravity="center_vertical"
+                    android:textSize="@dimen/text_size_14"
+                    app:appFontStyle="bold"
+                    app:textColorStyle="primary" />
+
+                <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/reshuffle_summary"
+                    android:layout_gravity="center_vertical"
+                    android:textSize="@dimen/text_size_12"
+                    app:appFontStyle="regular"
+                    app:textColorStyle="accent" />
+
+            </LinearLayout>
+
+            <app.simple.felicity.decorations.toggles.FelicitySwitch
+                android:id="@+id/reshuffle_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/padding_15"
+                android:layout_gravity="center_vertical" />
+
+        </LinearLayout>
+
     </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
 
 </FrameLayout>

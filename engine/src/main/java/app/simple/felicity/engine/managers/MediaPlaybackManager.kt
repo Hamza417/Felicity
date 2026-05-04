@@ -216,6 +216,22 @@ object MediaPlaybackManager {
     fun setSongs(audios: List<Audio>, position: Int = 0, startPositionMs: Long = 0L, autoPlay: Boolean = false) {
         Log.d(TAG, "setSongs called: count=${audios.size}, position=$position, startPositionMs=$startPositionMs, autoPlay=$autoPlay")
 
+        // simply skip to the song position since list is same and user does not want shuffling here.
+        if (ShufflePreferences.isNoReshuffleEnabled()
+                && shuffledQueue.isNotEmpty()
+                && audios.size == originalQueue.size
+                && audios.indices.all { audios[it].id == originalQueue[it].id }) {
+            val clickedSong = audios.getOrNull(position)
+            val shuffledPos = clickedSong?.let { song ->
+                shuffledQueue.indexOfFirst { it.id == song.id }
+            } ?: -1
+            if (shuffledPos >= 0) {
+                Log.d(TAG, "setSongs: shuffle active and same queue detected — seeking to shuffled position $shuffledPos instead of reshuffling")
+                updatePosition(shuffledPos, forcePlay = autoPlay)
+                return
+            }
+        }
+
         // Block notifyCurrentPosition for the old queue until the new items are set.
         isQueueBeingReplaced = true
 

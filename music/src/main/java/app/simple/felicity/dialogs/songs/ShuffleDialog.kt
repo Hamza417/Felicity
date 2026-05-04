@@ -22,9 +22,14 @@ class ShuffleDialog : ScopedBottomSheetFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.shuffleSwitch.isChecked = ShufflePreferences.isShuffleEnabled()
+        binding.reshuffleSwitch.isChecked = ShufflePreferences.isNoReshuffleEnabled()
 
         binding.shuffleSwitch.setOnCheckedChangeListener { _, isChecked ->
             ShufflePreferences.setShuffleEnabled(isChecked)
+        }
+
+        binding.reshuffleSwitch.setOnCheckedChangeListener { _, isChecked ->
+            ShufflePreferences.setNoReshuffleEnabled(isChecked)
         }
     }
 
