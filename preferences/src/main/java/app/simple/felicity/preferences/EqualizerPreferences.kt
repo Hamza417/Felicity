@@ -450,7 +450,7 @@ object EqualizerPreferences {
     }
 
     fun isAutoReplayGainEnabled(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(AUTO_REPLAY_GAIN_ENABLED, false)
+        return SharedPreferences.getSharedPreferences().getBoolean(AUTO_REPLAY_GAIN_ENABLED, true)
     }
 
     fun setReplayGainMode(mode: String) {

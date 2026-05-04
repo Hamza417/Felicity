@@ -26,6 +26,7 @@ import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.ConfigurationPreferences
+import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.services.AudioDatabaseService
@@ -728,6 +729,69 @@ abstract class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.WARN
         )
 
+        val replayGainHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.replay_gain)
+
+        /**
+         * Master switch for tag-based ReplayGain. When turned on, the player reads the
+         * REPLAYGAIN_TRACK_GAIN or REPLAYGAIN_ALBUM_GAIN tag from each file and applies
+         * the encoded gain automatically every time a new track starts. The manual preamp
+         * knob on the equalizer screen still works on top of this.
+         */
+        val autoReplayGainToggle = Preference(
+                title = R.string.auto_replay_gain,
+                summary = R.string.auto_replay_gain_summary,
+                icon = R.drawable.ic_volume_up,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, _ ->
+                    EqualizerPreferences.setAutoReplayGainEnabled((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    EqualizerPreferences.isAutoReplayGainEnabled()
+                }
+        )
+
+        /**
+         * Selects which embedded tag to read when auto ReplayGain is active.
+         * Track mode is the safer default for shuffle playlists because each
+         * song was analyzed independently. Album mode keeps the loudness relationship
+         * between tracks intact when you listen to a full album in order.
+         */
+        val replayGainMode = Preference(
+                title = R.string.replay_gain_mode,
+                summary = R.string.replay_gain_mode_summary,
+                icon = -1,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (EqualizerPreferences.getReplayGainMode()) {
+                        EqualizerPreferences.REPLAY_GAIN_MODE_ALBUM -> getString(R.string.replay_gain_album)
+                        else -> getString(R.string.replay_gain_track)
+                    }
+                },
+                onPreferenceAction = { view, _ ->
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(
+                                    PopupMenuItem(title = R.string.replay_gain_track, summary = getString(R.string.replay_gain_track_summary)),
+                                    PopupMenuItem(title = R.string.replay_gain_album, summary = getString(R.string.replay_gain_album_summary))
+                            ),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.replay_gain_track -> {
+                                        EqualizerPreferences.setReplayGainMode(EqualizerPreferences.REPLAY_GAIN_MODE_TRACK)
+                                        (view as TextView).text = getString(R.string.replay_gain_track)
+                                    }
+                                    R.string.replay_gain_album -> {
+                                        EqualizerPreferences.setReplayGainMode(EqualizerPreferences.REPLAY_GAIN_MODE_ALBUM)
+                                        (view as TextView).text = getString(R.string.replay_gain_album)
+                                    }
+                                }
+                            },
+                            onDismiss = {}
+                    ).show()
+                }
+        )
+
         preferences.add(decoderHeader)
         preferences.add(currentDecoder)
         preferences.add(fallbackToSWToggle)
@@ -740,6 +804,9 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(stereoDownmixing)
         preferences.add(gaplessToggle)
         preferences.add(skipSilenceToggle)
+        preferences.add(replayGainHeader)
+        preferences.add(autoReplayGainToggle)
+        preferences.add(replayGainMode)
 
         return preferences
     }
