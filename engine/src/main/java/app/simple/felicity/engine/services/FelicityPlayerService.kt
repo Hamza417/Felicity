@@ -918,14 +918,17 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             // the player was sitting paused in the background.
             val prevMediaId = previousItemMediaId
             if (wasPlayingBeforeTransition && prevMediaId != null) {
-                // A skip is when the user actively moves away from a song before they've heard
-                // at least 30% of it. Two things can trigger this:
-                //   1. The user taps next / seeks to a different track (REASON_SEEK).
+                // A skip is when the user actively moves FORWARD away from a song before hearing
+                // at least 30% of it. Two things can trigger this in a forward direction:
+                //   1. The user taps next / seeks to a later track (REASON_SEEK, going forward).
                 //   2. The user swipes the current song out of the queue (REASON_PLAYLIST_CHANGED).
                 // A natural song ending (REASON_AUTO) is never a skip — the song finished!
+                // Going backward is also never a skip — that's a replay, handled separately below.
+                val isForwardNavigation = MediaPlaybackManager.lastNavigationDirection
                 val isManuallySwitched = reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
                         || reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED
                 if (isManuallySwitched
+                        && isForwardNavigation
                         && previousItemDurationMs > 0
                         && previousItemEndPositionMs < previousItemDurationMs * SKIP_THRESHOLD) {
                     serviceScope.launch(Dispatchers.IO) {
@@ -939,14 +942,22 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
             // Record a play event for the newly active song, but only when the player is
             // actually going to play it — skip this if the queue is being browsed while paused.
+            // Also check whether this was a backward navigation and count it as a replay if so.
             mediaItem?.let { item ->
                 previousItemMediaId = item.mediaId
                 if (player.playWhenReady) {
                     val audioId = item.mediaId.toLongOrNull() ?: return@let
+                    val isBackwardNavigation = !MediaPlaybackManager.lastNavigationDirection
                     serviceScope.launch(Dispatchers.IO) {
                         val audio = audioRepository.getAudioById(audioId) ?: return@launch
                         songStatRepository.recordPlay(audio.hash)
                         Log.d(TAG, "Play recorded for: ${audio.title}")
+                        // When the user goes back to a song on purpose, that counts as a replay —
+                        // it's their way of saying "that one was worth hearing again!"
+                        if (isBackwardNavigation && reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
+                            songStatRepository.recordReplay(audio.hash)
+                            Log.d(TAG, "Replay recorded for: ${audio.title}")
+                        }
                     }
                 } else {
                     Log.d(TAG, "Track changed while paused — skipping play stat for: ${item.mediaMetadata.title}")

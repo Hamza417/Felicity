@@ -183,8 +183,9 @@
     <string name="high_resolution_output_summary">"Enable Hi-Res (32bit Float) mode instead of standard 16bit mode. Supported device is required otherwise the quality may drop instead of improving."</string>
     <string name="audio_information">Audio Information</string>
     <string name="playback_info">Playback Info</string>
-    <string name="play_count">Play Count</string>
-    <string name="skip_count">Skip Count</string>
+    <string name="played">Played</string>
+    <string name="skipped">Skipped</string>
+    <string name="replayed">Replayed</string>
     <string name="last_played">Last Played</string>
     <string name="clear_stats">Clear Stats</string>
     <string name="never_played">Never played</string>

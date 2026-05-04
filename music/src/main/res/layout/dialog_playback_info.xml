@@ -66,7 +66,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textSize="@dimen/text_size_12"
-                    android:text="@string/play_count"
+                    android:text="@string/played"
                     app:appFontStyle="medium"
                     app:textColorStyle="tertiary" />
 
@@ -91,7 +91,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textSize="@dimen/text_size_12"
-                    android:text="@string/skip_count"
+                    android:text="@string/skipped"
                     app:appFontStyle="medium"
                     app:textColorStyle="tertiary" />
 
@@ -104,6 +104,31 @@
                     app:textColorStyle="primary" />
 
             </LinearLayout>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:padding="@dimen/padding_10"
+            android:orientation="vertical">
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="@dimen/text_size_12"
+                android:text="@string/replayed"
+                app:appFontStyle="medium"
+                app:textColorStyle="tertiary" />
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:id="@+id/replay_count"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="@dimen/text_size_14"
+                app:appFontStyle="bold"
+                app:textColorStyle="primary" />
 
         </LinearLayout>
 

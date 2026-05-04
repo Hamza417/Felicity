@@ -22,14 +22,13 @@ import app.simple.felicity.repository.models.PlaylistSongCrossRef
  * Room database that holds the entire audio library, playback state, song statistics,
  * and playlists.
  *
- * Version 13 is the current baseline. Older databases below version 11 will be wiped and
- * rebuilt from scratch rather than running a long migration chain nobody needs anymore.
- *
  * Version changes:
  *   11 → 12: Renamed the {@code path} column to {@code uri} in the {@code audio} table.
  *   12 → 13: Added a new nullable {@code path} column to store the real filesystem path
  *   resolved from MediaStore. This gives the folder browser proper "/" segments to split
  *   on instead of the opaque SAF content URI.
+ *   13 → 14: Added {@code replayCount} column to {@code song_stats} to track how many
+ *   times the user navigated backward to replay a song.
  *
  * @author Hamza417
  */
@@ -42,7 +41,7 @@ import app.simple.felicity.repository.models.PlaylistSongCrossRef
             Playlist::class,
             PlaylistSongCrossRef::class
         ],
-        version = 13,
+        version = 14,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {
@@ -69,7 +68,6 @@ abstract class AudioDatabase : RoomDatabase() {
          */
         private val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // Rename the column — fast and safe on API 29+ which is our minimum SDK.
                 db.execSQL("ALTER TABLE `audio` RENAME COLUMN `path` TO `uri`")
 
                 // Drop the old index that still references the old column name and recreate it.
@@ -89,6 +87,16 @@ abstract class AudioDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Adds the new {@code replayCount} column to {@code song_stats}. Existing rows default
+         * to 0, which is perfectly accurate — we have no historical backward-navigation data.
+         */
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `song_stats` ADD COLUMN `replayCount` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getInstance(context: Context): AudioDatabase {
             return instance ?: synchronized(this) {
                 instance ?: buildDatabase(context.applicationContext).also {
@@ -101,7 +109,7 @@ abstract class AudioDatabase : RoomDatabase() {
 
         private fun buildDatabase(context: Context): AudioDatabase {
             return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_11_12, MIGRATION_12_13)
+                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
                 // Anything older than version 11 gets a clean slate — those migration steps
                 // were removed because maintaining a decade-long chain for a pre-alpha app
                 // costs more than the handful of users who might still have those old versions.

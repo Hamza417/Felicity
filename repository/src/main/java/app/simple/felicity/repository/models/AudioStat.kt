@@ -19,6 +19,13 @@ import kotlinx.parcelize.Parcelize
  * associated again.
  * </p>
  *
+ * <p>
+ * {@code replayCount} is incremented whenever the user navigates <em>back</em> to a song they
+ * had already moved away from — think of it as a measure of how often someone says "wait, go
+ * back, I liked that one!" It is distinct from {@code playCount}, which counts every time the
+ * song starts playing regardless of direction.
+ * </p>
+ *
  * @author Hamza417
  */
 @Parcelize
@@ -32,13 +39,16 @@ data class AudioStat(
         val audioHash: Long,
         val lastPlayed: Long = 0L,
         val playCount: Int = 0,
-        val skipCount: Int = 0
+        val skipCount: Int = 0,
+        /** How many times the user navigated back to this song mid-session. */
+        val replayCount: Int = 0
 ) : Parcelable {
     override fun toString(): String {
         return "AudioStat(id=$id, " +
                 "audioHash=$audioHash, " +
                 "lastPlayed=$lastPlayed, " +
                 "playCount=$playCount, " +
-                "skipCount=$skipCount)"
+                "skipCount=$skipCount, " +
+                "replayCount=$replayCount)"
     }
 }

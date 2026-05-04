@@ -9,6 +9,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogPlaybackInfoBinding
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.repository.constants.BundleConstants
@@ -78,18 +79,20 @@ class PlaybackInfo : ScopedBottomSheetFragment() {
                 viewModel.stat.collect { stat ->
                     if (stat != null) {
                         // Fill in the stats we fetched from the database
-                        binding.playCount.text = stat.playCount.toString()
-                        binding.skipCount.text = stat.skipCount.toString()
+                        binding.playCount.text = resources.getQuantityString(R.plurals.total_times, stat.playCount, stat.playCount)
+                        binding.skipCount.text = resources.getQuantityString(R.plurals.total_times, stat.skipCount, stat.skipCount)
+                        binding.replayCount.text = resources.getQuantityString(R.plurals.total_times, stat.replayCount, stat.replayCount)
                         binding.lastPlayed.text = if (stat.lastPlayed > 0) {
                             stat.lastPlayed.toDate()
                         } else {
-                            getString(app.simple.felicity.R.string.never_played)
+                            getString(R.string.never_played)
                         }
                     } else {
                         // If there are no stats yet (or they were just cleared), show zeroes
                         binding.playCount.text = 0.toString()
                         binding.skipCount.text = 0.toString()
-                        binding.lastPlayed.text = getString(app.simple.felicity.R.string.never_played)
+                        binding.replayCount.text = 0.toString()
+                        binding.lastPlayed.text = getString(R.string.never_played)
                     }
                 }
             }

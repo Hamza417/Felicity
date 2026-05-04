@@ -50,11 +50,11 @@ interface SongStatDao {
 
     /**
      * Returns up to 50 available songs with their stat data ordered by last-played
-     * timestamp descending. The result includes {@code lastPlayed} and {@code playCount}
-     * from the {@code song_stats} table alongside all audio columns.
+     * timestamp descending. All stat columns — including {@code skipCount} and
+     * {@code replayCount} — are pulled in from the join so callers get the full picture.
      */
     @Query("""
-        SELECT a.*, ss.lastPlayed, ss.playCount FROM audio a
+        SELECT a.*, ss.lastPlayed, ss.playCount, ss.skipCount, ss.replayCount FROM audio a
         INNER JOIN song_stats ss ON a.hash = ss.audioHash
         WHERE a.is_available = 1 AND ss.lastPlayed > 0
         ORDER BY ss.lastPlayed DESC
@@ -64,11 +64,11 @@ interface SongStatDao {
 
     /**
      * Returns up to 50 available songs with their stat data ordered by play count
-     * descending. The result includes {@code lastPlayed} and {@code playCount}
-     * from the {@code song_stats} table alongside all audio columns.
+     * descending. All stat columns — including {@code skipCount} and {@code replayCount}
+     * — are pulled in from the join so callers get the full picture.
      */
     @Query("""
-        SELECT a.*, ss.lastPlayed, ss.playCount FROM audio a
+        SELECT a.*, ss.lastPlayed, ss.playCount, ss.skipCount, ss.replayCount FROM audio a
         INNER JOIN song_stats ss ON a.hash = ss.audioHash
         WHERE a.is_available = 1 AND ss.playCount > 0
         ORDER BY ss.playCount DESC

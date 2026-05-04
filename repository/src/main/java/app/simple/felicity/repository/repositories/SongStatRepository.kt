@@ -81,9 +81,9 @@ class SongStatRepository @Inject constructor(
     /**
      * Records a skip event for the song identified by [audioHash].
      *
-     * <p>A skip is counted whenever the user navigates away from a song before it has played
-     * past the early-skip threshold (typically 30% of its duration). If no stat row exists,
-     * a new one is inserted with a skip count of 1.</p>
+     * <p>A skip is counted whenever the user navigates <em>forward</em> away from a song before
+     * it has played past the early-skip threshold (typically 30% of its duration). If no stat
+     * row exists, a new one is inserted with a skip count of 1.</p>
      *
      * @param audioHash The XXHash64 fingerprint of the audio file.
      */
@@ -94,6 +94,25 @@ class SongStatRepository @Inject constructor(
             dao.insertStat(AudioStat(audioHash = audioHash, skipCount = 1))
         } else {
             dao.updateStat(existing.copy(skipCount = existing.skipCount + 1))
+        }
+    }
+
+    /**
+     * Records a replay event for the song identified by [audioHash].
+     *
+     * <p>A replay happens when the user navigates <em>backward</em> to a song they had already
+     * moved past — basically their way of saying "wait, that one was good, go back!" If no stat
+     * row exists yet, a new one is created with a replay count of 1.</p>
+     *
+     * @param audioHash The XXHash64 fingerprint of the audio file.
+     */
+    suspend fun recordReplay(audioHash: Long) {
+        val dao = database.songStatDao()
+        val existing = dao.getStatByHash(audioHash)
+        if (existing == null) {
+            dao.insertStat(AudioStat(audioHash = audioHash, replayCount = 1))
+        } else {
+            dao.updateStat(existing.copy(replayCount = existing.replayCount + 1))
         }
     }
 
