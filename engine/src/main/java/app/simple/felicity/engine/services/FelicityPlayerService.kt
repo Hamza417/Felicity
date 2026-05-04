@@ -346,27 +346,6 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             }
         }
 
-        // Apply queue swaps that MediaPlaybackManager prepared in the background directly
-        // onto the ExoPlayer instance. Because MediaPlaybackManager is a singleton in the
-        // same process, we read the already-built MediaItem list from the flow and hand it
-        // straight to the player — no Binder serialization, no IPC round-trip.
-        serviceScope.launch(Dispatchers.Main.immediate) {
-            MediaPlaybackManager.playerQueueUpdateFlow.collect { update ->
-                val oldCount = player.mediaItemCount
-                if (oldCount > 0) {
-                    player.replaceMediaItems(0, oldCount, update.mediaItems)
-                } else {
-                    player.setMediaItems(update.mediaItems, update.position, update.seekPositionMs)
-                    player.prepare()
-                }
-                player.seekTo(update.position, update.seekPositionMs)
-                if (update.playWhenReady) {
-                    player.play()
-                }
-                Log.d(TAG, "Direct queue swap applied: ${update.mediaItems.size} items, position=${update.position}, playWhenReady=${update.playWhenReady}")
-            }
-        }
-
         // Keep an up-to-date song list in memory. Room emits a fresh list every time the
         // library changes (scan, delete, etc.) so onGetChildren always returns current data
         // without a blocking database call.

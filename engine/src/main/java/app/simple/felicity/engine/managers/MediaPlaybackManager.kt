@@ -46,27 +46,6 @@ import java.io.File
 import kotlin.math.max
 
 /**
- * Carries everything the service needs to apply a queue swap directly on the ExoPlayer
- * instance — bypassing the MediaController IPC layer entirely.
- *
- * Emitted by [MediaPlaybackManager] whenever the full queue is reordered in-place
- * (e.g. shuffle toggle, silent queue update) while the same song keeps playing.
- * The service collects this and calls [ExoPlayer.replaceMediaItems] directly so
- * the swap is invisible to the user.
- *
- * @param mediaItems    The fully-built list of items in their new order.
- * @param position      The index in [mediaItems] of the song that should remain active.
- * @param seekPositionMs The exact playback position to restore after the swap (in ms).
- * @param playWhenReady Whether the player should resume playback after the swap.
- */
-data class PlayerQueueUpdate(
-        val mediaItems: List<MediaItem>,
-        val position: Int,
-        val seekPositionMs: Long,
-        val playWhenReady: Boolean
-)
-
-/**
  * Converts an audio path string to a URI that ExoPlayer can open for playback.
  *
  * When the path is already a content:// URI (from a SAF-scanned file), we parse
@@ -202,22 +181,12 @@ object MediaPlaybackManager {
     private val _repeatModeFlow = MutableSharedFlow<Int>(replay = 1)
     private val _shuffleStateFlow = MutableSharedFlow<Boolean>(replay = 1)
 
-    /**
-     * Carries queue-swap instructions that should be applied directly on the ExoPlayer
-     * instance inside the service, completely skipping the MediaController IPC path.
-     *
-     * Replay is 0 because a stale swap from a previous shuffle toggle must never be
-     * re-applied when a new collector subscribes after the fact.
-     */
-    private val _playerQueueUpdateFlow = MutableSharedFlow<PlayerQueueUpdate>(replay = 0)
-
     val songListFlow: SharedFlow<List<Audio>> = _songListFlow.asSharedFlow()
     val songPositionFlow: SharedFlow<Int> = _songPositionFlow.asSharedFlow()
     val songSeekPositionFlow: SharedFlow<Long> = _songSeekPositionFlow.asSharedFlow()
     val playbackStateFlow: SharedFlow<Int> = _playbackStateFlow.asSharedFlow()
     val repeatModeFlow: SharedFlow<Int> = _repeatModeFlow.asSharedFlow()
     val shuffleStateFlow: SharedFlow<Boolean> = _shuffleStateFlow.asSharedFlow()
-    val playerQueueUpdateFlow: SharedFlow<PlayerQueueUpdate> = _playerQueueUpdateFlow.asSharedFlow()
 
     /**
      * Indicates the direction of the most recent song transition.
@@ -406,11 +375,8 @@ object MediaPlaybackManager {
             _songListFlow.emit(this@MediaPlaybackManager.songs)
         }
 
-        // Push the new queue order directly to ExoPlayer through the in-process flow.
-        // This avoids serializing the full MediaItem list over the Binder IPC that
-        // mediaController.replaceMediaItems() would require, keeping the swap instant.
+        // Update the media controller's queue in the background without prepare() to avoid interrupting playback.
         scope.launch {
-            val seekPos = getSeekPosition()
             val mediaItems = withContext(Dispatchers.Default) {
                 audios.map { audio ->
                     val uri = audio.uri.toPlaybackUri()
@@ -423,17 +389,24 @@ object MediaPlaybackManager {
                                     .setTitle(audio.title)
                                     .build())
                         .build()
+
                 }
             }
 
-            _playerQueueUpdateFlow.emit(
-                    PlayerQueueUpdate(
-                            mediaItems = mediaItems,
-                            position = clampedPosition,
-                            seekPositionMs = seekPos,
-                            playWhenReady = false
-                    )
-            )
+            /**
+             * replaceMediaItems swaps every item in the queue without resetting the decoder,
+             * so there is no playback gap or app-level stutter. After the swap we seek to the
+             * correct position so ExoPlayer knows which track is active.
+             */
+            val controller = mediaController ?: return@launch
+            val oldCount = controller.mediaItemCount
+            if (oldCount > 0) {
+                controller.replaceMediaItems(0, oldCount, mediaItems)
+            } else {
+                controller.setMediaItems(mediaItems, clampedPosition, getSeekPosition())
+                controller.prepare()
+            }
+            controller.seekTo(clampedPosition, getSeekPosition())
         }
     }
 
@@ -795,19 +768,29 @@ object MediaPlaybackManager {
             pendingSeekPositions.add(newPosition)
 
             /**
-             * Emit directly to the in-process flow so the service applies the swap on the
-             * ExoPlayer instance without any IPC round-trip. This is the core of why shuffle
-             * toggling is now instant — no Binder serialization of potentially hundreds of
-             * MediaItems, no decoder pipeline stall.
+             * replaceMediaItems is the key here — it swaps out every item in the ExoPlayer
+             * queue without triggering a full pipeline reset, so the currently playing song
+             * keeps streaming without any audible gap, decoder stall, or UI flicker.
+             * We then seek to wherever the current song landed in the new order and restore
+             * the exact playback position the user was at before toggling shuffle.
              */
-            _playerQueueUpdateFlow.emit(
-                    PlayerQueueUpdate(
-                            mediaItems = mediaItems,
-                            position = newPosition,
-                            seekPositionMs = seekPosition,
-                            playWhenReady = isPlaying()
-                    )
-            )
+            val controller = mediaController
+            if (controller != null) {
+                val oldCount = controller.mediaItemCount
+                if (oldCount > 0) {
+                    controller.replaceMediaItems(0, oldCount, mediaItems)
+                    Log.d(TAG, "replaceMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: oldCount=$oldCount, newCount=${mediaItems.size}")
+                } else {
+                    controller.setMediaItems(mediaItems, newPosition, seekPosition)
+                    controller.prepare()
+                    Log.d(TAG, "setMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: newCount=${mediaItems.size}, starting at position $newPosition")
+                }
+                controller.seekTo(newPosition, seekPosition)
+            }
+
+            if (isPlaying()) {
+                mediaController?.play()
+            }
 
             _songListFlow.emit(songs)
             _shuffleStateFlow.emit(enabled)
@@ -833,7 +816,6 @@ object MediaPlaybackManager {
             _songPositionFlow.emit(0)
             _songSeekPositionFlow.emit(0L)
         }
-
         stopSeekPositionUpdates()
     }
 
