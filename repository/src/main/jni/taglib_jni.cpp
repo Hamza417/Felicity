@@ -153,6 +153,15 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
     if (!numTracks) numTracks = getProperty(env, props, "TOTALTRACKS");
     jstring compilation = getProperty(env, props, "COMPILATION");
 
+    // ReplayGain fields — present in well-mastered libraries but optional.
+    // REPLAYGAIN_TRACK_GAIN stores a value like "+5.32 dB"; PEAK stores "0.987654".
+    // We pull all four standard keys (track gain, track peak, album gain, album peak)
+    // and store them as raw strings so the app can parse and display them freely.
+    jstring rgTrackGain = getProperty(env, props, "REPLAYGAIN_TRACK_GAIN");
+    jstring rgTrackPeak = getProperty(env, props, "REPLAYGAIN_TRACK_PEAK");
+    jstring rgAlbumGain = getProperty(env, props, "REPLAYGAIN_ALBUM_GAIN");
+    jstring rgAlbumPeak = getProperty(env, props, "REPLAYGAIN_ALBUM_PEAK");
+
     // AudioProperties gives us the technical stuff — duration in milliseconds,
     // bitrate in kbps, sample rate in Hz, and bit depth.
     jlong duration = ap ? static_cast<jlong>(ap->lengthInMilliseconds()) : 0L;
@@ -196,7 +205,8 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
     }
 
     // The constructor signature must match the order and types in TagLibMetadata.kt
-    // exactly: 13 nullable Strings followed by 4 Longs.
+    // exactly: 13 nullable Strings followed by 4 Longs, then 4 more nullable Strings
+    // for the ReplayGain fields.
     jmethodID ctor = env->GetMethodID(metaClass, "<init>",
                                       "("
                                       "Ljava/lang/String;"   // title
@@ -213,6 +223,10 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
                                       "Ljava/lang/String;"   // numTracks
                                       "Ljava/lang/String;"   // compilation
                                       "JJJJ"                 // duration, bitrate, sampleRate, bitsPerSample
+                                      "Ljava/lang/String;"   // replayGainTrackGain
+                                      "Ljava/lang/String;"   // replayGainTrackPeak
+                                      "Ljava/lang/String;"   // replayGainAlbumGain
+                                      "Ljava/lang/String;"   // replayGainAlbumPeak
                                       ")V");
 
     if (!ctor) {
@@ -224,7 +238,8 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
             metaClass, ctor,
             title, artist, album, genre, year, comment,
             albumArtist, composer, lyricist, discNumber, trackNumber, numTracks, compilation,
-            duration, bitrate, sampleRate, bitsPerSample);
+            duration, bitrate, sampleRate, bitsPerSample,
+            rgTrackGain, rgTrackPeak, rgAlbumGain, rgAlbumPeak);
 }
 
 /**

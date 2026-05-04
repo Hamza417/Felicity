@@ -171,6 +171,19 @@ class AudioProcessorManager {
     }
 
     /**
+     * Applies the gain parsed from the current track's embedded ReplayGain tag to
+     * [nativeDspProcessor]. This is independent of the manual [applyReplayGain] knob —
+     * both are multiplied together so they coexist without one cancelling the other.
+     *
+     * Call with 0.0 dB to reset to unity (when auto-RG is disabled or the track has no tag).
+     *
+     * @param db Gain in dB parsed from REPLAYGAIN_TRACK_GAIN or REPLAYGAIN_ALBUM_GAIN.
+     */
+    fun applyTagReplayGain(db: Float) {
+        nativeDspProcessor.setTagReplayGainDb(db)
+    }
+
+    /**
      * Forwards the current hardware output latency to [nativeDspProcessor] AND
      * [visualizerProcessor] so the FFT visualizer input is pre-delayed by exactly this
      * duration in both processing paths.

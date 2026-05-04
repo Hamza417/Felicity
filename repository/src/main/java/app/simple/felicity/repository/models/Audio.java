@@ -140,6 +140,38 @@ public class Audio implements Parcelable {
     @Nullable
     private String path;
     
+    /**
+     * Per-track ReplayGain loudness offset as a raw tag string, e.g. "+5.32 dB".
+     * Null when the file has no REPLAYGAIN_TRACK_GAIN tag embedded.
+     */
+    @ColumnInfo (name = "replay_gain_track_gain")
+    @Nullable
+    private String replayGainTrackGain;
+    
+    /**
+     * Per-track ReplayGain peak sample value, e.g. "0.987654".
+     * Null when the file has no REPLAYGAIN_TRACK_PEAK tag embedded.
+     */
+    @ColumnInfo (name = "replay_gain_track_peak")
+    @Nullable
+    private String replayGainTrackPeak;
+    
+    /**
+     * Album-level ReplayGain loudness offset, e.g. "+3.22 dB".
+     * Null when the file has no REPLAYGAIN_ALBUM_GAIN tag embedded.
+     */
+    @ColumnInfo (name = "replay_gain_album_gain")
+    @Nullable
+    private String replayGainAlbumGain;
+    
+    /**
+     * Album-level ReplayGain peak sample value, e.g. "0.995432".
+     * Null when the file has no REPLAYGAIN_ALBUM_PEAK tag embedded.
+     */
+    @ColumnInfo (name = "replay_gain_album_peak")
+    @Nullable
+    private String replayGainAlbumPeak;
+    
     public Audio() {
     }
     
@@ -171,6 +203,10 @@ public class Audio implements Parcelable {
         isFavorite = in.readByte() != 0;
         alwaysSkip = in.readByte() != 0;
         path = in.readString();
+        replayGainTrackGain = in.readString();
+        replayGainTrackPeak = in.readString();
+        replayGainAlbumGain = in.readString();
+        replayGainAlbumPeak = in.readString();
     }
     
     @Override
@@ -202,6 +238,10 @@ public class Audio implements Parcelable {
         dest.writeByte((byte) (isFavorite ? 1 : 0));
         dest.writeByte((byte) (alwaysSkip ? 1 : 0));
         dest.writeString(path);
+        dest.writeString(replayGainTrackGain);
+        dest.writeString(replayGainTrackPeak);
+        dest.writeString(replayGainAlbumGain);
+        dest.writeString(replayGainAlbumPeak);
     }
     
     @Override
@@ -506,6 +546,42 @@ public class Audio implements Parcelable {
         this.path = path;
     }
     
+    @Nullable
+    public String getReplayGainTrackGain() {
+        return replayGainTrackGain;
+    }
+    
+    public void setReplayGainTrackGain(@Nullable String replayGainTrackGain) {
+        this.replayGainTrackGain = replayGainTrackGain;
+    }
+    
+    @Nullable
+    public String getReplayGainTrackPeak() {
+        return replayGainTrackPeak;
+    }
+    
+    public void setReplayGainTrackPeak(@Nullable String replayGainTrackPeak) {
+        this.replayGainTrackPeak = replayGainTrackPeak;
+    }
+    
+    @Nullable
+    public String getReplayGainAlbumGain() {
+        return replayGainAlbumGain;
+    }
+    
+    public void setReplayGainAlbumGain(@Nullable String replayGainAlbumGain) {
+        this.replayGainAlbumGain = replayGainAlbumGain;
+    }
+    
+    @Nullable
+    public String getReplayGainAlbumPeak() {
+        return replayGainAlbumPeak;
+    }
+    
+    public void setReplayGainAlbumPeak(@Nullable String replayGainAlbumPeak) {
+        this.replayGainAlbumPeak = replayGainAlbumPeak;
+    }
+    
     @NonNull
     @Override
     public String toString() {
@@ -543,6 +619,10 @@ public class Audio implements Parcelable {
                 ", isFavorite=" + isFavorite +
                 ", alwaysSkip=" + alwaysSkip +
                 ", path='" + path + '\'' +
+                ", replayGainTrackGain='" + replayGainTrackGain + '\'' +
+                ", replayGainTrackPeak='" + replayGainTrackPeak + '\'' +
+                ", replayGainAlbumGain='" + replayGainAlbumGain + '\'' +
+                ", replayGainAlbumPeak='" + replayGainAlbumPeak + '\'' +
                 '}';
     }
     
@@ -726,6 +806,10 @@ public class Audio implements Parcelable {
         audio.setFavorite(isFavorite());
         audio.setAlwaysSkip(isAlwaysSkip());
         audio.setPath(getPath());
+        audio.setReplayGainTrackGain(getReplayGainTrackGain());
+        audio.setReplayGainTrackPeak(getReplayGainTrackPeak());
+        audio.setReplayGainAlbumGain(getReplayGainAlbumGain());
+        audio.setReplayGainAlbumPeak(getReplayGainAlbumPeak());
         return audio;
     }
     

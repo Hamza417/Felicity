@@ -63,6 +63,7 @@ import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
+import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.SongStatRepository
 import com.google.common.collect.ImmutableList
@@ -160,7 +161,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      * Populated asynchronously on first launch; empty list is the safe default while
      * the first DB emission is still on its way.
      */
-    private var cachedSongList: List<app.simple.felicity.repository.models.Audio> = emptyList()
+    private var cachedSongList: List<Audio> = emptyList()
 
     /**
      * Tracks whether we are currently in a silent FFmpeg fallback retry for a failed track.
@@ -753,6 +754,32 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         audioProcessorManager.applyNightMode(enabled)
     }
 
+    /**
+     * Parses an embedded ReplayGain gain string (e.g. "+5.32 dB" or "-2.1dB") into a float
+     * in dB. Returns 0.0 if the string is null, empty, or cannot be parsed.
+     *
+     * The function strips the trailing " dB" / "dB" suffix (case-insensitive) and any
+     * leading/trailing whitespace before parsing the number, so it handles all common
+     * tag formats from EAC, foobar2000, MusicBrainz Picard, and mp3gain.
+     */
+    private fun parseReplayGainDb(audio: Audio, mode: String): Float {
+        val raw = if (mode == EqualizerPreferences.REPLAY_GAIN_MODE_ALBUM) {
+            audio.replayGainAlbumGain ?: audio.replayGainTrackGain
+        } else {
+            audio.replayGainTrackGain ?: audio.replayGainAlbumGain
+        } ?: return 0f
+
+        return try {
+            raw.trim()
+                .replace(Regex("(?i)\\s*dB$"), "")
+                .trim()
+                .toFloat()
+        } catch (_: NumberFormatException) {
+            Log.w(TAG, "Could not parse ReplayGain string: '$raw'")
+            0f
+        }
+    }
+
     /** Applies a new pan value immediately to the processor and persists it. */
     fun setBalance(pan: Float) {
         EqualizerPreferences.setBalance(pan)
@@ -995,6 +1022,29 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             savePlaybackStateToDatabase() // Save when track changes
             buildAndPushSnapshot()
             broadcastWidgetUpdate()
+
+            // Apply tag-based ReplayGain for the incoming track when auto-RG is on.
+            // We look up the Audio object from the database on the IO thread, parse the
+            // gain string (e.g. "+5.32 dB"), and forward the dB value to the processor.
+            // When auto-RG is off, or the track has no tag, we reset to unity (0 dB) so
+            // the previous track's gain never bleeds into the next one.
+            mediaItem?.let { item ->
+                val audioId = item.mediaId.toLongOrNull()
+                if (audioId != null) {
+                    serviceScope.launch(Dispatchers.IO) {
+                        val audio = audioRepository.getAudioById(audioId)
+                        val db = if (EqualizerPreferences.isAutoReplayGainEnabled() && audio != null) {
+                            parseReplayGainDb(audio, EqualizerPreferences.getReplayGainMode())
+                        } else {
+                            0f
+                        }
+                        audioProcessorManager.applyTagReplayGain(db)
+                        if (db != 0f) {
+                            Log.d(TAG, "Auto-RG applied: ${db}dB for track: ${audio?.title}")
+                        }
+                    }
+                }
+            }
 
             // Refresh the notification custom layout so the favorite button reflects
             // the new song's favorite state straight away, without any extra user interaction.

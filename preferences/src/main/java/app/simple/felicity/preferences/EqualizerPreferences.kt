@@ -3,6 +3,9 @@
 import androidx.core.content.edit
 import app.simple.felicity.manager.SharedPreferences
 import app.simple.felicity.preferences.EqualizerPreferences.EQ_BAND_KEY_PREFIX
+import app.simple.felicity.preferences.EqualizerPreferences.REPLAY_GAIN_MODE
+import app.simple.felicity.preferences.EqualizerPreferences.REPLAY_GAIN_MODE_ALBUM
+import app.simple.felicity.preferences.EqualizerPreferences.REPLAY_GAIN_MODE_TRACK
 import app.simple.felicity.preferences.EqualizerPreferences.REVERB_DECAY
 
 /**
@@ -128,6 +131,23 @@ object EqualizerPreferences {
      * very loud recordings. Applied as a simple linear multiply before the DSP chain.
      */
     const val REPLAY_GAIN_DB = "eq_replay_gain_db"
+
+    /**
+     * Boolean flag that enables automatic ReplayGain from file tags.
+     * When true, the gain embedded in REPLAYGAIN_TRACK_GAIN or REPLAYGAIN_ALBUM_GAIN
+     * (depending on [REPLAY_GAIN_MODE]) is applied automatically on each track change.
+     * Default false — the manual knob alone is used when this is off.
+     */
+    const val AUTO_REPLAY_GAIN_ENABLED = "eq_auto_replay_gain_enabled"
+
+    /**
+     * Which embedded tag to use for automatic ReplayGain.
+     * [REPLAY_GAIN_MODE_TRACK] uses REPLAYGAIN_TRACK_GAIN (default, safest choice).
+     * [REPLAY_GAIN_MODE_ALBUM] uses REPLAYGAIN_ALBUM_GAIN for album-consistent playback.
+     */
+    const val REPLAY_GAIN_MODE = "eq_replay_gain_mode"
+    const val REPLAY_GAIN_MODE_TRACK = "track"
+    const val REPLAY_GAIN_MODE_ALBUM = "album"
 
     fun setBalance(pan: Float) {
         SharedPreferences.getSharedPreferences().edit { putFloat(BALANCE, pan.coerceIn(-1f, 1f)) }
@@ -423,5 +443,22 @@ object EqualizerPreferences {
      */
     fun getReplayGainDb(): Float {
         return SharedPreferences.getSharedPreferences().getFloat(REPLAY_GAIN_DB, 0f)
+    }
+
+    fun setAutoReplayGainEnabled(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(AUTO_REPLAY_GAIN_ENABLED, enabled) }
+    }
+
+    fun isAutoReplayGainEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(AUTO_REPLAY_GAIN_ENABLED, false)
+    }
+
+    fun setReplayGainMode(mode: String) {
+        SharedPreferences.getSharedPreferences().edit { putString(REPLAY_GAIN_MODE, mode) }
+    }
+
+    fun getReplayGainMode(): String {
+        return SharedPreferences.getSharedPreferences().getString(REPLAY_GAIN_MODE, REPLAY_GAIN_MODE_TRACK)
+            ?: REPLAY_GAIN_MODE_TRACK
     }
 }
