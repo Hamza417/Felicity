@@ -222,103 +222,103 @@ object MediaPlaybackManager {
         pendingSeekPositions.clear()
 
         // Always remember the canonical order so we can restore it when shuffle is turned off.
+        // This is a simple reference copy — no work done on the main thread yet.
         originalQueue = audios
 
-        // When shuffle is already active we immediately build a fresh shuffled list so the
-        // new queue respects the user's preference from the very first song.
-        val activeQueue = if (ShufflePreferences.isShuffleEnabled() && audios.isNotEmpty()) {
-            val startSong = audios.getOrNull(position)
-            val rest = audios.toMutableList().also { if (startSong != null) it.remove(startSong) }.shuffled()
-            val shuffled = if (startSong != null) listOf(startSong) + rest else rest
-            shuffledQueue = shuffled
-            shuffled
-        } else {
-            shuffledQueue = emptyList()
-            audios
-        }
-
-        this.songs = activeQueue
-
-        // The starting position inside the active queue — always 0 when shuffle placed the
-        // requested start song at the front; otherwise the clamped user-provided index.
-        val effectivePosition = if (ShufflePreferences.isShuffleEnabled() && audios.isNotEmpty()) {
-            0
-        } else {
-            if (activeQueue.isEmpty()) 0 else position.coerceIn(0, activeQueue.size - 1)
-        }
-
-        val clampedPosition = effectivePosition
-        val positionBeforeUpdate = currentSongPosition
-        currentSongPosition = clampedPosition
-
-        // Line 83 inside setSongs
-        if (activeQueue.isNotEmpty()) {
-            // Only emit explicitly when the setter's field-change guard prevented it — i.e.
-            // when position is unchanged but the queue itself is new (e.g. after a shuffle).
-            // When the position DID change, the setter already emitted; a second emit here
-            // would cause every subscriber to receive the same position value twice.
-            scope.launch {
-                if (positionBeforeUpdate == clampedPosition) {
-                    _songPositionFlow.emit(clampedPosition)
-                }
-                _songSeekPositionFlow.emit(startPositionMs)
-            }
-
-            // Mark the user-chosen start position as pending so the first onMediaItemTransition
-            // callback from setMediaItems is treated as user-initiated and always-skip is
-            // never applied to an explicitly chosen song.
-            pendingSeekPositions.add(clampedPosition)
-
-            // Move heavy mapping to background thread
-            scope.launch {
-                val mediaItems = withContext(Dispatchers.Default) {
-                    activeQueue.map { audio ->
-                        val uri = audio.uri.toPlaybackUri()
-                        MediaItem.Builder()
-                            .setMediaId(audio.id.toString())
-                            .setUri(uri)
-                            .setMediaMetadata(
-                                    MediaMetadata.Builder()
-                                        .setArtist(audio.artist)
-                                        .setTitle(audio.title)
-                                        .build())
-                            .build()
-
-                    }
-                }
-
-                // Back on Main Thread to set items
-                if (mediaController != null) {
-                    mediaController?.setMediaItems(mediaItems, currentSongPosition, startPositionMs)
-                    mediaController?.prepare()
-                    if (autoPlay) {
-                        mediaController?.play()
-                    }
-                    // Do NOT reset isQueueBeingReplaced here. setMediaItems is asynchronous —
-                    // it posts the command to the main-thread handler and returns immediately,
-                    // meaning any pending onMediaItemTransition callbacks from the OLD queue
-                    // that are already in the handler queue would be processed while the flag
-                    // is false. The flag is instead cleared inside notifyCurrentPosition once
-                    // ExoPlayer confirms a position that belongs to the new queue (i.e. it is
-                    // present in pendingSeekPositions).
-                } else {
-                    // No controller to confirm — lift the guard immediately so future
-                    // notifyCurrentPosition calls are not permanently suppressed.
-                    isQueueBeingReplaced = false
-                }
-                startSeekPositionUpdates()
-            }
-        } else {
-            // Clear controller playlist if applicable and keep UI state consistent
+        if (audios.isEmpty()) {
             isQueueBeingReplaced = false
+            songs = emptyList()
+            shuffledQueue = emptyList()
             mediaController?.clearMediaItems()
             mediaController?.stop()
             stopSeekPositionUpdates()
-            scope.launch { _songPositionFlow.emit(0) }
+            scope.launch {
+                _songPositionFlow.emit(0)
+                _songListFlow.emit(emptyList())
+            }
+            return
         }
 
+        // Launch immediately so the main thread is free. All the heavy work — shuffling
+        // the list and building MediaItem objects — happens on the Default dispatcher.
         scope.launch {
-            _songListFlow.emit(this@MediaPlaybackManager.songs)
+            data class PrepResult(
+                    val activeQueue: List<Audio>,
+                    val newShuffledQueue: List<Audio>,
+                    val clampedPosition: Int,
+                    val mediaItems: List<MediaItem>
+            )
+
+            val prep = withContext(Dispatchers.Default) {
+                val shuffleOn = ShufflePreferences.isShuffleEnabled()
+                val activeQueue: List<Audio>
+                val newShuffledQueue: List<Audio>
+
+                if (shuffleOn) {
+                    // Put the tapped song at position 0 so it plays first, then shuffle the rest.
+                    val startSong = audios.getOrNull(position)
+                    val rest = audios.toMutableList()
+                        .also { if (startSong != null) it.remove(startSong) }
+                        .shuffled()
+                    val shuffled = if (startSong != null) listOf(startSong) + rest else rest
+                    activeQueue = shuffled
+                    newShuffledQueue = shuffled
+                } else {
+                    activeQueue = audios
+                    newShuffledQueue = emptyList()
+                }
+
+                val clampedPosition = if (shuffleOn) 0 else position.coerceIn(0, activeQueue.size - 1)
+
+                val mediaItems = activeQueue.map { audio ->
+                    val uri = audio.uri.toPlaybackUri()
+                    MediaItem.Builder()
+                        .setMediaId(audio.id.toString())
+                        .setUri(uri)
+                        .setMediaMetadata(
+                                MediaMetadata.Builder()
+                                    .setArtist(audio.artist)
+                                    .setTitle(audio.title)
+                                    .build()
+                        )
+                        .build()
+                }
+
+                PrepResult(activeQueue, newShuffledQueue, clampedPosition, mediaItems)
+            }
+
+            // Back on the main thread — update all shared state and hand off to ExoPlayer.
+            shuffledQueue = prep.newShuffledQueue
+            songs = prep.activeQueue
+            currentSongPosition = prep.clampedPosition
+
+            scope.launch {
+                // Always emit the position flow so every subscriber sees the new song.
+                // The setter only emits when the index number changes, but with shuffle the
+                // index is always 0 — so the song at that position is completely different
+                // yet the setter's guard would silently swallow the event. We emit here
+                // unconditionally to cover that case, and also notify any legacy listeners.
+                _songPositionFlow.emit(prep.clampedPosition)
+                _songSeekPositionFlow.emit(startPositionMs)
+                withContext(Dispatchers.Main) {
+                    listeners.forEach { it.onAudioChange(getCurrentSong()) }
+                }
+            }
+
+            pendingSeekPositions.add(prep.clampedPosition)
+
+            if (mediaController != null) {
+                mediaController?.setMediaItems(prep.mediaItems, prep.clampedPosition, startPositionMs)
+                mediaController?.prepare()
+                if (autoPlay) {
+                    mediaController?.play()
+                }
+            } else {
+                isQueueBeingReplaced = false
+            }
+
+            startSeekPositionUpdates()
+            _songListFlow.emit(songs)
         }
     }
 
