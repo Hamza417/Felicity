@@ -1,12 +1,14 @@
 package app.simple.felicity.adapters.ui.lists
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.AsyncDifferConfig
 import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
+import app.simple.felicity.R
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.AdapterStyleGridBinding
@@ -141,9 +143,9 @@ class AdapterMostPlayed(initial: List<AudioWithStat>) : FastScrollAdapter<Vertic
      *
      * @param item the [AudioWithStat] whose tertiary text is being built
      */
-    private fun buildTertiaryText(item: AudioWithStat): String {
+    private fun Context.buildTertiaryText(item: AudioWithStat): String {
         val album = item.audio.album?.takeIf { it.isNotEmpty() }
-        val stat = "${item.playCount} times"
+        val stat = resources.getQuantityString(R.plurals.total_times, item.playCount, item.playCount)
         return if (album != null) "$album \u2022 $stat" else stat
     }
 
@@ -152,7 +154,7 @@ class AdapterMostPlayed(initial: List<AudioWithStat>) : FastScrollAdapter<Vertic
             val audio = item.audio
             binding.title.setTextOrUnknown(audio.title)
             binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
-            binding.tertiaryDetail.text = buildTertiaryText(item)
+            binding.tertiaryDetail.text = context.buildTertiaryText(item)
             binding.title.addAudioQualityIcon(audio)
             binding.container.setAudioID(audio.id)
             if (isLightBind) return
@@ -172,7 +174,7 @@ class AdapterMostPlayed(initial: List<AudioWithStat>) : FastScrollAdapter<Vertic
             val audio = item.audio
             binding.title.setTextOrUnknown(audio.title)
             binding.secondaryDetail.setTextOrUnknown(audio.artist)
-            binding.tertiaryDetail.text = buildTertiaryText(item)
+            binding.tertiaryDetail.text = context.buildTertiaryText(item)
             binding.container.setAudioID(audio.id)
             if (isLightBind) return
             binding.albumArt.loadArtCoverWithPayload(audio)
@@ -191,7 +193,7 @@ class AdapterMostPlayed(initial: List<AudioWithStat>) : FastScrollAdapter<Vertic
             val audio = item.audio
             binding.title.setTextOrUnknown(audio.title)
             binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
-            binding.tertiaryDetail.text = buildTertiaryText(item)
+            binding.tertiaryDetail.text = context.buildTertiaryText(item)
             binding.title.addAudioQualityIcon(audio)
             binding.container.setAudioID(audio.id)
             if (isLightBind) return
