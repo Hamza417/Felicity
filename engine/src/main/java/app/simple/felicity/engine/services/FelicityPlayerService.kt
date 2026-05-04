@@ -61,6 +61,7 @@ import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.ShufflePreferences
+import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.SongStatRepository
@@ -519,8 +520,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             }
         }
         MediaPlaybackManager.notifyRepeatMode(repeatMode)
-        // Push the updated repeat button to the media notification
-        mediaSession?.setCustomLayout(listOf(buildRepeatCommandButton(repeatMode)))
+        // Push the updated repeat button to the media notification alongside the favorite button
+        val isFavorite = MediaPlaybackManager.getCurrentSong()?.isFavorite ?: false
+        mediaSession?.setCustomLayout(listOf(buildRepeatCommandButton(repeatMode), buildFavoriteCommandButton(isFavorite)))
         Log.d(TAG, "Repeat mode applied: $repeatMode")
     }
 
@@ -538,6 +540,30 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             .setDisplayName(displayName)
             .setIconResId(iconRes)
             .setSessionCommand(SessionCommand(COMMAND_TOGGLE_REPEAT, Bundle.EMPTY))
+            .build()
+    }
+
+    /**
+     * Builds a CommandButton for the notification that lets the user toggle the current song
+     * as a favorite. The icon respects the user's preference for a heart vs. thumbs-up style.
+     *
+     * @param isFavorite Whether the current song is already marked as a favorite.
+     */
+    @Suppress("DEPRECATION")
+    private fun buildFavoriteCommandButton(isFavorite: Boolean): CommandButton {
+        val useLikeIcon = UserInterfacePreferences.isLikeIconInsteadOfThumb()
+        val (iconRes, displayName) = if (isFavorite) {
+            if (useLikeIcon) Pair(R.drawable.ic_thumb_up, "Remove from Favorites")
+            else Pair(R.drawable.ic_favorite_filled, "Remove from Favorites")
+        } else {
+            if (useLikeIcon) Pair(R.drawable.ic_thumb_up_off, "Add to Favorites")
+            else Pair(R.drawable.ic_favorite_border, "Add to Favorites")
+        }
+
+        return CommandButton.Builder(CommandButton.ICON_UNDEFINED)
+            .setDisplayName(displayName)
+            .setIconResId(iconRes)
+            .setSessionCommand(SessionCommand(COMMAND_TOGGLE_FAVORITE, Bundle.EMPTY))
             .build()
     }
 
@@ -969,6 +995,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             savePlaybackStateToDatabase() // Save when track changes
             buildAndPushSnapshot()
             broadcastWidgetUpdate()
+
+            // Refresh the notification custom layout so the favorite button reflects
+            // the new song's favorite state straight away, without any extra user interaction.
+            val isFavorite = MediaPlaybackManager.getCurrentSong()?.isFavorite ?: false
+            val repeatMode = PlayerPreferences.getRepeatMode()
+            mediaSession?.setCustomLayout(listOf(buildRepeatCommandButton(repeatMode), buildFavoriteCommandButton(isFavorite)))
         }
 
         override fun onPositionDiscontinuity(
@@ -1612,9 +1644,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     private inner class LibraryCallback : MediaLibrarySession.Callback {
 
         private val toggleRepeatCommand = SessionCommand(COMMAND_TOGGLE_REPEAT, Bundle.EMPTY)
+        private val toggleFavoriteCommand = SessionCommand(COMMAND_TOGGLE_FAVORITE, Bundle.EMPTY)
 
         /**
-         * Advertise the custom repeat command so the system notification controller can use it.
+         * Advertise the custom repeat and favorite commands so the system notification controller can use them.
          */
         override fun onConnect(
                 session: MediaSession,
@@ -1623,6 +1656,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                 .buildUpon()
                 .add(toggleRepeatCommand)
+                .add(toggleFavoriteCommand)
                 .build()
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(sessionCommands)
@@ -1630,7 +1664,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
 
         /**
-         * Handle the repeat toggle command sent from the notification button.
+         * Handle the repeat toggle and favorite toggle commands sent from the notification buttons.
          */
         override fun onCustomCommand(
                 session: MediaSession,
@@ -1649,6 +1683,32 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 applyRepeatMode(next)
                 return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
             }
+
+            if (customCommand.customAction == COMMAND_TOGGLE_FAVORITE) {
+                val currentSong = MediaPlaybackManager.getCurrentSong()
+                if (currentSong != null) {
+                    val newFavoriteState = !currentSong.isFavorite
+                    serviceScope.launch(Dispatchers.IO) {
+                        audioRepository.setFavorite(currentSong.id, newFavoriteState)
+                        // Update the in-memory Audio object so the button reflects the new state
+                        // without waiting for the next database read to come through.
+                        currentSong.isFavorite = newFavoriteState
+                        val repeatMode = PlayerPreferences.getRepeatMode()
+                        serviceScope.launch(Dispatchers.Main) {
+                            // Notify the active player fragment so its favorite button updates too.
+                            MediaPlaybackManager.notifyCurrentSongUpdated()
+                            mediaSession?.setCustomLayout(
+                                    listOf(
+                                            buildRepeatCommandButton(repeatMode),
+                                            buildFavoriteCommandButton(newFavoriteState)
+                                    )
+                            )
+                        }
+                    }
+                }
+                return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            }
+
             return super.onCustomCommand(session, controller, customCommand, args)
         }
 
@@ -1837,5 +1897,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
         /** Custom session command sent when the user taps the repeat button in the notification. */
         const val COMMAND_TOGGLE_REPEAT = "app.simple.felicity.TOGGLE_REPEAT"
+
+        /** Custom session command sent when the user taps the favorite button in the notification. */
+        const val COMMAND_TOGGLE_FAVORITE = "app.simple.felicity.TOGGLE_FAVORITE"
     }
 }
