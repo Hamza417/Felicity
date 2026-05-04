@@ -27,7 +27,6 @@ import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.ConfigurationPreferences
 import app.simple.felicity.preferences.LibraryPreferences
-import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.ui.preferences.sub.AccentColors
@@ -772,47 +771,6 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
-        val shuffleHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.shuffle)
-
-        val currentShuffle = Preference(
-                title = R.string.shuffle,
-                summary = R.string.shuffle_algorithm_summary,
-                icon = R.drawable.ic_shuffle,
-                type = PreferenceType.POPUP,
-                valueProvider = {
-                    when (ShufflePreferences.getShuffleAlgorithm()) {
-                        ShufflePreferences.ALGORITHM_FISHER_YATES -> getString(R.string.fisher_yates)
-                        ShufflePreferences.ALGORITHM_MILLER -> getString(R.string.miller)
-                        else -> getString(R.string.fisher_yates)
-                    }
-                },
-                onPreferenceAction = { view, callback ->
-                    SharedScrollViewPopup(
-                            container = requireContainerView(),
-                            anchorView = view,
-                            menuItems = listOf(
-                                    PopupMenuItem(title = R.string.fisher_yates),
-                                    PopupMenuItem(title = R.string.miller)
-                            ),
-                            onMenuItemClick = {
-                                when (it) {
-                                    R.string.fisher_yates -> {
-                                        ShufflePreferences.setShuffleAlgorithm(ShufflePreferences.ALGORITHM_FISHER_YATES)
-                                        (view as TextView).text = getString(R.string.fisher_yates)
-                                    }
-                                    R.string.miller -> {
-                                        ShufflePreferences.setShuffleAlgorithm(ShufflePreferences.ALGORITHM_MILLER)
-                                        (view as TextView).text = getString(R.string.miller)
-                                    }
-                                }
-                            },
-                            onDismiss = {
-
-                            }
-                    ).show()
-                }
-        )
-
         val metadataHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.metadata)
 
         val albumArtistsInsteadOfArtists = Preference(
@@ -944,8 +902,6 @@ abstract class PreferenceFragment : MediaFragment() {
 
         preferences.add(folders)
         preferences.add(refreshLibrary)
-        preferences.add(shuffleHeader)
-        preferences.add(currentShuffle)
         preferences.add(metadataHeader)
         preferences.add(albumArtistsInsteadOfArtists)
         preferences.add(albumArtHeader)
