@@ -187,6 +187,7 @@
     <string name="skipped">Skipped</string>
     <string name="replayed">Replayed</string>
     <string name="last_played">Last Played</string>
+    <string name="last_played_relative">Last Played (Relative)</string>
     <string name="clear_stats">Clear Stats</string>
     <string name="never_played">Never played</string>
 

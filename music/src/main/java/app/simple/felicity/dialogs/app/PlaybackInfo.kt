@@ -14,6 +14,8 @@ import app.simple.felicity.databinding.DialogPlaybackInfoBinding
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.shared.utils.LocaleUtils
+import app.simple.felicity.shared.utils.TimeUtils
 import app.simple.felicity.utils.DateUtils.toDate
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.dialogs.PlaybackInfoViewModel
@@ -87,12 +89,15 @@ class PlaybackInfo : ScopedBottomSheetFragment() {
                         } else {
                             getString(R.string.never_played)
                         }
+                        binding.lastPlayedRelative.text = TimeUtils.getLocalizedRelativeTime(
+                                stat.lastPlayed, LocaleUtils.getAppLocale())
                     } else {
                         // If there are no stats yet (or they were just cleared), show zeroes
                         binding.playCount.text = 0.toString()
                         binding.skipCount.text = 0.toString()
                         binding.replayCount.text = 0.toString()
                         binding.lastPlayed.text = getString(R.string.never_played)
+                        binding.lastPlayedRelative.text = "—"
                     }
                 }
             }

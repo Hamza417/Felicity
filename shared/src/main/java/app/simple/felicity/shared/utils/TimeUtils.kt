@@ -1,8 +1,10 @@
 package app.simple.felicity.shared.utils
 
+import android.icu.text.RelativeDateTimeFormatter
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 object TimeUtils {
@@ -24,6 +26,25 @@ object TimeUtils {
         parts.add(seconds.toString().padStart(2, '0'))
 
         return parts.joinToString(":")
+    }
+
+    fun getLocalizedRelativeTime(timeInMillis: Long, targetLocale: Locale): String {
+        val now = System.currentTimeMillis()
+        val diffMillis = now - timeInMillis
+
+        val formatter = RelativeDateTimeFormatter.getInstance(targetLocale)
+
+        val diffSeconds = diffMillis / 1000
+        val diffMinutes = diffSeconds / 60
+        val diffHours = diffMinutes / 60
+        val diffDays = diffHours / 24
+
+        return when {
+            diffDays > 0 -> formatter.format(diffDays.toDouble(), RelativeDateTimeFormatter.Direction.LAST, RelativeDateTimeFormatter.RelativeUnit.DAYS)
+            diffHours > 0 -> formatter.format(diffHours.toDouble(), RelativeDateTimeFormatter.Direction.LAST, RelativeDateTimeFormatter.RelativeUnit.HOURS)
+            diffMinutes > 0 -> formatter.format(diffMinutes.toDouble(), RelativeDateTimeFormatter.Direction.LAST, RelativeDateTimeFormatter.RelativeUnit.MINUTES)
+            else -> formatter.format(diffSeconds.toDouble(), RelativeDateTimeFormatter.Direction.LAST, RelativeDateTimeFormatter.RelativeUnit.SECONDS)
+        }
     }
 
     fun Long.toHighlightedTimeString(color: Int): SpannableString {

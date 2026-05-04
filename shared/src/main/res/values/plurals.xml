@@ -19,9 +19,4 @@
         <item quantity="one">%d Time</item>
         <item quantity="other">%d Times</item>
     </plurals>
-
-    <plurals name="grace_launches_remaining">
-        <item quantity="one">You have %d buffer launch remaining before the app closes.</item>
-        <item quantity="other">You have %d buffer launches remaining before the app closes.</item>
-    </plurals>
 </resources>
