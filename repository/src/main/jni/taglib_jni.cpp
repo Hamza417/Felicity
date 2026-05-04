@@ -42,12 +42,24 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
+// Cached references so we don't pay the FindClass/GetMethodID cost on every file load.
+// These are filled in once inside JNI_OnLoad and stay valid for the lifetime of the process.
+static jclass g_metaClass = nullptr;
+static jmethodID g_metaCtor = nullptr;
+
 // Converts a TagLib string to a Java/Kotlin String, returning nullptr for
 // empty strings so Kotlin sees them as null (cleaner than empty strings).
 static jstring toJString(JNIEnv *env, const TagLib::String &str) {
     if (str.isEmpty()) return nullptr;
     std::string utf8 = str.to8Bit(true /* utf8 */);
-    return env->NewStringUTF(utf8.c_str());
+    jstring result = env->NewStringUTF(utf8.c_str());
+    // NewStringUTF can fail when the JVM heap is exhausted — it sets a pending
+    // exception and returns null. We clear that so execution can continue safely.
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return nullptr;
+    }
+    return result;
 }
 
 // Looks up the first value for a given property-map key, returning nullptr
@@ -64,6 +76,11 @@ static jstring getProperty(JNIEnv *env, const TagLib::PropertyMap &props, const 
 static TagLib::String fromJString(JNIEnv *env, jstring js) {
     if (!js) return {};
     const char *chars = env->GetStringUTFChars(js, nullptr);
+    // GetStringUTFChars returns null when the JVM can't allocate the buffer.
+    if (!chars) {
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        return {};
+    }
     TagLib::String s(chars, TagLib::String::UTF8);
     env->ReleaseStringUTFChars(js, chars);
     return s;
@@ -86,6 +103,59 @@ static void applyProperty(JNIEnv *env, TagLib::PropertyMap &props,
 }
 
 extern "C" {
+
+/**
+ * Called once by the Android runtime when the native library is first loaded.
+ * We use this opportunity to look up the TagLibMetadata class and its
+ * constructor just once, then hold onto them for the rest of the session.
+ * Looking these up per-call would be a significant CPU bottleneck when
+ * scanning a large music library.
+ */
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void * /*reserved*/) {
+    JNIEnv *env = nullptr;
+    if (vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6) != JNI_OK) {
+        return JNI_ERR;
+    }
+
+    jclass localClass = env->FindClass("app/simple/felicity/repository/metadata/TagLibMetadata");
+    if (!localClass) {
+        LOGE("JNI_OnLoad: Cannot find TagLibMetadata class");
+        return JNI_ERR;
+    }
+
+    // Promote to a global ref so it survives beyond this stack frame.
+    g_metaClass = reinterpret_cast<jclass>(env->NewGlobalRef(localClass));
+    env->DeleteLocalRef(localClass);
+
+    g_metaCtor = env->GetMethodID(g_metaClass, "<init>",
+                                  "("
+                                  "Ljava/lang/String;"   // title
+                                  "Ljava/lang/String;"   // artist
+                                  "Ljava/lang/String;"   // album
+                                  "Ljava/lang/String;"   // genre
+                                  "Ljava/lang/String;"   // year
+                                  "Ljava/lang/String;"   // comment
+                                  "Ljava/lang/String;"   // albumArtist
+                                  "Ljava/lang/String;"   // composer
+                                  "Ljava/lang/String;"   // lyricist
+                                  "Ljava/lang/String;"   // discNumber
+                                  "Ljava/lang/String;"   // trackNumber
+                                  "Ljava/lang/String;"   // numTracks
+                                  "Ljava/lang/String;"   // compilation
+                                  "JJJJ"                 // duration, bitrate, sampleRate, bitsPerSample
+                                  "Ljava/lang/String;"   // replayGainTrackGain
+                                  "Ljava/lang/String;"   // replayGainTrackPeak
+                                  "Ljava/lang/String;"   // replayGainAlbumGain
+                                  "Ljava/lang/String;"   // replayGainAlbumPeak
+                                  ")V");
+
+    if (!g_metaCtor) {
+        LOGE("JNI_OnLoad: Cannot find TagLibMetadata constructor — signature mismatch");
+        return JNI_ERR;
+    }
+
+    return JNI_VERSION_1_6;
+}
 
 /**
  * Opens the audio file by its raw file descriptor and extracts every tag
@@ -139,6 +209,10 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
     if (tag && tag->year() > 0) {
         std::string yearStr = std::to_string(tag->year());
         year = env->NewStringUTF(yearStr.c_str());
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            year = nullptr;
+        }
     }
 
     // Richer fields come from the property map which covers ID3v2, Vorbis
@@ -196,46 +270,16 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
         }
     }
 
-    // Find the TagLibMetadata Kotlin data class and call its constructor.
-    jclass metaClass = env->FindClass(
-            "app/simple/felicity/repository/metadata/TagLibMetadata");
-    if (!metaClass) {
-        LOGE("Cannot find TagLibMetadata class — check the package name");
-        return nullptr;
-    }
-
-    // The constructor signature must match the order and types in TagLibMetadata.kt
-    // exactly: 13 nullable Strings followed by 4 Longs, then 4 more nullable Strings
-    // for the ReplayGain fields.
-    jmethodID ctor = env->GetMethodID(metaClass, "<init>",
-                                      "("
-                                      "Ljava/lang/String;"   // title
-                                      "Ljava/lang/String;"   // artist
-                                      "Ljava/lang/String;"   // album
-                                      "Ljava/lang/String;"   // genre
-                                      "Ljava/lang/String;"   // year
-                                      "Ljava/lang/String;"   // comment
-                                      "Ljava/lang/String;"   // albumArtist
-                                      "Ljava/lang/String;"   // composer
-                                      "Ljava/lang/String;"   // lyricist
-                                      "Ljava/lang/String;"   // discNumber
-                                      "Ljava/lang/String;"   // trackNumber
-                                      "Ljava/lang/String;"   // numTracks
-                                      "Ljava/lang/String;"   // compilation
-                                      "JJJJ"                 // duration, bitrate, sampleRate, bitsPerSample
-                                      "Ljava/lang/String;"   // replayGainTrackGain
-                                      "Ljava/lang/String;"   // replayGainTrackPeak
-                                      "Ljava/lang/String;"   // replayGainAlbumGain
-                                      "Ljava/lang/String;"   // replayGainAlbumPeak
-                                      ")V");
-
-    if (!ctor) {
-        LOGE("Cannot find TagLibMetadata constructor — signature mismatch");
+    // Use the globally cached class and constructor instead of doing a fresh
+    // lookup on every single file — saves a noticeable amount of time when
+    // scanning hundreds or thousands of tracks at startup.
+    if (!g_metaClass || !g_metaCtor) {
+        LOGE("Global TagLibMetadata refs are not initialized — was JNI_OnLoad called?");
         return nullptr;
     }
 
     return env->NewObject(
-            metaClass, ctor,
+            g_metaClass, g_metaCtor,
             title, artist, album, genre, year, comment,
             albumArtist, composer, lyricist, discNumber, trackNumber, numTracks, compilation,
             duration, bitrate, sampleRate, bitsPerSample,
@@ -271,7 +315,7 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeSaveToFd(
         return JNI_FALSE;
     }
 
-    // true = TagLib closes the dup'd fd when the stream is destroyed.
+    // true = TagLib closes the dup'd fd when the stream is destroyed, preventing a leak.
     TagLib::FileStream stream(dupFd, false);
 
     // readAudioProperties=false here — we just want to write tags,
@@ -353,6 +397,7 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeSaveArtworkToFd(
         return JNI_FALSE;
     }
 
+    // true = TagLib closes the dup'd fd when the stream is destroyed, preventing a leak.
     TagLib::FileStream stream(dupFd, false);
     TagLib::FileRef fileRef(&stream, false);
     if (fileRef.isNull() || !fileRef.file()) {
@@ -363,6 +408,12 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeSaveArtworkToFd(
     // Grab the raw image bytes from the Java byte array.
     jsize dataLen = env->GetArrayLength(artworkData);
     jbyte *dataPtr = env->GetByteArrayElements(artworkData, nullptr);
+    // GetByteArrayElements can return null if the JVM is out of memory.
+    if (!dataPtr) {
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        LOGE("GetByteArrayElements returned null for fd=%d — out of memory?", fd);
+        return JNI_FALSE;
+    }
     TagLib::ByteVector imageData(reinterpret_cast<const char *>(dataPtr),
                                  static_cast<unsigned int>(dataLen));
     env->ReleaseByteArrayElements(artworkData, dataPtr, JNI_ABORT);
