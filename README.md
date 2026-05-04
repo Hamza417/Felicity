@@ -107,7 +107,7 @@ This feature list is not exhaustive and only main features are listed.
 - [x] Word-by-Word LRC support
 - [x] m3u playlist support
 - [x] Metadata editing support
-- [ ] Replay gain
+- [x] Replay gain
 - [ ] Cue sheet support
 - [x] Local server for centralized music access across multiple devices.
 - [x] Selection support for library management and playlist creation.
