@@ -158,6 +158,32 @@ class AudioProcessorManager {
     }
 
     /**
+     * Applies a manual replay gain offset to [nativeDspProcessor].
+     *
+     * This is a simple loudness trim that lets the user level-match tracks mastered at
+     * different loudness targets. It is applied as a linear multiply alongside the preamp
+     * before the DSP chain, so it has no extra processing cost.
+     *
+     * @param db Gain offset in dB in [-15.0, +15.0]. 0.0 = no change.
+     */
+    fun applyReplayGain(db: Float) {
+        nativeDspProcessor.setReplayGainDb(db)
+    }
+
+    /**
+     * Applies the gain parsed from the current track's embedded ReplayGain tag to
+     * [nativeDspProcessor]. This is independent of the manual [applyReplayGain] knob —
+     * both are multiplied together so they coexist without one cancelling the other.
+     *
+     * Call with 0.0 dB to reset to unity (when auto-RG is disabled or the track has no tag).
+     *
+     * @param db Gain in dB parsed from REPLAYGAIN_TRACK_GAIN or REPLAYGAIN_ALBUM_GAIN.
+     */
+    fun applyTagReplayGain(db: Float) {
+        nativeDspProcessor.setTagReplayGainDb(db)
+    }
+
+    /**
      * Forwards the current hardware output latency to [nativeDspProcessor] AND
      * [visualizerProcessor] so the FFT visualizer input is pre-delayed by exactly this
      * duration in both processing paths.
@@ -197,5 +223,6 @@ class AudioProcessorManager {
         )
         nativeDspProcessor.setPreamp(EqualizerPreferences.getPreampDb())
         nativeDspProcessor.eqEnabled = EqualizerPreferences.isEqEnabled()
+        nativeDspProcessor.setReplayGainDb(EqualizerPreferences.getReplayGainDb())
     }
 }

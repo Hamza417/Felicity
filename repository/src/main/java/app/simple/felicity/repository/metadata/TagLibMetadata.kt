@@ -47,6 +47,26 @@ data class TagLibMetadata(
         /** Sample rate in Hz (e.g. 44100, 48000, 96000). */
         val sampleRate: Long,
         /** Bit depth per sample (e.g. 16, 24, 32). Zero for lossy formats. */
-        val bitsPerSample: Long
+        val bitsPerSample: Long,
+        /**
+         * Per-track ReplayGain loudness offset stored as a raw tag string, e.g. "+5.32 dB".
+         * Null when the file has no REPLAYGAIN_TRACK_GAIN tag.
+         */
+        val replayGainTrackGain: String?,
+        /**
+         * Per-track ReplayGain peak sample value, e.g. "0.987654".
+         * Null when the file has no REPLAYGAIN_TRACK_PEAK tag.
+         */
+        val replayGainTrackPeak: String?,
+        /**
+         * Album-level ReplayGain loudness offset, e.g. "+3.22 dB".
+         * Null when the file has no REPLAYGAIN_ALBUM_GAIN tag.
+         */
+        val replayGainAlbumGain: String?,
+        /**
+         * Album-level ReplayGain peak sample value, e.g. "0.995432".
+         * Null when the file has no REPLAYGAIN_ALBUM_PEAK tag.
+         */
+        val replayGainAlbumPeak: String?
 )
 

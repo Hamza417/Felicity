@@ -199,6 +199,10 @@ object TagLibLoader {
         audio.size = size
         audio.dateModified = dateModified
         audio.dateAdded = System.currentTimeMillis()
+        audio.replayGainTrackGain = replayGainTrackGain
+        audio.replayGainTrackPeak = replayGainTrackPeak
+        audio.replayGainAlbumGain = replayGainAlbumGain
+        audio.replayGainAlbumPeak = replayGainAlbumPeak
         // Generate the stable content hash last, after all fields are set,
         // so the hash reflects the full metadata fingerprint.
         audio.hash = with(MetaDataHelper) { audio.generateStableHash() }

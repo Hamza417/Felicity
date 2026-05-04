@@ -67,6 +67,23 @@ class NativeDspAudioProcessor(
     private var preampLinearGain: Float = 1f
 
     /**
+     * Linear replay gain applied alongside [preampLinearGain] before the native DSP chain.
+     * Both are multiplied together in a single pass so there is no extra processing cost.
+     * Default 1.0 = unity (0 dB). Updated by [setReplayGainDb].
+     */
+    @Volatile
+    private var replayGainLinearGain: Float = 1f
+
+    /**
+     * Linear gain derived from the current track's embedded ReplayGain tag.
+     * Applied in the same single multiply as [preampLinearGain] and [replayGainLinearGain].
+     * Reset to 1.0 (unity) on each track transition when auto-RG is disabled.
+     * Updated by [setTagReplayGainDb] when a new track starts playing with auto-RG on.
+     */
+    @Volatile
+    private var tagReplayGainLinearGain: Float = 1f
+
+    /**
      * Whether the EQ stage is enabled inside the native engine.
      * Mirrored to [DspProcessor] immediately on write.
      */
@@ -249,7 +266,7 @@ class NativeDspAudioProcessor(
             workBuf = FloatArray(numSamples)
         }
 
-        val preamp = preampLinearGain
+        val preamp = preampLinearGain * replayGainLinearGain * tagReplayGainLinearGain
 
         /**
          * Input stage: all PCM encodings are converted to 32-bit float here.
@@ -337,6 +354,32 @@ class NativeDspAudioProcessor(
     fun setPreamp(db: Float) {
         val clamped = db.coerceIn(-15f, 15f)
         preampLinearGain = 10f.pow(clamped / 20f)
+    }
+
+    /**
+     * Sets the manual replay gain offset and recomputes the internal linear scale factor.
+     * This gain is multiplied together with the preamp before the DSP chain, so there is
+     * no extra processing step — it costs nothing at runtime beyond a single float multiply.
+     *
+     * @param db Gain offset in dB, clamped to [-15, +15]. 0 dB = unity (no change).
+     */
+    fun setReplayGainDb(db: Float) {
+        val clamped = db.coerceIn(-15f, 15f)
+        replayGainLinearGain = 10f.pow(clamped / 20f)
+    }
+
+    /**
+     * Applies the gain value extracted from the current track's embedded ReplayGain tag.
+     * This is separate from the manual [setReplayGainDb] knob so that the two can coexist —
+     * the tag value corrects inter-track loudness differences automatically while the manual
+     * knob acts as a user-controlled trim on top.
+     *
+     * Pass 0.0 to restore unity gain (e.g. when a track has no RG tag or auto-RG is off).
+     *
+     * @param db Gain in dB parsed from the REPLAYGAIN_TRACK_GAIN or REPLAYGAIN_ALBUM_GAIN tag.
+     */
+    fun setTagReplayGainDb(db: Float) {
+        tagReplayGainLinearGain = 10f.pow(db.coerceIn(-30f, 30f) / 20f)
     }
 
     /**

@@ -434,6 +434,32 @@ class Equalizer : MediaFragment() {
                 }
             }
         })
+
+        // Replay gain knob — offsets the overall loudness to level-match tracks.
+        // Knob 0 = -15 dB (quieter), center = 0 dB (no change), 100 = +15 dB (louder).
+        // The center snap makes returning to zero effort-free.
+        binding.speakerScreen.replayGainKnob.centerSnapEnabled = true
+        binding.speakerScreen.replayGainKnob.setTickTexts("-15", "+15")
+        binding.speakerScreen.replayGainKnob.divisionCount = 30 * 2
+        binding.speakerScreen.replayGainKnob.setKnobPosition(replayGainDbToKnobValue(state.replayGainDb), animate = false)
+        binding.speakerScreen.replayGainKnob.setListener(object : RotaryKnobListener {
+            override fun onIncrement(value: Float) {}
+
+            override fun onRotate(value: Float) {
+                val db = knobValueToReplayGainDb(value)
+                EqualizerPreferences.setReplayGainDb(db)
+                Log.d(TAG, "Replay gain updated: ${db}dB")
+            }
+
+            override fun onLabel(value: Float): String {
+                val db = knobValueToReplayGainDb(value)
+                return when {
+                    db > 0.05f -> "+${"%.1f".format(db)} dB"
+                    db < -0.05f -> "${"%.1f".format(db)} dB"
+                    else -> "0 dB"
+                }
+            }
+        })
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -666,6 +692,14 @@ class Equalizer : MediaFragment() {
         /** Maps a speed multiplier [0.5..2.0] to knob position [0..100]. */
         fun speedToKnobValue(speed: Float): Float =
             (ln(speed.toDouble()) / ln(2.0) * 50.0 + 50.0).toFloat().coerceIn(0f, 100f)
+
+        /** Maps knob position [0..100] to replay gain offset [-15..+15] dB. */
+        fun knobValueToReplayGainDb(knobValue: Float): Float =
+            ((knobValue - 50f) / 50f * 15f).coerceIn(-15f, 15f)
+
+        /** Maps replay gain offset [-15..+15] dB to knob position [0..100]. */
+        fun replayGainDbToKnobValue(db: Float): Float =
+            ((db / 15f * 50f) + 50f).coerceIn(0f, 100f)
 
         private const val SCREEN_STATE_KEY = "screen_state"
     }

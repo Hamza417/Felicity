@@ -269,6 +269,15 @@
     <string name="tape_saturation">Tape Saturation</string>
     <string name="pitch">Pitch</string>
     <string name="playback_speed">Speed</string>
+    <string name="replay_gain">Replay Gain</string>
+    <string name="auto_replay_gain">Auto Replay Gain</string>
+    <string name="auto_replay_gain_summary">Automatically apply the gain value embedded in each track\'s ReplayGain tags when a new song starts playing. The Replay Gain knob in the equalizer still works on top of this.</string>
+    <string name="replay_gain_mode">Replay Gain Mode</string>
+    <string name="replay_gain_mode_summary">Choose whether to use the per-track gain tag or the album-wide gain tag.</string>
+    <string name="replay_gain_track">Track</string>
+    <string name="replay_gain_track_summary">Use the gain value embedded in each track\'s ReplayGain tags.</string>
+    <string name="replay_gain_album">Album</string>
+    <string name="replay_gain_album_summary">Use the gain value embedded in each track\'s album-wide ReplayGain tags.</string>
     <string name="reverb">Reverb</string>
     <string name="reverb_mix">Mix</string>
     <string name="reverb_fade">Fade</string>
