@@ -40,7 +40,7 @@ import app.simple.felicity.dialogs.app.AudioInformation.Companion.showAudioInfo
 import app.simple.felicity.dialogs.app.PlaybackInfo.Companion.showPlaybackInfo
 import app.simple.felicity.dialogs.lyrics.Lyrics.Companion.showLyrics
 import app.simple.felicity.dialogs.playlists.AddToPlaylistDialog.Companion.showAddToPlaylistDialog
-import app.simple.felicity.dialogs.songs.ShuffleAlgorithmDialog.Companion.showShuffleAlgorithmDialog
+import app.simple.felicity.dialogs.songs.ShuffleDialog.Companion.showShuffleDialog
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
@@ -95,7 +95,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         }
 
         getShuffleButton()?.setOnLongClickListener {
-            childFragmentManager.showShuffleAlgorithmDialog()
+            childFragmentManager.showShuffleDialog()
             true
         }
 

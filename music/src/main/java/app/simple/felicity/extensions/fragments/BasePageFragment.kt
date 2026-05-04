@@ -14,7 +14,7 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.decorations.itemdecorations.PageSpacingItemDecoration
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.addItemDecorationSafely
 import app.simple.felicity.dialogs.pages.PageSortDialog.Companion.showPageSortDialog
-import app.simple.felicity.dialogs.songs.ShuffleAlgorithmDialog.Companion.showShuffleAlgorithmDialog
+import app.simple.felicity.dialogs.songs.ShuffleDialog.Companion.showShuffleDialog
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.PagePreferences
 import app.simple.felicity.repository.models.Album
@@ -183,7 +183,7 @@ abstract class BasePageFragment : MediaFragment() {
             }
 
             override fun onShuffleLongClicked(audios: List<Audio?>?, position: Int) {
-                childFragmentManager.showShuffleAlgorithmDialog()
+                childFragmentManager.showShuffleDialog()
             }
 
             override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {

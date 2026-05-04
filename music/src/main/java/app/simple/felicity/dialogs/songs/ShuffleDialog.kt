@@ -9,7 +9,7 @@ import app.simple.felicity.databinding.DialogShuffleAlgorithmBinding
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.ShufflePreferences
 
-class ShuffleAlgorithmDialog : ScopedBottomSheetFragment() {
+class ShuffleDialog : ScopedBottomSheetFragment() {
 
     private lateinit var binding: DialogShuffleAlgorithmBinding
 
@@ -29,15 +29,15 @@ class ShuffleAlgorithmDialog : ScopedBottomSheetFragment() {
     }
 
     companion object {
-        private const val TAG = "ShuffleAlgorithmDialog"
+        private const val TAG = "ShuffleDialog"
 
-        fun newInstance(): ShuffleAlgorithmDialog {
-            val fragment = ShuffleAlgorithmDialog()
+        fun newInstance(): ShuffleDialog {
+            val fragment = ShuffleDialog()
             fragment.arguments = Bundle()
             return fragment
         }
 
-        fun FragmentManager.showShuffleAlgorithmDialog(): ShuffleAlgorithmDialog {
+        fun FragmentManager.showShuffleDialog(): ShuffleDialog {
             val dialog = newInstance()
             dialog.show(this, TAG)
             return dialog
