@@ -14,6 +14,7 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.decorations.itemdecorations.PageSpacingItemDecoration
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.addItemDecorationSafely
 import app.simple.felicity.dialogs.pages.PageSortDialog.Companion.showPageSortDialog
+import app.simple.felicity.dialogs.songs.ShuffleAlgorithmDialog.Companion.showShuffleAlgorithmDialog
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.PagePreferences
 import app.simple.felicity.repository.models.Album
@@ -54,7 +55,7 @@ abstract class BasePageFragment : MediaFragment() {
     protected var pageAdapter: PageAdapter? = null
 
     /**
-     * The [androidx.recyclerview.widget.RecyclerView] rendered by this page. Typically sourced
+     * The [androidx.recyclerview.widget.RecyclerView] rendered by this page. Typically, sourced
      * directly from the fragment's view binding after inflation.
      */
     protected abstract val pageRecyclerView: RecyclerView
@@ -181,16 +182,20 @@ abstract class BasePageFragment : MediaFragment() {
                 shuffleMediaItems(audios)
             }
 
+            override fun onShuffleLongClicked(audios: List<Audio?>?, position: Int) {
+                childFragmentManager.showShuffleAlgorithmDialog()
+            }
+
             override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {
-                openFragment(ArtistPage.Companion.newInstance(artists[position]), ArtistPage.Companion.TAG)
+                openFragment(ArtistPage.newInstance(artists[position]), ArtistPage.TAG)
             }
 
             override fun onAlbumClicked(albums: List<Album>, position: Int, view: View) {
-                openFragment(AlbumPage.Companion.newInstance(albums[position]), AlbumPage.Companion.TAG)
+                openFragment(AlbumPage.newInstance(albums[position]), AlbumPage.TAG)
             }
 
             override fun onGenreClicked(genre: Genre, view: View) {
-                openFragment(GenrePage.Companion.newInstance(genre), GenrePage.Companion.TAG)
+                openFragment(GenrePage.newInstance(genre), GenrePage.TAG)
             }
 
             override fun onMenuClicked(view: View) {

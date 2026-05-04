@@ -565,6 +565,10 @@ class PageAdapter(
                 shuffle.setOnClickListener {
                     listener?.onShuffleClicked(item.songs, 0)
                 }
+                shuffle.setOnLongClickListener {
+                    listener?.onShuffleLongClicked(item.songs, 0)
+                    true
+                }
                 menu.setOnClickListener {
                     listener?.onMenuClicked(it)
                 }

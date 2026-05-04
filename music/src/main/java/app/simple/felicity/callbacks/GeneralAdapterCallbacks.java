@@ -37,6 +37,10 @@ public interface GeneralAdapterCallbacks {
     
     }
     
+    default void onShuffleLongClicked(List <Audio> audios, int position) {
+    
+    }
+    
     default void onArtistClicked(@NonNull List <Artist> artist, int position, @NonNull View view) {
     
     }
