@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.core.maths.Number.toNegative
 import app.simple.felicity.decorations.helpers.SwipeDownToCloseListener
+import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.lrc.view.LrcLineView
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.pager.ImagePageAdapter
@@ -129,6 +130,9 @@ abstract class BasePlayerFragment : MediaFragment() {
 
     /** The text view that shows the album name. */
     protected abstract val album: TextView
+
+    /** shuffle button */
+    protected abstract val shuffle: HighlightTextView
 
     /** LRC view that shows synced lyrics lines. */
     protected abstract val lrc: LrcLineView
@@ -353,6 +357,15 @@ abstract class BasePlayerFragment : MediaFragment() {
                 }
             }
         }
+    }
+
+    override fun getShuffleButton(): HighlightTextView? {
+        return shuffle
+    }
+
+    override fun onShuffleClicked() {
+        super.onShuffleClicked()
+        shuffleMediaItems(songs = MediaPlaybackManager.getSongs())
     }
 
     private fun setVisualizerState() {

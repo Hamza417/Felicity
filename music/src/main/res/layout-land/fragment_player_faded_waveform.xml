@@ -170,6 +170,19 @@
                     app:highlightMode="auto"
                     app:textColorStyle="primary" />
 
+                <app.simple.felicity.decorations.highlight.HighlightTextView
+                    android:id="@+id/shuffle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="@dimen/padding_5"
+                    android:paddingVertical="@dimen/padding_5"
+                    android:paddingHorizontal="@dimen/padding_10"
+                    android:text="@string/shuffle"
+                    app:appFontStyle="bold"
+                    app:highlightMode="auto"
+                    app:textColorStyle="primary" />
+
                 <Space
                     android:layout_width="0dp"
                     android:layout_height="match_parent"

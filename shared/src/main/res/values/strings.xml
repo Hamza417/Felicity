@@ -242,7 +242,6 @@
     <string name="darker_miniplayer_shadow">Use Darker Shadows</string>
 
     <!-- Shuffle -->
-    <string name="shuffle_algorithm">Shuffle Algorithm</string>
     <string name="grid_type">Grid Type</string>
     <string name="options">Options</string>
     <string name="delete_lyrics">Delete Lyrics</string>

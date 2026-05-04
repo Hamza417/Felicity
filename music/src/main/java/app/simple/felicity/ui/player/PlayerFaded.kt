@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import app.simple.felicity.databinding.FragmentPlayerFadedWaveformBinding
+import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.lrc.view.LrcLineView
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
@@ -80,6 +81,8 @@ class PlayerFaded : BasePlayerFragment() {
 
     override val album: TextView
         get() = binding.album
+    override val shuffle: HighlightTextView
+        get() = binding.shuffle
 
     override val lrc: LrcLineView
         get() = binding.lrc
