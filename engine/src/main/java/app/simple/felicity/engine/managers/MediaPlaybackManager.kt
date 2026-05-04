@@ -313,10 +313,25 @@ object MediaPlaybackManager {
             pendingSeekPositions.add(prep.clampedPosition)
 
             if (mediaController != null) {
-                mediaController?.setMediaItems(prep.mediaItems, prep.clampedPosition, startPositionMs)
-                mediaController?.prepare()
+                val controller = mediaController!!
+                val oldCount = controller.mediaItemCount
+
+                /**
+                 * When the player already has items loaded we can surgically replace them
+                 * using replaceMediaItems, which keeps the decoder pipeline alive and avoids
+                 * the full prepare() stall. We still need prepare() for the very first load
+                 * (oldCount == 0) because the player has never been initialized yet.
+                 */
+                if (oldCount > 0) {
+                    controller.replaceMediaItems(0, oldCount, prep.mediaItems)
+                    controller.seekTo(prep.clampedPosition, startPositionMs)
+                } else {
+                    controller.setMediaItems(prep.mediaItems, prep.clampedPosition, startPositionMs)
+                    controller.prepare()
+                }
+
                 if (autoPlay) {
-                    mediaController?.play()
+                    controller.play()
                 }
             } else {
                 isQueueBeingReplaced = false
@@ -378,7 +393,20 @@ object MediaPlaybackManager {
                 }
             }
 
-            mediaController?.setMediaItems(mediaItems, clampedPosition, getSeekPosition())
+            /**
+             * replaceMediaItems swaps every item in the queue without resetting the decoder,
+             * so there is no playback gap or app-level stutter. After the swap we seek to the
+             * correct position so ExoPlayer knows which track is active.
+             */
+            val controller = mediaController ?: return@launch
+            val oldCount = controller.mediaItemCount
+            if (oldCount > 0) {
+                controller.replaceMediaItems(0, oldCount, mediaItems)
+            } else {
+                controller.setMediaItems(mediaItems, clampedPosition, getSeekPosition())
+                controller.prepare()
+            }
+            controller.seekTo(clampedPosition, getSeekPosition())
         }
     }
 
@@ -739,7 +767,26 @@ object MediaPlaybackManager {
             pendingSeekPositions.clear()
             pendingSeekPositions.add(newPosition)
 
-            mediaController?.setMediaItems(mediaItems, newPosition, seekPosition)
+            /**
+             * replaceMediaItems is the key here — it swaps out every item in the ExoPlayer
+             * queue without triggering a full pipeline reset, so the currently playing song
+             * keeps streaming without any audible gap, decoder stall, or UI flicker.
+             * We then seek to wherever the current song landed in the new order and restore
+             * the exact playback position the user was at before toggling shuffle.
+             */
+            val controller = mediaController
+            if (controller != null) {
+                val oldCount = controller.mediaItemCount
+                if (oldCount > 0) {
+                    controller.replaceMediaItems(0, oldCount, mediaItems)
+                    Log.d(TAG, "replaceMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: oldCount=$oldCount, newCount=${mediaItems.size}")
+                } else {
+                    controller.setMediaItems(mediaItems, newPosition, seekPosition)
+                    controller.prepare()
+                    Log.d(TAG, "setMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: newCount=${mediaItems.size}, starting at position $newPosition")
+                }
+                controller.seekTo(newPosition, seekPosition)
+            }
 
             if (isPlaying()) {
                 mediaController?.play()
