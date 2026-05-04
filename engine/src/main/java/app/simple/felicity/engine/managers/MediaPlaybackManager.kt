@@ -10,7 +10,6 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
-import app.simple.felicity.engine.managers.MediaPlaybackManager.INITIAL_WINDOW_SIZE
 import app.simple.felicity.engine.managers.MediaPlaybackManager._songPositionFlow
 import app.simple.felicity.engine.managers.MediaPlaybackManager.currentSongPosition
 import app.simple.felicity.engine.managers.MediaPlaybackManager.getSongs
@@ -63,19 +62,6 @@ private fun String.toPlaybackUri(): Uri {
 object MediaPlaybackManager {
 
     private const val TAG = "MediaPlaybackManager"
-
-    /**
-     * How many songs to hand to ExoPlayer right away when a new queue is loaded.
-     * Keeping this small means the player can start quickly even with thousands of songs.
-     * The rest of the queue is added in the background right after.
-     */
-    private const val INITIAL_WINDOW_SIZE = 11
-
-    /**
-     * Half of [INITIAL_WINDOW_SIZE], used to center the window around the song the user tapped.
-     * For example, if the user taps song 50, we load songs 45-55 first.
-     */
-    private const val HALF_WINDOW = INITIAL_WINDOW_SIZE / 2
 
     // Single app-scoped Main dispatcher scope to avoid leaking ad-hoc scopes
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -329,82 +315,30 @@ object MediaPlaybackManager {
             if (mediaController != null) {
                 val controller = mediaController!!
                 val oldCount = controller.mediaItemCount
-                val totalSize = prep.mediaItems.size
-                val clampedPos = prep.clampedPosition
-
-                /**
-                 * Build a small "window" of songs centered around the song the user tapped.
-                 * We give ExoPlayer only this window first so it can start playing almost instantly,
-                 * then we quietly add the rest of the queue in the background right after.
-                 */
-                val windowStart = (clampedPos - HALF_WINDOW).coerceAtLeast(0)
-                val windowEnd = minOf(windowStart + INITIAL_WINDOW_SIZE, totalSize)
-                // Re-anchor in case we're near the beginning and the window would be smaller than intended
-                val actualWindowStart = maxOf(0, windowEnd - INITIAL_WINDOW_SIZE)
-                val adjustedPosition = clampedPos - actualWindowStart
-
-                val initialItems = prep.mediaItems.subList(actualWindowStart, windowEnd)
-                val prefixItems = prep.mediaItems.subList(0, actualWindowStart)
-                val suffixItems = prep.mediaItems.subList(windowEnd, totalSize)
 
                 /**
                  * When the player already has items loaded we can surgically replace them
                  * using replaceMediaItems, which keeps the decoder pipeline alive and avoids
                  * the full prepare() stall. We still need prepare() for the very first load
                  * (oldCount == 0) because the player has never been initialized yet.
-                 *
-                 * Either way, we only pass the small initial window here. The remaining songs
-                 * are added right below so the player does not have to process all of them upfront.
                  */
                 if (oldCount > 0) {
-                    controller.replaceMediaItems(0, oldCount, initialItems)
-                    controller.seekTo(adjustedPosition, startPositionMs)
+                    controller.replaceMediaItems(0, oldCount, prep.mediaItems)
+                    controller.seekTo(prep.clampedPosition, startPositionMs)
                 } else {
-                    controller.setMediaItems(initialItems, adjustedPosition, startPositionMs)
+                    controller.setMediaItems(prep.mediaItems, prep.clampedPosition, startPositionMs)
                     controller.prepare()
                 }
 
                 if (autoPlay) {
                     controller.play()
                 }
-
-                /**
-                 * After giving ExoPlayer just enough songs to start playing, we add the rest
-                 * of the queue. Suffix songs go in first (appended to the end — safe, no index shift).
-                 * Prefix songs go in last (inserted at position 0 — ExoPlayer automatically shifts
-                 * the current item index forward, so playback is never interrupted).
-                 *
-                 * Once both additions are done we emit the full song list so every observer
-                 * (like the queue screen) sees the complete queue.
-                 */
-                /**
-                 * After giving ExoPlayer just enough songs to start playing, we add the rest
-                 * of the queue. Suffix songs go in first (appended to the end — safe, no index shift).
-                 * Prefix songs go in last (inserted at position 0 — ExoPlayer automatically shifts
-                 * the current item index forward, so playback is never interrupted).
-                 *
-                 * Once both additions are done we emit the full song list so every observer
-                 * (like the queue screen) sees the complete queue.
-                 */
-                startSeekPositionUpdates()
-                if (prefixItems.isNotEmpty() || suffixItems.isNotEmpty()) {
-                    scope.launch {
-                        if (suffixItems.isNotEmpty()) {
-                            controller.addMediaItems(suffixItems)
-                        }
-                        if (prefixItems.isNotEmpty()) {
-                            controller.addMediaItems(0, prefixItems)
-                        }
-                        _songListFlow.emit(songs)
-                    }
-                } else {
-                    _songListFlow.emit(songs)
-                }
             } else {
                 isQueueBeingReplaced = false
-                startSeekPositionUpdates()
-                _songListFlow.emit(songs)
             }
+
+            startSeekPositionUpdates()
+            _songListFlow.emit(songs)
         }
     }
 
@@ -834,64 +768,34 @@ object MediaPlaybackManager {
             pendingSeekPositions.add(newPosition)
 
             /**
-             * Same windowed loading strategy as setSongs — we hand ExoPlayer a small slice of
-             * songs centered around the currently playing track first, so the player can keep
-             * running without any hiccup. The rest of the reordered queue is added quietly
-             * right after in a separate coroutine.
+             * replaceMediaItems is the key here — it swaps out every item in the ExoPlayer
+             * queue without triggering a full pipeline reset, so the currently playing song
+             * keeps streaming without any audible gap, decoder stall, or UI flicker.
+             * We then seek to wherever the current song landed in the new order and restore
+             * the exact playback position the user was at before toggling shuffle.
              */
-            val totalSize = mediaItems.size
-            val windowStart = (newPosition - HALF_WINDOW).coerceAtLeast(0)
-            val windowEnd = minOf(windowStart + INITIAL_WINDOW_SIZE, totalSize)
-            val actualWindowStart = maxOf(0, windowEnd - INITIAL_WINDOW_SIZE)
-            val adjustedPosition = newPosition - actualWindowStart
-
-            val initialItems = mediaItems.subList(actualWindowStart, windowEnd)
-            val prefixItems = mediaItems.subList(0, actualWindowStart)
-            val suffixItems = mediaItems.subList(windowEnd, totalSize)
-
             val controller = mediaController
             if (controller != null) {
                 val oldCount = controller.mediaItemCount
                 if (oldCount > 0) {
-                    controller.replaceMediaItems(0, oldCount, initialItems)
-                    Log.d(TAG, "replaceMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: oldCount=$oldCount, windowSize=${initialItems.size}, total=$totalSize")
+                    controller.replaceMediaItems(0, oldCount, mediaItems)
+                    Log.d(TAG, "replaceMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: oldCount=$oldCount, newCount=${mediaItems.size}")
                 } else {
-                    controller.setMediaItems(initialItems, adjustedPosition, seekPosition)
+                    controller.setMediaItems(mediaItems, newPosition, seekPosition)
                     controller.prepare()
-                    Log.d(TAG, "setMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: windowSize=${initialItems.size}, total=$totalSize, startPos=$adjustedPosition")
+                    Log.d(TAG, "setMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: newCount=${mediaItems.size}, starting at position $newPosition")
                 }
-                controller.seekTo(adjustedPosition, seekPosition)
-
-                /**
-                 * After ExoPlayer has the initial window, add the remaining songs.
-                 * Suffix goes first (appended at the end, no index shift), then prefix
-                 * (inserted at 0 — ExoPlayer shifts the current index automatically, so
-                 * the currently playing song stays uninterrupted).
-                 */
-                if (prefixItems.isNotEmpty() || suffixItems.isNotEmpty()) {
-                    scope.launch {
-                        if (suffixItems.isNotEmpty()) {
-                            controller.addMediaItems(suffixItems)
-                        }
-                        if (prefixItems.isNotEmpty()) {
-                            controller.addMediaItems(0, prefixItems)
-                        }
-                        _songListFlow.emit(songs)
-                        Log.d(TAG, "Remaining items added for shuffle: prefix=${prefixItems.size}, suffix=${suffixItems.size}")
-                    }
-                }
+                controller.seekTo(newPosition, seekPosition)
             }
 
             if (isPlaying()) {
                 mediaController?.play()
             }
 
-            if (prefixItems.isEmpty() && suffixItems.isEmpty()) {
-                _songListFlow.emit(songs)
-            }
+            _songListFlow.emit(songs)
             _shuffleStateFlow.emit(enabled)
 
-            Log.d(TAG, "Shuffle ${if (enabled) "enabled" else "disabled"}: queue swapped, continuing at position $newPosition (adjusted=$adjustedPosition)")
+            Log.d(TAG, "Shuffle ${if (enabled) "enabled" else "disabled"}: queue swapped, continuing at position $newPosition")
         }
     }
 
