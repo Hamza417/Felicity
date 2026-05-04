@@ -201,6 +201,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     /** Coroutine job that pushes a fresh [AudioPipelineSnapshot] every 3 seconds while playing. */
     private var snapshotPulseJob: Job? = null
 
+    /** Prevents the wrapper-driven seek on the incoming deck from overwriting the outgoing-track snapshot. */
+    private var suppressNextPositionDiscontinuity: Boolean = false
+
+    /** Prevents duplicate handling when the wrapper already reported a crossfade transition. */
+    private var pendingWrapperTransitionMediaId: String? = null
+
     override fun onCreate() {
         super.onCreate()
         initRegisterSharedPreferenceChangeListener(applicationContext)
@@ -389,6 +395,17 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             oldActive.removeAnalyticsListener(analyticsListener)
             newActive.addAnalyticsListener(analyticsListener)
             player = newActive
+        }
+
+        playerWrapper.onCrossfadeTransition = { transition ->
+            suppressNextPositionDiscontinuity = true
+            pendingWrapperTransitionMediaId = transition.toMediaItem?.mediaId
+            previousItemMediaId = transition.fromMediaItem?.mediaId
+            previousItemEndPositionMs = transition.fromPositionMs
+            previousItemDurationMs = transition.fromDurationMs
+            wasPlayingBeforeTransition = transition.wasPlaying
+            currentItemDurationMs = 0L
+            handleMediaItemTransition(transition.toMediaItem, transition.reason)
         }
 
         player = playerWrapper.activePlayer
@@ -749,6 +766,79 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         player.playbackParameters = PlaybackParameters(speed, pitchMultiplier)
     }
 
+    private fun handleMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        if (ffmpegFallbackActive && mediaItem != ffmpegFallbackItem) {
+            Log.d(TAG, "Track transitioned away from fallback item; restoring original decoder and clearing fallback state.")
+            ffmpegFallbackActive = false
+            ffmpegFallbackItem = null
+            restoreDecoderMode(preFallbackDecoder)
+        }
+
+        val prevMediaId = previousItemMediaId
+        if (wasPlayingBeforeTransition && prevMediaId != null) {
+            val isForwardNavigation = MediaPlaybackManager.lastNavigationDirection
+            val isManuallySwitched = reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
+                    || reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED
+            if (isManuallySwitched
+                    && isForwardNavigation
+                    && previousItemDurationMs > 0
+                    && previousItemEndPositionMs < previousItemDurationMs * SKIP_THRESHOLD) {
+                serviceScope.launch(Dispatchers.IO) {
+                    val audioId = prevMediaId.toLongOrNull() ?: return@launch
+                    val audio = audioRepository.getAudioById(audioId) ?: return@launch
+                    songStatRepository.recordSkip(audio.hash)
+                    Log.d(TAG, "Skip recorded for: ${audio.title} (pos=${previousItemEndPositionMs}ms / dur=${previousItemDurationMs}ms, reason=$reason)")
+                }
+            }
+        }
+
+        mediaItem?.let { item ->
+            previousItemMediaId = item.mediaId
+            if (player.playWhenReady) {
+                val audioId = item.mediaId.toLongOrNull() ?: return@let
+                val isBackwardNavigation = !MediaPlaybackManager.lastNavigationDirection
+                serviceScope.launch(Dispatchers.IO) {
+                    val audio = audioRepository.getAudioById(audioId) ?: return@launch
+                    songStatRepository.recordPlay(audio.hash)
+                    Log.d(TAG, "Play recorded for: ${audio.title}")
+                    if (isBackwardNavigation && reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
+                        songStatRepository.recordReplay(audio.hash)
+                        Log.d(TAG, "Replay recorded for: ${audio.title}")
+                    }
+                }
+            } else {
+                Log.d(TAG, "Track changed while paused — skipping play stat for: ${item.mediaMetadata.title}")
+            }
+        } ?: run { previousItemMediaId = null }
+
+        MediaPlaybackManager.notifyCurrentPosition(player.currentMediaItemIndex)
+        savePlaybackStateToDatabase()
+        buildAndPushSnapshot()
+        broadcastWidgetUpdate()
+
+        mediaItem?.let { item ->
+            val audioId = item.mediaId.toLongOrNull()
+            if (audioId != null) {
+                serviceScope.launch(Dispatchers.IO) {
+                    val audio = audioRepository.getAudioById(audioId)
+                    val db = if (EqualizerPreferences.isAutoReplayGainEnabled() && audio != null) {
+                        parseReplayGainDb(audio, EqualizerPreferences.getReplayGainMode())
+                    } else {
+                        0f
+                    }
+                    audioProcessorManager.applyTagReplayGain(db)
+                    if (db != 0f) {
+                        Log.d(TAG, "Auto-RG applied: ${db}dB for track: ${audio?.title}")
+                    }
+                }
+            }
+        }
+
+        val isFavorite = MediaPlaybackManager.getCurrentSong()?.isFavorite ?: false
+        val repeatMode = PlayerPreferences.getRepeatMode()
+        mediaSession?.setCustomLayout(listOf(buildRepeatCommandButton(repeatMode), buildFavoriteCommandButton(isFavorite)))
+    }
+
     private val playerListener = object : Player.Listener {
         override fun onAudioSessionIdChanged(audioSessionId: Int) {
             super.onAudioSessionIdChanged(audioSessionId)
@@ -906,98 +996,15 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            // If a track transition happened naturally (not via fallback retry), clear any stale fallback state.
-            if (ffmpegFallbackActive && mediaItem != ffmpegFallbackItem) {
-                Log.d(TAG, "Track transitioned away from fallback item; restoring original decoder and clearing fallback state.")
-                ffmpegFallbackActive = false
-                ffmpegFallbackItem = null
-                restoreDecoderMode(preFallbackDecoder)
-            }
-
-            // Only bother recording anything if the player was actually running before the
-            // transition — there's no point counting stats for songs the user skipped while
-            // the player was sitting paused in the background.
-            val prevMediaId = previousItemMediaId
-            if (wasPlayingBeforeTransition && prevMediaId != null) {
-                // A skip is when the user actively moves FORWARD away from a song before hearing
-                // at least 30% of it. Two things can trigger this in a forward direction:
-                //   1. The user taps next / seeks to a later track (REASON_SEEK, going forward).
-                //   2. The user swipes the current song out of the queue (REASON_PLAYLIST_CHANGED).
-                // A natural song ending (REASON_AUTO) is never a skip — the song finished!
-                // Going backward is also never a skip — that's a replay, handled separately below.
-                val isForwardNavigation = MediaPlaybackManager.lastNavigationDirection
-                val isManuallySwitched = reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
-                        || reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED
-                if (isManuallySwitched
-                        && isForwardNavigation
-                        && previousItemDurationMs > 0
-                        && previousItemEndPositionMs < previousItemDurationMs * SKIP_THRESHOLD) {
-                    serviceScope.launch(Dispatchers.IO) {
-                        val audioId = prevMediaId.toLongOrNull() ?: return@launch
-                        val audio = audioRepository.getAudioById(audioId) ?: return@launch
-                        songStatRepository.recordSkip(audio.hash)
-                        Log.d(TAG, "Skip recorded for: ${audio.title} (pos=${previousItemEndPositionMs}ms / dur=${previousItemDurationMs}ms, reason=$reason)")
-                    }
+            val wrapperMediaId = pendingWrapperTransitionMediaId
+            if (wrapperMediaId != null) {
+                pendingWrapperTransitionMediaId = null
+                if (wrapperMediaId == mediaItem?.mediaId) {
+                    return
                 }
             }
 
-            // Record a play event for the newly active song, but only when the player is
-            // actually going to play it — skip this if the queue is being browsed while paused.
-            // Also check whether this was a backward navigation and count it as a replay if so.
-            mediaItem?.let { item ->
-                previousItemMediaId = item.mediaId
-                if (player.playWhenReady) {
-                    val audioId = item.mediaId.toLongOrNull() ?: return@let
-                    val isBackwardNavigation = !MediaPlaybackManager.lastNavigationDirection
-                    serviceScope.launch(Dispatchers.IO) {
-                        val audio = audioRepository.getAudioById(audioId) ?: return@launch
-                        songStatRepository.recordPlay(audio.hash)
-                        Log.d(TAG, "Play recorded for: ${audio.title}")
-                        // When the user goes back to a song on purpose, that counts as a replay —
-                        // it's their way of saying "that one was worth hearing again!"
-                        if (isBackwardNavigation && reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
-                            songStatRepository.recordReplay(audio.hash)
-                            Log.d(TAG, "Replay recorded for: ${audio.title}")
-                        }
-                    }
-                } else {
-                    Log.d(TAG, "Track changed while paused — skipping play stat for: ${item.mediaMetadata.title}")
-                }
-            } ?: run { previousItemMediaId = null }
-
-            MediaPlaybackManager.notifyCurrentPosition(player.currentMediaItemIndex)
-            savePlaybackStateToDatabase() // Save when track changes
-            buildAndPushSnapshot()
-            broadcastWidgetUpdate()
-
-            // Apply tag-based ReplayGain for the incoming track when auto-RG is on.
-            // We look up the Audio object from the database on the IO thread, parse the
-            // gain string (e.g. "+5.32 dB"), and forward the dB value to the processor.
-            // When auto-RG is off, or the track has no tag, we reset to unity (0 dB) so
-            // the previous track's gain never bleeds into the next one.
-            mediaItem?.let { item ->
-                val audioId = item.mediaId.toLongOrNull()
-                if (audioId != null) {
-                    serviceScope.launch(Dispatchers.IO) {
-                        val audio = audioRepository.getAudioById(audioId)
-                        val db = if (EqualizerPreferences.isAutoReplayGainEnabled() && audio != null) {
-                            parseReplayGainDb(audio, EqualizerPreferences.getReplayGainMode())
-                        } else {
-                            0f
-                        }
-                        audioProcessorManager.applyTagReplayGain(db)
-                        if (db != 0f) {
-                            Log.d(TAG, "Auto-RG applied: ${db}dB for track: ${audio?.title}")
-                        }
-                    }
-                }
-            }
-
-            // Refresh the notification custom layout so the favorite button reflects
-            // the new song's favorite state straight away, without any extra user interaction.
-            val isFavorite = MediaPlaybackManager.getCurrentSong()?.isFavorite ?: false
-            val repeatMode = PlayerPreferences.getRepeatMode()
-            mediaSession?.setCustomLayout(listOf(buildRepeatCommandButton(repeatMode), buildFavoriteCommandButton(isFavorite)))
+            handleMediaItemTransition(mediaItem, reason)
         }
 
         override fun onPositionDiscontinuity(
@@ -1006,6 +1013,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 reason: Int
         ) {
             super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+            if (suppressNextPositionDiscontinuity) {
+                suppressNextPositionDiscontinuity = false
+                return
+            }
             // We want to capture the outgoing song's position and duration before ExoPlayer
             // hands control to the next item. This fires BEFORE onMediaItemTransition, so
             // player.duration still reflects the old track — perfect timing for us.
@@ -1102,6 +1113,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             AudioPreferences.GAPLESS_PLAYBACK -> {
                 // Reconfigure gapless playback when preference changes
                 configureGaplessPlayback()
+                if (AudioPreferences.isGaplessPlaybackEnabled() && AudioPreferences.isCrossfadeEnabled()) {
+                    AudioPreferences.setCrossfadeEnabled(false)
+                    Log.d(TAG, "Crossfade automatically disabled because gapless playback is now on.")
+                }
                 Log.d(TAG, "Gapless playback preference changed to: ${AudioPreferences.isGaplessPlaybackEnabled()}")
             }
             AudioPreferences.CROSSFADE_ENABLED -> {
