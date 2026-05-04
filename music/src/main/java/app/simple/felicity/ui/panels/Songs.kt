@@ -14,9 +14,9 @@ import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentSongsBinding
 import app.simple.felicity.databinding.HeaderSongsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
+import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
-import app.simple.felicity.dialogs.songs.ShuffleAlgorithmDialog.Companion.showShuffleAlgorithmDialog
 import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.BasePanelFragment
@@ -71,16 +71,6 @@ class Songs : BasePanelFragment() {
 
         headerBinding.menu.setOnClickListener {
             childFragmentManager.showSongsMenu()
-        }
-
-        headerBinding.shuffle.setOnClickListener {
-            val songs = songsViewModel.songs.value
-            if (songs.isNotEmpty()) shuffleMediaItems(songs)
-        }
-
-        headerBinding.shuffle.setOnLongClickListener {
-            childFragmentManager.showShuffleAlgorithmDialog()
-            true
         }
 
         headerBinding.sortStyle.setOnClickListener {
@@ -215,6 +205,10 @@ class Songs : BasePanelFragment() {
                 }
             }
         }
+    }
+
+    override fun getShuffleButton(): HighlightTextView {
+        return headerBinding.shuffle
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {

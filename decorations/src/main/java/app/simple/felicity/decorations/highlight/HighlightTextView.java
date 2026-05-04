@@ -1,5 +1,7 @@
 package app.simple.felicity.decorations.highlight;
 
+import android.animation.ArgbEvaluator;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -8,6 +10,7 @@ import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
+import android.view.animation.DecelerateInterpolator;
 
 import com.google.android.material.shape.CornerFamily;
 import com.google.android.material.shape.MaterialShapeDrawable;
@@ -18,6 +21,7 @@ import java.util.Objects;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.widget.TextViewCompat;
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator;
 import app.simple.felicity.decoration.R;
 import app.simple.felicity.decorations.ripple.FelicityRippleDrawable;
@@ -74,16 +78,43 @@ public class HighlightTextView extends TypeFaceTextView {
     public static final int MODE_BOTH = 2;
     
     private static final float DEFAULT_STROKE_DP = 0.5f;
-    
+    private static final long COLOR_ANIM_DURATION = 400L;
+
     private int highlightMode = MODE_FLAT;
     private boolean useCustomColor = false;
     /**
      * When true the accent color drives both fill and stroke, ignoring any custom color.
+     * Text and drawable tints will also be forced to white so they remain readable on the
+     * colored background.
      */
     private boolean useAccentColor = false;
     @ColorInt
     private int customColor = Color.TRANSPARENT;
     private float strokeWidth;
+    
+    /**
+     * Tracks the last drawable tint color so we can smoothly animate away from it
+     * rather than jumping from nothing.
+     */
+    @ColorInt
+    private int lastDrawableTintColor = Color.GRAY;
+    
+    /**
+     * Persistent background and foreground drawables — we mutate them in place rather than
+     * replacing them on every update so we can animate their colors smoothly.
+     */
+    private MaterialShapeDrawable backgroundDrawable;
+    private FelicityRippleDrawable foregroundRipple;
+    
+    /**
+     * Last known fill/stroke colors so animations always start from the right place.
+     */
+    @ColorInt
+    private int lastFillColor = Color.TRANSPARENT;
+    @ColorInt
+    private int lastStrokeColor = Color.TRANSPARENT;
+    @ColorInt
+    private int lastRippleStartColor = Color.TRANSPARENT;
     
     public HighlightTextView(@NonNull Context context) {
         super(context);
@@ -121,64 +152,198 @@ public class HighlightTextView extends TypeFaceTextView {
                 a.recycle();
             }
         }
-        applyChipBackground();
-        applyRippleForeground();
+        applyChipBackground(false);
+        applyRippleForeground(false);
+        applyTextAndDrawableColors(false);
         setClickable(true);
         setFocusable(true);
     }
     
     /**
-     * Builds and applies the pill-shaped {@link MaterialShapeDrawable} background according to
-     * {@link #highlightMode} and the active color (theme or custom).
+     * Builds (or updates) the pill-shaped {@link MaterialShapeDrawable} background according to
+     * {@link #highlightMode} and the active color. When {@code animate} is true the fill and
+     * stroke colors cross-fade from their previous values to the new ones.
      */
-    private void applyChipBackground() {
+    private void applyChipBackground(boolean animate) {
         float cornerRadius = getGlobalRoundedRadius();
-        MaterialShapeDrawable background = new MaterialShapeDrawable(
-                new ShapeAppearanceModel()
-                        .toBuilder()
-                        .setAllCorners(CornerFamily.ROUNDED, cornerRadius)
-                        .build());
         
-        int fillColor = resolveFillColor();
-        int strokeColor = resolveStrokeColor();
-        
-        switch (highlightMode) {
-            case MODE_AUTO:
-                background.setFillColor(ColorStateList.valueOf(fillColor));
-                
-                if (AccessibilityPreferences.INSTANCE.isHighlightStroke()) {
-                    background.setStroke(strokeWidth, strokeColor);
-                }
-                break;
-            case MODE_OUTLINE:
-                background.setFillColor(ColorStateList.valueOf(Color.TRANSPARENT));
-                background.setStroke(strokeWidth, strokeColor);
-                break;
-            case MODE_BOTH:
-                background.setFillColor(ColorStateList.valueOf(fillColor));
-                background.setStroke(strokeWidth, strokeColor);
-                break;
-            case MODE_FLAT:
-            default:
-                background.setFillColor(ColorStateList.valueOf(fillColor));
-                break;
+        if (backgroundDrawable == null) {
+            backgroundDrawable = new MaterialShapeDrawable(
+                    new ShapeAppearanceModel()
+                            .toBuilder()
+                            .setAllCorners(CornerFamily.ROUNDED, cornerRadius)
+                            .build());
+            setBackground(backgroundDrawable);
+        } else {
+            // Keep the corner radius in sync with global setting changes.
+            backgroundDrawable.setShapeAppearanceModel(
+                    backgroundDrawable.getShapeAppearanceModel()
+                            .toBuilder()
+                            .setAllCorners(CornerFamily.ROUNDED, cornerRadius)
+                            .build());
         }
-        setBackground(background);
+        
+        int targetFill = resolveFillColor();
+        int targetStroke = resolveStrokeColor();
+        boolean needsStroke = highlightMode == MODE_OUTLINE
+                || highlightMode == MODE_BOTH
+                || (highlightMode == MODE_AUTO && AccessibilityPreferences.INSTANCE.isHighlightStroke());
+        
+        if (animate) {
+            animateBackgroundFill(lastFillColor, highlightMode == MODE_OUTLINE ? Color.TRANSPARENT : targetFill);
+            if (needsStroke) {
+                animateBackgroundStroke(lastStrokeColor, targetStroke);
+            } else {
+                backgroundDrawable.setStroke(0, Color.TRANSPARENT);
+            }
+        } else {
+            switch (highlightMode) {
+                case MODE_AUTO:
+                    backgroundDrawable.setFillColor(ColorStateList.valueOf(targetFill));
+                    if (AccessibilityPreferences.INSTANCE.isHighlightStroke()) {
+                        backgroundDrawable.setStroke(strokeWidth, targetStroke);
+                    }
+                    break;
+                case MODE_OUTLINE:
+                    backgroundDrawable.setFillColor(ColorStateList.valueOf(Color.TRANSPARENT));
+                    backgroundDrawable.setStroke(strokeWidth, targetStroke);
+                    break;
+                case MODE_BOTH:
+                    backgroundDrawable.setFillColor(ColorStateList.valueOf(targetFill));
+                    backgroundDrawable.setStroke(strokeWidth, targetStroke);
+                    break;
+                case MODE_FLAT:
+                default:
+                    backgroundDrawable.setFillColor(ColorStateList.valueOf(targetFill));
+                    backgroundDrawable.setStroke(0, Color.TRANSPARENT);
+                    break;
+            }
+        }
+        
+        lastFillColor = targetFill;
+        lastStrokeColor = targetStroke;
     }
     
     /**
-     * Builds and applies the accent-colored {@link FelicityRippleDrawable} foreground clipped
-     * to the same pill shape as the background.
+     * Animates the background drawable's fill from {@code from} to {@code to}.
      */
-    private void applyRippleForeground() {
+    private void animateBackgroundFill(@ColorInt int from, @ColorInt int to) {
+        ValueAnimator anim = ValueAnimator.ofObject(new ArgbEvaluator(), from, to);
+        anim.setDuration(COLOR_ANIM_DURATION);
+        anim.setInterpolator(new DecelerateInterpolator(1.5f));
+        anim.addUpdateListener(a ->
+                backgroundDrawable.setFillColor(ColorStateList.valueOf((int) a.getAnimatedValue())));
+        anim.start();
+    }
+    
+    /**
+     * Animates the background drawable's stroke from {@code from} to {@code to}.
+     */
+    private void animateBackgroundStroke(@ColorInt int from, @ColorInt int to) {
+        ValueAnimator anim = ValueAnimator.ofObject(new ArgbEvaluator(), from, to);
+        anim.setDuration(COLOR_ANIM_DURATION);
+        anim.setInterpolator(new DecelerateInterpolator(1.5f));
+        anim.addUpdateListener(a ->
+                backgroundDrawable.setStroke(strokeWidth, (int) a.getAnimatedValue()));
+        anim.start();
+    }
+    
+    /**
+     * Builds (or updates) the {@link FelicityRippleDrawable} foreground. When {@code animate}
+     * is true the ripple's background (start) color fades to the new value so there is no
+     * jarring jump when the theme or accent changes.
+     */
+    private void applyRippleForeground(boolean animate) {
+        float cornerRadius = getGlobalRoundedRadius();
         int rippleColor = useCustomColor
                 ? customColor
                 : ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
-        FelicityRippleDrawable ripple = new FelicityRippleDrawable(rippleColor);
-        ripple.setCornerRadius(getGlobalRoundedRadius());
-        int startColor = (highlightMode == MODE_OUTLINE) ? Color.TRANSPARENT : resolveFillColor();
-        ripple.setStartColor(startColor);
-        setForeground(ripple);
+        int targetStartColor = (highlightMode == MODE_OUTLINE) ? Color.TRANSPARENT : resolveFillColor();
+        
+        if (foregroundRipple == null) {
+            foregroundRipple = new FelicityRippleDrawable(rippleColor);
+            foregroundRipple.setCornerRadius(cornerRadius);
+            foregroundRipple.setStartColor(targetStartColor);
+            setForeground(foregroundRipple);
+        } else {
+            foregroundRipple.setCornerRadius(cornerRadius);
+            foregroundRipple.setRippleColor(rippleColor);
+            if (animate) {
+                animateRippleStartColor(lastRippleStartColor, targetStartColor);
+            } else {
+                foregroundRipple.setStartColor(targetStartColor);
+            }
+        }
+        
+        lastRippleStartColor = targetStartColor;
+    }
+    
+    /**
+     * Smoothly fades the ripple's background (start) color between two values.
+     */
+    private void animateRippleStartColor(@ColorInt int from, @ColorInt int to) {
+        ValueAnimator anim = ValueAnimator.ofObject(new ArgbEvaluator(), from, to);
+        anim.setDuration(COLOR_ANIM_DURATION);
+        anim.setInterpolator(new DecelerateInterpolator(1.5f));
+        anim.addUpdateListener(a -> foregroundRipple.setStartColor((int) a.getAnimatedValue()));
+        anim.start();
+    }
+    
+    /**
+     * Handles text color and drawable tint changes together. When accent mode is on,
+     * both are set to white so they stay readable on the colored background. When it's
+     * off, the parent's theme-aware colors take over again.
+     *
+     * @param animate whether to smoothly transition between colors or snap immediately.
+     */
+    private void applyTextAndDrawableColors(boolean animate) {
+        if (useAccentColor) {
+            if (animate) {
+                animateTextColor(getCurrentTextColor(), Color.WHITE);
+                animateDrawableColor(lastDrawableTintColor, Color.WHITE);
+            } else {
+                setTextColor(Color.WHITE);
+                TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(Color.WHITE));
+            }
+            lastDrawableTintColor = Color.WHITE;
+        } else {
+            // Let the parent restore the colors it owns based on the XML style attributes.
+            super.onThemeChanged(ThemeManager.INSTANCE.getTheme(), animate);
+            lastDrawableTintColor = resolveNormalDrawableColor();
+        }
+    }
+    
+    /**
+     * Smoothly transitions the text color from one value to another using a value animator.
+     */
+    private void animateTextColor(@ColorInt int from, @ColorInt int to) {
+        ValueAnimator anim = ValueAnimator.ofObject(new ArgbEvaluator(), from, to);
+        anim.setDuration(COLOR_ANIM_DURATION);
+        anim.setInterpolator(new DecelerateInterpolator(1.5f));
+        anim.addUpdateListener(animation -> setTextColor((int) animation.getAnimatedValue()));
+        anim.start();
+    }
+    
+    /**
+     * Smoothly transitions the compound drawable tint from one color to another.
+     */
+    private void animateDrawableColor(@ColorInt int from, @ColorInt int to) {
+        ValueAnimator anim = ValueAnimator.ofObject(new ArgbEvaluator(), from, to);
+        anim.setDuration(COLOR_ANIM_DURATION);
+        anim.setInterpolator(new DecelerateInterpolator(1.5f));
+        anim.addUpdateListener(animation ->
+                TextViewCompat.setCompoundDrawableTintList(
+                        this, ColorStateList.valueOf((int) animation.getAnimatedValue())));
+        anim.start();
+    }
+    
+    /**
+     * Figures out what the drawable tint color would be under normal (non-accent) conditions
+     * so we have a correct starting point when animating back from white.
+     */
+    @ColorInt
+    private int resolveNormalDrawableColor() {
+        return ThemeManager.INSTANCE.getTheme().getIconTheme().getRegularIconColor();
     }
     
     /**
@@ -215,18 +380,23 @@ public class HighlightTextView extends TypeFaceTextView {
     }
     
     /**
-     * Sets the highlight display mode at runtime.
+     * Sets the highlight display mode at runtime. The background and outline will animate
+     * to the new look rather than snapping instantly.
      *
      * @param mode one of {@link #MODE_FLAT}, {@link #MODE_OUTLINE}, or {@link #MODE_BOTH}.
      */
     public void setHighlightMode(int mode) {
         this.highlightMode = mode;
-        applyChipBackground();
-        applyRippleForeground();
+        applyChipBackground(true);
+        applyRippleForeground(true);
+        if (useAccentColor) {
+            applyTextAndDrawableColors(true);
+        }
     }
     
     /**
      * Pins the fill and stroke color to {@code color}, bypassing any theme or accent entirely.
+     * The color change is animated for a smooth transition.
      * Pass {@link Color#TRANSPARENT} to revert to theme-driven colors.
      *
      * @param color the ARGB color to use, or {@link Color#TRANSPARENT} to clear.
@@ -239,25 +409,38 @@ public class HighlightTextView extends TypeFaceTextView {
             useCustomColor = true;
             customColor = color;
         }
-        applyChipBackground();
-        applyRippleForeground();
+        applyChipBackground(true);
+        applyRippleForeground(true);
     }
     
     @Override
     public void onThemeChanged(@NonNull Theme theme, boolean animate) {
-        super.onThemeChanged(theme, animate);
+        // When accent mode is on the parent would override our white text/drawable with its own
+        // theme color, so we handle the color update ourselves instead.
+        if (!useAccentColor) {
+            super.onThemeChanged(theme, animate);
+        }
         if (!useCustomColor || useAccentColor) {
-            applyChipBackground();
-            applyRippleForeground();
+            applyChipBackground(animate);
+            applyRippleForeground(animate);
+        }
+        if (useAccentColor) {
+            applyTextAndDrawableColors(animate);
         }
     }
-    
+
     @Override
     public void onAccentChanged(@NonNull Accent accent) {
-        super.onAccentChanged(accent);
+        if (!useAccentColor) {
+            super.onAccentChanged(accent);
+        }
         if (!useCustomColor || useAccentColor) {
-            applyChipBackground();
-            applyRippleForeground();
+            applyChipBackground(true);
+            applyRippleForeground(true);
+        }
+        if (useAccentColor) {
+            // The accent color itself changed, so re-apply the background but keep text white.
+            applyTextAndDrawableColors(true);
         }
     }
     
@@ -266,11 +449,11 @@ public class HighlightTextView extends TypeFaceTextView {
             @Nullable String key) {
         super.onSharedPreferenceChanged(sharedPreferences, key);
         if (Objects.equals(key, AppearancePreferences.APP_CORNER_RADIUS)) {
-            applyChipBackground();
-            applyRippleForeground();
+            applyChipBackground(false);
+            applyRippleForeground(false);
         } else if ((!useCustomColor || useAccentColor) && Objects.equals(key, AppearancePreferences.ACCENT_COLOR)) {
-            applyChipBackground();
-            applyRippleForeground();
+            applyChipBackground(false);
+            applyRippleForeground(false);
         }
     }
     
@@ -309,16 +492,17 @@ public class HighlightTextView extends TypeFaceTextView {
     }
     
     /**
-     * Switches the view into accent-color mode at runtime — both fill and stroke will
-     * track the active accent color from that point on. Pass {@code false} to go back
-     * to the normal theme-driven or custom-color behavior.
+     * Switches the view into accent-color mode at runtime — the background, text, and
+     * drawable will all animate smoothly to reflect the change. Pass {@code false} to go
+     * back to the normal theme-driven or custom-color behavior.
      *
      * @param useAccent {@code true} to use accent color for everything.
      */
     public void setUseAccentColor(boolean useAccent) {
         this.useAccentColor = useAccent;
-        applyChipBackground();
-        applyRippleForeground();
+        applyChipBackground(true);
+        applyRippleForeground(true);
+        applyTextAndDrawableColors(true);
     }
     
     @Override

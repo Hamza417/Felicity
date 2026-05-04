@@ -14,11 +14,11 @@ import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentFavoritesBinding
 import app.simple.felicity.databinding.HeaderFavoritesBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
+import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.dialogs.favorites.FavoritesMenu.Companion.showFavoritesMenu
 import app.simple.felicity.dialogs.favorites.FavoritesSort.Companion.showFavoritesSort
-import app.simple.felicity.dialogs.songs.ShuffleAlgorithmDialog.Companion.showShuffleAlgorithmDialog
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.FavoritesPreferences
 import app.simple.felicity.repository.models.Audio
@@ -71,22 +71,16 @@ class Favorites : BasePanelFragment() {
         super.onDestroyView()
     }
 
+    override fun getShuffleButton(): HighlightTextView {
+        return headerBinding.shuffle
+    }
+
     private fun setupClickListeners() {
         headerBinding.sortStyle.setFavoritesSort()
         headerBinding.sortOrder.setFavoritesOrder()
 
         headerBinding.menu.setOnClickListener {
             childFragmentManager.showFavoritesMenu()
-        }
-
-        headerBinding.shuffle.setOnClickListener {
-            val songs = favoritesViewModel.favorites.value
-            if (songs.isNotEmpty()) shuffleMediaItems(songs)
-        }
-
-        headerBinding.shuffle.setOnLongClickListener {
-            childFragmentManager.showShuffleAlgorithmDialog()
-            true
         }
 
         headerBinding.sortStyle.setOnClickListener {

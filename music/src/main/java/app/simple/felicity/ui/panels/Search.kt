@@ -18,6 +18,7 @@ import app.simple.felicity.adapters.ui.lists.AdapterSearch
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentSearchBinding
 import app.simple.felicity.databinding.HeaderSearchBinding
+import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.dialogs.search.SearchFilter.Companion.showSearchFilter
@@ -197,11 +198,10 @@ class Search : PanelFragment() {
         headerBinding.scroll.setOnClickListener {
             binding.recyclerView.smoothScrollToPosition(0)
         }
+    }
 
-        headerBinding.shuffle.setOnClickListener {
-            val songs = searchViewModel.searchResults.value.songs
-            if (songs.isNotEmpty()) shuffleMediaItems(songs)
-        }
+    override fun getShuffleButton(): HighlightTextView {
+        return headerBinding.shuffle
     }
 
     private fun updateSearchResults(results: SearchResults) {

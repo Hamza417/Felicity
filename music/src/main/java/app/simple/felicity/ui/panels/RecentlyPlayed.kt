@@ -12,6 +12,7 @@ import app.simple.felicity.adapters.ui.lists.AdapterRecentlyPlayed
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentRecentlyPlayedBinding
 import app.simple.felicity.databinding.HeaderRecentlyPlayedBinding
+import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.dialogs.recentlyplayed.RecentlyPlayedMenu.Companion.showRecentlyPlayedMenu
@@ -69,12 +70,11 @@ class RecentlyPlayed : BasePanelFragment() {
         super.onDestroyView()
     }
 
-    private fun setupClickListeners() {
-        headerBinding.shuffle.setOnClickListener {
-            val songs = recentlyPlayedViewModel.songs.value
-            if (songs.isNotEmpty()) shuffleMediaItems(songs.map { it.audio })
-        }
+    override fun getShuffleButton(): HighlightTextView {
+        return headerBinding.shuffle
+    }
 
+    private fun setupClickListeners() {
         headerBinding.search.setOnClickListener {
             openSearch()
         }

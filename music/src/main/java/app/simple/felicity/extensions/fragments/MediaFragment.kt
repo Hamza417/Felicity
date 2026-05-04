@@ -1,6 +1,7 @@
 package app.simple.felicity.extensions.fragments
 
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
@@ -31,6 +32,7 @@ import app.simple.felicity.databinding.DialogEditPlaylistBinding
 import app.simple.felicity.databinding.DialogPlaylistMenuBinding
 import app.simple.felicity.databinding.DialogSongMenuBinding
 import app.simple.felicity.databinding.DialogSureBinding
+import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
 import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
@@ -38,6 +40,7 @@ import app.simple.felicity.dialogs.app.AudioInformation.Companion.showAudioInfo
 import app.simple.felicity.dialogs.app.PlaybackInfo.Companion.showPlaybackInfo
 import app.simple.felicity.dialogs.lyrics.Lyrics.Companion.showLyrics
 import app.simple.felicity.dialogs.playlists.AddToPlaylistDialog.Companion.showAddToPlaylistDialog
+import app.simple.felicity.dialogs.songs.ShuffleAlgorithmDialog.Companion.showShuffleAlgorithmDialog
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
@@ -73,11 +76,24 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     private var shouldShowMiniPlayer = true
     private var lastSavedSeekPosition = 0L
 
+    private var shuffleButton: HighlightTextView? = null
+
     private val miniPlayerCallbacks: MiniPlayerCallbacks?
         get() = requireActivity() as? MiniPlayerCallbacks
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        setShuffleButtonState()
+
+        getShuffleButton()?.setOnClickListener {
+            ShufflePreferences.toggleShuffle()
+        }
+
+        getShuffleButton()?.setOnLongClickListener {
+            childFragmentManager.showShuffleAlgorithmDialog()
+            true
+        }
 
         viewLifecycleOwner.lifecycleScope.launch {
             MediaPlaybackManager.songSeekPositionFlow.collect { position ->
@@ -1085,6 +1101,19 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         startActivity(Intent.createChooser(intent, getString(R.string.send)))
     }
 
+    private fun setShuffleButtonState() {
+        val shuffleButton = getShuffleButton() ?: return
+        shuffleButton.setUseAccentColor(ShufflePreferences.isShuffleEnabled())
+
+        if (ShufflePreferences.isShuffleEnabled()) {
+
+        } else {
+
+        }
+    }
+
+    open fun getShuffleButton(): HighlightTextView? = null
+
     override val wantsMiniPlayerVisible: Boolean
         get() = shouldShowMiniPlayer
 
@@ -1103,6 +1132,15 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             showMiniPlayer()
         } else {
             hideMiniPlayer()
+        }
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            ShufflePreferences.SHUFFLE -> {
+                setShuffleButtonState()
+            }
         }
     }
 

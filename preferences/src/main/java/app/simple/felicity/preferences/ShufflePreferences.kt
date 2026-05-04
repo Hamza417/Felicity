@@ -5,11 +5,29 @@ import app.simple.felicity.manager.SharedPreferences
 
 object ShufflePreferences {
 
+    const val SHUFFLE = "songs_shuffle"
     const val SHUFFLE_ALGORITHM = "songs_shuffle_algorithm"
 
     /** Algorithm constant values — mirror Shuffle.FISHER_YATES and Shuffle.MILLER */
     const val ALGORITHM_FISHER_YATES = 0
     const val ALGORITHM_MILLER = 1
+
+    // --------------------------------------------------------------------------------------------- //
+
+    fun isShuffleEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(SHUFFLE, false)
+    }
+
+    fun setShuffleEnabled(value: Boolean) {
+        SharedPreferences.getSharedPreferences().edit {
+            putBoolean(SHUFFLE, value)
+        }
+    }
+
+    fun toggleShuffle() {
+        val current = isShuffleEnabled()
+        setShuffleEnabled(!current)
+    }
 
     // --------------------------------------------------------------------------------------------- //
 
