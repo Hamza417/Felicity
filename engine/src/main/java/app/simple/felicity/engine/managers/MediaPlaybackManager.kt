@@ -12,17 +12,20 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import app.simple.felicity.engine.managers.MediaPlaybackManager._songPositionFlow
 import app.simple.felicity.engine.managers.MediaPlaybackManager.currentSongPosition
+import app.simple.felicity.engine.managers.MediaPlaybackManager.getSongs
 import app.simple.felicity.engine.managers.MediaPlaybackManager.mediaController
 import app.simple.felicity.engine.managers.MediaPlaybackManager.moveQueueItemSilently
 import app.simple.felicity.engine.managers.MediaPlaybackManager.next
 import app.simple.felicity.engine.managers.MediaPlaybackManager.notifyCurrentPosition
 import app.simple.felicity.engine.managers.MediaPlaybackManager.notifyPlaybackState
+import app.simple.felicity.engine.managers.MediaPlaybackManager.originalQueue
 import app.simple.felicity.engine.managers.MediaPlaybackManager.pendingSeekPositions
 import app.simple.felicity.engine.managers.MediaPlaybackManager.playNext
 import app.simple.felicity.engine.managers.MediaPlaybackManager.previous
 import app.simple.felicity.engine.managers.MediaPlaybackManager.removeQueueItemSilently
 import app.simple.felicity.engine.managers.MediaPlaybackManager.setSongs
 import app.simple.felicity.engine.managers.MediaPlaybackManager.updatePosition
+import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.listeners.MediaStateListener
 import app.simple.felicity.repository.models.Audio
@@ -66,6 +69,19 @@ object MediaPlaybackManager {
 
     // Backing store for the queue provided by UI/db. Treat as read-only outside.
     private var songs: List<Audio> = emptyList()
+
+    /**
+     * The queue exactly as it was handed to [setSongs] — never reordered.
+     * Kept so we can restore original playback order when shuffle is turned off.
+     */
+    private var originalQueue: List<Audio> = emptyList()
+
+    /**
+     * A randomized copy of [originalQueue] built whenever shuffle is turned on.
+     * The currently playing song always lands at position 0 so the active track
+     * is not interrupted when shuffle is enabled mid-queue.
+     */
+    private var shuffledQueue: List<Audio> = emptyList()
 
     // When true the currentSongPosition setter will NOT emit _songPositionFlow.
     // Used during queue reorders so that moving the playing song's index does not
@@ -162,12 +178,14 @@ object MediaPlaybackManager {
     private val _songSeekPositionFlow = MutableSharedFlow<Long>(replay = 1)
     private val _playbackStateFlow = MutableSharedFlow<Int>(replay = 1)
     private val _repeatModeFlow = MutableSharedFlow<Int>(replay = 1)
+    private val _shuffleStateFlow = MutableSharedFlow<Boolean>(replay = 1)
 
     val songListFlow: SharedFlow<List<Audio>> = _songListFlow.asSharedFlow()
     val songPositionFlow: SharedFlow<Int> = _songPositionFlow.asSharedFlow()
     val songSeekPositionFlow: SharedFlow<Long> = _songSeekPositionFlow.asSharedFlow()
     val playbackStateFlow: SharedFlow<Int> = _playbackStateFlow.asSharedFlow()
     val repeatModeFlow: SharedFlow<Int> = _repeatModeFlow.asSharedFlow()
+    val shuffleStateFlow: SharedFlow<Boolean> = _shuffleStateFlow.asSharedFlow()
 
     /**
      * Indicates the direction of the most recent song transition.
@@ -203,18 +221,38 @@ object MediaPlaybackManager {
         // Discard any seeks queued for the previous queue.
         pendingSeekPositions.clear()
 
-        this.songs = audios
-        val clampedPosition = if (audios.isEmpty()) 0 else position.coerceIn(0, audios.size - 1)
-        // Capture position BEFORE the setter runs so we know whether the setter's own
-        // field-change guard (field != value) will suppress its internal emit.
+        // Always remember the canonical order so we can restore it when shuffle is turned off.
+        originalQueue = audios
+
+        // When shuffle is already active we immediately build a fresh shuffled list so the
+        // new queue respects the user's preference from the very first song.
+        val activeQueue = if (ShufflePreferences.isShuffleEnabled() && audios.isNotEmpty()) {
+            val startSong = audios.getOrNull(position)
+            val rest = audios.toMutableList().also { if (startSong != null) it.remove(startSong) }.shuffled()
+            val shuffled = if (startSong != null) listOf(startSong) + rest else rest
+            shuffledQueue = shuffled
+            shuffled
+        } else {
+            shuffledQueue = emptyList()
+            audios
+        }
+
+        this.songs = activeQueue
+
+        // The starting position inside the active queue — always 0 when shuffle placed the
+        // requested start song at the front; otherwise the clamped user-provided index.
+        val effectivePosition = if (ShufflePreferences.isShuffleEnabled() && audios.isNotEmpty()) {
+            0
+        } else {
+            if (activeQueue.isEmpty()) 0 else position.coerceIn(0, activeQueue.size - 1)
+        }
+
+        val clampedPosition = effectivePosition
         val positionBeforeUpdate = currentSongPosition
-        // Directly update field to bypass the "no change" guard in the setter, then always emit
-        // so observers are notified even when the index stays the same but the song list changed
-        // (e.g. after shuffling, position 0 is a completely different song).
         currentSongPosition = clampedPosition
 
         // Line 83 inside setSongs
-        if (audios.isNotEmpty()) {
+        if (activeQueue.isNotEmpty()) {
             // Only emit explicitly when the setter's field-change guard prevented it — i.e.
             // when position is unchanged but the queue itself is new (e.g. after a shuffle).
             // When the position DID change, the setter already emitted; a second emit here
@@ -234,7 +272,7 @@ object MediaPlaybackManager {
             // Move heavy mapping to background thread
             scope.launch {
                 val mediaItems = withContext(Dispatchers.Default) {
-                    audios.map { audio ->
+                    activeQueue.map { audio ->
                         val uri = audio.uri.toPlaybackUri()
                         MediaItem.Builder()
                             .setMediaId(audio.id.toString())
@@ -285,6 +323,13 @@ object MediaPlaybackManager {
     }
 
     fun getSongs(): List<Audio> = songs
+
+    /**
+     * Returns the queue in its original, unshuffled order. When shuffle is off this is
+     * identical to [getSongs]. Save this instead of [getSongs] so the database always
+     * stores the canonical order and can reconstruct either mode on restore.
+     */
+    fun getOriginalQueue(): List<Audio> = originalQueue.ifEmpty { songs }
 
     fun getCurrentSong(): Audio? = songs.getOrNull(currentSongPosition)
 
@@ -613,6 +658,96 @@ object MediaPlaybackManager {
 
     fun notifyRepeatMode(repeatMode: Int) {
         scope.launch { _repeatModeFlow.emit(repeatMode) }
+    }
+
+    /**
+     * Switches the active playback queue between the original order and a shuffled order
+     * without interrupting the currently playing song.
+     *
+     * When [enabled] is `true`, a fresh shuffled copy of [originalQueue] is built with
+     * the currently playing song placed first so it keeps playing uninterrupted. ExoPlayer
+     * then receives the shuffled list and continues from position 0.
+     *
+     * When [enabled] is `false`, the original queue is restored and the player seeks to
+     * wherever the current song lives in that list so playback continues seamlessly.
+     *
+     * This is intentionally called from the player service as a reaction to the
+     * [ShufflePreferences.SHUFFLE] preference changing, keeping all active-state
+     * decisions in one central place.
+     */
+    fun setShuffleEnabled(enabled: Boolean) {
+        // Capture both values right here on the main thread before we hand off to the
+        // background — getSeekPosition() reads mediaController.currentPosition which
+        // must be read on the main thread, and getCurrentSong() reads the in-memory list.
+        val currentSong = getCurrentSong()
+        val seekPosition = getSeekPosition()
+
+        scope.launch {
+            // The shuffle algorithm and the song-to-MediaItem mapping can be slow for
+            // large libraries, so we push both off the main thread entirely.
+            data class QueueResult(val active: List<Audio>, val shuffled: List<Audio>)
+
+            val result = withContext(Dispatchers.Default) {
+                if (enabled) {
+                    val rest = originalQueue.toMutableList()
+                        .also { if (currentSong != null) it.remove(currentSong) }
+                        .shuffled()
+                    val shuffled = if (currentSong != null) listOf(currentSong) + rest else rest
+                    QueueResult(active = shuffled, shuffled = shuffled)
+                } else {
+                    QueueResult(active = originalQueue, shuffled = emptyList())
+                }
+            }
+
+            if (result.active.isEmpty()) {
+                _shuffleStateFlow.emit(enabled)
+                return@launch
+            }
+
+            val mediaItems = withContext(Dispatchers.Default) {
+                result.active.map { audio ->
+                    val uri = audio.uri.toPlaybackUri()
+                    MediaItem.Builder()
+                        .setMediaId(audio.id.toString())
+                        .setUri(uri)
+                        .setMediaMetadata(
+                                MediaMetadata.Builder()
+                                    .setArtist(audio.artist)
+                                    .setTitle(audio.title)
+                                    .build()
+                        )
+                        .build()
+                }
+            }
+
+            // All state mutations run on the main thread so there are no data races
+            // with ExoPlayer callbacks or other main-thread code.
+            shuffledQueue = result.shuffled
+            songs = result.active
+
+            val newPosition = currentSong
+                ?.let { cs -> result.active.indexOfFirst { it.id == cs.id } }
+                ?.coerceAtLeast(0) ?: 0
+
+            suppressPositionEmit = true
+            currentSongPosition = newPosition
+            suppressPositionEmit = false
+
+            isQueueBeingReplaced = true
+            pendingSeekPositions.clear()
+            pendingSeekPositions.add(newPosition)
+
+            mediaController?.setMediaItems(mediaItems, newPosition, seekPosition)
+
+            if (isPlaying()) {
+                mediaController?.play()
+            }
+
+            _songListFlow.emit(songs)
+            _shuffleStateFlow.emit(enabled)
+
+            Log.d(TAG, "Shuffle ${if (enabled) "enabled" else "disabled"}: queue swapped, continuing at position $newPosition")
+        }
     }
 
     /**

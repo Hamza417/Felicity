@@ -2,6 +2,7 @@ package app.simple.felicity.engine.managers
 
 import android.content.Context
 import android.util.Log
+import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.PlaybackQueueEntry
@@ -33,7 +34,9 @@ object PlaybackStateManager {
      * @return {@code true} if state was saved successfully, {@code false} otherwise.
      */
     suspend fun saveCurrentPlaybackState(context: Context, logTag: String = TAG): Boolean {
-        val songs = MediaPlaybackManager.getSongs()
+        // Always persist the original (unshuffled) queue so we can restore and optionally
+        // re-shuffle on the next launch rather than saving an already-shuffled order.
+        val songs = MediaPlaybackManager.getOriginalQueue()
         if (songs.isEmpty()) {
             Log.w(logTag, "Songs list is empty, skipping state save")
             return false
@@ -44,16 +47,15 @@ object PlaybackStateManager {
 
         withContext(Dispatchers.Main) {
             seek = MediaPlaybackManager.getSeekPosition()
-            position = MediaPlaybackManager.getCurrentSongPosition()
+            // When shuffle is on the active queue is shuffled, but the index we want to
+            // restore is the one matching the current song inside the ORIGINAL queue.
+            val currentSong = MediaPlaybackManager.getCurrentSong()
+            position = if (currentSong != null) {
+                songs.indexOfFirst { it.id == currentSong.id }.coerceAtLeast(0)
+            } else {
+                MediaPlaybackManager.getCurrentSongPosition()
+            }
         }
-
-        // We intentionally allow seek == 0 here. When the user swipes to a new song
-        // while the player is paused, the seek position of the newly loaded song is
-        // naturally 0ms (it just got there). Skipping the save in that case would
-        // mean the queue index is never written to the database, so restarting the
-        // app would take the user right back to the song they were on 20 swipes ago.
-        // The only time we truly have nothing worth saving is when the queue is empty,
-        // and that is already guarded by the songs.isEmpty() check above.
 
         return try {
             val audioDatabase = AudioDatabase.getInstance(context)
@@ -62,10 +64,10 @@ object PlaybackStateManager {
                     queueHash = songs.map { it.hash },
                     index = position,
                     position = seek,
-                    shuffle = false,
+                    shuffle = ShufflePreferences.isShuffleEnabled(),
                     repeat = 0
             )
-            Log.d(logTag, "Playback state saved: position=$position, seek=$seek, queueSize=${songs.size}")
+            Log.d(logTag, "Playback state saved: position=$position, seek=$seek, queueSize=${songs.size}, shuffle=${ShufflePreferences.isShuffleEnabled()}")
             true
         } catch (e: Exception) {
             Log.e(logTag, "Error saving playback state", e)

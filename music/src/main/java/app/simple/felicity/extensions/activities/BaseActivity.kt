@@ -39,6 +39,7 @@ import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceC
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.ConfigurationPreferences
+import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.TrialPreferences
 import app.simple.felicity.repository.covers.AudioCover
 import app.simple.felicity.repository.database.instances.AudioDatabase
@@ -267,12 +268,17 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                                 }
                             }
                         }
+
+                        // Apply the saved shuffle state BEFORE setSongs so the queue is
+                        // shuffled (or not) from the very moment it is handed to ExoPlayer.
+                        ShufflePreferences.setShuffleEnabled(playbackState.shuffle)
+
                         MediaPlaybackManager.setSongs(
                                 audios = lastSongs,
                                 position = restoredIndex,
                                 startPositionMs = playbackState.position.coerceAtLeast(0L),
                         )
-                        Log.d(TAG, "Playback state restored successfully")
+                        Log.d(TAG, "Playback state restored successfully (shuffle=${playbackState.shuffle})")
                         onStateReady()
                     }
                 } else {

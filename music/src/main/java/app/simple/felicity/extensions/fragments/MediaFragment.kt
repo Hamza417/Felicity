@@ -87,7 +87,11 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         setShuffleButtonState()
 
         getShuffleButton()?.setOnClickListener {
-            ShufflePreferences.toggleShuffle()
+            /**
+             * Do not toggle the shuffle here, that is for the long press
+             * menu. When tapped it simply shuffles the current list/queue.
+             */
+            onShuffleClicked()
         }
 
         getShuffleButton()?.setOnLongClickListener {
@@ -219,16 +223,26 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
     private fun createSongHistoryDatabase(songs: List<Audio>) {
         val seek = MediaPlaybackManager.getSeekPosition()
-        val idx = MediaPlaybackManager.getCurrentSongPosition()
+        val shuffleEnabled = ShufflePreferences.isShuffleEnabled()
+
+        // Save the original (unshuffled) queue with the index pointing to the current song
+        // inside that original order, so a restore can re-apply shuffle from a clean starting point.
+        val queueToSave = MediaPlaybackManager.getOriginalQueue().takeIf { it.isNotEmpty() } ?: songs
+        val currentSong = MediaPlaybackManager.getCurrentSong()
+        val idx = if (currentSong != null) {
+            queueToSave.indexOfFirst { it.id == currentSong.id }.coerceAtLeast(0)
+        } else {
+            MediaPlaybackManager.getCurrentSongPosition()
+        }
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             val audioDatabase = AudioDatabase.getInstance(requireContext())
             PlaybackStateManager.savePlaybackState(
                     db = audioDatabase,
-                    queueHash = songs.map { it.hash },
+                    queueHash = queueToSave.map { it.hash },
                     index = idx,
                     position = seek,
-                    shuffle = false,
+                    shuffle = shuffleEnabled,
                     repeat = 0
             )
         }
@@ -1112,7 +1126,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         }
     }
 
-    open fun getShuffleButton(): HighlightTextView? = null
+    protected open fun getShuffleButton(): HighlightTextView? = null
+    protected open fun onShuffleClicked() {}
 
     override val wantsMiniPlayerVisible: Boolean
         get() = shouldShowMiniPlayer

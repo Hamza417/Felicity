@@ -60,6 +60,7 @@ import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.preferences.PlayerPreferences
+import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.SongStatRepository
@@ -1089,6 +1090,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 val repeatMode = PlayerPreferences.getRepeatMode()
                 Log.d(TAG, "Repeat mode preference changed to: $repeatMode")
                 applyRepeatMode(repeatMode)
+            }
+            ShufflePreferences.SHUFFLE -> {
+                val shuffleEnabled = ShufflePreferences.isShuffleEnabled()
+                Log.d(TAG, "Shuffle preference changed to: $shuffleEnabled")
+                MediaPlaybackManager.setShuffleEnabled(shuffleEnabled)
             }
             AppearancePreferences.THEME,
             AppearancePreferences.ACCENT_COLOR -> {

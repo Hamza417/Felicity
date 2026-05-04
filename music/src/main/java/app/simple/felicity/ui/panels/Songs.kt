@@ -211,6 +211,11 @@ class Songs : BasePanelFragment() {
         return headerBinding.shuffle
     }
 
+    override fun onShuffleClicked() {
+        super.onShuffleClicked()
+        shuffleMediaItems(songsViewModel.songs.value)
+    }
+
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
