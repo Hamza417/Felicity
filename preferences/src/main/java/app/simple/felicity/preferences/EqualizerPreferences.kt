@@ -121,6 +121,14 @@ object EqualizerPreferences {
      */
     const val PLAYBACK_SPEED = "eq_playback_speed"
 
+    /**
+     * Manual replay gain offset stored as a float in [-15 .. +15] dB.
+     * 0.0 dB = unity gain (no change, default). Use this to level-match tracks that
+     * were mastered at different loudness targets, or to compensate for clipping on
+     * very loud recordings. Applied as a simple linear multiply before the DSP chain.
+     */
+    const val REPLAY_GAIN_DB = "eq_replay_gain_db"
+
     fun setBalance(pan: Float) {
         SharedPreferences.getSharedPreferences().edit { putFloat(BALANCE, pan.coerceIn(-1f, 1f)) }
     }
@@ -398,5 +406,22 @@ object EqualizerPreferences {
      */
     fun getPlaybackSpeed(): Float {
         return SharedPreferences.getSharedPreferences().getFloat(PLAYBACK_SPEED, 1.0f)
+    }
+
+    /**
+     * Persists the manual replay gain offset in dB, clamped to [-15 .. +15].
+     *
+     * @param db Gain offset in dB. 0.0 = unity (no change in loudness).
+     */
+    fun setReplayGainDb(db: Float) {
+        SharedPreferences.getSharedPreferences().edit { putFloat(REPLAY_GAIN_DB, db.coerceIn(-15f, 15f)) }
+    }
+
+    /**
+     * Returns the persisted manual replay gain offset in dB.
+     * Defaults to 0.0 dB (unity) when no value has been saved yet.
+     */
+    fun getReplayGainDb(): Float {
+        return SharedPreferences.getSharedPreferences().getFloat(REPLAY_GAIN_DB, 0f)
     }
 }

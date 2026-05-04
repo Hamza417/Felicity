@@ -269,6 +269,7 @@
     <string name="tape_saturation">Tape Saturation</string>
     <string name="pitch">Pitch</string>
     <string name="playback_speed">Speed</string>
+    <string name="replay_gain">Replay Gain</string>
     <string name="reverb">Reverb</string>
     <string name="reverb_mix">Mix</string>
     <string name="reverb_fade">Fade</string>
