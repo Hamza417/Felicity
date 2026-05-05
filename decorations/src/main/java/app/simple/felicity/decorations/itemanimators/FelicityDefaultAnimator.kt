@@ -107,8 +107,14 @@ class FelicityDefaultAnimator : DefaultItemAnimator() {
 
     override fun endAnimations() {
         super.endAnimations()
-        addAnimators.values.forEach { it.cancel() }
-        removeAnimators.values.forEach { it.cancel() }
+        /**
+         * We snapshot the values into a separate list before canceling because
+         * canceling an animator fires its end/cancel listeners, which remove
+         * entries from the map. Iterating and modifying the same map at the
+         * same time causes a ConcurrentModificationException.
+         */
+        addAnimators.values.toList().forEach { it.cancel() }
+        removeAnimators.values.toList().forEach { it.cancel() }
     }
 
     override fun isRunning(): Boolean {
