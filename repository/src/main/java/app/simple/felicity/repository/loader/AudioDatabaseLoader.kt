@@ -294,7 +294,13 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             dbChannel.close()
             consumerJob.join()
 
-            notification.updateProgress(allSAFFiles.size)
+            // Only push the "100% done" update when we actually processed some files.
+            // If everything was already up to date and pendingJobs was empty, posting
+            // a final progress update would cause a split-second notification flash
+            // (indeterminate → 100% → dismissed) that looks broken to the user.
+            if (pendingJobs.isNotEmpty()) {
+                notification.updateProgress(allSAFFiles.size)
+            }
 
             // Post-processing: fill in real filesystem paths for any audio rows that are missing one.
             // We query each content URI directly for the DATA column — same way MediaStoreCover

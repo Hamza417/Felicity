@@ -101,9 +101,16 @@ class LoaderNotification(private val context: Context) {
      * the total file count (from [setTotal]), this shows a proper fill-level bar.
      * Otherwise, it keeps the indeterminate spinner going.
      *
+     * We bail out early if the notification has already been dismissed — this
+     * prevents a cancelled scan from accidentally resurrecting the notification
+     * after [dismissForce] was called but before the scan's coroutines fully
+     * wound down.
+     *
      * @param scanned How many files have been evaluated (checked) so far.
      */
     fun updateProgress(scanned: Int) {
+        if (!isNotificationActive.get()) return
+
         val total = totalFiles
         val isIndeterminate = total <= 0
 
