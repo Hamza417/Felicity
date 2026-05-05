@@ -36,9 +36,9 @@
                 android:drawablePadding="@dimen/padding_5"
                 android:paddingVertical="@dimen/padding_5"
                 android:paddingHorizontal="@dimen/padding_10"
-                android:text="Relaxed"
+                android:text="@string/relaxed"
                 app:drawableTintStyle="accent"
-                app:highlightMode="flat"
+                app:highlightMode="auto"
                 app:textColorStyle="primary" />
 
             <app.simple.felicity.decorations.highlight.HighlightTextView
@@ -49,9 +49,9 @@
                 android:drawablePadding="@dimen/padding_5"
                 android:paddingVertical="@dimen/padding_5"
                 android:paddingHorizontal="@dimen/padding_10"
-                android:text="Compact"
+                android:text="@string/compact"
                 app:drawableTintStyle="accent"
-                app:highlightMode="flat"
+                app:highlightMode="auto"
                 app:textColorStyle="primary" />
 
         </com.google.android.flexbox.FlexboxLayout>
@@ -76,9 +76,9 @@
                 android:drawablePadding="@dimen/padding_5"
                 android:paddingVertical="@dimen/padding_5"
                 android:paddingHorizontal="@dimen/padding_10"
-                android:text="Single"
+                android:text="@string/single"
                 app:drawableTintStyle="accent"
-                app:highlightMode="flat"
+                app:highlightMode="auto"
                 app:textColorStyle="primary" />
 
             <app.simple.felicity.decorations.highlight.HighlightTextView
@@ -89,9 +89,9 @@
                 android:drawablePadding="@dimen/padding_5"
                 android:paddingVertical="@dimen/padding_5"
                 android:paddingHorizontal="@dimen/padding_10"
-                android:text="Double"
+                android:text="@string/double_"
                 app:drawableTintStyle="accent"
-                app:highlightMode="flat"
+                app:highlightMode="auto"
                 app:textColorStyle="primary" />
 
             <app.simple.felicity.decorations.highlight.HighlightTextView
@@ -102,9 +102,10 @@
                 android:drawablePadding="@dimen/padding_5"
                 android:paddingVertical="@dimen/padding_5"
                 android:paddingHorizontal="@dimen/padding_10"
-                android:text="Triple"
+                android:text="@string/triple"
+                android:visibility="gone"
                 app:drawableTintStyle="accent"
-                app:highlightMode="flat"
+                app:highlightMode="auto"
                 app:textColorStyle="primary" />
 
         </com.google.android.flexbox.FlexboxLayout>
@@ -129,9 +130,9 @@
                 android:drawablePadding="@dimen/padding_5"
                 android:paddingVertical="@dimen/padding_5"
                 android:paddingHorizontal="@dimen/padding_10"
-                android:text="2x"
+                android:text="@string/_2x"
                 app:drawableTintStyle="accent"
-                app:highlightMode="flat"
+                app:highlightMode="auto"
                 app:textColorStyle="primary" />
 
             <app.simple.felicity.decorations.highlight.HighlightTextView
@@ -142,9 +143,9 @@
                 android:drawablePadding="@dimen/padding_5"
                 android:paddingVertical="@dimen/padding_5"
                 android:paddingHorizontal="@dimen/padding_10"
-                android:text="3x"
+                android:text="@string/_3x"
                 app:drawableTintStyle="accent"
-                app:highlightMode="flat"
+                app:highlightMode="auto"
                 app:textColorStyle="primary" />
 
             <app.simple.felicity.decorations.highlight.HighlightTextView
@@ -155,9 +156,9 @@
                 android:drawablePadding="@dimen/padding_5"
                 android:paddingVertical="@dimen/padding_5"
                 android:paddingHorizontal="@dimen/padding_10"
-                android:text="4x"
+                android:text="@string/_4x"
                 app:drawableTintStyle="accent"
-                app:highlightMode="flat"
+                app:highlightMode="auto"
                 app:textColorStyle="primary" />
 
             <app.simple.felicity.decorations.highlight.HighlightTextView
@@ -168,10 +169,10 @@
                 android:drawablePadding="@dimen/padding_5"
                 android:paddingVertical="@dimen/padding_5"
                 android:paddingHorizontal="@dimen/padding_10"
-                android:text="5x"
+                android:text="@string/_5x"
                 android:visibility="gone"
                 app:drawableTintStyle="accent"
-                app:highlightMode="flat"
+                app:highlightMode="auto"
                 app:textColorStyle="primary" />
 
             <app.simple.felicity.decorations.highlight.HighlightTextView
@@ -182,10 +183,10 @@
                 android:drawablePadding="@dimen/padding_5"
                 android:paddingVertical="@dimen/padding_5"
                 android:paddingHorizontal="@dimen/padding_10"
-                android:text="6x"
+                android:text="@string/_6x"
                 android:visibility="gone"
                 app:drawableTintStyle="accent"
-                app:highlightMode="flat"
+                app:highlightMode="auto"
                 app:textColorStyle="primary" />
 
         </com.google.android.flexbox.FlexboxLayout>

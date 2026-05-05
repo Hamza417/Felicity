@@ -468,5 +468,10 @@
     <string name="portrait">Portrait</string>
     <string name="span_type">Span Type</string>
     <string name="landscape">Landscape</string>
+    <string name="relaxed">Relaxed</string>
+    <string name="compact">Compact</string>
+    <string name="single">Single</string>
+    <string name="double_">Double</string>
+    <string name="triple">Triple</string>
 
 </resources>

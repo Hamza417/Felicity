@@ -35,4 +35,11 @@
     <string name="format_io_rate">%1$s ➔ %2$s</string>
     <string name="format_bit_depth_io">In: %1$d-bit  Out: %2$d-bit</string>
     <string name="telegram_channel">Telegram Channel</string>
+
+    <!-- GRID -->
+    <string name="_2x">2x</string>
+    <string name="_3x">3x</string>
+    <string name="_4x">4x</string>
+    <string name="_5x">5x</string>
+    <string name="_6x">6x</string>
 </resources>

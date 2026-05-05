@@ -42,9 +42,11 @@ class GenericListStyleDialog : ScopedBottomSheetFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         if (isLandscape) {
+            binding.triple.visible()
             binding.fiveX.visible()
             binding.sixX.visible()
         } else {
+            binding.triple.gone()
             binding.fiveX.gone()
             binding.sixX.gone()
         }
