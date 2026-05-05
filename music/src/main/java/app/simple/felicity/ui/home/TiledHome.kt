@@ -240,13 +240,16 @@ class TiledHome : BaseHomeFragment() {
             yAnim.cancel()
         }
 
-        binding.recyclerView.forEachViewHolderIndexed<AdapterSpannedHomeTiles.SongHolder> { holder, position ->
+        binding.recyclerView.forEachViewHolderIndexed<AdapterSpannedHomeTiles.SongHolder> { holder, _ ->
             if (holder.binding.art != imageView) {
                 val targetScale = if (randomScale) Random.nextDouble(0.6, 0.9).toFloat() else 1f
-
-                // Apply the spring animation to the item view
                 holder.itemView.applySpringScale(targetScale)
             }
+        }
+
+        binding.recyclerView.forEachViewHolderIndexed<AdapterSpannedHomeTiles.PanelHolder> { holder, _ ->
+            val targetScale = if (randomScale) Random.nextDouble(0.6, 0.9).toFloat() else 1f
+            holder.itemView.applySpringScale(targetScale)
         }
     }
 

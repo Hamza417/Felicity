@@ -558,8 +558,12 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 }
             }
 
-            val onDismissCallback: () -> Unit = {
+            val onDismissStart: (() -> Unit) = {
                 miniPlayerCallbacks?.onShowMiniPlayer()
+                onDismissStart?.invoke()
+            }
+
+            val onDismissCallback: () -> Unit = {
                 onDismiss?.invoke()
             }
 
@@ -572,7 +576,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     .onViewCreated(onViewCreated)
                     .onDialogInflated(onDialogInflated)
                     .onDismiss(onDismissCallback)
-                    .onDismissStart { onDismissStart?.invoke() }
+                    .onDismissStart(onDismissStart)
                     .setWidthRatio(getDialogWidthRation())
                     .build()
                     .show()
@@ -583,7 +587,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     .onViewCreated(onViewCreated)
                     .onDialogInflated(onDialogInflated)
                     .onDismiss(onDismissCallback)
-                    .onDismissStart { onDismissStart?.invoke() }
+                    .onDismissStart(onDismissStart)
                     .setWidthRatio(getDialogWidthRation())
                     .build()
                     .show()
