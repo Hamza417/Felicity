@@ -35,6 +35,14 @@ import kotlinx.coroutines.launch
  * right next to the play icon — two little buddies hanging out on the right side.
  * If the song is only selected (not playing), just the check icon shows up.
  *
+ * When [enableDragHandle] is true, a drag-grip icon is drawn at the very far right,
+ * and the play / check icons shift one slot to the left to make room.
+ *
+ * When [enableGridMode] is true, the layout behaves differently — no right padding is
+ * applied, and instead the icons float in the center of the view, sitting on top of a
+ * semi-transparent dim underlay pill so they remain readable over any album art or
+ * background content.
+ *
  * The background behind the icons fades in from the left using a cubic ease-in
  * bezier gradient, so it looks smooth and intentional rather than a hard line.
  *
@@ -55,6 +63,34 @@ class MediaAwareRippleLinearLayout @JvmOverloads constructor(
     /** True when this song is currently sitting in the selection basket. */
     private var isInSelection: Boolean = false
 
+    /**
+     * When true, a drag-grip icon is drawn at the far-right edge and the play / check
+     * icons shift left to make room. The layout should reserve an equivalent margin so
+     * text views don't slide under the handle area.
+     */
+    var enableDragHandle: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            cachedShaderW = -1f
+            updateRightPadding()
+            invalidate()
+        }
+
+    /**
+     * When true, the view is treated as a grid cell. Right padding is never applied,
+     * and any active icons are drawn centered on the view with a dim pill underlay
+     * behind them so they stay visible over album art or any other background content.
+     */
+    var enableGridMode: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            appliedIconCount = -1
+            updateRightPadding()
+            invalidate()
+        }
+
     /** Coroutine scope that lives exactly as long as this view is attached to a window. */
     private var selectionScope: CoroutineScope? = null
 
@@ -67,30 +103,56 @@ class MediaAwareRippleLinearLayout @JvmOverloads constructor(
     /** The checkmark that appears when this song is selected — "yep, this one's picked!" */
     private val checkDrawable = AppCompatResources.getDrawable(context, R.drawable.ic_check)
 
-    /** Paint used to draw the gradient background strip behind the icons. */
+    /**
+     * The drag-grip icon drawn at the far-right slot when [enableDragHandle] is true.
+     * Using the same drawable that the old ImageButton used, so it looks identical.
+     */
+    private val dragHandleDrawable = AppCompatResources.getDrawable(context, R.drawable.ic_drag_indicator)
+
+    /** Paint used to draw the gradient background strip behind the icons in list mode. */
     private val selectionBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
 
     /**
+     * Paint used to draw the dim underlay pill in grid mode. It uses a solid
+     * semi-transparent black so the icons remain legible over any background.
+     */
+    private val gridUnderlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = 0xAA000000.toInt()
+    }
+
+    /**
      * Reusable clip path for the gradient strip — rebuilt whenever the view size or state
-     * changes so we never allocate inside onDraw. The right corners are rounded to match
-     * the app's global corner radius, giving the strip that polished, belongs-here feel.
+     * changes so we never allocate inside onDraw.
      */
     private val selectionClipPath = Path()
 
-    /** Reusable RectF so we don't allocate a new one in every layout pass. */
+    /** Reusable RectF for the list-mode gradient strip. */
     private val selectionRect = RectF()
 
     /**
+     * Reusable RectF for the grid-mode dim underlay pill. Rebuilt alongside the
+     * icon geometry so [dispatchDraw] stays allocation-free.
+     */
+    private val gridUnderlayRect = RectF()
+
+    /**
      * Cached values that let us detect when the geometry needs rebuilding.
-     * We check these in [onDraw] and only redo the math when something actually changed.
      */
     private var cachedShaderW = -1f
     private var cachedShaderH = -1f
     private var cachedShaderColor = 0
     private var cachedIsPlaying = false
     private var cachedIsInSelection = false
+    private var cachedDragHandle = false
+
+    /**
+     * The last icon count we applied as right padding. Tracked so we only call
+     * [setPadding] when the count actually changes — layout passes are expensive.
+     */
+    private var appliedIconCount = -1
 
     init {
         // ViewGroups skip onDraw by default. We need it to draw the indicator strip
@@ -110,7 +172,21 @@ class MediaAwareRippleLinearLayout @JvmOverloads constructor(
         this.audioID = audioID
         isPlaying = audioID == MediaPlaybackManager.getCurrentSongId()
         isInSelection = SelectionManager.selectedAudios.value.any { it.id == audioID }
+        appliedIconCount = -1
+        updateRightPadding()
         invalidate()
+    }
+
+    /**
+     * Returns true if the given x coordinate falls inside the drag handle's touch region.
+     * The drag handle always occupies the rightmost slot (one row-height wide), so the
+     * adapter can call this to decide whether a finger-down event should start a drag.
+     *
+     * Only meaningful when [enableDragHandle] is true — always returns false otherwise.
+     */
+    fun isDragHandleRegion(x: Float): Boolean {
+        if (!enableDragHandle) return false
+        return x >= width - height
     }
 
     /**
@@ -124,27 +200,52 @@ class MediaAwareRippleLinearLayout @JvmOverloads constructor(
         val shouldBePlaying = audio?.id == audioID
         if (isPlaying == shouldBePlaying) return
         isPlaying = shouldBePlaying
+        updateRightPadding()
         invalidate()
     }
 
-    /**
-     * Rebuilds the cached gradient shader and clip path whenever the view size, accent
-     * color, or icon visibility changes. Calling this from [onSizeChanged] keeps [onDraw]
-     * completely allocation-free — no new objects are created per frame.
-     */
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         rebuildSelectionGeometry(w.toFloat(), h.toFloat(), isPlaying, isInSelection)
+        updateRightPadding()
     }
 
     /**
-     * Computes the gradient shader and the rounded clip path for the icon strip.
-     * The gradient follows a cubic ease-in Bézier curve — it starts nearly invisible
-     * and ramps up quickly near the right edge, which feels much more natural than
-     * a boring straight linear fade.
-     *
-     * The strip width adapts to how many icons need to be shown: one slot when only
-     * one icon is visible, two slots when the song is both playing and selected.
+     * Called after every layout pass, including the very first one where the view gets
+     * real dimensions for the first time. This is the safety net for the case where
+     * [setAudioID] was called before layout (height was 0 then, so padding was deferred).
+     */
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+        updateRightPadding()
+    }
+
+    /**
+     * Calculates how many icons are currently visible and updates the right padding so
+     * children never slide under the drawn icons. In grid mode this is skipped entirely
+     * because the icons float in the center and don't push content aside.
+     */
+    private fun updateRightPadding() {
+        if (enableGridMode) return
+        if (height == 0) return
+        val h = height.toFloat()
+        val iconSize = (h * 0.45f).toInt()
+        val iconPadding = (h * 0.10f).toInt()
+        val iconCount = (if (enableDragHandle) 1 else 0) +
+                (if (isPlaying) 1 else 0) +
+                (if (isInSelection) 1 else 0)
+        if (iconCount == appliedIconCount) return
+        appliedIconCount = iconCount
+        val rightPad = iconCount * (iconSize + iconPadding)
+        setPadding(paddingLeft, paddingTop, rightPad, paddingBottom)
+
+        // WARN: do not call invalidate here
+    }
+
+    /**
+     * Computes the gradient shader and rounded clip path for the list-mode icon strip,
+     * and also pre-computes the grid-mode underlay pill rect so [dispatchDraw] can draw
+     * both without any allocations.
      */
     private fun rebuildSelectionGeometry(w: Float, h: Float, playing: Boolean, inSelection: Boolean) {
         if (w <= 0f || h <= 0f) return
@@ -154,8 +255,28 @@ class MediaAwareRippleLinearLayout @JvmOverloads constructor(
         val accentColor = ThemeManager.accent.secondaryAccentColor
         val maxAlpha = 60
 
-        // When both icons are on duty, we need a wider strip to fit them side by side.
-        val slotCount = if (playing && inSelection) 2f else 1f
+        var slotCount = if (playing && inSelection) 2f else if (playing || inSelection) 1f else 0f
+        if (enableDragHandle) slotCount += 1f
+
+        // The grid underlay covers the entire view so the dim effect feels like a proper
+        // "this cell is active" overlay rather than a floating badge.
+        val visibleIconCount = (if (playing) 1 else 0) + (if (inSelection) 1 else 0)
+        if (visibleIconCount > 0) {
+            gridUnderlayRect.set(0f, 0f, w, h)
+        } else {
+            gridUnderlayRect.setEmpty()
+        }
+
+        if (slotCount == 0f) {
+            cachedShaderW = w
+            cachedShaderH = h
+            cachedShaderColor = accentColor
+            cachedIsPlaying = playing
+            cachedIsInSelection = inSelection
+            cachedDragHandle = enableDragHandle
+            return
+        }
+
         val indicatorW = h * slotCount
 
         // Build a cubic ease-in curve using multiple color stops so the fade-in
@@ -187,81 +308,167 @@ class MediaAwareRippleLinearLayout @JvmOverloads constructor(
         cachedShaderColor = accentColor
         cachedIsPlaying = playing
         cachedIsInSelection = inSelection
+        cachedDragHandle = enableDragHandle
     }
 
     /**
-     * Draws a semi-transparent icon strip at the right edge of the view, sitting behind
-     * all the child views (text, album art, etc.). The strip shows:
-     *
-     * - A play icon when this song is currently playing.
-     * - A check icon when this song is selected.
-     * - Both icons side by side when the song is both playing and selected
-     *   (they're great together, like bread and butter).
-     *
-     * The gradient behind the icons uses a cubic ease-in bezier curve so it fades in
-     * gradually and looks intentional rather than slapped on. When neither icon is
-     * needed, the whole thing is skipped so non-active rows have zero overhead.
+     * Draws the gradient strip background in list mode. In grid mode, nothing is drawn
+     * here — the dim underlay and icons are both handled in [dispatchDraw] so they always
+     * appear on top of all child views.
      */
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (!isPlaying && !isInSelection) return
+        if (enableGridMode) return
+        if (!isPlaying && !isInSelection && !enableDragHandle) return
 
         val w = width.toFloat()
         val h = height.toFloat()
 
         // Rebuild geometry if the size, accent color, or icon combination changed.
-        // This is a lazy fallback — most of the time onSizeChanged already took care of it.
         if (cachedShaderW != w || cachedShaderH != h ||
                 cachedShaderColor != ThemeManager.accent.secondaryAccentColor ||
-                cachedIsPlaying != isPlaying || cachedIsInSelection != isInSelection) {
+                cachedIsPlaying != isPlaying || cachedIsInSelection != isInSelection ||
+                cachedDragHandle != enableDragHandle) {
             rebuildSelectionGeometry(w, h, isPlaying, isInSelection)
         }
 
-        // Draw the bezier-faded gradient strip clipped to the rounded rectangle.
-        canvas.withClip(selectionClipPath) {
-            drawRect(selectionRect, selectionBgPaint)
+        if (!selectionRect.isEmpty) {
+            canvas.withClip(selectionClipPath) {
+                drawRect(selectionRect, selectionBgPaint)
+            }
+        }
+    }
+
+    /**
+     * Draws the play, check, and drag-handle icons on top of all child views.
+     *
+     * In **list mode** the icons are packed at the right edge in their slots, same as before.
+     *
+     * In **grid mode** the icons are centered on the view. A dim semi-transparent pill is
+     * drawn first so the icons stay readable regardless of what's behind them — think of it
+     * as a little stage spotlight for the icons.
+     */
+    override fun dispatchDraw(canvas: Canvas) {
+        super.dispatchDraw(canvas)
+
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return
+
+        if (!isPlaying && !isInSelection && !enableDragHandle) return
+
+        if (cachedShaderW != w || cachedShaderH != h ||
+                cachedShaderColor != ThemeManager.accent.secondaryAccentColor ||
+                cachedIsPlaying != isPlaying || cachedIsInSelection != isInSelection ||
+                cachedDragHandle != enableDragHandle) {
+            rebuildSelectionGeometry(w, h, isPlaying, isInSelection)
         }
 
-        // These sizing constants keep the icons proportional regardless of row height.
-        val iconSize = (h * 0.45f).toInt()
-        val iconPadding = (h * 0.18f).toInt()
-        val iconTop = ((h - iconSize) / 2f).toInt()
         val accentColor = ThemeManager.accent.secondaryAccentColor
 
-        if (isPlaying && isInSelection) {
-            // Both icons are here — play on the left, check on the right,
-            // each sitting in its own half of the double-wide strip.
-            val checkLeft = (w - iconSize - iconPadding).toInt()
-            val playLeft = checkLeft - iconSize - iconPadding
-
-            playDrawable?.let {
-                it.setTint(accentColor)
-                it.setBounds(playLeft, iconTop, playLeft + iconSize, iconTop + iconSize)
-                it.alpha = 200
-                it.draw(canvas)
-            }
-
-            checkDrawable?.let {
-                it.setTint(accentColor)
-                it.setBounds(checkLeft, iconTop, checkLeft + iconSize, iconTop + iconSize)
-                it.alpha = 200
-                it.draw(canvas)
-            }
-        } else if (isPlaying) {
-            // Only the play icon — song is playing but not selected.
-            val iconLeft = (w - iconSize - iconPadding).toInt()
-            playDrawable?.let {
-                it.setTint(accentColor)
-                it.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
-                it.alpha = 200
-                it.draw(canvas)
-            }
+        if (enableGridMode) {
+            drawGridModeIcons(canvas, w, h, accentColor)
         } else {
-            // Only the check icon — song is selected but not currently playing.
-            val iconLeft = (w - iconSize - iconPadding).toInt()
+            drawListModeIcons(canvas, w, h, accentColor)
+        }
+
+        updateRightPadding()
+    }
+
+    /**
+     * Handles icon drawing for grid mode. A rounded-rect dim underlay is painted first,
+     * then the play and check icons are centered inside it side by side. The drag handle
+     * is intentionally skipped in grid mode since there's no meaningful drag interaction
+     * in a grid layout.
+     */
+    private fun drawGridModeIcons(canvas: Canvas, w: Float, h: Float, accentColor: Int) {
+        if (!isPlaying && !isInSelection) return
+
+        val iconSize = (h * 0.30f).toInt()
+        val iconPadding = (h * 0.08f).toFloat()
+        val cornerR = AppearancePreferences.getCornerRadius()
+
+        // Draw the full-view dim underlay so the whole cell darkens and the icons
+        // stand out clearly on top of any album art or background content.
+        if (!gridUnderlayRect.isEmpty) {
+            canvas.drawRoundRect(gridUnderlayRect, cornerR, cornerR, gridUnderlayPaint)
+        }
+
+        // Center the icons horizontally and vertically within the full view.
+        val visibleIconCount = (if (isPlaying) 1 else 0) + (if (isInSelection) 1 else 0)
+        val totalIconsW = visibleIconCount * iconSize + (visibleIconCount - 1) * iconPadding.toInt()
+        val startLeft = ((width - totalIconsW) / 2f).toInt()
+        val iconTop = ((height - iconSize) / 2f).toInt()
+
+        // Place icons left-to-right, centered in the view.
+        var slotIndex = 0
+
+        fun nextIconLeft(): Int {
+            val left = startLeft + slotIndex * (iconSize + iconPadding.toInt())
+            slotIndex++
+            return left
+        }
+
+        if (isPlaying) {
+            val left = nextIconLeft()
+            playDrawable?.let {
+                it.setTint(accentColor)
+                it.setBounds(left, iconTop, left + iconSize, iconTop + iconSize)
+                it.alpha = 220
+                it.draw(canvas)
+            }
+        }
+
+        if (isInSelection) {
+            val left = nextIconLeft()
             checkDrawable?.let {
                 it.setTint(accentColor)
-                it.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
+                it.setBounds(left, iconTop, left + iconSize, iconTop + iconSize)
+                it.alpha = 220
+                it.draw(canvas)
+            }
+        }
+    }
+
+    /**
+     * Handles icon drawing for list mode. Icons are packed tightly from the right edge,
+     * each one stepping left by exactly one slot. The drag handle always occupies the
+     * rightmost slot when enabled.
+     */
+    private fun drawListModeIcons(canvas: Canvas, w: Float, h: Float, accentColor: Int) {
+        val iconSize = (h * 0.45f).toInt()
+        val iconPadding = (h * 0.10f).toInt()
+        val iconTop = ((h - iconSize) / 2f).toInt()
+
+        var nextSlot = 0
+
+        fun iconLeft(slot: Int) = (w - (slot + 1) * (iconSize + iconPadding)).toInt()
+
+        if (enableDragHandle) {
+            val left = iconLeft(nextSlot++)
+            dragHandleDrawable?.let {
+                it.setTint(accentColor)
+                it.setBounds(left, iconTop, left + iconSize, iconTop + iconSize)
+                it.alpha = 200
+                it.draw(canvas)
+            }
+        }
+
+        if (isInSelection) {
+            val left = iconLeft(nextSlot++)
+            checkDrawable?.let {
+                it.setTint(accentColor)
+                it.setBounds(left, iconTop, left + iconSize, iconTop + iconSize)
+                it.alpha = 200
+                it.draw(canvas)
+            }
+        }
+
+        if (isPlaying) {
+            val left = iconLeft(nextSlot)
+            playDrawable?.let {
+                it.setTint(accentColor)
+                it.setBounds(left, iconTop, left + iconSize, iconTop + iconSize)
                 it.alpha = 200
                 it.draw(canvas)
             }
@@ -280,6 +487,7 @@ class MediaAwareRippleLinearLayout @JvmOverloads constructor(
                 val nowSelected = selected.any { it.id == audioID }
                 if (nowSelected != isInSelection) {
                     isInSelection = nowSelected
+                    updateRightPadding()
                     invalidate()
                 }
             }

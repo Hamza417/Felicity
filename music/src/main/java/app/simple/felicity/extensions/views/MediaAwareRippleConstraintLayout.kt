@@ -36,8 +36,12 @@ import kotlinx.coroutines.launch
  * If the song is only selected (not playing), just the check icon shows up.
  *
  * When [enableDragHandle] is true, a drag-grip icon is drawn at the very far right,
- * and the play / check icons shift one slot to the left to make room. This removes
- * the need for a dedicated ImageButton in the layout, which is one less view per row.
+ * and the play / check icons shift one slot to the left to make room.
+ *
+ * When [enableGridMode] is true, the layout behaves differently — no right padding is
+ * applied, and instead the icons float in the center of the view, sitting on top of a
+ * semi-transparent dim underlay pill so they remain readable over any album art or
+ * background content.
  *
  * The background behind the icons fades in from the left using a cubic ease-in
  * bezier gradient, so it looks smooth and intentional rather than a hard line.
@@ -68,8 +72,22 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         set(value) {
             if (field == value) return
             field = value
-            // Force a geometry rebuild on the next draw pass.
             cachedShaderW = -1f
+            updateRightPadding()
+            invalidate()
+        }
+
+    /**
+     * When true, the view is treated as a grid cell. Right padding is never applied,
+     * and any active icons are drawn centered on the view with a dim pill underlay
+     * behind them so they stay visible over album art or any other background content.
+     */
+    var enableGridMode: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            // If switching away from grid mode, restore the correct padding.
+            appliedIconCount = -1
             updateRightPadding()
             invalidate()
         }
@@ -92,24 +110,37 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
      */
     private val dragHandleDrawable = AppCompatResources.getDrawable(context, R.drawable.ic_drag_indicator)
 
-    /** Paint used to draw the gradient background strip behind the icons. */
+    /** Paint used to draw the gradient background strip behind the icons in list mode. */
     private val selectionBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
 
     /**
+     * Paint used to draw the dim underlay pill in grid mode. It uses a solid
+     * semi-transparent black so the icons remain legible over any background.
+     */
+    private val gridUnderlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = 0xAA000000.toInt()
+    }
+
+    /**
      * Reusable clip path for the gradient strip — rebuilt whenever the view size or state
-     * changes so we never allocate inside onDraw. The right corners are rounded to match
-     * the app's global corner radius, giving the strip that polished, belongs-here feel.
+     * changes so we never allocate inside onDraw.
      */
     private val selectionClipPath = Path()
 
-    /** Reusable RectF so we don't allocate a new one in every layout pass. */
+    /** Reusable RectF for the list-mode gradient strip. */
     private val selectionRect = RectF()
 
     /**
+     * Reusable RectF for the grid-mode dim underlay pill. Rebuilt alongside the
+     * icon geometry so [dispatchDraw] stays allocation-free.
+     */
+    private val gridUnderlayRect = RectF()
+
+    /**
      * Cached values that let us detect when the geometry needs rebuilding.
-     * We check these in [onDraw] and only redo the math when something actually changed.
      */
     private var cachedShaderW = -1f
     private var cachedShaderH = -1f
@@ -197,11 +228,12 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
     }
 
     /**
-     * Calculates how many icons are currently visible and sets the view's right padding
-     * to exactly that width so the ConstraintLayout children never slide under the drawn
-     * icons. We skip the call if nothing has changed to avoid unnecessary layout passes.
+     * Calculates how many icons are currently visible and updates the right padding so
+     * children never slide under the drawn icons. In grid mode this is skipped entirely
+     * because the icons float in the center and don't push content aside.
      */
     private fun updateRightPadding() {
+        if (enableGridMode) return
         if (height == 0) return
         val h = height.toFloat()
         val iconSize = (h * 0.45f).toInt()
@@ -218,13 +250,9 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
     }
 
     /**
-     * Computes the gradient shader and the rounded clip path for the icon strip.
-     * The gradient follows a cubic ease-in Bézier curve — it starts nearly invisible
-     * and ramps up quickly near the right edge, which feels much more natural than
-     * a boring straight linear fade.
-     *
-     * The strip width adapts to how many icons need to be shown: the drag handle always
-     * gets one slot on the far right when enabled, and the play / check icons each get a slot on top of that.
+     * Computes the gradient shader and rounded clip path for the list-mode icon strip,
+     * and also pre-computes the grid-mode underlay pill rect so [dispatchDraw] can draw
+     * both without any allocations.
      */
     private fun rebuildSelectionGeometry(w: Float, h: Float, playing: Boolean, inSelection: Boolean) {
         if (w <= 0f || h <= 0f) return
@@ -239,7 +267,15 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         var slotCount = if (playing && inSelection) 2f else if (playing || inSelection) 1f else 0f
         if (enableDragHandle) slotCount += 1f
 
-        // Even if no play/check icon is visible, we still draw the drag handle strip.
+        // The grid underlay covers the entire view so the dim effect feels like a proper
+        // "this cell is active" overlay rather than a floating badge.
+        val visibleIconCount = (if (playing) 1 else 0) + (if (inSelection) 1 else 0)
+        if (visibleIconCount > 0) {
+            gridUnderlayRect.set(0f, 0f, w, h)
+        } else {
+            gridUnderlayRect.setEmpty()
+        }
+
         if (slotCount == 0f) {
             cachedShaderW = w
             cachedShaderH = h
@@ -285,11 +321,13 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
     }
 
     /**
-     * Draws only the gradient background strip behind all child views. The icons
-     * themselves are drawn in [dispatchDraw] so they always appear on top of children.
+     * Draws the gradient strip background in list mode. In grid mode, nothing is drawn
+     * here — the dim underlay and icons are both handled in [dispatchDraw] so they always
+     * appear on top of all child views.
      */
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        if (enableGridMode) return
 
         val shouldDraw = isPlaying || isInSelection || enableDragHandle
         if (!shouldDraw) return
@@ -316,12 +354,12 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
 
     /**
      * Draws the play, check, and drag-handle icons on top of all child views.
-     * By hooking into [dispatchDraw] (which runs after children are painted), the icons
-     * are never hidden behind album art, text, or any other child.
      *
-     * Icon layout from left to right inside the strip (all anchored from the right edge):
-     * - When drag handle is enabled: [play?] [check?] [drag handle]
-     * - When drag handle is disabled: [play?] [check?]
+     * In **list mode** the icons are packed at the right edge in their slots, same as before.
+     *
+     * In **grid mode** the icons are centered on the view. A dim semi-transparent pill is
+     * drawn first so the icons stay readable regardless of what's behind them — think of it
+     * as a little stage spotlight for the icons.
      */
     override fun dispatchDraw(canvas: Canvas) {
         super.dispatchDraw(canvas)
@@ -333,14 +371,90 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         // Nothing to draw if no icons are active and the drag handle is off.
         if (!isPlaying && !isInSelection && !enableDragHandle) return
 
+        if (cachedShaderW != w || cachedShaderH != h ||
+                cachedShaderColor != ThemeManager.accent.secondaryAccentColor ||
+                cachedIsPlaying != isPlaying || cachedIsInSelection != isInSelection ||
+                cachedDragHandle != enableDragHandle) {
+            rebuildSelectionGeometry(w, h, isPlaying, isInSelection)
+        }
+
+        val accentColor = ThemeManager.accent.secondaryAccentColor
+
+        if (enableGridMode) {
+            drawGridModeIcons(canvas, w, h, accentColor)
+        } else {
+            drawListModeIcons(canvas, w, h, accentColor)
+        }
+
+        updateRightPadding()
+    }
+
+    /**
+     * Handles icon drawing for grid mode. A rounded-rect dim underlay is painted first,
+     * then the play and check icons are centered inside it side by side. The drag handle
+     * is intentionally skipped in grid mode since there's no meaningful drag interaction
+     * in a grid layout.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    private fun drawGridModeIcons(canvas: Canvas, w: Float, h: Float, accentColor: Int) {
+        if (!isPlaying && !isInSelection) return
+
+        val iconSize = (h * 0.30f).toInt()
+        val iconPadding = h * 0.08f
+        val cornerR = AppearancePreferences.getCornerRadius()
+
+        // Draw the full-view dim underlay so the whole cell darkens and the icons
+        // stand out clearly on top of any album art or background content.
+        if (!gridUnderlayRect.isEmpty) {
+            canvas.drawRoundRect(gridUnderlayRect, cornerR, cornerR, gridUnderlayPaint)
+        }
+
+        // Center the icons horizontally and vertically within the full view.
+        val visibleIconCount = (if (isPlaying) 1 else 0) + (if (isInSelection) 1 else 0)
+        val totalIconsW = visibleIconCount * iconSize + (visibleIconCount - 1) * iconPadding.toInt()
+        val startLeft = ((width - totalIconsW) / 2f).toInt()
+        val iconTop = ((height - iconSize) / 2f).toInt()
+
+        // Place icons left-to-right, centered in the view.
+        var slotIndex = 0
+
+        fun nextIconLeft(): Int {
+            val left = startLeft + slotIndex * (iconSize + iconPadding.toInt())
+            slotIndex++
+            return left
+        }
+
+        if (isPlaying) {
+            val left = nextIconLeft()
+            playDrawable?.let {
+                it.setTint(accentColor)
+                it.setBounds(left, iconTop, left + iconSize, iconTop + iconSize)
+                it.alpha = 220
+                it.draw(canvas)
+            }
+        }
+
+        if (isInSelection) {
+            val left = nextIconLeft()
+            checkDrawable?.let {
+                it.setTint(accentColor)
+                it.setBounds(left, iconTop, left + iconSize, iconTop + iconSize)
+                it.alpha = 220
+                it.draw(canvas)
+            }
+        }
+    }
+
+    /**
+     * Handles icon drawing for list mode. Icons are packed tightly from the right edge,
+     * each one stepping left by exactly one slot. The drag handle always occupies the
+     * rightmost slot when enabled.
+     */
+    private fun drawListModeIcons(canvas: Canvas, w: Float, h: Float, accentColor: Int) {
         val iconSize = (h * 0.45f).toInt()
         val iconPadding = (h * 0.10f).toInt()
         val iconTop = ((h - iconSize) / 2f).toInt()
-        val accentColor = ThemeManager.accent.secondaryAccentColor
 
-        // Icons are packed tightly — each one steps left by exactly (iconSize + iconPadding)
-        // from the previous, just like the original single-pass drawing did.
-        // Slot 0 = rightmost (drag handle when enabled), slot 1 = next left, and so on.
         var nextSlot = 0
 
         // A small helper so every icon lands at the right x using the same formula.
@@ -375,8 +489,6 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
                 it.draw(canvas)
             }
         }
-
-        updateRightPadding()
     }
 
     override fun onAttachedToWindow() {
@@ -409,3 +521,4 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         private const val TAG = "MediaAwareRippleConstraintLayout"
     }
 }
+
