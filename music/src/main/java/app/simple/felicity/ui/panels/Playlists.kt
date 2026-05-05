@@ -10,8 +10,9 @@ import app.simple.felicity.adapters.ui.lists.AdapterPlaylists
 import app.simple.felicity.databinding.FragmentPlaylistsBinding
 import app.simple.felicity.databinding.HeaderPlaylistsBinding
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.GenericListStyleDialog
+import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
 import app.simple.felicity.dialogs.playlists.CreatePlaylistDialog.Companion.showCreatePlaylistDialog
-import app.simple.felicity.dialogs.playlists.PlaylistsMenu.Companion.showPlaylistsMenu
 import app.simple.felicity.dialogs.playlists.PlaylistsSort.Companion.showPlaylistsSort
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.PlaylistPreferences
@@ -75,7 +76,11 @@ class Playlists : BasePanelFragment() {
         headerBinding.sortOrder.setPlaylistOrder()
 
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showPlaylistsMenu()
+            openPreferencesPanel()
+        }
+
+        headerBinding.listStyle.setOnClickListener {
+            childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.PLAYLISTS)
         }
 
         headerBinding.sortStyle.setOnClickListener {

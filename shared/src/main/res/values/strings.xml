@@ -51,14 +51,6 @@
     <string name="add_to_playlist">Add to Playlist</string>
     <string name="go_to_artist">Go to Artist</string>
     <string name="go_to_album">Go to Album</string>
-    <string name="one">One</string>
-    <string name="two">Two</string>
-    <string name="three">Three</string>
-    <string name="four">Four</string>
-    <string name="five">Five</string>
-    <string name="six">Six</string>
-    <string name="carousel_settings">Carousel Settings</string>
-    <string name="songs_settings">Songs Settings</string>
     <string name="camera_y">Camera Y</string>
     <string name="change_home_interface">Change Home Interface</string>
     <string name="simple">Simple</string>
@@ -471,5 +463,15 @@
     <string name="rg_peak_hint">e.g. 0.9876</string>
     <string name="rg_track_peak">Track Peak</string>
     <string name="rg_album_peak">Album Peak</string>
+
+    <string name="label">Label</string>
+    <string name="portrait">Portrait</string>
+    <string name="span_type">Span Type</string>
+    <string name="landscape">Landscape</string>
+    <string name="relaxed">Relaxed</string>
+    <string name="compact">Compact</string>
+    <string name="single">Single</string>
+    <string name="double_">Double</string>
+    <string name="triple">Triple</string>
 
 </resources>

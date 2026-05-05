@@ -20,9 +20,10 @@ import app.simple.felicity.databinding.FragmentSearchBinding
 import app.simple.felicity.databinding.HeaderSearchBinding
 import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.GenericListStyleDialog
+import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.dialogs.search.SearchFilter.Companion.showSearchFilter
-import app.simple.felicity.dialogs.search.SearchMenu.Companion.showSearchMenu
 import app.simple.felicity.dialogs.search.SearchSort.Companion.showSearchSort
 import app.simple.felicity.extensions.fragments.PanelFragment
 import app.simple.felicity.models.SearchResults
@@ -184,7 +185,11 @@ class Search : PanelFragment() {
         }
 
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showSearchMenu()
+            openPreferencesPanel()
+        }
+
+        headerBinding.listStyle.setOnClickListener {
+            childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.SEARCH)
         }
 
         headerBinding.sortStyle.setOnClickListener {

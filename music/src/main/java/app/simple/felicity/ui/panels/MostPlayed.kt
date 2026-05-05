@@ -14,8 +14,9 @@ import app.simple.felicity.databinding.FragmentMostPlayedBinding
 import app.simple.felicity.databinding.HeaderMostPlayedBinding
 import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.GenericListStyleDialog
+import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
-import app.simple.felicity.dialogs.mostplayed.MostPlayedMenu.Companion.showMostPlayedMenu
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.MostPlayedPreferences
 import app.simple.felicity.repository.models.Audio
@@ -79,7 +80,11 @@ class MostPlayed : BasePanelFragment() {
         }
 
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showMostPlayedMenu()
+            openPreferencesPanel()
+        }
+
+        headerBinding.listStyle.setOnClickListener {
+            childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.MOST_PLAYED)
         }
     }
 

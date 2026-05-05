@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_gravity="bottom"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:padding="@dimen/padding_15"
+    android:layout_height="wrap_content">
+
+    <app.simple.felicity.decorations.corners.DynamicCornerLinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:padding="@dimen/padding_15"
+        android:orientation="vertical">
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/label"
+            android:padding="@dimen/padding_5"
+            app:appFontStyle="bold"
+            app:textColorStyle="accent" />
+
+        <com.google.android.flexbox.FlexboxLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/relaxed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/padding_5"
+                android:drawablePadding="@dimen/padding_5"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:text="@string/relaxed"
+                app:drawableTintStyle="accent"
+                app:highlightMode="auto"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/compact"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/padding_5"
+                android:drawablePadding="@dimen/padding_5"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:text="@string/compact"
+                app:drawableTintStyle="accent"
+                app:highlightMode="auto"
+                app:textColorStyle="primary" />
+
+        </com.google.android.flexbox.FlexboxLayout>
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/list"
+            android:padding="@dimen/padding_5"
+            app:appFontStyle="bold"
+            app:textColorStyle="accent" />
+
+        <com.google.android.flexbox.FlexboxLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/single"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/padding_5"
+                android:drawablePadding="@dimen/padding_5"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:text="@string/single"
+                app:drawableTintStyle="accent"
+                app:highlightMode="auto"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/list_double"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/padding_5"
+                android:drawablePadding="@dimen/padding_5"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:text="@string/double_"
+                app:drawableTintStyle="accent"
+                app:highlightMode="auto"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/triple"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/padding_5"
+                android:drawablePadding="@dimen/padding_5"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:text="@string/triple"
+                android:visibility="gone"
+                app:drawableTintStyle="accent"
+                app:highlightMode="auto"
+                app:textColorStyle="primary" />
+
+        </com.google.android.flexbox.FlexboxLayout>
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/grid"
+            android:padding="@dimen/padding_5"
+            app:appFontStyle="bold"
+            app:textColorStyle="accent" />
+
+        <com.google.android.flexbox.FlexboxLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/two_x"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/padding_5"
+                android:drawablePadding="@dimen/padding_5"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:text="@string/_2x"
+                app:drawableTintStyle="accent"
+                app:highlightMode="auto"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/three_x"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/padding_5"
+                android:drawablePadding="@dimen/padding_5"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:text="@string/_3x"
+                app:drawableTintStyle="accent"
+                app:highlightMode="auto"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/four_x"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/padding_5"
+                android:drawablePadding="@dimen/padding_5"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:text="@string/_4x"
+                app:drawableTintStyle="accent"
+                app:highlightMode="auto"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/five_x"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/padding_5"
+                android:drawablePadding="@dimen/padding_5"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:text="@string/_5x"
+                android:visibility="gone"
+                app:drawableTintStyle="accent"
+                app:highlightMode="auto"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/six_x"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/padding_5"
+                android:drawablePadding="@dimen/padding_5"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:text="@string/_6x"
+                android:visibility="gone"
+                app:drawableTintStyle="accent"
+                app:highlightMode="auto"
+                app:textColorStyle="primary" />
+
+        </com.google.android.flexbox.FlexboxLayout>
+
+    </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+
+</FrameLayout>

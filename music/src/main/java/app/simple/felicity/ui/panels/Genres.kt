@@ -14,7 +14,8 @@ import app.simple.felicity.databinding.FragmentGenresBinding
 import app.simple.felicity.databinding.HeaderGenresBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.dialogs.genres.GenreMenu.Companion.showGenreMenu
+import app.simple.felicity.dialogs.app.GenericListStyleDialog
+import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
 import app.simple.felicity.dialogs.genres.GenreSort.Companion.showGenresSortDialog
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.GenresPreferences
@@ -72,7 +73,11 @@ class Genres : BasePanelFragment() {
 
     private fun setupClickListeners() {
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showGenreMenu()
+            openPreferencesPanel()
+        }
+
+        headerBinding.listStyle.setOnClickListener {
+            childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.GENRES)
         }
 
         headerBinding.sortOrder.setOnClickListener {
@@ -94,7 +99,7 @@ class Genres : BasePanelFragment() {
             adapterGenres?.setHasStableIds(true)
             adapterGenres?.setCallbackListener(object : GeneralAdapterCallbacks {
                 override fun onMenuClicked(view: View) {
-                    childFragmentManager.showGenreMenu()
+                    childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.GENRES)
                 }
 
                 override fun onGenreClicked(genre: Genre, view: View) {

@@ -14,8 +14,9 @@ import app.simple.felicity.databinding.FragmentRecentlyAddedBinding
 import app.simple.felicity.databinding.HeaderRecentlyAddedBinding
 import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.GenericListStyleDialog
+import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
-import app.simple.felicity.dialogs.recentlyadded.RecentlyAddedMenu.Companion.showRecentlyAddedMenu
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.RecentlyAddedPreferences
 import app.simple.felicity.repository.models.Audio
@@ -71,7 +72,11 @@ class RecentlyAdded : BasePanelFragment() {
         }
 
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showRecentlyAddedMenu()
+            openPreferencesPanel()
+        }
+
+        headerBinding.listStyle.setOnClickListener {
+            childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.RECENTLY_ADDED)
         }
     }
 

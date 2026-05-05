@@ -14,8 +14,9 @@ import app.simple.felicity.databinding.FragmentRecentlyPlayedBinding
 import app.simple.felicity.databinding.HeaderRecentlyPlayedBinding
 import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.GenericListStyleDialog
+import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
-import app.simple.felicity.dialogs.recentlyplayed.RecentlyPlayedMenu.Companion.showRecentlyPlayedMenu
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.RecentlyPlayedPreferences
 import app.simple.felicity.repository.models.Audio
@@ -80,7 +81,11 @@ class RecentlyPlayed : BasePanelFragment() {
         }
 
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showRecentlyPlayedMenu()
+            openPreferencesPanel()
+        }
+
+        headerBinding.listStyle.setOnClickListener {
+            childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.RECENTLY_PLAYED)
         }
     }
 

@@ -16,8 +16,9 @@ import app.simple.felicity.databinding.HeaderSongsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.GenericListStyleDialog
+import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
-import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.SongsPreferences
@@ -70,7 +71,7 @@ class Songs : BasePanelFragment() {
         headerBinding.sortOrder.setSongOrder()
 
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showSongsMenu()
+            openPreferencesPanel()
         }
 
         headerBinding.sortStyle.setOnClickListener {
@@ -87,6 +88,10 @@ class Songs : BasePanelFragment() {
 
         headerBinding.artflow.setOnClickListener {
             openFragment(ArtFlow.newInstance(), ArtFlow.TAG)
+        }
+
+        headerBinding.listStyle.setOnClickListener {
+            childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.SONGS)
         }
     }
 
