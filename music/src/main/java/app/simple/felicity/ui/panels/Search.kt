@@ -224,6 +224,7 @@ class Search : PanelFragment() {
         if (results.songs.isNotEmpty()) {
             headerBinding.chipSongs.visible()
             headerBinding.hours.visible()
+            headerBinding.shuffle.visible()
             headerBinding.chipSongs.text = getString(R.string.x_songs, results.songs.size)
             headerBinding.hours.text = results.songs.sumOf { it.duration }.toDynamicTimeString()
             headerBinding.chipSongs.setOnClickListener {
@@ -232,6 +233,7 @@ class Search : PanelFragment() {
         } else {
             headerBinding.chipSongs.gone()
             headerBinding.hours.gone()
+            headerBinding.shuffle.gone()
         }
 
         // Albums chip: show count and wire scroll, hide when empty.
