@@ -307,6 +307,7 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
 
         fun bind(item: SearchAdapterItem.SongItem, isLightBind: Boolean) {
             val audio = item.audio
+            binding.container.enableGridMode = true
             binding.title.setTextOrUnknown(audio.title)
             binding.secondaryDetail.setTextOrUnknown(audio.artist)
             binding.tertiaryDetail.setTextOrUnknown(audio.album)

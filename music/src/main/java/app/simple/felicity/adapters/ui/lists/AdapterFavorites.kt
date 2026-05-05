@@ -147,6 +147,7 @@ class AdapterFavorites(initial: List<Audio>) : FastScrollAdapter<VerticalListVie
 
     inner class GridHolder(val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
         fun bind(song: Audio, isLightBind: Boolean) {
+            binding.container.enableGridMode = true
             binding.title.setTextOrUnknown(song.title)
             binding.secondaryDetail.setTextOrUnknown(song.artist)
             binding.tertiaryDetail.setTextOrUnknown(song.album)

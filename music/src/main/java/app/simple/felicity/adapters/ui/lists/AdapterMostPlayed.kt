@@ -172,6 +172,7 @@ class AdapterMostPlayed(initial: List<AudioWithStat>) : FastScrollAdapter<Vertic
     inner class GridHolder(val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
         fun bind(item: AudioWithStat, isLightBind: Boolean) {
             val audio = item.audio
+            binding.container.enableGridMode = true
             binding.title.setTextOrUnknown(audio.title)
             binding.secondaryDetail.setTextOrUnknown(audio.artist)
             binding.tertiaryDetail.text = context.buildTertiaryText(item)

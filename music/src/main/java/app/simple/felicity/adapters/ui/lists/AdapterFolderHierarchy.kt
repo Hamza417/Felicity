@@ -197,6 +197,7 @@ class AdapterFolderHierarchy(contents: FolderHierarchyContents) : RecyclerView.A
         }
 
         fun bind(song: Audio) {
+            binding.container.enableGridMode = true
             binding.title.setTextOrUnknown(song.title)
             binding.secondaryDetail.setTextOrUnknown(song.artist)
             binding.tertiaryDetail.setTextOrUnknown(song.album)

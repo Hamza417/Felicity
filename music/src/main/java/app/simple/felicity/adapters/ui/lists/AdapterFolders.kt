@@ -102,6 +102,7 @@ class AdapterFolders(initial: List<Folder>) : FastScrollAdapter<VerticalListView
 
     inner class GridHolder(private val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
         fun bind(folder: Folder, isLightBind: Boolean) {
+            binding.container.enableGridMode = true
             binding.title.text = folder.name
             binding.secondaryDetail.text = context.resources.getQuantityString(R.plurals.number_of_songs, folder.songCount, folder.songCount)
             binding.tertiaryDetail.gone(false)
