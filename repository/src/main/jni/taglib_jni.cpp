@@ -312,7 +312,9 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeSaveToFd(
         jstring title, jstring artist, jstring album, jstring albumArtist,
         jstring year, jstring trackNumber, jstring numTracks, jstring discNumber,
         jstring genre, jstring composer, jstring lyricist, jstring compilation,
-        jstring comment, jstring lyrics) {
+        jstring comment, jstring lyrics,
+        jstring replayGainTrackGain, jstring replayGainTrackPeak,
+        jstring replayGainAlbumGain, jstring replayGainAlbumPeak) {
 
     // Duplicate the fd so TagLib can own and eventually close its copy while
     // the Java ParcelFileDescriptor still holds the original safely.
@@ -367,6 +369,13 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeSaveToFd(
     applyProperty(env, props, "TRACKTOTAL", numTracks);
     applyProperty(env, props, "COMPILATION", compilation);
     applyProperty(env, props, "LYRICS", lyrics);
+
+    // ReplayGain fields — written as standard property map keys so they work
+    // across all formats (ID3v2 TXXX, Vorbis comments, MP4 custom atoms, etc.).
+    applyProperty(env, props, "REPLAYGAIN_TRACK_GAIN", replayGainTrackGain);
+    applyProperty(env, props, "REPLAYGAIN_TRACK_PEAK", replayGainTrackPeak);
+    applyProperty(env, props, "REPLAYGAIN_ALBUM_GAIN", replayGainAlbumGain);
+    applyProperty(env, props, "REPLAYGAIN_ALBUM_PEAK", replayGainAlbumPeak);
 
     tag->setProperties(props);
 

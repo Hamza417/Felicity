@@ -460,4 +460,16 @@
     <string name="reshuffle">No Reshuffle</string>
     <string name="reshuffle_summary">Do not shuffle the list again if the current list is already shuffled when a new song is selected.</string>
 
+
+    <string name="year_hint">YYYY</string>
+    <string name="track_number_hint">e.g. 1</string>
+    <string name="num_tracks_hint">e.g. 12</string>
+    <string name="disc_number_hint">1</string>
+    <string name="disc_total_hint">1</string>
+    <string name="of">of</string>
+    <string name="rg_db_hint">e.g. +1.23 dB</string>
+    <string name="rg_peak_hint">e.g. 0.9876</string>
+    <string name="rg_track_peak">Track Peak</string>
+    <string name="rg_album_peak">Album Peak</string>
+
 </resources>

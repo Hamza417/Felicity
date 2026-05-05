@@ -73,7 +73,11 @@ object TagLibBridge {
             lyricist: String?,
             compilation: String?,
             comment: String?,
-            lyrics: String?
+            lyrics: String?,
+            replayGainTrackGain: String?,
+            replayGainTrackPeak: String?,
+            replayGainAlbumGain: String?,
+            replayGainAlbumPeak: String?
     ): Boolean
 
     /**

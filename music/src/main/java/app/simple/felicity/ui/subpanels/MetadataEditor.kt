@@ -103,10 +103,19 @@ class MetadataEditor : MediaFragment() {
             genreInput.setText(audio.genre.orEmpty())
             trackNumberInput.setText(audio.trackNumber.orEmpty())
             numTracksInput.setText(audio.numTracks.orEmpty())
-            discNumberInput.setText(audio.discNumber.orEmpty())
-            compilationInput.setText(audio.compilation.orEmpty())
             composerInput.setText(audio.composer.orEmpty())
             writerInput.setText(audio.writer.orEmpty())
+            compilationInput.setText(audio.compilation.orEmpty())
+
+            // Disc number is stored as "X/Y" — we split it into the two separate fields.
+            val discParts = audio.discNumber.orEmpty().split("/")
+            discNumberInput.setText(discParts.getOrNull(0).orEmpty())
+            discTotalInput.setText(discParts.getOrNull(1).orEmpty())
+
+            rgTrackGainInput.setText(audio.replayGainTrackGain.orEmpty())
+            rgTrackPeakInput.setText(audio.replayGainTrackPeak.orEmpty())
+            rgAlbumGainInput.setText(audio.replayGainAlbumGain.orEmpty())
+            rgAlbumPeakInput.setText(audio.replayGainAlbumPeak.orEmpty())
         }
 
         binding.albumArt.loadArtCoverWithPayload(audio)
@@ -120,9 +129,8 @@ class MetadataEditor : MediaFragment() {
         val launchPicker = View.OnClickListener {
             pickArtwork.launch("image/*")
         }
+
         binding.albumArt.setOnClickListener(launchPicker)
-        binding.pickArtLabel.setOnClickListener(launchPicker)
-        binding.albumArtContainer.setOnClickListener(launchPicker)
     }
 
     /**
@@ -185,6 +193,15 @@ class MetadataEditor : MediaFragment() {
      * delegates to [MetadataEditorViewModel.saveMetadata].
      */
     private fun saveMetadata() {
+        // Combine the two disc number inputs back into the "X/Y" format TagLib expects.
+        val discNum = binding.discNumberInput.text?.toString()?.trim().orEmpty()
+        val discTotal = binding.discTotalInput.text?.toString()?.trim().orEmpty()
+        val discString = when {
+            discNum.isNotEmpty() && discTotal.isNotEmpty() -> "$discNum/$discTotal"
+            discNum.isNotEmpty() -> discNum
+            else -> null
+        }
+
         val fields = MetadataWriter.Fields(
                 title = binding.titleInput.text?.toString()?.trim(),
                 artist = binding.artistInput.text?.toString()?.trim(),
@@ -193,28 +210,36 @@ class MetadataEditor : MediaFragment() {
                 year = binding.yearInput.text?.toString()?.trim(),
                 trackNumber = binding.trackNumberInput.text?.toString()?.trim(),
                 numTracks = binding.numTracksInput.text?.toString()?.trim(),
-                discNumber = binding.discNumberInput.text?.toString()?.trim(),
+                discNumber = discString,
                 genre = binding.genreInput.text?.toString()?.trim(),
                 composer = binding.composerInput.text?.toString()?.trim(),
                 writer = binding.writerInput.text?.toString()?.trim(),
                 compilation = binding.compilationInput.text?.toString()?.trim(),
                 comment = binding.commentInput.text?.toString()?.trim(),
                 lyrics = binding.lyricsInput.text?.toString()?.trim(),
+                replayGainTrackGain = binding.rgTrackGainInput.text?.toString()?.trim(),
+                replayGainTrackPeak = binding.rgTrackPeakInput.text?.toString()?.trim(),
+                replayGainAlbumGain = binding.rgAlbumGainInput.text?.toString()?.trim(),
+                replayGainAlbumPeak = binding.rgAlbumPeakInput.text?.toString()?.trim(),
         )
 
         val updatedAudio = audio.copy().apply {
             setTitle(fields.title)
-            setArtist(fields.artist)
-            setAlbum(fields.album)
-            setAlbumArtist(fields.albumArtist)
-            setYear(fields.year)
-            setTrackNumber(fields.trackNumber)
-            setNumTracks(fields.numTracks)
-            setDiscNumber(fields.discNumber)
-            setGenre(fields.genre)
-            setComposer(fields.composer)
-            setWriter(fields.writer)
-            setCompilation(fields.compilation)
+            artist = fields.artist
+            album = fields.album
+            albumArtist = fields.albumArtist
+            year = fields.year
+            trackNumber = fields.trackNumber
+            numTracks = fields.numTracks
+            discNumber = discString
+            genre = fields.genre
+            composer = fields.composer
+            writer = fields.writer
+            compilation = fields.compilation
+            replayGainTrackGain = fields.replayGainTrackGain
+            replayGainTrackPeak = fields.replayGainTrackPeak
+            replayGainAlbumGain = fields.replayGainAlbumGain
+            replayGainAlbumPeak = fields.replayGainAlbumPeak
         }
 
         viewModel.saveMetadata(fields, updatedAudio, pendingArtworkFile)

@@ -1144,6 +1144,31 @@ object MediaPlaybackManager {
         scope.launch { _songPositionFlow.emit(currentSongPosition) }
     }
 
+    /**
+     * Replaces the currently playing [Audio] in the internal list with the provided [audio] and
+     * emits the updated list so that observers can update their UI. This is useful for in
+     * place updates to the currently playing song (e.g. after toggling [Audio.isFavorite]) without
+     * needing to trigger a full queue refresh or position change. The [audio] must have the same ID
+     * as the currently playing song; otherwise, this function will log a warning and do nothing
+     * to avoid accidentally replacing the wrong item.
+     */
+    fun replaceAndNotifyCurrentAudio(audio: Audio) {
+        if (audio.id != getCurrentSongId()) {
+            Log.w(TAG, "replaceCurrentAudio: Audio ID ${audio.id} does not " +
+                    "match currently playing song ID ${getCurrentSongId()}. Cannot replace.")
+            return
+        }
+
+        if (currentSongPosition in songs.indices) {
+            val newList = songs.toMutableList()
+            newList[currentSongPosition] = audio
+            songs = newList
+            scope.launch { _songListFlow.emit(songs) }
+        } else {
+            Log.w(TAG, "replaceCurrentAudio: Invalid current song position: $currentSongPosition. Cannot replace audio.")
+        }
+    }
+
     // Keep track of the animator so we can cancel it if the opposite action is triggered
     private var volumeAnimator: ValueAnimator? = null
 

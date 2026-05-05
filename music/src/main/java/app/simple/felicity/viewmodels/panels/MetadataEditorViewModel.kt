@@ -5,6 +5,7 @@ import android.media.MediaScannerConnection
 import android.util.Log
 import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.metadata.MetadataWriter
@@ -92,6 +93,10 @@ class MetadataEditorViewModel @AssistedInject constructor(
                 }
 
                 _saveResult.emit(SaveResult.Success)
+
+                // If this audio is currently playing, update the MediaPlaybackManager's current
+                // track reference so the new metadata is reflected in the player's UI immediately.
+                MediaPlaybackManager.replaceAndNotifyCurrentAudio(updatedAudio)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to save metadata: ${e.message}", e)
                 _saveResult.emit(SaveResult.Error(e.message ?: "Unknown error"))

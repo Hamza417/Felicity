@@ -47,6 +47,10 @@ object MetadataWriter {
      * @param lyrics      Unsynchronised lyrics embedded in the file.
      * @param artworkFile A [File] containing the new cover image to embed, or
      *                    null to leave the existing artwork untouched.
+     * @param replayGainTrackGain Per-track ReplayGain loudness offset, e.g. "+1.23 dB".
+     * @param replayGainTrackPeak Per-track peak sample value, e.g. "0.9876".
+     * @param replayGainAlbumGain Album-level ReplayGain loudness offset, e.g. "+1.23 dB".
+     * @param replayGainAlbumPeak Album-level peak sample value, e.g. "0.9876".
      */
     data class Fields(
             val title: String?,
@@ -63,7 +67,11 @@ object MetadataWriter {
             val compilation: String?,
             val comment: String?,
             val lyrics: String?,
-            val artworkFile: File? = null
+            val artworkFile: File? = null,
+            val replayGainTrackGain: String? = null,
+            val replayGainTrackPeak: String? = null,
+            val replayGainAlbumGain: String? = null,
+            val replayGainAlbumPeak: String? = null
     )
 
     /**
@@ -186,7 +194,11 @@ object MetadataWriter {
                 lyricist = fields.writer,
                 compilation = fields.compilation,
                 comment = fields.comment,
-                lyrics = fields.lyrics
+                lyrics = fields.lyrics,
+                replayGainTrackGain = fields.replayGainTrackGain,
+                replayGainTrackPeak = fields.replayGainTrackPeak,
+                replayGainAlbumGain = fields.replayGainAlbumGain,
+                replayGainAlbumPeak = fields.replayGainAlbumPeak
         )
     }
 }

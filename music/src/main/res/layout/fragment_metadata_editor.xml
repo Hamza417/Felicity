@@ -9,7 +9,6 @@
         android:clipToPadding="false"
         android:layout_height="match_parent"
         android:layout_width="match_parent"
-        android:paddingBottom="@dimen/padding_20"
         android:scrollbars="none"
         app:layout_behavior="app.simple.felicity.decorations.behaviors.OverScrollBehavior"
         app:navigationPaddingRequired="true"
@@ -25,7 +24,6 @@
             <app.simple.felicity.decorations.padding.PaddingAwareConstraintLayout
                 android:layout_height="wrap_content"
                 android:layout_width="match_parent"
-                android:paddingVertical="@dimen/padding_10"
                 app:navigationPaddingRequired="false"
                 app:statusPaddingRequired="true">
 
@@ -51,10 +49,11 @@
                     android:text="@string/save"
                     android:textSize="@dimen/text_size_14"
                     app:appFontStyle="bold"
+                    app:highlightMode="auto"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:textColorStyle="accent" />
+                    app:textColorStyle="primary" />
 
             </app.simple.felicity.decorations.padding.PaddingAwareConstraintLayout>
 
@@ -63,35 +62,15 @@
                 android:layout_marginBottom="@dimen/padding_15"
                 android:layout_width="match_parent">
 
-                <app.simple.felicity.decorations.corners.DynamicCornerFrameLayout
-                    android:id="@+id/album_art_container"
+                <ImageView
+                    android:id="@+id/album_art"
+                    android:contentDescription="@string/album_art"
                     android:layout_height="120dp"
                     android:layout_width="120dp"
+                    android:scaleType="centerCrop"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent">
-
-                    <ImageView
-                        android:id="@+id/album_art"
-                        android:contentDescription="@string/album_art"
-                        android:layout_height="match_parent"
-                        android:layout_width="match_parent"
-                        android:scaleType="centerCrop" />
-
-                    <app.simple.felicity.decorations.ripple.DynamicRippleTextView
-                        android:id="@+id/pick_art_label"
-                        android:background="#99000000"
-                        android:gravity="center"
-                        android:layout_gravity="bottom"
-                        android:layout_height="wrap_content"
-                        android:layout_width="match_parent"
-                        android:padding="@dimen/padding_5"
-                        android:text="@string/change"
-                        android:textColor="#FFFFFFFF"
-                        android:textSize="@dimen/text_size_12"
-                        app:appFontStyle="bold" />
-
-                </app.simple.felicity.decorations.corners.DynamicCornerFrameLayout>
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <LinearLayout
                     android:layout_height="wrap_content"
@@ -100,7 +79,7 @@
                     android:orientation="vertical"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toEndOf="@+id/album_art_container"
+                    app:layout_constraintStart_toEndOf="@+id/album_art"
                     app:layout_constraintTop_toTopOf="parent">
 
                     <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -115,7 +94,6 @@
                         android:id="@+id/title_input"
                         android:background="@android:color/transparent"
                         android:gravity="center_vertical"
-                        android:hint="@string/title"
                         android:imeOptions="actionNext"
                         android:importantForAutofill="yes"
                         android:inputType="text"
@@ -140,7 +118,6 @@
                         android:id="@+id/artist_input"
                         android:background="@android:color/transparent"
                         android:gravity="center_vertical"
-                        android:hint="@string/artist"
                         android:imeOptions="actionNext"
                         android:importantForAutofill="yes"
                         android:inputType="text"
@@ -169,12 +146,11 @@
                 android:id="@+id/album_input"
                 android:background="@android:color/transparent"
                 android:gravity="center_vertical"
-                android:hint="@string/album"
                 android:imeOptions="actionNext"
                 android:importantForAutofill="yes"
                 android:inputType="text"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="@dimen/padding_10"
+                android:layout_marginBottom="@dimen/padding_15"
                 android:layout_width="match_parent"
                 android:maxLines="1"
                 android:padding="@dimen/padding_10"
@@ -194,12 +170,11 @@
                 android:id="@+id/album_artist_input"
                 android:background="@android:color/transparent"
                 android:gravity="center_vertical"
-                android:hint="@string/album_artist"
                 android:imeOptions="actionNext"
                 android:importantForAutofill="yes"
                 android:inputType="text"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="@dimen/padding_10"
+                android:layout_marginBottom="@dimen/padding_15"
                 android:layout_width="match_parent"
                 android:maxLines="1"
                 android:padding="@dimen/padding_10"
@@ -231,12 +206,12 @@
                         android:id="@+id/year_input"
                         android:background="@android:color/transparent"
                         android:gravity="center_vertical"
-                        android:hint="@string/year"
+                        android:hint="@string/year_hint"
                         android:imeOptions="actionNext"
                         android:importantForAutofill="yes"
                         android:inputType="number"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="@dimen/padding_10"
+                        android:layout_marginBottom="@dimen/padding_15"
                         android:layout_width="match_parent"
                         android:maxLines="1"
                         android:padding="@dimen/padding_10"
@@ -264,12 +239,11 @@
                         android:id="@+id/genre_input"
                         android:background="@android:color/transparent"
                         android:gravity="center_vertical"
-                        android:hint="@string/genre"
                         android:imeOptions="actionNext"
                         android:importantForAutofill="yes"
                         android:inputType="text"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="@dimen/padding_10"
+                        android:layout_marginBottom="@dimen/padding_15"
                         android:layout_width="match_parent"
                         android:maxLines="1"
                         android:padding="@dimen/padding_10"
@@ -305,12 +279,12 @@
                         android:id="@+id/track_number_input"
                         android:background="@android:color/transparent"
                         android:gravity="center_vertical"
-                        android:hint="@string/track_number"
+                        android:hint="@string/track_number_hint"
                         android:imeOptions="actionNext"
                         android:importantForAutofill="yes"
                         android:inputType="number"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="@dimen/padding_10"
+                        android:layout_marginBottom="@dimen/padding_15"
                         android:layout_width="match_parent"
                         android:maxLines="1"
                         android:padding="@dimen/padding_10"
@@ -338,12 +312,12 @@
                         android:id="@+id/num_tracks_input"
                         android:background="@android:color/transparent"
                         android:gravity="center_vertical"
-                        android:hint="@string/num_tracks"
+                        android:hint="@string/num_tracks_hint"
                         android:imeOptions="actionNext"
                         android:importantForAutofill="yes"
                         android:inputType="number"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="@dimen/padding_10"
+                        android:layout_marginBottom="@dimen/padding_15"
                         android:layout_width="match_parent"
                         android:maxLines="1"
                         android:padding="@dimen/padding_10"
@@ -375,22 +349,57 @@
                         app:appFontStyle="bold"
                         app:textColorStyle="accent" />
 
-                    <app.simple.felicity.decorations.corners.DynamicCornerEditText
-                        android:id="@+id/disc_number_input"
-                        android:background="@android:color/transparent"
-                        android:gravity="center_vertical"
-                        android:hint="@string/disc"
-                        android:imeOptions="actionNext"
-                        android:importantForAutofill="yes"
-                        android:inputType="number"
+                    <LinearLayout
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="@dimen/padding_10"
+                        android:layout_marginBottom="@dimen/padding_15"
                         android:layout_width="match_parent"
-                        android:maxLines="1"
-                        android:padding="@dimen/padding_10"
-                        android:textSize="@dimen/text_size_14"
-                        app:appFontStyle="regular"
-                        app:textColorStyle="primary" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <app.simple.felicity.decorations.corners.DynamicCornerEditText
+                            android:id="@+id/disc_number_input"
+                            android:background="@android:color/transparent"
+                            android:gravity="center_vertical"
+                            android:hint="@string/disc_number_hint"
+                            android:imeOptions="actionNext"
+                            android:importantForAutofill="yes"
+                            android:inputType="number"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_width="0dp"
+                            android:maxLines="1"
+                            android:padding="@dimen/padding_10"
+                            android:textSize="@dimen/text_size_14"
+                            app:appFontStyle="regular"
+                            app:textColorStyle="primary" />
+
+                        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                            android:layout_height="wrap_content"
+                            android:layout_width="wrap_content"
+                            android:paddingHorizontal="@dimen/padding_5"
+                            android:text="@string/of"
+                            android:textSize="@dimen/text_size_12"
+                            app:appFontStyle="regular"
+                            app:textColorStyle="secondary" />
+
+                        <app.simple.felicity.decorations.corners.DynamicCornerEditText
+                            android:id="@+id/disc_total_input"
+                            android:background="@android:color/transparent"
+                            android:gravity="center_vertical"
+                            android:hint="@string/disc_total_hint"
+                            android:imeOptions="actionNext"
+                            android:importantForAutofill="yes"
+                            android:inputType="number"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_width="0dp"
+                            android:maxLines="1"
+                            android:padding="@dimen/padding_10"
+                            android:textSize="@dimen/text_size_14"
+                            app:appFontStyle="regular"
+                            app:textColorStyle="primary" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
 
@@ -412,12 +421,11 @@
                         android:id="@+id/compilation_input"
                         android:background="@android:color/transparent"
                         android:gravity="center_vertical"
-                        android:hint="@string/compilation"
                         android:imeOptions="actionNext"
                         android:importantForAutofill="yes"
                         android:inputType="text"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="@dimen/padding_10"
+                        android:layout_marginBottom="@dimen/padding_15"
                         android:layout_width="match_parent"
                         android:maxLines="1"
                         android:padding="@dimen/padding_10"
@@ -441,12 +449,11 @@
                 android:id="@+id/composer_input"
                 android:background="@android:color/transparent"
                 android:gravity="center_vertical"
-                android:hint="@string/composer"
                 android:imeOptions="actionNext"
                 android:importantForAutofill="yes"
                 android:inputType="text"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="@dimen/padding_10"
+                android:layout_marginBottom="@dimen/padding_15"
                 android:layout_width="match_parent"
                 android:maxLines="1"
                 android:padding="@dimen/padding_10"
@@ -466,12 +473,11 @@
                 android:id="@+id/writer_input"
                 android:background="@android:color/transparent"
                 android:gravity="center_vertical"
-                android:hint="@string/writer"
                 android:imeOptions="actionNext"
                 android:importantForAutofill="yes"
                 android:inputType="text"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="@dimen/padding_10"
+                android:layout_marginBottom="@dimen/padding_15"
                 android:layout_width="match_parent"
                 android:maxLines="1"
                 android:padding="@dimen/padding_10"
@@ -496,12 +502,11 @@
                 android:id="@+id/comment_input"
                 android:background="@android:color/transparent"
                 android:gravity="top"
-                android:hint="@string/comment"
                 android:imeOptions="actionNext"
                 android:importantForAutofill="yes"
                 android:inputType="textMultiLine"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="@dimen/padding_10"
+                android:layout_marginBottom="@dimen/padding_15"
                 android:layout_width="match_parent"
                 android:minLines="3"
                 android:padding="@dimen/padding_10"
@@ -522,17 +527,178 @@
                 android:background="@android:color/transparent"
                 android:gravity="top"
                 android:hint="@string/paste_lyrics_here"
-                android:imeOptions="actionDone"
+                android:imeOptions="actionNext"
                 android:importantForAutofill="yes"
                 android:inputType="textMultiLine"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="@dimen/padding_20"
+                android:layout_marginBottom="@dimen/padding_15"
                 android:layout_width="match_parent"
                 android:minLines="5"
                 android:padding="@dimen/padding_10"
                 android:textSize="@dimen/text_size_14"
                 app:appFontStyle="regular"
                 app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.theme.ThemeDivider
+                android:layout_height="1px"
+                android:layout_marginVertical="@dimen/padding_5"
+                android:layout_width="match_parent" />
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:layout_height="wrap_content"
+                android:layout_width="match_parent"
+                android:text="@string/replay_gain"
+                android:textSize="@dimen/text_size_14"
+                app:appFontStyle="black"
+                app:textColorStyle="primary" />
+
+            <LinearLayout
+                android:layout_height="wrap_content"
+                android:layout_width="match_parent"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="@dimen/padding_8"
+                    android:layout_weight="1"
+                    android:layout_width="0dp"
+                    android:orientation="vertical">
+
+                    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                        android:layout_height="wrap_content"
+                        android:layout_width="match_parent"
+                        android:text="@string/replay_gain_track"
+                        android:textSize="@dimen/text_size_12"
+                        app:appFontStyle="bold"
+                        app:textColorStyle="accent" />
+
+                    <app.simple.felicity.decorations.corners.DynamicCornerEditText
+                        android:id="@+id/rg_track_gain_input"
+                        android:background="@android:color/transparent"
+                        android:gravity="center_vertical"
+                        android:hint="@string/rg_db_hint"
+                        android:imeOptions="actionNext"
+                        android:importantForAutofill="yes"
+                        android:inputType="numberDecimal|numberSigned"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/padding_15"
+                        android:layout_width="match_parent"
+                        android:maxLines="1"
+                        android:padding="@dimen/padding_10"
+                        android:textSize="@dimen/text_size_14"
+                        app:appFontStyle="regular"
+                        app:textColorStyle="primary" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_width="0dp"
+                    android:orientation="vertical">
+
+                    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                        android:layout_height="wrap_content"
+                        android:layout_width="match_parent"
+                        android:text="@string/rg_track_peak"
+                        android:textSize="@dimen/text_size_12"
+                        app:appFontStyle="bold"
+                        app:textColorStyle="accent" />
+
+                    <app.simple.felicity.decorations.corners.DynamicCornerEditText
+                        android:id="@+id/rg_track_peak_input"
+                        android:background="@android:color/transparent"
+                        android:gravity="center_vertical"
+                        android:hint="@string/rg_peak_hint"
+                        android:imeOptions="actionNext"
+                        android:importantForAutofill="yes"
+                        android:inputType="numberDecimal"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/padding_15"
+                        android:layout_width="match_parent"
+                        android:maxLines="1"
+                        android:padding="@dimen/padding_10"
+                        android:textSize="@dimen/text_size_14"
+                        app:appFontStyle="regular"
+                        app:textColorStyle="primary" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_height="wrap_content"
+                android:layout_width="match_parent"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="@dimen/padding_8"
+                    android:layout_weight="1"
+                    android:layout_width="0dp"
+                    android:orientation="vertical">
+
+                    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                        android:layout_height="wrap_content"
+                        android:layout_width="match_parent"
+                        android:text="@string/replay_gain_album"
+                        android:textSize="@dimen/text_size_12"
+                        app:appFontStyle="bold"
+                        app:textColorStyle="accent" />
+
+                    <app.simple.felicity.decorations.corners.DynamicCornerEditText
+                        android:id="@+id/rg_album_gain_input"
+                        android:background="@android:color/transparent"
+                        android:gravity="center_vertical"
+                        android:hint="@string/rg_db_hint"
+                        android:imeOptions="actionNext"
+                        android:importantForAutofill="yes"
+                        android:inputType="numberDecimal|numberSigned"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/padding_20"
+                        android:layout_width="match_parent"
+                        android:maxLines="1"
+                        android:padding="@dimen/padding_10"
+                        android:textSize="@dimen/text_size_14"
+                        app:appFontStyle="regular"
+                        app:textColorStyle="primary" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_width="0dp"
+                    android:orientation="vertical">
+
+                    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                        android:layout_height="wrap_content"
+                        android:layout_width="match_parent"
+                        android:text="@string/rg_album_peak"
+                        android:textSize="@dimen/text_size_12"
+                        app:appFontStyle="bold"
+                        app:textColorStyle="accent" />
+
+                    <app.simple.felicity.decorations.corners.DynamicCornerEditText
+                        android:id="@+id/rg_album_peak_input"
+                        android:background="@android:color/transparent"
+                        android:gravity="center_vertical"
+                        android:hint="@string/rg_peak_hint"
+                        android:imeOptions="actionDone"
+                        android:importantForAutofill="yes"
+                        android:inputType="numberDecimal"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/padding_20"
+                        android:layout_width="match_parent"
+                        android:maxLines="1"
+                        android:padding="@dimen/padding_10"
+                        android:textSize="@dimen/text_size_14"
+                        app:appFontStyle="regular"
+                        app:textColorStyle="primary" />
+
+                </LinearLayout>
+
+            </LinearLayout>
 
         </LinearLayout>
 
