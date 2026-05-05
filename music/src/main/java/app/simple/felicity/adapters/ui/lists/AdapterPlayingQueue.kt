@@ -129,13 +129,11 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
      * Tell the adapter which song is currently playing so it can fade out the ones before it.
      * Only the items whose faded-ness actually changed are refreshed — no unnecessary redraws.
      */
+    @SuppressLint("NotifyDataSetChanged")
     fun updateCurrentPosition(newPosition: Int) {
         val old = currentPosition
         currentPosition = newPosition
-        // Refresh only the items whose fade state changed — typically just the one that flipped.
-        val start = minOf(old, newPosition)
-        val end = maxOf(old, newPosition)
-        notifyItemRangeChanged(start, end - start + 1)
+        notifyDataSetChanged()
     }
 
     /**

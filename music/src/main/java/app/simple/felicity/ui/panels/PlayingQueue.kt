@@ -55,13 +55,8 @@ class PlayingQueue : BasePanelFragment() {
             if (songs.isNotEmpty()) {
                 updateQueueList(songs)
                 setDurations()
+                adapterPlayingQueue?.updateCurrentPosition(MediaPlaybackManager.getCurrentSongPosition())
             }
-        }
-
-        // Keep the "past songs" fade in sync with whatever is playing right now.
-        // This runs every time the current song index changes, not just on startup.
-        playingQueueViewModel.currentPosition.collectWhenStarted { position ->
-            adapterPlayingQueue?.updateCurrentPosition(position)
         }
     }
 
@@ -148,6 +143,7 @@ class PlayingQueue : BasePanelFragment() {
     override fun onAudio(audio: Audio) {
         super.onAudio(audio)
         updateCountDown(MediaPlaybackManager.getSeekPosition())
+        adapterPlayingQueue?.updateCurrentPosition(MediaPlaybackManager.getCurrentSongPosition())
     }
 
     private fun setDurations() {
