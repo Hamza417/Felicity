@@ -19,7 +19,7 @@
             android:layout_width="match_parent"
             android:orientation="vertical"
             android:paddingHorizontal="@dimen/padding_15"
-            android:paddingTop="@dimen/padding_15">
+            android:paddingTop="@dimen/padding_5">
 
             <app.simple.felicity.decorations.padding.PaddingAwareConstraintLayout
                 android:layout_height="wrap_content"
@@ -53,7 +53,7 @@
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:textColorStyle="primary" />
+                    app:textColorStyle="accent" />
 
             </app.simple.felicity.decorations.padding.PaddingAwareConstraintLayout>
 
