@@ -106,24 +106,35 @@ extern "C" {
 
 /**
  * Called once by the Android runtime when the native library is first loaded.
- * We use this opportunity to look up the TagLibMetadata class and its
- * constructor just once, then hold onto them for the rest of the session.
- * Looking these up per-call would be a significant CPU bottleneck when
- * scanning a large music library.
+ * We just declare the JNI version here — we intentionally do NOT look up app
+ * classes at this point. During JNI_OnLoad the only ClassLoader available is
+ * the bootstrap loader, which can't see app classes. Trying to FindClass here
+ * would always return null and cause an UnsatisfiedLinkError at startup.
+ * The actual class lookup happens lazily on the first real call instead.
  */
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void * /*reserved*/) {
-    JNIEnv *env = nullptr;
-    if (vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6) != JNI_OK) {
-        return JNI_ERR;
-    }
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM * /*vm*/, void * /*reserved*/) {
+    return JNI_VERSION_1_6;
+}
+
+/**
+ * Looks up the TagLibMetadata class and its constructor the first time it's
+ * needed, then caches both for every subsequent call. By the time any native
+ * method is invoked from Kotlin, the app's ClassLoader is fully active and
+ * FindClass can see all app classes — so this is the right place to do it.
+ *
+ * Returns true if the globals are ready to use, false if something went wrong.
+ */
+static bool ensureMetaClassCached(JNIEnv *env) {
+    if (g_metaClass && g_metaCtor) return true;
 
     jclass localClass = env->FindClass("app/simple/felicity/repository/metadata/TagLibMetadata");
     if (!localClass) {
-        LOGE("JNI_OnLoad: Cannot find TagLibMetadata class");
-        return JNI_ERR;
+        LOGE("Cannot find TagLibMetadata class — check the package name");
+        return false;
     }
 
-    // Promote to a global ref so it survives beyond this stack frame.
+    // Promote to a global ref so it outlives this stack frame and stays valid
+    // across future JNI calls on any thread.
     g_metaClass = reinterpret_cast<jclass>(env->NewGlobalRef(localClass));
     env->DeleteLocalRef(localClass);
 
@@ -150,11 +161,11 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void * /*reserved*/) {
                                   ")V");
 
     if (!g_metaCtor) {
-        LOGE("JNI_OnLoad: Cannot find TagLibMetadata constructor — signature mismatch");
-        return JNI_ERR;
+        LOGE("Cannot find TagLibMetadata constructor — signature mismatch");
+        return false;
     }
 
-    return JNI_VERSION_1_6;
+    return true;
 }
 
 /**
@@ -270,13 +281,9 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
         }
     }
 
-    // Use the globally cached class and constructor instead of doing a fresh
-    // lookup on every single file — saves a noticeable amount of time when
-    // scanning hundreds or thousands of tracks at startup.
-    if (!g_metaClass || !g_metaCtor) {
-        LOGE("Global TagLibMetadata refs are not initialized — was JNI_OnLoad called?");
-        return nullptr;
-    }
+    // Make sure the class and constructor are cached before we try to use them.
+    // This is a no-op on every call after the first one.
+    if (!ensureMetaClassCached(env)) return nullptr;
 
     return env->NewObject(
             g_metaClass, g_metaCtor,
