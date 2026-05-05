@@ -26,7 +26,9 @@ class PlayingQueue : BasePanelFragment() {
     private lateinit var headerBinding: HeaderPlayingQueueBinding
 
     private var adapterPlayingQueue: AdapterPlayingQueue? = null
+
     private var hasScrolledToInitialPosition = false
+    private var REMAINING_DURATION: Long = 0L
 
     private val playingQueueViewModel: PlayingQueueViewModel by viewModels({ requireActivity() })
 
@@ -52,6 +54,7 @@ class PlayingQueue : BasePanelFragment() {
         playingQueueViewModel.songs.collectWhenStarted { songs ->
             if (songs.isNotEmpty()) {
                 updateQueueList(songs)
+                setDurations()
             }
         }
 
@@ -135,6 +138,33 @@ class PlayingQueue : BasePanelFragment() {
 
             requireArguments().putBoolean(FIRST_LAUNCH_KEY, false)
         }
+    }
+
+    override fun onSeekChanged(seek: Long) {
+        super.onSeekChanged(seek)
+        updateCountDown(seek)
+    }
+
+    override fun onAudio(audio: Audio) {
+        super.onAudio(audio)
+        updateCountDown(MediaPlaybackManager.getSeekPosition())
+    }
+
+    private fun setDurations() {
+        REMAINING_DURATION = 0L
+
+        playingQueueViewModel.songs.value.let { songs ->
+            val currentIndex = MediaPlaybackManager.getCurrentSongPosition()
+            for (i in currentIndex + 1 until songs.size) {
+                REMAINING_DURATION += songs[i].duration
+            }
+        }
+    }
+
+    private fun updateCountDown(seek: Long) {
+        val remainingTimeInCurrentSong = (MediaPlaybackManager.getDuration() - seek).coerceAtLeast(0)
+        val totalRemainingTime = remainingTimeInCurrentSong + REMAINING_DURATION
+        headerBinding.hours.text = totalRemainingTime.toDynamicTimeString()
     }
 
     companion object {
