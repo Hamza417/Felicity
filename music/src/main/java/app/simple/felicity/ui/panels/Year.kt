@@ -20,7 +20,6 @@ import app.simple.felicity.dialogs.year.DialogYearSort.Companion.showYearSortDia
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.YearPreferences
 import app.simple.felicity.repository.models.YearGroup
-import app.simple.felicity.repository.sort.YearSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.YearSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.YearPage
 import app.simple.felicity.viewmodels.panels.YearViewModel
@@ -78,10 +77,6 @@ class Year : BasePanelFragment() {
             childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.YEAR)
         }
 
-        headerBinding.sortOrder.setOnClickListener {
-            childFragmentManager.showYearSortDialog()
-        }
-
         headerBinding.sortStyle.setOnClickListener {
             childFragmentManager.showYearSortDialog()
         }
@@ -116,7 +111,6 @@ class Year : BasePanelFragment() {
         )
 
         headerBinding.sortStyle.setCurrentSortStyle()
-        headerBinding.sortOrder.setCurrentSortOrder()
         headerBinding.scroll.hideOnUnfavorableSort(
                 sorts = listOf(CommonPreferencesConstants.BY_YEAR),
                 preference = YearPreferences.getSortStyle()

@@ -23,7 +23,6 @@ import app.simple.felicity.dialogs.favorites.FavoritesSort.Companion.showFavorit
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.FavoritesPreferences
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.sort.FavoritesSort.setFavoritesOrder
 import app.simple.felicity.repository.sort.FavoritesSort.setFavoritesSort
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.viewmodels.panels.FavoritesViewModel
@@ -77,9 +76,6 @@ class Favorites : BasePanelFragment() {
     }
 
     private fun setupClickListeners() {
-        headerBinding.sortStyle.setFavoritesSort()
-        headerBinding.sortOrder.setFavoritesOrder()
-
         headerBinding.menu.setOnClickListener {
             openPreferencesPanel()
         }
@@ -89,10 +85,6 @@ class Favorites : BasePanelFragment() {
         }
 
         headerBinding.sortStyle.setOnClickListener {
-            childFragmentManager.showFavoritesSort()
-        }
-
-        headerBinding.sortOrder.setOnClickListener {
             childFragmentManager.showFavoritesSort()
         }
 
@@ -137,7 +129,6 @@ class Favorites : BasePanelFragment() {
         headerBinding.count.text = getString(R.string.x_songs, songs.size)
         headerBinding.hours.text = songs.sumOf { it.duration }.toDynamicTimeString()
         headerBinding.sortStyle.setFavoritesSort()
-        headerBinding.sortOrder.setFavoritesOrder()
 
         headerBinding.hours.setOnClickListener {
             childFragmentManager.showTotalTime(

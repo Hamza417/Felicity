@@ -21,7 +21,6 @@ import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showList
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.AlbumPreferences
 import app.simple.felicity.repository.models.Album
-import app.simple.felicity.repository.sort.AlbumSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.AlbumSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.viewmodels.panels.AlbumsViewModel
@@ -76,10 +75,6 @@ class Albums : BasePanelFragment() {
             childFragmentManager.showAlbumsSort()
         }
 
-        headerBinding.sortOrder.setOnClickListener {
-            childFragmentManager.showAlbumsSort()
-        }
-
         headerBinding.search.setOnClickListener {
             openSearch()
         }
@@ -122,7 +117,6 @@ class Albums : BasePanelFragment() {
                 view = headerBinding.scroll)
 
         headerBinding.sortStyle.setCurrentSortStyle()
-        headerBinding.sortOrder.setCurrentSortOrder()
         headerBinding.scroll.hideOnUnfavorableSort(
                 sorts = listOf(
                         CommonPreferencesConstants.BY_ALBUM_NAME,

@@ -20,7 +20,6 @@ import app.simple.felicity.dialogs.genres.GenreSort.Companion.showGenresSortDial
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.repository.models.Genre
-import app.simple.felicity.repository.sort.GenreSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.GenreSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.GenrePage
 import app.simple.felicity.viewmodels.panels.GenresViewModel
@@ -80,10 +79,6 @@ class Genres : BasePanelFragment() {
             childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.GENRES)
         }
 
-        headerBinding.sortOrder.setOnClickListener {
-            childFragmentManager.showGenresSortDialog()
-        }
-
         headerBinding.sortStyle.setOnClickListener {
             childFragmentManager.showGenresSortDialog()
         }
@@ -121,7 +116,6 @@ class Genres : BasePanelFragment() {
                 view = headerBinding.scroll)
 
         headerBinding.sortStyle.setCurrentSortStyle()
-        headerBinding.sortOrder.setCurrentSortOrder()
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {

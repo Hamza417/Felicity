@@ -17,7 +17,6 @@ import app.simple.felicity.dialogs.playlists.PlaylistsSort.Companion.showPlaylis
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.PlaylistPreferences
 import app.simple.felicity.repository.models.PlaylistWithSongs
-import app.simple.felicity.repository.sort.PlaylistSort.setPlaylistOrder
 import app.simple.felicity.repository.sort.PlaylistSort.setPlaylistSort
 import app.simple.felicity.ui.pages.PlaylistPage
 import app.simple.felicity.viewmodels.panels.PlaylistsViewModel
@@ -72,9 +71,6 @@ class Playlists : BasePanelFragment() {
     }
 
     private fun setupClickListeners() {
-        headerBinding.sortStyle.setPlaylistSort()
-        headerBinding.sortOrder.setPlaylistOrder()
-
         headerBinding.menu.setOnClickListener {
             openPreferencesPanel()
         }
@@ -84,10 +80,6 @@ class Playlists : BasePanelFragment() {
         }
 
         headerBinding.sortStyle.setOnClickListener {
-            childFragmentManager.showPlaylistsSort()
-        }
-
-        headerBinding.sortOrder.setOnClickListener {
             childFragmentManager.showPlaylistsSort()
         }
 
@@ -120,7 +112,6 @@ class Playlists : BasePanelFragment() {
 
         headerBinding.count.text = playlists.size.toString()
         headerBinding.sortStyle.setPlaylistSort()
-        headerBinding.sortOrder.setPlaylistOrder()
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
@@ -129,7 +120,6 @@ class Playlists : BasePanelFragment() {
             PlaylistPreferences.SONG_SORT,
             PlaylistPreferences.SORTING_STYLE -> {
                 headerBinding.sortStyle.setPlaylistSort()
-                headerBinding.sortOrder.setPlaylistOrder()
             }
             PlaylistPreferences.GRID_SIZE_PORTRAIT, PlaylistPreferences.GRID_SIZE_LANDSCAPE -> {
                 val newMode = PlaylistPreferences.getGridSize()

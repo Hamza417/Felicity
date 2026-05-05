@@ -21,7 +21,6 @@ import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.FolderHierarchyPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Folder
-import app.simple.felicity.repository.sort.FolderHierarchySort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.FolderHierarchySort.setCurrentSortStyle
 import app.simple.felicity.viewmodels.panels.FolderHierarchyViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -91,10 +90,6 @@ class FoldersHierarchy : BasePanelFragment() {
             openPreferencesPanel()
         }
 
-        headerBinding.sortOrder.setOnClickListener {
-            childFragmentManager.showFolderHierarchySortDialog()
-        }
-
         headerBinding.sortStyle.setOnClickListener {
             childFragmentManager.showFolderHierarchySortDialog()
         }
@@ -145,7 +140,6 @@ class FoldersHierarchy : BasePanelFragment() {
         }
 
         headerBinding.sortStyle.setCurrentSortStyle()
-        headerBinding.sortOrder.setCurrentSortOrder()
         headerBinding.scroll.hideOnUnfavorableSort(
                 sorts = listOf(CommonPreferencesConstants.BY_NAME, CommonPreferencesConstants.BY_PATH),
                 preference = FolderHierarchyPreferences.getSortStyle()

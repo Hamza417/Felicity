@@ -32,7 +32,6 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
-import app.simple.felicity.repository.sort.SearchSort.setSearchOrder
 import app.simple.felicity.repository.sort.SearchSort.setSearchSort
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.shared.utils.ViewUtils.gone
@@ -165,9 +164,6 @@ class Search : PanelFragment() {
     }
 
     private fun setupClickListeners() {
-        headerBinding.sortStyle.setSearchSort()
-        headerBinding.sortOrder.setSearchOrder()
-
         headerBinding.editText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) =
                 Unit
@@ -196,10 +192,6 @@ class Search : PanelFragment() {
             childFragmentManager.showSearchSort()
         }
 
-        headerBinding.sortOrder.setOnClickListener {
-            childFragmentManager.showSearchSort()
-        }
-
         headerBinding.scroll.setOnClickListener {
             binding.recyclerView.smoothScrollToPosition(0)
         }
@@ -224,7 +216,6 @@ class Search : PanelFragment() {
         )
 
         headerBinding.sortStyle.setSearchSort()
-        headerBinding.sortOrder.setSearchOrder()
 
         if (results.songs.isNotEmpty()) {
             headerBinding.chipSongs.visible()
@@ -304,10 +295,6 @@ class Search : PanelFragment() {
         when (key) {
             SearchPreferences.SONG_SORT -> {
                 headerBinding.sortStyle.setSearchSort()
-            }
-
-            SearchPreferences.SORTING_STYLE -> {
-                headerBinding.sortOrder.setSearchOrder()
             }
 
             SearchPreferences.GRID_SIZE_PORTRAIT, SearchPreferences.GRID_SIZE_LANDSCAPE -> {

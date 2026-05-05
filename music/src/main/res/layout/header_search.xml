@@ -184,20 +184,6 @@
                 app:textColorStyle="tertiary" />
 
             <app.simple.felicity.decorations.highlight.HighlightTextView
-                android:id="@+id/sort_order"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:paddingVertical="@dimen/padding_5"
-                android:paddingHorizontal="@dimen/padding_10"
-                android:drawableStart="@drawable/ic_order_16dp"
-                android:drawablePadding="@dimen/padding_5"
-                android:textSize="@dimen/text_size_14"
-                app:appFontStyle="bold"
-                app:drawableTintStyle="accent"
-                app:textColorStyle="tertiary" />
-
-            <app.simple.felicity.decorations.highlight.HighlightTextView
                 android:id="@+id/list_style"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

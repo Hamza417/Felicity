@@ -21,7 +21,6 @@ import app.simple.felicity.dialogs.folders.DialogFolderSort.Companion.showFolder
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.FoldersPreferences
 import app.simple.felicity.repository.models.Folder
-import app.simple.felicity.repository.sort.FolderSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.FolderSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.FolderPage
 import app.simple.felicity.viewmodels.panels.FoldersViewModel
@@ -82,10 +81,6 @@ class Folders : BasePanelFragment() {
             childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.FOLDERS)
         }
 
-        headerBinding.sortOrder.setOnClickListener {
-            childFragmentManager.showFoldersSortDialog()
-        }
-
         headerBinding.sortStyle.setOnClickListener {
             childFragmentManager.showFoldersSortDialog()
         }
@@ -127,7 +122,6 @@ class Folders : BasePanelFragment() {
                 view = headerBinding.scroll)
 
         headerBinding.sortStyle.setCurrentSortStyle()
-        headerBinding.sortOrder.setCurrentSortOrder()
         headerBinding.scroll.hideOnUnfavorableSort(
                 sorts = listOf(
                         CommonPreferencesConstants.BY_NAME,

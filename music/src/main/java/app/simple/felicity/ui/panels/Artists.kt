@@ -21,7 +21,6 @@ import app.simple.felicity.dialogs.songs.ArtistsSort.Companion.showArtistsSort
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.ArtistPreferences
 import app.simple.felicity.repository.models.Artist
-import app.simple.felicity.repository.sort.ArtistSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.ArtistSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.viewmodels.panels.ArtistsViewModel
@@ -75,10 +74,6 @@ class Artists : BasePanelFragment() {
             childFragmentManager.showArtistsSort()
         }
 
-        headerBinding.sortOrder.setOnClickListener {
-            childFragmentManager.showArtistsSort()
-        }
-
         headerBinding.search.setOnClickListener {
             openSearch()
         }
@@ -121,7 +116,6 @@ class Artists : BasePanelFragment() {
                 view = headerBinding.scroll)
 
         headerBinding.sortStyle.setCurrentSortStyle()
-        headerBinding.sortOrder.setCurrentSortOrder()
         headerBinding.scroll.hideOnUnfavorableSort(
                 sorts = listOf(CommonPreferencesConstants.BY_NAME),
                 preference = ArtistPreferences.getArtistSort()

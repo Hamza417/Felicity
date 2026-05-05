@@ -21,7 +21,6 @@ import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showList
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.AlbumArtistPreferences
 import app.simple.felicity.repository.models.Artist
-import app.simple.felicity.repository.sort.AlbumArtistSort.setCurrentSortOrder
 import app.simple.felicity.repository.sort.AlbumArtistSort.setCurrentSortStyle
 import app.simple.felicity.ui.pages.AlbumArtistPage
 import app.simple.felicity.viewmodels.panels.AlbumArtistsViewModel
@@ -78,10 +77,6 @@ class AlbumArtists : BasePanelFragment() {
             childFragmentManager.showAlbumArtistsSort()
         }
 
-        headerBinding.sortOrder.setOnClickListener {
-            childFragmentManager.showAlbumArtistsSort()
-        }
-
         headerBinding.search.setOnClickListener {
             openSearch()
         }
@@ -124,7 +119,6 @@ class AlbumArtists : BasePanelFragment() {
                 view = headerBinding.scroll)
 
         headerBinding.sortStyle.setCurrentSortStyle()
-        headerBinding.sortOrder.setCurrentSortOrder()
 
         // The fast-scroll arrow only makes sense when sorting alphabetically by name
         headerBinding.scroll.hideOnUnfavorableSort(
