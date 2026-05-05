@@ -1,7 +1,6 @@
 package app.simple.felicity.decorations.typeface
 
 import android.animation.ValueAnimator
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.TypedArray
@@ -19,6 +18,7 @@ import app.simple.felicity.shared.utils.ColorUtils.animateColorChange
 import app.simple.felicity.shared.utils.ConditionUtils.invert
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
 
 open class TypeFaceEditText : AppCompatEditText, ThemeChangedListener {
@@ -58,7 +58,7 @@ open class TypeFaceEditText : AppCompatEditText, ThemeChangedListener {
             setTextColor(colorMode, false)
             setHintTextColor(ThemeManager.theme.textViewTheme.tertiaryTextColor)
             setDrawableTint(ThemeManager.theme.iconTheme.secondaryIconColor)
-            setCursorDrawable()
+            setCursorDrawableTint()
             typedArray.recycle()
         }
     }
@@ -78,6 +78,11 @@ open class TypeFaceEditText : AppCompatEditText, ThemeChangedListener {
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
         setTextColor(colorMode, animate)
         setHighlightColor()
+    }
+
+    override fun onAccentChanged(accent: Accent) {
+        super.onAccentChanged(accent)
+        setCursorDrawableTint()
     }
 
     private fun setTextColor(mode: Int, animate: Boolean) {
@@ -110,27 +115,8 @@ open class TypeFaceEditText : AppCompatEditText, ThemeChangedListener {
         }
     }
 
-    @SuppressLint("DiscouragedPrivateApi")
-    private fun setCursorDrawable() {
-        //        val drawable = DrawableBuilder()
-        //            .rectangle()
-        //            .width(resources.getDimensionPixelOffset(R.dimen.cursor_width))
-        //            .ripple(false)
-        //            .strokeWidth(0)
-        //            .solidColor(AppearancePreferences.getAccentColor())
-        //            .build()
-        //
-        //        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        //            textCursorDrawable = drawable
-        //        } else {
-        //            try {
-        //                // https://github.com/android/platform_frameworks_base/blob/kitkat-release/core/java/android/widget/TextView.java#L562-564
-        //                val f: Field = TextView::class.java.getDeclaredField("mCursorDrawableRes")
-        //                f.isAccessible = true
-        //                f.set(this, drawable)
-        //            } catch (ignored: Exception) {
-        //            }
-        //        }
+    private fun setCursorDrawableTint() {
+        textCursorDrawable?.setTint(ThemeManager.accent.primaryAccentColor)
     }
 
     private fun setHighlightColor() {
@@ -161,7 +147,7 @@ open class TypeFaceEditText : AppCompatEditText, ThemeChangedListener {
     open fun hideInput() {
         clearFocus()
         (context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-            .hideSoftInputFromWindow(windowToken, InputMethodManager.RESULT_UNCHANGED_SHOWN)
+            .hideSoftInputFromWindow(windowToken, InputMethodManager.HIDE_IMPLICIT_ONLY)
     }
 
     @Suppress("unused")
