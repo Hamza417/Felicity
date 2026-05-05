@@ -4,24 +4,32 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import app.simple.felicity.constants.CommonPreferencesConstants.LayoutMode
 import app.simple.felicity.core.singletons.AppOrientation
 import app.simple.felicity.databinding.DialogSongsMenuBinding
-import app.simple.felicity.decorations.seekbars.FelicitySeekbar
+import app.simple.felicity.decorations.highlight.ListStyleIconView
+import app.simple.felicity.shared.utils.UnitUtils.dpToPx
 
 /**
  * Abstract base class for all panel layout-style menu bottom-sheet dialogs.
  *
- * Owns the common seekbar-based list-style selector and the "Open app settings" button,
- * eliminating the duplicated boilerplate found in every individual panel menu dialog.
+ * Owns the icon-strip layout-mode selector and the "Open app settings" button,
+ * eliminating duplicated boilerplate found in every individual panel menu dialog.
  * Subclasses only need to implement [getLayoutMode] and [setLayoutMode] to wire the
- * seekbar to their respective panel preference objects.
+ * icons to their respective panel preference objects.
  *
  * @author Hamza417
  */
 abstract class BaseLayoutMenuDialog : ScopedBottomSheetFragment() {
 
     private lateinit var binding: DialogSongsMenuBinding
+
+    /**
+     * Keeps track of all the icon views so we can flip the highlighted state when the
+     * user taps a different mode without having to scan the container children.
+     */
+    private val iconViews = mutableListOf<ListStyleIconView>()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = DialogSongsMenuBinding.inflate(inflater, container, false)
@@ -32,25 +40,47 @@ abstract class BaseLayoutMenuDialog : ScopedBottomSheetFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val list = buildLayoutModes(AppOrientation.isLandscape())
+        val current = getLayoutMode()
 
-        binding.listStyleSeekbar.setStepMode(true)
-        binding.listStyleSeekbar.setMin(1f)
-        binding.listStyleSeekbar.setMax(list.size.toFloat())
-        binding.listStyleSeekbar.setStepSize(1)
-        binding.listStyleSeekbar.setStep(list.indexOf(getLayoutMode()))
-
-        binding.listStyleSeekbar.setOnStepSeekChangeListener(object : FelicitySeekbar.OnStepSeekChangeListener {
-            override fun onStepChanged(seekbar: FelicitySeekbar, step: Int, fromUser: Boolean) {
-            }
-
-            override fun onStopTrackingTouch(seekbar: FelicitySeekbar) {
-                val mode = list.getOrNull(seekbar.getCurrentStep()) ?: return
-                setLayoutMode(mode)
-            }
-        })
+        populateIconStrip(list, current)
 
         binding.openAppSettings.setOnClickListener {
             openAppSettings()
+        }
+    }
+
+    /**
+     * Builds one [ListStyleIconView] per available [LayoutMode] and adds them all to the
+     * horizontal container. The icon that matches the current mode starts highlighted.
+     */
+    private fun populateIconStrip(modes: List<LayoutMode>, current: LayoutMode) {
+        iconViews.clear()
+        binding.listStyleIconsContainer.removeAllViews()
+
+        val iconSizePx = requireContext().dpToPx(48f).toInt()
+        val iconGapPx = requireContext().dpToPx(8f).toInt()
+
+        modes.forEach { mode ->
+            val icon = ListStyleIconView(requireContext()).apply {
+                layoutMode = mode
+                isHighlighted = (mode == current)
+
+                val params = LinearLayout.LayoutParams(iconSizePx, iconSizePx).apply {
+                    marginEnd = iconGapPx
+                }
+                layoutParams = params
+
+                setOnClickListener {
+                    if (layoutMode != getLayoutMode()) {
+                        setLayoutMode(layoutMode)
+                        // Move the highlight to the tapped icon and clear the rest.
+                        iconViews.forEach { it.isHighlighted = (it === this) }
+                    }
+                }
+            }
+
+            iconViews.add(icon)
+            binding.listStyleIconsContainer.addView(icon)
         }
     }
 
@@ -62,7 +92,7 @@ abstract class BaseLayoutMenuDialog : ScopedBottomSheetFragment() {
     /**
      * Persists the given [LayoutMode] for this panel.
      *
-     * @param mode the newly selected layout mode to save
+     * @param mode the newly selected layout mode to save.
      */
     abstract fun setLayoutMode(mode: LayoutMode)
 
@@ -72,8 +102,8 @@ abstract class BaseLayoutMenuDialog : ScopedBottomSheetFragment() {
      * Override in a subclass to restrict or extend the default set, for example when the
      * panel's adapter does not support label-style view types.
      *
-     * @param isLandscape true if the device is currently in landscape orientation
-     * @return the ordered list of layout modes to display on the seekbar
+     * @param isLandscape true if the device is currently in landscape orientation.
+     * @return the ordered list of layout modes to display in the icon strip.
      */
     open fun buildLayoutModes(isLandscape: Boolean): List<LayoutMode> {
         return if (isLandscape) {
@@ -102,4 +132,3 @@ abstract class BaseLayoutMenuDialog : ScopedBottomSheetFragment() {
         }
     }
 }
-

@@ -16,31 +16,37 @@
         android:padding="@dimen/padding_15"
         android:orientation="vertical">
 
-        <LinearLayout
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="@dimen/padding_15"
+            android:paddingEnd="@dimen/padding_15"
+            android:paddingTop="@dimen/padding_5"
+            android:paddingBottom="@dimen/padding_10"
+            android:text="@string/list_style"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:textColorStyle="primary" />
+
+        <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:scrollbars="none"
+            android:fadingEdge="horizontal"
+            android:requiresFadingEdge="horizontal"
+            android:paddingStart="@dimen/padding_10"
+            android:paddingEnd="@dimen/padding_10"
+            android:clipToPadding="false">
 
-            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            <!-- Icons are added here programmatically by BaseLayoutMenuDialog. -->
+            <LinearLayout
+                android:id="@+id/list_style_icons_container"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:padding="@dimen/padding_15"
-                android:text="@string/list_style"
-                android:textSize="@dimen/text_size_14"
-                app:appFontStyle="bold"
-                app:textColorStyle="primary" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical" />
 
-            <app.simple.felicity.decorations.seekbars.FelicitySeekbar
-                android:id="@+id/list_style_seekbar"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/padding_10"
-                android:layout_gravity="center_vertical"
-                android:layout_marginEnd="@dimen/padding_1"
-                app:felicityAnimateInitial="true" />
-
-        </LinearLayout>
+        </HorizontalScrollView>
 
         <app.simple.felicity.decorations.theme.ThemeDivider
             android:layout_width="match_parent"

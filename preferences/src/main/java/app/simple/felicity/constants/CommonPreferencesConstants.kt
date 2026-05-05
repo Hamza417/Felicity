@@ -24,17 +24,6 @@ object CommonPreferencesConstants {
     const val BY_PATH = 14
     const val BY_NUMBER_OF_ALBUMS = 15
 
-    // Grid size constants
-    const val LIST_SIZE_ONE = 1
-    const val LIST_SIZE_TWO = 2
-    const val LIST_SIZE_THREE = 2
-    const val GRID_SIZE_TWO = 2
-    const val GRID_SIZE_THREE = 3
-    const val GRID_SIZE_FOUR = 4
-    const val GRID_SIZE_FIVE = 5
-    const val GRID_SIZE_SIX = 6
-    const val GRID_SIZE_ONE = 7
-
     // Grid type constants
     const val GRID_TYPE_LIST = 0
     const val GRID_TYPE_GRID = 1
@@ -58,6 +47,27 @@ object CommonPreferencesConstants {
             LayoutMode.valueOf(this)
         } catch (_: IllegalArgumentException) {
             LayoutMode.LIST_ONE
+        }
+    }
+
+    fun isGrid(mode: LayoutMode): Boolean {
+        return mode == LayoutMode.GRID_TWO || mode == LayoutMode.GRID_THREE || mode == LayoutMode.GRID_FOUR ||
+                mode == LayoutMode.GRID_FIVE || mode == LayoutMode.GRID_SIX
+    }
+
+    fun isLabel(mode: LayoutMode): Boolean {
+        return mode == LayoutMode.LABEL_ONE || mode == LayoutMode.LABEL_TWO
+    }
+
+    fun isList(mode: LayoutMode): Boolean {
+        return mode == LayoutMode.LIST_ONE || mode == LayoutMode.LIST_TWO || mode == LayoutMode.LIST_THREE
+    }
+
+    fun getGridType(mode: LayoutMode): Int {
+        return when {
+            mode.isLabel -> GRID_TYPE_LABEL
+            mode.isGrid -> GRID_TYPE_GRID
+            else -> GRID_TYPE_LIST
         }
     }
 }

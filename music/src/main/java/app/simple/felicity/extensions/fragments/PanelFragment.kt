@@ -25,29 +25,6 @@ open class PanelFragment : MediaFragment() {
         BarHeight.isLandscape(requireContext())
     }
 
-    protected fun AppCompatTextView.setGridSizeValue(gridSize: Int) {
-        when (gridSize) {
-            CommonPreferencesConstants.GRID_SIZE_ONE -> {
-                text = getString(R.string.one)
-            }
-            CommonPreferencesConstants.GRID_SIZE_TWO -> {
-                text = getString(R.string.two)
-            }
-            CommonPreferencesConstants.GRID_SIZE_THREE -> {
-                text = getString(R.string.three)
-            }
-            CommonPreferencesConstants.GRID_SIZE_FOUR -> {
-                text = getString(R.string.four)
-            }
-            CommonPreferencesConstants.GRID_SIZE_FIVE -> {
-                text = getString(R.string.five)
-            }
-            CommonPreferencesConstants.GRID_SIZE_SIX -> {
-                text = getString(R.string.six)
-            }
-        }
-    }
-
     protected fun RecyclerView.requireAttachedSectionScroller(
             sections: List<SectionedFastScroller.Position>,
             header: AppHeader,

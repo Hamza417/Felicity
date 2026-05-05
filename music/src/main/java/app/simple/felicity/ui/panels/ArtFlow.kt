@@ -9,15 +9,11 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentArtflowBinding
 import app.simple.felicity.decorations.artflow.ArtFlow.OnCoverClickListener
 import app.simple.felicity.decorations.artflow.ArtFlowDataProvider
 import app.simple.felicity.decorations.artflow.ArtFlowRenderer
-import app.simple.felicity.decorations.views.PopupMenuItem
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.carousel.CarouselMenu.Companion.showCarouselMenu
-import app.simple.felicity.dialogs.songs.SongsMenu.Companion.showSongsMenu
 import app.simple.felicity.dialogs.songs.SongsSort.Companion.showSongsSort
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.constants.MediaConstants
@@ -113,25 +109,7 @@ class ArtFlow : MediaFragment() {
         }
 
         binding.menu.setOnClickListener {
-            SharedScrollViewPopup(
-                    container = requireContainerView(),
-                    anchorView = it,
-                    menuItems = listOf(
-                            PopupMenuItem(title = R.string.carousel_settings, icon = R.drawable.ic_carousel),
-                            PopupMenuItem(title = R.string.songs_settings, icon = R.drawable.ic_song_16dp)
-                    ),
-                    onMenuItemClick = { id ->
-                        when (id) {
-                            R.string.songs_settings -> {
-                                childFragmentManager.showSongsMenu()
-                            }
-                            R.string.carousel_settings -> {
-                                childFragmentManager.showCarouselMenu()
-                            }
-                        }
-                    },
-                    onDismiss = {}
-            ).show()
+            childFragmentManager.showCarouselMenu()
         }
     }
 

@@ -4,4 +4,5 @@ object BundleConstants {
     const val firstLaunch: String = "firstLaunch"
     const val position = "position"
     const val WARNING = "warning"
+    const val PANEL = "panel"
 }

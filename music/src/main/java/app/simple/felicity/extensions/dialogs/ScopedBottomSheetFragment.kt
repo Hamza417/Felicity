@@ -12,6 +12,7 @@ import app.simple.felicity.R
 import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.shared.utils.ViewUtils
 import com.google.android.material.R.id.design_bottom_sheet
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -23,6 +24,10 @@ abstract class ScopedBottomSheetFragment : BottomSheetDialogFragment(),
 
     open val handler = Handler(Looper.getMainLooper())
     private var pendingRunnable: Runnable? = null
+
+    protected val isLandscape: Boolean by lazy {
+        BarHeight.isLandscape(requireContext())
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
