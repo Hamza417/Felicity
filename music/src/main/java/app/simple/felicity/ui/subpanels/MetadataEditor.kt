@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -62,7 +63,7 @@ class MetadataEditor : MediaFragment() {
     private var pendingArtworkFile: File? = null
 
     private val pickArtwork = registerForActivityResult(
-            ActivityResultContracts.GetContent()
+            ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri == null) return@registerForActivityResult
         handlePickedArtwork(uri)
@@ -127,7 +128,8 @@ class MetadataEditor : MediaFragment() {
      */
     private fun setupAlbumArtPicker() {
         val launchPicker = View.OnClickListener {
-            pickArtwork.launch("image/*")
+            pickArtwork.launch(PickVisualMediaRequest(
+                    ActivityResultContracts.PickVisualMedia.ImageOnly))
         }
 
         binding.albumArt.setOnClickListener(launchPicker)
