@@ -70,6 +70,7 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
             field = value
             // Force a geometry rebuild on the next draw pass.
             cachedShaderW = -1f
+            updateRightPadding()
             invalidate()
         }
 
@@ -117,6 +118,12 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
     private var cachedIsInSelection = false
     private var cachedDragHandle = false
 
+    /**
+     * The last icon count we applied as right padding. Tracked so we only call
+     * [setPadding] when the count actually changes — layout passes are expensive.
+     */
+    private var appliedIconCount = -1
+
     init {
         // ViewGroups skip onDraw by default. We need it to draw the gradient strip
         // behind the child views, so we have to opt in explicitly.
@@ -135,6 +142,9 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         this.audioID = audioID
         isPlaying = audioID == MediaPlaybackManager.getCurrentSongId()
         isInSelection = SelectionManager.selectedAudios.value.any { it.id == audioID }
+        // Reset so a recycled view never skips the padding update due to a stale cache.
+        appliedIconCount = -1
+        updateRightPadding()
         invalidate()
     }
 
@@ -161,6 +171,7 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         val shouldBePlaying = audio?.id == audioID
         if (isPlaying == shouldBePlaying) return
         isPlaying = shouldBePlaying
+        updateRightPadding()
         invalidate()
     }
 
@@ -172,6 +183,38 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         rebuildSelectionGeometry(w.toFloat(), h.toFloat(), isPlaying, isInSelection)
+        updateRightPadding()
+    }
+
+    /**
+     * Called after every layout pass, including the very first one where the view gets
+     * real dimensions for the first time. This is the safety net for the case where
+     * [setAudioID] was called before layout (height was 0 then, so padding was deferred).
+     */
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+        updateRightPadding()
+    }
+
+    /**
+     * Calculates how many icons are currently visible and sets the view's right padding
+     * to exactly that width so the ConstraintLayout children never slide under the drawn
+     * icons. We skip the call if nothing has changed to avoid unnecessary layout passes.
+     */
+    private fun updateRightPadding() {
+        if (height == 0) return
+        val h = height.toFloat()
+        val iconSize = (h * 0.45f).toInt()
+        val iconPadding = (h * 0.10f).toInt()
+        val iconCount = (if (enableDragHandle) 1 else 0) +
+                (if (isPlaying) 1 else 0) +
+                (if (isInSelection) 1 else 0)
+        if (iconCount == appliedIconCount) return
+        appliedIconCount = iconCount
+        val rightPad = iconCount * (iconSize + iconPadding)
+        setPadding(paddingLeft, paddingTop, rightPad, paddingBottom)
+
+        // WARN: do not call invalidate here
     }
 
     /**
@@ -291,7 +334,7 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         if (!isPlaying && !isInSelection && !enableDragHandle) return
 
         val iconSize = (h * 0.45f).toInt()
-        val iconPadding = (h * 0.18f).toInt()
+        val iconPadding = (h * 0.10f).toInt()
         val iconTop = ((h - iconSize) / 2f).toInt()
         val accentColor = ThemeManager.accent.secondaryAccentColor
 
@@ -332,6 +375,8 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
                 it.draw(canvas)
             }
         }
+
+        updateRightPadding()
     }
 
     override fun onAttachedToWindow() {
@@ -346,6 +391,7 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
                 val nowSelected = selected.any { it.id == audioID }
                 if (nowSelected != isInSelection) {
                     isInSelection = nowSelected
+                    updateRightPadding()
                     invalidate()
                 }
             }
