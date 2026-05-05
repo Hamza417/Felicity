@@ -16,6 +16,7 @@ import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.BasePanelFragment
+import app.simple.felicity.repository.managers.SelectionManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.viewmodels.panels.PlayingQueueViewModel
@@ -77,7 +78,11 @@ class PlayingQueue : BasePanelFragment() {
 
             adapterPlayingQueue?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
-                    MediaPlaybackManager.updatePosition(position, forcePlay = true)
+                    if (SelectionManager.hasSelection) {
+                        SelectionManager.toggle(songs[position])
+                    } else {
+                        MediaPlaybackManager.updatePosition(position, forcePlay = true)
+                    }
                 }
 
                 override fun onSongLongClicked(audios: MutableList<Audio>, position: Int, imageView: ImageView?) {

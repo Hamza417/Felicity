@@ -17,7 +17,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
-import app.simple.felicity.databinding.AdapterPlayingQueueBinding
+import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.fastscroll.FastScrollAdapter
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
@@ -64,7 +64,6 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
     private var isDragInProgress = false
     private var pendingList: List<Audio>? = null
 
-
     init {
         setHasStableIds(true)
         songs.addAll(initial)
@@ -88,7 +87,7 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): QueueHolder {
         return QueueHolder(
-                AdapterPlayingQueueBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+                AdapterStyleListBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         )
     }
 
@@ -103,7 +102,6 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
         // moment in the spotlight, so we dim them a little as a polite reminder.
         holder.itemView.alpha = if (position < currentPosition) PAST_SONG_ALPHA else 1f
     }
-
 
     override fun getItemCount(): Int = songs.size
 
@@ -182,7 +180,7 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    inner class QueueHolder(val binding: AdapterPlayingQueueBinding) : VerticalListViewHolder(binding.root) {
+    inner class QueueHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
 
         fun bindSelectionState(audio: Audio) {
             binding.container.setAudioID(audio.id)
@@ -193,10 +191,14 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
             binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
             binding.tertiaryDetail.setTextOrUnknown(audio.album)
             binding.title.addAudioQualityIcon(audio)
+            binding.container.enableDragHandle = true
             bindSelectionState(audio)
 
-            binding.dragHandle.setOnTouchListener { _, event ->
-                if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            // Start a drag whenever the finger lands inside the drawn drag-handle region
+            // on the right edge of the row — no extra view needed in the layout.
+            binding.container.setOnTouchListener { _, event ->
+                if (event.actionMasked == MotionEvent.ACTION_DOWN &&
+                        binding.container.isDragHandleRegion(event.x)) {
                     itemTouchHelper?.startDrag(this)
                 }
                 false

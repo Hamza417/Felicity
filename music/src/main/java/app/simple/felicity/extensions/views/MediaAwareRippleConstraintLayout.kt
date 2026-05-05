@@ -35,6 +35,10 @@ import kotlinx.coroutines.launch
  * right next to the play icon — two little buddies hanging out on the right side.
  * If the song is only selected (not playing), just the check icon shows up.
  *
+ * When [enableDragHandle] is true, a drag-grip icon is drawn at the very far right,
+ * and the play / check icons shift one slot to the left to make room. This removes
+ * the need for a dedicated ImageButton in the layout, which is one less view per row.
+ *
  * The background behind the icons fades in from the left using a cubic ease-in
  * bezier gradient, so it looks smooth and intentional rather than a hard line.
  *
@@ -55,6 +59,20 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
     /** True when this song is currently sitting in the selection basket. */
     private var isInSelection: Boolean = false
 
+    /**
+     * When true, a drag-grip icon is drawn at the far-right edge and the play / check
+     * icons shift left to make room. The layout should reserve an equivalent margin so
+     * text views don't slide under the handle area.
+     */
+    var enableDragHandle: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            // Force a geometry rebuild on the next draw pass.
+            cachedShaderW = -1f
+            invalidate()
+        }
+
     /** Coroutine scope that lives exactly as long as this view is attached to a window. */
     private var selectionScope: CoroutineScope? = null
 
@@ -66,6 +84,12 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
 
     /** The checkmark that appears when this song is selected — "yep, this one's picked!" */
     private val checkDrawable = AppCompatResources.getDrawable(context, R.drawable.ic_check)
+
+    /**
+     * The drag-grip icon drawn at the far-right slot when [enableDragHandle] is true.
+     * Using the same drawable that the old ImageButton used, so it looks identical.
+     */
+    private val dragHandleDrawable = AppCompatResources.getDrawable(context, R.drawable.ic_drag_indicator)
 
     /** Paint used to draw the gradient background strip behind the icons. */
     private val selectionBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -91,9 +115,10 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
     private var cachedShaderColor = 0
     private var cachedIsPlaying = false
     private var cachedIsInSelection = false
+    private var cachedDragHandle = false
 
     init {
-        // ViewGroups skip onDraw by default. We need it to draw the indicator strip
+        // ViewGroups skip onDraw by default. We need it to draw the gradient strip
         // behind the child views, so we have to opt in explicitly.
         setWillNotDraw(false)
     }
@@ -111,6 +136,18 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         isPlaying = audioID == MediaPlaybackManager.getCurrentSongId()
         isInSelection = SelectionManager.selectedAudios.value.any { it.id == audioID }
         invalidate()
+    }
+
+    /**
+     * Returns true if the given x coordinate falls inside the drag handle's touch region.
+     * The drag handle always occupies the rightmost slot (one row-height wide), so the
+     * adapter can call this to decide whether a finger-down event should start a drag.
+     *
+     * Only meaningful when [enableDragHandle] is true — always returns false otherwise.
+     */
+    fun isDragHandleRegion(x: Float): Boolean {
+        if (!enableDragHandle) return false
+        return x >= width - height
     }
 
     /**
@@ -143,8 +180,8 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
      * and ramps up quickly near the right edge, which feels much more natural than
      * a boring straight linear fade.
      *
-     * The strip width adapts to how many icons need to be shown: one slot when only
-     * one icon is visible, two slots when the song is both playing and selected.
+     * The strip width adapts to how many icons need to be shown: the drag handle always
+     * gets one slot on the far right when enabled, and the play / check icons each get a slot on top of that.
      */
     private fun rebuildSelectionGeometry(w: Float, h: Float, playing: Boolean, inSelection: Boolean) {
         if (w <= 0f || h <= 0f) return
@@ -154,8 +191,22 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         val accentColor = ThemeManager.accent.secondaryAccentColor
         val maxAlpha = 60
 
-        // When both icons are on duty, we need a wider strip to fit them side by side.
-        val slotCount = if (playing && inSelection) 2f else 1f
+        // Count how many icon slots the strip needs to cover.
+        // The drag handle is always one extra slot on the far right when enabled.
+        var slotCount = if (playing && inSelection) 2f else if (playing || inSelection) 1f else 0f
+        if (enableDragHandle) slotCount += 1f
+
+        // Even if no play/check icon is visible, we still draw the drag handle strip.
+        if (slotCount == 0f) {
+            cachedShaderW = w
+            cachedShaderH = h
+            cachedShaderColor = accentColor
+            cachedIsPlaying = playing
+            cachedIsInSelection = inSelection
+            cachedDragHandle = enableDragHandle
+            return
+        }
+
         val indicatorW = h * slotCount
 
         // Build a cubic ease-in curve using multiple color stops so the fade-in
@@ -187,81 +238,96 @@ class MediaAwareRippleConstraintLayout @JvmOverloads constructor(
         cachedShaderColor = accentColor
         cachedIsPlaying = playing
         cachedIsInSelection = inSelection
+        cachedDragHandle = enableDragHandle
     }
 
     /**
-     * Draws a semi-transparent icon strip at the right edge of the view, sitting behind
-     * all the child views (text, album art, etc.). The strip shows:
-     *
-     * - A play icon when this song is currently playing.
-     * - A check icon when this song is selected.
-     * - Both icons side by side when the song is both playing and selected
-     *   (they're great together, like bread and butter).
-     *
-     * The gradient behind the icons uses a cubic ease-in Bézier curve so it fades in
-     * gradually and looks intentional rather than slapped on. When neither icon is
-     * needed, the whole thing is skipped so non-active rows have zero overhead.
+     * Draws only the gradient background strip behind all child views. The icons
+     * themselves are drawn in [dispatchDraw] so they always appear on top of children.
      */
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (!isPlaying && !isInSelection) return
+
+        val shouldDraw = isPlaying || isInSelection || enableDragHandle
+        if (!shouldDraw) return
 
         val w = width.toFloat()
         val h = height.toFloat()
 
-        // Rebuild geometry if the size, accent color, or icon combination changed.
-        // This is a lazy fallback — most of the time onSizeChanged already took care of it.
+        // Rebuild geometry if anything that affects the strip has changed.
         if (cachedShaderW != w || cachedShaderH != h ||
                 cachedShaderColor != ThemeManager.accent.secondaryAccentColor ||
-                cachedIsPlaying != isPlaying || cachedIsInSelection != isInSelection) {
+                cachedIsPlaying != isPlaying || cachedIsInSelection != isInSelection ||
+                cachedDragHandle != enableDragHandle) {
             rebuildSelectionGeometry(w, h, isPlaying, isInSelection)
         }
 
-        // Draw the bezier-faded gradient strip clipped to the rounded rectangle.
-        canvas.withClip(selectionClipPath) {
-            drawRect(selectionRect, selectionBgPaint)
+        // Only draw the strip rectangle if there's something inside it.
+        val hasStrip = isPlaying || isInSelection || enableDragHandle
+        if (hasStrip && !selectionRect.isEmpty) {
+            canvas.withClip(selectionClipPath) {
+                drawRect(selectionRect, selectionBgPaint)
+            }
         }
+    }
 
-        // These sizing constants keep the icons proportional regardless of row height.
+    /**
+     * Draws the play, check, and drag-handle icons on top of all child views.
+     * By hooking into [dispatchDraw] (which runs after children are painted), the icons
+     * are never hidden behind album art, text, or any other child.
+     *
+     * Icon layout from left to right inside the strip (all anchored from the right edge):
+     * - When drag handle is enabled: [play?] [check?] [drag handle]
+     * - When drag handle is disabled: [play?] [check?]
+     */
+    override fun dispatchDraw(canvas: Canvas) {
+        super.dispatchDraw(canvas)
+
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return
+
+        // Nothing to draw if no icons are active and the drag handle is off.
+        if (!isPlaying && !isInSelection && !enableDragHandle) return
+
         val iconSize = (h * 0.45f).toInt()
         val iconPadding = (h * 0.18f).toInt()
         val iconTop = ((h - iconSize) / 2f).toInt()
         val accentColor = ThemeManager.accent.secondaryAccentColor
 
-        if (isPlaying && isInSelection) {
-            // Both icons are here — play on the left, check on the right,
-            // each sitting in its own half of the double-wide strip.
-            val checkLeft = (w - iconSize - iconPadding).toInt()
-            val playLeft = checkLeft - iconSize - iconPadding
+        // Icons are packed tightly — each one steps left by exactly (iconSize + iconPadding)
+        // from the previous, just like the original single-pass drawing did.
+        // Slot 0 = rightmost (drag handle when enabled), slot 1 = next left, and so on.
+        var nextSlot = 0
 
-            playDrawable?.let {
+        // A small helper so every icon lands at the right x using the same formula.
+        fun iconLeft(slot: Int) = (w - (slot + 1) * (iconSize + iconPadding)).toInt()
+
+        if (enableDragHandle) {
+            val left = iconLeft(nextSlot++)
+            dragHandleDrawable?.let {
                 it.setTint(accentColor)
-                it.setBounds(playLeft, iconTop, playLeft + iconSize, iconTop + iconSize)
+                it.setBounds(left, iconTop, left + iconSize, iconTop + iconSize)
                 it.alpha = 200
                 it.draw(canvas)
             }
+        }
 
+        if (isInSelection) {
+            val left = iconLeft(nextSlot++)
             checkDrawable?.let {
                 it.setTint(accentColor)
-                it.setBounds(checkLeft, iconTop, checkLeft + iconSize, iconTop + iconSize)
+                it.setBounds(left, iconTop, left + iconSize, iconTop + iconSize)
                 it.alpha = 200
                 it.draw(canvas)
             }
-        } else if (isPlaying) {
-            // Only the play icon — song is playing but not selected.
-            val iconLeft = (w - iconSize - iconPadding).toInt()
+        }
+
+        if (isPlaying) {
+            val left = iconLeft(nextSlot)
             playDrawable?.let {
                 it.setTint(accentColor)
-                it.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
-                it.alpha = 200
-                it.draw(canvas)
-            }
-        } else {
-            // Only the check icon — song is selected but not currently playing.
-            val iconLeft = (w - iconSize - iconPadding).toInt()
-            checkDrawable?.let {
-                it.setTint(accentColor)
-                it.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
+                it.setBounds(left, iconTop, left + iconSize, iconTop + iconSize)
                 it.alpha = 200
                 it.draw(canvas)
             }
