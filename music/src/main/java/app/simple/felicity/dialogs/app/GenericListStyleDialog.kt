@@ -8,9 +8,19 @@ import androidx.fragment.app.FragmentManager
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.DialogListStyleBinding
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
+import app.simple.felicity.preferences.AlbumArtistPreferences
 import app.simple.felicity.preferences.AlbumPreferences
 import app.simple.felicity.preferences.ArtistPreferences
+import app.simple.felicity.preferences.FavoritesPreferences
+import app.simple.felicity.preferences.FoldersPreferences
+import app.simple.felicity.preferences.GenresPreferences
+import app.simple.felicity.preferences.MostPlayedPreferences
+import app.simple.felicity.preferences.PlaylistPreferences
+import app.simple.felicity.preferences.RecentlyAddedPreferences
+import app.simple.felicity.preferences.RecentlyPlayedPreferences
+import app.simple.felicity.preferences.SearchPreferences
 import app.simple.felicity.preferences.SongsPreferences
+import app.simple.felicity.preferences.YearPreferences
 import app.simple.felicity.shared.constants.BundleConstants
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
@@ -110,9 +120,17 @@ class GenericListStyleDialog : ScopedBottomSheetFragment() {
             PANEL.SONGS -> SongsPreferences.getGridSize()
             PANEL.ALBUMS -> AlbumPreferences.getGridSize()
             PANEL.ARTISTS -> ArtistPreferences.getGridSize()
-            else -> {
-                CommonPreferencesConstants.LayoutMode.LIST_ONE
-            }
+            PANEL.PLAYLISTS -> PlaylistPreferences.getGridSize()
+            PANEL.GENRES -> GenresPreferences.getGridSize()
+            PANEL.FOLDERS -> FoldersPreferences.getGridSize()
+            PANEL.FAVORITES -> FavoritesPreferences.getGridSize()
+            PANEL.MOST_PLAYED -> MostPlayedPreferences.getGridSize()
+            PANEL.RECENTLY_ADDED -> RecentlyAddedPreferences.getGridSize()
+            PANEL.RECENTLY_PLAYED -> RecentlyPlayedPreferences.getGridSize()
+            PANEL.YEAR -> YearPreferences.getGridSize()
+            PANEL.ALBUM_ARTISTS -> AlbumArtistPreferences.getGridSize()
+            PANEL.SEARCH -> SearchPreferences.getGridSize()
+            PANEL.FOLDERS_HIERARCHY -> FoldersPreferences.getGridSize()
         }
     }
 
@@ -121,9 +139,17 @@ class GenericListStyleDialog : ScopedBottomSheetFragment() {
             PANEL.SONGS -> SongsPreferences.setGridSize(layoutMode)
             PANEL.ALBUMS -> AlbumPreferences.setGridSize(layoutMode)
             PANEL.ARTISTS -> ArtistPreferences.setGridSize(layoutMode)
-            else -> {
-                // Do nothing since the other panels don't have layout modes.
-            }
+            PANEL.PLAYLISTS -> PlaylistPreferences.setGridSize(layoutMode)
+            PANEL.GENRES -> GenresPreferences.setGridSize(layoutMode)
+            PANEL.FOLDERS -> FoldersPreferences.setGridSize(layoutMode)
+            PANEL.FAVORITES -> FavoritesPreferences.setGridSize(layoutMode)
+            PANEL.MOST_PLAYED -> MostPlayedPreferences.setGridSize(layoutMode)
+            PANEL.RECENTLY_ADDED -> RecentlyAddedPreferences.setGridSize(layoutMode)
+            PANEL.RECENTLY_PLAYED -> RecentlyPlayedPreferences.setGridSize(layoutMode)
+            PANEL.YEAR -> YearPreferences.setGridSize(layoutMode)
+            PANEL.ALBUM_ARTISTS -> AlbumArtistPreferences.setGridSize(layoutMode)
+            PANEL.SEARCH -> SearchPreferences.setGridSize(layoutMode)
+            PANEL.FOLDERS_HIERARCHY -> FoldersPreferences.setGridSize(layoutMode)
         }
     }
 
@@ -150,7 +176,15 @@ class GenericListStyleDialog : ScopedBottomSheetFragment() {
             ARTISTS("artists"),
             PLAYLISTS("playlists"),
             GENRES("genres"),
-            FOLDERS("folders")
+            FOLDERS("folders"),
+            FAVORITES("favorites"),
+            MOST_PLAYED("most_played"),
+            RECENTLY_ADDED("recently_added"),
+            RECENTLY_PLAYED("recently_played"),
+            YEAR("year"),
+            ALBUM_ARTISTS("album_artists"),
+            SEARCH("search"),
+            FOLDERS_HIERARCHY("folders_hierarchy")
         }
     }
 }

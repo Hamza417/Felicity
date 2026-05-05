@@ -14,8 +14,9 @@ import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentFoldersHierarchyBinding
 import app.simple.felicity.databinding.HeaderFoldersHierarchyBinding
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.GenericListStyleDialog
+import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
 import app.simple.felicity.dialogs.folders.DialogFolderHierarchySort.Companion.showFolderHierarchySortDialog
-import app.simple.felicity.dialogs.folders.FolderHierarchyMenu.Companion.showFolderHierarchyMenu
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.FolderHierarchyPreferences
 import app.simple.felicity.repository.models.Audio
@@ -87,16 +88,23 @@ class FoldersHierarchy : BasePanelFragment() {
 
     private fun setupClickListeners() {
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showFolderHierarchyMenu()
+            openPreferencesPanel()
         }
+
         headerBinding.sortOrder.setOnClickListener {
             childFragmentManager.showFolderHierarchySortDialog()
         }
+
         headerBinding.sortStyle.setOnClickListener {
             childFragmentManager.showFolderHierarchySortDialog()
         }
+
         headerBinding.search.setOnClickListener {
             openSearch()
+        }
+
+        headerBinding.listStyle.setOnClickListener {
+            childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.FOLDERS_HIERARCHY)
         }
     }
 

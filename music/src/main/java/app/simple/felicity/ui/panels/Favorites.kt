@@ -16,8 +16,9 @@ import app.simple.felicity.databinding.HeaderFavoritesBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.GenericListStyleDialog
+import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
-import app.simple.felicity.dialogs.favorites.FavoritesMenu.Companion.showFavoritesMenu
 import app.simple.felicity.dialogs.favorites.FavoritesSort.Companion.showFavoritesSort
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.FavoritesPreferences
@@ -80,7 +81,11 @@ class Favorites : BasePanelFragment() {
         headerBinding.sortOrder.setFavoritesOrder()
 
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showFavoritesMenu()
+            openPreferencesPanel()
+        }
+
+        headerBinding.listStyle.setOnClickListener {
+            childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.FAVORITES)
         }
 
         headerBinding.sortStyle.setOnClickListener {

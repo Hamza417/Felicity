@@ -15,8 +15,9 @@ import app.simple.felicity.databinding.FragmentAlbumsBinding
 import app.simple.felicity.databinding.HeaderAlbumsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.dialogs.albums.AlbumsMenu.Companion.showAlbumsMenu
 import app.simple.felicity.dialogs.albums.AlbumsSort.Companion.showAlbumsSort
+import app.simple.felicity.dialogs.app.GenericListStyleDialog
+import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.AlbumPreferences
 import app.simple.felicity.repository.models.Album
@@ -84,7 +85,11 @@ class Albums : BasePanelFragment() {
         }
 
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showAlbumsMenu()
+            openPreferencesPanel()
+        }
+
+        headerBinding.listStyle.setOnClickListener {
+            childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.ALBUMS)
         }
     }
 

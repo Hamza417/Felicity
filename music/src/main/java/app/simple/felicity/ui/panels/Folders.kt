@@ -15,8 +15,9 @@ import app.simple.felicity.databinding.FragmentFoldersBinding
 import app.simple.felicity.databinding.HeaderFoldersBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.GenericListStyleDialog
+import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
 import app.simple.felicity.dialogs.folders.DialogFolderSort.Companion.showFoldersSortDialog
-import app.simple.felicity.dialogs.folders.FoldersMenu.Companion.showFoldersMenu
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.FoldersPreferences
 import app.simple.felicity.repository.models.Folder
@@ -74,7 +75,11 @@ class Folders : BasePanelFragment() {
 
     private fun setupClickListeners() {
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showFoldersMenu()
+            openPreferencesPanel()
+        }
+
+        headerBinding.listStyle.setOnClickListener {
+            childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.FOLDERS)
         }
 
         headerBinding.sortOrder.setOnClickListener {

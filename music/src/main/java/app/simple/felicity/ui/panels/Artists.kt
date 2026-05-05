@@ -15,7 +15,8 @@ import app.simple.felicity.databinding.FragmentArtistsBinding
 import app.simple.felicity.databinding.HeaderArtistsBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.dialogs.artists.ArtistsMenu.Companion.showArtistsMenu
+import app.simple.felicity.dialogs.app.GenericListStyleDialog
+import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
 import app.simple.felicity.dialogs.songs.ArtistsSort.Companion.showArtistsSort
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.ArtistPreferences
@@ -83,7 +84,11 @@ class Artists : BasePanelFragment() {
         }
 
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showArtistsMenu()
+            openPreferencesPanel()
+        }
+
+        headerBinding.listStyle.setOnClickListener {
+            childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.ARTISTS)
         }
     }
 

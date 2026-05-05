@@ -14,8 +14,9 @@ import app.simple.felicity.databinding.FragmentYearBinding
 import app.simple.felicity.databinding.HeaderYearBinding
 import app.simple.felicity.decorations.fastscroll.SectionedFastScroller
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.GenericListStyleDialog
+import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
 import app.simple.felicity.dialogs.year.DialogYearSort.Companion.showYearSortDialog
-import app.simple.felicity.dialogs.year.YearMenu.Companion.showYearMenu
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.YearPreferences
 import app.simple.felicity.repository.models.YearGroup
@@ -70,7 +71,11 @@ class Year : BasePanelFragment() {
 
     private fun setupClickListeners() {
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showYearMenu()
+            openPreferencesPanel()
+        }
+
+        headerBinding.listStyle.setOnClickListener {
+            childFragmentManager.showListStyleDialog(GenericListStyleDialog.Companion.PANEL.YEAR)
         }
 
         headerBinding.sortOrder.setOnClickListener {
