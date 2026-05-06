@@ -146,7 +146,16 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             scanScope = newScanScope()
         }
 
-        val generation = notification.begin()
+        /**
+         * We snapshot the scope we were given at the moment this scan started.
+         * If cancelCurrentScan() swaps in a new scanScope mid-flight, all the
+         * ensureActive() checks below still reference THIS scope — so the
+         * cancellation actually reaches us instead of silently bouncing off
+         * a fresh, always-active replacement.
+         */
+        val myScope = scanScope
+
+        notification.begin()
 
         try {
             val startTime = System.currentTimeMillis()
@@ -177,7 +186,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             val allSAFFiles = mutableListOf<SAFFile>()
             val scanner = AudioScanner()
             for (uriStr in treeUriStrings) {
-                scanScope.coroutineContext.ensureActive()
+                myScope.coroutineContext.ensureActive()
                 val treeUri = uriStr.toUri()
                 val collectStart = System.currentTimeMillis()
                 val files = scanner.getAudioFiles(context, treeUri)
@@ -193,7 +202,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
             val dbChannel = Channel<PendingWrite>(capacity = Channel.BUFFERED)
 
-            val consumerJob = scanScope.launch {
+            val consumerJob = myScope.launch {
                 val insertBatch = mutableListOf<Audio>()
                 val updateBatch = mutableListOf<Audio>()
 
@@ -236,11 +245,11 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             val pendingJobs = mutableListOf<Job>()
 
             allSAFFiles.forEach { safFile ->
-                scanScope.coroutineContext.ensureActive()
+                myScope.coroutineContext.ensureActive()
 
                 val uriKey = safFile.uri.toString()
                 if (shouldProcess(safFile)) {
-                    val producerJob = scanScope.launch {
+                    val producerJob = myScope.launch {
                         semaphore.acquire()
                         try {
                             ensureActive()
@@ -315,7 +324,10 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Error during audio file processing", e)
         } finally {
-            notification.dismiss(generation)
+            // Force-dismiss so any notification this scan posted is always cleaned up,
+            // even if a parallel ghost scan somehow slipped through the lock above and
+            // already bumped the generation counter past ours.
+            notification.dismissForce()
             isScanRunning.set(false)
         }
     }
