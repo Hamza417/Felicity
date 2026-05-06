@@ -184,52 +184,56 @@ class TiledHome : BaseHomeFragment() {
         val tiles = mutableListOf<SpannedTile.PanelTile>()
 
         // These three are sacred — always present, no preference check needed.
-        tiles.add(SpannedTile.PanelTile(R.string.songs, R.drawable.ic_song_16dp))
-        tiles.add(SpannedTile.PanelTile(R.string.albums, R.drawable.ic_album_16dp))
-        tiles.add(SpannedTile.PanelTile(R.string.artists, R.drawable.ic_people_16dp))
+        tiles.add(SpannedTile.PanelTile(R.string.songs, R.drawable.ic_song))
+        tiles.add(SpannedTile.PanelTile(R.string.albums, R.drawable.ic_album))
+        tiles.add(SpannedTile.PanelTile(R.string.artists, R.drawable.ic_people))
 
-        tiles.add(SpannedTile.PanelTile(R.string.server, R.drawable.ic_wifi_16dp))
+        tiles.add(SpannedTile.PanelTile(R.string.server, R.drawable.ic_wifi))
+        tiles.add(SpannedTile.PanelTile(R.string.search, R.drawable.ic_search))
 
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_ALBUM_ARTISTS))
-            tiles.add(SpannedTile.PanelTile(R.string.album_artists, R.drawable.ic_artist_16dp))
+            tiles.add(SpannedTile.PanelTile(R.string.album_artists, R.drawable.ic_artist))
 
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_GENRES))
-            tiles.add(SpannedTile.PanelTile(R.string.genres, R.drawable.ic_piano_16dp))
+            tiles.add(SpannedTile.PanelTile(R.string.genres, R.drawable.ic_piano))
 
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_YEAR))
-            tiles.add(SpannedTile.PanelTile(R.string.year, R.drawable.ic_date_range_16dp))
+            tiles.add(SpannedTile.PanelTile(R.string.year, R.drawable.ic_date_range))
 
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_PLAYLISTS))
-            tiles.add(SpannedTile.PanelTile(R.string.playlists, R.drawable.ic_list_16dp))
+            tiles.add(SpannedTile.PanelTile(R.string.playlists, R.drawable.ic_list))
 
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_PLAYING_QUEUE))
-            tiles.add(SpannedTile.PanelTile(R.string.playing_queue, R.drawable.ic_queue_16dp))
+            tiles.add(SpannedTile.PanelTile(R.string.playing_queue, R.drawable.ic_queue))
 
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_RECENTLY_ADDED))
-            tiles.add(SpannedTile.PanelTile(R.string.recently_added, R.drawable.ic_recently_added_16dp))
+            tiles.add(SpannedTile.PanelTile(R.string.recently_added, R.drawable.ic_recently_added))
 
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_RECENTLY_PLAYED))
-            tiles.add(SpannedTile.PanelTile(R.string.recently_played, R.drawable.ic_history_16dp))
+            tiles.add(SpannedTile.PanelTile(R.string.recently_played, R.drawable.ic_history))
 
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_MOST_PLAYED))
-            tiles.add(SpannedTile.PanelTile(R.string.most_played, R.drawable.ic_equalizer_16dp))
+            tiles.add(SpannedTile.PanelTile(R.string.most_played, R.drawable.ic_equalizer))
 
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_FAVORITES)) {
             val iconRes = if (UserInterfacePreferences.isLikeIconInsteadOfThumb())
-                R.drawable.ic_thumb_up_16dp else R.drawable.ic_favorite_filled_16dp
+                R.drawable.ic_thumb_up else R.drawable.ic_favorite_filled
             tiles.add(SpannedTile.PanelTile(R.string.favorites, iconRes))
         }
 
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_FOLDERS))
-            tiles.add(SpannedTile.PanelTile(R.string.folders, R.drawable.ic_folder_16dp))
+            tiles.add(SpannedTile.PanelTile(R.string.folders, R.drawable.ic_folder))
 
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_FOLDERS_HIERARCHY))
-            tiles.add(SpannedTile.PanelTile(R.string.folders_hierarchy, R.drawable.ic_tree_16dp))
+            tiles.add(SpannedTile.PanelTile(R.string.folders_hierarchy, R.drawable.ic_tree))
 
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_ALWAYS_SKIPPED))
-            tiles.add(SpannedTile.PanelTile(R.string.always_skipped, R.drawable.ic_skip_16dp))
+            tiles.add(SpannedTile.PanelTile(R.string.always_skipped, R.drawable.ic_skip))
 
-        tiles.add(SpannedTile.PanelTile(R.string.preferences, R.drawable.ic_settings_16dp))
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_MOST_SKIPPED))
+            tiles.add(SpannedTile.PanelTile(R.string.most_skipped, R.drawable.ic_skip))
+
+        tiles.add(SpannedTile.PanelTile(R.string.preferences, R.drawable.ic_settings))
 
         return tiles
     }

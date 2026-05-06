@@ -195,14 +195,14 @@ class AdapterSpannedHomeTiles(
          * The only number you need to change to get more or fewer song tiles in the grid.
          * Everything else, hero positions, panel slots, total tile count, adjusts automatically.
          */
-        const val DESIRED_SONG_COUNT = 30
+        const val DESIRED_SONG_COUNT = 35
 
         /**
          * How many panel navigation slots to reserve. Keep this at least as large as the
          * total number of panels the user can possibly enable. Extra slots become song tiles
          * when the user has fewer panels enabled than slots available.
          */
-        const val MAX_PANEL_COUNT = 20
+        const val MAX_PANEL_COUNT = 30
 
         /**
          * Roughly how many songs appear between consecutive big (2-span) hero tiles.

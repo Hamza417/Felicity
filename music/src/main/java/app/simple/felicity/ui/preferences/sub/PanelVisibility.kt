@@ -74,6 +74,7 @@ class PanelVisibility : PreferenceFragment() {
         prefs.add(makePanelToggle(R.string.folders, R.drawable.ic_folder, UserInterfacePreferences.PANEL_VISIBLE_FOLDERS))
         prefs.add(makePanelToggle(R.string.folders_hierarchy, R.drawable.ic_tree, UserInterfacePreferences.PANEL_VISIBLE_FOLDERS_HIERARCHY))
         prefs.add(makePanelToggle(R.string.always_skipped, R.drawable.ic_skip_16dp, UserInterfacePreferences.PANEL_VISIBLE_ALWAYS_SKIPPED))
+        prefs.add(makePanelToggle(R.string.most_skipped, R.drawable.ic_skip_16dp, UserInterfacePreferences.PANEL_MOST_SKIPPED))
 
         return prefs
     }

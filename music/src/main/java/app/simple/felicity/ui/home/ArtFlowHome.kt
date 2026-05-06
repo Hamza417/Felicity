@@ -35,6 +35,7 @@ import app.simple.felicity.ui.panels.Folders
 import app.simple.felicity.ui.panels.FoldersHierarchy
 import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.panels.MostPlayed
+import app.simple.felicity.ui.panels.MostSkipped
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Playlists
 import app.simple.felicity.ui.panels.Preferences
@@ -119,7 +120,9 @@ class ArtFlowHome : MediaFragment() {
                                     PopupMenuItem(title = R.string.playlists, icon = R.drawable.ic_playlist_play),
                                     PopupMenuItem(title = R.string.recently_added, icon = R.drawable.ic_recently_added),
                                     PopupMenuItem(title = R.string.recently_played, icon = R.drawable.ic_history),
-                                    PopupMenuItem(title = R.string.most_played, icon = R.drawable.ic_equalizer)
+                                    PopupMenuItem(title = R.string.most_played, icon = R.drawable.ic_equalizer),
+                                    PopupMenuItem(title = R.string.always_skipped, icon = R.drawable.ic_skip_next),
+                                    PopupMenuItem(title = R.string.most_skipped, icon = R.drawable.ic_skip_next)
                             ),
                             onMenuItemClick = { itemResId ->
                                 when (itemResId) {
@@ -135,6 +138,7 @@ class ArtFlowHome : MediaFragment() {
                                     R.string.recently_played -> openFragment(RecentlyPlayed.newInstance(), RecentlyPlayed.TAG)
                                     R.string.most_played -> openFragment(MostPlayed.newInstance(), MostPlayed.TAG)
                                     R.string.always_skipped -> openFragment(AlwaysSkipped.newInstance(), AlwaysSkipped.TAG)
+                                    R.string.most_skipped -> openFragment(MostSkipped.newInstance(), MostSkipped.TAG)
                                     else -> Log.w(TAG, "Unknown popup item clicked: $itemResId")
                                 }
                             },

@@ -146,6 +146,8 @@ object UserInterfacePreferences {
     /** Preference key for toggling Always Skipped panel visibility. */
     const val PANEL_VISIBLE_ALWAYS_SKIPPED = "panel_visible_always_skipped"
 
+    const val PANEL_MOST_SKIPPED = "panel_most_skipped"
+
     /**
      * All panel visibility keys collected in one handy set,
      * so you can loop over them without playing whack-a-mole with constants.
@@ -162,6 +164,7 @@ object UserInterfacePreferences {
             PANEL_VISIBLE_FAVORITES,
             PANEL_VISIBLE_FOLDERS,
             PANEL_VISIBLE_FOLDERS_HIERARCHY,
-            PANEL_VISIBLE_ALWAYS_SKIPPED
+            PANEL_VISIBLE_ALWAYS_SKIPPED,
+            PANEL_MOST_SKIPPED
     )
 }

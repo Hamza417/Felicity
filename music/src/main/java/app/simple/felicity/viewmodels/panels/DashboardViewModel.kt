@@ -192,6 +192,9 @@ class DashboardViewModel @Inject constructor(
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_ALWAYS_SKIPPED))
             panels.add(Panel(R.string.always_skipped, R.drawable.ic_skip_16dp))
 
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_MOST_SKIPPED))
+            panels.add(Panel(R.string.most_skipped, R.drawable.ic_skip_16dp))
+
         return panels
     }
 

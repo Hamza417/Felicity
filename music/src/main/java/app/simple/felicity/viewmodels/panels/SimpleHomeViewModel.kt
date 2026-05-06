@@ -87,6 +87,8 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
                 filesItems.add(Panel(R.string.folders_hierarchy, R.drawable.ic_tree))
             if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_ALWAYS_SKIPPED))
                 filesItems.add(Panel(R.string.always_skipped, R.drawable.ic_skip_16dp))
+            if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_MOST_SKIPPED))
+                activityItems.add(Panel(R.string.most_skipped, R.drawable.ic_skip_16dp))
 
             if (filesItems.isNotEmpty()) {
                 defaultPanels.add(Group(R.string.files))

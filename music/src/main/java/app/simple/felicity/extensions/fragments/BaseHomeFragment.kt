@@ -17,6 +17,7 @@ import app.simple.felicity.ui.panels.Folders
 import app.simple.felicity.ui.panels.FoldersHierarchy
 import app.simple.felicity.ui.panels.Genres
 import app.simple.felicity.ui.panels.MostPlayed
+import app.simple.felicity.ui.panels.MostSkipped
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Playlists
 import app.simple.felicity.ui.panels.Preferences
@@ -115,6 +116,8 @@ abstract class BaseHomeFragment : PanelFragment() {
             R.string.playlists -> openFragment(Playlists.newInstance(), Playlists.TAG)
             R.string.preferences -> openFragment(Preferences.newInstance(), Preferences.TAG)
             R.string.always_skipped -> openFragment(AlwaysSkipped.newInstance(), AlwaysSkipped.TAG)
+            R.string.most_skipped -> openFragment(MostSkipped.newInstance(), MostSkipped.TAG)
+            R.string.search -> openSearch()
         }
     }
 }
