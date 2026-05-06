@@ -9,7 +9,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.page.PageAdapter
-import app.simple.felicity.databinding.FragmentViewerGenresBinding
+import app.simple.felicity.databinding.FragmentPageArtistBinding
 import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.extensions.fragments.BasePageFragment
@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class GenrePage : BasePageFragment() {
 
-    private lateinit var binding: FragmentViewerGenresBinding
+    private lateinit var binding: FragmentPageArtistBinding
 
     private val genre: Genre by lazy {
         requireArguments().parcelable(BundleConstants.GENRE)
@@ -45,7 +45,7 @@ class GenrePage : BasePageFragment() {
     override val pageType: PageAdapter.PageType by lazy { PageAdapter.PageType.GenrePage(genre) }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        binding = FragmentViewerGenresBinding.inflate(inflater, container, false)
+        binding = FragmentPageArtistBinding.inflate(inflater, container, false)
         return binding.root
     }
 

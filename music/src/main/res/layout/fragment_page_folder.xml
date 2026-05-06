@@ -7,6 +7,6 @@
     android:clipToPadding="false"
     android:clipChildren="false"
     android:layoutAnimation="@anim/list_animation_controller"
-    app:navigationPaddingRequired="true"
+    app:navigationPaddingRequired="false"
     app:statusPaddingRequired="false" />
 

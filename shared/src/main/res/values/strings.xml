@@ -415,7 +415,6 @@
     <string name="rewind">Rewind</string>
     <string name="forward">Forward</string>
     <string name="add_lyrics">Add Lyrics</string>
-    <string name="select_path">Select Path</string>
     <string name="no_folders_added">No folders added yet. Tap the + button to add one.</string>
     <string name="path_added">Path added successfully.</string>
     <string name="path_removed">Path removed.</string>

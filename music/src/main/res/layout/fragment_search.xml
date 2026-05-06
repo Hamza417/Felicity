@@ -13,6 +13,7 @@
         android:transitionName="@string/songs"
         app:fastScrollEnabled="false"
         app:isFadingEdgeRequired="false"
+        app:navigationPaddingRequired="false"
         app:statusPaddingRequired="false" />
 
     <app.simple.felicity.decorations.views.AppHeader
