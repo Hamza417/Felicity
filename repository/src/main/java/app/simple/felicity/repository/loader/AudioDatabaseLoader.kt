@@ -456,6 +456,77 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         return false
     }
 
+    /**
+     * Wipes every row in the audio table and then runs a complete scan from scratch,
+     * but without losing anything the user actually cares about. Before the table is
+     * cleared we snapshot every URI and content hash that had a favorite or always-skip
+     * flag set. Once the fresh scan finishes we walk the new rows and restore those flags
+     * to any track whose URI or hash matches the snapshot.
+     */
+    suspend fun wipeAndScan() {
+        checkNotMainThread()
+
+        if (!isScanRunning.compareAndSet(false, true)) {
+            Log.w(TAG, "Scan already in progress, skipping wipeAndScan...")
+            return
+        }
+
+        isScanRunning.set(false) // Release the lock so processAudioFiles can re-acquire it cleanly
+
+        val dao = audioDatabase.audioDao()
+
+        // Snapshot user-set flags before we blow the table away. We keep two lookup tables:
+        // one keyed by URI (same file at same location — exact match) and one keyed by the
+        // XXHash64 content fingerprint (same audio content, even if the file was renamed).
+        data class UserFlags(val isFavorite: Boolean, val alwaysSkip: Boolean)
+
+        val flagsByUri = HashMap<String, UserFlags>()
+        val flagsByHash = HashMap<Long, UserFlags>()
+
+        dao?.getAllAudioListAll()?.forEach { audio ->
+            if (audio.isFavorite || audio.isAlwaysSkip) {
+                val flags = UserFlags(audio.isFavorite, audio.isAlwaysSkip)
+                flagsByUri[audio.uri] = flags
+                if (audio.hash != 0L) flagsByHash[audio.hash] = flags
+            }
+        }
+
+        Log.d(TAG, "wipeAndScan: snapshotted ${flagsByUri.size} entries with user flags")
+
+        Log.d(TAG, "wipeAndScan: nuking audio table and clearing index")
+        dao?.nukeTable()
+        indexedMap.clear()
+
+        processAudioFiles()
+
+        // Re-attach the flags after the fresh scan has finished writing its rows.
+        if (flagsByUri.isEmpty() && flagsByHash.isEmpty()) {
+            Log.d(TAG, "wipeAndScan: no user flags to restore, skipping restore pass")
+            return
+        }
+
+        Log.d(TAG, "wipeAndScan: restoring user flags to re-indexed entries…")
+        val allNew = dao?.getAllAudioListAll() ?: return
+        val toUpdate = mutableListOf<Audio>()
+
+        allNew.forEach { audio ->
+            // URI match is preferred; fall back to content hash for renamed/moved files.
+            val flags = flagsByUri[audio.uri] ?: flagsByHash[audio.hash]
+            if (flags != null && (flags.isFavorite || flags.alwaysSkip)) {
+                audio.isFavorite = flags.isFavorite
+                audio.isAlwaysSkip = flags.alwaysSkip
+                toUpdate.add(audio)
+            }
+        }
+
+        if (toUpdate.isNotEmpty()) {
+            dao.update(toUpdate)
+            Log.d(TAG, "wipeAndScan: restored flags for ${toUpdate.size} entries")
+        } else {
+            Log.d(TAG, "wipeAndScan: no matching entries found for flag restore")
+        }
+    }
+
     /** Returns true when a scan is currently running. */
     fun isScanInProgress(): Boolean = isScanRunning.get()
 

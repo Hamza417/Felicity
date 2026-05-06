@@ -824,6 +824,20 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val scanLibrary = Preference(
+                title = R.string.scan_library,
+                summary = R.string.scan_library_summary,
+                icon = R.drawable.ic_search,
+                type = PreferenceType.NORMAL,
+                onPreferenceAction = { view, callback ->
+                    withSureDialog {
+                        if (it) {
+                            AudioDatabaseService.refreshScan(requireContext())
+                        }
+                    }
+                }
+        )
+
         val refreshLibrary = Preference(
                 title = R.string.refresh_library,
                 summary = R.string.refresh_library_summary,
@@ -832,7 +846,7 @@ abstract class PreferenceFragment : MediaFragment() {
                 onPreferenceAction = { view, callback ->
                     withSureDialog {
                         if (it) {
-                            AudioDatabaseService.refreshScan(requireContext())
+                            AudioDatabaseService.wipeScan(requireContext())
                         }
                     }
                 }
@@ -968,6 +982,7 @@ abstract class PreferenceFragment : MediaFragment() {
         )
 
         preferences.add(folders)
+        preferences.add(scanLibrary)
         preferences.add(refreshLibrary)
         preferences.add(metadataHeader)
         preferences.add(albumArtistsInsteadOfArtists)

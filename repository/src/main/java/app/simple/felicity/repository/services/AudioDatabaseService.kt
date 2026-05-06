@@ -45,6 +45,7 @@ class AudioDatabaseService : Service() {
         private const val TAG = "AudioDatabaseService"
         private const val ACTION_START_SCAN = "app.simple.felicity.ACTION_START_SCAN"
         private const val ACTION_REFRESH_SCAN = "app.simple.felicity.ACTION_REFRESH_SCAN"
+        private const val ACTION_WIPE_SCAN = "app.simple.felicity.ACTION_WIPE_SCAN"
 
         /**
          * Start the audio database scan service (skips if a scan is already running).
@@ -74,6 +75,23 @@ class AudioDatabaseService : Service() {
                 Log.v(TAG, "We can safely ignore this, the user can manually scan if required.")
             }
         }
+
+        /**
+         * Wipes the entire audio table and kicks off a full re-index from scratch.
+         * All existing entries — including favorites and always-skip flags — are lost.
+         * Use this as a last-resort "start over" option, not for routine rescans.
+         */
+        fun wipeScan(context: Context) {
+            runCatching {
+                val intent = Intent(context, AudioDatabaseService::class.java).apply {
+                    action = ACTION_WIPE_SCAN
+                }
+                context.startService(intent)
+            }.getOrElse {
+                it.printStackTrace()
+                Log.i(TAG, "Failed to start AudioDatabaseService for wipeScan: ${it.message}")
+            }
+        }
     }
 
     override fun onCreate() {
@@ -97,6 +115,9 @@ class AudioDatabaseService : Service() {
         when (intent?.action) {
             ACTION_REFRESH_SCAN -> {
                 startForcedScan()
+            }
+            ACTION_WIPE_SCAN -> {
+                startWipeAndScan()
             }
             else -> {
                 startScanIfIdle()
@@ -166,7 +187,29 @@ class AudioDatabaseService : Service() {
     }
 
     /**
-     * Check if a scan is currently in progress.
+     * Nukes the entire audio table and runs a clean scan from zero. Because every
+     * row is deleted first, this is slower than a normal scan but guarantees there
+     * is no stale data left over from previous library configurations.
+     */
+    private fun startWipeAndScan() {
+        scanCoroutineLaunched = true
+        serviceScope.launch {
+            try {
+                Log.d(TAG, "Wipe-and-scan: clearing audio table and starting fresh…")
+                audioDatabaseLoader.wipeAndScan()
+                Log.d(TAG, "Audio scan completed — starting M3U playlist scan…")
+                playlistDatabaseLoader.processM3uFiles()
+                Log.d(TAG, "Wipe-and-scan completed successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during wipe-and-scan", e)
+            } finally {
+                scanCoroutineLaunched = false
+                stopSelfResult(currentStartId)
+            }
+        }
+    }
+
+    /**
      */
     fun isScanInProgress(): Boolean = audioDatabaseLoader.isScanInProgress()
 

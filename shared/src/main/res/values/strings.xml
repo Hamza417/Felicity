@@ -414,8 +414,6 @@
     <string name="rewind">Rewind</string>
     <string name="forward">Forward</string>
     <string name="add_lyrics">Add Lyrics</string>
-    <string name="refresh_library">Refresh Library</string>
-    <string name="refresh_library_summary">Refresh the library by performing a full rescan of the audio files.</string>
     <string name="select_path">Select Path</string>
     <string name="no_folders_added">No folders added yet. Tap the + button to add one.</string>
     <string name="path_added">Path added successfully.</string>
@@ -473,5 +471,8 @@
     <string name="single">Single</string>
     <string name="double_">Double</string>
     <string name="triple">Triple</string>
-
+    <string name="scan_library">Scan Library</string>
+    <string name="scan_library_summary">Check your music folders for new or changed files and add them to the library. Existing entries are kept intact.</string>
+    <string name="refresh_library">Refresh Library</string>
+    <string name="refresh_library_summary">Wipe the entire library and rebuild it from scratch. Your favorites, always skipped and all playback stats are preserved and restored after the scan.</string>
 </resources>
