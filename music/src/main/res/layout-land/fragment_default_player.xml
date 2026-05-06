@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.theme.ThemeLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.padding.PaddingAwareLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:clipChildren="false"
     android:clipToPadding="false"
-    android:orientation="horizontal">
+    android:orientation="horizontal"
+    app:navigationPaddingRequired="true"
+    app:statusPaddingRequired="false">
 
     <FrameLayout
         android:layout_width="0dp"
@@ -39,10 +41,12 @@
         android:layout_width="1px"
         android:layout_height="match_parent" />
 
-    <app.simple.felicity.decorations.padding.PaddingAwareLinearLayout
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        app:navigationPaddingRequired="false"
+        app:statusPaddingRequired="true">
 
         <app.simple.felicity.decorations.views.FavoriteButton
             android:id="@+id/favorite"
@@ -89,18 +93,20 @@
             android:src="@drawable/ic_more_vert"
             app:buttonTintType="regular" />
 
-    </app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>
+    </LinearLayout>
 
     <app.simple.felicity.decorations.theme.ThemeDivider
         android:layout_width="1px"
         android:layout_height="match_parent" />
 
-    <app.simple.felicity.decorations.padding.PaddingAwareLinearLayout
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
         android:clipChildren="false"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        app:navigationPaddingRequired="false"
+        app:statusPaddingRequired="true">
 
         <Space
             android:layout_width="match_parent"
@@ -324,6 +330,6 @@
             android:layout_height="0dp"
             android:layout_weight="1" />
 
-    </app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>
+    </LinearLayout>
 
-</app.simple.felicity.decorations.theme.ThemeLinearLayout>
+</app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>

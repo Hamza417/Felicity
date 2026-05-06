@@ -35,27 +35,17 @@ public class Utils {
         ViewCompat.setOnApplyWindowInsetsListener(viewGroup, (v, windowInsets) -> {
             Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
             int extra = extraBottomSupplier.getAsInt();
-
-            if (statusPaddingRequired && navigationPaddingRequired) {
-                viewGroup.setPadding(
-                        baseLeft,
-                        baseTop + insets.top,
-                        baseRight,
-                        baseBottom + insets.bottom + extra);
-            } else if (statusPaddingRequired) {
-                viewGroup.setPadding(
-                        baseLeft,
-                        baseTop + insets.top,
-                        baseRight,
-                        baseBottom + extra);
-            } else if (navigationPaddingRequired) {
-                viewGroup.setPadding(
-                        baseLeft,
-                        baseTop,
-                        baseRight,
-                        baseBottom + insets.bottom + extra);
-            }
             
+            // In landscape on some devices the nav bar moves to the left or right
+            // edge instead of sitting at the bottom, so we need to respect all four
+            // sides of the inset rather than only top and bottom.
+            int top = statusPaddingRequired ? baseTop + insets.top : baseTop;
+            int bottom = navigationPaddingRequired ? baseBottom + insets.bottom + extra : baseBottom + extra;
+            int left = navigationPaddingRequired ? baseLeft + insets.left : baseLeft;
+            int right = navigationPaddingRequired ? baseRight + insets.right : baseRight;
+            
+            viewGroup.setPadding(left, top, right, bottom);
+
             // Return CONSUMED if you don't want the window insets to keep being
             // passed down to descendant views.
             return WindowInsetsCompat.CONSUMED;
