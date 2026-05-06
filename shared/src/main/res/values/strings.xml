@@ -173,6 +173,10 @@
     <string name="delete_audio_summary">%1$s will be permanently deleted from storage.</string>
     <string name="gapless_playback">Gapless Playback</string>
     <string name="gapless_playback_summary">Play audio files gaplessly.</string>
+    <string name="crossfade">Crossfade</string>
+    <string name="crossfade_summary">Blend the current song into the next one when a track changes.</string>
+    <string name="crossfade_duration">Crossfade Duration</string>
+    <string name="crossfade_duration_summary">Choose how long both songs overlap during the blend.</string>
     <string name="high_resolution_output_summary">"Enable Hi-Res (32bit Float) mode instead of standard 16bit mode. Supported device is required otherwise the quality may drop instead of improving."</string>
     <string name="audio_information">Audio Information</string>
     <string name="playback_info">Playback Info</string>

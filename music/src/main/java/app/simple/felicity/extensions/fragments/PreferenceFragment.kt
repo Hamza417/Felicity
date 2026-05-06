@@ -684,10 +684,54 @@ abstract class PreferenceFragment : MediaFragment() {
                 icon = R.drawable.ic_join,
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
-                    AudioPreferences.setGaplessPlayback((view as FelicitySwitch).isChecked)
+                    val enabled = (view as FelicitySwitch).isChecked
+                    AudioPreferences.setGaplessPlayback(enabled)
+                    if (enabled && AudioPreferences.isCrossfadeEnabled()) {
+                        AudioPreferences.setCrossfadeEnabled(false)
+                    }
                 },
                 valueProvider = Supplier {
                     AudioPreferences.isGaplessPlaybackEnabled()
+                }
+        )
+
+        val crossfadeToggle = Preference(
+                title = R.string.crossfade,
+                summary = R.string.crossfade_summary,
+                icon = R.drawable.ic_join,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, _ ->
+                    val enabled = (view as FelicitySwitch).isChecked
+                    AudioPreferences.setCrossfadeEnabled(enabled)
+                    if (enabled && AudioPreferences.isGaplessPlaybackEnabled()) {
+                        AudioPreferences.setGaplessPlayback(false)
+                    }
+                },
+                valueProvider = Supplier {
+                    AudioPreferences.isCrossfadeEnabled()
+                }
+        )
+
+        val crossfadeDuration = Preference(
+                title = R.string.crossfade_duration,
+                summary = R.string.crossfade_duration_summary,
+                icon = R.drawable.ic_timer,
+                type = PreferenceType.SLIDER,
+                onPreferenceAction = { view, _ ->
+                    AudioPreferences.setCrossfadeDurationMs((view as FelicitySeekbar).getProgress().toInt())
+                },
+                valueProvider = Supplier {
+                    SeekbarState(
+                            position = AudioPreferences.getCrossfadeDurationMs().toFloat(),
+                            max = 10_000F,
+                            min = 500F,
+                            default = 3_000F,
+                            leftLabel = false,
+                            rightLabel = true,
+                            rightLabelProvider = { progress, _, _ ->
+                                String.format(Locale.getDefault(), "%.1f s", progress / 1000F)
+                            }
+                    )
                 }
         )
 
@@ -803,6 +847,8 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(hiresWarning)
         preferences.add(stereoDownmixing)
         preferences.add(gaplessToggle)
+        preferences.add(crossfadeToggle)
+        preferences.add(crossfadeDuration)
         preferences.add(skipSilenceToggle)
         preferences.add(replayGainHeader)
         preferences.add(autoReplayGainToggle)
