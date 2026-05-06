@@ -78,7 +78,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     private lateinit var binding: ActivityMainBinding
 
     /**
-     * The central lyrics coordinator. Injected here so we can ask it to do a
+     * The central lyrics' coordinator. Injected here so we can ask it to do a
      * re-lookup whenever the app comes back to the foreground and the current
      * song still has no lyrics — handy when the user manually dropped an .lrc
      * file into the right folder while Felicity was in the background.
@@ -510,7 +510,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
      * @param songs The tracks to share.
      */
     private fun shareSelectedAudios(songs: List<Audio>) {
-        val uris = songs.map { Uri.parse(it.uri) } as ArrayList<Uri>
+        val uris = songs.map { it.uri.toUri() } as ArrayList<Uri>
         if (uris.isEmpty()) return
 
         val intent = ShareCompat.IntentBuilder(this)

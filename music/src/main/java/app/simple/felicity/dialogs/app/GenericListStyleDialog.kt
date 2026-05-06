@@ -15,6 +15,7 @@ import app.simple.felicity.preferences.FavoritesPreferences
 import app.simple.felicity.preferences.FoldersPreferences
 import app.simple.felicity.preferences.GenresPreferences
 import app.simple.felicity.preferences.MostPlayedPreferences
+import app.simple.felicity.preferences.MostSkippedPreferences
 import app.simple.felicity.preferences.PlaylistPreferences
 import app.simple.felicity.preferences.RecentlyAddedPreferences
 import app.simple.felicity.preferences.RecentlyPlayedPreferences
@@ -127,6 +128,7 @@ class GenericListStyleDialog : ScopedBottomSheetFragment() {
             PANEL.FOLDERS -> FoldersPreferences.getGridSize()
             PANEL.FAVORITES -> FavoritesPreferences.getGridSize()
             PANEL.MOST_PLAYED -> MostPlayedPreferences.getGridSize()
+            PANEL.MOST_SKIPPED -> MostSkippedPreferences.getGridSize()
             PANEL.RECENTLY_ADDED -> RecentlyAddedPreferences.getGridSize()
             PANEL.RECENTLY_PLAYED -> RecentlyPlayedPreferences.getGridSize()
             PANEL.YEAR -> YearPreferences.getGridSize()
@@ -146,6 +148,7 @@ class GenericListStyleDialog : ScopedBottomSheetFragment() {
             PANEL.FOLDERS -> FoldersPreferences.setGridSize(layoutMode)
             PANEL.FAVORITES -> FavoritesPreferences.setGridSize(layoutMode)
             PANEL.MOST_PLAYED -> MostPlayedPreferences.setGridSize(layoutMode)
+            PANEL.MOST_SKIPPED -> MostSkippedPreferences.setGridSize(layoutMode)
             PANEL.RECENTLY_ADDED -> RecentlyAddedPreferences.setGridSize(layoutMode)
             PANEL.RECENTLY_PLAYED -> RecentlyPlayedPreferences.setGridSize(layoutMode)
             PANEL.YEAR -> YearPreferences.setGridSize(layoutMode)
@@ -181,6 +184,7 @@ class GenericListStyleDialog : ScopedBottomSheetFragment() {
             FOLDERS("folders"),
             FAVORITES("favorites"),
             MOST_PLAYED("most_played"),
+            MOST_SKIPPED("most_skipped"),
             RECENTLY_ADDED("recently_added"),
             RECENTLY_PLAYED("recently_played"),
             YEAR("year"),

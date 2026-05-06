@@ -13,6 +13,7 @@
     <string name="recently_added">Recently Added</string>
     <string name="recently_played">Recently Played</string>
     <string name="most_played">Most Played</string>
+    <string name="most_skipped">Most Skipped</string>
     <string name="browse">Browse</string>
     <string name="player">Player</string>
     <string name="search">Search</string>

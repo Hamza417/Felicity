@@ -155,5 +155,15 @@ class SongStatRepository @Inject constructor(
     fun getMostPlayedWithStat(): Flow<List<AudioWithStat>> {
         return database.songStatDao().getMostPlayedWithStat()
     }
+
+    /**
+     * Returns a reactive [Flow] of available songs with stat data ordered by skip count,
+     * highest first. Songs that have never been skipped are excluded.
+     *
+     * @return Flow emitting up to 50 [AudioWithStat] objects re-emitted whenever stats change.
+     */
+    fun getMostSkippedWithStat(): Flow<List<AudioWithStat>> {
+        return database.songStatDao().getMostSkippedWithStat()
+    }
 }
 
