@@ -20,7 +20,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
@@ -320,7 +322,11 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             Log.d(TAG, "Audio file processing complete in ${(System.currentTimeMillis() - startTime) / 1000} seconds.")
         } catch (e: CancellationException) {
             Log.d(TAG, "Audio file processing canceled")
-            throw e
+            // Only bubble the cancellation up if the *caller's* coroutine was canceled.
+            // If our internal myScope was torn down by cancelCurrentScan() while the caller
+            // is still alive (e.g. starting a new scan), swallowing the exception here lets
+            // the caller continue normally instead of dying with us.
+            if (!currentCoroutineContext().isActive) throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error during audio file processing", e)
         } finally {
