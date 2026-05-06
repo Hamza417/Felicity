@@ -32,7 +32,7 @@ _F-Droid MR has been created [here](https://gitlab.com/fdroid/fdroiddata/-/merge
 
 ## Purchase
 
-[![](https://img.shields.io/badge/License%20Key%20(GumRoad)-Purchase-23a094?logo=gumroad&logoColor=white)](https://hamza417.gumroad.com/l/Felicity/EARLY_ACCESS)
+[![](https://img.shields.io/badge/License%20Key%20(GumRoad)-Purchase-23a094?logo=gumroad&logoColor=white)](https://hamza417.gumroad.com/l/Felicity/)
 
 Play Store users can buy full version directly from the app itself.
 
