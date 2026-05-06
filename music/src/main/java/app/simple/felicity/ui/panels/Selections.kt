@@ -6,7 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.lifecycle.lifecycleScope
-import app.simple.felicity.adapters.ui.lists.AdapterSongs
+import app.simple.felicity.adapters.ui.lists.AdapterSelections
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentSelectionsBinding
 import app.simple.felicity.databinding.HeaderSelectionsBinding
@@ -36,7 +36,7 @@ class Selections : BasePanelFragment() {
      * Holds the adapter so we can diff-update it when the selection changes,
      * instead of rebuilding the whole list every time.
      */
-    private var adapterSongs: AdapterSongs? = null
+    private var adapterSongs: AdapterSelections? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentSelectionsBinding.inflate(inflater, container, false)
@@ -94,7 +94,7 @@ class Selections : BasePanelFragment() {
      */
     private fun updateList(songs: List<Audio>) {
         if (adapterSongs == null) {
-            adapterSongs = AdapterSongs(songs)
+            adapterSongs = AdapterSelections(songs)
             adapterSongs?.setHasStableIds(true)
             adapterSongs?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {

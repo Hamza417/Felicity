@@ -38,6 +38,7 @@
 - Fixed scanner jobs not cancelling itself properly.
 - Fixed various nav bar padding issues in the app.
 - Fixed invalid white color in line lrc view.
+- Dedicated adapter for selections to prevent it from inheriting the **Songs** list styles.
 
 ### Improvements
 
