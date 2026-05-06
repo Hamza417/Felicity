@@ -60,8 +60,8 @@ public class LrcLineView extends View implements ThemeChangedListener {
     private static final float DEFAULT_TEXT_SIZE_SP = 16f;
     
     /**
-     * The color for words that haven't been sung yet. A bit dimmer than the
-     * highlight so the active word stands out nicely.
+     * The color for words that haven't been sung yet. Used as a fallback before
+     * the theme is applied for the first time.
      */
     private static final int DEFAULT_NORMAL_COLOR = 0xCCFFFFFF;
     
@@ -87,8 +87,8 @@ public class LrcLineView extends View implements ThemeChangedListener {
     private int cachedLineIndex = Integer.MIN_VALUE;
     private int cachedWordIndex = Integer.MIN_VALUE;
     /**
-     * The color for words that haven't been sung yet. Dimmer than the highlight color
-     * so the active word stands out nicely against the album art.
+     * The color for words that haven't been sung yet. Pulled from the theme's secondary
+     * text color so it always looks intentional rather than just "dimmed white".
      */
     @ColorInt
     private int normalColor = DEFAULT_NORMAL_COLOR;
@@ -164,6 +164,7 @@ public class LrcLineView extends View implements ThemeChangedListener {
             ThemeManager.INSTANCE.addListener(this);
             // Apply the current theme right away so the first draw looks correct
             highlightColor = ThemeManager.INSTANCE.getTheme().getTextViewTheme().getPrimaryTextColor();
+            normalColor = ThemeManager.INSTANCE.getTheme().getTextViewTheme().getSecondaryTextColor();
             accentColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
             backgroundColor = ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor();
             applyBackgroundAlpha();
@@ -182,6 +183,7 @@ public class LrcLineView extends View implements ThemeChangedListener {
     public void onThemeChanged(@NonNull Theme theme, boolean animate) {
         // The user switched themes — grab the new primary text color and repaint
         highlightColor = theme.getTextViewTheme().getPrimaryTextColor();
+        normalColor = theme.getTextViewTheme().getSecondaryTextColor();
         backgroundColor = theme.getViewGroupTheme().getHighlightColor();
         applyBackgroundAlpha();
         invalidateCache();
