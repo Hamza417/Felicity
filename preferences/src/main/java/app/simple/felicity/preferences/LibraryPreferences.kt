@@ -6,6 +6,7 @@ import app.simple.felicity.manager.SharedPreferences
 object LibraryPreferences {
 
     private const val USE_MEDIASTORE_ARTWORK = "use_mediastore_artwork"
+    private const val SCANNER_ON_RESUME = "scanner_on_resume"
     const val ALBUM_ARTIST_OVER_ARTIST = "album_artist_over_artist"
 
     const val MINIMUM_AUDIO_LENGTH = "minimum_audio_length"
@@ -75,6 +76,16 @@ object LibraryPreferences {
         SharedPreferences.getSharedPreferences().edit {
             putBoolean(ALBUM_ARTIST_OVER_ARTIST, enabled)
         }
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    fun isScannerOnResumeEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(SCANNER_ON_RESUME, false)
+    }
+
+    fun setScannerOnResumeEnabled(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(SCANNER_ON_RESUME, enabled) }
     }
 }
 

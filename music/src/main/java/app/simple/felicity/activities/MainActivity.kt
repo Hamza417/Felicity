@@ -42,6 +42,7 @@ import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtIntoBitmap
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.managers.LyricsManager
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.preferences.TrialPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
@@ -87,6 +88,8 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
     @Inject
     lateinit var audioRepository: AudioRepository
+
+    private var isFirstLaunch = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -264,6 +267,18 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         // SAF access (at least one folder granted) is enough to start the scan.
         if (applicationContext.isSAFAccessGranted()) {
             AudioDatabaseService.startScan(applicationContext)
+        }
+
+        isFirstLaunch = false
+    }
+
+    private fun runDatabaseScanner() {
+        if (isFirstLaunch.not()) {
+            if (LibraryPreferences.isScannerOnResumeEnabled()) {
+                if (applicationContext.isSAFAccessGranted()) {
+                    AudioDatabaseService.refreshScan(applicationContext)
+                }
+            }
         }
     }
 
@@ -628,6 +643,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         // we want the lyrics to show up immediately without forcing a full song reload.
         // refreshIfNoLyrics() is smart enough to skip this when lyrics are already loaded.
         lyricsManager.refreshIfNoLyrics()
+        runDatabaseScanner()
     }
 
     override fun onStop() {

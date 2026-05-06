@@ -852,6 +852,19 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val scannerOnResumeToggle = Preference(
+                title = R.string.scan_on_resume,
+                summary = R.string.scan_on_resume_summary,
+                icon = -1,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    LibraryPreferences.setScannerOnResumeEnabled((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    LibraryPreferences.isScannerOnResumeEnabled()
+                }
+        )
+
         val metadataHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.metadata)
 
         val albumArtistsInsteadOfArtists = Preference(
@@ -984,6 +997,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(folders)
         preferences.add(scanLibrary)
         preferences.add(refreshLibrary)
+        preferences.add(scannerOnResumeToggle)
         preferences.add(metadataHeader)
         preferences.add(albumArtistsInsteadOfArtists)
         preferences.add(albumArtHeader)
