@@ -21,7 +21,7 @@ public class HighContrastDark extends Theme {
         
         setViewGroupTheme(new ViewGroupTheme(
                 Color.parseColor("#000000"), // Background
-                Color.parseColor("#404040"), // Highlight Background
+                Color.parseColor("#141414"), // Highlight Background
                 Color.parseColor("#242424"), // Selected Background
                 Color.parseColor("#ffffff"),  // Divider Background
                 Color.parseColor("#FFFFFF")   // Spot Background

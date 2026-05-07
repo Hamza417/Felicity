@@ -91,7 +91,7 @@ object MaterialYou {
 
         backgroundDark = ContextCompat.getColor(this, android.R.color.system_neutral1_900)
         viewerBackgroundDark = ContextCompat.getColor(this, android.R.color.system_neutral1_800)
-        highlightBackgroundDark = ContextCompat.getColor(this, android.R.color.system_accent1_700)
+        highlightBackgroundDark = ContextCompat.getColor(this, android.R.color.system_neutral1_800)
         selectedBackgroundDark = ContextCompat.getColor(this, android.R.color.system_accent2_600)
         dividerBackgroundDark = ContextCompat.getColor(this, android.R.color.system_neutral1_600)
         spotColorDark = ContextCompat.getColor(this, android.R.color.system_accent1_500)

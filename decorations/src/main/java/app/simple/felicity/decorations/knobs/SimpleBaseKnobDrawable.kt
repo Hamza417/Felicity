@@ -322,7 +322,7 @@ class SimpleBaseKnobDrawable(
 
     private fun applyTheme(theme: Theme) {
         idleColor = theme.viewGroupTheme.dividerColor
-        bodyColor = theme.viewGroupTheme.backgroundColor
+        bodyColor = theme.viewGroupTheme.highlightColor
         if (stateAnimator?.isRunning != true) {
             stateProgress = 0f
             currentStateColor = idleColor
@@ -347,7 +347,7 @@ class SimpleBaseKnobDrawable(
         @ColorInt
         val DEFAULT_BODY_COLOR: Int = 0xFFFFFFFF.toInt()
 
-        const val DEFAULT_STROKE_WIDTH_FRACTION = 0.035f
+        const val DEFAULT_STROKE_WIDTH_FRACTION = 0.015f
         const val DEFAULT_INDICATOR_RADIUS_FRACTION = 0.084f
 
         /** How far the indicator dot sits from the center, as a fraction of body radius. */

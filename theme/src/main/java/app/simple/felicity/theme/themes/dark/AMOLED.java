@@ -21,7 +21,7 @@ public class AMOLED extends Theme {
         
         setViewGroupTheme(new ViewGroupTheme(
                 Color.parseColor("#000000"), // Background
-                Color.parseColor("#404040"), // Highlight Background
+                Color.parseColor("#181818"), // Highlight Background
                 Color.parseColor("#242424"), // Selected Background
                 Color.parseColor("#666666"),  // Divider Background
                 Color.parseColor("#1A1A1A")   // Spot Background

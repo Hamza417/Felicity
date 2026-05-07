@@ -95,6 +95,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             presetMaterialYouDynamicColors()
         }

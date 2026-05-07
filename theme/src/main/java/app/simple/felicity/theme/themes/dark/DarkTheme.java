@@ -25,7 +25,7 @@ public class DarkTheme extends Theme {
 
         setViewGroupTheme(new ViewGroupTheme(
                 Color.parseColor("#171717"), // Background Color
-                Color.parseColor("#404040"), // Highlight Color
+                Color.parseColor("#252525"), // Highlight Color
                 Color.parseColor("#242424"), // Selected Color
                 Color.parseColor("#666666"),  // Divider Color
                 Color.parseColor("#1A1A1A")   // Spot Color
