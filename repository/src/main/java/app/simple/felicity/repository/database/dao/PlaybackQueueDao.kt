@@ -30,10 +30,17 @@ interface PlaybackQueueDao {
      * Joins the queue against the audio table and returns the full Audio rows in
      * queue order. Only available tracks are returned; deleted songs are already
      * gone due to cascade deletion.
+     *
+     * We group by [queuePos] so that each queue slot resolves to exactly one audio
+     * row. Without this, a single queue slot can fan-out to multiple rows when two
+     * library entries share the same hash (which became possible after migration
+     * 10→11 dropped the unique index on audio.hash), causing the restored queue to
+     * grow larger on every cold launch.
      */
     @Query("""
         SELECT a.* FROM audio a
         INNER JOIN playback_queue pq ON a.hash = pq.audioHash
+        GROUP BY pq.queuePos
         ORDER BY pq.queuePos ASC
     """)
     suspend fun getQueuedAudios(): List<Audio>
