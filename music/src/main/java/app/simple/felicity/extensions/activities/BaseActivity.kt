@@ -103,14 +103,13 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         AppOrientation.setOrientation(BarHeight.isLandscape(this))
         content = findViewById(android.R.id.content)
         ThemeManager.addListener(this)
-        ThemeUtils.setAppTheme(resources)
+        initTheme()
         content.setBackgroundColor(ThemeManager.theme.viewGroupTheme.backgroundColor)
 
         initMediaController()
         setStrictModePolicy()
         enableNotchArea()
         makeAppFullScreen()
-        initTheme()
         applyPredictiveBackGesture()
         observeSongChangesForPalette()
 
@@ -342,11 +341,20 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
         if (audio == null) {
             Log.w(TAG, "No current song for palette generation")
-            // Set default theme
-            if (ThemeUtils.isDarkMode(resources)) {
-                ThemeManager.theme = DarkTheme()
-            } else {
-                ThemeManager.theme = LightTheme()
+
+            /**
+             * Only fall back to a plain light/dark theme when the user is actually in
+             * album-art THEME mode. If only the accent is album-art-based, we should
+             * leave the user's chosen theme (e.g. High Contrast Light) completely alone —
+             * replacing it with a plain LightTheme here is what was causing HC Light to
+             * visually render as regular Light theme while prefs still reported HC Light.
+             */
+            if (isAlbumArtTheme) {
+                if (ThemeUtils.isDarkMode(resources)) {
+                    ThemeManager.theme = DarkTheme()
+                } else {
+                    ThemeManager.theme = LightTheme()
+                }
             }
 
             if (isAlbumArtAccent) {
@@ -433,6 +441,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
     private fun initTheme() {
         ThemeUtils.setAppTheme(resources)
+        ThemeUtils.setBarColors(resources, window)
         ThemeUtils.updateNavAndStatusColors(resources, window)
 
         val isAlbumArtAccent = AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER
@@ -559,8 +568,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                 recreate()
             }
         }
-        ThemeUtils.setAppTheme(resources)
-        ThemeUtils.setBarColors(resources, window)
+        initTheme()
     }
 
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
