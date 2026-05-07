@@ -14,11 +14,8 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.animation.OvershootInterpolator
 import androidx.core.content.ContextCompat
-import androidx.core.content.withStyledAttributes
-import androidx.dynamicanimation.animation.FloatPropertyCompat
-import androidx.dynamicanimation.animation.SpringAnimation
-import androidx.dynamicanimation.animation.SpringForce
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.ripple.FelicityRippleDrawable
@@ -189,41 +186,8 @@ class FelicityMediaControls @JvmOverloads constructor(
     private var accentColor = 0
 
     // Animators
+    private var scaleAnim: ValueAnimator? = null
     private var fadeAnim: ValueAnimator? = null
-
-    // Each button group gets its own spring so they can animate independently and overlap naturally
-    private var playSpring: SpringAnimation? = null
-    private var prevNextSpring: SpringAnimation? = null
-    private var fwdRewSpring: SpringAnimation? = null
-
-    /**
-     * These properties act as bridges between the spring animation engine and our
-     * custom draw fields. Each one tells the spring how to read and write the scale
-     * value so the view redraws itself every time the spring ticks forward a frame.
-     */
-    private val playScaleProp = object : FloatPropertyCompat<FelicityMediaControls>("playScale") {
-        override fun getValue(obj: FelicityMediaControls) = obj.playScale
-        override fun setValue(obj: FelicityMediaControls, value: Float) {
-            obj.playScale = value
-            obj.invalidate()
-        }
-    }
-
-    private val prevNextScaleProp = object : FloatPropertyCompat<FelicityMediaControls>("prevNextScale") {
-        override fun getValue(obj: FelicityMediaControls) = obj.prevNextScale
-        override fun setValue(obj: FelicityMediaControls, value: Float) {
-            obj.prevNextScale = value
-            obj.invalidate()
-        }
-    }
-
-    private val fwdRewScaleProp = object : FloatPropertyCompat<FelicityMediaControls>("fwdRewScale") {
-        override fun getValue(obj: FelicityMediaControls) = obj.fwdRewScale
-        override fun setValue(obj: FelicityMediaControls, value: Float) {
-            obj.fwdRewScale = value
-            obj.invalidate()
-        }
-    }
 
     init {
         isClickable = true
@@ -231,10 +195,10 @@ class FelicityMediaControls @JvmOverloads constructor(
 
         // Pull any XML attributes the layout author may have set for us
         if (attrs != null) {
-            context.withStyledAttributes(attrs, R.styleable.FelicityMediaControls, defStyleAttr, 0) {
-                showSeekButtons = getBoolean(R.styleable.FelicityMediaControls_showSeekButtons, true)
-                buttonsSizePercent = getFloat(R.styleable.FelicityMediaControls_buttonsSizePercent, 1.0f).coerceIn(0f, 1f)
-            }
+            val a = context.obtainStyledAttributes(attrs, R.styleable.FelicityMediaControls, defStyleAttr, 0)
+            showSeekButtons = a.getBoolean(R.styleable.FelicityMediaControls_showSeekButtons, true)
+            buttonsSizePercent = a.getFloat(R.styleable.FelicityMediaControls_buttonsSizePercent, 1.0f).coerceIn(0f, 1f)
+            a.recycle()
         }
 
         if (!isInEditMode) {
@@ -512,37 +476,26 @@ class FelicityMediaControls @JvmOverloads constructor(
             return
         }
 
+        // Capture start values so the animator interpolates from wherever we are now
+        val fromPlay = playScale
+        val fromPrevNext = prevNextScale
+        val fromFwdRew = fwdRewScale
         val fromPlayIcon = playIconAlpha
         val fromPauseIcon = pauseIconAlpha
 
-        // Each spring drives one scale group. A higher stiffness means a snappier response,
-        // and a lower damping ratio lets the button overshoot slightly — that little bounce
-        // is what gives the UI an "alive" feeling instead of a plain linear move.
-        fun makeSpring(
-                prop: FloatPropertyCompat<FelicityMediaControls>,
-                startValue: Float,
-                endValue: Float
-        ): SpringAnimation {
-            return SpringAnimation(this, prop).apply {
-                spring = SpringForce(endValue).apply {
-                    stiffness = SpringForce.STIFFNESS_LOW
-                    dampingRatio = 0.3F
-                }
-                // The default threshold (1.0) is meant for pixel values — our scale values
-                // only move by ~0.15, so without this the spring would snap instantly.
-                setMinimumVisibleChange(0.00001f)
-                setStartValue(startValue)
+        scaleAnim?.cancel()
+        scaleAnim = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 500L
+            interpolator = OvershootInterpolator(3F)
+            addUpdateListener {
+                val t = it.animatedFraction
+                playScale = fromPlay + (toPlayScale - fromPlay) * t
+                prevNextScale = fromPrevNext + (toPrevNextScale - fromPrevNext) * t
+                fwdRewScale = fromFwdRew + (toFwdRewScale - fromFwdRew) * t
+                invalidate()
             }
+            start()
         }
-
-        playSpring?.cancel()
-        playSpring = makeSpring(playScaleProp, playScale, toPlayScale).also { it.start() }
-
-        prevNextSpring?.cancel()
-        prevNextSpring = makeSpring(prevNextScaleProp, prevNextScale, toPrevNextScale).also { it.start() }
-
-        fwdRewSpring?.cancel()
-        fwdRewSpring = makeSpring(fwdRewScaleProp, fwdRewScale, toFwdRewScale).also { it.start() }
 
         fadeAnim?.cancel()
         fadeAnim = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -721,9 +674,7 @@ class FelicityMediaControls @JvmOverloads constructor(
             unregisterSharedPreferenceChangeListener()
         }
         cancelHoldPulse()
+        scaleAnim?.cancel()
         fadeAnim?.cancel()
-        playSpring?.cancel()
-        prevNextSpring?.cancel()
-        fwdRewSpring?.cancel()
     }
 }
