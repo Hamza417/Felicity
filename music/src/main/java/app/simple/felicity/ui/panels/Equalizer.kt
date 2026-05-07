@@ -11,7 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentEqualizerBinding
-import app.simple.felicity.decorations.knobs.RotaryKnobListener
+import app.simple.felicity.decorations.knobs.FelicityKnobListener
 import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
@@ -251,7 +251,7 @@ class Equalizer : MediaFragment() {
         binding.equalizerScreen.bassKnob.setTickTexts("-12", "+12")
         binding.equalizerScreen.bassKnob.divisionCount = 48 * 2
         binding.equalizerScreen.bassKnob.setKnobPosition(bassDbToKnobValue(state.bassDb), animate = false)
-        binding.equalizerScreen.bassKnob.setListener(object : RotaryKnobListener {
+        binding.equalizerScreen.bassKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -276,7 +276,7 @@ class Equalizer : MediaFragment() {
         binding.equalizerScreen.trebleKnob.setTickTexts("-12", "+12")
         binding.equalizerScreen.trebleKnob.divisionCount = 48 * 2
         binding.equalizerScreen.trebleKnob.setKnobPosition(trebleDbToKnobValue(state.trebleDb), animate = false)
-        binding.equalizerScreen.trebleKnob.setListener(object : RotaryKnobListener {
+        binding.equalizerScreen.trebleKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -310,7 +310,7 @@ class Equalizer : MediaFragment() {
         binding.speakerScreen.balanceKnob.centerSnapEnabled = true
         binding.speakerScreen.balanceKnob.setTickTexts("L", "R")
         binding.speakerScreen.balanceKnob.setKnobPosition(panToKnobValue(state.balance), animate = false)
-        binding.speakerScreen.balanceKnob.setListener(object : RotaryKnobListener {
+        binding.speakerScreen.balanceKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -335,7 +335,7 @@ class Equalizer : MediaFragment() {
         binding.speakerScreen.stereoWideningKnob.setTickTexts("M", "W")
         binding.speakerScreen.stereoWideningKnob.setKnobPosition(widthToKnobValue(state.stereoWidth), animate = false)
         binding.speakerScreen.stereoWideningKnob.divisionCount = 10 * 10
-        binding.speakerScreen.stereoWideningKnob.setListener(object : RotaryKnobListener {
+        binding.speakerScreen.stereoWideningKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -360,7 +360,7 @@ class Equalizer : MediaFragment() {
         binding.speakerScreen.tapeSaturationKnob.setTickTexts("0", "4")
         binding.speakerScreen.tapeSaturationKnob.setKnobPosition(driveToKnobValue(state.tapeSaturationDrive), animate = false)
         binding.speakerScreen.tapeSaturationKnob.divisionCount = 4 * 10
-        binding.speakerScreen.tapeSaturationKnob.setListener(object : RotaryKnobListener {
+        binding.speakerScreen.tapeSaturationKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -382,7 +382,7 @@ class Equalizer : MediaFragment() {
         binding.speakerScreen.pitchKnob.setTickTexts("-12", "+12")
         binding.speakerScreen.pitchKnob.divisionCount = 24  // one division per semitone across the full range
         binding.speakerScreen.pitchKnob.setKnobPosition(pitchSemitonesToKnobValue(state.pitch), animate = false)
-        binding.speakerScreen.pitchKnob.setListener(object : RotaryKnobListener {
+        binding.speakerScreen.pitchKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -413,7 +413,7 @@ class Equalizer : MediaFragment() {
         binding.speakerScreen.speedKnob.setTickTexts("0.5x", "2x")
         binding.speakerScreen.speedKnob.divisionCount = 100
         binding.speakerScreen.speedKnob.setKnobPosition(speedToKnobValue(state.playbackSpeed), animate = false)
-        binding.speakerScreen.speedKnob.setListener(object : RotaryKnobListener {
+        binding.speakerScreen.speedKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -442,7 +442,7 @@ class Equalizer : MediaFragment() {
         binding.speakerScreen.replayGainKnob.setTickTexts("-15", "+15")
         binding.speakerScreen.replayGainKnob.divisionCount = 30 * 2
         binding.speakerScreen.replayGainKnob.setKnobPosition(replayGainDbToKnobValue(state.replayGainDb), animate = false)
-        binding.speakerScreen.replayGainKnob.setListener(object : RotaryKnobListener {
+        binding.speakerScreen.replayGainKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -485,7 +485,7 @@ class Equalizer : MediaFragment() {
         binding.reverbScreen.reverbMixKnob.divisionCount = 100
         binding.reverbScreen.reverbMixKnob.setKnobPosition(
                 reverbMixToKnob(state.reverbMix), animate = false)
-        binding.reverbScreen.reverbMixKnob.setListener(object : RotaryKnobListener {
+        binding.reverbScreen.reverbMixKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -506,7 +506,7 @@ class Equalizer : MediaFragment() {
         binding.reverbScreen.reverbFadeKnob.divisionCount = 100
         binding.reverbScreen.reverbFadeKnob.setKnobPosition(
                 reverbDecayToKnob(state.reverbDecay), animate = false)
-        binding.reverbScreen.reverbFadeKnob.setListener(object : RotaryKnobListener {
+        binding.reverbScreen.reverbFadeKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -531,7 +531,7 @@ class Equalizer : MediaFragment() {
         binding.reverbScreen.reverbSizeKnob.divisionCount = 100
         binding.reverbScreen.reverbSizeKnob.setKnobPosition(
                 reverbSizeToKnob(state.reverbSize), animate = false)
-        binding.reverbScreen.reverbSizeKnob.setListener(object : RotaryKnobListener {
+        binding.reverbScreen.reverbSizeKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -557,7 +557,7 @@ class Equalizer : MediaFragment() {
         binding.reverbScreen.reverbDampKnob.divisionCount = 100
         binding.reverbScreen.reverbDampKnob.setKnobPosition(
                 reverbDampToKnob(state.reverbDamp), animate = false)
-        binding.reverbScreen.reverbDampKnob.setListener(object : RotaryKnobListener {
+        binding.reverbScreen.reverbDampKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {

@@ -21,19 +21,19 @@ import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
 
 /**
- * A programmatic [RotaryKnobDrawable] that draws a circular knob with a small position
+ * A programmatic [BaseKnobDrawable] that draws a circular knob with a small position
  * indicator dot at the top.
  *
  * **Idle state**: ring and indicator dot use [idleColor] (gray / muted).
  * **Pressed state**: they animate to [accentColor].
  *
  * The arc track and min / max tick marks are intentionally NOT drawn here —
- * they are drawn by [RotaryKnobView] directly on its own canvas so they stay
+ * they are drawn by [FelicityKnobView] directly on its own canvas so they stay
  * stationary while the knob rotates.
  *
  * Theme colors are managed internally: the drawable registers with
  * [ThemeManager] during [onAttachedToKnobView] and unregisters during
- * [onDetachedFromKnobView], so [RotaryKnobView] never needs to forward theme events.
+ * [onDetachedFromKnobView], so [FelicityKnobView] never needs to forward theme events.
  *
  * The glow effect (when [AppearancePreferences.isShadowEffectOn] is true) animates both
  * the blur radius and the color together, giving a capacitor-charging / discharging feel:
@@ -46,11 +46,11 @@ import app.simple.felicity.theme.models.Theme
  *
  * @author Hamza417
  */
-class SimpleRotaryKnobDrawable(
+class SimpleBaseKnobDrawable(
         var strokeWidthFraction: Float = DEFAULT_STROKE_WIDTH_FRACTION,
         var indicatorRadiusFraction: Float = DEFAULT_INDICATOR_RADIUS_FRACTION,
         @Px private var intrinsicSizePx: Int = DEFAULT_INTRINSIC_SIZE_PX
-) : RotaryKnobDrawable(), ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
+) : BaseKnobDrawable(), ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
 
     @ColorInt
     private var accentColor: Int = DEFAULT_ACCENT_COLOR
@@ -122,7 +122,7 @@ class SimpleRotaryKnobDrawable(
     var currentStateColor: Int = idleColor
         private set
 
-    // ── RotaryKnobDrawable ───────────────────────────────────────────────────────
+    // ── BaseKnobDrawable ───────────────────────────────────────────────────────
 
     override fun getCurrentStateColor(): Int = currentStateColor
 

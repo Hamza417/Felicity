@@ -109,7 +109,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <app.simple.felicity.decorations.knobs.RotaryKnobView
+                <app.simple.felicity.decorations.knobs.FelicityKnobView
                     android:id="@+id/bass_knob"
                     android:layout_width="@dimen/balance_knob_dimension"
                     android:layout_height="@dimen/balance_knob_dimension"
@@ -139,7 +139,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <app.simple.felicity.decorations.knobs.RotaryKnobView
+                <app.simple.felicity.decorations.knobs.FelicityKnobView
                     android:id="@+id/treble_knob"
                     android:layout_width="@dimen/balance_knob_dimension"
                     android:layout_height="@dimen/balance_knob_dimension"

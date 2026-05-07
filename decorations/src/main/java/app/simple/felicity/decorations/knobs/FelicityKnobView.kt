@@ -20,9 +20,9 @@ import android.view.animation.OvershootInterpolator
 import androidx.annotation.ColorInt
 import androidx.core.graphics.withRotation
 import app.simple.felicity.decoration.R
-import app.simple.felicity.decorations.knobs.RotaryKnobView.Companion.END
-import app.simple.felicity.decorations.knobs.RotaryKnobView.Companion.HAPTIC_TICK_INTERVAL_DEG
-import app.simple.felicity.decorations.knobs.RotaryKnobView.Companion.START
+import app.simple.felicity.decorations.knobs.FelicityKnobView.Companion.END
+import app.simple.felicity.decorations.knobs.FelicityKnobView.Companion.HAPTIC_TICK_INTERVAL_DEG
+import app.simple.felicity.decorations.knobs.FelicityKnobView.Companion.START
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.decorations.utils.VibrateUtils.vibrateEffect
 import app.simple.felicity.preferences.AppearancePreferences
@@ -54,14 +54,14 @@ private const val DEFAULT_ARC_IDLE_COLOR = 0x7A464646
  * shrink back when the knob retreats (backward), animated via a per-frame lerp.
  */
 @SuppressLint("ClickableViewAccessibility")
-class RotaryKnobView @JvmOverloads constructor(
+class FelicityKnobView @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr), ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
 
-    /** The drawable used to paint the rotating knob circle. Must be a [RotaryKnobDrawable]. */
-    private var knobDrawable: RotaryKnobDrawable = SimpleRotaryKnobDrawable()
+    /** The drawable used to paint the rotating knob circle. Must be a [BaseKnobDrawable]. */
+    private var knobDrawable: BaseKnobDrawable = SimpleBaseKnobDrawable()
 
     /** Current angular position of the knob in degrees, clamped to [START]..[END]. */
     private var knobRotation = 0f
@@ -80,12 +80,12 @@ class RotaryKnobView @JvmOverloads constructor(
     /** Enable / disable all haptic feedback. Defaults to true. */
     var hapticEnabled: Boolean = true
 
-    private var listener: RotaryKnobListener? = null
+    private var listener: FelicityKnobListener? = null
 
     /** Accumulated rotation since the last tick vibration, in degrees. */
     private var hapticAccumulator = 0f
 
-    /** Current display string sourced from [RotaryKnobListener.onLabel]. */
+    /** Current display string sourced from [FelicityKnobListener.onLabel]. */
     private var labelText: String = ""
 
     /** Per-line scale factors: 0.0 = fully idle, 1.0 = fully progressed. Written by animators, read in onDraw. */
@@ -370,7 +370,7 @@ class RotaryKnobView @JvmOverloads constructor(
 
     /**
      * Fraction of [knobRadiusPx] at which the indicator dot sits inside the knob circle.
-     * Must match [SimpleRotaryKnobDrawable.INDICATOR_DISTANCE_FRACTION] (0.81).
+     * Must match [SimpleBaseKnobDrawable.INDICATOR_DISTANCE_FRACTION] (0.81).
      * Used to compute the exact tip position for the pan-lean divider line.
      */
     var knobIndicatorDistanceFraction: Float = 0.81f
@@ -907,7 +907,7 @@ class RotaryKnobView @JvmOverloads constructor(
      * If [animate] is false the knob snaps instantly.
      *
      * In either path a brief indicator-only glow pulse is fired via
-     * [RotaryKnobDrawable.onProgrammaticPositionChanged] so the user can see the knob
+     * [BaseKnobDrawable.onProgrammaticPositionChanged] so the user can see the knob
      * respond to an external volume change without the ring or arc elements lighting up.
      * The pulse is skipped on the very first call (initial position setup) to avoid a
      * spurious glow when the view first appears.
@@ -960,12 +960,12 @@ class RotaryKnobView @JvmOverloads constructor(
     }
 
     /**
-     * Attaches a [RotaryKnobListener] to receive rotation callbacks and supply the
+     * Attaches a [FelicityKnobListener] to receive rotation callbacks and supply the
      * display label string. Calling this also seeds the initial label text.
      */
-    fun setListener(rotaryKnobListener: RotaryKnobListener) {
-        listener = rotaryKnobListener
-        labelText = rotaryKnobListener.onLabel(angleToValue(knobRotation))
+    fun setListener(felicityKnobListener: FelicityKnobListener) {
+        listener = felicityKnobListener
+        labelText = felicityKnobListener.onLabel(angleToValue(knobRotation))
         invalidate()
     }
 
@@ -986,15 +986,15 @@ class RotaryKnobView @JvmOverloads constructor(
     }
 
     /**
-     * Replaces the knob visual with a custom [RotaryKnobDrawable] implementation.
+     * Replaces the knob visual with a custom [BaseKnobDrawable] implementation.
      *
-     * The previous drawable's [RotaryKnobDrawable.onDetachedFromKnobView] is called first so
+     * The previous drawable's [BaseKnobDrawable.onDetachedFromKnobView] is called first so
      * it can unregister any listeners. The new drawable's
-     * [RotaryKnobDrawable.onAttachedToKnobView] is then called immediately if the view is
+     * [BaseKnobDrawable.onAttachedToKnobView] is then called immediately if the view is
      * already attached to a window, and [Drawable.Callback] is wired so that
      * [android.graphics.drawable.Drawable.invalidateSelf] correctly triggers [invalidate].
      */
-    fun setKnobDrawable(drawable: RotaryKnobDrawable) {
+    fun setKnobDrawable(drawable: BaseKnobDrawable) {
         knobDrawable.onDetachedFromKnobView()
         knobDrawable.callback = null
         knobDrawable = drawable
@@ -1009,7 +1009,7 @@ class RotaryKnobView @JvmOverloads constructor(
     /**
      * Sets the view's rendering layer type based on what the current [knobDrawable] requires.
      * If the drawable uses [android.graphics.Paint.setShadowLayer] for glow effects it returns
-     * `true` from [RotaryKnobDrawable.requiresSoftwareLayer] and the view switches to
+     * `true` from [BaseKnobDrawable.requiresSoftwareLayer] and the view switches to
      * [LAYER_TYPE_SOFTWARE]; otherwise hardware acceleration is restored.
      */
     private fun applyLayerType() {
@@ -1121,6 +1121,6 @@ class RotaryKnobView @JvmOverloads constructor(
          */
         private const val HAPTIC_TICK_INTERVAL_DEG = 12f
 
-        private const val TAG = "RotaryKnobView"
+        private const val TAG = "FelicityKnobView"
     }
 }

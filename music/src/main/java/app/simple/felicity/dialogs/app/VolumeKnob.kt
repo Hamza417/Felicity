@@ -17,7 +17,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.databinding.DialogVolumeKnobBinding
-import app.simple.felicity.decorations.knobs.RotaryKnobListener
+import app.simple.felicity.decorations.knobs.FelicityKnobListener
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,7 +35,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
      * Holds the latest target volume index (0..maxVolume). A value of -1 is the
      * sentinel used before the first rotation event so the collector skips it.
      *
-     * Using [MutableStateFlow] instead of launching a coroutine per [RotaryKnobListener.onRotate]
+     * Using [MutableStateFlow] instead of launching a coroutine per [FelicityKnobListener.onRotate]
      * call prevents flooding the system with redundant [AudioManager.setStreamVolume] requests:
      * the collector only processes the latest distinct value, and the main-thread update is a
      * simple field assignment with no allocation or scheduling overhead.
@@ -86,7 +86,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         // Volume Knob
         setVolumeKnobPosition()
         binding.volumeKnob.setTickTexts("0", "100")
-        binding.volumeKnob.setListener(object : RotaryKnobListener {
+        binding.volumeKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {
                 Log.d(TAG, "Increment: $value")
             }

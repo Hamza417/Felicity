@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <app.simple.felicity.decorations.knobs.RotaryKnobView
+        <app.simple.felicity.decorations.knobs.FelicityKnobView
             android:id="@+id/reverb_fade_knob"
             android:layout_width="@dimen/balance_knob_dimension"
             android:layout_height="@dimen/balance_knob_dimension"
@@ -43,7 +43,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <app.simple.felicity.decorations.knobs.RotaryKnobView
+        <app.simple.felicity.decorations.knobs.FelicityKnobView
             android:id="@+id/reverb_damp_knob"
             android:layout_width="@dimen/balance_knob_dimension"
             android:layout_height="@dimen/balance_knob_dimension"
@@ -74,7 +74,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <app.simple.felicity.decorations.knobs.RotaryKnobView
+        <app.simple.felicity.decorations.knobs.FelicityKnobView
             android:id="@+id/reverb_size_knob"
             android:layout_width="@dimen/balance_knob_dimension"
             android:layout_height="@dimen/balance_knob_dimension"
@@ -108,7 +108,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <app.simple.felicity.decorations.knobs.RotaryKnobView
+        <app.simple.felicity.decorations.knobs.FelicityKnobView
             android:id="@+id/reverb_mix_knob"
             android:layout_width="@dimen/medium_knob_dimension"
             android:layout_height="@dimen/medium_knob_dimension"

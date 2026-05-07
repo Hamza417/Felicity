@@ -1,6 +1,6 @@
 package app.simple.felicity.decorations.knobs
 
-interface RotaryKnobListener {
+interface FelicityKnobListener {
     fun onRotate(value: Float)
     fun onIncrement(value: Float)
     fun onUserInteractionStart(value: Float) {}

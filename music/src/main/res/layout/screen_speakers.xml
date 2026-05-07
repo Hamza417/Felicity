@@ -10,7 +10,7 @@
         android:orientation="vertical"
         app:layout_constraintGuide_percent="0.5" />
 
-    <app.simple.felicity.decorations.knobs.RotaryKnobView
+    <app.simple.felicity.decorations.knobs.FelicityKnobView
         android:id="@+id/balanceKnob"
         android:layout_width="@dimen/balance_knob_dimension"
         android:layout_height="@dimen/balance_knob_dimension"
@@ -37,7 +37,7 @@
         app:layout_constraintTop_toBottomOf="@+id/balanceKnob"
         app:textColorStyle="heading" />
 
-    <app.simple.felicity.decorations.knobs.RotaryKnobView
+    <app.simple.felicity.decorations.knobs.FelicityKnobView
         android:id="@+id/stereo_widening_knob"
         android:layout_width="@dimen/balance_knob_dimension"
         android:layout_height="@dimen/balance_knob_dimension"
@@ -71,7 +71,7 @@
         app:barrierDirection="bottom"
         app:constraint_referenced_ids="balance_label,stereo_widening_label" />
 
-    <app.simple.felicity.decorations.knobs.RotaryKnobView
+    <app.simple.felicity.decorations.knobs.FelicityKnobView
         android:id="@+id/tape_saturation_knob"
         android:layout_width="@dimen/balance_knob_dimension"
         android:layout_height="@dimen/balance_knob_dimension"
@@ -98,7 +98,7 @@
         app:layout_constraintTop_toBottomOf="@+id/tape_saturation_knob"
         app:textColorStyle="heading" />
 
-    <app.simple.felicity.decorations.knobs.RotaryKnobView
+    <app.simple.felicity.decorations.knobs.FelicityKnobView
         android:id="@+id/pitchKnob"
         android:layout_width="@dimen/balance_knob_dimension"
         android:layout_height="@dimen/balance_knob_dimension"
@@ -132,7 +132,7 @@
         app:barrierDirection="bottom"
         app:constraint_referenced_ids="tape_saturation_label,pitch_label" />
 
-    <app.simple.felicity.decorations.knobs.RotaryKnobView
+    <app.simple.felicity.decorations.knobs.FelicityKnobView
         android:id="@+id/speedKnob"
         android:layout_width="@dimen/balance_knob_dimension"
         android:layout_height="@dimen/balance_knob_dimension"
@@ -159,7 +159,7 @@
         app:layout_constraintTop_toBottomOf="@+id/speedKnob"
         app:textColorStyle="heading" />
 
-    <app.simple.felicity.decorations.knobs.RotaryKnobView
+    <app.simple.felicity.decorations.knobs.FelicityKnobView
         android:id="@+id/replay_gain_knob"
         android:layout_width="@dimen/balance_knob_dimension"
         android:layout_height="@dimen/balance_knob_dimension"

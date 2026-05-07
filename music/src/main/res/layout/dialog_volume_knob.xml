@@ -35,7 +35,7 @@
                 app:appFontStyle="bold"
                 app:textColorStyle="heading" />
 
-            <app.simple.felicity.decorations.knobs.RotaryKnobView
+            <app.simple.felicity.decorations.knobs.FelicityKnobView
                 android:id="@+id/volumeKnob"
                 android:layout_width="@dimen/volume_knob_dimension"
                 android:layout_height="@dimen/volume_knob_dimension"

@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <app.simple.felicity.decorations.knobs.RotaryKnobView
+        <app.simple.felicity.decorations.knobs.FelicityKnobView
             android:id="@+id/balanceKnob"
             android:layout_width="match_parent"
             android:layout_height="@dimen/balance_knob_dimension"
@@ -44,7 +44,7 @@
         android:layout_marginHorizontal="@dimen/padding_15"
         android:orientation="vertical">
 
-        <app.simple.felicity.decorations.knobs.RotaryKnobView
+        <app.simple.felicity.decorations.knobs.FelicityKnobView
             android:id="@+id/tape_saturation_knob"
             android:layout_width="match_parent"
             android:layout_height="@dimen/balance_knob_dimension"
@@ -74,7 +74,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <app.simple.felicity.decorations.knobs.RotaryKnobView
+        <app.simple.felicity.decorations.knobs.FelicityKnobView
             android:id="@+id/stereo_widening_knob"
             android:layout_width="match_parent"
             android:layout_height="@dimen/balance_knob_dimension"
@@ -105,7 +105,7 @@
         android:layout_marginHorizontal="@dimen/padding_15"
         android:orientation="vertical">
 
-        <app.simple.felicity.decorations.knobs.RotaryKnobView
+        <app.simple.felicity.decorations.knobs.FelicityKnobView
             android:id="@+id/pitchKnob"
             android:layout_width="match_parent"
             android:layout_height="@dimen/balance_knob_dimension"
@@ -135,7 +135,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <app.simple.felicity.decorations.knobs.RotaryKnobView
+        <app.simple.felicity.decorations.knobs.FelicityKnobView
             android:id="@+id/speedKnob"
             android:layout_width="match_parent"
             android:layout_height="@dimen/balance_knob_dimension"
@@ -166,7 +166,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <app.simple.felicity.decorations.knobs.RotaryKnobView
+        <app.simple.felicity.decorations.knobs.FelicityKnobView
             android:id="@+id/replay_gain_knob"
             android:layout_width="match_parent"
             android:layout_height="@dimen/balance_knob_dimension"
