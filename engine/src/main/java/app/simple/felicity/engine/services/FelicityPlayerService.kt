@@ -614,7 +614,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
 
         mediaSession?.player = player
-        Log.i(TAG, "FFmpeg fallback: re-trying '${failedItem.mediaMetadata.title}' from the start with FFmpeg.")
+        Log.i(TAG, "FFmpeg fallback: re-trying '${failedItem.mediaId}' from the start with FFmpeg.")
     }
 
     /**
@@ -905,12 +905,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
                     if (ffmpegFallbackActive) {
                         // FFmpeg also failed – give up, restore original decoder and skip.
-                        Log.w(TAG, "FFmpeg fallback also failed for '${failedItem?.mediaMetadata?.title}', skipping track and restoring decoder.")
+                        Log.w(TAG, "FFmpeg fallback also failed for '${failedItem?.mediaId}', skipping track and restoring decoder.")
                         ffmpegFallbackActive = false
                         ffmpegFallbackItem = null
                         // Notify user that the track could not be played by any available decoder.
                         playbackErrorNotifier.notifyPlaybackError(
-                                failedItem?.mediaMetadata?.title?.toString(),
+                                failedItem?.mediaId,
                                 error
                         )
                         // Restore user's original decoder choice silently (no pref write – just engine mode).
@@ -919,7 +919,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     } else if (AudioPreferences.isFallbackToSoftwareDecoderEnabled()
                             && AudioPreferences.getAudioDecoder() != AudioPreferences.FFMPEG) {
                         // Primary decoder failed and fallback is enabled – try FFmpeg silently.
-                        Log.i(TAG, "Primary decoder failed; silently retrying '${failedItem?.mediaMetadata?.title}' with FFmpeg.")
+                        Log.i(TAG, "Primary decoder failed; silently retrying '${failedItem?.mediaId}' with FFmpeg.")
                         preFallbackDecoder = AudioPreferences.getAudioDecoder()
                         ffmpegFallbackActive = true
                         ffmpegFallbackItem = failedItem
@@ -931,7 +931,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                         ffmpegFallbackItem = null
                         // Notify user why the track was skipped.
                         playbackErrorNotifier.notifyPlaybackError(
-                                failedItem?.mediaMetadata?.title?.toString(),
+                                failedItem?.mediaId,
                                 error
                         )
                         skipOrRestartTrack()
@@ -940,7 +940,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND -> {
                     Log.e(TAG, "File not found: ${error.message} (code: ${error.errorCode})")
                     playbackErrorNotifier.notifyPlaybackError(
-                            player.currentMediaItem?.mediaMetadata?.title?.toString(),
+                            player.currentMediaItem?.mediaId,
                             error
                     )
                     skipOrRestartTrack()
@@ -949,7 +949,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     Log.e(TAG, "Playback error: ${error.message} (code: ${error.errorCode})")
                     Log.e(TAG, "Player error: ${error.errorCodeName}", error)
                     playbackErrorNotifier.notifyPlaybackError(
-                            player.currentMediaItem?.mediaMetadata?.title?.toString(),
+                            player.currentMediaItem?.mediaId,
                             error
                     )
                     MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_ERROR)
@@ -1014,7 +1014,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                         }
                     }
                 } else {
-                    Log.d(TAG, "Track changed while paused — skipping play stat for: ${item.mediaMetadata.title}")
+                    Log.d(TAG, "Track changed while paused — skipping play stat for: ${item.mediaId}")
                 }
             } ?: run { previousItemMediaId = null }
 
@@ -1321,9 +1321,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      */
     private fun broadcastWidgetUpdate() {
         val mediaItem = player.currentMediaItem ?: return
-        val metadata = mediaItem.mediaMetadata
-        val title = metadata.title?.toString()
-        val artist = metadata.artist?.toString()
+        val currentSong = MediaPlaybackManager.getCurrentSong()
+        val title = currentSong?.title
+        val artist = currentSong?.artist
         val isPlaying = player.isPlaying
         val songId = mediaItem.mediaId.toLongOrNull() ?: -1L
 

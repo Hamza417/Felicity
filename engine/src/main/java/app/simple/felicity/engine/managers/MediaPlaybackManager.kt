@@ -59,6 +59,23 @@ private fun String.toPlaybackUri(): Uri {
     }
 }
 
+/**
+ * Builds a lean [MediaItem] for this audio track — only the media ID and URI are included.
+ *
+ * Embedding title and artist in every item's metadata causes the entire playlist to be
+ * bundled and sent across process boundaries (Binder IPC) each time the queue is handed
+ * to the media controller. With a large library this bundle can exhaust the heap during
+ * deserialization on the service side, resulting in an OutOfMemoryError. Keeping items
+ * metadata-free eliminates that overhead entirely; the service reads song info directly
+ * from [MediaPlaybackManager.getCurrentSong] whenever it needs it.
+ */
+private fun Audio.toMediaItem(): MediaItem {
+    return MediaItem.Builder()
+        .setMediaId(id.toString())
+        .setUri(uri.toPlaybackUri())
+        .build()
+}
+
 object MediaPlaybackManager {
 
     private const val TAG = "MediaPlaybackManager"
@@ -291,19 +308,7 @@ object MediaPlaybackManager {
 
                 val clampedPosition = if (shuffleOn) 0 else position.coerceIn(0, activeQueue.size - 1)
 
-                val mediaItems = activeQueue.map { audio ->
-                    val uri = audio.uri.toPlaybackUri()
-                    MediaItem.Builder()
-                        .setMediaId(audio.id.toString())
-                        .setUri(uri)
-                        .setMediaMetadata(
-                                MediaMetadata.Builder()
-                                    .setArtist(audio.artist)
-                                    .setTitle(audio.title)
-                                    .build()
-                        )
-                        .build()
-                }
+                val mediaItems = activeQueue.map { it.toMediaItem() }
 
                 PrepResult(activeQueue, newShuffledQueue, clampedPosition, mediaItems)
             }
@@ -394,19 +399,7 @@ object MediaPlaybackManager {
         // Update the media controller's queue in the background without prepare() to avoid interrupting playback.
         scope.launch {
             val mediaItems = withContext(Dispatchers.Default) {
-                audios.map { audio ->
-                    val uri = audio.uri.toPlaybackUri()
-                    MediaItem.Builder()
-                        .setMediaId(audio.id.toString())
-                        .setUri(uri)
-                        .setMediaMetadata(
-                                MediaMetadata.Builder()
-                                    .setArtist(audio.artist)
-                                    .setTitle(audio.title)
-                                    .build())
-                        .build()
-
-                }
+                audios.map { it.toMediaItem() }
             }
 
             /**
@@ -751,19 +744,7 @@ object MediaPlaybackManager {
             }
 
             val mediaItems = withContext(Dispatchers.Default) {
-                result.active.map { audio ->
-                    val uri = audio.uri.toPlaybackUri()
-                    MediaItem.Builder()
-                        .setMediaId(audio.id.toString())
-                        .setUri(uri)
-                        .setMediaMetadata(
-                                MediaMetadata.Builder()
-                                    .setArtist(audio.artist)
-                                    .setTitle(audio.title)
-                                    .build()
-                        )
-                        .build()
-                }
+                result.active.map { it.toMediaItem() }
             }
 
             // All state mutations run on the main thread so there are no data races
