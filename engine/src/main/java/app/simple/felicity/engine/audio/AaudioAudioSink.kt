@@ -115,6 +115,7 @@ class AaudioAudioSink(
                 aaudioStream = stream
                 currentSampleRate = sr
                 currentChannelCount = ch
+                isStreamActive = true
 
                 /**
                  * Mute the delegate AudioTrack immediately so only the AAudio stream
@@ -129,6 +130,7 @@ class AaudioAudioSink(
                         "safeBuffers=$useSafeBuffers")
             } else {
                 Log.e(TAG, "AAudio stream creation failed for sampleRate=$sr, channels=$ch")
+                isStreamActive = false
                 unmuteDelegateIfNeeded()
             }
         }
@@ -302,6 +304,7 @@ class AaudioAudioSink(
         aaudioStream = null
         currentSampleRate = 0
         currentChannelCount = 0
+        isStreamActive = false
         unmuteDelegateIfNeeded()
         Log.i(TAG, "AAudio stream released")
     }
@@ -331,5 +334,15 @@ class AaudioAudioSink(
 
     companion object {
         private const val TAG = "AaudioAudioSink"
+
+        /**
+         * Reflects whether the native AAudio stream is currently open and running.
+         * Updated to `true` the moment a stream is successfully created, and back to
+         * `false` whenever the stream is released or creation fails. The snapshot builder
+         * reads this instead of the user preference so the pipeline dialog shows what is
+         * actually happening at the hardware level, not just what the user asked for.
+         */
+        @Volatile
+        var isStreamActive: Boolean = false
     }
 }

@@ -337,7 +337,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // Detect the current output device and subscribe to future device changes so the
         // snapshot is refreshed whenever headphones or a BT device is connected / disconnected.
         currentOutputDevice = detectActiveOutputDevice()
-        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, Handler(Looper.getMainLooper()))
 
         // Respond to on-demand snapshot requests emitted by the UI (e.g., AudioPipelineDialog
@@ -1371,8 +1371,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     }
 
     /**
-     * Assembles a fully-populated [AudioPipelineSnapshot] from all available sources
-     * and pushes it to [AudioPipelineManager].
+     * Assembles a fully-populated [AudioPipelineSnapshot] from live system sources and
+     * pushes it to [AudioPipelineManager].
+     *
+     * Every field here is read directly from the player, the system's AudioManager, or the
+     * DSP processor's own state — never from user preferences — so the snapshot always
+     * reflects what is actually happening in the audio pipeline rather than what the user
+     * asked for.
      *
      * Must be called from the main thread because several [ExoPlayer] API calls
      * (e.g., [ExoPlayer.audioFormat]) are not thread-safe. All call sites guarantee
@@ -1383,7 +1388,6 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
         val inputFormat = currentAudioInputFormat
         val dspInputFormat = audioProcessorManager.nativeDspProcessor.currentInputFormat
-        val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
 
         val outputDevice = currentOutputDevice ?: detectActiveOutputDevice().also {
             currentOutputDevice = it
@@ -1412,7 +1416,24 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
         // Resampler state: keep source and DSP rates for later characterization
         val inputSampleRate = sampleRateHz
-        val dspSampleRateHz = dspInputFormat.sampleRate.takeIf { it > 0 } ?: sampleRateHz
+
+        // The DSP processor runs at the same sample rate the decoder hands it, which in normal
+        // operation equals the source track's rate. However, `dspInputFormat` can briefly hold
+        // a stale value from the previous track because ExoPlayer fires `onAudioInputFormatChanged`
+        // (which updates `sampleRateHz`) before it reconfigures the audio processor chain for
+        // the new track. Trusting `dspInputFormat.sampleRate` unconditionally during that window
+        // would produce phantom "SW + HW resampling" entries on every track transition.
+        //
+        // The safe rule: use `dspInputFormat.sampleRate` only when it agrees with the source
+        // rate, meaning the processor chain has been freshly configured for this track. If they
+        // disagree, the source rate IS the ground truth (ExoPlayer does not resample between
+        // its decoder and our processor chain under standard conditions).
+        val dspSampleRateHz = when {
+            sampleRateHz > 0 && dspInputFormat.sampleRate == sampleRateHz -> dspInputFormat.sampleRate
+            sampleRateHz > 0 -> sampleRateHz
+            dspInputFormat.sampleRate > 0 -> dspInputFormat.sampleRate
+            else -> 0
+        }
 
         // DSP state
         val dspFormatStr = pcmEncodingToFormatString(dspInputFormat.encoding)
@@ -1434,11 +1455,34 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // change — because every one of them routes through buildAndPushSnapshot().
         audioProcessorManager.applyOutputLatency(latencyEstimateMs)
 
+        // The PCM encoding that reaches the AudioSink is whatever the DSP processor is
+        // configured to receive — it is the last processor in the chain before the sink.
+        // We deliberately do NOT use `player.audioFormat?.pcmEncoding` here because that
+        // returns the encoding from the compressed container metadata (e.g., 24-bit FLAC),
+        // not the decoded PCM encoding. ExoPlayer's decoders truncate 24-bit PCM to 16-bit
+        // unless the hi-res float output path is active, so `dspInputFormat.encoding` is the
+        // only source that reflects the actual bit depth flowing through the pipeline right now.
+        val deviceBitDepthIn = pcmEncodingToBitDepth(
+                dspInputFormat.encoding.takeIf { it != Format.NO_VALUE } ?: C.ENCODING_PCM_16BIT
+        )
+
+        // The hardware HAL mixer rate is what AudioFlinger actually runs at, which may differ
+        // from the source or DSP rate. Reading it directly from AudioManager avoids the guess
+        // work of picking from a device's supported-rates list.
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val halNativeSampleRate = audioManager.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE)?.toIntOrNull() ?: 0
+
         // Hardware output device info
         val deviceName = outputDevice?.productName?.toString() ?: "Unknown"
-        val deviceBitDepthIn = if (hiresEnabled) 32 else 16
         val deviceBitDepthOut = getDeviceBitDepth(outputDevice, deviceBitDepthIn)
-        val deviceSampleRate = getDeviceSampleRate(outputDevice, sampleRateHz)
+
+        // Use the HAL's declared native rate as the true hardware sample rate, falling back
+        // to probing the device's supported rates list if the property isn't available.
+        val deviceSampleRate = if (halNativeSampleRate > 0) {
+            halNativeSampleRate
+        } else {
+            getDeviceSampleRate(outputDevice, sampleRateHz)
+        }
 
         // Full resampler characterisation — requires deviceSampleRate to detect HAL-level resampling.
         // SW resampling: ExoPlayer/Android pipeline changes rate before AudioTrack.
@@ -1474,8 +1518,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // If HW resampling happens, the chain ends at the hardware's forced rate. Otherwise, it ends at the DSP rate.
         val effectiveOutRate = if (hwResampling) deviceSampleRate else dspSampleRateHz
 
-        // Reflect the active output API in the snapshot so the pipeline dialog can show it.
-        val audioOutputMode = if (AudioPreferences.isAaudioEnabled()) "AAudio (Low Latency)" else "AudioTrack"
+        // Reflect the actual AAudio stream state rather than just the user preference.
+        // If AAudio was enabled but the stream failed to open, this will correctly show
+        // "AudioTrack" instead of falsely advertising a low-latency path that isn't running.
+        val audioOutputMode = if (AaudioAudioSink.isStreamActive) "AAudio (Low Latency)" else "AudioTrack"
 
         val snapshot = AudioPipelineSnapshot(
                 trackFormat = trackFormat,
@@ -1592,7 +1638,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
 
         val framesInBuffer = minBufBytes / bytesPerFrame.coerceAtLeast(1)
-        val bufferMs = if (sr > 0) framesInBuffer * 1000 / sr else 0
+        val bufferMs = framesInBuffer * 1000 / sr
         // Double-buffer (2×) is ExoPlayer's DefaultAudioSink default; add 15 ms for hardware latency.
         val latencyEstimate = bufferMs * 2 + 15
 
@@ -1805,9 +1851,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 "root" -> {
                     // Use the cached list that Room keeps fresh via a Flow — no blocking DB call
                     // needed here, and no risk of an outdated list after a library rescan.
-                    val songs = if (cachedSongList.isNotEmpty()) {
-                        cachedSongList
-                    } else {
+                    val songs = cachedSongList.ifEmpty {
                         // Cache hasn't populated yet on the very first call — fetch once as fallback.
                         audioRepository.getAllAudioList()
                     }
