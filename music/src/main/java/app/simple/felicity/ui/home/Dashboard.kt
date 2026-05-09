@@ -1,7 +1,6 @@
 package app.simple.felicity.ui.home
 
 import android.content.SharedPreferences
-import android.content.res.Configuration
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -170,7 +169,6 @@ class Dashboard : BaseHomeFragment() {
      * @param data The fresh list of [Audio] items emitted by [DashboardViewModel.recommended].
      */
     private fun setupRecommendedGrid(data: List<Audio>) {
-        val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         val spanConfig = dashboardViewModel.getSpanConfigForOrientation(resources.configuration.orientation)
 
         val layoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, spanConfig.spanCount)
@@ -485,19 +483,19 @@ class Dashboard : BaseHomeFragment() {
     private fun evaluateCarouselSections() {
         if (!UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_RECENTLY_PLAYED)) {
             binding.recentlyPlayedSection.gone()
-        } else if (recentlyPlayedAdapter?.itemCount ?: 0 > 0) {
+        } else if ((recentlyPlayedAdapter?.itemCount ?: 0) > 0) {
             binding.recentlyPlayedSection.visible(false)
         }
 
         if (!UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_RECENTLY_ADDED)) {
             binding.recentlyAddedSection.gone()
-        } else if (recentlyAddedAdapter?.itemCount ?: 0 > 0) {
+        } else if ((recentlyAddedAdapter?.itemCount ?: 0) > 0) {
             binding.recentlyAddedSection.visible(false)
         }
 
         if (!UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_FAVORITES)) {
             binding.favoritesSection.gone()
-        } else if (favoritesAdapter?.itemCount ?: 0 > 0) {
+        } else if ((favoritesAdapter?.itemCount ?: 0) > 0) {
             binding.favoritesSection.visible(false)
         }
     }

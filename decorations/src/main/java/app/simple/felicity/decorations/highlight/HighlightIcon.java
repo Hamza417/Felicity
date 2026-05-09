@@ -2,12 +2,7 @@ package app.simple.felicity.decorations.highlight;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.res.ColorStateList;
 import android.util.AttributeSet;
-
-import com.google.android.material.shape.CornerFamily;
-import com.google.android.material.shape.MaterialShapeDrawable;
-import com.google.android.material.shape.ShapeAppearanceModel;
 
 import java.util.Objects;
 
@@ -15,16 +10,25 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import app.simple.felicity.decorations.theme.ThemeIcon;
 import app.simple.felicity.preferences.AppearancePreferences;
-import app.simple.felicity.theme.managers.ThemeManager;
 import app.simple.felicity.theme.models.Theme;
 
+/**
+ * A simple icon view with a pill-shaped highlight background that always uses the
+ * theme's highlight color. It does not support click interactions or outline modes —
+ * it is purely decorative. The background updates automatically when the theme or
+ * corner radius preference changes.
+ *
+ * @author Hamza417
+ */
 public class HighlightIcon extends ThemeIcon {
     
+    private final HighlightViewDelegate delegate = new HighlightViewDelegate();
+
     public HighlightIcon(@NonNull Context context) {
         super(context);
         init();
     }
-    
+
     public HighlightIcon(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         init();
@@ -44,26 +48,9 @@ public class HighlightIcon extends ThemeIcon {
         setFocusable(false);
     }
     
-    // Background — pill shape tinted with the theme highlight color
-    
     private void applyChipBackground() {
-        float cornerRadius = getGlobalRoundedRadius();
-        MaterialShapeDrawable background = new MaterialShapeDrawable(
-                new ShapeAppearanceModel()
-                        .toBuilder()
-                        .setAllCorners(CornerFamily.ROUNDED, cornerRadius)
-                        .build());
-        background.setFillColor(
-                ColorStateList.valueOf(
-                        ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor()));
-        setBackground(background);
+        setBackground(delegate.buildBackground(delegate.getCornerRadius()));
     }
-    
-    private float getGlobalRoundedRadius() {
-        return AppearancePreferences.INSTANCE.getCornerRadius();
-    }
-    
-    // Theme / accent change callbacks
     
     @Override
     public void onThemeChanged(@NonNull Theme theme, boolean animate) {
