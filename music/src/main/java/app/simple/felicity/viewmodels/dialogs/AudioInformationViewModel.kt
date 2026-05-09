@@ -10,6 +10,7 @@ import app.simple.felicity.adapters.dialogs.AdapterAudioInformation.Data
 import app.simple.felicity.repository.constants.FileConstants.getAudioFormat
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.LrcRepository
+import app.simple.felicity.repository.utils.AudioUtils.getProperBitrate
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.utils.DateUtils.toDate
 import dagger.assisted.Assisted
@@ -52,7 +53,7 @@ class AudioInformationViewModel @AssistedInject constructor(
                 add(data(R.string.album_artist, audio.albumArtist ?: "–"))
                 add(data(R.string.duration, audio.duration.toDynamicTimeString()))
                 add(data(R.string.size, Formatter.formatShortFileSize(getApplication(), audio.size)))
-                add(data(R.string.bitrate, "${audio.bitrate} kbps"))
+                add(data(R.string.bitrate, audio.getProperBitrate()))
                 add(data(R.string.sample_rate, "${audio.samplingRate} Hz"))
                 add(data(R.string.bit_depth, if (audio.bitPerSample > 0) "${audio.bitPerSample}-bit" else "–"))
                 add(data(R.string.mime_type, audio.mimeType ?: "–"))

@@ -1,11 +1,13 @@
 package app.simple.felicity.repository.utils
 
 import android.content.Context
-import android.net.Uri
 import android.provider.DocumentsContract
+import androidx.core.net.toUri
 import app.simple.felicity.core.utils.StringUtils.ifNullOrBlank
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.models.Audio
+import java.util.Locale
+import kotlin.math.roundToInt
 
 /**
  * Utility functions for audio-related operations.
@@ -39,7 +41,7 @@ object AudioUtils {
     fun Audio.hasLrc(context: Context): Boolean {
         return try {
             val audioUri = uri ?: return false
-            val parsed = Uri.parse(audioUri)
+            val parsed = audioUri.toUri()
             if (!DocumentsContract.isDocumentUri(context, parsed)) return false
 
             val treeDocId = DocumentsContract.getTreeDocumentId(parsed) ?: return false
@@ -56,6 +58,26 @@ object AudioUtils {
             )?.use { cursor -> cursor.count > 0 } ?: false
         } catch (_: Exception) {
             false
+        }
+    }
+
+    fun Audio.getProperBitrate(): String {
+        // TagLib returns bits per second (bps), so divide by 1000 for kbps.
+        val kbps = bitrate / 1000.0
+
+        return when {
+            kbps >= 1000.0 -> {
+                // For high bitrates like CD quality (1411 kbps) or Hi-Res
+                String.format(Locale.US, "%.1f Mbps", kbps / 1000.0)
+            }
+            kbps > 0 -> {
+                // Standard formatting for most audio (e.g., 320 kbps, 900 kbps)
+                "${kbps.roundToInt()} kbps"
+            }
+            else -> {
+                // Fallback for edge cases where bitrate is missing or 0
+                "Unknown"
+            }
         }
     }
 }

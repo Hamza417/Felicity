@@ -93,7 +93,9 @@ class PreferenceSearch : PreferenceFragment() {
         all.addAll(createAccessibilityPanel())
         all.addAll(createAboutPanel())
         return all.filter {
-            it.type != PreferenceType.HEADER && it.type != PreferenceType.SUB_HEADER
+            it.type != PreferenceType.HEADER &&
+                    it.type != PreferenceType.SUB_HEADER &&
+                    it.type != PreferenceType.WARN
         }
     }
 

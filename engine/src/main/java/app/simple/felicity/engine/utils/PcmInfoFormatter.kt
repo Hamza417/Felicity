@@ -2,6 +2,7 @@ package app.simple.felicity.engine.utils
 
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.utils.AudioUtils.getProperBitrate
 
 /**
  * Utility object for formatting PCM audio stream properties of a playing track
@@ -42,10 +43,7 @@ object PcmInfoFormatter {
             }
 
             if (PlayerPreferences.getPcmInfoMode() == PlayerPreferences.PCM_INFO_MODE_BITRATE) {
-                if (audio.bitrate > 0) {
-                    if (isNotEmpty()) append(" ")
-                    append("${audio.bitrate} kbit/s")
-                }
+                append(audio.getProperBitrate())
 
                 val ext = audio.uri?.substringAfterLast('.', "")?.uppercase()
                 if (!ext.isNullOrEmpty()) {
