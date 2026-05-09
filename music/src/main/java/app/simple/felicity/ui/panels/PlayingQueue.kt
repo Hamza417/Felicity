@@ -147,7 +147,7 @@ class PlayingQueue : BasePanelFragment() {
 
     override fun onAudio(audio: Audio) {
         super.onAudio(audio)
-        updateCountDown(MediaPlaybackManager.getSeekPosition())
+        setDurations()
         adapterPlayingQueue?.updateCurrentPosition(MediaPlaybackManager.getCurrentSongPosition())
     }
 
