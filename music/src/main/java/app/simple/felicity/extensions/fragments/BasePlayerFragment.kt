@@ -30,6 +30,7 @@ import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.engine.utils.PcmInfoFormatter
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.preferences.AlbumArtPreferences
+import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
@@ -287,7 +288,12 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         pcmInfo.setOnClickListener {
-            showAudioPipeline(anchorView = pcmInfo)
+            // TODO - remove this when we have audio processor support on 32bit mode
+            if (AudioPreferences.isHiresOutputEnabled().not()) {
+                showAudioPipeline(anchorView = pcmInfo)
+            } else {
+                showWarning("All processors are disabled. PCM info is not available in 32-bit output mode.")
+            }
         }
 
         pcmInfo.setOnLongClickListener {
