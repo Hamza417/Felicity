@@ -147,7 +147,7 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.10.0'
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.10.0'
     implementation 'androidx.documentfile:documentfile:1.1.0'
-    implementation 'androidx.media:media:1.7.1'
+    implementation 'androidx.media:media:1.8.0'
     implementation 'androidx.security:security-crypto:1.1.0'
     implementation 'androidx.viewpager2:viewpager2:1.1.0'
     implementation 'androidx.asynclayoutinflater:asynclayoutinflater:1.1.0'
@@ -159,7 +159,7 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:3.0.0'
 
     // Kotlin
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0'
 
     // Google
     implementation 'com.google.android.flexbox:flexbox:3.0.0'
