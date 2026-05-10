@@ -55,7 +55,7 @@ android {
             enable !isBuildingBundle
             reset()
             include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
-            universalApk false
+            universalApk true
         }
     }
 
@@ -77,6 +77,11 @@ android {
             def releaseSigning = signingConfigs.findByName("release")
             if (releaseSigning != null && releaseSigning.storeFile != null) {
                 signingConfig releaseSigning
+            }
+
+            // 64bit only for playstore
+            ndk {
+                abiFilters "arm64-v8a", "x86_64" // 64bit only
             }
         }
     }
@@ -116,27 +121,6 @@ android {
     kotlin {
         compilerOptions {
             freeCompilerArgs.add("-XXLanguage:+PropertyParamAnnotationDefaultTargetMode")
-        }
-    }
-
-    androidComponents {
-        onVariants(selector().withFlavor("dist", "foss")) { variant ->
-            variant.outputs.forEach { output ->
-                def abi = output.filters.find { it.filterType == "ABI" }?.identifier
-
-                if (abi != null) {
-                    def abiCodes = [
-                            "armeabi-v7a": 1,
-                            "arm64-v8a"  : 2,
-                            "x86"        : 3,
-                            "x86_64"     : 4
-                    ]
-
-                    output.versionCode.set(
-                            variant.versionCode.get() * 10 + abiCodes[abi]
-                    )
-                }
-            }
         }
     }
 }
