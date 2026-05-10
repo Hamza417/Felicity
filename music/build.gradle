@@ -120,12 +120,9 @@ android {
     }
 
     androidComponents {
-        onVariants(selector().withFlavor("type", "foss")) { variant ->
+        onVariants(selector().withFlavor("dist", "foss")) { variant ->
             variant.outputs.forEach { output ->
-                println("Processing output for variant: ${variant.name}, output: ${output.outputFileName.get()}")
-                def abiFilter = output.filters.find { it.filterType.name() == "ABI" }
-                def abi = abiFilter?.identifier
-                println("Processing output for ABI: ${abi ?: "universal"}")
+                def abi = output.filters.find { it.filterType == "ABI" }?.identifier
 
                 if (abi != null) {
                     def abiCodes = [
@@ -135,12 +132,9 @@ android {
                             "x86_64"     : 4
                     ]
 
-                    if (abiCodes.containsKey(abi)) {
-                        println("Setting versionCode for ABI ${abi} to ${output.versionCode.get()} * 10 + ${abiCodes[abi]} = ${output.versionCode.get() * 10 + abiCodes[abi]}")
-                        output.versionCode.set(
-                                output.versionCode.get() * 10 + abiCodes[abi]
-                        )
-                    }
+                    output.versionCode.set(
+                            variant.versionCode.get() * 10 + abiCodes[abi]
+                    )
                 }
             }
         }
