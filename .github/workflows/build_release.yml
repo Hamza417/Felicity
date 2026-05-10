@@ -68,94 +68,25 @@ jobs:
                     SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
                     SIGNING_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
 
-            -   name: Move APKs to Temporary Directory
+            -   name: Rename and Move APK to Temporary Directory
                 run: |
-                    # Create a dedicated directory for the APKs
                     mkdir -p ${{ runner.temp }}/apks
-                    
-                    # Define the build flavour (adjust as needed)
-                    FLAVOUR="foss"
-                    
-                    # Find all APKs and rename them to felicity_flavour_arch.apk
-                    find music/ -name "*.apk" | while read -r apk; do
-                        filename=$(basename "$apk")
-                    
-                        if [[ "$filename" == *"arm64-v8a"* ]]; then
-                            new_filename="felicity_${FLAVOUR}_arm64-v8a.apk"
-                        elif [[ "$filename" == *"armeabi-v7a"* ]]; then
-                            new_filename="felicity_${FLAVOUR}_armeabi-v7a.apk"
-                        elif [[ "$filename" == *"x86_64"* ]]; then
-                            new_filename="felicity_${FLAVOUR}_x86_64.apk"
-                        elif [[ "$filename" == *"x86"* ]]; then
-                            new_filename="felicity_${FLAVOUR}_x86.apk"
-                        elif [[ "$filename" == *"universal"* ]]; then
-                            new_filename="felicity_${FLAVOUR}_universal.apk"
-                        else
-                            new_filename="felicity_${FLAVOUR}.apk"
-                        fi
-                    
-                        echo "Moving $filename to $new_filename"
-                        mv "$apk" "${{ runner.temp }}/apks/$new_filename"
-                    done
+                    APK=$(find music/ -name "*.apk" | head -n 1)
+                    mv "$APK" "${{ runner.temp }}/apks/felicity_foss.apk"
 
             -   name: Create GitHub Release
                 uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631
                 with:
-                    files: |
-                        ${{ runner.temp }}/apks/*.apk
-                    name: ${{ env.VERSION_NAME }} # Use the original case for the release name
-                    tag_name: ${{ env.TAG }} # Use lowercase for the tag
+                    files: ${{ runner.temp }}/apks/felicity_foss.apk
+                    name: ${{ env.VERSION_NAME }}
+                    tag_name: ${{ env.TAG }}
                     body_path: changelogs.md
                 env:
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            ### Separate Upload Steps for Each Architecture Artifact ###
-
-            -   name: Archive arm64-v8a APK
+            -   name: Archive APK
                 uses: actions/upload-artifact@v4
                 with:
-                    name: felicity-arm64-v8a
-                    path: ${{ runner.temp }}/apks/*_arm64-v8a.apk
-                    if-no-files-found: ignore
-
-            -   name: Archive armeabi-v7a APK
-                uses: actions/upload-artifact@v4
-                with:
-                    name: felicity-armeabi-v7a
-                    path: ${{ runner.temp }}/apks/*_armeabi-v7a.apk
-                    if-no-files-found: ignore
-
-            -   name: Archive x86_64 APK
-                uses: actions/upload-artifact@v4
-                with:
-                    name: felicity-x86_64
-                    path: ${{ runner.temp }}/apks/*_x86_64.apk
-                    if-no-files-found: ignore
-
-            -   name: Archive x86 APK
-                uses: actions/upload-artifact@v4
-                with:
-                    name: felicity-x86
-                    path: ${{ runner.temp }}/apks/*_x86.apk
-                    if-no-files-found: ignore
-
-            -   name: Archive Universal APK
-                uses: actions/upload-artifact@v4
-                with:
-                    name: felicity-universal
-                    path: ${{ runner.temp }}/apks/*_universal.apk
-                    if-no-files-found: ignore
-
-            # Catch-all in case ABI splits aren't enabled and a standard non-arch APK is generated
-            -   name: Archive Base APK
-                uses: actions/upload-artifact@v4
-                with:
-                    name: felicity-base
-                    path: |
-                        ${{ runner.temp }}/apks/*.apk
-                        !${{ runner.temp }}/apks/*_arm64-v8a.apk
-                        !${{ runner.temp }}/apks/*_armeabi-v7a.apk
-                        !${{ runner.temp }}/apks/*_x86.apk
-                        !${{ runner.temp }}/apks/*_x86_64.apk
-                        !${{ runner.temp }}/apks/*_universal.apk
-                    if-no-files-found: ignore
+                    name: felicity-foss
+                    path: ${{ runner.temp }}/apks/felicity_foss.apk
+                    if-no-files-found: error

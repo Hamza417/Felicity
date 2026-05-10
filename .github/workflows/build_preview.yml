@@ -56,68 +56,15 @@ jobs:
                     SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
                     SIGNING_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
 
-            -   name: Move APKs to Temporary Directory
+            -   name: Rename and Move APK to Temporary Directory
                 run: |
-                    # Create a dedicated directory for the APKs
                     mkdir -p ${{ runner.temp }}/apks
-                    
-                    # Find all APKs, preserve their architecture prefix/name, and append the version name
-                    find music/ -name "*.apk" | while read -r apk; do
-                        filename=$(basename "$apk")
-                        name_without_ext="${filename%.*}"
-                        new_filename="${name_without_ext}-${{ env.VERSION_NAME }}.apk"
-                        
-                        echo "Moving $filename to $new_filename"
-                        mv "$apk" "${{ runner.temp }}/apks/$new_filename"
-                    done
+                    APK=$(find music/ -name "*.apk" | head -n 1)
+                    mv "$APK" "${{ runner.temp }}/apks/felicity-foss-${{ env.VERSION_NAME }}.apk"
 
-            ### Separate Upload Steps for Each Architecture ###
-
-            -   name: Archive arm64-v8a APK
+            -   name: Archive APK
                 uses: actions/upload-artifact@v4
                 with:
-                    name: ${{ env.VERSION_NAME }}-arm64-v8a
-                    path: ${{ runner.temp }}/apks/*arm64-v8a*.apk
-                    if-no-files-found: ignore
-
-            -   name: Archive armeabi-v7a APK
-                uses: actions/upload-artifact@v4
-                with:
-                    name: ${{ env.VERSION_NAME }}-armeabi-v7a
-                    path: ${{ runner.temp }}/apks/*armeabi-v7a*.apk
-                    if-no-files-found: ignore
-
-            -   name: Archive x86_64 APK
-                uses: actions/upload-artifact@v4
-                with:
-                    name: ${{ env.VERSION_NAME }}-x86_64
-                    path: ${{ runner.temp }}/apks/*x86_64*.apk
-                    if-no-files-found: ignore
-
-            -   name: Archive x86 APK
-                uses: actions/upload-artifact@v4
-                with:
-                    name: ${{ env.VERSION_NAME }}-x86
-                    path: ${{ runner.temp }}/apks/*x86*.apk
-                    if-no-files-found: ignore
-
-            -   name: Archive Universal APK
-                uses: actions/upload-artifact@v4
-                with:
-                    name: ${{ env.VERSION_NAME }}-universal
-                    path: ${{ runner.temp }}/apks/*universal*.apk
-                    if-no-files-found: ignore
-
-            # Catch-all in case ABI splits aren't enabled and a standard non-arch APK is generated
-            -   name: Archive Base APK
-                uses: actions/upload-artifact@v4
-                with:
-                    name: ${{ env.VERSION_NAME }}-Base
-                    path: |
-                        ${{ runner.temp }}/apks/*.apk
-                        !${{ runner.temp }}/apks/*arm64-v8a*.apk
-                        !${{ runner.temp }}/apks/*armeabi-v7a*.apk
-                        !${{ runner.temp }}/apks/*x86*.apk
-                        !${{ runner.temp }}/apks/*x86_64*.apk
-                        !${{ runner.temp }}/apks/*universal*.apk
-                    if-no-files-found: ignore
+                    name: ${{ env.VERSION_NAME }}
+                    path: ${{ runner.temp }}/apks/felicity-foss-${{ env.VERSION_NAME }}.apk
+                    if-no-files-found: error

@@ -43,22 +43,6 @@ android {
         }
     }
 
-    // Detect if the current command is building an App Bundle
-    def isBuildingBundle = gradle.startParameter.taskNames.any {
-        it.toLowerCase().contains("bundle")
-    }
-
-    // Configure splits globally, but dynamically disable them for bundles
-    splits {
-        abi {
-            // Enable splits ONLY if we are building APKs, not AABs
-            enable !isBuildingBundle
-            reset()
-            include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
-            universalApk true
-        }
-    }
-
     flavorDimensions.add("type")
 
     productFlavors {
@@ -68,6 +52,10 @@ android {
             def releaseSigning = signingConfigs.findByName("release")
             if (releaseSigning != null && releaseSigning.storeFile != null) {
                 signingConfig releaseSigning
+            }
+
+            ndk {
+                abiFilters "arm64-v8a", "x86_64" // 64bit only
             }
         }
         play { // Play Store build
@@ -79,7 +67,6 @@ android {
                 signingConfig releaseSigning
             }
 
-            // 64bit only for playstore
             ndk {
                 abiFilters "arm64-v8a", "x86_64" // 64bit only
             }
