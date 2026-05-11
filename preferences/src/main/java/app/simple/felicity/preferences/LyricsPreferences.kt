@@ -44,6 +44,6 @@ object LyricsPreferences {
 
     fun isAutoDownloadLyrics(): Boolean {
         return SharedPreferences.getSharedPreferences()
-            .getBoolean(AUTO_DOWNLOAD_LYRICS, true)
+            .getBoolean(AUTO_DOWNLOAD_LYRICS, false)
     }
 }
