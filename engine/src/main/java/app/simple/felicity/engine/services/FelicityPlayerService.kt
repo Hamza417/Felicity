@@ -9,6 +9,7 @@ import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
+import android.media.AudioMixerAttributes
 import android.media.AudioTrack
 import android.os.Build
 import android.os.Bundle
@@ -707,6 +708,91 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         )
         player.addListener(playerListener)
         player.addAnalyticsListener(analyticsListener)
+
+    }
+
+    /**
+     * Tells AudioFlinger to use bit-perfect mixing for the currently connected USB DAC at
+     * the given sample rate. This is the key call that makes the FiiO KA1 (or any USB DAC)
+     * actually switch its indicator LED — AudioFlinger re-negotiates the USB audio endpoint
+     * at exactly [sampleRate] Hz instead of silently resampling to whatever rate the HAL
+     * was already running at.
+     *
+     * The method is a no-op when:
+     * - The Android version is below 14 (API 34), because [AudioMixerAttributes] doesn't exist.
+     * - No USB output device is active (wired headphones, Bluetooth, or built-in speaker don't
+     *   need explicit bit-perfect negotiation the same way).
+     * - [sampleRate] is zero or negative (format not yet known).
+     *
+     * Any previously registered attributes for the same device are automatically replaced
+     * because [AudioManager.setPreferredMixerAttributes] is idempotent per device.
+     */
+    @Suppress("NewApi")
+    private fun applyBitPerfectMixerAttributes(sampleRate: Int) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+        if (sampleRate <= 0) return
+
+        val usbDevice = currentOutputDevice ?: return
+        if (usbDevice.type != AudioDeviceInfo.TYPE_USB_DEVICE &&
+                usbDevice.type != AudioDeviceInfo.TYPE_USB_HEADSET) return
+
+        try {
+            val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+
+            /**
+             * AudioManager.setPreferredMixerAttributes requires three things:
+             * - The AudioAttributes that identify this playback stream (matches what ExoPlayer uses).
+             * - The specific output device to configure.
+             * - The AudioMixerAttributes describing the desired mixer behavior.
+             *
+             * Using MIXER_BEHAVIOR_BIT_PERFECT tells AudioFlinger to serve this stream without
+             * resampling — the USB audio endpoint is re-negotiated to the exact sample rate we
+             * provide, which is what flips the FiiO KA1's LED to the right color.
+             */
+            val streamAttributes = android.media.AudioAttributes.Builder()
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                .build()
+
+            val format = AudioFormat.Builder()
+                .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+                .setSampleRate(sampleRate)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
+                .build()
+
+            val mixerAttrs = AudioMixerAttributes.Builder(format)
+                .setMixerBehavior(AudioMixerAttributes.MIXER_BEHAVIOR_BIT_PERFECT)
+                .build()
+
+            audioManager.setPreferredMixerAttributes(streamAttributes, usbDevice, mixerAttrs)
+            Log.i(TAG, "Bit-perfect mixer set: ${sampleRate}Hz on '${usbDevice.productName}'")
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not set bit-perfect mixer attributes: ${e.message}")
+        }
+    }
+
+    /**
+     * Removes the bit-perfect mixer attributes that were set for [device] so AudioFlinger
+     * goes back to its normal mixing policy. Called when the device is disconnected or when
+     * the service shuts down, to avoid leaving stale routing hints in the system.
+     */
+    @Suppress("NewApi")
+    private fun clearBitPerfectMixerAttributes(device: AudioDeviceInfo?) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+        device ?: return
+        try {
+            val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+
+            val streamAttributes = android.media.AudioAttributes.Builder()
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                .build()
+
+            audioManager.clearPreferredMixerAttributes(streamAttributes, device)
+            Log.i(TAG, "Bit-perfect mixer attributes cleared for '${device.productName}'")
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not clear bit-perfect mixer attributes: ${e.message}")
+        }
     }
 
     /**
@@ -1115,6 +1201,16 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         ) {
             currentAudioInputFormat = format
             Log.d(TAG, "Audio input format changed: ${format.sampleMimeType} @ ${format.sampleRate}Hz")
+
+            /**
+             * This is the right moment to re-negotiate the USB DAC's sample rate. The format
+             * carries the actual source sample rate for the incoming track, so we pass it
+             * straight to [applyBitPerfectMixerAttributes]. On Android 14+ this triggers
+             * AudioFlinger to reconfigure the USB audio endpoint at the new rate — which is
+             * exactly what tells the FiiO KA1 (and other USB DACs) to switch its LED color.
+             */
+            applyBitPerfectMixerAttributes(format.sampleRate)
+
             buildAndPushSnapshot()
         }
     }
@@ -1129,10 +1225,31 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         override fun onAudioDevicesAdded(addedDevices: Array<AudioDeviceInfo>) {
             currentOutputDevice = detectActiveOutputDevice()
             Log.d(TAG, "Audio device added: ${addedDevices.firstOrNull()?.productName}")
+
+            /**
+             * Re-apply bit-perfect attributes whenever a device is added — specifically so
+             * that plugging in a USB DAC mid-session immediately enables bit-perfect routing
+             * at whatever rate the current track is using.
+             */
+            val sampleRate = currentAudioInputFormat?.sampleRate ?: 0
+            applyBitPerfectMixerAttributes(sampleRate)
+
             buildAndPushSnapshot()
         }
 
         override fun onAudioDevicesRemoved(removedDevices: Array<AudioDeviceInfo>) {
+            /**
+             * Clear the bit-perfect routing hint for any removed USB device before we update
+             * [currentOutputDevice]. If we updated first, we'd lose the reference to the device
+             * that was just unplugged and couldn't pass it to [clearBitPerfectMixerAttributes].
+             */
+            removedDevices.forEach { removedDevice ->
+                if (removedDevice.type == AudioDeviceInfo.TYPE_USB_DEVICE ||
+                        removedDevice.type == AudioDeviceInfo.TYPE_USB_HEADSET) {
+                    clearBitPerfectMixerAttributes(removedDevice)
+                }
+            }
+
             currentOutputDevice = detectActiveOutputDevice()
             Log.d(TAG, "Audio device removed: ${removedDevices.firstOrNull()?.productName}")
             buildAndPushSnapshot()
@@ -1282,6 +1399,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // Unregister the audio-device-change callback so no stale reference is held after teardown.
         val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
+
+        // Remove any bit-perfect routing hint we set for the USB DAC so AudioFlinger
+        // goes back to its default mixing policy after the service is gone.
+        clearBitPerfectMixerAttributes(currentOutputDevice)
 
         // Clear the snapshot so observers know the pipeline is no longer active.
         AudioPipelineManager.updateSnapshot(null)
@@ -2001,3 +2122,5 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         const val COMMAND_TOGGLE_FAVORITE = "app.simple.felicity.TOGGLE_FAVORITE"
     }
 }
+
+
