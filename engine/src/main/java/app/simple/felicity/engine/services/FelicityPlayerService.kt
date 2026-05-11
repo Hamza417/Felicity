@@ -734,7 +734,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
         val usbDevice = currentOutputDevice ?: return
         if (usbDevice.type != AudioDeviceInfo.TYPE_USB_DEVICE &&
-                usbDevice.type != AudioDeviceInfo.TYPE_USB_HEADSET) return
+                usbDevice.type != AudioDeviceInfo.TYPE_USB_HEADSET) {
+
+            Log.d(TAG, "Active output device '${usbDevice.productName}' is not USB, skipping bit-perfect mixer configuration.")
+            return
+        }
 
         try {
             val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
