@@ -516,31 +516,31 @@ class AudioRepository @Inject constructor(
             val artistToSongsMap = mutableMapOf<String, MutableList<Audio>>()
 
             albumAudios.forEach { audio ->
-                val artistName = audio.artist ?: return@forEach
+                val artistName = audio.albumArtist ?: return@forEach
 
                 // Check if artist is in whitelist (shouldn't be split)
                 if (artistWhitelist.any { it.equals(artistName, ignoreCase = true) }) {
                     artistToSongsMap.getOrPut(artistName) { mutableListOf() }.add(audio)
                 } else {
-                    // Split artist names using the regex
+                    // Split album artist names using the regex
                     val splitArtists = artistName.split(Regex(ARTIST_SEPARATOR_REGEX))
                         .map { it.trim() }
                         .filter { it.isNotEmpty() }
 
-                    // Add the song to each split artist
+                    // Add the song to each split album artist
                     splitArtists.forEach { splitArtist ->
                         artistToSongsMap.getOrPut(splitArtist) { mutableListOf() }.add(audio)
                     }
                 }
             }
 
-            // Now match split artists to all their songs in the entire collection
+            // Now match split album artists to all their songs in the entire collection
             val artistsMap = artistToSongsMap.keys.map { artistName ->
-                // Find all songs where this artist is involved (even if not solo).
+                // Find all songs where this album artist is credited (even if not solo).
                 // Single-word names get a whole-word check so "LISA" won't accidentally
                 // match something like "CARALISA".
                 val artistAllSongs = audioList.filter { audio ->
-                    artistFieldMatchesName(audio.artist, artistName)
+                    artistFieldMatchesName(audio.albumArtist, artistName)
                 }
 
                 // Count unique albums by this artist
