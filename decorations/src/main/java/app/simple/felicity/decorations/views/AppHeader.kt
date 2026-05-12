@@ -62,6 +62,15 @@ class AppHeader @JvmOverloads constructor(
         updateSpacingDecoration()
     }
 
+    /**
+     * Watches the RecyclerView's own layout passes. Every time the list lays itself out —
+     * whether due to a data change, a filter result update, a window resize, or anything
+     * else — we check whether the content actually fills the screen. If the list is short
+     * enough that it can't scroll in either direction, the header can never be brought back
+     * by scrolling, so we force it visible right away.
+     */
+    private var recyclerViewLayoutListener: View.OnLayoutChangeListener? = null
+
     private val scrollListener = object : RecyclerView.OnScrollListener() {
         override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
             if (dy == 0) return
@@ -125,6 +134,15 @@ class AppHeader @JvmOverloads constructor(
         rv.addOnScrollListener(scrollListener)
         isScrollListenerAttached = true
 
+        val rvLayoutListener = OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            if (!rv.canScrollVertically(-1) && !rv.canScrollVertically(1) && isHidden) {
+                post { resetScrollingState() }
+            }
+        }
+        recyclerViewLayoutListener?.let { rv.removeOnLayoutChangeListener(it) }
+        recyclerViewLayoutListener = rvLayoutListener
+        rv.addOnLayoutChangeListener(rvLayoutListener)
+
         // Install our spacing decoration
         val deco = HeaderSpacingItemDecoration(height)
         spacingDecoration = deco
@@ -142,6 +160,8 @@ class AppHeader @JvmOverloads constructor(
         val rv = recyclerView ?: return
         rv.removeOnScrollListener(scrollListener)
         isScrollListenerAttached = false
+        recyclerViewLayoutListener?.let { rv.removeOnLayoutChangeListener(it) }
+        recyclerViewLayoutListener = null
         spacingDecoration?.detach()
         spacingDecoration = null
         recyclerView = null
