@@ -737,7 +737,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      * because [AudioManager.setPreferredMixerAttributes] is idempotent per device.
      */
     @Suppress("NewApi")
-    private fun applyBitPerfectMixerAttributes(sampleRate: Int) {
+    private fun applyBitPerfectMixerAttributes(sampleRate: Int, pcmEncoding: Int) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
         if (sampleRate <= 0) return
 
@@ -761,14 +761,26 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
              * Using MIXER_BEHAVIOR_BIT_PERFECT tells AudioFlinger to serve this stream without
              * resampling — the USB audio endpoint is re-negotiated to the exact sample rate we
              * provide, which is what flips the FiiO KA1's LED to the right color.
+             *
+             * The encoding in the AudioFormat MUST exactly match what the AudioTrack is opened
+             * with — AudioFlinger rejects a bit-perfect request if the format doesn't agree.
+             * We map the ExoPlayer C.ENCODING_* constant to the corresponding AudioFormat
+             * constant here rather than hardcoding ENCODING_PCM_FLOAT, which would break
+             * 16-bit and 24-bit tracks.
              */
+            val afEncoding = when (pcmEncoding) {
+                C.ENCODING_PCM_FLOAT, C.ENCODING_PCM_32BIT -> AudioFormat.ENCODING_PCM_FLOAT
+                C.ENCODING_PCM_24BIT -> AudioFormat.ENCODING_PCM_24BIT_PACKED
+                else -> AudioFormat.ENCODING_PCM_16BIT
+            }
+
             val streamAttributes = android.media.AudioAttributes.Builder()
                 .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
                 .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
                 .build()
 
             val format = AudioFormat.Builder()
-                .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+                .setEncoding(afEncoding)
                 .setSampleRate(sampleRate)
                 .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
                 .build()
@@ -778,7 +790,12 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 .build()
 
             audioManager.setPreferredMixerAttributes(streamAttributes, usbDevice, mixerAttrs)
-            Log.i(TAG, "Bit-perfect mixer set: ${sampleRate}Hz on '${usbDevice.productName}'")
+            val encodingLabel = when (afEncoding) {
+                AudioFormat.ENCODING_PCM_FLOAT -> "Float32"
+                AudioFormat.ENCODING_PCM_24BIT_PACKED -> "PCM24"
+                else -> "PCM16"
+            }
+            Log.i(TAG, "Bit-perfect mixer set: ${sampleRate}Hz / $encodingLabel on '${usbDevice.productName}'")
         } catch (e: Exception) {
             Log.w(TAG, "Could not set bit-perfect mixer attributes: ${e.message}")
         }
@@ -1271,7 +1288,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
              * AudioFlinger to reconfigure the USB audio endpoint at the new rate — which is
              * exactly what tells the FiiO KA1 (and other USB DACs) to switch its LED color.
              */
-            applyBitPerfectMixerAttributes(format.sampleRate)
+            applyBitPerfectMixerAttributes(format.sampleRate, format.pcmEncoding)
 
             buildAndPushSnapshot()
         }
@@ -1294,7 +1311,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
              * at whatever rate the current track is using.
              */
             val sampleRate = currentAudioInputFormat?.sampleRate ?: 0
-            applyBitPerfectMixerAttributes(sampleRate)
+            val pcmEncoding = currentAudioInputFormat?.pcmEncoding ?: C.ENCODING_PCM_16BIT
+            applyBitPerfectMixerAttributes(sampleRate, pcmEncoding)
 
             buildAndPushSnapshot()
         }
@@ -1629,8 +1647,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
         val stereoExpandPercent = (EqualizerPreferences.getStereoWidth() * 100).roundToInt()
 
-        // Buffer and latency estimation from actual AudioTrack minimum buffer size
-        val (buffersStr, latencyEstimateMs) = computeBufferInfo(dspInputFormat)
+        // Buffer and latency estimation using the effective sample rate (the one we already
+        // resolved above). This matters during track transitions: `dspInputFormat` briefly holds
+        // the previous track's rate (44100Hz) while ExoPlayer fires onAudioInputFormatChanged
+        // before the audio processor chain reconfigures. Using `dspSampleRateHz` here ensures
+        // the latency estimate is computed at the actual new rate (e.g. 96000Hz) rather than
+        // the stale 44100Hz, so the native DSP delay ring buffer is seeded correctly.
+        val (buffersStr, latencyEstimateMs) = computeBufferInfo(dspInputFormat, dspSampleRateHz)
 
         // Forward the current pipeline latency to the native DSP engine so the FFT
         // visualizer pre-delays its input by exactly this amount. This call covers all
@@ -1800,11 +1823,21 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      * DSP sample rate, then estimates end-to-end latency as twice the buffer duration
      * plus a fixed 15 ms hardware/driver overhead.
      *
-     * @param dspInputFormat The [AudioProcessor.AudioFormat] currently active in [NativeDspAudioProcessor].
+     * [effectiveSampleRate] takes priority over [dspInputFormat].sampleRate when provided.
+     * This matters during track transitions when [dspInputFormat] may still hold the previous
+     * track's rate while the resolved "effective" rate already reflects the new track.
+     *
+     * @param dspInputFormat    The [AudioProcessor.AudioFormat] currently active in [NativeDspAudioProcessor].
+     * @param effectiveSampleRate Override sample rate in Hz; 0 means "use [dspInputFormat].sampleRate".
      * @return A pair of (human-readable buffer string, estimated latency in ms).
      */
-    private fun computeBufferInfo(dspInputFormat: AudioProcessor.AudioFormat): Pair<String, Int> {
-        val sr = dspInputFormat.sampleRate.takeIf { it > 0 } ?: 44100
+    private fun computeBufferInfo(
+            dspInputFormat: AudioProcessor.AudioFormat,
+            effectiveSampleRate: Int = 0,
+    ): Pair<String, Int> {
+        val sr = effectiveSampleRate.takeIf { it > 0 }
+            ?: dspInputFormat.sampleRate.takeIf { it > 0 }
+            ?: 44100
         val ch = dspInputFormat.channelCount.takeIf { it > 0 } ?: 2
 
         val channelConfig = if (ch == 1) AudioFormat.CHANNEL_OUT_MONO else AudioFormat.CHANNEL_OUT_STEREO
