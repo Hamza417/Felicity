@@ -17,16 +17,12 @@ import app.simple.felicity.manager.SharedPreferences
  */
 object AlbumArtistPreferences {
 
-    /** The key for storing which field we sort album artists by (name, albums, songs). */
     const val ALBUM_ARTIST_SORT = "album_artist_sort"
 
-    /** The key for storing ascending vs descending order for the sort. */
     const val SORTING_STYLE = "album_artist_sorting_style"
 
-    /** Grid size key for portrait orientation. */
     const val GRID_SIZE_PORTRAIT = "album_artist_grid_size_portrait1"
 
-    /** Grid size key for landscape orientation. */
     const val GRID_SIZE_LANDSCAPE = "album_artist_grid_size_landscape1"
 
     /**

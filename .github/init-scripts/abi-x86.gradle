@@ -1,0 +1,19 @@
+/**
+ * Restricts the foss flavor to x86 only.
+ * The main build.gradle intentionally excludes 32-bit archs, so this init
+ * script clears those filters and adds the 32-bit x86 ABI instead.
+ */
+allprojects {
+    afterEvaluate { project ->
+        def androidExtension = project.extensions.findByName('android')
+        if (androidExtension != null) {
+            androidExtension.productFlavors.each { flavor ->
+                if (flavor.name == 'foss') {
+                    flavor.ndk.abiFilters.clear()
+                    flavor.ndk.abiFilters.add('x86')
+                }
+            }
+        }
+    }
+}
+

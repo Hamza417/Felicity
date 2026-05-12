@@ -50,13 +50,15 @@ object SharedPreferences {
             }
         }.onFailure {
             /**
-             * Retry with a fail safe for recursion
+             * Retry with a fail-safe for recursion
              */
             if (isInitialized.not()) {
+                // Set the flag to true to prevent infinite recursion
+                isInitialized = true
+
                 // Delete the encrypted shared preferences if it fails to initialize
                 File(getEncryptedSharedPreferencesPath(context)).delete()
                 initEncrypted(context)
-                isInitialized = true
             }
         }
     }

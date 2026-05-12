@@ -49,7 +49,7 @@ interface SongStatDao {
     fun getMostPlayedAudio(): Flow<List<Audio>>
 
     /**
-     * Returns up to 50 available songs with their stat data ordered by last-played
+     * Returns available songs with their stat data ordered by last-played
      * timestamp descending. All stat columns — including {@code skipCount} and
      * {@code replayCount} — are pulled in from the join so callers get the full picture.
      */
@@ -58,38 +58,38 @@ interface SongStatDao {
         INNER JOIN song_stats ss ON a.hash = ss.audioHash
         WHERE a.is_available = 1 AND ss.lastPlayed > 0
         ORDER BY ss.lastPlayed DESC
-        LIMIT 50
     """)
     fun getRecentlyPlayedWithStat(): Flow<List<AudioWithStat>>
 
     /**
-     * Returns up to 50 available songs with their stat data ordered by play count
+     * Returns available songs with their stat data ordered by play count
      * descending. All stat columns — including {@code skipCount} and {@code replayCount}
      * — are pulled in from the join so callers get the full picture.
+     *
+     * Only returns songs played atlease twice to ensure the list is meaningful and
+     * not cluttered with one-off plays.
      */
     @Query("""
         SELECT a.*, ss.lastPlayed, ss.playCount, ss.skipCount, ss.replayCount FROM audio a
         INNER JOIN song_stats ss ON a.hash = ss.audioHash
-        WHERE a.is_available = 1 AND ss.playCount > 0
+        WHERE a.is_available = 1 AND ss.playCount > 1
         ORDER BY ss.playCount DESC
-        LIMIT 50
     """)
     fun getMostPlayedWithStat(): Flow<List<AudioWithStat>>
 
     /**
-     * Returns up to 50 available songs ordered by their total skip count, highest first.
+     * Returns available songs ordered by their total skip count, highest first.
      */
     @Query("""
         SELECT a.* FROM audio a
         INNER JOIN song_stats ss ON a.hash = ss.audioHash
         WHERE a.is_available = 1 AND ss.skipCount > 0
         ORDER BY ss.skipCount DESC
-        LIMIT 50
     """)
     fun getMostSkippedAudio(): Flow<List<Audio>>
 
     /**
-     * Returns up to 50 available songs with their stat data ordered by skip count
+     * Returns available songs with their stat data ordered by skip count
      * descending, so the UI can show how many times each song was skipped.
      */
     @Query("""
@@ -97,7 +97,6 @@ interface SongStatDao {
         INNER JOIN song_stats ss ON a.hash = ss.audioHash
         WHERE a.is_available = 1 AND ss.skipCount > 0
         ORDER BY ss.skipCount DESC
-        LIMIT 50
     """)
     fun getMostSkippedWithStat(): Flow<List<AudioWithStat>>
 
