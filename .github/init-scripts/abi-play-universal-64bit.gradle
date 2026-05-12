@@ -1,0 +1,23 @@
+/**
+ * Restricts the play flavor to 64-bit architectures only (arm64-v8a and x86_64).
+ * This is used when building the Play Store AAB so it targets modern 64-bit devices
+ * without bundling 32-bit native libraries.
+ *
+ * It runs after the project is fully evaluated so it overrides whatever abiFilters
+ * were set in build.gradle without touching that file.
+ */
+allprojects {
+    afterEvaluate { project ->
+        def androidExtension = project.extensions.findByName('android')
+        if (androidExtension != null) {
+            androidExtension.productFlavors.each { flavor ->
+                if (flavor.name == 'play') {
+                    flavor.ndk.abiFilters.clear()
+                    flavor.ndk.abiFilters.add('arm64-v8a')
+                    flavor.ndk.abiFilters.add('x86_64')
+                }
+            }
+        }
+    }
+}
+

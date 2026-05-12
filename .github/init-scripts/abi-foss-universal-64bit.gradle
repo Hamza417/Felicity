@@ -1,0 +1,23 @@
+/**
+ * Restricts the foss flavor to 64-bit architectures only (arm64-v8a and x86_64).
+ * This gives you a single APK that works on both modern ARM and Intel 64-bit devices,
+ * without including 32-bit native libraries that would bloat the file size.
+ *
+ * It runs after the project is fully evaluated so it overrides whatever abiFilters
+ * were set in build.gradle without touching that file.
+ */
+allprojects {
+    afterEvaluate { project ->
+        def androidExtension = project.extensions.findByName('android')
+        if (androidExtension != null) {
+            androidExtension.productFlavors.each { flavor ->
+                if (flavor.name == 'foss') {
+                    flavor.ndk.abiFilters.clear()
+                    flavor.ndk.abiFilters.add('arm64-v8a')
+                    flavor.ndk.abiFilters.add('x86_64')
+                }
+            }
+        }
+    }
+}
+
