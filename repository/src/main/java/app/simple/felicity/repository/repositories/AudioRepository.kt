@@ -1068,8 +1068,41 @@ class AudioRepository @Inject constructor(
     }
 
     companion object {
-        private const val ARTIST_SEPARATOR_REGEX = "\\s*[;,&+/\\\\|]\\s*|\\s+and\\s+|\\s+with\\s+|\\s+w/\\s+|\\s+vs\\.?\\s+|\\s+x\\s+" +
+        /**
+         * A comprehensive regular expression used to tokenize and split raw artist metadata strings
+         * (e.g., from ID3 tags) into individual artist entities.
+         *
+         * This regex intercepts a wide variety of standard and non-standard delimiters commonly found
+         * in messy audio metadata, capturing both punctuation and common collaborative text markers.
+         *
+         * **Whitespace Handling:**
+         * The regex handles surrounding whitespace dynamically to ensure clean splits without leaving
+         * leading or trailing spaces. Punctuation-based delimiters tolerate zero or more spaces (`\s*`),
+         * while text/character-based delimiters require at least one space (`\s+`) to prevent
+         * accidentally splitting mid-word (e.g., preventing 'x' from splitting "Lil Nas X").
+         *
+         * **Matched Delimiters:**
+         *
+         * *Punctuation Separators (Optional Surrounding Whitespace):*
+         * * `[;,+/\\|]` : Matches semicolon, comma, plus, forward slash, backslash, or pipe.
+         *
+         * *Text & Symbol Separators (Mandatory Surrounding Whitespace):*
+         * * `&` : Ampersand (requires spaces to protect edge cases like "A&M").
+         * * `and`, `with`, `w/` : Standard conjunctions.
+         * * `vs`, `vs.` : Versus indicators (period is optional).
+         * * `x` : Collaboration indicator (e.g., "Artist A x Artist B").
+         * * `feat`, `feat.`, `ft`, `ft.`, `featuring` : Guest appearance indicators (periods optional).
+         * * `pres`, `pres.` : Presenter indicators (period is optional).
+         * * `starring` : Theatrical or guest indicators.
+         *
+         * **Warning:**
+         * This is an aggressive split. To protect officially recognized band names that legitimately
+         * contain these characters (such as "AC/DC", "Earth, Wind & Fire", or "Florence + The Machine"),
+         * the raw string should be evaluated against an artist whitelist prior to executing this regex.
+         */
+        private const val ARTIST_SEPARATOR_REGEX = "\\s*[;,+/\\\\|]\\s*|\\s+&\\s+|\\s+and\\s+|\\s+with\\s+|\\s+w/\\s+|\\s+vs\\.?\\s+|\\s+x\\s+" +
                 "|\\s+feat\\.?\\s+|\\s+ft\\.?\\s+|\\s+featuring\\s+|\\s+pres\\.?\\s+|\\s+starring\\s+"
+
         private const val ARTIST_WHITELIST = "/artist_whitelist.txt"
 
         /**
