@@ -34,7 +34,6 @@ class AudioRepository @Inject constructor(
         AudioDatabase.getInstance(context)
     }
 
-
     /**
      * Get all audio files that have been marked as favorite, ordered by title.
      * Reads directly from the audio table's is_favorite column.
@@ -409,7 +408,6 @@ class AudioRepository @Inject constructor(
             }.sortedBy { it.name.lowercase() }
         } ?: throw IllegalStateException("AudioDao is null")
     }
-
 
     /**
      * Get the contents of a folder at the given document-ID path: immediate sub-folders
@@ -1017,7 +1015,7 @@ class AudioRepository @Inject constructor(
     }
 
     companion object {
-        private const val ARTIST_REGEX = "\\s*[,&+/\\\\|]\\s*|\\s+and\\s+|\\s+with\\s+|\\s+w/\\s+|\\s+vs\\.?\\s+|\\s+x\\s+" +
+        private const val ARTIST_REGEX = "\\s*[;,&+/\\\\|]\\s*|\\s+and\\s+|\\s+with\\s+|\\s+w/\\s+|\\s+vs\\.?\\s+|\\s+x\\s+" +
                 "|\\s+feat\\.?\\s+|\\s+ft\\.?\\s+|\\s+featuring\\s+|\\s+pres\\.?\\s+|\\s+starring\\s+"
         private const val ARTIST_WHITELIST = "/artist_whitelist.txt"
     }
