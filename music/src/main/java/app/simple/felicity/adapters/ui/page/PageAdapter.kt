@@ -115,16 +115,16 @@ class PageAdapter(
             val oldItem = oldList[oldItemPosition]
             val newItem = newList[newItemPosition]
 
-            return when {
-                oldItem is PageItem.Header && newItem is PageItem.Header ->
+            return when (oldItem) {
+                is PageItem.Header if newItem is PageItem.Header ->
                     oldItem == newItem
-                oldItem is PageItem.SongItem && newItem is PageItem.SongItem ->
+                is PageItem.SongItem if newItem is PageItem.SongItem ->
                     oldItem.audio == newItem.audio && oldItem.position == newItem.position
-                oldItem is PageItem.AlbumsSection && newItem is PageItem.AlbumsSection ->
+                is PageItem.AlbumsSection if newItem is PageItem.AlbumsSection ->
                     oldItem.albums == newItem.albums
-                oldItem is PageItem.ArtistsSection && newItem is PageItem.ArtistsSection ->
+                is PageItem.ArtistsSection if newItem is PageItem.ArtistsSection ->
                     oldItem.artists == newItem.artists
-                oldItem is PageItem.GenresSection && newItem is PageItem.GenresSection ->
+                is PageItem.GenresSection if newItem is PageItem.GenresSection ->
                     oldItem.genres == newItem.genres
                 else -> false
             }
@@ -461,7 +461,16 @@ class PageAdapter(
 
             adapter?.setAdapterCarouselCallbacks(object : AdapterCarouselItems.Companion.AdapterCarouselCallbacks {
                 override fun onClicked(view: View, position: Int) {
-                    adapterListener?.onArtistClicked(item.artists, position, view)
+                    /**
+                     * Album pages list their album artists in this section, so we route
+                     * those taps through the dedicated album-artist callback. Every other
+                     * page type shows regular artists and uses the standard artist callback.
+                     */
+                    if (pageType is PageType.AlbumPage) {
+                        adapterListener?.onAlbumArtistClicked(item.artists, position, view)
+                    } else {
+                        adapterListener?.onArtistClicked(item.artists, position, view)
+                    }
                 }
             })
         }

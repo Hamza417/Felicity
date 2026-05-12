@@ -34,7 +34,6 @@ class AudioRepository @Inject constructor(
         AudioDatabase.getInstance(context)
     }
 
-
     /**
      * Get all audio files that have been marked as favorite, ordered by title.
      * Reads directly from the audio table's is_favorite column.
@@ -174,29 +173,34 @@ class AudioRepository @Inject constructor(
      */
     fun getAllArtistsWithAggregation(): Flow<List<Artist>> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            // Group audio files by artist name
-            audioList.groupBy { it.artist }
-                .mapNotNull { (artistName, songs) ->
-                    if (artistName.isNullOrEmpty()) return@mapNotNull null
+            val splitRegex = Regex(ARTIST_SEPARATOR_REGEX, RegexOption.IGNORE_CASE)
 
-                    // Count unique albums by this artist
-                    val uniqueAlbums = songs.mapNotNull { it.album }.distinct().size
+            // We build two maps in a single pass over the song list so this stays fast
+            // no matter how large the library is. Each song contributes to every individual
+            // artist credited in its artist field (e.g. "AKON feat. WYCLEF" adds to both).
+            val artistSongPaths = mutableMapOf<String, MutableList<String>>()
+            val artistAlbums = mutableMapOf<String, MutableSet<String>>()
 
-                    // Aggregate song paths from all songs by the artist
-                    val songPaths = songs.map { it.uri }
+            audioList.forEach { audio ->
+                val field = audio.artist ?: return@forEach
+                field.split(splitRegex)
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                    .forEach { name ->
+                        artistSongPaths.getOrPut(name) { mutableListOf() }.add(audio.uri)
+                        audio.album?.let { artistAlbums.getOrPut(name) { mutableSetOf() }.add(it) }
+                    }
+            }
 
-                    // Generate unique ID based on artist name
-                    val uniqueId = artistName.hashCode().toLong()
-
-                    Artist(
-                            id = uniqueId,
-                            name = artistName,
-                            albumCount = uniqueAlbums,
-                            trackCount = songs.size,
-                            songPaths = songPaths
-                    )
-                }
-                .sortedBy { it.name?.lowercase() }
+            artistSongPaths.map { (name, paths) ->
+                Artist(
+                        id = name.hashCode().toLong(),
+                        name = name,
+                        albumCount = artistAlbums[name]?.size ?: 0,
+                        trackCount = paths.size,
+                        songPaths = paths
+                )
+            }.sortedBy { it.name?.lowercase() }
         } ?: throw IllegalStateException("AudioDao is null")
     }
 
@@ -210,29 +214,15 @@ class AudioRepository @Inject constructor(
      */
     fun getAllAlbumArtistsWithAggregation(): Flow<List<Artist>> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            // Group audio files by album artist name (the tag that says who "owns" the album)
-            audioList.groupBy { it.albumArtist }
-                .mapNotNull { (albumArtistName, songs) ->
-                    if (albumArtistName.isNullOrEmpty()) return@mapNotNull null
-
-                    // Count unique albums credited to this album artist
-                    val uniqueAlbums = songs.mapNotNull { it.album }.distinct().size
-
-                    // Gather all song file paths so we can play/shuffle from a menu later
-                    val songPaths = songs.map { it.uri }
-
-                    // Use a hash of the album artist name as a stable unique ID
-                    val uniqueId = albumArtistName.hashCode().toLong()
-
-                    Artist(
-                            id = uniqueId,
-                            name = albumArtistName,
-                            albumCount = uniqueAlbums,
-                            trackCount = songs.size,
-                            songPaths = songPaths
-                    )
-                }
-                .sortedBy { it.name?.lowercase() }
+            buildAlbumArtistSongMap(audioList).map { (name, songs) ->
+                Artist(
+                        id = name.hashCode().toLong(),
+                        name = name,
+                        albumCount = songs.mapNotNull { it.album }.distinct().size,
+                        trackCount = songs.size,
+                        songPaths = songs.map { it.uri }
+                )
+            }.sortedBy { it.name?.lowercase() }
         } ?: throw IllegalStateException("AudioDao is null")
     }
 
@@ -247,10 +237,9 @@ class AudioRepository @Inject constructor(
      */
     fun getAlbumArtistPageData(albumArtist: Artist): Flow<PageData> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            // Keep only songs where the album_artist tag exactly matches our target
-            val artistAudios = audioList.filter { audio ->
-                audio.albumArtist?.equals(albumArtist.name, ignoreCase = true) == true
-            }
+            // Use the same split-based lookup as the list so the song count always matches.
+            // We look the name up in the pre-built map rather than doing a raw equals check.
+            val artistAudios = buildAlbumArtistSongMap(audioList)[albumArtist.name] ?: emptyList()
 
             // Pull out unique albums from those songs
             val albumsMap = artistAudios.groupBy { it.album }
@@ -318,6 +307,42 @@ class AudioRepository @Inject constructor(
                 }
                 .sortedBy { it.name?.lowercase() }
         } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Builds a map of individual artist name → all songs that credit them, in a single
+     * pass over [audioList]. Combined credits like "AKON feat. WYCLEF" are split so each
+     * artist gets their own entry. Use this instead of grouping by the raw artist field
+     * so that track counts are consistent with what the artist page shows.
+     */
+    private fun buildArtistSongMap(audioList: List<Audio>): Map<String, List<Audio>> {
+        val splitRegex = Regex(ARTIST_SEPARATOR_REGEX, RegexOption.IGNORE_CASE)
+        val map = mutableMapOf<String, MutableList<Audio>>()
+        audioList.forEach { audio ->
+            val field = audio.artist ?: return@forEach
+            field.split(splitRegex)
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .forEach { name -> map.getOrPut(name) { mutableListOf() }.add(audio) }
+        }
+        return map
+    }
+
+    /**
+     * Same as [buildArtistSongMap] but reads the album_artist tag instead of the artist tag.
+     * This keeps the album-artist list and page counts in sync with each other.
+     */
+    private fun buildAlbumArtistSongMap(audioList: List<Audio>): Map<String, List<Audio>> {
+        val splitRegex = Regex(ARTIST_SEPARATOR_REGEX, RegexOption.IGNORE_CASE)
+        val map = mutableMapOf<String, MutableList<Audio>>()
+        audioList.forEach { audio ->
+            val field = audio.albumArtist ?: return@forEach
+            field.split(splitRegex)
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .forEach { name -> map.getOrPut(name) { mutableListOf() }.add(audio) }
+        }
+        return map
     }
 
     /**
@@ -410,7 +435,6 @@ class AudioRepository @Inject constructor(
         } ?: throw IllegalStateException("AudioDao is null")
     }
 
-
     /**
      * Get the contents of a folder at the given document-ID path: immediate sub-folders
      * and the audio files sitting directly inside it (not in a sub-folder).
@@ -492,29 +516,31 @@ class AudioRepository @Inject constructor(
             val artistToSongsMap = mutableMapOf<String, MutableList<Audio>>()
 
             albumAudios.forEach { audio ->
-                val artistName = audio.artist ?: return@forEach
+                val artistName = audio.albumArtist ?: return@forEach
 
                 // Check if artist is in whitelist (shouldn't be split)
                 if (artistWhitelist.any { it.equals(artistName, ignoreCase = true) }) {
                     artistToSongsMap.getOrPut(artistName) { mutableListOf() }.add(audio)
                 } else {
-                    // Split artist names using the regex
-                    val splitArtists = artistName.split(Regex(ARTIST_REGEX))
+                    // Split album artist names using the regex
+                    val splitArtists = artistName.split(Regex(ARTIST_SEPARATOR_REGEX))
                         .map { it.trim() }
                         .filter { it.isNotEmpty() }
 
-                    // Add the song to each split artist
+                    // Add the song to each split album artist
                     splitArtists.forEach { splitArtist ->
                         artistToSongsMap.getOrPut(splitArtist) { mutableListOf() }.add(audio)
                     }
                 }
             }
 
-            // Now match split artists to all their songs in the entire collection using contains
+            // Now match split album artists to all their songs in the entire collection
             val artistsMap = artistToSongsMap.keys.map { artistName ->
-                // Find all songs where this artist is involved (even if not solo)
+                // Find all songs where this album artist is credited (even if not solo).
+                // Single-word names get a whole-word check so "LISA" won't accidentally
+                // match something like "CARALISA".
                 val artistAllSongs = audioList.filter { audio ->
-                    audio.artist?.contains(artistName, ignoreCase = true) == true
+                    artistFieldMatchesName(audio.albumArtist, artistName)
                 }
 
                 // Count unique albums by this artist
@@ -560,9 +586,8 @@ class AudioRepository @Inject constructor(
      */
     fun getArtistPageData(artist: Artist): Flow<PageData> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            // Filter songs where artist name contains the specified artist (handles split artists)
             val artistAudios = audioList.filter { audio ->
-                audio.artist?.contains(artist.name ?: "", ignoreCase = true) == true
+                artistFieldMatchesName(audio.artist, artist.name ?: "")
             }
 
             // Extract unique albums from artist songs
@@ -614,23 +639,21 @@ class AudioRepository @Inject constructor(
             // Filter songs by genre name
             val genreAudios = audioList.filter { it.genre == genre.name }
 
-            // Extract unique artists from genre songs
-            val artistsMap = genreAudios.groupBy { it.artist }
-                .mapNotNull { (artistName, _) ->
-                    if (artistName.isNullOrEmpty()) return@mapNotNull null
-
-                    // Count unique albums by this artist in the entire collection
-                    val artistAllSongs = audioList.filter { it.artist == artistName }
-                    val uniqueAlbums = artistAllSongs.mapNotNull { it.album }.distinct().size
-
-                    Artist(
-                            id = artistName.hashCode().toLong(),
-                            name = artistName,
-                            albumCount = uniqueAlbums,
-                            trackCount = artistAllSongs.size,
-                            songPaths = artistAllSongs.map { it.uri }
-                    )
-                }
+            // Extract unique artists from genre songs.
+            // We build the full artist map once so each name's track count covers
+            // their entire library presence, not just songs in this genre.
+            val fullArtistMap = buildArtistSongMap(audioList)
+            val artistsMap = buildArtistSongMap(genreAudios).keys.mapNotNull { artistName ->
+                val allSongs = fullArtistMap[artistName] ?: return@mapNotNull null
+                val uniqueAlbums = allSongs.mapNotNull { it.album }.distinct().size
+                Artist(
+                        id = artistName.hashCode().toLong(),
+                        name = artistName,
+                        albumCount = uniqueAlbums,
+                        trackCount = allSongs.size,
+                        songPaths = allSongs.map { it.uri }
+                )
+            }
 
             // Extract unique albums from genre songs
             val albumsMap = genreAudios.groupBy { it.album }
@@ -689,20 +712,19 @@ class AudioRepository @Inject constructor(
                     )
                 }
 
-            // Extract unique artists from folder songs
-            val artistsMap = folderAudios.groupBy { it.artist }
-                .mapNotNull { (artistName, _) ->
-                    if (artistName.isNullOrEmpty()) return@mapNotNull null
-                    val artistAllSongs = audioList.filter { it.artist == artistName }
-                    val uniqueAlbums = artistAllSongs.mapNotNull { it.album }.distinct().size
-                    Artist(
-                            id = artistName.hashCode().toLong(),
-                            name = artistName,
-                            albumCount = uniqueAlbums,
-                            trackCount = artistAllSongs.size,
-                            songPaths = artistAllSongs.map { it.uri }
-                    )
-                }
+            // Extract unique artists from folder songs, counting their full library totals.
+            val fullArtistMap = buildArtistSongMap(audioList)
+            val artistsMap = buildArtistSongMap(folderAudios).keys.mapNotNull { artistName ->
+                val allSongs = fullArtistMap[artistName] ?: return@mapNotNull null
+                val uniqueAlbums = allSongs.mapNotNull { it.album }.distinct().size
+                Artist(
+                        id = artistName.hashCode().toLong(),
+                        name = artistName,
+                        albumCount = uniqueAlbums,
+                        trackCount = allSongs.size,
+                        songPaths = allSongs.map { it.uri }
+                )
+            }
 
             // Extract unique genres from folder songs
             val genresMap = folderAudios.groupBy { it.genre }
@@ -779,19 +801,18 @@ class AudioRepository @Inject constructor(
                     )
                 }
 
-            val artistsMap = yearAudios.groupBy { it.artist }
-                .mapNotNull { (artistName, _) ->
-                    if (artistName.isNullOrEmpty()) return@mapNotNull null
-                    val artistAllSongs = audioList.filter { it.artist == artistName }
-                    val uniqueAlbums = artistAllSongs.mapNotNull { it.album }.distinct().size
-                    Artist(
-                            id = artistName.hashCode().toLong(),
-                            name = artistName,
-                            albumCount = uniqueAlbums,
-                            trackCount = artistAllSongs.size,
-                            songPaths = artistAllSongs.map { it.uri }
-                    )
-                }
+            val fullArtistMap = buildArtistSongMap(audioList)
+            val artistsMap = buildArtistSongMap(yearAudios).keys.mapNotNull { artistName ->
+                val allSongs = fullArtistMap[artistName] ?: return@mapNotNull null
+                val uniqueAlbums = allSongs.mapNotNull { it.album }.distinct().size
+                Artist(
+                        id = artistName.hashCode().toLong(),
+                        name = artistName,
+                        albumCount = uniqueAlbums,
+                        trackCount = allSongs.size,
+                        songPaths = allSongs.map { it.uri }
+                )
+            }
 
             PageData(
                     songs = yearAudios,
@@ -947,6 +968,36 @@ class AudioRepository @Inject constructor(
     }
 
     /**
+     * Reactive artist search that returns proper [Artist] objects with accurate counts.
+     *
+     * The SQL query finds every song whose artist field contains [query], then we split
+     * the combined credits (e.g. "AKON feat. WYCLEF") so each individual name gets its
+     * own entry. We also filter out names that don't actually contain the query string
+     * so a search for "AKON" doesn't surface "WYCLEF" as a result just because they
+     * collaborated on a track.
+     *
+     * @param query The text the user typed in the search box.
+     * @return Flow of [Artist] objects whose names match [query], sorted by name.
+     */
+    fun searchArtistsFlow(query: String): Flow<List<Artist>> {
+        return audioDatabase.audioDao()?.searchByArtistFiltered(query, minDurationMs(), minSizeBytes())?.map { songs ->
+            buildArtistSongMap(songs)
+                .filterKeys { it.contains(query, ignoreCase = true) }
+                .map { (name, matchedSongs) ->
+                    val uniqueAlbums = matchedSongs.mapNotNull { it.album }.distinct().size
+                    Artist(
+                            id = name.hashCode().toLong(),
+                            name = name,
+                            albumCount = uniqueAlbums,
+                            trackCount = matchedSongs.size,
+                            songPaths = matchedSongs.map { it.uri }
+                    )
+                }
+                .sortedBy { it.name?.lowercase() }
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
      * Reactive search by album – re-emits whenever the audio table changes.
      * Filtered in real-time by [LibraryPreferences] minimum duration and size.
      */
@@ -1017,8 +1068,64 @@ class AudioRepository @Inject constructor(
     }
 
     companion object {
-        private const val ARTIST_REGEX = "\\s*[,&+/\\\\|]\\s*|\\s+and\\s+|\\s+with\\s+|\\s+w/\\s+|\\s+vs\\.?\\s+|\\s+x\\s+" +
+        /**
+         * A comprehensive regular expression used to tokenize and split raw artist metadata strings
+         * (e.g., from ID3 tags) into individual artist entities.
+         *
+         * This regex intercepts a wide variety of standard and non-standard delimiters commonly found
+         * in messy audio metadata, capturing both punctuation and common collaborative text markers.
+         *
+         * **Whitespace Handling:**
+         * The regex handles surrounding whitespace dynamically to ensure clean splits without leaving
+         * leading or trailing spaces. Punctuation-based delimiters tolerate zero or more spaces (`\s*`),
+         * while text/character-based delimiters require at least one space (`\s+`) to prevent
+         * accidentally splitting mid-word (e.g., preventing 'x' from splitting "Lil Nas X").
+         *
+         * **Matched Delimiters:**
+         *
+         * *Punctuation Separators (Optional Surrounding Whitespace):*
+         * * `[;,+/\\|]` : Matches semicolon, comma, plus, forward slash, backslash, or pipe.
+         *
+         * *Text & Symbol Separators (Mandatory Surrounding Whitespace):*
+         * * `&` : Ampersand (requires spaces to protect edge cases like "A&M").
+         * * `and`, `with`, `w/` : Standard conjunctions.
+         * * `vs`, `vs.` : Versus indicators (period is optional).
+         * * `x` : Collaboration indicator (e.g., "Artist A x Artist B").
+         * * `feat`, `feat.`, `ft`, `ft.`, `featuring` : Guest appearance indicators (periods optional).
+         * * `pres`, `pres.` : Presenter indicators (period is optional).
+         * * `starring` : Theatrical or guest indicators.
+         *
+         * **Warning:**
+         * This is an aggressive split. To protect officially recognized band names that legitimately
+         * contain these characters (such as "AC/DC", "Earth, Wind & Fire", or "Florence + The Machine"),
+         * the raw string should be evaluated against an artist whitelist prior to executing this regex.
+         */
+        private const val ARTIST_SEPARATOR_REGEX = "\\s*[;,+/\\\\|]\\s*|\\s+&\\s+|\\s+and\\s+|\\s+with\\s+|\\s+w/\\s+|\\s+vs\\.?\\s+|\\s+x\\s+" +
                 "|\\s+feat\\.?\\s+|\\s+ft\\.?\\s+|\\s+featuring\\s+|\\s+pres\\.?\\s+|\\s+starring\\s+"
+
         private const val ARTIST_WHITELIST = "/artist_whitelist.txt"
+
+        /**
+         * Checks whether an audio file's artist field actually refers to [name].
+         *
+         * Multi-word names (e.g. "Daft Punk") use a simple case-insensitive substring check
+         * because they're naturally specific enough not to appear inside another name by accident.
+         *
+         * Single-word names (e.g. "LISA" or "AKON") are trickier — a plain substring search
+         * would match "CARALISA", and a word-boundary check would still match "LISA GERRARD"
+         * or "PINK LISA". Instead, we split the artist field by the same delimiters used
+         * everywhere else and require one of the resulting pieces to be an exact (case-insensitive)
+         * match. This way "LISA" only hits a field where LISA is a standalone credit.
+         */
+        fun artistFieldMatchesName(artistField: String?, name: String): Boolean {
+            if (artistField == null || name.isEmpty()) return false
+            return if (!name.contains(' ')) {
+                val splitRegex = Regex(ARTIST_SEPARATOR_REGEX, RegexOption.IGNORE_CASE)
+                artistField.split(splitRegex)
+                    .any { it.trim().equals(name, ignoreCase = true) }
+            } else {
+                artistField.contains(name, ignoreCase = true)
+            }
+        }
     }
 }
