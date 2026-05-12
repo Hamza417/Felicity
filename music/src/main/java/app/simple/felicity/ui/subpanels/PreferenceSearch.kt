@@ -164,6 +164,10 @@ class PreferenceSearch : PreferenceFragment() {
 
         binding.recyclerView.adapter = GenericPreferencesAdapter(filtered, keyword = lowerQuery)
         headerBinding.count.text = getString(R.string.x_results, filtered.size)
+
+        if (filtered.size < 8) {
+            binding.appHeader.resetScrollingState()
+        }
     }
 
     companion object {
