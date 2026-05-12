@@ -137,10 +137,9 @@ object MediaPlaybackManager {
      * the first real [notifyCurrentPosition] for the new queue is processed normally.
      *
      * All access is on the main thread.
-     *
-     * @author Hamza417
      */
-    private var isQueueBeingReplaced: Boolean = false
+    var isQueueBeingReplaced: Boolean = false
+        private set
 
     /**
      * The most recently emitted playback state constant from [notifyPlaybackState].

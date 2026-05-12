@@ -126,6 +126,15 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     private var wasPlayingBeforeTransition: Boolean = false
 
     /**
+     * Holds the media ID of a song that needs its play recorded once the player actually
+     * starts playing. This happens when a new queue is set — ExoPlayer fires the item
+     * transition callback before [Player.play] is called, so [Player.playWhenReady] is
+     * still false at that moment and the play would be silently missed. We park the ID here
+     * and flush it as soon as playback begins.
+     */
+    private var pendingPlayRecordMediaId: String? = null
+
+    /**
      * The duration of the song that is CURRENTLY loaded and ready to play, kept fresh by
      * reading [player.duration] once the player reaches STATE_READY (the only state where
      * the duration is guaranteed to be accurate).
@@ -838,6 +847,24 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            if (playWhenReady) {
+                // If there's a song that was waiting for playback to start, record its play now.
+                // This covers the case where a new queue is created and play() is called after
+                // the item transition callback already fired (with playWhenReady still false).
+                val deferredMediaId = pendingPlayRecordMediaId
+                if (deferredMediaId != null) {
+                    pendingPlayRecordMediaId = null
+                    val audioId = deferredMediaId.toLongOrNull()
+                    if (audioId != null) {
+                        serviceScope.launch(Dispatchers.IO) {
+                            val audio = audioRepository.getAudioById(audioId) ?: return@launch
+                            songStatRepository.recordPlay(audio.hash)
+                            Log.d(TAG, "Deferred play recorded for: ${audio.title}")
+                        }
+                    }
+                }
+            }
+
             if (AudioPreferences.isGaplessPlaybackEnabled().not()) {
                 if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
                     // The track ended and the player paused itself automatically.
@@ -999,7 +1026,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             // Also check whether this was a backward navigation and count it as a replay if so.
             mediaItem?.let { item ->
                 previousItemMediaId = item.mediaId
-                if (player.playWhenReady) {
+                // While a queue replacement is in flight, ExoPlayer fires intermediate transitions
+                // (e.g. the first item of the new list lands before seekTo moves to the real target).
+                // We must not record those as plays — instead park the ID so it can be flushed once
+                // the replacement is complete and the intended song actually starts playing.
+                val replacingQueue = MediaPlaybackManager.isQueueBeingReplaced
+                if (player.playWhenReady && !replacingQueue) {
+                    pendingPlayRecordMediaId = null
                     val audioId = item.mediaId.toLongOrNull() ?: return@let
                     val isBackwardNavigation = !MediaPlaybackManager.lastNavigationDirection
                     serviceScope.launch(Dispatchers.IO) {
@@ -1014,11 +1047,36 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                         }
                     }
                 } else {
-                    Log.d(TAG, "Track changed while paused — skipping play stat for: ${item.mediaId}")
+                    // Either the player isn't set to play yet, or the queue is still being
+                    // replaced — park the ID and wait for playback to actually begin.
+                    pendingPlayRecordMediaId = item.mediaId
+                    Log.d(TAG, "Deferring play stat for: ${item.mediaId} (playWhenReady=${player.playWhenReady}, replacingQueue=$replacingQueue)")
                 }
-            } ?: run { previousItemMediaId = null }
+            } ?: run {
+                previousItemMediaId = null
+                pendingPlayRecordMediaId = null
+            }
 
             MediaPlaybackManager.notifyCurrentPosition(player.currentMediaItemIndex)
+
+            // After notifyCurrentPosition runs, the queue-replacement guard may have just been
+            // lifted (it clears itself once ExoPlayer confirms the intended seek position).
+            // If the player is already set to play, and we still have a parked ID, this is our
+            // window to flush it — onPlayWhenReadyChanged won't fire because playWhenReady
+            // never went false during an already-playing queue swap.
+            val deferredId = pendingPlayRecordMediaId
+            if (deferredId != null && player.playWhenReady && !MediaPlaybackManager.isQueueBeingReplaced) {
+                pendingPlayRecordMediaId = null
+                val audioId = deferredId.toLongOrNull()
+                if (audioId != null) {
+                    serviceScope.launch(Dispatchers.IO) {
+                        val audio = audioRepository.getAudioById(audioId) ?: return@launch
+                        songStatRepository.recordPlay(audio.hash)
+                        Log.d(TAG, "Deferred play flushed (post-replace) for: ${audio.title}")
+                    }
+                }
+            }
+
             savePlaybackStateToDatabase() // Save when track changes
             buildAndPushSnapshot()
             broadcastWidgetUpdate()
