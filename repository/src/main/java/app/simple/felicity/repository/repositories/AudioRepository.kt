@@ -214,29 +214,15 @@ class AudioRepository @Inject constructor(
      */
     fun getAllAlbumArtistsWithAggregation(): Flow<List<Artist>> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            // Group audio files by album artist name (the tag that says who "owns" the album)
-            audioList.groupBy { it.albumArtist }
-                .mapNotNull { (albumArtistName, songs) ->
-                    if (albumArtistName.isNullOrEmpty()) return@mapNotNull null
-
-                    // Count unique albums credited to this album artist
-                    val uniqueAlbums = songs.mapNotNull { it.album }.distinct().size
-
-                    // Gather all song file paths so we can play/shuffle from a menu later
-                    val songPaths = songs.map { it.uri }
-
-                    // Use a hash of the album artist name as a stable unique ID
-                    val uniqueId = albumArtistName.hashCode().toLong()
-
-                    Artist(
-                            id = uniqueId,
-                            name = albumArtistName,
-                            albumCount = uniqueAlbums,
-                            trackCount = songs.size,
-                            songPaths = songPaths
-                    )
-                }
-                .sortedBy { it.name?.lowercase() }
+            buildAlbumArtistSongMap(audioList).map { (name, songs) ->
+                Artist(
+                        id = name.hashCode().toLong(),
+                        name = name,
+                        albumCount = songs.mapNotNull { it.album }.distinct().size,
+                        trackCount = songs.size,
+                        songPaths = songs.map { it.uri }
+                )
+            }.sortedBy { it.name?.lowercase() }
         } ?: throw IllegalStateException("AudioDao is null")
     }
 
@@ -251,10 +237,9 @@ class AudioRepository @Inject constructor(
      */
     fun getAlbumArtistPageData(albumArtist: Artist): Flow<PageData> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            // Keep only songs where the album_artist tag exactly matches our target
-            val artistAudios = audioList.filter { audio ->
-                audio.albumArtist?.equals(albumArtist.name, ignoreCase = true) == true
-            }
+            // Use the same split-based lookup as the list so the song count always matches.
+            // We look the name up in the pre-built map rather than doing a raw equals check.
+            val artistAudios = buildAlbumArtistSongMap(audioList)[albumArtist.name] ?: emptyList()
 
             // Pull out unique albums from those songs
             val albumsMap = artistAudios.groupBy { it.album }
@@ -335,6 +320,23 @@ class AudioRepository @Inject constructor(
         val map = mutableMapOf<String, MutableList<Audio>>()
         audioList.forEach { audio ->
             val field = audio.artist ?: return@forEach
+            field.split(splitRegex)
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .forEach { name -> map.getOrPut(name) { mutableListOf() }.add(audio) }
+        }
+        return map
+    }
+
+    /**
+     * Same as [buildArtistSongMap] but reads the album_artist tag instead of the artist tag.
+     * This keeps the album-artist list and page counts in sync with each other.
+     */
+    private fun buildAlbumArtistSongMap(audioList: List<Audio>): Map<String, List<Audio>> {
+        val splitRegex = Regex(ARTIST_SEPARATOR_REGEX, RegexOption.IGNORE_CASE)
+        val map = mutableMapOf<String, MutableList<Audio>>()
+        audioList.forEach { audio ->
+            val field = audio.albumArtist ?: return@forEach
             field.split(splitRegex)
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
