@@ -173,7 +173,7 @@ class AudioRepository @Inject constructor(
      */
     fun getAllArtistsWithAggregation(): Flow<List<Artist>> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            val splitRegex = Regex(ARTIST_REGEX, RegexOption.IGNORE_CASE)
+            val splitRegex = Regex(ARTIST_SEPARATOR_REGEX, RegexOption.IGNORE_CASE)
 
             // We build two maps in a single pass over the song list so this stays fast
             // no matter how large the library is. Each song contributes to every individual
@@ -331,7 +331,7 @@ class AudioRepository @Inject constructor(
      * so that track counts are consistent with what the artist page shows.
      */
     private fun buildArtistSongMap(audioList: List<Audio>): Map<String, List<Audio>> {
-        val splitRegex = Regex(ARTIST_REGEX, RegexOption.IGNORE_CASE)
+        val splitRegex = Regex(ARTIST_SEPARATOR_REGEX, RegexOption.IGNORE_CASE)
         val map = mutableMapOf<String, MutableList<Audio>>()
         audioList.forEach { audio ->
             val field = audio.artist ?: return@forEach
@@ -521,7 +521,7 @@ class AudioRepository @Inject constructor(
                     artistToSongsMap.getOrPut(artistName) { mutableListOf() }.add(audio)
                 } else {
                     // Split artist names using the regex
-                    val splitArtists = artistName.split(Regex(ARTIST_REGEX))
+                    val splitArtists = artistName.split(Regex(ARTIST_SEPARATOR_REGEX))
                         .map { it.trim() }
                         .filter { it.isNotEmpty() }
 
@@ -1066,7 +1066,7 @@ class AudioRepository @Inject constructor(
     }
 
     companion object {
-        private const val ARTIST_REGEX = "\\s*[;,&+/\\\\|]\\s*|\\s+and\\s+|\\s+with\\s+|\\s+w/\\s+|\\s+vs\\.?\\s+|\\s+x\\s+" +
+        private const val ARTIST_SEPARATOR_REGEX = "\\s*[;,&+/\\\\|]\\s*|\\s+and\\s+|\\s+with\\s+|\\s+w/\\s+|\\s+vs\\.?\\s+|\\s+x\\s+" +
                 "|\\s+feat\\.?\\s+|\\s+ft\\.?\\s+|\\s+featuring\\s+|\\s+pres\\.?\\s+|\\s+starring\\s+"
         private const val ARTIST_WHITELIST = "/artist_whitelist.txt"
 
@@ -1085,7 +1085,7 @@ class AudioRepository @Inject constructor(
         fun artistFieldMatchesName(artistField: String?, name: String): Boolean {
             if (artistField == null || name.isEmpty()) return false
             return if (!name.contains(' ')) {
-                val splitRegex = Regex(ARTIST_REGEX, RegexOption.IGNORE_CASE)
+                val splitRegex = Regex(ARTIST_SEPARATOR_REGEX, RegexOption.IGNORE_CASE)
                 artistField.split(splitRegex)
                     .any { it.trim().equals(name, ignoreCase = true) }
             } else {
