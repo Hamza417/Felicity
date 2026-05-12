@@ -108,10 +108,24 @@ This feature list is not exhaustive and only main features are listed.
 - [x] m3u playlist support
 - [x] Metadata editing support
 - [x] Replay gain
-- [ ] Cue sheet support
 - [x] Local server for centralized music access across multiple devices.
 - [x] Selection support for library management and playlist creation.
-- [x] Reproducible build.
+- [x] Reproducible build
+- [ ] Parametric Equalizer
+- [ ] Sleep Timer
+- [ ] Global Search Provider
+- [ ] More widgets
+- [ ] Multiple Queue Support
+- [ ] Bookmarks
+
+##### Niche Features
+
+Features that are planned but will not be a priority.
+
+- [ ] Cue sheet support
+- [ ] Native USB DAC support
+- [ ] Oboe
+- [ ] AAudio _(added but experimental)_
 
 ... and more features will be updated here as development progresses.
 
