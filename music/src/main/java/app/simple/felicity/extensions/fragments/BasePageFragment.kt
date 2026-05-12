@@ -23,6 +23,7 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.repository.sort.PageSort
+import app.simple.felicity.ui.pages.AlbumArtistPage
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.ui.pages.GenrePage
@@ -188,6 +189,10 @@ abstract class BasePageFragment : MediaFragment() {
 
             override fun onArtistClicked(artists: List<Artist>, position: Int, view: View) {
                 openFragment(ArtistPage.newInstance(artists[position]), ArtistPage.TAG)
+            }
+
+            override fun onAlbumArtistClicked(artists: List<Artist>, position: Int, view: View) {
+                openFragment(AlbumArtistPage.newInstance(artists[position]), AlbumArtistPage.TAG)
             }
 
             override fun onAlbumClicked(albums: List<Album>, position: Int, view: View) {
