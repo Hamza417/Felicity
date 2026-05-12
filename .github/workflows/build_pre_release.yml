@@ -1,4 +1,4 @@
-name: Build APKs (Release)
+name: Build APKs (Pre-Release)
 
 on:
     workflow_dispatch:
@@ -8,39 +8,30 @@ permissions:
 
 jobs:
 
-    # Reads the version info from the gradle file so all other jobs can use it.
+    # Reads the version info and appends the short commit SHA so this pre-release is easy to trace back to its commit.
     prepare:
         name: Read Version Info
         runs-on: ubuntu-latest
         outputs:
             version_name: ${{ steps.version.outputs.version_name }}
-            version_code: ${{ steps.version.outputs.version_code }}
             tag: ${{ steps.version.outputs.tag }}
 
         steps:
             -   name: Checkout code
                 uses: actions/checkout@v4
 
-            -   name: Extract version name and version code
+            -   name: Extract version name with commit SHA appended
                 id: version
                 run: |
-                    VERSION_NAME=$(grep -oP 'versionName "\K[^"]*' music/build.gradle)
-                    VERSION_CODE=$(grep -oP 'versionCode \K\d+' music/build.gradle)
+                    BASE_VERSION_NAME=$(grep -oP 'versionName "\K[^"]*' music/build.gradle)
+                    COMMIT_ID=$(git rev-parse --short HEAD)
+                    VERSION_NAME="${BASE_VERSION_NAME}-${COMMIT_ID}"
                     TAG=$(echo "$VERSION_NAME" | tr '[:upper:]' '[:lower:]')
 
                     echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
-                    echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
                     echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-            -   name: Check that a changelog exists for this version
-                run: |
-                    CODE=$(grep -oP 'versionCode \K\d+' music/build.gradle)
-                    if [ ! -f "fastlane/metadata/android/en-US/changelogs/${CODE}.txt" ]; then
-                      echo "No changelog found for version code ${CODE}. Please add one before releasing."
-                      exit 1
-                    fi
-
-    # Builds the APK targeting arm64-v8a devices only.
+    # Builds the pre-release APK targeting arm64-v8a devices only.
     build-arm64:
         name: Build arm64-v8a
         runs-on: ubuntu-latest
@@ -88,7 +79,7 @@ jobs:
                     retention-days: 1
                     if-no-files-found: error
 
-    # Builds the APK targeting x86_64 devices only.
+    # Builds the pre-release APK targeting x86_64 devices only.
     build-x86_64:
         name: Build x86_64
         runs-on: ubuntu-latest
@@ -136,9 +127,9 @@ jobs:
                     retention-days: 1
                     if-no-files-found: error
 
-    # Waits for both arch builds to finish, then creates the GitHub release with both APKs attached.
+    # Waits for both arch builds, then publishes a pre-release on GitHub with both APKs attached.
     publish:
-        name: Publish Release
+        name: Publish Pre-Release
         runs-on: ubuntu-latest
         needs: [ prepare, build-arm64, build-x86_64 ]
 
@@ -155,7 +146,7 @@ jobs:
                     name: felicity-foss-x86_64
                     path: artifacts/
 
-            -   name: Create GitHub Release
+            -   name: Create GitHub Pre-Release
                 uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631
                 with:
                     files: |
@@ -163,6 +154,11 @@ jobs:
                         artifacts/felicity-foss-x86_64.apk
                     name: ${{ needs.prepare.outputs.version_name }}
                     tag_name: ${{ needs.prepare.outputs.tag }}
-                    body_path: changelogs.md
+                    prerelease: true
+                    body: |
+                        This is a pre-release build. It may be unstable or incomplete.
+
+                        **Commit:** ${{ github.sha }}
                 env:
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

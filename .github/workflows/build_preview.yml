@@ -1,12 +1,35 @@
 name: Build APKs (Preview)
 
 on:
-    workflow_dispatch:  # Allow manual triggering
+    workflow_dispatch:
 
 jobs:
-    build:
-        name: Build Preview APK
+
+    # Reads the version info and appends the short commit SHA so the preview APK is traceable.
+    prepare:
+        name: Read Version Info
         runs-on: ubuntu-latest
+        outputs:
+            version_name: ${{ steps.version.outputs.version_name }}
+
+        steps:
+            -   name: Checkout code
+                uses: actions/checkout@v4
+
+            -   name: Extract version name with commit SHA appended
+                id: version
+                run: |
+                    BASE_VERSION_NAME=$(grep -oP 'versionName "\K[^"]*' music/build.gradle)
+                    COMMIT_ID=$(git rev-parse --short HEAD)
+                    VERSION_NAME="${BASE_VERSION_NAME}-${COMMIT_ID}"
+
+                    echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+
+    # Builds the preview APK targeting arm64-v8a devices only.
+    build-arm64:
+        name: Build arm64-v8a
+        runs-on: ubuntu-latest
+        needs: prepare
 
         steps:
             -   name: Checkout code
@@ -15,56 +38,83 @@ jobs:
             -   name: Set up Java and Android SDK
                 uses: actions/setup-java@v4
                 with:
-                    java-version: '21' # Adjust the Java version as needed
+                    java-version: '21'
                     distribution: 'temurin'
 
-            -   name: Decode Keystore
-                id: decode_keystore
+            -   name: Decode keystore
                 uses: timheuer/base64-to-file@v1
                 with:
                     fileName: 'keystore/key.jks'
                     encodedString: ${{ secrets.SIGN_KEY }}
 
-            -   name: Extract Version Name and Version Code
-                run: |
-                    # Extract versionName and versionCode from build.gradle
-                    BASE_VERSION_NAME=$(cat music/build.gradle | grep -oP 'versionName "\K[^"]*')
-                    VERSION_CODE=$(cat music/build.gradle | grep -oP 'versionCode \K\d+')
-
-                    # Get the short Git commit SHA (first 7 characters)
-                    COMMIT_ID=$(git rev-parse --short HEAD)
-
-                    # Append the commit ID to the version name
-                    VERSION_NAME="${BASE_VERSION_NAME}-${COMMIT_ID}"
-
-                    echo "Version Name: $VERSION_NAME"
-                    echo "Version Code: $VERSION_CODE"
-
-                    # Set these values as environment variables for later steps
-                    echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
-                    echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
-
             -   name: Accept Android SDK licenses
                 run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
 
-            -   name: Build Release APK
+            -   name: Build arm64-v8a release APK
                 run: |
                     chmod +x ./gradlew
-                    ./gradlew clean assembleFossRelease --no-build-cache --rerun-tasks
+                    ./gradlew clean assembleFossRelease -Pandroid.injected.build.abi=arm64-v8a --no-build-cache --rerun-tasks
                 env:
                     SIGNING_KEY_ALIAS: ${{ secrets.ALIAS }}
                     SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
                     SIGNING_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
 
-            -   name: Rename and Move APK to Temporary Directory
+            -   name: Rename APK to felicity-foss-arm64-v8a.apk
                 run: |
                     mkdir -p ${{ runner.temp }}/apks
                     APK=$(find music/ -name "*.apk" | head -n 1)
-                    mv "$APK" "${{ runner.temp }}/apks/felicity-foss-${{ env.VERSION_NAME }}.apk"
+                    mv "$APK" "${{ runner.temp }}/apks/felicity-foss-arm64-v8a.apk"
 
-            -   name: Archive APK
+            -   name: Upload arm64-v8a APK
                 uses: actions/upload-artifact@v4
                 with:
-                    name: ${{ env.VERSION_NAME }}
-                    path: ${{ runner.temp }}/apks/felicity-foss-${{ env.VERSION_NAME }}.apk
+                    name: felicity-foss-arm64-v8a-${{ needs.prepare.outputs.version_name }}
+                    path: ${{ runner.temp }}/apks/felicity-foss-arm64-v8a.apk
+                    if-no-files-found: error
+
+    # Builds the preview APK targeting x86_64 devices only.
+    build-x86_64:
+        name: Build x86_64
+        runs-on: ubuntu-latest
+        needs: prepare
+
+        steps:
+            -   name: Checkout code
+                uses: actions/checkout@v4
+
+            -   name: Set up Java and Android SDK
+                uses: actions/setup-java@v4
+                with:
+                    java-version: '21'
+                    distribution: 'temurin'
+
+            -   name: Decode keystore
+                uses: timheuer/base64-to-file@v1
+                with:
+                    fileName: 'keystore/key.jks'
+                    encodedString: ${{ secrets.SIGN_KEY }}
+
+            -   name: Accept Android SDK licenses
+                run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+
+            -   name: Build x86_64 release APK
+                run: |
+                    chmod +x ./gradlew
+                    ./gradlew clean assembleFossRelease -Pandroid.injected.build.abi=x86_64 --no-build-cache --rerun-tasks
+                env:
+                    SIGNING_KEY_ALIAS: ${{ secrets.ALIAS }}
+                    SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+                    SIGNING_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+
+            -   name: Rename APK to felicity-foss-x86_64.apk
+                run: |
+                    mkdir -p ${{ runner.temp }}/apks
+                    APK=$(find music/ -name "*.apk" | head -n 1)
+                    mv "$APK" "${{ runner.temp }}/apks/felicity-foss-x86_64.apk"
+
+            -   name: Upload x86_64 APK
+                uses: actions/upload-artifact@v4
+                with:
+                    name: felicity-foss-x86_64-${{ needs.prepare.outputs.version_name }}
+                    path: ${{ runner.temp }}/apks/felicity-foss-x86_64.apk
                     if-no-files-found: error
