@@ -508,11 +508,13 @@ class AudioRepository @Inject constructor(
                 }
             }
 
-            // Now match split artists to all their songs in the entire collection using contains
+            // Now match split artists to all their songs in the entire collection
             val artistsMap = artistToSongsMap.keys.map { artistName ->
-                // Find all songs where this artist is involved (even if not solo)
+                // Find all songs where this artist is involved (even if not solo).
+                // Single-word names get a whole-word check so "LISA" won't accidentally
+                // match something like "CARALISA".
                 val artistAllSongs = audioList.filter { audio ->
-                    audio.artist?.contains(artistName, ignoreCase = true) == true
+                    artistFieldMatchesName(audio.artist, artistName)
                 }
 
                 // Count unique albums by this artist
@@ -558,9 +560,8 @@ class AudioRepository @Inject constructor(
      */
     fun getArtistPageData(artist: Artist): Flow<PageData> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            // Filter songs where artist name contains the specified artist (handles split artists)
             val artistAudios = audioList.filter { audio ->
-                audio.artist?.contains(artist.name ?: "", ignoreCase = true) == true
+                artistFieldMatchesName(audio.artist, artist.name ?: "")
             }
 
             // Extract unique albums from artist songs
@@ -1018,5 +1019,28 @@ class AudioRepository @Inject constructor(
         private const val ARTIST_REGEX = "\\s*[;,&+/\\\\|]\\s*|\\s+and\\s+|\\s+with\\s+|\\s+w/\\s+|\\s+vs\\.?\\s+|\\s+x\\s+" +
                 "|\\s+feat\\.?\\s+|\\s+ft\\.?\\s+|\\s+featuring\\s+|\\s+pres\\.?\\s+|\\s+starring\\s+"
         private const val ARTIST_WHITELIST = "/artist_whitelist.txt"
+
+        /**
+         * Checks whether an audio file's artist field actually refers to [name].
+         *
+         * Multi-word names (e.g. "Daft Punk") use a simple case-insensitive substring check
+         * because they're naturally specific enough not to appear inside another name by accident.
+         *
+         * Single-word names (e.g. "LISA" or "AKON") are trickier — a plain substring search
+         * would match "CARALISA", and a word-boundary check would still match "LISA GERRARD"
+         * or "PINK LISA". Instead, we split the artist field by the same delimiters used
+         * everywhere else and require one of the resulting pieces to be an exact (case-insensitive)
+         * match. This way "LISA" only hits a field where LISA is a standalone credit.
+         */
+        fun artistFieldMatchesName(artistField: String?, name: String): Boolean {
+            if (artistField == null || name.isEmpty()) return false
+            return if (!name.contains(' ')) {
+                val splitRegex = Regex(ARTIST_REGEX, RegexOption.IGNORE_CASE)
+                artistField.split(splitRegex)
+                    .any { it.trim().equals(name, ignoreCase = true) }
+            } else {
+                artistField.contains(name, ignoreCase = true)
+            }
+        }
     }
 }
