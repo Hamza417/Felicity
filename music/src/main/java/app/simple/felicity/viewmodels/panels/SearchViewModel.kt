@@ -73,12 +73,12 @@ class SearchViewModel @Inject constructor(
                 } else {
                     combine(
                             audioRepository.searchByTitleFlow(query),
-                            audioRepository.searchByArtistFlow(query),
+                            audioRepository.searchArtistsFlow(query),
                             audioRepository.searchByAlbumFlow(query),
                             audioRepository.searchByGenreFlow(query),
                             audioRepository.searchByComposerFlow(query)
-                    ) { byTitle, byArtist, byAlbum, byGenre, byComposer ->
-                        buildSearchResults(byTitle, byArtist, byAlbum, byGenre, byComposer, filter)
+                    ) { byTitle, artists, byAlbum, byGenre, byComposer ->
+                        buildSearchResults(byTitle, artists, byAlbum, byGenre, byComposer, filter)
                     }
                 }
             }.catch { e ->
@@ -98,13 +98,13 @@ class SearchViewModel @Inject constructor(
      */
     private fun buildSearchResults(
             byTitle: List<Audio>,
-            byArtist: List<Audio>,
+            artists: List<Artist>,
             byAlbum: List<Audio>,
             byGenre: List<Audio>,
             byComposer: List<Audio>,
             filter: SearchCategoryFilter): SearchResults {
 
-        val allAudio = (byTitle + byArtist + byAlbum + byGenre + byComposer)
+        val allAudio = (byTitle + byAlbum + byGenre + byComposer)
             .distinctBy { it.id }
             .searchSorted()
 
@@ -129,23 +129,7 @@ class SearchViewModel @Inject constructor(
             emptyList()
         }
 
-        val artists = if (filter.artistsEnabled) {
-            byArtist.groupBy { it.artist }
-                .mapNotNull { (artistName, songs) ->
-                    if (artistName.isNullOrEmpty()) return@mapNotNull null
-                    val uniqueAlbums = songs.mapNotNull { it.album }.distinct().size
-                    Artist(
-                            id = artistName.hashCode().toLong(),
-                            name = artistName,
-                            albumCount = uniqueAlbums,
-                            trackCount = songs.size,
-                            songPaths = songs.map { it.uri }
-                    )
-                }
-                .sortedBy { it.name?.lowercase() }
-        } else {
-            emptyList()
-        }
+        val filteredArtists = if (filter.artistsEnabled) artists else emptyList()
 
         val genres = if (filter.genresEnabled) {
             byGenre.groupBy { it.genre }
@@ -166,7 +150,7 @@ class SearchViewModel @Inject constructor(
         return SearchResults(
                 songs = songs,
                 albums = albums,
-                artists = artists,
+                artists = filteredArtists,
                 genres = genres
         )
     }

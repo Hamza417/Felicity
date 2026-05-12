@@ -173,29 +173,34 @@ class AudioRepository @Inject constructor(
      */
     fun getAllArtistsWithAggregation(): Flow<List<Artist>> {
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            // Group audio files by artist name
-            audioList.groupBy { it.artist }
-                .mapNotNull { (artistName, songs) ->
-                    if (artistName.isNullOrEmpty()) return@mapNotNull null
+            val splitRegex = Regex(ARTIST_REGEX, RegexOption.IGNORE_CASE)
 
-                    // Count unique albums by this artist
-                    val uniqueAlbums = songs.mapNotNull { it.album }.distinct().size
+            // We build two maps in a single pass over the song list so this stays fast
+            // no matter how large the library is. Each song contributes to every individual
+            // artist credited in its artist field (e.g. "AKON feat. WYCLEF" adds to both).
+            val artistSongPaths = mutableMapOf<String, MutableList<String>>()
+            val artistAlbums = mutableMapOf<String, MutableSet<String>>()
 
-                    // Aggregate song paths from all songs by the artist
-                    val songPaths = songs.map { it.uri }
+            audioList.forEach { audio ->
+                val field = audio.artist ?: return@forEach
+                field.split(splitRegex)
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                    .forEach { name ->
+                        artistSongPaths.getOrPut(name) { mutableListOf() }.add(audio.uri)
+                        audio.album?.let { artistAlbums.getOrPut(name) { mutableSetOf() }.add(it) }
+                    }
+            }
 
-                    // Generate unique ID based on artist name
-                    val uniqueId = artistName.hashCode().toLong()
-
-                    Artist(
-                            id = uniqueId,
-                            name = artistName,
-                            albumCount = uniqueAlbums,
-                            trackCount = songs.size,
-                            songPaths = songPaths
-                    )
-                }
-                .sortedBy { it.name?.lowercase() }
+            artistSongPaths.map { (name, paths) ->
+                Artist(
+                        id = name.hashCode().toLong(),
+                        name = name,
+                        albumCount = artistAlbums[name]?.size ?: 0,
+                        trackCount = paths.size,
+                        songPaths = paths
+                )
+            }.sortedBy { it.name?.lowercase() }
         } ?: throw IllegalStateException("AudioDao is null")
     }
 
@@ -317,6 +322,25 @@ class AudioRepository @Inject constructor(
                 }
                 .sortedBy { it.name?.lowercase() }
         } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Builds a map of individual artist name → all songs that credit them, in a single
+     * pass over [audioList]. Combined credits like "AKON feat. WYCLEF" are split so each
+     * artist gets their own entry. Use this instead of grouping by the raw artist field
+     * so that track counts are consistent with what the artist page shows.
+     */
+    private fun buildArtistSongMap(audioList: List<Audio>): Map<String, List<Audio>> {
+        val splitRegex = Regex(ARTIST_REGEX, RegexOption.IGNORE_CASE)
+        val map = mutableMapOf<String, MutableList<Audio>>()
+        audioList.forEach { audio ->
+            val field = audio.artist ?: return@forEach
+            field.split(splitRegex)
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .forEach { name -> map.getOrPut(name) { mutableListOf() }.add(audio) }
+        }
+        return map
     }
 
     /**
@@ -613,23 +637,21 @@ class AudioRepository @Inject constructor(
             // Filter songs by genre name
             val genreAudios = audioList.filter { it.genre == genre.name }
 
-            // Extract unique artists from genre songs
-            val artistsMap = genreAudios.groupBy { it.artist }
-                .mapNotNull { (artistName, _) ->
-                    if (artistName.isNullOrEmpty()) return@mapNotNull null
-
-                    // Count unique albums by this artist in the entire collection
-                    val artistAllSongs = audioList.filter { it.artist == artistName }
-                    val uniqueAlbums = artistAllSongs.mapNotNull { it.album }.distinct().size
-
-                    Artist(
-                            id = artistName.hashCode().toLong(),
-                            name = artistName,
-                            albumCount = uniqueAlbums,
-                            trackCount = artistAllSongs.size,
-                            songPaths = artistAllSongs.map { it.uri }
-                    )
-                }
+            // Extract unique artists from genre songs.
+            // We build the full artist map once so each name's track count covers
+            // their entire library presence, not just songs in this genre.
+            val fullArtistMap = buildArtistSongMap(audioList)
+            val artistsMap = buildArtistSongMap(genreAudios).keys.mapNotNull { artistName ->
+                val allSongs = fullArtistMap[artistName] ?: return@mapNotNull null
+                val uniqueAlbums = allSongs.mapNotNull { it.album }.distinct().size
+                Artist(
+                        id = artistName.hashCode().toLong(),
+                        name = artistName,
+                        albumCount = uniqueAlbums,
+                        trackCount = allSongs.size,
+                        songPaths = allSongs.map { it.uri }
+                )
+            }
 
             // Extract unique albums from genre songs
             val albumsMap = genreAudios.groupBy { it.album }
@@ -688,20 +710,19 @@ class AudioRepository @Inject constructor(
                     )
                 }
 
-            // Extract unique artists from folder songs
-            val artistsMap = folderAudios.groupBy { it.artist }
-                .mapNotNull { (artistName, _) ->
-                    if (artistName.isNullOrEmpty()) return@mapNotNull null
-                    val artistAllSongs = audioList.filter { it.artist == artistName }
-                    val uniqueAlbums = artistAllSongs.mapNotNull { it.album }.distinct().size
-                    Artist(
-                            id = artistName.hashCode().toLong(),
-                            name = artistName,
-                            albumCount = uniqueAlbums,
-                            trackCount = artistAllSongs.size,
-                            songPaths = artistAllSongs.map { it.uri }
-                    )
-                }
+            // Extract unique artists from folder songs, counting their full library totals.
+            val fullArtistMap = buildArtistSongMap(audioList)
+            val artistsMap = buildArtistSongMap(folderAudios).keys.mapNotNull { artistName ->
+                val allSongs = fullArtistMap[artistName] ?: return@mapNotNull null
+                val uniqueAlbums = allSongs.mapNotNull { it.album }.distinct().size
+                Artist(
+                        id = artistName.hashCode().toLong(),
+                        name = artistName,
+                        albumCount = uniqueAlbums,
+                        trackCount = allSongs.size,
+                        songPaths = allSongs.map { it.uri }
+                )
+            }
 
             // Extract unique genres from folder songs
             val genresMap = folderAudios.groupBy { it.genre }
@@ -778,19 +799,18 @@ class AudioRepository @Inject constructor(
                     )
                 }
 
-            val artistsMap = yearAudios.groupBy { it.artist }
-                .mapNotNull { (artistName, _) ->
-                    if (artistName.isNullOrEmpty()) return@mapNotNull null
-                    val artistAllSongs = audioList.filter { it.artist == artistName }
-                    val uniqueAlbums = artistAllSongs.mapNotNull { it.album }.distinct().size
-                    Artist(
-                            id = artistName.hashCode().toLong(),
-                            name = artistName,
-                            albumCount = uniqueAlbums,
-                            trackCount = artistAllSongs.size,
-                            songPaths = artistAllSongs.map { it.uri }
-                    )
-                }
+            val fullArtistMap = buildArtistSongMap(audioList)
+            val artistsMap = buildArtistSongMap(yearAudios).keys.mapNotNull { artistName ->
+                val allSongs = fullArtistMap[artistName] ?: return@mapNotNull null
+                val uniqueAlbums = allSongs.mapNotNull { it.album }.distinct().size
+                Artist(
+                        id = artistName.hashCode().toLong(),
+                        name = artistName,
+                        albumCount = uniqueAlbums,
+                        trackCount = allSongs.size,
+                        songPaths = allSongs.map { it.uri }
+                )
+            }
 
             PageData(
                     songs = yearAudios,
@@ -943,6 +963,36 @@ class AudioRepository @Inject constructor(
     fun searchByArtistFlow(artist: String): Flow<MutableList<Audio>> {
         return audioDatabase.audioDao()?.searchByArtistFiltered(artist, minDurationMs(), minSizeBytes())
             ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Reactive artist search that returns proper [Artist] objects with accurate counts.
+     *
+     * The SQL query finds every song whose artist field contains [query], then we split
+     * the combined credits (e.g. "AKON feat. WYCLEF") so each individual name gets its
+     * own entry. We also filter out names that don't actually contain the query string
+     * so a search for "AKON" doesn't surface "WYCLEF" as a result just because they
+     * collaborated on a track.
+     *
+     * @param query The text the user typed in the search box.
+     * @return Flow of [Artist] objects whose names match [query], sorted by name.
+     */
+    fun searchArtistsFlow(query: String): Flow<List<Artist>> {
+        return audioDatabase.audioDao()?.searchByArtistFiltered(query, minDurationMs(), minSizeBytes())?.map { songs ->
+            buildArtistSongMap(songs)
+                .filterKeys { it.contains(query, ignoreCase = true) }
+                .map { (name, matchedSongs) ->
+                    val uniqueAlbums = matchedSongs.mapNotNull { it.album }.distinct().size
+                    Artist(
+                            id = name.hashCode().toLong(),
+                            name = name,
+                            albumCount = uniqueAlbums,
+                            trackCount = matchedSongs.size,
+                            songPaths = matchedSongs.map { it.uri }
+                    )
+                }
+                .sortedBy { it.name?.lowercase() }
+        } ?: throw IllegalStateException("AudioDao is null")
     }
 
     /**
