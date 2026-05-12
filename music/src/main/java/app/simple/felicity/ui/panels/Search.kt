@@ -271,6 +271,10 @@ class Search : PanelFragment() {
                     count = results.songs.size
             )
         }
+
+        if (results.isSmallDataSet()) {
+            binding.appHeader.resetScrollingState()
+        }
     }
 
     /**
