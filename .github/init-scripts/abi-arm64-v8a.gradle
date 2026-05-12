@@ -1,0 +1,19 @@
+/**
+ * Restricts the foss flavor to arm64-v8a only.
+ * This runs after the project is fully evaluated, so it overrides whatever
+ * abiFilters were set in the build.gradle without touching that file.
+ */
+allprojects {
+    afterEvaluate { project ->
+        def androidExtension = project.extensions.findByName('android')
+        if (androidExtension != null) {
+            androidExtension.productFlavors.each { flavor ->
+                if (flavor.name == 'foss') {
+                    flavor.ndk.abiFilters.clear()
+                    flavor.ndk.abiFilters.add('arm64-v8a')
+                }
+            }
+        }
+    }
+}
+
